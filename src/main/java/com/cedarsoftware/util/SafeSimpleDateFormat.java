@@ -1,8 +1,11 @@
 package com.cedarsoftware.util;
 
 import java.text.DateFormatSymbols;
+import java.text.FieldPosition;
+import java.text.Format;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -35,7 +38,7 @@ import java.util.TimeZone;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class SafeSimpleDateFormat
+public class SafeSimpleDateFormat extends Format
 {
     private final String _format;
     private static final ThreadLocal<Map<String, SimpleDateFormat>> _dateFormats = new ThreadLocal<Map<String, SimpleDateFormat>>()
@@ -63,14 +66,14 @@ public class SafeSimpleDateFormat
         _format = format;
     }
 
-    public String format(Date date)
+    public StringBuffer format(Object obj, StringBuffer toAppendTo, FieldPosition pos)
     {
-        return getDateFormat(_format).format(date);
+        return getDateFormat(_format).format(obj, toAppendTo, pos);
     }
 
-    public String format(Object date)
+    public Object parseObject(String source, ParsePosition pos)
     {
-        return getDateFormat(_format).format(date);
+        return getDateFormat(_format).parse(source, pos);
     }
 
     public Date parse(String day) throws ParseException

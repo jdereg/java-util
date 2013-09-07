@@ -3,7 +3,9 @@ package com.cedarsoftware.util;
 import java.util.HashSet;
 import java.util.Set;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  * Ensure that the UniqueIdGenerator never hands out the
@@ -12,8 +14,9 @@ import junit.framework.TestCase;
  *
  * @author John DeRegnaucourt
  */
-public class TestUniqueIdGenerator extends TestCase
+public class TestUniqueIdGenerator
 {
+    @Test
     public void testUniqueIdGeneration() throws Exception
     {
         Set ids = new HashSet();

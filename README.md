@@ -14,7 +14,7 @@ To include in your project:
 Also, check out json-io at https://github.com/jdereg/json-io
 
 Including in java-util:
-* ArrayUtilities - Useful utilities for working with Java's arrays [ ]
+* **ArrayUtilities** - Useful utilities for working with Java's arrays [ ]
 * CaseInsensitiveMap - When Strings are used as keys, they are compared without case. Can be used as regular Map with any JAva object as keys, just specially handles Strings.
 * DeepEquals - Compare two object graphs and return 'true' if they are equals, 'false' otherwise.  This will handle cycles in the graph, and will call an equals() method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.
 * EncryptionUtilities - Makes it easy to compute MD5 checksums for Strings, byte[], as well as making it easy to AES-128 encrypt Strings and byte[]'s.

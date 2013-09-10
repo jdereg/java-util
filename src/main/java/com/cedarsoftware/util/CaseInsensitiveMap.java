@@ -9,9 +9,16 @@ import java.util.Set;
 
 /**
  * Useful Map that does not care about the case-sensitivity of keys
- * when the key value is a String.  Other key types can be used, however,
+ * when the key value is a String.  Other key types can be used.
  * String keys will be treated case insensitively, yet key case will 
- * be retained.
+ * be retained.  Non-string keys will work as they normally would.
+ *
+ * The internal CaseInsentitiveString is never exposed externally
+ * from this class. When requesting the keys or entries of this map,
+ * or calling containsKey() or get() for example, use a String as you
+ * normally would.  The returned Set of keys for the keySet() and
+ * entrySet() APIs return the original Strings, not the internally
+ * wrapped CaseInsensitiveString.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -106,6 +113,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.remove(key);
     }
 
+    /**
+     * @return Set of Keys from the Map.  This API is implemented to allow
+     * this class to unwrap the internal structure placed around String
+     * keys, returning them as the original String keys, retaining their case.
+     */
     public Set<K> keySet()
     {
         Set returnedKeySet = new LinkedHashSet(map.keySet().size());
@@ -118,6 +130,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return returnedKeySet;
     }
 
+    /**
+     * @return Set of Map.Entry for each entry in the Map.  This API is
+     * implemented to allow this class to unwrap the internal structure placed
+     * around String keys, returning them as the original String keys, retaining
+     * their case.
+     */
     public Set<Map.Entry<K, V>> entrySet()
     {
         Set<Map.Entry<K, V>> insensitiveEntrySet = map.entrySet();
@@ -136,6 +154,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return returnEntrySet;
     }
 
+    /**
+     * Internal class used to wrap String keys.  This class ignores the
+     * case of Strings when they are compared.
+     */
     private static class CaseInsensitiveString
     {
         private final String caseInsensitiveString;

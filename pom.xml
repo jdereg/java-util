@@ -34,7 +34,8 @@
     </developers>
 
     <properties>
-        <version.java-util>0.1.0</version.java-util>
+        <version.json.io>2.2.29</version.json.io>
+        <version.commons.logging>1.1.1</version.commons.logging>
         <version.junit>4.11</version.junit>
     </properties>
 
@@ -127,7 +128,13 @@
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
-            <version>1.1.1</version>
+            <version>${version.commons.logging}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.cedarsoftware</groupId>
+            <artifactId>json-io</artifactId>
+            <version>${version.json.io}</version>
         </dependency>
 
         <dependency>
@@ -136,5 +143,6 @@
             <version>${version.junit}</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 </project>

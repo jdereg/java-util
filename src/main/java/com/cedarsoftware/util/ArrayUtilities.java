@@ -5,7 +5,7 @@ import java.lang.reflect.Array;
 /**
  * Handy utilities for working with Java arrays.
  *
- * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow (kpartlow@gmail.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
  *         <br/>
  *         Copyright (c) John DeRegnaucourt
  *         <br/><br/>

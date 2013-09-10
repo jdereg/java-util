@@ -49,7 +49,7 @@ public class UrlUtilities
     public static final String COOKIE_VALUE_DELIMITER = ";";
     public static final String PATH = "path";
     public static final String EXPIRES = "expires";
-    public static final String DATE_FORMAT = "EEE, dd-MMM-yyyy hh:mm:ss z";
+    public static final SafeSimpleDateFormat DATE_FORMAT = new SafeSimpleDateFormat("EEE, dd-MMM-yyyy hh:mm:ss z");
     public static final String SET_COOKIE_SEPARATOR = "; ";
     public static final String COOKIE = "Cookie";
     public static final char NAME_VALUE_SEPARATOR = '=';
@@ -322,12 +322,11 @@ public class UrlUtilities
 
         try
         {
-            DateFormat f = new SimpleDateFormat(DATE_FORMAT);
-            return new Date().compareTo(f.parse(cookieExpires)) <= 0;
+            return new Date().compareTo(DATE_FORMAT.parse(cookieExpires)) <= 0;
         }
         catch (ParseException e)
         {
-            e.printStackTrace();
+            LOG.info("Parse error on cookie expires value: " + cookieExpires, e);
             return false;
         }
     }

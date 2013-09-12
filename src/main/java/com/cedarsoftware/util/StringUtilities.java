@@ -145,10 +145,10 @@ public final class StringUtilities
     {
         StringBuilder sb = new StringBuilder(bytes.length << 1);
         int len = bytes.length;
-        for (int i = 0; i < len; i++)
+        for (byte aByte : bytes)
         {
-            sb.append(convertDigit(bytes[i] >> 4));
-            sb.append(convertDigit(bytes[i] & 0x0f));
+            sb.append(convertDigit(aByte >> 4));
+            sb.append(convertDigit(aByte & 0x0f));
         }
         return sb.toString();
     }

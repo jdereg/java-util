@@ -33,4 +33,4 @@ Including in java-util:
 * **UrlUtitilies** - Fetch cookies from headers, getUrlConnections(), HTTP Response error handler, and more.
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
-Developed by: John DeRegnaucourt and Ken Partlow
+By: John DeRegnaucourt and Ken Partlow

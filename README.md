@@ -9,14 +9,20 @@ To include in your project:
   <artifactId>java-util</artifactId>
   <version>1.4.0</version>
 </dependency>
+
+<dependency>
+  <groupId>com.cedarsoftware</groupId>
+  <artifactId>json-io</artifactId>
+  <version>2.2.29</version>
+</dependency>
 ```
 
 Also, check out json-io at https://github.com/jdereg/json-io
 
 Including in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays [ ]
-* **CaseInsensitiveMap** - When Strings are used as keys, they are compared without case. Can be used as regular Map with any JAva object as keys, just specially handles Strings.
-* **DeepEquals** - Compare two object graphs and return 'true' if they are equals, 'false' otherwise.  This will handle cycles in the graph, and will call an equals() method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.
+* **CaseInsensitiveMap** - When Strings are used as keys, they are compared without case. Can be used as regular Map with any Java object as keys, just specially handles Strings.
+* **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an equals() method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.
 * **EncryptionUtilities** - Makes it easy to compute MD5 checksums for Strings, byte[], as well as making it easy to AES-128 encrypt Strings and byte[]'s.
 * **IOUtilities** - Handy methods for simplifying I/O including such niceties as properly setting up the input stream for HttpUrlConnections based on their specified encoding.  Single line .close() method that handles exceptions for you.
 * **ReflectionUtils** - Simple one-liners for many common reflection tasks.

@@ -140,7 +140,15 @@ public class ReflectionUtils
         Collection<Field> fields = getDeepDeclaredFields(c);
         for (Field field : fields)
         {
-            fieldMap.put(field.getName(), field);
+            String fieldName = field.getName();
+            if (fieldMap.containsKey(fieldName))
+            {   // Can happen when parent and child class both have private field with same name
+                fieldMap.put(field.getDeclaringClass().getName() + '.' + fieldName, field);
+            }
+            else
+            {
+                fieldMap.put(fieldName, field);
+            }
         }
 
         return fieldMap;

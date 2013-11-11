@@ -12,7 +12,6 @@ import org.junit.Test;
 
 public class TestCaseInsensitiveMap
 {
-
     @Test
     public void testMapStraightUp()
     {

@@ -1,0 +1,43 @@
+{
+    "ncube":"PremiumCalc",
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"true" },
+                { "id":2, "type":"exp", "value":"input.vehiclePrice > 10000" },
+                { "id":3, "type":"exp", "value":"input.driverAge < 23" },
+                { "id":4, "type":"exp", "value":"input.gender.toLowerCase() == 'male'" },
+                { "id":5, "type":"exp", "value":"input.vehicleCylinders > 4" }
+            ]
+        },
+        {
+            "name":"state",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":10, "value":"OH" },
+                { "id":20, "value":"TX" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":[1, 10], "type":"exp", "value":"output.premium = 30.0" },
+        { "id":[2, 10], "type":"exp", "value":"output.premium += 40.0" },
+        { "id":[3, 10], "type":"exp", "value":"output.premium += 50.0" },
+        { "id":[4, 10], "type":"exp", "value":"output.premium += 10.0" },
+        { "id":[5, 10], "type":"exp", "value":"output.premium += 25.0" },
+
+        { "id":[1, 20], "type":"exp", "value":"output.premium = 31.0" },
+        { "id":[2, 20], "type":"exp", "value":"output.premium += 41.0" },
+        { "id":[3, 20], "type":"exp", "value":"output.premium += 51.0" },
+        { "id":[4, 20], "type":"exp", "value":"output.premium += 11.0" },
+        { "id":[5, 20], "type":"exp", "value":"output.premium += 26.0; input.stop = 10" }
+    ]
+}

@@ -1,0 +1,46 @@
+{
+    "ncube":"TestCube",
+    "defaultCellValue":"ZZZ",
+    "axes":[
+        {
+            "name":"Code",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                {
+                    "value":"ints"
+                },
+                {
+                    "value":"strings"
+                },
+                {
+                    "value":"arrays"
+                },
+                {
+                    "value":"crazy"
+                }
+            ]
+        }
+    ],
+    "cells":[
+        {
+            "key":{"Code":"ints"},
+            "value":[0, 1, 4]
+        },
+        {
+            "key":{"Code":"strings"},
+            "value": ["alpha", "bravo", "charlie"]
+        },
+        {
+            "key":{"Code":"arrays"},
+            "value":[[0, 1, 6],["a","b","c"]]
+        },
+        {
+            "key":{"code":"crazy"},
+            "type":"exp",
+            "value": ["return '1.0'", ["return '1.a'"],["return '1.b'"], "return '2.0'"]
+        }
+    ]
+}

@@ -1,0 +1,31 @@
+{
+    "ncube":"TestCube",
+    "defaultCellValue":"2012-12-17T00:11:22",
+    "axes":[
+        {
+            "name":"Gender",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":true,
+            "preferredOrder":0,
+            "columns":[
+                {
+                    "value":"Female"
+                },
+                {
+                    "value":"Male"
+                }
+            ]
+        }
+    ],
+    "cells":[
+        {
+            "key":{"Gender":"Male"},
+            "value":1.0
+        },
+        {
+            "key":{"Gender":"Female"},
+            "value":1.1
+        }
+    ]
+}

@@ -1,0 +1,36 @@
+{
+    "ncube":"CubeRefFromRule",
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"@TestCube([:]) > 5.0" },
+                { "id":2, "type":"exp", "value":"@TestCube([age:input.age]) < 5.0" },
+                { "id":3, "type":"exp", "value":"@TestCube([aGe:input.AGe]) == 5.0" }
+            ]
+        },
+        {
+            "name":"state",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":10, "value":"OH" },
+                { "id":20, "value":"TX" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":[1, 10], "type":"exp", "value":"output.premium = 10.0" },
+        { "id":[2, 10], "type":"exp", "value":"output.premium = 1.0" },
+        { "id":[3, 10], "type":"exp", "value":"output.premium = 5.0" },
+        { "id":[1, 20], "type":"exp", "value":"output.premium = -10.0" },
+        { "id":[2, 20], "type":"exp", "value":"output.premium = -1.0" },
+        { "id":[3, 20], "type":"exp", "value":"output.premium = -5.0" }
+    ]
+}

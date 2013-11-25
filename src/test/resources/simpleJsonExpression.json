@@ -1,0 +1,46 @@
+{
+    "ncube":"TestCube",
+    "defaultCellValue":"ZZZ",
+    "axes":[ {
+            "name":"Code",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "value":"exp" },
+                { "value":"method" },
+                { "value":"program" },
+                { "value":"program2" },
+                { "value":"expArray" },
+                { "value":"intVal" },
+                { "value":"doubleVal" },
+                { "value":"bigdec" },
+                { "value":"floatVal" },
+                { "value":"integerVal" },
+                { "value":"bigintVal" },
+                { "value":"byteVal" },
+                { "value":"shortVal" },
+                { "value":"date1Val" },
+                { "value":"date2Val" },
+                { "value":"timeVal" }
+            ]}],
+    "cells":[
+        { "key":{"code":"exp"}, "type":"exp", "value": "input.code = 'intVal'; def x=$(input); input.code = 'doubleVal'; def y = $(input); x * y" },
+        { "key":{"Code":"method"}, "type":"method", "value": "def run() { $([code:'intVal']) * $([code:'doubleVal']) + 1 }" },
+        { "key":{"code":"program"}, "type":"program", "value":"class Foo { def run() { $([code:'intVal']) * 2}}"},
+        { "key":{"code":"program2"}, "type":"program", "value":"public class ~Foo~ { def run() { $([code:'intVal']) * 3}}"},
+        { "key":{"Code":"expArray"}, "type":"exp", "value":["5", "2 * 5", "def x = 10; def y = 20; x + y"] },
+        { "key":{"CoDe":"intVal"}, "value":2 },
+        { "key":{"COde":"doubleVal"}, "value": 3.14 },
+        { "key":{"COde":"bigdec"}, "type":"bigdec", "value": 3.14 },
+        { "key":{"code":"floatVal"}, "type":"float", "value": 3.14 },
+        { "key":{"COde":"integerVal"}, "type":"int", "value": 16 },
+        { "key":{"COde":"bigintVal"}, "type":"bigint", "value": -16 },
+        { "key":{"COde":"byteVal"}, "type":"byte", "value": 101 },
+        { "key":{"COde":"shortVal"}, "type":"short", "value": -101 },
+        { "key":{"COde":"date1Val"}, "type":"datetime", "value": "2013-08-30T22:00:01" },
+        { "key":{"COde":"date2Val"}, "type":"date", "value": "2013-08-31" },
+        { "key":{"COde":"timeVal"}, "type":"time", "value": "06:50:16" }
+    ]
+}

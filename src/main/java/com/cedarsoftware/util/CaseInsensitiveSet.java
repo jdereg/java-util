@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -77,7 +78,16 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean containsAll(Collection<?> c)
     {
-        return map.keySet().containsAll(c);
+        boolean fail = false;
+        for (Object o : c)
+        {
+            if (!map.containsKey(o))
+            {
+                 fail = true;
+                break;
+            }
+        }
+        return !fail;
     }
 
     public boolean addAll(Collection<? extends E> c)
@@ -93,11 +103,17 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean retainAll(Collection<?> c)
     {
+        Map other = new CaseInsensitiveMap();
+        for (Object o : c)
+        {
+            other.put(o, null);
+        }
+
         int origSize = map.size();
 
-        for (Object elem : c)
+        for (Object elem : map.keySet())
         {
-            if (!map.containsKey(elem))
+            if (!other.containsKey(elem))
             {
                 map.remove(elem);
             }

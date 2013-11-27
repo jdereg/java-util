@@ -2,13 +2,15 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author John DeRegnaucourt
@@ -59,8 +61,6 @@ public class TestCaseInsensitiveSet
         assertFalse(set.contains("one"));
     }
 
-    // TODO: Remove iterator NOT working
-    // Need to write my own Iterator?  What about on CaseInsensitiveMap?  Add test to ensure
     @Test
     public void testIterator()
     {
@@ -87,27 +87,40 @@ public class TestCaseInsensitiveSet
         }
 
         assertEquals(2, set.size());
-        assertFalse(set.contains("two"));
-        assertTrue(set.contains("one"));
+        assertFalse(set.contains("one"));
+        assertTrue(set.contains("two"));
         assertTrue(set.contains("three"));
     }
 
     @Test
     public void testToArray()
     {
-
+        Set set = get123();
+        Object[] items = set.toArray();
+        assertEquals(3, items.length);
+        assertEquals(items[0], "One");
+        assertEquals(items[1], "Two");
+        assertEquals(items[2], "Three");
     }
 
     @Test
     public void testToArrayWithArgs()
     {
-
+        Set set = get123();
+        String[] items = (String[]) set.toArray(new String[]{});
+        assertEquals(3, items.length);
+        assertEquals(items[0], "One");
+        assertEquals(items[1], "Two");
+        assertEquals(items[2], "Three");
     }
 
     @Test
     public void testAdd()
     {
-
+        Set set = get123();
+        set.add("Four");
+        assertEquals(set.size(), 4);
+        assertTrue(set.contains("FOUR"));
     }
 
     @Test
@@ -128,25 +141,54 @@ public class TestCaseInsensitiveSet
     @Test
     public void testContainsAll()
     {
-
+        List list = new ArrayList();
+        list.add("one");
+        list.add("two");
+        list.add("three");
+        Set set = get123();
+        assertTrue(set.containsAll(list));
+        assertTrue(set.containsAll(new ArrayList()));
+        list.clear();
+        list.add("one");
+        list.add("four");
+        assertFalse(set.containsAll(list));
     }
 
     @Test
     public void testAddAll()
     {
-
+        Set set = get123();
+        List list = new ArrayList();
+        list.add("one");
+        list.add("TWO");
+        list.add("four");
+        set.addAll(list);
+        assertTrue(set.size() == 4);
+        assertTrue(set.contains("FOUR"));
     }
 
     @Test
     public void testRetainAll()
     {
-
+        Set set = get123();
+        List list = new ArrayList();
+        list.add("TWO");
+        list.add("four");
+        set.retainAll(list);
+        assertTrue(set.size() == 1);
+        assertTrue(set.contains("tWo"));
     }
 
     @Test
     public void testRemoveAll()
     {
-
+        Set set = get123();
+        Set set2 = new HashSet();
+        set2.add("one");
+        set2.add("three");
+        set.removeAll(set2);
+        assertEquals(1, set.size());
+        assertTrue(set.contains("TWO"));
     }
 
     @Test

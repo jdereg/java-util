@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.AbstractMap;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -10,9 +11,9 @@ import java.util.Set;
 /**
  * Useful Map that does not care about the case-sensitivity of keys
  * when the key value is a String.  Other key types can be used.
- * String keys will be treated case insensitively, yet key case will 
+ * String keys will be treated case insensitively, yet key case will
  * be retained.  Non-string keys will work as they normally would.
- *
+ * <p/>
  * The internal CaseInsentitiveString is never exposed externally
  * from this class. When requesting the keys or entries of this map,
  * or calling containsKey() or get() for example, use a String as you
@@ -38,7 +39,7 @@ import java.util.Set;
  */
 public class CaseInsensitiveMap<K, V> implements Map<K, V>
 {
-    private LinkedHashMap<K, V> map;
+    private Map<K, V> map;
 
     public CaseInsensitiveMap()
     {
@@ -69,13 +70,13 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     public V put(K key, V value)
     {
         if (key instanceof String)
-        {	// Must remove entry because the key case can change
+        {    // Must remove entry because the key case can change
             CaseInsensitiveString newKey = new CaseInsensitiveString((String) key);
             if (map.containsKey(newKey))
             {
                 map.remove(newKey);
             }
-            return map.put((K)newKey, value);
+            return map.put((K) newKey, value);
         }
         return map.put(key, value);
     }
@@ -99,7 +100,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         for (Map.Entry entry : m.entrySet())
         {
-            put((K)entry.getKey(), (V)entry.getValue());
+            put((K) entry.getKey(), (V) entry.getValue());
         }
     }
 
@@ -115,38 +116,78 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     /**
      * @return Set of Keys from the Map.  This API is implemented to allow
-     * this class to unwrap the internal structure placed around String
-     * keys, returning them as the original String keys, retaining their case.
+     *         this class to unwrap the internal structure placed around String
+     *         keys, returning them as the original String keys, retaining their case.
      */
     public Set<K> keySet()
     {
-        Set returnedKeySet = new LinkedHashSet(map.keySet().size());
-
+        Set temp = new LinkedHashSet();
         for (Object key : map.keySet())
         {
-            returnedKeySet.add(key instanceof CaseInsensitiveString ? key.toString() : key);
+            temp.add(key instanceof CaseInsensitiveString ? key.toString() : key);
+        }
+        return new LocalSet(temp, this);
+    }
+
+    private class LocalSet extends LinkedHashSet<K>
+    {
+
+        private static final long serialVersionUID = -4681165782204849813L;
+        Set<K> localSet;
+        Map<K, V> localMap;
+
+        public LocalSet(Set<K> s, Map<K, V> m)
+        {
+            super(s);
+            this.localSet = s;
+            this.localMap = m;
         }
 
-        return returnedKeySet;
+        public Iterator<K> iterator()
+        {
+            return new Iterator<K>()
+            {
+                Iterator<K> iter = localSet.iterator();
+                K lastRetured = null;
+
+                public boolean hasNext()
+                {
+                    return iter.hasNext();
+                }
+
+                public K next()
+                {
+                    lastRetured = iter.next();
+                    return lastRetured;
+                }
+
+                public void remove()
+                {
+                    iter.remove();
+                    localMap.remove(lastRetured);
+
+                }
+            };
+        }
     }
 
     /**
      * @return Set of Map.Entry for each entry in the Map.  This API is
-     * implemented to allow this class to unwrap the internal structure placed
-     * around String keys, returning them as the original String keys, retaining
-     * their case.
+     *         implemented to allow this class to unwrap the internal structure placed
+     *         around String keys, returning them as the original String keys, retaining
+     *         their case.
      */
     public Set<Map.Entry<K, V>> entrySet()
     {
         Set<Map.Entry<K, V>> insensitiveEntrySet = map.entrySet();
-        Set<Map.Entry<K, V>> returnEntrySet = new LinkedHashSet<Map.Entry<K,V>>();
+        Set<Map.Entry<K, V>> returnEntrySet = new LinkedHashSet<Map.Entry<K, V>>();
 
         for (Map.Entry entry : insensitiveEntrySet)
         {
             if (entry.getKey() instanceof CaseInsensitiveString)
             {
                 CaseInsensitiveString key = (CaseInsensitiveString) entry.getKey();
-                entry = new AbstractMap.SimpleImmutableEntry<K, V>((K)key.toString(), (V)entry.getValue());
+                entry = new AbstractMap.SimpleImmutableEntry<K, V>((K) key.toString(), (V) entry.getValue());
             }
             returnEntrySet.add(entry);
         }
@@ -216,9 +257,44 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.isEmpty();
     }
 
-    public boolean equals(Object o)
+    public boolean equals(Object other)
     {
-        return map.equals(o);
+        if (!(other instanceof Map))
+        {
+            return false;
+        }
+
+        Map<?, ?> that = (Map<?, ?>) other;
+        if (that.size() != size())
+        {
+            return false;
+        }
+
+        for (Map.Entry entry : that.entrySet())
+        {
+            final Object thatKey = entry.getKey();
+            if (!containsKey(thatKey))
+            {
+                 return false;
+            }
+
+            Object thatValue = entry.getValue();
+            Object thisValue = get(thatKey);
+
+            if (thatValue == null || thisValue == null)
+            {   // Perform null checks
+                if (thatValue != thisValue)
+                {
+                    return false;
+                }
+            }
+
+            if (!thisValue.equals(thatValue))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int hashCode()

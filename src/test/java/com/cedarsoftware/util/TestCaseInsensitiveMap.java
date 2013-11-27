@@ -1,14 +1,19 @@
 package com.cedarsoftware.util;
 
+import org.junit.Test;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-
-import java.util.Map;
-import java.util.Set;
-
-import org.junit.Test;
 
 public class TestCaseInsensitiveMap
 {
@@ -99,7 +104,6 @@ public class TestCaseInsensitiveMap
     public void testPutAll()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
-
         CaseInsensitiveMap<String, Object> newMap = new CaseInsensitiveMap<String, Object>(2);
         newMap.put("thREe", "four");
         newMap.put("Seven", "Eight");
@@ -111,6 +115,9 @@ public class TestCaseInsensitiveMap
         assertTrue(stringMap.get("fIvE").equals("Six"));
         assertTrue(stringMap.get("three").equals("four"));
         assertTrue(stringMap.get("seven").equals("Eight"));
+
+        Map a = createSimpleMap();
+        a.putAll(null);     // Ensure NPE not happening
     }
 
     @Test
@@ -145,6 +152,135 @@ public class TestCaseInsensitiveMap
         assertTrue("Something".equals(stringMap.get(null)));
     }
 
+    @Test
+    public void testRemoveIterator()
+    {
+        Map map = new CaseInsensitiveMap();
+        map.put("One", null);
+        map.put("Two", null);
+        map.put("Three", null);
+
+        int count = 0;
+        Iterator i = map.keySet().iterator();
+        while (i.hasNext())
+        {
+            i.next();
+            count++;
+        }
+
+        assertEquals(3, count);
+
+        i = map.keySet().iterator();
+        while (i.hasNext())
+        {
+            Object elem = i.next();
+            if (elem.equals("One"))
+            {
+                i.remove();
+            }
+        }
+
+        assertEquals(2, map.size());
+        assertFalse(map.containsKey("one"));
+        assertTrue(map.containsKey("two"));
+        assertTrue(map.containsKey("three"));
+    }
+
+    @Test
+    public void testEquals()
+    {
+        Map a = createSimpleMap();
+        Map b = createSimpleMap();
+        assertTrue(a.equals(b));
+        Map c = new HashMap();
+        assertFalse(a.equals(c));
+
+        Map other = new LinkedHashMap();
+        other.put("one", "Two");
+        other.put("THREe", "Four");
+        other.put("five", "Six");
+
+        assertTrue(a.equals(other));
+        assertTrue(other.equals(a));
+
+        other.clear();
+        other.put("one", "Two");
+        other.put("Three-x", "Four");
+        other.put("five", "Six");
+        assertFalse(a.equals(other));
+
+        assertFalse(a.equals("Foo"));
+
+        other.put("FIVE", null);
+        assertFalse(a.equals(other));
+    }
+
+    @Test
+    public void testHashCode()
+    {
+        Map a = createSimpleMap();
+        Map b = new CaseInsensitiveMap(a);
+        assertTrue(a.hashCode() == b.hashCode());
+
+        b = new CaseInsensitiveMap();
+        b.put("ONE", "Two");
+        b.put("THREE", "Four");
+        b.put("FIVE", "Six");
+        assertTrue(a.hashCode() == b.hashCode());
+
+        b = new CaseInsensitiveMap();
+        b.put("One", "Two");
+        b.put("THREE", "FOUR");
+        b.put("Five", "Six");
+        assertFalse(a.hashCode() == b.hashCode());
+    }
+
+    @Test
+    public void testToString()
+    {
+        assertNotNull(createSimpleMap().toString());
+    }
+
+    @Test
+    public void testClear()
+    {
+        Map a = createSimpleMap();
+        a.clear();
+        assertEquals(0, a.size());
+    }
+
+    @Test
+    public void testContainsValue()
+    {
+        Map a = createSimpleMap();
+        assertTrue(a.containsValue("Two"));
+        assertFalse(a.containsValue("TWO"));
+    }
+
+    @Test
+    public void testValues()
+    {
+        Map a = createSimpleMap();
+        Collection col = a.values();
+        assertEquals(3, col.size());
+        assertTrue(col.contains("Two"));
+        assertTrue(col.contains("Four"));
+        assertTrue(col.contains("Six"));
+        assertFalse(col.contains("TWO"));
+    }
+
+
+    @Test
+    public void testNullKey()
+    {
+        Map a = createSimpleMap();
+        a.put(null, "foo");
+        String b = (String) a.get(null);
+        int x = b.hashCode();
+        assertEquals("foo", b);
+    }
+
+    // ---------------------------------------------------
     private CaseInsensitiveMap<String, Object> createSimpleMap()
     {
         CaseInsensitiveMap<String, Object> stringMap = new CaseInsensitiveMap<String, Object>();

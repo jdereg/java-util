@@ -33,5 +33,13 @@ Including in java-util:
 * **UniqueIdGenerator** - Generates a Java long unique id, that is unique across server in a cluster, never hands out the same value, has massive entropy, and runs very quickly.
 * **UrlUtitilies** - Fetch cookies from headers, getUrlConnections(), HTTP Response error handler, and more.
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
+* 
+
+ * 2.3.0
+  * Added CaseInsensitiveSet.  
+  * Fixed: iterator.remove() was not working.  
+  * Fixed: Map.equals() required case to match on keys. 
+ * 1.4.0
+  * Initial version
 
 By: John DeRegnaucourt and Ken Partlow

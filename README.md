@@ -36,7 +36,7 @@ Including in java-util:
 * 
 
 Version History
-* 2.3.0
+* 1.5.0
  * Added CaseInsensitiveSet.  
  * Fixed: CaseInsensitiveMap's iterator.remove() method, it did not remove items.  
  * Fixed: CaseInsensitiveMap's equals() method, it required case to match on keys. 

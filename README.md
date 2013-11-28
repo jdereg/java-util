@@ -35,11 +35,12 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 * 
 
- * 2.3.0
-  * Added CaseInsensitiveSet.  
-  * Fixed: iterator.remove() was not working.  
-  * Fixed: Map.equals() required case to match on keys. 
- * 1.4.0
-  * Initial version
+Version History
+* 2.3.0
+ * Added CaseInsensitiveSet.  
+ * Fixed: CaseInsensitiveMap's iterator.remove() method, it did not remove items.  
+ * Fixed: CaseInsensitiveMap's equals() method, it required case to match on keys. 
+* 1.4.0
+ * Initial version
 
 By: John DeRegnaucourt and Ken Partlow

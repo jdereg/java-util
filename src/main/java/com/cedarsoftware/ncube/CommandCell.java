@@ -64,6 +64,17 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     public Object run(Map args)
     {
+        if (getCompileErrorMsg() != null)
+        {   // If the cell failed to compile earlier, do not keep trying to recompile or run it.
+            throw new IllegalStateException(getCompileErrorMsg());
+        }
+
+        preRun(args);
+        return runFinal(args);
+    }
+
+    protected Object runFinal(Map args)
+    {
         try
         {
             Method m = runnableCode.getDeclaredMethod("run", null);
@@ -85,7 +96,9 @@ public abstract class CommandCell implements Comparable<CommandCell>
         }
     }
 
-	public String getCmd()
+    protected void preRun(Map args) {}
+
+    public String getCmd()
 	{
 		return cmd;
 	}

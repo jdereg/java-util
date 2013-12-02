@@ -4769,6 +4769,50 @@ DELIMITER ;
         assertEquals(new BigDecimal("1.0"), output.get("premium"));
     }
 
+    @Test
+    public void testTemplate()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
+        Map coord = new HashMap();
+        coord.put("code", "stdTemplate");
+        coord.put("overdue", "not overdue");
+        String str = (String) ncube.getCell(coord);
+        assertEquals("Dear 2, Your balance of 3.14 is not overdue.", str);
+        str = (String) ncube.getCell(coord);
+        assertEquals("Dear 2, Your balance of 3.14 is not overdue.", str);
+
+        coord.put("code", "stdTemplate2");
+        coord.put("overdue", "overdue");
+        str = (String) ncube.getCell(coord);
+        assertEquals("2, Your balance is overdue 3.14", str);
+        str = (String) ncube.getCell(coord);
+        assertEquals("2, Your balance is overdue 3.14", str);
+    }
+
+    @Test
+    public void testTemplateRefOtherCube()
+    {
+        // TODO: Make A -> B -> A (double external reference)
+    }
+
+    @Test
+    public void testTemplateRequireScope()
+    {
+        // TODO: Make sure referenced ncube names in template cells are picked up
+    }
+
+    @Test
+    public void testXmlTemplate()
+    {
+        // TODO: Make sure you can use a XML template (update loader for xtemplate)
+    }
+
+    @Test
+    public void testGTemplate()
+    {
+        // TODO: Make sure you can use a GStringTemplate (update loader for gtemplate)
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

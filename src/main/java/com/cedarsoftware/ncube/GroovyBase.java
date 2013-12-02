@@ -50,12 +50,12 @@ public abstract class GroovyBase extends CommandCell
 
     protected abstract void buildGroovy(StringBuilder groovy, String theirGroovy, String cubeName);
 
-    protected void compile(String theirGroovy, String cubeName) throws Exception
+    protected void compile(String cubeName) throws Exception
     {
         StringBuilder groovy = new StringBuilder();
 
-        Matcher m = groovyUniqueClassPattern.matcher(theirGroovy);
-        theirGroovy = m.replaceAll("$1" + UniqueIdGenerator.getUniqueId());
+        Matcher m = groovyUniqueClassPattern.matcher(getCmd());
+        String theirGroovy = m.replaceAll("$1" + UniqueIdGenerator.getUniqueId());
 
         buildGroovy(groovy, theirGroovy, cubeName);
         m = groovyRefCubeCellPattern.matcher(groovy.toString());
@@ -74,16 +74,10 @@ public abstract class GroovyBase extends CommandCell
         setRunnableCode(gcl.parseClass(exp));
     }
 
-    public Object run(Map args)
+    protected void preRun(Map args)
     {
-        if (getCompileErrorMsg() != null)
-        {   // If the cell failed to compile earlier, do not keep trying to recompile it.
-            throw new IllegalStateException(getCompileErrorMsg());
-        }
-
         NCube ncube = (NCube) args.get("ncube");
         compileIfNeeded(ncube.getName());
-        return super.run(args);
     }
 
     /**
@@ -104,7 +98,7 @@ public abstract class GroovyBase extends CommandCell
 
                 try
                 {
-                    compile(getCmd(), cubeName);
+                    compile(cubeName);
                 }
                 catch (Exception e)
                 {

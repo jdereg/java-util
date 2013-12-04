@@ -1,20 +1,17 @@
 package com.cedarsoftware.util;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.AlgorithmParameterSpec;
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Useful encryption utilities that simplify tasks like getting an
@@ -104,7 +101,61 @@ public class EncryptionUtilities
         }
         catch (NoSuchAlgorithmException e)
         {
+            throw new IllegalStateException("The requested MessageDigest (MD5) does not exist", e);
+        }
+    }
+
+    /**
+     * Calculate an SHA-256 Hash String from the passed in byte[].
+     */
+    public static String calculateSHA256Hash(byte[] bytes)
+    {
+        if (bytes == null)
+        {
             return null;
+        }
+
+        MessageDigest d = getSHA256Digest();
+        d.update(bytes);
+        return StringUtilities.encode(d.digest());
+    }
+
+    public static MessageDigest getSHA256Digest()
+    {
+        try
+        {
+            return MessageDigest.getInstance("SHA-256");
+        }
+        catch (NoSuchAlgorithmException e)
+        {
+            throw new IllegalStateException("The requested MessageDigest (SHA-256) does not exist", e);
+        }
+    }
+
+    /**
+     * Calculate an SHA-512 Hash String from the passed in byte[].
+     */
+    public static String calculateSHA512Hash(byte[] bytes)
+    {
+        if (bytes == null)
+        {
+            return null;
+        }
+
+        MessageDigest d = getSHA512Digest();
+        d.update(bytes);
+        return StringUtilities.encode(d.digest());
+    }
+
+    public static MessageDigest getSHA512Digest()
+    {
+        try
+        {
+            return MessageDigest.getInstance("SHA-512");
+        }
+        catch (NoSuchAlgorithmException e)
+        {
+            throw new IllegalStateException("The requested MessageDigest (SHA-512) does not exist", e);
         }
     }
 
@@ -160,7 +211,7 @@ public class EncryptionUtilities
         }
         catch (Exception e)
         {
-            return null;
+            throw new IllegalStateException("Error occurred encrypting data", e);
         }
     }
 
@@ -175,7 +226,7 @@ public class EncryptionUtilities
         }
         catch (Exception e)
         {
-            return null;
+            throw new IllegalStateException("Error occurred decrypting data", e);
         }
     }
 }

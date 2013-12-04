@@ -4,6 +4,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -24,11 +25,19 @@ import static org.junit.Assert.assertTrue;
 public class TestEncryption
 {
     public static final String QUICK_FOX = "The quick brown fox jumps over the lazy dog";
+
     @Test
     public void testMD5()
     {
         String hash = EncryptionUtilities.calculateMD5Hash(QUICK_FOX.getBytes());
         assertEquals("9E107D9D372BB6826BD81D3542A419D6", hash);
+    }
+
+    @Test
+    public void testSHA1()
+    {
+        String hash = EncryptionUtilities.calculateSHA1Hash(QUICK_FOX.getBytes());
+        assertEquals("2FD4E1C67A2D28FCED849EE1BB76E7391B93EB12", hash);
     }
 
     @Test

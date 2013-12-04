@@ -106,6 +106,33 @@ public class EncryptionUtilities
     }
 
     /**
+     * Calculate an MD5 Hash String from the passed in byte[].
+     */
+    public static String calculateSHA1Hash(byte[] bytes)
+    {
+        if (bytes == null)
+        {
+            return null;
+        }
+
+        MessageDigest d = getSHA1Digest();
+        d.update(bytes);
+        return StringUtilities.encode(d.digest());
+    }
+
+    public static MessageDigest getSHA1Digest()
+    {
+        try
+        {
+            return MessageDigest.getInstance("SHA-1");
+        }
+        catch (NoSuchAlgorithmException e)
+        {
+            throw new IllegalStateException("The requested MessageDigest (SHA-1) does not exist", e);
+        }
+    }
+
+    /**
      * Calculate an SHA-256 Hash String from the passed in byte[].
      */
     public static String calculateSHA256Hash(byte[] bytes)

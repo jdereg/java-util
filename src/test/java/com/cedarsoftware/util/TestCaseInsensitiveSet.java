@@ -3,9 +3,11 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -200,6 +202,33 @@ public class TestCaseInsensitiveSet
         assertEquals(0, set.size());
         set.add("happy");
         assertEquals(1, set.size());
+    }
+
+    @Test
+    public void testConstructors()
+    {
+        Set hashSet = new HashSet();
+        hashSet.add("BTC");
+        hashSet.add("LTC");
+
+        Set set1 = new CaseInsensitiveSet(hashSet);
+        assertTrue(set1.size() == 2);
+        assertTrue(set1.contains("btc"));
+        assertTrue(set1.contains("ltc"));
+
+        Set set2 = new CaseInsensitiveSet(10);
+        set2.add("BTC");
+        set2.add("LTC");
+        assertTrue(set2.size() == 2);
+        assertTrue(set2.contains("btc"));
+        assertTrue(set2.contains("ltc"));
+
+        Set set3 = new CaseInsensitiveSet(10, 0.75f);
+        set3.add("BTC");
+        set3.add("LTC");
+        assertTrue(set3.size() == 2);
+        assertTrue(set3.contains("btc"));
+        assertTrue(set3.contains("ltc"));
     }
 
     private Set get123()

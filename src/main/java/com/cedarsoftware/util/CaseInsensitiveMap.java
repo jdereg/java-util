@@ -57,6 +57,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         putAll(map);
     }
 
+    public CaseInsensitiveMap(int initialCapacity, float loadFactor)
+    {
+        map = new LinkedHashMap<K, V>(initialCapacity, loadFactor);
+    }
+
     public V get(Object key)
     {
         if (key instanceof String)

@@ -280,6 +280,43 @@ public class TestCaseInsensitiveMap
         assertEquals("foo", b);
     }
 
+    @Test
+    public void testConstructors()
+    {
+        Map<String, Object> map = new CaseInsensitiveMap<String, Object>();
+        map.put("BTC", "Bitcoin");
+        map.put("LTC", "Litecoin");
+
+        assertTrue(map.size() == 2);
+        assertEquals("Bitcoin", map.get("btc"));
+        assertEquals("Litecoin", map.get("ltc"));
+
+        map = new CaseInsensitiveMap<String, Object>(20);
+        map.put("BTC", "Bitcoin");
+        map.put("LTC", "Litecoin");
+
+        assertTrue(map.size() == 2);
+        assertEquals("Bitcoin", map.get("btc"));
+        assertEquals("Litecoin", map.get("ltc"));
+
+        map = new CaseInsensitiveMap<String, Object>(20, 0.85f);
+        map.put("BTC", "Bitcoin");
+        map.put("LTC", "Litecoin");
+
+        assertTrue(map.size() == 2);
+        assertEquals("Bitcoin", map.get("btc"));
+        assertEquals("Litecoin", map.get("ltc"));
+
+        Map map1 = new HashMap<String, Object>();
+        map1.put("BTC", "Bitcoin");
+        map1.put("LTC", "Litecoin");
+
+        map = new CaseInsensitiveMap<String, Object>(map1);
+        assertTrue(map.size() == 2);
+        assertEquals("Bitcoin", map.get("btc"));
+        assertEquals("Litecoin", map.get("ltc"));
+    }
+
     // ---------------------------------------------------
     private CaseInsensitiveMap<String, Object> createSimpleMap()
     {

@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +31,28 @@ import java.util.Set;
  */
 public class CaseInsensitiveSet<E> implements Set<E>
 {
-    private final CaseInsensitiveMap<E, Object> map = new CaseInsensitiveMap<E, Object>();
+    private final CaseInsensitiveMap<E, Object> map;
+
+    public CaseInsensitiveSet() { map = new CaseInsensitiveMap<E, Object>(); }
+
+    public CaseInsensitiveSet(Collection<? extends E> collection)
+    {
+        map = new CaseInsensitiveMap<E, Object>(collection.size());
+        for (E item : collection)
+        {
+            map.put(item, null);
+        }
+    }
+
+    public CaseInsensitiveSet(int initialCapacity)
+    {
+        map = new CaseInsensitiveMap<E, Object>(initialCapacity);
+    }
+
+    public CaseInsensitiveSet(int initialCapacity, float loadFactor)
+    {
+        map = new CaseInsensitiveMap<E, Object>(initialCapacity, loadFactor);
+    }
 
     public int size()
     {

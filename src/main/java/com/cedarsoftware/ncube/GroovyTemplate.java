@@ -47,6 +47,7 @@ public class GroovyTemplate extends CommandCell
     public Set<String> getCubeNamesFromCommandText(final String text)
     {
         // TODO: 1) Return any referenced NCube's or template variables (need API change for latter)
+        // TODO: 2) Groovy XML Template & GStringTemplate support
         // TODO: 3) Import statement support in Groovy methods
         // TODO: 4) url: in simpleJsonFormat
         return new LinkedHashSet<String>();

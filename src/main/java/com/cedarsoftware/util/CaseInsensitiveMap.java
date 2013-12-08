@@ -103,7 +103,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             return;
         }
 
-        for (Map.Entry entry : m.entrySet())
+        for (Entry entry : m.entrySet())
         {
             put((K) entry.getKey(), (V) entry.getValue());
         }
@@ -182,12 +182,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      *         around String keys, returning them as the original String keys, retaining
      *         their case.
      */
-    public Set<Map.Entry<K, V>> entrySet()
+    public Set<Entry<K, V>> entrySet()
     {
-        Set<Map.Entry<K, V>> insensitiveEntrySet = map.entrySet();
-        Set<Map.Entry<K, V>> returnEntrySet = new LinkedHashSet<Map.Entry<K, V>>();
+        Set<Entry<K, V>> insensitiveEntrySet = map.entrySet();
+        Set<Entry<K, V>> returnEntrySet = new LinkedHashSet<Entry<K, V>>();
 
-        for (Map.Entry entry : insensitiveEntrySet)
+        for (Entry entry : insensitiveEntrySet)
         {
             if (entry.getKey() instanceof CaseInsensitiveString)
             {
@@ -264,10 +264,8 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public boolean equals(Object other)
     {
-        if (!(other instanceof Map))
-        {
-            return false;
-        }
+        if (other == this) return true;
+        if (!(other instanceof Map)) return false;
 
         Map<?, ?> that = (Map<?, ?>) other;
         if (that.size() != size())
@@ -275,7 +273,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             return false;
         }
 
-        for (Map.Entry entry : that.entrySet())
+        for (Entry entry : that.entrySet())
         {
             final Object thatKey = entry.getKey();
             if (!containsKey(thatKey))
@@ -293,8 +291,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                     return false;
                 }
             }
-
-            if (!thisValue.equals(thatValue))
+            else if (!thisValue.equals(thatValue))
             {
                 return false;
             }
@@ -304,7 +301,29 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public int hashCode()
     {
-        return map.hashCode();
+        int h = 0;
+        for (Entry<K, V> entry : entrySet())
+        {
+            Object key = entry.getKey();
+            if (key != null)
+            {
+                if (key instanceof String)
+                {
+                    h += ((String) key).toLowerCase().hashCode();
+                }
+                else
+                {
+                    h += key.hashCode();
+                }
+            }
+
+            Object value = entry.getValue();
+            if (value != null)
+            {
+                h += value.hashCode();
+            }
+        }
+        return h;
     }
 
     public String toString()

@@ -231,6 +231,37 @@ public class TestCaseInsensitiveSet
         assertTrue(set3.contains("ltc"));
     }
 
+    @Test
+    public void testHashCodeAndEquals()
+    {
+        Set set1 = new HashSet();
+        set1.add("Bitcoin");
+        set1.add("Litecoin");
+        set1.add(16);
+        set1.add(null);
+
+        Set set2 = new CaseInsensitiveSet();
+        set2.add("Bitcoin");
+        set2.add("Litecoin");
+        set2.add(16);
+        set2.add(null);
+
+        Set set3 = new CaseInsensitiveSet();
+        set3.add("BITCOIN");
+        set3.add("LITECOIN");
+        set3.add(16);
+        set3.add(null);
+
+        assertTrue(set1.hashCode() != set2.hashCode());
+        assertTrue(set1.hashCode() != set3.hashCode());
+        assertTrue(set2.hashCode() == set3.hashCode());
+
+        assertTrue(set1.equals(set2));
+        assertFalse(set1.equals(set3));
+        assertTrue(set3.equals(set1));
+        assertTrue(set2.equals(set3));
+    }
+
     private Set get123()
     {
         Set set = new CaseInsensitiveSet();

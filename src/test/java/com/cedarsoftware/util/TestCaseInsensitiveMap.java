@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -315,6 +316,37 @@ public class TestCaseInsensitiveMap
         assertTrue(map.size() == 2);
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
+    }
+
+    @Test
+    public void testEqualsAndHashCode()
+    {
+        Map map1 = new HashMap();
+        map1.put("BTC", "Bitcoin");
+        map1.put("LTC", "Litecoin");
+        map1.put(16, 16);
+        map1.put(null, null);
+
+        Map map2 = new CaseInsensitiveMap();
+        map2.put("BTC", "Bitcoin");
+        map2.put("LTC", "Litecoin");
+        map2.put(16, 16);
+        map2.put(null, null);
+
+        Map map3 = new CaseInsensitiveMap();
+        map3.put("btc", "Bitcoin");
+        map3.put("ltc", "Litecoin");
+        map3.put(16, 16);
+        map3.put(null, null);
+
+        assertTrue(map1.hashCode() != map2.hashCode());    // By design: case sensitive maps will [rightly] compute has of ABC and abc differently
+        assertTrue(map1.hashCode() != map3.hashCode());    // By design: case sensitive maps will [rightly] compute has of ABC and abc differently
+        assertTrue(map2.hashCode() == map3.hashCode());
+
+        assertTrue(map1.equals(map2));
+        assertTrue(map1.equals(map3));
+        assertTrue(map3.equals(map1));
+        assertTrue(map2.equals(map3));
     }
 
     // ---------------------------------------------------

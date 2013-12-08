@@ -35,6 +35,40 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet() { map = new CaseInsensitiveMap<E, Object>(); }
 
+    public int hashCode()
+    {
+        int hash = 0;
+        for (Object item : map.keySet())
+        {
+            if (item != null)
+            {
+                if (item instanceof String)
+                {
+                    hash += ((String)item).toLowerCase().hashCode();
+                }
+                else
+                {
+                    hash += item.hashCode();
+                }
+            }
+        }
+        return hash;
+    }
+
+    public boolean equals(Object other)
+    {
+        if (other == this) return true;
+        if (!(other instanceof Set)) return false;
+
+        Set that = (Set) other;
+        if (that.size() != size())
+        {
+            return false;
+        }
+
+        return containsAll(that);
+    }
+
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
         map = new CaseInsensitiveMap<E, Object>(collection.size());

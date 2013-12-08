@@ -31,10 +31,10 @@ import java.util.regex.Pattern;
 public abstract class GroovyBase extends CommandCell
 {
     private static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");
-    private static final Pattern groovyRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^(]+)[(]([^)]*)[)]");
-    private static final Pattern groovyRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
-    private static final Pattern groovyRefCubeCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)[@]([^(]+)[(]([^)]*)[)]");
-    private static final Pattern groovyRefCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)[@][(]([^)]*)[)]");
+    static final Pattern groovyRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^(]+)[(]([^)]*)[)]");
+    static final Pattern groovyRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
+    static final Pattern groovyRefCubeCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)@([^(]+)[(]([^)]*)[)]");
+    static final Pattern groovyRefCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
     private static final Pattern groovyUniqueClassPattern = Pattern.compile("~([a-zA-Z0-9_]+)~");
     private static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
 
@@ -48,31 +48,7 @@ public abstract class GroovyBase extends CommandCell
         return groovyProgramClassName.matcher(name).replaceAll("_");
     }
 
-    protected abstract void buildGroovy(StringBuilder groovy, String theirGroovy, String cubeName);
-
-    protected void compile(String cubeName) throws Exception
-    {
-        StringBuilder groovy = new StringBuilder();
-
-        Matcher m = groovyUniqueClassPattern.matcher(getCmd());
-        String theirGroovy = m.replaceAll("$1" + UniqueIdGenerator.getUniqueId());
-
-        buildGroovy(groovy, theirGroovy, cubeName);
-        m = groovyRefCubeCellPattern.matcher(groovy.toString());
-        String exp = m.replaceAll("$1ncubeMgr.getCube('$2').getCell($3,output)");
-
-        m = groovyRefCellPattern.matcher(exp);
-        exp = m.replaceAll("$1ncube.getCell($2,output)");
-
-        m = groovyRefCubeCellPattern2.matcher(exp);
-        exp = m.replaceAll("$1input.putAll($3);ncubeMgr.getCube('$2').getCell(input,output)");
-
-        m = groovyRefCellPattern2.matcher(exp);
-        exp = m.replaceAll("$1input.putAll($2);ncube.getCell(input,output)");
-
-        GroovyClassLoader gcl = new GroovyClassLoader();
-        setRunnableCode(gcl.parseClass(exp));
-    }
+    protected abstract String buildGroovy(String theirGroovy, String cubeName);
 
     protected void preRun(Map args)
     {
@@ -107,6 +83,34 @@ public abstract class GroovyBase extends CommandCell
                 }
             }
         }
+    }
+
+    protected void compile(String cubeName) throws Exception
+    {
+        Matcher m = groovyUniqueClassPattern.matcher(getCmd());
+        String theirGroovy = m.replaceAll("$1" + UniqueIdGenerator.getUniqueId());
+
+        String groovy = buildGroovy(theirGroovy, cubeName);
+        String exp = expandNCubeShortCuts(groovy);
+
+        GroovyClassLoader gcl = new GroovyClassLoader();
+        setRunnableCode(gcl.parseClass(exp));
+    }
+
+    static String expandNCubeShortCuts(String groovy)
+    {
+        Matcher m = groovyRefCubeCellPattern.matcher(groovy);
+        String exp = m.replaceAll("$1getFixedCell('$2',$3)");
+
+        m = groovyRefCellPattern.matcher(exp);
+        exp = m.replaceAll("$1ncube.getCell($2,output)");
+
+        m = groovyRefCubeCellPattern2.matcher(exp);
+        exp = m.replaceAll("$1getRelativeCubeCell('$2',$3)");
+
+        m = groovyRefCellPattern2.matcher(exp);
+        exp = m.replaceAll("$1getRelativeCell($2)");
+        return exp;
     }
 
     public Set<String> getCubeNamesFromCommandText(String text)

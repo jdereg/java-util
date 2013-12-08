@@ -1452,7 +1452,7 @@ DELIMITER ;
         {
             assertTrue(expected.getMessage().contains("least"));
             assertTrue(expected.getMessage().contains("one"));
-            assertTrue(expected.getMessage().contains("dimension"));
+            assertTrue(expected.getMessage().contains("coordinate"));
         }
 
         // Map with not enough dimensions
@@ -2872,7 +2872,7 @@ DELIMITER ;
         {
             assertTrue(expected.getMessage().contains("must"));
             assertTrue(expected.getMessage().contains("one"));
-            assertTrue(expected.getMessage().contains("dimension"));
+            assertTrue(expected.getMessage().contains("coordinate"));
         }
 
         try
@@ -3800,7 +3800,7 @@ DELIMITER ;
         coord.put("type", "good");
         ncube.setCell(new GroovyExpression("@JoinedCube([:])"), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("@JoinedCube([])"), coord);
+        ncube.setCell(new GroovyExpression("@JoinedCube([])"), coord);      // Can't pass an array
 
         NCube cube2 = new NCube("JoinedCube");
         axis = new Axis("state", AxisType.DISCRETE, AxisValueType.LONG.STRING, false);
@@ -3825,8 +3825,16 @@ DELIMITER ;
         coord.put("type", "bad");
         coord.put("state", "TX");
         coord.put("state", "TX");
-        o = ncube.getCell(coord);
-        assertEquals("Austin", o);
+        try
+        {
+            o = ncube.getCell(coord);
+            fail("Should not get here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof RuntimeException);
+        }
+
 
         Set<String> names = ncube.getRequiredScope();
         assertTrue(names.size() == 2);
@@ -4163,14 +4171,6 @@ DELIMITER ;
         coord.put("code", "method");
         ans = ncube.getCell(coord);
         assertEquals(7.28, ans);
-
-        coord.put("code", "program");
-        ans = ncube.getCell(coord);
-        assertEquals(4L, ans);
-
-        coord.put("code", "program2");
-        ans = ncube.getCell(coord);
-        assertEquals(6L, ans);
 
         coord.put("code", "expArray");
         ans = ncube.getCell(coord);
@@ -4787,12 +4787,46 @@ DELIMITER ;
         assertEquals("2, Your balance is overdue 3.14", str);
         str = (String) ncube.getCell(coord);
         assertEquals("2, Your balance is overdue 3.14", str);
+
+        coord.put("code", "stdTemplate3");
+        str = (String) ncube.getCell(coord);
+        assertEquals("Nothing to replace", str);
+        str = (String) ncube.getCell(coord);
+        assertEquals("Nothing to replace", str);
     }
 
     @Test
     public void testTemplateRefOtherCube()
     {
-        // TODO: Make A -> B -> A (double external reference)
+        NCubeManager.getNCubeFromResource("template2.json");   // Get it loaded
+        NCube ncube = NCubeManager.getNCubeFromResource("template1.json");
+        Map coord = new HashMap();
+        coord.put("state", "GA");
+        coord.put("code", 1);
+        long start = System.nanoTime();
+        String str = (String) ncube.getCell(coord);
+        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
+        long stop = System.nanoTime();
+//        System.out.println("str = " + str);
+//        System.out.println((stop - start)/1000000);
+        coord.put("state", "OH");
+        coord.put("code", 1);
+        start = System.nanoTime();
+        str = (String) ncube.getCell(coord);
+        assertEquals("You saved 0.14 on your boat insurance. Does this 0.15 work?", str);
+        stop = System.nanoTime();
+//        System.out.println("str = " + str);
+//        System.out.println((stop - start)/1000000);
+
+        coord.put("state", "AL");
+        coord.put("code", 1);
+        str = (String) ncube.getCell(coord);
+        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
+
+        coord.put("state", "AR");
+        coord.put("code", 1);
+        str = (String) ncube.getCell(coord);
+        assertEquals("Dear Bitcoin, please continue your upward growth trajectory.", str);
     }
 
     @Test

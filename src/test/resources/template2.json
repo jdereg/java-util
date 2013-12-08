@@ -1,0 +1,23 @@
+{
+    "ncube":"Template2Cube",
+    "axes":[ {
+            "name":"State",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":true,
+            "preferredOrder":0,
+            "columns":[
+                { "value":"AR" },
+                { "value":"GA" },
+                { "value":"OH" },
+                { "value":"TX" }
+            ]}
+    ],
+    "cells":[
+        { "key":{"State":"GA" }, "type":"template", "value":"<%=if (@Template1Cube([code:2]) > 0) return @Template1Cube([code:2]); else return 1.11;%>"},
+        { "key":{"State":"OH" }, "type":"template", "value":"<%=@Template1Cube([code:2])%>"},
+        { "key":{"State":"TX" }, "type":"template", "value":"<%=@Template1Cube([code:2])%>"},
+        { "key":{"state":"AR" }, "value":"upward"},
+        { "key":{"state":"AL" }, "value":"Bitcoin"}
+    ]
+}

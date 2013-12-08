@@ -1,0 +1,42 @@
+{
+    "ncube":"Template1Cube",
+    "axes":[ {
+            "name":"State",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "value":"AL"},
+                { "value":"AR"},
+                { "value":"GA" },
+                { "value":"OH" },
+                { "value":"TX" }
+            ]},
+            {
+            "name":"Code",
+            "type":"DISCRETE",
+            "valueType":"LONG",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "value":1 },
+                { "value":2 },
+                { "value":3 }
+            ]}
+    ],
+    "cells":[
+        { "key":{"State":"GA", "code":1}, "type":"template", "value":"You saved <%=@Template2Cube([:])%> on your <%= @([code:3])%> insurance. Does this <%= @Template2Cube([state:'TX']) %> work?"},
+        { "key":{"State":"GA", "code":2}, "value":0.15},
+        { "key":{"State":"GA", "code":3}, "value":"car"},
+        { "key":{"State":"OH", "code":1}, "type":"template", "value":"You saved <%=@Template2Cube([:])%> on your <%=@([code:3])%> insurance. Does this <%= @Template2Cube([state:'GA']) %> work?"},
+        { "key":{"State":"OH", "code":2}, "value":0.14},
+        { "key":{"State":"OH", "code":3}, "value":"boat"},
+        { "key":{"State":"TX", "code":1}, "type":"template", "value":"You saved <%=@Template2Cube([:])%> on your <%=@([code:3])%> insurance"},
+        { "key":{"State":"TX", "code":2}, "value":0.12},
+        { "key":{"State":"TX", "code":3}, "value":"plane"},
+        { "key":{"State":"AL", "code":1}, "type":"template", "value":"<%=input.state='GA';$(input)%>"},
+        { "key":{"State":"AL", "code":2}, "value":0.15},
+        { "key":{"State":"AR", "code":1}, "type":"template", "value":"Dear <%=input.state='AL';$Template2Cube(input)%>, please continue your ${input.state='AR';$Template2Cube(input)} growth trajectory."}
+    ]
+}

@@ -44,8 +44,9 @@ public class GroovyExpression extends GroovyBase
         super(cmd);
     }
 
-    public void buildGroovy(StringBuilder groovy, String theirGroovy, String cubeName)
+    public String buildGroovy(String theirGroovy, String cubeName)
     {
+        StringBuilder groovy = new StringBuilder();
         String className = "ncGrvExp" + fixClassName(cubeName) + UniqueIdGenerator.getUniqueId();
         groovy.append("class ");
         groovy.append(className);
@@ -63,9 +64,33 @@ public class GroovyExpression extends GroovyBase
         groovy.append("  ncube=args.ncube;\n");
         groovy.append("  ncubeMgr=args.ncubeMgr;\n  ");
         groovy.append("}\n\n");
-        groovy.append("Object run()\n{\n");
+        groovy.append("def getFixedCell(String name, Map coord)\n");
+        groovy.append("{\n");
+        groovy.append("  if (ncubeMgr.getCube(name) == null)\n");
+        groovy.append("  {\n");
+        groovy.append("    throw new IllegalArgumentException(\"NCube '\" + ncube + \"' not loaded into NCubeManager.\");\n");
+        groovy.append("  }\n");
+        groovy.append("  return ncubeMgr.getCube(name).getCell(coord, output);\n");
+        groovy.append("}\n\n");
+        groovy.append("def getRelativeCell(Map coord)\n");
+        groovy.append("{\n");
+        groovy.append("  input.putAll(coord);\n");
+        groovy.append("  return ncube.getCell(input, output);\n");
+        groovy.append("}\n\n");
+        groovy.append("def getRelativeCubeCell(String name, Map coord)\n");
+        groovy.append("{\n");
+        groovy.append("  input.putAll(coord);\n");
+        groovy.append("  if (ncubeMgr.getCube(name) == null)\n");
+        groovy.append("  {\n");
+        groovy.append("    throw new IllegalArgumentException(\"NCube '\" + ncube + \"' not loaded into NCubeManager.\");\n");
+        groovy.append("  }\n");
+        groovy.append("  return ncubeMgr.getCube(name).getCell(input, output);\n");
+        groovy.append("}\n\n");
+        groovy.append("def run()\n{\n");
         groovy.append(theirGroovy);
         groovy.append("  \n}\n}");
+        System.out.println("groovy = " + groovy);
+        return groovy.toString();
     }
 
 }

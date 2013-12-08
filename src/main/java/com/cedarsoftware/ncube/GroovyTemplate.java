@@ -3,14 +3,13 @@ package com.cedarsoftware.ncube;
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- *
  * Process NCube template cells.  A template cell contains a String that may have both
  * NCube references to other NCubes using the {{ @otherCube([:]) }} format, AND, the
  * template may also contain Groovy template variables.  This class uses the Groovy
@@ -35,8 +34,9 @@ import java.util.regex.Pattern;
  */
 public class GroovyTemplate extends CommandCell
 {
-    private static final Pattern groovyRefCubeCellPattern = Pattern.compile("[{][{][\\s]*@([^(]+)[(]([^)]*)[)][\\s]*[}][}]");
-    private static final Pattern groovyRefCellPattern = Pattern.compile("[{][{][\\s]*@[\\s]*[(]([^)]*)[)][\\s]*[}][}]");
+    private static final Pattern scripletPattern = Pattern.compile("<%(.*?)%>");
+    private static final Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
+
     private Template resolvedTemplate;
 
     public GroovyTemplate(String cmd)
@@ -44,32 +44,37 @@ public class GroovyTemplate extends CommandCell
         super(cmd);
     }
 
-    public Set<String> getCubeNamesFromCommandText(String text)
+    public Set<String> getCubeNamesFromCommandText(final String text)
     {
-        Matcher m = groovyRefCubeCellPattern.matcher(text);
-        Set<String> cubeNames = new HashSet<String>();
-        while (m.find())
-        {
-            cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
-        }
-
-        return cubeNames;
+        // TODO: 1) Return any referenced NCube's or template variables (need API change for latter)
+        // TODO: 3) Import statement support in Groovy methods
+        // TODO: 4) url: in simpleJsonFormat
+        return new LinkedHashSet<String>();
     }
 
-    public Object runFinal(Map args)
+    public Object runFinal(final Map args)
     {
-        // args.input, args.ncube are ALWAYS set by NCube before the execution gets here.
+        // args.input, args.output, args.ncube, args.ncubeMgr, and args.stack,
+        // are ALWAYS set by NCube before the execution gets here.
         try
         {
             if (resolvedTemplate == null)
             {
+                String cmd = getCmd();
+                // Expand code : perform <% @()  $() %> and ${ @()   $() } substitutions before passing to template engine.
+                cmd = replaceScriptletNCubeRefs(cmd, scripletPattern, "<%", "%>");
+                cmd = replaceScriptletNCubeRefs(cmd, velocityPattern, "${", "}");
+                cmd = "<% def getRelativeCubeCell = { name, coord -> input.putAll(coord); if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); }; " +
+                      "   def getRelativeCell = { coord -> input.putAll(coord); return ncube.getCell(input, output); }; " +
+                      "   def getFixedCell = { name, coord -> if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); }; %>" + cmd;
+
+                // Create Groovy Standard Template
                 SimpleTemplateEngine engine = new SimpleTemplateEngine();
-                String template = performNCubeSubstitutions(args);
-                resolvedTemplate = engine.createTemplate(template);
+                resolvedTemplate = engine.createTemplate(cmd);
             }
+
             // Do normal Groovy substitutions.
-            Map coord = (Map) args.get("input");
-            return resolvedTemplate.make(coord).toString();
+            return resolvedTemplate.make(args).toString();
         }
         catch (Exception e)
         {
@@ -80,32 +85,23 @@ public class GroovyTemplate extends CommandCell
         }
     }
 
-    private String performNCubeSubstitutions(Map args)
+    private String replaceScriptletNCubeRefs(final String template, final Pattern pattern, final String prefix, final String suffix)
     {
-        NCube ncube = (NCube) args.get("ncube");
-        String inputStr = getCmd();
-        Matcher m = groovyRefCellPattern.matcher(inputStr);
-        StringBuilder s = new StringBuilder(getCmd());
+        Matcher m = pattern.matcher(template);
         StringBuilder newStr = new StringBuilder();
         int last = 0;
 
-        // 1. Walk through all of {{ @ref() }} and execute each, splicing in the result into the cmd text.
-        // 2. Once all the substitutions are performed, the calling code will do the normal Groovy substitutions.
         while (m.find())
         {
-            newStr.append(inputStr.substring(last, m.start()));
-
-            String snippet = "@(" + m.group(1) + ")";
-            GroovyExpression exp = new GroovyExpression(snippet);
-            s.setLength(0);
-            exp.buildGroovy(s, snippet, ncube.getName());
-            Object ret = exp.run(args);
-
-            newStr.append(ret == null ? "null" : ret.toString());
+            newStr.append(template.substring(last, m.start()));
+            String inner = GroovyBase.expandNCubeShortCuts(m.group(1));
+            newStr.append(prefix);
+            newStr.append(inner);
+            newStr.append(suffix);
             last = m.end();
         }
 
-        newStr.append(inputStr.substring(last));
+        newStr.append(template.substring(last));
         return newStr.toString();
     }
 }

@@ -2,6 +2,8 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UniqueIdGenerator;
 
+import java.util.Set;
+
 /**
  * This class is used to hold Groovy Expressions.  This means that
  * the code can start without any class or method signatures.  For
@@ -46,8 +48,15 @@ public class GroovyExpression extends GroovyBase
 
     public String buildGroovy(String theirGroovy, String cubeName)
     {
+        StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
+        Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder();
         String className = "NGrvExp" + fixClassName(cubeName) + UniqueIdGenerator.getUniqueId();
+        for (String importLine : imports)
+        {
+            groovy.append(importLine);
+            groovy.append('\n');
+        }
         groovy.append("class ");
         groovy.append(className);
         groovy.append(" extends NCubeGroovyCell");
@@ -57,9 +66,8 @@ public class GroovyExpression extends GroovyBase
         groovy.append("  super(args);\n");
         groovy.append("}\n\n");
         groovy.append("def run()\n{\n");
-        groovy.append(theirGroovy);
+        groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("  \n}\n}");
-        System.out.println("groovy.expression = " + groovy);
         return groovy.toString();
     }
 

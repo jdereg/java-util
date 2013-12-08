@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.UniqueIdGenerator;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class is used to hold Groovy Programs.  The code must start
@@ -62,8 +63,15 @@ public class GroovyMethod extends GroovyBase
 
     public String buildGroovy(String theirGroovy, String cubeName)
     {
+        StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
+        Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder();
         String className = "NGrvMethod" + fixClassName(cubeName) + UniqueIdGenerator.getUniqueId();
+        for (String importLine : imports)
+        {
+            groovy.append(importLine);
+            groovy.append('\n');
+        }
         groovy.append("class ");
         groovy.append(className);
         groovy.append(" extends NCubeGroovyCell");
@@ -72,9 +80,8 @@ public class GroovyMethod extends GroovyBase
         groovy.append("(Map args)\n{\n");
         groovy.append("  super(args);\n");
         groovy.append("}\n\n");
-        groovy.append(theirGroovy);
+        groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("\n}");
-        System.out.println("groovy.method = " + groovy);
         return groovy.toString();
     }
 }

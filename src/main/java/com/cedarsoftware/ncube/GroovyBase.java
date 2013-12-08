@@ -4,6 +4,7 @@ import com.cedarsoftware.util.UniqueIdGenerator;
 import groovy.lang.GroovyClassLoader;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -37,6 +38,7 @@ public abstract class GroovyBase extends CommandCell
     static final Pattern groovyRefCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
     private static final Pattern groovyUniqueClassPattern = Pattern.compile("~([a-zA-Z0-9_]+)~");
     private static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
+    private static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
     static GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
     static final Class groovyCell;
 
@@ -82,7 +84,6 @@ public abstract class GroovyBase extends CommandCell
         groovy.append("def run()\n{\n");
         groovy.append("println 'This should be overridden';");
         groovy.append("  \n}\n}");
-        System.out.println("groovy.ncubeGroovyCell = " + groovy);
         groovyCell = groovyClassLoader.parseClass(groovy.toString());
     }
 
@@ -182,5 +183,19 @@ public abstract class GroovyBase extends CommandCell
         }
 
         return cubeNames;
+    }
+
+    public Set<String> getImports(String text, StringBuilder newGroovy)
+    {
+        Matcher m = importPattern.matcher(text);
+        Set<String> importNames = new LinkedHashSet<String>();
+        while (m.find())
+        {
+            importNames.add(m.group(0));  // based on Regex pattern - if pattern changes, this could change
+        }
+
+        m.reset();
+        newGroovy.append(m.replaceAll(""));
+        return importNames;
     }
 }

@@ -27,11 +27,15 @@
                 { "value":"stdTemplate" },
                 { "value":"stdTemplate2" },
                 { "value":"stdTemplate3" },
-                { "value":"string" }
+                { "value":"string" },
+                { "value":"expWithImport" },
+                { "value":"methodWithImport" }
             ]}],
     "cells":[
         { "key":{"code":"exp"}, "type":"exp", "value": "input.code = 'intVal'; def x=$(input); input.code = 'doubleVal'; def y = $(input); x * y" },
         { "key":{"Code":"method"}, "type":"method", "value": "def run() { $([code:'intVal']) * $([code:'doubleVal']) + 1 }" },
+        { "key":{"Code":"expWithImport"}, "type":"exp", "value": "import java.text.*; MessageFormat.format('I love {0}', 'Bitcoin'); " },
+        { "key":{"Code":"methodWithImport"}, "type":"method", "value": "import java.text.*; def run() { MessageFormat.format('I love {0}', 'Bitcoin'); }" },
         { "key":{"Code":"expArray"}, "type":"exp", "value":["5", "2 * 5", "def x = 10; def y = 20; x + y"] },
         { "key":{"Code":"stdTemplate"}, "type":"template", "value":"Dear <%=@([code:'intVal'])%>, Your balance of ${@([code:'doubleVal'])} is ${input.overdue}."},
         { "key":{"Code":"stdTemplate2"}, "type":"template", "value":"<%= @([code:'intVal']) %>, Your balance is ${ input.overdue } ${@([code:'doubleVal'])}"},

@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -84,11 +86,11 @@ public abstract class CommandCell implements Comparable<CommandCell>
         catch(InvocationTargetException e)
         {
             Throwable cause = e.getCause();
-            if (cause instanceof RuntimeException)
+            if (cause instanceof CoordinateNotFoundException)
             {
                 throw (RuntimeException) cause;
             }
-            throw new RuntimeException("Checked exception occurred invoking run() method on Groovy code.", cause) ;
+            throw new RuntimeException("Exception occurred invoking run() method on Groovy code.", e) ;
         }
         catch (Exception e)
         {

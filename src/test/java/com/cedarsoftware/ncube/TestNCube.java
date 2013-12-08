@@ -18,6 +18,7 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -3525,7 +3526,7 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
-                "Object run()" +
+                "def run()" +
                         "{" +
                         " int x = input.age * 10;" +
                         " jump(x)" +
@@ -3559,16 +3560,16 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
-                "Object run()" +
+                "def run()" +
                         "{" +
                         " int x = input['age'] * 10;" +
                         " return ~Fargo~.freeze(jump(x))" +
                         "}\n" +
-                        "int jump(int x) { return x * 2; }\n" +
+                        "int jump(int x) { x * 2; }\n" +
                         "\n" +
                         "static class ~Fargo~ {" +
                         "static int freeze(int d) {" +
-                        "  return -d" +
+                        "  -d" +
                         "}}"), coord);
 
         Map output = new HashMap();
@@ -3604,9 +3605,7 @@ DELIMITER ;
         {
             ncube.setCell(new GroovyMethod(
                     "Object run(Map args whoops) " +
-                            "{" +
-                            " return 1;" +
-                            "}"), coord);
+                            "{ 1 }"), coord);
 
             ncube.getCell(coord, new HashMap());
             fail("Should not make it here");
@@ -3620,10 +3619,8 @@ DELIMITER ;
         try
         {
             ncube.setCell(new GroovyMethod(
-                    "Object run(Map args whoops) " +
-                            "{" +
-                            " return 1;" +
-                            "}"), coord);
+                    "def run(Map args whoops) " +
+                            "{ 1 }"), coord);
 
             ncube.getCell(coord, new HashMap());
             fail("Should not make it here");
@@ -3647,10 +3644,9 @@ DELIMITER ;
         coord = new HashMap();
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
-                "Object run() " +
+                "def run() " +
                         "{" +
-                        " def x = input['age'] * 10;" +
-                        " return x;" +
+                        " input['age'] * 10;" +
                         "}"), coord);
 
         Map output = new HashMap();
@@ -4827,6 +4823,26 @@ DELIMITER ;
         coord.put("code", 1);
         str = (String) ncube.getCell(coord);
         assertEquals("Dear Bitcoin, please continue your upward growth trajectory.", str);
+    }
+
+    @Test
+    public void testExpressionWithImports()
+    {
+        NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
+        Map coord = new HashMap();
+        coord.put("code", "expWithImport");
+        String str = ncube.getCell(coord);
+        assertEquals(str, "I love Bitcoin");
+    }
+
+    @Test
+    public void testMethodWithImports()
+    {
+        NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
+        Map coord = new HashMap();
+        coord.put("code", "methodWithImport");
+        String str = ncube.getCell(coord);
+        assertEquals(str, "I love Bitcoin");
     }
 
     @Test

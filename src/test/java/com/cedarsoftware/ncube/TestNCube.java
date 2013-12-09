@@ -1,13 +1,13 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.DeepEquals;
-import com.cedarsoftware.util.io.JsonWriter;
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,7 +18,6 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -275,16 +274,6 @@ DELIMITER ;
         coord.put("Attribute", "busLobCd");
         commSBP.setCell("PPTY-SBP", coord);
 
-        // Uncomment to populate ProductLine tables (also switch to Oracle or MySQL connection first)
-//		Connection connection = getConnection();
-//		NCube.createCube(connection, ncube, "0.1.0");
-//		NCube.createCube(connection, commAuto, "0.1.0");
-//		NCube.createCube(connection, commGL, "0.1.0");
-//		NCube.createCube(connection, commIM, "0.1.0");
-//		NCube.createCube(connection, commSBP, "0.1.0");
-//
-//		connection.close();
-
         assertTrue(ncube.toHtml() != null);
 
         // ------------ Lookup into the Main table, and let it cascade to the children tables -------
@@ -304,6 +293,8 @@ DELIMITER ;
 
         Map<String, Set> scopeValues = ncube.getRequiredScopeWithValues();
         assertTrue(scopeValues.size() == 3);
+
+        //TODO: Getting sometimes 4, sometimes 5 (HashMap ordering causing this somewher)
         assertTrue(scopeValues.get("Attribute").size() == 4);
         assertTrue(scopeValues.get("attribute").contains("riskType"));
         assertTrue(scopeValues.get("BU").size() == 1);
@@ -4846,16 +4837,39 @@ DELIMITER ;
     }
 
     @Test
-    public void testTemplateRequireScope()
+    public void testTemplateRequiredScope()
     {
-        // TODO: Make sure referenced ncube names in template cells are picked up
+        NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
+        Set<String> scope = ncube.getRequiredScope();
+        assertTrue(scope.size() == 2);
+        assertTrue(scope.contains("CODE"));
+        assertTrue(scope.contains("OVERDUE"));
+
+        NCubeManager.getNCubeFromResource("template2.json");   // Get it loaded
+        ncube = NCubeManager.getNCubeFromResource("template1.json");
+        scope = ncube.getRequiredScope();
+        assertTrue(scope.size() == 3);
+        assertTrue(scope.contains("coDe"));
+        assertTrue(scope.contains("staTe"));
+        assertTrue(scope.contains("BitCoin"));
     }
 
-    @Test
-    public void testXmlTemplate()
-    {
-        // TODO: Make sure you can use a XML template (update loader for xtemplate)
-    }
+//    @Test
+//    public void testXmlTemplateRefOtherCube()
+//    {
+//        NCubeManager.getNCubeFromResource("template2.json");   // Get it loaded
+//        NCube ncube = NCubeManager.getNCubeFromResource("template1.json");
+//        Map coord = new HashMap();
+//        coord.put("state", "ID");
+//        coord.put("code", 1);
+//        long start = System.nanoTime();
+//        String str = (String) ncube.getCell(coord);
+//        System.out.println("str = " + str);
+//        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
+//        long stop = System.nanoTime();
+////        System.out.println("str = " + str);
+////        System.out.println((stop - start)/1000000);
+//    }
 
     @Test
     public void testGTemplate()

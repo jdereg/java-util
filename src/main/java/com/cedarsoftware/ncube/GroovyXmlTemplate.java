@@ -2,8 +2,8 @@ package com.cedarsoftware.ncube;
 
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
+import groovy.text.XmlTemplateEngine;
 
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -32,13 +32,14 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class GroovyTemplate extends CommandCell
+public class GroovyXmlTemplate extends CommandCell
 {
-    private static final Pattern scripletPattern = Pattern.compile("<%(.*?)%>");
+    private static final Pattern scripletPattern = Pattern.compile("<gsp:scriptlet>(.*?)<\\/gsp:scriptlet>");
+    private static final Pattern expressionPattern = Pattern.compile("<gsp:expression>(.*?)<\\/gsp:expression>");
     private static final Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
     private Template resolvedTemplate;
 
-    public GroovyTemplate(String cmd)
+    public GroovyXmlTemplate(String cmd)
     {
         super(cmd);
     }
@@ -46,6 +47,13 @@ public class GroovyTemplate extends CommandCell
     public void getCubeNamesFromCommandText(final Set<String> cubeNames)
     {
         Matcher m = scripletPattern.matcher(getCmd());
+
+        while (m.find())
+        {
+            GroovyBase.getCubeNamesFromText(cubeNames, m.group(1));
+        }
+
+        m = expressionPattern.matcher(getCmd());
 
         while (m.find())
         {
@@ -68,7 +76,18 @@ public class GroovyTemplate extends CommandCell
      */
     public void getScopeKeys(Set<String> scopeKeys)
     {
-        Matcher m = scripletPattern.matcher(getCmd());  // <%  %>
+        Matcher m = scripletPattern.matcher(getCmd());  // <gsp:scriptlet>...</gsp:scriptlet>
+
+        while (m.find())
+        {
+            Matcher m1 = inputVar.matcher(m.group(1));
+            while (m1.find())
+            {
+                scopeKeys.add(m1.group(2));
+            }
+        }
+
+        m = expressionPattern.matcher(getCmd());          // <gsp:expression>...</gsp:expression>
 
         while (m.find())
         {
@@ -103,12 +122,12 @@ public class GroovyTemplate extends CommandCell
                 // Expand code : perform <% @()  $() %> and ${ @()   $() } substitutions before passing to template engine.
                 cmd = replaceScriptletNCubeRefs(cmd, scripletPattern, "<%", "%>");
                 cmd = replaceScriptletNCubeRefs(cmd, velocityPattern, "${", "}");
-                cmd = "<% def getRelativeCubeCell = { name, coord -> input.putAll(coord); if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); }; " +
-                      "   def getRelativeCell = { coord -> input.putAll(coord); return ncube.getCell(input, output); }; " +
-                      "   def getFixedCell = { name, coord -> if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); }; %>" + cmd;
+                cmd = "<gsp:scriptlet>def getRelativeCubeCell = { name, coord -> input.putAll(coord); if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); }; " +
+                        "   def getRelativeCell = { coord -> input.putAll(coord); return ncube.getCell(input, output); }; " +
+                        "   def getFixedCell = { name, coord -> if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); };</gsp:scriptlet>" + cmd;
 
                 // Create Groovy Standard Template
-                SimpleTemplateEngine engine = new SimpleTemplateEngine();
+                XmlTemplateEngine engine = new XmlTemplateEngine();
                 resolvedTemplate = engine.createTemplate(cmd);
             }
 

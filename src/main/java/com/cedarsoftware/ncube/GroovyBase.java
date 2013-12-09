@@ -161,10 +161,14 @@ public abstract class GroovyBase extends CommandCell
         return exp;
     }
 
-    public Set<String> getCubeNamesFromCommandText(String text)
+    public void getCubeNamesFromCommandText(final Set<String> cubeNames)
+    {
+        getCubeNamesFromText(cubeNames, getCmd());
+    }
+
+    static void getCubeNamesFromText(final Set<String> cubeNames, final String text)
     {
         Matcher m = groovyRefCubeCellPattern.matcher(text);
-        Set<String> cubeNames = new HashSet<String>();
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
@@ -181,8 +185,20 @@ public abstract class GroovyBase extends CommandCell
         {
             cubeNames.add(m.group(1));  // based on Regex pattern - if pattern changes, this could change
         }
+    }
 
-        return cubeNames;
+    /**
+     * Find all occurrences of 'input.variableName' in the Groovy code
+     * and add the variableName as a scope (key).
+     * @param scopeKeys Set to add required scope keys to.
+     */
+    public void getScopeKeys(Set<String> scopeKeys)
+    {
+        Matcher m = inputVar.matcher(getCmd());
+        while (m.find())
+        {
+            scopeKeys.add(m.group(2));
+        }
     }
 
     public Set<String> getImports(String text, StringBuilder newGroovy)

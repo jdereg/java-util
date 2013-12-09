@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A 'CommandCell' represents an executable cell. NCube ships
@@ -48,6 +49,7 @@ public abstract class CommandCell implements Comparable<CommandCell>
     private volatile transient Class runnableCode = null;
 	private final String cmd;
     private volatile transient String compileErrorMsg = null;
+    static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
 
 	public CommandCell(String cmd)
 	{
@@ -120,10 +122,12 @@ public abstract class CommandCell implements Comparable<CommandCell>
         this.compileErrorMsg = compileErrorMsg;
     }
 
-    public abstract Set<String> getCubeNamesFromCommandText(String text);
+    public abstract void getCubeNamesFromCommandText(Set<String> cubeNames);
 
     public int compareTo(CommandCell cmdCell)
     {
         return cmd.compareToIgnoreCase(cmdCell.cmd);
     }
+
+    public abstract void getScopeKeys(Set<String> scopeKeys);
 }

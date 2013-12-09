@@ -262,6 +262,16 @@ public class TestCaseInsensitiveSet
         assertTrue(set2.equals(set3));
     }
 
+    @Test
+    public void testToString()
+    {
+        Set set = get123();
+        String s = set.toString();
+        assertTrue(s.contains("One"));
+        assertTrue(s.contains("Two"));
+        assertTrue(s.contains("Three"));
+    }
+
     private Set get123()
     {
         Set set = new CaseInsensitiveSet();

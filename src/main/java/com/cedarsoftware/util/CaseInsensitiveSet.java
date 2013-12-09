@@ -192,4 +192,9 @@ public class CaseInsensitiveSet<E> implements Set<E>
     {
         map.clear();
     }
+
+    public String toString()
+    {
+        return map.keySet().toString();
+    }
 }

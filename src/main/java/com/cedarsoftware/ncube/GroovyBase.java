@@ -1,9 +1,10 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import groovy.lang.GroovyClassLoader;
 
-import java.util.HashSet;
+import java.io.InputStream;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -44,47 +45,9 @@ public abstract class GroovyBase extends CommandCell
 
     static
     {
-        StringBuilder groovy = new StringBuilder();
-        groovy.append("class NCubeGroovyCell");
-        groovy.append("\n{\n");
-        groovy.append("  def input;\n");
-        groovy.append("  def output;\n");
-        groovy.append("  def stack;\n");
-        groovy.append("  def ncube;\n");
-        groovy.append("  def ncubeMgr;\n\n  ");
-        groovy.append("NCubeGroovyCell(Map args)\n{\n");
-        groovy.append("  input=args.input;\n");
-        groovy.append("  output=args.output;\n");
-        groovy.append("  stack=args.stack;\n");
-        groovy.append("  ncube=args.ncube;\n");
-        groovy.append("  ncubeMgr=args.ncubeMgr;\n  ");
-        groovy.append("}\n\n");
-        groovy.append("def getFixedCell(String name, Map coord)\n");
-        groovy.append("{\n");
-        groovy.append("  if (ncubeMgr.getCube(name) == null)\n");
-        groovy.append("  {\n");
-        groovy.append("    throw new IllegalArgumentException('NCube: ' + ncube + ' not loaded into NCubeManager, attempting fixed ($) reference to cell: ' + coord.toString());\n");
-        groovy.append("  }\n");
-        groovy.append("  return ncubeMgr.getCube(name).getCell(coord, output);\n");
-        groovy.append("}\n\n");
-        groovy.append("def getRelativeCell(Map coord)\n");
-        groovy.append("{\n");
-        groovy.append("  input.putAll(coord);\n");
-        groovy.append("  return ncube.getCell(input, output);\n");
-        groovy.append("}\n\n");
-        groovy.append("def getRelativeCubeCell(String name, Map coord)\n");
-        groovy.append("{\n");
-        groovy.append("  input.putAll(coord);\n");
-        groovy.append("  if (ncubeMgr.getCube(name) == null)\n");
-        groovy.append("  {\n");
-        groovy.append("    throw new IllegalArgumentException('NCube: ' + ncube + ' not loaded into NCubeManager, attempting relative (@) reference to cell: ' + coord.toString());\n");
-        groovy.append("  }\n");
-        groovy.append("  return ncubeMgr.getCube(name).getCell(input, output);\n");
-        groovy.append("}\n\n");
-        groovy.append("def run()\n{\n");
-        groovy.append("println 'This should be overridden';");
-        groovy.append("  \n}\n}");
-        groovyCell = groovyClassLoader.parseClass(groovy.toString());
+        InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("NCubeGroovyCell");
+        String groovy = new String(IOUtilities.inputStreamToBytes(in));
+        groovyCell = groovyClassLoader.parseClass(groovy);
     }
 
     public GroovyBase(String cmd)

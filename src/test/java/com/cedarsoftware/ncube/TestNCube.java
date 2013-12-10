@@ -4867,8 +4867,8 @@ DELIMITER ;
 //        System.out.println("str = " + str);
 //        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
 //        long stop = System.nanoTime();
-////        System.out.println("str = " + str);
-////        System.out.println((stop - start)/1000000);
+//        System.out.println("str = " + str);
+//        System.out.println((stop - start)/1000000);
 //    }
 
     @Test

@@ -1,9 +1,11 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.IOUtilities;
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 import groovy.text.XmlTemplateEngine;
 
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -119,15 +121,20 @@ public class GroovyXmlTemplate extends CommandCell
             if (resolvedTemplate == null)
             {
                 String cmd = getCmd();
-                // Expand code : perform <% @()  $() %> and ${ @()   $() } substitutions before passing to template engine.
-                cmd = replaceScriptletNCubeRefs(cmd, scripletPattern, "<%", "%>");
+                // Expand code : perform <gsp:expression> @()  $() </gsp:expression> and so on, substitutions.
+                cmd = replaceScriptletNCubeRefs(cmd, scripletPattern, "<gsp:scriptlet>", "</gsp:scriptlet>");
+                cmd = replaceScriptletNCubeRefs(cmd, expressionPattern, "<gsp:expression>", "</gsp:expression>");
                 cmd = replaceScriptletNCubeRefs(cmd, velocityPattern, "${", "}");
-                cmd = "<gsp:scriptlet>def getRelativeCubeCell = { name, coord -> input.putAll(coord); if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); }; " +
-                        "   def getRelativeCell = { coord -> input.putAll(coord); return ncube.getCell(input, output); }; " +
-                        "   def getFixedCell = { name, coord -> if (ncubeMgr.getCube(name) == null) { throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString()); }; return ncubeMgr.getCube(name).getCell(input, output); };</gsp:scriptlet>" + cmd;
 
+                InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("NCubeTemplateClosures");
+                String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
+
+                // TODO: Need to inject the groovy closures into XML, in the proper place
+//                cmd = "<gsp:scriptlet>" + groovyClosures + "</gsp:scriptlet>" + cmd;
+
+                System.out.println("cmd = " + cmd);
                 // Create Groovy Standard Template
-                XmlTemplateEngine engine = new XmlTemplateEngine();
+                XmlTemplateEngine engine = new XmlTemplateEngine(" ", false);
                 resolvedTemplate = engine.createTemplate(cmd);
             }
 

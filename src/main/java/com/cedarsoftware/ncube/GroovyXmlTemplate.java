@@ -39,6 +39,7 @@ public class GroovyXmlTemplate extends CommandCell
     private static final Pattern scripletPattern = Pattern.compile("<gsp:scriptlet>(.*?)<\\/gsp:scriptlet>");
     private static final Pattern expressionPattern = Pattern.compile("<gsp:expression>(.*?)<\\/gsp:expression>");
     private static final Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
+    private static final Pattern rootScopePattern = Pattern.compile("[<].*?xmlns.*?[>]");
     private Template resolvedTemplate;
 
     public GroovyXmlTemplate(String cmd)
@@ -129,10 +130,16 @@ public class GroovyXmlTemplate extends CommandCell
                 InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("NCubeTemplateClosures");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
 
-                // TODO: Need to inject the groovy closures into XML, in the proper place
-//                cmd = "<gsp:scriptlet>" + groovyClosures + "</gsp:scriptlet>" + cmd;
+                Matcher m = rootScopePattern.matcher(cmd);
+                String start = "";
+                if (m.find())
+                {
+                    start = m.group(0);
+                }
 
-                System.out.println("cmd = " + cmd);
+                // Inject the groovy closures into XML, in the proper place (after the root tag)
+                cmd = start + "<gsp:scriptlet>" + groovyClosures + "</gsp:scriptlet>" + cmd.substring(start.length());
+
                 // Create Groovy Standard Template
                 XmlTemplateEngine engine = new XmlTemplateEngine(" ", false);
                 resolvedTemplate = engine.createTemplate(cmd);

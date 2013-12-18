@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 /**
  * Process NCube template cells.  A template cell contains a String that may have both
- * NCube references to other NCubes using the {{ @otherCube([:]) }} format, AND, the
+ * NCube references to other NCubes within the <% %> or ${ } sections, AND, the
  * template may also contain Groovy template variables.  This class uses the Groovy
  * StandardTemplate which supports ${variable} and <%  %> replaceable tags.  The
  * 'variable' is the name of an NCube input coordinate key.

@@ -243,6 +243,7 @@ DELIMITER ;
         coord.put("Attribute", "policySymbol");
         commAuto.setCell("CAP", coord);
 
+        coord.clear();
         coord.put("Attribute", "busType");
         commGL.setCell("COB", coord);
         coord.put("Attribute", "riskType");
@@ -252,6 +253,7 @@ DELIMITER ;
         coord.put("Attribute", "policySymbol");
         commGL.setCell("GLP", coord);
 
+        coord.clear();
         coord.put("Attribute", "busType");
         commIM.setCell("COB", coord);
         coord.put("Attribute", "riskType");
@@ -263,6 +265,7 @@ DELIMITER ;
         coord.put("Attribute", "parentRiskType");
         commIM.setCell("IMOPS", coord);
 
+        coord.clear();
         coord.put("Attribute", "busType");
         commSBP.setCell("COB", coord);
         coord.put("Attribute", "riskType");
@@ -291,16 +294,8 @@ DELIMITER ;
         assertTrue(requiredScope.contains("BU"));
         assertTrue(requiredScope.contains("PROD_LINE"));
 
-        Map<String, Set> scopeValues = ncube.getRequiredScopeWithValues();
+        Set scopeValues = ncube.getRequiredScope();
         assertTrue(scopeValues.size() == 3);
-
-        //TODO: Getting sometimes 4, sometimes 5 (HashMap ordering causing this somewher)
-        assertTrue(scopeValues.get("Attribute").size() == 4);
-        assertTrue(scopeValues.get("attribute").contains("riskType"));
-        assertTrue(scopeValues.get("BU").size() == 1);
-        assertTrue(scopeValues.get("bu").contains(null));
-        assertTrue(scopeValues.get("PROD_LINE").size() == 4);
-        assertTrue(scopeValues.get("prod_line").contains("CommGL"));
 
         coord.clear();
         coord.put("BU", "Agri");
@@ -313,7 +308,6 @@ DELIMITER ;
         assertTrue(requiredScope.contains("Attribute"));
         assertTrue(requiredScope.contains("BU"));
         assertTrue(requiredScope.contains("PROD_LINE"));
-
     }
 
     @Test
@@ -3827,16 +3821,6 @@ DELIMITER ;
         assertTrue(names.size() == 2);
         assertTrue(names.contains("state"));
         assertTrue(names.contains("type"));
-
-        Map<String, Collection> requiredScope = ncube.getRequiredScopeWithValues();
-        assertTrue(requiredScope.size() == 2);
-        assertTrue(requiredScope.get("TYpe").size() == 2);
-        assertTrue(requiredScope.get("TYpe").contains("bad"));
-        assertTrue(requiredScope.get("TYpe").contains("good"));
-
-        assertTrue(requiredScope.get("State").size() == 2);
-        assertTrue(requiredScope.get("state").contains("OH"));
-        assertTrue(requiredScope.get("STATE").contains("TX"));
     }
 
     @Test
@@ -4325,25 +4309,7 @@ DELIMITER ;
         assertEquals("1", x);
 
         Set<String> scope = ncube.getRequiredScope();
-        println("requiredScope 1 cube = " + scope);
         assertTrue(scope.size() == 2);
-        assertTrue(scope.contains("BU"));
-        assertTrue(scope.contains("State"));
-
-        Map<String, Collection> requiredScope = ncube.getRequiredScopeWithValues();
-        assertTrue(requiredScope.size() == 2);
-        assertTrue(requiredScope.get("bu").size() == 5);
-        assertTrue(requiredScope.get("BU").contains("PIM"));
-        assertTrue(requiredScope.get("BU").contains("AGR"));
-        assertTrue(requiredScope.get("BU").contains("SHS"));
-        assertTrue(requiredScope.get("BU").contains("ALT"));
-        assertTrue(requiredScope.get("BU").contains("EQM"));
-
-        assertTrue(requiredScope.get("STATE").size() == 4);
-        assertTrue(requiredScope.get("state").contains("GA"));
-        assertTrue(requiredScope.get("StaTe").contains("OH"));
-        assertTrue(requiredScope.get("State").contains("TX"));
-        assertTrue(requiredScope.get("state").contains("WY"));
     }
 
     // This test also tests ID-based ncube's specified in simple JSON format
@@ -4710,16 +4676,8 @@ DELIMITER ;
         assertEquals(requiredScope, x);
         assertTrue(requiredScope != x);
 
-        Map<String, Set> scopeValues = ncube.getRequiredScopeWithValues();
+        Set scopeValues = ncube.getRequiredScope();
         assertTrue(scopeValues.size() == 6);
-        assertTrue(scopeValues.containsKey("state"));
-        Set states = scopeValues.get("state");
-        assertTrue(states.contains("OH"));
-        assertTrue(states.contains("TX"));
-        assertTrue(states.size() == 2);
-        x = ncube.getRequiredScopeWithValues();
-        assertEquals(scopeValues, x);
-        assertTrue(scopeValues != x);
     }
 
     @Test
@@ -4862,20 +4820,24 @@ DELIMITER ;
 //        Map coord = new HashMap();
 //        coord.put("state", "ID");
 //        coord.put("code", 1);
+//        coord.put("firstname", "John");
+//        coord.put("nickname", "Jack");
+//        coord.put("lastname", "Kennedy");
+//        coord.put("salutation", "Dear");
+//
 //        long start = System.nanoTime();
 //        String str = (String) ncube.getCell(coord);
-//        System.out.println("str = " + str);
-//        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
+//        assertEquals("<document type='letter'>\n" +
+//                " 0.15\n" +
+//                " <foo:to xmlns:foo='baz'>\n" +
+//                "  John &apos;Jack&apos; Kennedy\n" +
+//                " </foo:to>\n" +
+//                " How are you today?\n" +
+//                "</document>", str);
 //        long stop = System.nanoTime();
 //        System.out.println("str = " + str);
 //        System.out.println((stop - start)/1000000);
 //    }
-
-    @Test
-    public void testGTemplate()
-    {
-        // TODO: Make sure you can use a GStringTemplate (update loader for gtemplate)
-    }
 
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------

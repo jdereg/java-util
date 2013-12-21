@@ -36,10 +36,13 @@ Including in java-util:
 * 
 
 Version History
+* 1.6.1
+ * Added: UrlUtilities.getContentFromUrl();
+* 1.6.0
+ * Added CaseInsensitiveSet.
 * 1.5.0
- * Added CaseInsensitiveSet.  
  * Fixed: CaseInsensitiveMap's iterator.remove() method, it did not remove items.  
- * Fixed: CaseInsensitiveMap's equals() method, it required case to match on keys. 
+ * Fixed: CaseInsensitiveMap's equals() method, it required case to match on keys.
 * 1.4.0
  * Initial version
 

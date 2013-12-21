@@ -24,9 +24,7 @@ import java.net.UnknownHostException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -413,12 +411,12 @@ public class UrlUtilities
         }
         catch (Exception e)
         {
-            UrlUtilities.readErrorResponse(c);
+            readErrorResponse(c);
             return null;
         }
         finally
         {
-            UrlUtilities.disconnect(c);
+            disconnect(c);
         }
     }
 

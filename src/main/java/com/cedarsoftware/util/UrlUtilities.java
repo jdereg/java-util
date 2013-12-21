@@ -3,15 +3,27 @@ package com.cedarsoftware.util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -349,20 +361,41 @@ public class UrlUtilities
     }
 
     /**
-     * Cookie Maps can be null.
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * String.
      *
+     * @param url URL to hit
      * @return UTF-8 String read from URL or null in the case of error.
      */
-    public static String getContentFromUrl(String url, Map inCookies, Map outCookies)
+    public static String getContentFromUrl(String url)
+    {
+        return getContentFromUrl(url, null, 0, null, null, true);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * String.
+     *
+     * @param url URL to hit
+     * @param proxyServer String named of proxy server
+     * @param port port to access proxy server
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param ignoreSec if true, SSL connection will always be trusted.
+     * @return UTF-8 String read from URL or null in the case of error.
+     */
+    public static String getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
     {
         HttpURLConnection c = null;
         try
         {
-            c = (HttpURLConnection) getConnection(url, true, false, false);
+            c = (HttpURLConnection) getConnection(new URL(url), proxyServer, port, inCookies, outCookies, true, false, false, true);
 
             // Set cookies in the HTTP header
             if (inCookies != null)
-            {
+            {   // [optional] place cookies (JSESSIONID) into HTTP headers
                 setCookies(c, inCookies);
             }
 
@@ -370,21 +403,98 @@ public class UrlUtilities
             InputStream stream = IOUtilities.getInputStream(c);
             IOUtilities.transfer(stream, out);
             stream.close();
+
             if (outCookies != null)
-            {
+            {   // [optional] Fetch cookies from server and update outCookie Map (pick up JSESSIONID, other headers)
                 getCookies(c, outCookies);
             }
+
             return new String(out.toByteArray(), "UTF-8");
         }
         catch (Exception e)
         {
-            readErrorResponse(c);
+            UrlUtilities.readErrorResponse(c);
             return null;
         }
         finally
         {
-            disconnect(c);
+            UrlUtilities.disconnect(c);
         }
+    }
+
+    public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, Map outCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
+    {
+        URLConnection c;
+        if (proxyServer != null)
+        {
+            Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress("squid.td.afg", 3128));
+            c = url.openConnection(proxy);
+        }
+        else
+        {
+            c = url.openConnection();
+        }
+        c.setRequestProperty("Accept-Encoding", "gzip, deflate");
+
+        c.setAllowUserInteraction(false);
+        c.setDoOutput(output);
+        c.setDoInput(input);
+        c.setUseCaches(cache);
+        HttpURLConnection.setFollowRedirects(true);
+        c.setReadTimeout(220000);
+        c.setConnectTimeout(45000);
+
+        if (c instanceof HttpsURLConnection && ignoreSec)
+        {
+            HttpsURLConnection sc = (HttpsURLConnection) c;
+            try
+            {
+                // Create a trust manager that does not validate certificate chains
+                final TrustManager[] trustAllCerts = new TrustManager[]
+                {
+                    new X509TrustManager()
+                    {
+                        public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
+                        {
+                        }
+                        public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
+                        {
+                        }
+                        public X509Certificate[] getAcceptedIssuers()
+                        {
+                            return null;
+                        }
+                    }
+                };
+
+                // Install the all-trusting trust manager
+                final SSLContext sslContext = SSLContext.getInstance( "SSL" );
+                sslContext.init(null, trustAllCerts, new SecureRandom());
+
+                // Create an ssl socket factory with our all-trusting manager
+                final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+                HttpsURLConnection.setDefaultSSLSocketFactory( sslSocketFactory );
+                sc.setHostnameVerifier(new HostnameVerifier()
+                {
+                    public boolean verify(String s, SSLSession sslSession)
+                    {
+                        return true;
+                    }
+                });
+                HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier()
+                {
+                    public boolean verify(String hostname, SSLSession session)
+                    {
+                        return true;
+                    }
+                });
+            }
+            catch(Exception e)
+            {
+                LOG.error("Could not access '" + url.toString() + "'", e);
+            }
+        }
+        return c;
     }
 
     public static String getHostName()

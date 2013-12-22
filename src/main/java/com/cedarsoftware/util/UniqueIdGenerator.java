@@ -52,17 +52,32 @@ public class UniqueIdGenerator
      */
     static
     {
-        byte[] ip;
-        try
+        String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
+        if (StringUtilities.isEmpty(id))
         {
-            ip = InetAddress.getLocalHost().getAddress();
+            byte[] ip;
+            try
+            {
+                ip = InetAddress.getLocalHost().getAddress();
+            }
+            catch (UnknownHostException e)
+            {
+                ip = new byte[] {0, 0, 0, 0};
+                LOG.warn("Failed to obtain computer's IP address", e);
+            }
+            lastIp = (int)ip[3] & 0xff;
         }
-        catch (UnknownHostException e)
+        else
         {
-            ip = new byte[] {0, 0, 0, 0};
-            LOG.warn("Failed to obtain computer's IP address", e);
+            try
+            {
+                lastIp = Integer.parseInt(id);
+            }
+            catch (NumberFormatException e)
+            {
+                throw new IllegalArgumentException("Environment / System variable JAVA_UTIL_CLUSTERID must be 0-99");
+            }
         }
-        lastIp = (int)ip[3] & 0xff;
     }
 
     public static long getUniqueId()

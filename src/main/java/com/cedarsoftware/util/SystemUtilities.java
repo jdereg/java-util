@@ -26,7 +26,7 @@ public class SystemUtilities
      * System properties.  If neither available, return null.
      * @param var String key of variable to return
      */
-    private static String getExternalVariable(String var)
+    public static String getExternalVariable(String var)
     {
         String variable = System.getenv().get(var);
         if (StringUtilities.isEmpty(variable))

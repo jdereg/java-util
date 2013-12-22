@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Generate a unique ID that fits within a long value quickly, will never create a duplicate value,
@@ -42,7 +43,7 @@ public class UniqueIdGenerator
     {
         protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
         {
-            return size() > 100;
+            return size() > 1000;
         }
     };
     private static final Log LOG = LogFactory.getLog(UniqueIdGenerator.class);
@@ -65,13 +66,13 @@ public class UniqueIdGenerator
                 ip = new byte[] {0, 0, 0, 0};
                 LOG.warn("Failed to obtain computer's IP address", e);
             }
-            lastIp = (int)ip[3] & 0xff;
+            lastIp = ((int)ip[3] & 0xff) % 100;
         }
         else
         {
             try
             {
-                lastIp = Integer.parseInt(id);
+                lastIp = Integer.parseInt(id) % 100;
             }
             catch (NumberFormatException e)
             {
@@ -100,10 +101,10 @@ public class UniqueIdGenerator
     {
         // shift time by 4 digits (so that IP and count can be last 4 digits)
         count++;
-        if (count >= 100)
+        if (count >= 1000)
         {
             count = 0;
         }
-        return System.currentTimeMillis() * 10000 + count * 100 + lastIp % 100;
+        return System.currentTimeMillis() * 100000 + count * 100 + lastIp;
     }
 }

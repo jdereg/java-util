@@ -2,10 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -24,17 +21,14 @@ import static org.junit.Assert.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestUniqueIdGenerator
+public class TestSystemUtilities
 {
     @Test
-    public void testUniqueIdGeneration() throws Exception
+    public void testGetExternalVariable()
     {
-        Set ids = new HashSet();
-
-        for (int i=0; i < 1000000; i++)
-        {
-            ids.add(UniqueIdGenerator.getUniqueId());
-        }
-        assertTrue(ids.size() == 1000000);
+        String s = SystemUtilities.getExternalVariable("PATH");
+        assertNotNull(s);
+        long x = UniqueIdGenerator.getUniqueId();
+        System.out.println("x = " + x);
     }
 }

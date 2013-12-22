@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class UniqueIdGenerator
 {
-    private static long count = 0;
+    private static int count = 0;
     private static final int lastIp;
     private static final Map<Long, Long> lastId = new LinkedHashMap<Long, Long>()
     {

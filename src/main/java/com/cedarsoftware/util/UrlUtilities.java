@@ -13,6 +13,7 @@ import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
@@ -366,10 +367,31 @@ public class UrlUtilities
      * @param url URL to hit
      * @return UTF-8 String read from URL or null in the case of error.
      */
-    public static String getContentFromUrl(String url)
+    public static String getContentFromUrlAsString(String url)
+    {
+        try
+        {
+            return new String(getContentFromUrl(url), "UTF-8");
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            throw new RuntimeException("UTF-8 not supported by your JVM.  Get a newer JVM.", e);
+        }
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @return byte[] read from URL or null in the case of error.
+     */
+    public static byte[] getContentFromUrl(String url)
     {
         return getContentFromUrl(url, null, 0, null, null, true);
     }
+
 
     /**
      * Get content from the passed in URL.  This code will open a connection to
@@ -382,14 +404,39 @@ public class UrlUtilities
      * @param inCookies Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
      * @param ignoreSec if true, SSL connection will always be trusted.
-     * @return UTF-8 String read from URL or null in the case of error.
+     * @return String of content fetched from URL.
      */
-    public static String getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
+    public static String getContentFromUrlAsString(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
+    {
+        try
+        {
+            return new String(getContentFromUrl(url, proxyServer, port, inCookies, outCookies, ignoreSec), "UTF-8");
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            throw new RuntimeException("UTF-8 not supported by your JVM.  Get a newer JVM.", e);
+        }
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxyServer String named of proxy server
+     * @param port port to access proxy server
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param ignoreSec if true, SSL connection will always be trusted.
+     * @return byte[] of content fetched from URL.
+     */
+    public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
     {
         HttpURLConnection c = null;
         try
         {
-            c = (HttpURLConnection) getConnection(new URL(url), proxyServer, port, inCookies, outCookies, true, false, false, true);
+            c = (HttpURLConnection) getConnection(new URL(url), proxyServer, port, inCookies, outCookies, true, false, false, ignoreSec);
 
             // Set cookies in the HTTP header
             if (inCookies != null)
@@ -407,11 +454,12 @@ public class UrlUtilities
                 getCookies(c, outCookies);
             }
 
-            return new String(out.toByteArray(), "UTF-8");
+            return out.toByteArray();
         }
         catch (Exception e)
         {
             readErrorResponse(c);
+            LOG.warn("Exception occurred fetching content from url: " + url, e);
             return null;
         }
         finally
@@ -489,7 +537,7 @@ public class UrlUtilities
             }
             catch(Exception e)
             {
-                LOG.error("Could not access '" + url.toString() + "'", e);
+                LOG.warn("Could not access '" + url.toString() + "'", e);
             }
         }
         return c;
@@ -503,6 +551,7 @@ public class UrlUtilities
         }
         catch (UnknownHostException e)
         {
+            LOG.warn("Unable to fetch 'hostname'", e);
             return "localhost";
         }
     }

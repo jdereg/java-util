@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.util.SystemUtilities;
-import com.cedarsoftware.util.UrlUtilities;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

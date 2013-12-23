@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UniqueIdGenerator;
 
-import java.util.Map;
 import java.util.Set;
 
 /**

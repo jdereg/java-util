@@ -4844,7 +4844,7 @@ DELIMITER ;
     @Test
     public void testUrlCube() throws Exception
     {
-        // required test from machine servering up pages (OS X - built-in Apache, for example)
+        // required test from machine serving up pages (OS X - built-in Apache, for example)
 //        NCube ncube = nCubeManager.getNCubeFromResource("urlContent.json");
 //
 //        Properties props = System.getProperties();
@@ -4852,6 +4852,7 @@ DELIMITER ;
 //
 //        Map coord = new HashMap();
 //        coord.put("Sites", "Google");
+//        ncube.getCell(coord);
 //        String html = (String) ncube.getCell(coord);
 //
 //        assertNotNull(html);

@@ -15,7 +15,7 @@
             ]
     }],
     "cells":[
-        { "key":{"Sites":"Google"}, "type":"string", "url":"http://www.google.com"},
+        { "key":{"Sites":"Google"}, "type":"string", "cache":false, "url":"http://www.google.com"},
         { "key":{"Sites":"MyOtherDriveUrl" }, "type":"template", "url":"http://localhost/sample.html"},
         { "key":{"Sites":"MyOtherDriveUri" }, "type":"template", "uri":"html/quick-start"},
         { "key":{"Sites":"MyOtherDriveUrlSSL" }, "type":"exp", "url":"http://localhost/sampleGroovy.groovy"},

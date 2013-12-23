@@ -1,12 +1,13 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Process a String that is specified at a URL.
+ * Process a binary type (byte[]) that is specified at a URL.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -24,11 +25,12 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class StringUrlCmd extends CommandCell
+public class BinaryUrlCmd extends CommandCell
 {
+    private byte[] content;
     private final boolean cache;
 
-    public StringUrlCmd(boolean cache)
+    public BinaryUrlCmd(boolean cache)
     {
         super("");
         this.cache = cache;
@@ -42,12 +44,12 @@ public class StringUrlCmd extends CommandCell
         }
         try
         {
-            setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
+            content = UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
         }
         catch (Exception e)
         {
             NCube ncube = (NCube) args.get("ncube");
-            setCompileErrorMsg("Failed to load string cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            setCompileErrorMsg("Failed to load binary cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
             throw new RuntimeException(getCompileErrorMsg(), e);
         }
         if (cache)
@@ -58,7 +60,7 @@ public class StringUrlCmd extends CommandCell
 
     protected Object runFinal(Map args)
     {
-        return getCmd();
+        return content;
     }
 
     public void getCubeNamesFromCommandText(Set<String> cubeNames)

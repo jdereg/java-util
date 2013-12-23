@@ -53,8 +53,31 @@ public abstract class CommandCell implements Comparable<CommandCell>
     private volatile transient String compileErrorMsg = null;
     private String url = null;
     static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
+    static final String proxyServer;
+    static final int proxyPort;
 
-	public CommandCell(String cmd)
+    static
+    {
+        proxyServer = SystemUtilities.getExternalVariable("NCUBE_PROXY_SERVER");
+        String proxiePort = SystemUtilities.getExternalVariable("NCUBE_PROXY_PORT");
+        if (proxyServer != null)
+        {
+            try
+            {
+                proxyPort = Integer.parseInt(proxiePort);
+            }
+            catch (Exception e)
+            {
+                throw new IllegalArgumentException("NCUBE_PROXY_PORT must be an integer: " + proxiePort, e);
+            }
+        }
+        else
+        {
+            proxyPort = 0;
+        }
+    }
+
+    public CommandCell(String cmd)
 	{
 		this.cmd = cmd;
 	}
@@ -81,39 +104,7 @@ public abstract class CommandCell implements Comparable<CommandCell>
         return runFinal(args);
     }
 
-    private void processUrl(Map args)
-    {
-        if (url == null)
-        {
-            return;
-        }
-        try
-        {
-            String proxyServer = SystemUtilities.getExternalVariable("NCUBE_PROXY_SERVER");
-            String proxiePort = SystemUtilities.getExternalVariable("NCUBE_PROXY_PORT");
-            int proxyPort = 0;
-            if (proxyServer != null)
-            {
-                try
-                {
-                    proxyPort = Integer.parseInt(proxiePort);
-                }
-                catch (Exception e)
-                {
-                    throw new IllegalArgumentException("NCUBE_PROXY_PORT must be an integer: " + proxiePort, e);
-                }
-            }
-            cmd = UrlUtilities.getContentFromUrl(url, proxyServer, proxyPort, null, null, true);
-        }
-        catch (Exception e)
-        {
-            cmd = "";
-            NCube ncube = (NCube) args.get("ncube");
-            setCompileErrorMsg("Failed to load cell contents from URL: " + url + ", NCube '" + ncube.getName() + "'");
-            throw new RuntimeException(getCompileErrorMsg(), e);
-        }
-        url = null;  // indicates that URL has been processed
-    }
+    protected void processUrl(Map args) { }
 
     protected Object runFinal(Map args)
     {
@@ -145,6 +136,11 @@ public abstract class CommandCell implements Comparable<CommandCell>
 		return cmd;
 	}
 
+    public void setCmd(String cmd)
+    {
+        this.cmd = cmd;
+    }
+
     public String toString()
     {
         return cmd;
@@ -170,6 +166,11 @@ public abstract class CommandCell implements Comparable<CommandCell>
     public void setUrl(String url)
     {
         this.url = url;
+    }
+
+    public String getUrl()
+    {
+        return url;
     }
 
     public abstract void getScopeKeys(Set<String> scopeKeys);

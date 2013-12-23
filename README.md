@@ -36,6 +36,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.7.1
+ * UrlUtilities.getContentFromUrl / getContentFromUrlAsString - allow content to be fetched as String or binary (byte[]).
 * 1.7.0
  * SystemUtilities added.  New API to fetch value from environment or System property
  * UniqueIdGenerator - checks for environment variable (or System property) JAVA_UTIL_CLUSTERID (0-99).  Will use this if set, otherwise last IP octet mod 100.

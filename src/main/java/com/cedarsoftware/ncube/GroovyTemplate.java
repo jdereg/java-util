@@ -5,7 +5,6 @@ import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 
 import java.io.InputStream;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;

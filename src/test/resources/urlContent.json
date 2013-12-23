@@ -1,0 +1,24 @@
+{
+    "ncube":"UrlCube",
+    "axes":[ {
+            "name":"Sites",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "value":"Google"},
+                { "value":"MyOtherDriveUrl"},
+                { "value":"MyOtherDriveUri" },
+                { "value":"MyOtherDriveUrlSSL"},
+                { "value":"MyOtherDriveUriSSL" }
+            ]
+    }],
+    "cells":[
+        { "key":{"Sites":"Google"}, "type":"string", "url":"http://www.google.com"},
+        { "key":{"Sites":"MyOtherDriveUrl" }, "type":"template", "url":"http://localhost/sample.html"},
+        { "key":{"Sites":"MyOtherDriveUri" }, "type":"template", "uri":"html/quick-start"},
+        { "key":{"Sites":"MyOtherDriveUrlSSL" }, "type":"exp", "url":"http://localhost/sampleGroovy.groovy"},
+        { "key":{"Sites":"MyOtherDriveUriSSL" }, "type":"template", "uri":"html/quick-start"}
+    ]
+}

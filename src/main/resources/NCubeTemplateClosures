@@ -1,0 +1,24 @@
+def getRelativeCubeCell =
+        { name, coord ->
+            input.putAll(coord);
+            if (ncubeMgr.getCube(name) == null)
+            {
+                throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString());
+            };
+            return ncubeMgr.getCube(name).getCell(input, output);
+        };
+
+def getRelativeCell =
+        { coord ->
+            input.putAll(coord);
+            return ncube.getCell(input, output);
+        };
+
+def getFixedCell =
+        { name, coord ->
+            if (ncubeMgr.getCube(name) == null)
+            {
+                throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString());
+            };
+            return ncubeMgr.getCube(name).getCell(input, output)
+        };

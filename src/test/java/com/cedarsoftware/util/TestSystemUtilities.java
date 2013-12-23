@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,6 +30,6 @@ public class TestSystemUtilities
         String s = SystemUtilities.getExternalVariable("PATH");
         assertNotNull(s);
         long x = UniqueIdGenerator.getUniqueId();
-        System.out.println("x = " + x);
+        assertTrue(x > 0);
     }
 }

@@ -15,6 +15,7 @@ Assuming an n-cube is set up, and a coordinate is also set up (Map coord = [age:
 Version History
 * 2.1.0
  * id's specified in simple JSON format can be long, string, double, or boolean. Allows aliasing columns to be referenced by cells' id field.
+ * HTML formatting code moved into separate internal formatters package, where other n-cube formatters would be placed.
 * 2.0.1
  * 'binary' type added to simple JSON format.  Marks a cell to be returned as byte[].  'value' should be set to hex digits 'CAFEBABE10', or the 'uri' / 'url' should be set to point to location returning binary content.
  * 'cache' flag added to 'string' and 'binary' cells (when specified as 'uri' or 'url').  If not specified, the default is cache=true, meaning that n-cube will fetch the contents from the URL, and then hold onto it.  Set to "cache":false and n-cube will retrieve the content each time the cell is referenced.

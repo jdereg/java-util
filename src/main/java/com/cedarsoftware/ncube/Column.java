@@ -154,7 +154,7 @@ public class Column implements Comparable<Comparable>
         }
 	}
 
-    static String formatDiscreteValue(Comparable val)
+    public static String formatDiscreteValue(Comparable val)
     {
         if (val instanceof Date)
         {

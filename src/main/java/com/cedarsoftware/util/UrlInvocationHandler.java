@@ -15,7 +15,6 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.logging.Logger;
 
 /**
  * Useful utility for allowing Java code to make Ajax calls, yet the Java code

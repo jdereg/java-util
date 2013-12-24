@@ -4891,6 +4891,26 @@ DELIMITER ;
 //        assertTrue(html.toLowerCase().contains("myotherdrive"));
     }
 
+    @Test
+    public void testStringIds() throws Exception
+    {
+        NCube ncube = nCubeManager.getNCubeFromResource("stringIds.json");
+
+        Map coord = new HashMap();
+        coord.put("age",15);
+        coord.put("state", "CA");
+        assertEquals("young CA", ncube.getCell(coord));
+        coord.put("age",18);
+        coord.put("state", "OH");
+        assertEquals("adult OH", ncube.getCell(coord));
+        coord.put("age",60);
+        coord.put("state", "TX");
+        assertEquals("old TX", ncube.getCell(coord));
+        coord.put("age",99);
+        coord.put("state", "TX");
+        assertEquals("def TX", ncube.getCell(coord));
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

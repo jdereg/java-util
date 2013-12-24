@@ -1,0 +1,47 @@
+{
+    "ncube":"idTest",
+    "ruleMode":false,
+    "axes":
+        [
+            {
+                "name":"Age",
+                "type":"RANGE",
+                "valueType":"LONG",
+                "hasDefault":true,
+                "preferredOrder":1,
+                "multiMatch":true,
+                "columns":
+                    [
+                        {"id":"young", "value":[0,18]},
+                        {"id":"adult", "value":[18,55]},
+                        {"id":"old", "value":[55,80]}
+                    ]
+            },
+            {
+                "name":"State",
+                "type":"DISCRETE",
+                "valueType":"STRING",
+                "hasDefault":false,
+                "preferredOrder":1,
+                "multiMatch":false,
+                "columns":
+                    [
+                        {"id":1, "value":"CA"},
+                        {"id":2, "value":"OH"},
+                        {"id":3, "value":"TX"}
+                    ]
+            }
+        ],
+    "cells":
+        [
+            {"id":["young",1],"value":"young CA"},
+            {"id":["old",1],"value":"old CA"},
+            {"id":["young",2],"value":"young OH"},
+            {"id":["adult",2],"value":"adult OH"},
+            {"id":["old",2],"value":"old OH"},
+            {"id":["young",3],"value":"young TX"},
+            {"id":["adult",3],"value":"adult TX"},
+            {"id":["old",3],"value":"old TX"},
+            {"id":[3],"value":"def TX"}
+        ]
+}

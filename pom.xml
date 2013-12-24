@@ -6,7 +6,7 @@
 	<artifactId>n-cube</artifactId>
     <packaging>jar</packaging>
 	<version>2.0.2-SNAPSHOT</version>
-	<description>N-Cube Engine</description>
+	<description>n-cube Engine</description>
     <url>https://github.com/jdereg/n-cube</url>
 
     <licenses>

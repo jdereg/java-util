@@ -18,7 +18,7 @@ import java.util.Map;
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
- *         Copyright (c) John DeRegnaucourt
+ *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.

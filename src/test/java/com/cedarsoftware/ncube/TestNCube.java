@@ -73,7 +73,7 @@ public class TestNCube
         Connection conn = null;
         if (test_db == MYSQL)
         {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/ncube_edit?autoCommit=true", "root", "exedb");
+            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
         }
         else if (test_db == HSQLDB)
         {
@@ -113,13 +113,14 @@ public class TestNCube
                     "app_cd VARCHAR(20), " +
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +
-                    "PRIMARY KEY (n_cube_id, version_no_cd), " +
-                    "UNIQUE (n_cube_nm, version_no_cd, app_cd) " +
+                    "PRIMARY KEY (n_cube_id), " +
+                    "UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd) " +
                     ");");
             stmt.close();
             conn.close();
         }
-
+        else if (test_db == MYSQL)
+        {
         /*
         Schema for MYSQL:
 drop table n_cube;
@@ -141,7 +142,7 @@ app_cd varchar(20),
 test_data_bin longtext,
 notes_bin longtext,
 PRIMARY KEY (n_cube_id),
-UNIQUE (n_cube_nm, version_no_cd, app_cd)
+UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd)
 );
 
 drop trigger sysEffDateTrigger;
@@ -152,7 +153,7 @@ BEGIN
     SET NEW.sys_effective_dt = NOW();
 END ;;
 DELIMITER ;
-         */
+         */}
     }
 
     @After
@@ -3937,6 +3938,8 @@ DELIMITER ;
         {
             assertTrue(e instanceof IllegalStateException);
         }
+
+        nCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), "0.1.0", true);
     }
 
     @Test
@@ -4038,6 +4041,8 @@ DELIMITER ;
         {
             assertTrue(e instanceof IllegalArgumentException);
         }
+
+        nCubeManager.deleteCube(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", true);
     }
 
     @Test
@@ -4087,6 +4092,8 @@ DELIMITER ;
         {
             assertTrue(e instanceof IllegalArgumentException);
         }
+
+        nCubeManager.deleteCube(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", true);
     }
 
     @Test

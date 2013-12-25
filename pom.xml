@@ -165,10 +165,10 @@
 		<!--</dependency>-->
 
         <!--<dependency>-->
-        <!--<groupId>mysql</groupId>-->
-        <!--<artifactId>mysql-connector-java</artifactId>-->
-        <!--<version>5.1.22</version>-->
-        <!--<scope>test</scope>-->
+            <!--<groupId>mysql</groupId>-->
+            <!--<artifactId>mysql-connector-java</artifactId>-->
+            <!--<version>5.1.28</version>-->
+            <!--<scope>test</scope>-->
         <!--</dependency>-->
 
 		<dependency>

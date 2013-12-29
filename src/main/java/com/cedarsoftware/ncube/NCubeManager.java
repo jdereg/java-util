@@ -235,6 +235,36 @@ public class NCubeManager
     }
 
     /**
+     * Return an array [] of Strings containing all unique App names.
+     */
+    public Object[] getApps(Connection connection)
+    {
+        if (connection == null)
+        {
+            throw new IllegalArgumentException("Connection cannot be null in getApps(connection) call.");
+        }
+
+        PreparedStatement stmt = null;
+        try
+        {
+            stmt = connection.prepareStatement("SELECT app_cd FROM n_cube GROUP BY app_cd");
+            ResultSet rs = stmt.executeQuery();
+            List<String> records = new ArrayList<String>();
+
+            while (rs.next())
+            {
+                records.add(rs.getString(1));
+            }
+            return records.toArray();
+        }
+        catch (Exception e) { throw new RuntimeException("Unable to fetch all ncube app names from database", e); }
+        finally
+        {
+            jdbcCleanup(stmt);
+        }
+    }
+
+    /**
      * Update the passed in NCube.  Only SNAPSHOT ncubes can be updated.
      * @param connection JDBC connection
      * @param ncube NCube to be updated.

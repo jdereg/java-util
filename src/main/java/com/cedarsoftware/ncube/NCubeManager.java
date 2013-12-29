@@ -237,7 +237,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getApps(Connection connection)
+    public Object[] getAppNames(Connection connection)
     {
         if (connection == null)
         {

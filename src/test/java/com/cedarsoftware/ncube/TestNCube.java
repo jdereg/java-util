@@ -4918,6 +4918,50 @@ DELIMITER ;
         assertEquals("def TX", ncube.getCell(coord));
     }
 
+//    @Test
+//    public void testCreateBunchOfCubes() throws Exception
+//    {
+//        String[] apps = new String[] {"ncube.test", "UD.REF.APP", "DASHBOARD"};
+//        String[] versions = new String[] {"0.1.0", "1.0.0", "1.1.0", "2.0.0", "2.0.1", "2.1.0"};
+//        String[] cubes = new String[] {
+//                "2DSimpleJson.json",
+//                "approvalLimits.json",
+//                "big5D.json",
+//                "expressionAxis.json",
+//                "expressionAxis2.json",
+//                "idBasedCube.json",
+//                "idBasedCubeSet.json",
+//                "simpleJsonArrayTest.json",
+//                "simpleJsonExpression.json",
+//                "stringIds.json",
+//                "template1.json",
+//                "template2.json",
+//                "testAtCommand.json",
+//                "testCube1.json",
+//                "testCube2.json",
+//                "testCube3.json",
+//                "testCube4.json",
+//                "testCube5.json",
+//                "testCube6.json",
+//                "urlContent.json"
+//        };
+//
+//        Connection connection = getConnection();
+//        for (int a=0; a < apps.length; a++)
+//        {
+//            for (int v=0; v < versions.length; v++)
+//            {
+//                for (int n=0; n < cubes.length; n++)
+//                {
+//                    NCube ncube = nCubeManager.getNCubeFromResource(cubes[n]);
+//                    System.out.println(ncube.getName() + ": " + apps[a] + ":" + versions[v]);
+//                    nCubeManager.deleteCube(connection, apps[a], ncube.getName(), versions[v], true);
+//                    nCubeManager.createCube(connection, apps[a], ncube, versions[v]);
+//                }
+//            }
+//        }
+//        connection.close();
+//    }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

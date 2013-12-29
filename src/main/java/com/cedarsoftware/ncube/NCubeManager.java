@@ -16,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -181,11 +182,31 @@ public class NCubeManager
         }
     }
 
-    public Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike)
+    public Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
     {
-        if (connection == null || sqlLike == null)
+        if (connection == null)
         {
-            throw new IllegalArgumentException("None of the arguments to getNCubes() can be null. Filter: " + sqlLike + ", connection: " + connection);
+            throw new IllegalArgumentException("'connection' cannot be null");
+        }
+
+        if (app == null)
+        {
+            throw new IllegalArgumentException("'app' cannot be null");
+        }
+
+        if (sysDate == null)
+        {
+            throw new IllegalArgumentException("'sysDate' cannot be null");
+        }
+
+        if (version == null)
+        {
+            throw new IllegalArgumentException("'version' cannot be null");
+        }
+
+        if (sqlLike == null)
+        {
+            throw new IllegalArgumentException("'sqlLike' cannot be null");
         }
 
         if (!"RELEASE".equals(status) && !"SNAPSHOT".equals(status))
@@ -196,12 +217,16 @@ public class NCubeManager
         PreparedStatement stmt = null;
         try
         {
+            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
             stmt = connection.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, update_dt, " +
-                    "create_hid, update_hid, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?");
+                    "create_hid, update_hid, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
             stmt.setString(1, sqlLike);
             stmt.setString(2, app);
             stmt.setString(3, version);
             stmt.setString(4, status);
+            stmt.setDate(5, systemDate);
+            stmt.setDate(6, systemDate);
+
             ResultSet rs = stmt.executeQuery();
             List<NCubeInfoDto> records = new ArrayList<NCubeInfoDto>();
 
@@ -237,7 +262,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getAppNames(Connection connection)
+    public Object[] getAppNames(Connection connection, Date sysDate)
     {
         if (connection == null)
         {
@@ -247,7 +272,10 @@ public class NCubeManager
         PreparedStatement stmt = null;
         try
         {
-            stmt = connection.prepareStatement("SELECT app_cd FROM n_cube GROUP BY app_cd");
+            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
+            stmt.setDate(1, systemDate);
+            stmt.setDate(2, systemDate);
             ResultSet rs = stmt.executeQuery();
             List<String> records = new ArrayList<String>();
 
@@ -255,6 +283,59 @@ public class NCubeManager
             {
                 records.add(rs.getString(1));
             }
+            Collections.sort(records);
+            return records.toArray();
+        }
+        catch (Exception e) { throw new RuntimeException("Unable to fetch all ncube app names from database", e); }
+        finally
+        {
+            jdbcCleanup(stmt);
+        }
+    }
+
+    /**
+     * Return an array [] of Strings containing all unique App names.
+     */
+    public Object[] getAppVersions(Connection connection, String app, String status, Date sysDate)
+    {
+        if (connection == null)
+        {
+            throw new IllegalArgumentException("'connection' cannot be null");
+        }
+
+        if (app == null)
+        {
+            throw new IllegalArgumentException("'app' cannot be null");
+        }
+
+        if (!"RELEASE".equals(status) && !"SNAPSHOT".equals(status))
+        {
+            throw new IllegalArgumentException("'status' must be 'RELEASE' or 'SNAPSHOT'");
+        }
+
+        if (sysDate == null)
+        {
+            throw new IllegalArgumentException("'sysDate' cannot be null");
+        }
+
+        PreparedStatement stmt = null;
+        try
+        {
+            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            stmt = connection.prepareStatement("SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? and status_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
+            stmt.setString(1, app);
+            stmt.setString(2, status);
+            stmt.setDate(3, systemDate);
+            stmt.setDate(4, systemDate);
+
+            ResultSet rs = stmt.executeQuery();
+            List<String> records = new ArrayList<String>();
+
+            while (rs.next())
+            {
+                records.add(rs.getString(1));
+            }
+            Collections.sort(records);  // May need to enhance to ensure 2.19.1 comes after 2.2.1
             return records.toArray();
         }
         catch (Exception e) { throw new RuntimeException("Unable to fetch all ncube app names from database", e); }

@@ -66,7 +66,7 @@ public class TestNCube
     private static final String APP_ID = "ncube.test";
     private static final boolean _debug = false;
     private static NCubeManager nCubeManager = NCubeManager.getInstance();
-    private int test_db = HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private int test_db = MYSQL;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
 
     private Connection getConnection() throws Exception
     {
@@ -3244,7 +3244,7 @@ DELIMITER ;
         nCubeManager.createCube(getConnection(), APP_ID, ncube1, version);
         nCubeManager.createCube(getConnection(), APP_ID, ncube2, version);
 
-        Object[] cubeList = nCubeManager.getNCubes(getConnection(), APP_ID, version, "SNAPSHOT", "test.%");
+        Object[] cubeList = nCubeManager.getNCubes(getConnection(), APP_ID, version, "SNAPSHOT", "test.%", new Date());
 
         assertTrue(cubeList != null);
         assertTrue(cubeList.length == 2);
@@ -3294,7 +3294,7 @@ DELIMITER ;
         assertTrue(nCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), "0.2.0", false));
 
         // Ensure that all test ncubes are deleted
-        cubeList = nCubeManager.getNCubes(getConnection(), APP_ID, version, "RELEASE", "test.%");
+        cubeList = nCubeManager.getNCubes(getConnection(), APP_ID, version, "RELEASE", "test.%", new Date());
         assertTrue(cubeList.length == 0);
     }
 
@@ -3870,7 +3870,7 @@ DELIMITER ;
     {
         try
         {
-            nCubeManager.getNCubes(getConnection(), APP_ID, "0.0.1", "SNAPSHOT", null);
+            nCubeManager.getNCubes(getConnection(), APP_ID, "0.0.1", "SNAPSHOT", null, new Date());
             fail("should not make it here");
         }
         catch (Exception e)
@@ -4921,7 +4921,7 @@ DELIMITER ;
 //    @Test
 //    public void testCreateBunchOfCubes() throws Exception
 //    {
-//        String[] apps = new String[] {"ncube.test", "UD.REF.APP", "DASHBOARD"};
+//        String[] apps = new String[] {"BILLING", "CLAIMS", "UD.REF.APP", "DASHBOARD"};
 //        String[] versions = new String[] {"0.1.0", "1.0.0", "1.1.0", "2.0.0", "2.0.1", "2.1.0"};
 //        String[] cubes = new String[] {
 //                "2DSimpleJson.json",

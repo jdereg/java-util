@@ -27,8 +27,9 @@ public class TestSystemUtilities
     @Test
     public void testGetExternalVariable()
     {
-        String s = SystemUtilities.getExternalVariable("PATH");
-        assertNotNull(s);
+        String win = SystemUtilities.getExternalVariable("Path");
+        String nix = SystemUtilities.getExternalVariable("PATH");
+        assertTrue(win != null || nix != null);
         long x = UniqueIdGenerator.getUniqueId();
         assertTrue(x > 0);
     }

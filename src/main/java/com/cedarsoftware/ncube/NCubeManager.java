@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
@@ -23,6 +24,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -53,6 +56,8 @@ public class NCubeManager
 {
     private final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
+    private static final Pattern validCubeName = Pattern.compile("[0-9a-zA-Z:.|#_-]+");
+    private static final Pattern validVersion = Pattern.compile("^(\\d+\\.)(\\d+\\.)(\\*|\\d+)$");
 
     public static NCubeManager getInstance()
     {
@@ -116,15 +121,82 @@ public class NCubeManager
         }
     }
 
+    private static void validateConnection(Connection c)
+    {
+        if (c == null)
+        {
+            throw new IllegalArgumentException("Connection cannot be null");
+        }
+    }
+
+    public static void validateApp(String app)
+    {
+        if (StringUtilities.isEmpty(app))
+        {
+            throw new IllegalArgumentException("App cannot be null or empty");
+        }
+    }
+
+    public static void validateCubeName(String cubeName)
+    {
+        if (StringUtilities.isEmpty(cubeName))
+        {
+            throw new IllegalArgumentException("n-cube name cannot be null or empty");
+        }
+
+        Matcher m = validCubeName.matcher(cubeName);
+        if (m.find())
+        {
+            if (cubeName.equals(m.group(0)))
+            {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("n-cube name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
+    }
+
+    public static void validateVersion(String version)
+    {
+        if (StringUtilities.isEmpty(version))
+        {
+            throw new IllegalArgumentException("n-cube version cannot be null or empty");
+        }
+
+        Matcher m = validVersion.matcher(version);
+        if (m.find())
+        {
+            return;
+        }
+        throw new IllegalArgumentException("n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
+    }
+
+    public static void validateStatus(String status)
+    {
+        if (StringUtilities.isEmpty(status))
+        {
+            throw new IllegalArgumentException("n-cube status cannot be null or empty");
+        }
+
+        if (status.equals("RELEASE") || status.equals("SNAPSHOT"))
+        {
+            return;
+        }
+        throw new IllegalArgumentException("n-cube status must be RELEASE or SNAPSHOT");
+    }
+
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
      * @return NCube that matches, or null if not found.
      */
     public NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
-        if (connection == null || app == null || name == null || version == null || status == null || sysDate == null)
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateStatus(status);
+        if (sysDate == null)
         {
-            throw new IllegalArgumentException("None of the arguments to loadCube() can be null. App: " + app + ", NCube: " + name + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + ", connection: " + connection);
+            sysDate = new Date();
         }
 
         synchronized(cubeList)
@@ -174,7 +246,12 @@ public class NCubeManager
                 return null; // Indicates not found
             }
             catch (IllegalStateException e) { throw e; }
-            catch (Exception e) { throw new RuntimeException("Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database", e); }
+            catch (Exception e)
+            {
+                String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
             finally
             {
                 jdbcCleanup(stmt);
@@ -182,36 +259,98 @@ public class NCubeManager
         }
     }
 
-    public Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
+    /**
+     * Retrieve all cube names that are deeply referenced by the named app, cube (name), version, and status.
+     */
+    public void getReferencedCubeNames(Connection connection, String app, String name, String version, String status, Date sysDate, Set<String> refs)
     {
-        if (connection == null)
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateVersion(version);
+        validateStatus(status);
+        if (sysDate == null)
         {
-            throw new IllegalArgumentException("'connection' cannot be null");
+            sysDate = new Date();
+        }
+        if (refs == null)
+        {
+            throw new IllegalArgumentException("null passed in for Set to hold referenced n-cube names");
         }
 
-        if (app == null)
+        PreparedStatement stmt = null;
+        try
         {
-            throw new IllegalArgumentException("'app' cannot be null");
+            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?");
+
+            stmt.setString(1, name);
+            stmt.setString(2, app);
+            stmt.setDate(3, systemDate);
+            stmt.setDate(4, systemDate);
+            stmt.setString(5, version);
+            stmt.setString(6, status);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next())
+            {
+                byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                String json = new String(jsonBytes, "UTF-8");
+                NCube<Object> ncube = (NCube) JsonReader.jsonToJava(json);
+                for (Axis axis : ncube.getAxes())
+                {
+                    axis.buildScaffolding();
+                }
+
+                if (rs.next())
+                {
+                    throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
+                }
+
+                Set<String> subCubeList = ncube.getReferencedCubeNames();
+                refs.addAll(subCubeList);
+
+                for (String cubeName : subCubeList)
+                {
+                    if (!refs.contains(cubeName))
+                    {
+                        getReferencedCubeNames(connection, app, cubeName, version, status, sysDate, refs);
+                    }
+                }
+            }
+        }
+        catch (IllegalStateException e) { throw e; }
+        catch (Exception e)
+        {
+            String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+        finally
+        {
+            jdbcCleanup(stmt);
+        }
+    }
+
+    /**
+     * Retrieve all n-cubes that have a name that matches the SQL like statement, within the specified app, status,
+     * version, and system date.
+     */
+    public Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
+    {
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(version);
+        validateStatus(status);
+
+        if (sqlLike == null)
+        {
+            sqlLike = "%";
         }
 
         if (sysDate == null)
         {
-            throw new IllegalArgumentException("'sysDate' cannot be null");
-        }
-
-        if (version == null)
-        {
-            throw new IllegalArgumentException("'version' cannot be null");
-        }
-
-        if (sqlLike == null)
-        {
-            throw new IllegalArgumentException("'sqlLike' cannot be null");
-        }
-
-        if (!"RELEASE".equals(status) && !"SNAPSHOT".equals(status))
-        {
-            throw new IllegalArgumentException("Status must be 'RELEASE' or 'SNAPSHOT'");
+            sysDate = new Date();
         }
 
         PreparedStatement stmt = null;
@@ -252,7 +391,12 @@ public class NCubeManager
             }
             return records.toArray();
         }
-        catch (Exception e) { throw new RuntimeException("Unable to fetch NCubes matching '" + sqlLike + "' from database", e); }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch NCubes matching '" + sqlLike + "' from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
         finally
         {
             jdbcCleanup(stmt);
@@ -260,13 +404,28 @@ public class NCubeManager
     }
 
     /**
+     * Duplicate the specified n-cube, given it the new name, and the same app, version, status as the source n-cube.
+     */
+    public void duplicate(Connection connection, String newName, String name, String newApp, String app, String newVersion, String version, String status, Date sysDate)
+    {
+        NCube ncube = loadCube(connection, app, name, version, status, sysDate);
+        NCube copy = ncube.duplicate(newName);
+        createCube(connection, newApp, copy, newVersion);
+        String json = getTestData(connection, app, name, version, sysDate);
+        updateTestData(connection, newApp, newName, newVersion, json);
+        String notes = getNotes(connection, app, name, version, sysDate);
+        updateNotes(connection, newApp, newName, newVersion, notes);
+    }
+
+    /**
      * Return an array [] of Strings containing all unique App names.
      */
     public Object[] getAppNames(Connection connection, Date sysDate)
     {
-        if (connection == null)
+        validateConnection(connection);
+        if (sysDate == null)
         {
-            throw new IllegalArgumentException("Connection cannot be null in getApps(connection) call.");
+            sysDate = new Date();
         }
 
         PreparedStatement stmt = null;
@@ -286,7 +445,12 @@ public class NCubeManager
             Collections.sort(records);
             return records.toArray();
         }
-        catch (Exception e) { throw new RuntimeException("Unable to fetch all ncube app names from database", e); }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch all ncube app names from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
         finally
         {
             jdbcCleanup(stmt);
@@ -298,24 +462,12 @@ public class NCubeManager
      */
     public Object[] getAppVersions(Connection connection, String app, String status, Date sysDate)
     {
-        if (connection == null)
-        {
-            throw new IllegalArgumentException("'connection' cannot be null");
-        }
-
-        if (app == null)
-        {
-            throw new IllegalArgumentException("'app' cannot be null");
-        }
-
-        if (!"RELEASE".equals(status) && !"SNAPSHOT".equals(status))
-        {
-            throw new IllegalArgumentException("'status' must be 'RELEASE' or 'SNAPSHOT'");
-        }
-
+        validateConnection(connection);
+        validateApp(app);
+        validateStatus(status);
         if (sysDate == null)
         {
-            throw new IllegalArgumentException("'sysDate' cannot be null");
+            sysDate = new Date();
         }
 
         PreparedStatement stmt = null;
@@ -338,7 +490,12 @@ public class NCubeManager
             Collections.sort(records);  // May need to enhance to ensure 2.19.1 comes after 2.2.1
             return records.toArray();
         }
-        catch (Exception e) { throw new RuntimeException("Unable to fetch all ncube app names from database", e); }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch all ncube app versions from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
         finally
         {
             jdbcCleanup(stmt);
@@ -353,14 +510,12 @@ public class NCubeManager
      */
     public boolean updateCube(Connection connection, String app, NCube ncube, String version)
     {
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(version);
         if (ncube == null)
         {
-            throw new IllegalArgumentException("NCube cannot be null, app: " + app + ", version: " + version);
-        }
-
-        if (connection == null || app == null || version == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to updateCube() can be null. App: " + app + ", NCube: " + ncube.getName() + ", version: " + version + ", connection: " + connection);
+            throw new IllegalArgumentException("NCube cannot be null for updating");
         }
 
         synchronized(cubeList)
@@ -381,8 +536,13 @@ public class NCubeManager
                 }
                 return true;
             }
-            catch(IllegalStateException e) { throw e; }
-            catch(Exception e) { throw new RuntimeException("Unable to update NCube: " + ncube.getName() + ", app: " + app + ", version: " + version, e); }
+            catch (IllegalStateException e) { throw e; }
+            catch (Exception e)
+            {
+                String s = "Unable to update NCube: " + ncube.getName() + ", app: " + app + ", version: " + version;
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
             finally
             {
                 jdbcCleanup(stmt);
@@ -397,15 +557,14 @@ public class NCubeManager
      */
     public void createCube(Connection connection, String app, NCube ncube, String version)
     {
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(version);
         if (ncube == null)
         {
-            throw new IllegalArgumentException("NCube cannot be null, app: " + app + ", version: " + version);
+            throw new IllegalArgumentException("NCube cannot be null when creating a new n-cube");
         }
-
-        if (connection == null || app == null || version == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to createCube() can be null. App: " + app + ", NCube: " + ncube.getName() + ", version: " + version + ", connection: " + connection);
-        }
+        validateCubeName(ncube.getName());
 
         synchronized(cubeList)
         {
@@ -445,7 +604,12 @@ public class NCubeManager
                 cubeList.put(ncube.getName(), ncube);
             }
             catch (IllegalStateException e) { throw e; }
-            catch (Exception e) { throw new RuntimeException("Unable to save NCube: " + ncube.getName() + ", app: " + app + ", version: " + version + " to database", e); }
+            catch (Exception e)
+            {
+                String s = "Unable to save NCube: " + ncube.getName() + ", app: " + app + ", version: " + version + " to database";
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
             finally
             {
                 jdbcCleanup(stmt);
@@ -465,27 +629,43 @@ public class NCubeManager
      */
     public int releaseCubes(Connection connection, String app, String version)
     {
-        if (connection == null || app == null || version == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to releaseCubes() can be null. App: " + app + ", version: " + version + ", connection: " + connection);
-        }
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(version);
 
         synchronized(cubeList)
         {
-            PreparedStatement stmt = null;
+            PreparedStatement stmt1 = null;
+            PreparedStatement stmt2 = null;
 
             try
             {
-                stmt = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = '" + ReleaseStatus.RELEASE + "' WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'");
-                stmt.setDate(1, new java.sql.Date(System.currentTimeMillis()));
-                stmt.setString(2, app);
-                stmt.setString(3, version);
-                return stmt.executeUpdate();
+                stmt1 = connection.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.RELEASE + "'");
+                stmt1.setString(1, app);
+                stmt1.setString(2, version);
+                ResultSet rs = stmt1.executeQuery();
+                if (rs.next())
+                {
+                    throw new IllegalStateException("A RELEASE version " + version + " already exists. Have system admin renumber your SNAPSHOT version.");
+                }
+
+                stmt2 = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = '" + ReleaseStatus.RELEASE + "' WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'");
+                stmt2.setDate(1, new java.sql.Date(System.currentTimeMillis()));
+                stmt2.setString(2, app);
+                stmt2.setString(3, version);
+                return stmt2.executeUpdate();
             }
-            catch (Exception e) { throw new RuntimeException("Unable to release NCubes for app: " + app + ", version: " + version + ", due to an error: ", e); }
+            catch (IllegalStateException e) { throw e; }
+            catch (Exception e)
+            {
+                String s = "Unable to release NCubes for app: " + app + ", version: " + version + ", due to an error: " + e.getMessage();
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
             finally
             {
-                jdbcCleanup(stmt);
+                jdbcCleanup(stmt1);
+                jdbcCleanup(stmt2);
             }
         }
     }
@@ -497,36 +677,44 @@ public class NCubeManager
      * an entire set of NCubes and places a new version label on them,
      * in SNAPSHOT status.
      */
-    public int createSnapshotCubes(Connection connection, String app, String oldVersion, String newVersion)
+    public int createSnapshotCubes(Connection connection, String app, String relVersion, String newSnapVer)
     {
-        if (connection == null || app == null || oldVersion == null || newVersion == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to createSnapshotCubes() can be null. App: " + app + ", oldVersion: " + oldVersion + ", newVersion: " + newVersion + ", connection: " + connection);
-        }
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(relVersion);
+        validateVersion(newSnapVer);
 
-        if (oldVersion.equals(newVersion))
+        if (relVersion.equals(newSnapVer))
         {
-            throw new IllegalArgumentException("The version number must be different for the new SNAPSHOT version. App: " + app + ", oldVersion: " + oldVersion + ", newVersion: " + newVersion);
+            throw new IllegalArgumentException("New SNAPSHOT version " + relVersion + " cannot be the same as the RELEASE version.");
         }
 
         synchronized(cubeList)
         {
-            PreparedStatement stmt = null;
+            PreparedStatement stmt0 = null;
+            PreparedStatement stmt1 = null;
             PreparedStatement stmt2 = null;
-            boolean autoCommit = true;
 
             try
             {
-                autoCommit = connection.getAutoCommit();
-                connection.setAutoCommit(false);
-                stmt = connection.prepareStatement(
+                stmt0 = connection.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?");
+                stmt0.setString(1, app);
+                stmt0.setString(2, newSnapVer);
+                ResultSet rs = stmt0.executeQuery();
+                if (rs.next())
+                {
+                    throw new IllegalStateException("New SNAPSHOT Version specified (" + newSnapVer + ") matches an existing version.  Specify new SNAPSHOT version that does not exist.");
+                }
+                rs.close();
+
+                stmt1 = connection.prepareStatement(
                         "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
                         "FROM n_cube\n" +
-                        "WHERE app_cd = ? AND version_no_cd = ?");
+                        "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.RELEASE + "'");
 
-                stmt.setString(1, app);
-                stmt.setString(2, oldVersion);
-                ResultSet rs = stmt.executeQuery();
+                stmt1.setString(1, app);
+                stmt1.setString(2, relVersion);
+                rs = stmt1.executeQuery();
 
                 stmt2 = connection.prepareStatement(
                         "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin)\n" +
@@ -543,7 +731,7 @@ public class NCubeManager
                     stmt2.setDate(5, new java.sql.Date(System.currentTimeMillis()));
                     stmt2.setString(6, rs.getString("create_hid"));
                     stmt2.setString(7, rs.getString("update_hid"));
-                    stmt2.setString(8, newVersion);
+                    stmt2.setString(8, newSnapVer);
                     stmt2.setString(9, ReleaseStatus.SNAPSHOT.name());
                     stmt2.setDate(10, rs.getDate("sys_effective_dt"));
                     stmt2.setDate(11, rs.getDate("sys_expiration_dt"));
@@ -554,26 +742,71 @@ public class NCubeManager
                     stmt2.setBytes(16, rs.getBytes("notes_bin"));
                     stmt2.executeUpdate();
                 }
-                connection.commit();
                 return count;
             }
-            catch(Exception e)
+            catch (IllegalStateException e) { throw e; }
+            catch (Exception e)
             {
-                try
-                {
-                    connection.rollback();
-                }
-                catch (SQLException e1) { LOG.error("Failed to rollback transaction", e1); }
-                throw new RuntimeException("Unable to create SNAPSHOT NCubes for app: " + app + ", version: " + oldVersion + ", due to an error: ", e);
+                String s = "Unable to create SNAPSHOT NCubes for app: " + app + ", version: " + newSnapVer + ", due to an error: " + e.getMessage();
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
             }
             finally
             {
-                try
+                jdbcCleanup(stmt0);
+                jdbcCleanup(stmt1);
+                jdbcCleanup(stmt2);
+            }
+        }
+    }
+
+    /**
+     * Change the SNAPSHOT version value.
+     */
+    public void changeVersionValue(Connection connection, String app, String currVersion, String newSnapVer)
+    {
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(currVersion);
+        validateVersion(newSnapVer);
+
+        synchronized(cubeList)
+        {
+            PreparedStatement stmt1 = null;
+            PreparedStatement stmt2 = null;
+
+            try
+            {
+                stmt1 = connection.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.RELEASE + "'");
+                stmt1.setString(1, app);
+                stmt1.setString(2, newSnapVer);
+                ResultSet rs = stmt1.executeQuery();
+                if (rs.next())
                 {
-                    connection.setAutoCommit(autoCommit);
+                    throw new IllegalStateException("RELEASE n-cubes found with version " + newSnapVer + ".  Choose a different SNAPSHOT version.");
                 }
-                catch (SQLException e) { LOG.error("Failed to restore Connection autoCommit", e); }
-                jdbcCleanup(stmt);
+
+                stmt2 = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'");
+                stmt2.setDate(1, new java.sql.Date(System.currentTimeMillis()));
+                stmt2.setString(2, newSnapVer);
+                stmt2.setString(3, app);
+                stmt2.setString(4, currVersion);
+                int count = stmt2.executeUpdate();
+                if (count < 1)
+                {
+                    throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + currVersion + ", therefore nothing changed.");
+                }
+            }
+            catch (IllegalStateException e) { throw e; }
+            catch (Exception e)
+            {
+                String s = "Unable to change SNAPSHOT version from " + currVersion + " to " + newSnapVer + " for app: " + app + ", due to an error: " + e.getMessage();
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
+            finally
+            {
+                jdbcCleanup(stmt1);
                 jdbcCleanup(stmt2);
             }
         }
@@ -586,10 +819,10 @@ public class NCubeManager
      */
     public boolean deleteCube(Connection connection, String app, String name, String version, boolean allowDelete)
     {
-        if (connection == null || app == null || name == null || version == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to deleteCube() can be null. App: " + app + ", NCube: " + name + ", version: " + version + ", connection: " + connection);
-        }
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateVersion(version);
 
         synchronized(cubeList)
         {
@@ -615,7 +848,12 @@ public class NCubeManager
                 }
                 return false;
             }
-            catch (Exception e) { throw new RuntimeException("Unable to delete NCube: " + name + ", app: " + app + ", version: " + version + " from database", e); }
+            catch (Exception e)
+            {
+                String s = "Unable to delete NCube: " + name + ", app: " + app + ", version: " + version + " from database: " + e.getMessage();
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
             finally
             {
                 jdbcCleanup(stmt);
@@ -629,10 +867,10 @@ public class NCubeManager
      */
     public boolean updateNotes(Connection connection, String app, String name, String version, String notes)
     {
-        if (connection == null || app == null || name == null || version == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to updateNotes() can be null. App: " + app + ", NCube: " + name + ", version: " + version + ", connection: " + connection);
-        }
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateVersion(version);
 
         synchronized(cubeList)
         {
@@ -669,20 +907,27 @@ public class NCubeManager
      * Get the notes associated to an NCube
      * @return String notes.
      */
-    public String getNotes(Connection connection, String app, String name, String version)
+    public String getNotes(Connection connection, String app, String name, String version, Date sysDate)
     {
-        if (connection == null || app == null || name == null || version == null)
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateVersion(version);
+        if (sysDate == null)
         {
-            throw new IllegalArgumentException("None of the arguments to getNotes() can be null. App: " + app + ", NCube: " + name + ", version: " + version + ", connection: " + connection);
+            sysDate = new Date();
         }
 
         PreparedStatement stmt = null;
         try
         {
-            stmt = connection.prepareStatement("SELECT notes_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?");
+            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            stmt = connection.prepareStatement("SELECT notes_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
             stmt.setString(1, app);
             stmt.setString(2, name);
             stmt.setString(3, version);
+            stmt.setDate(4, systemDate);
+            stmt.setDate(5, systemDate);
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next())
@@ -693,7 +938,12 @@ public class NCubeManager
             throw new IllegalArgumentException("No NCube matching passed in parameters.");
         }
         catch (IllegalArgumentException e) { throw e; }
-        catch (Exception e) { throw new RuntimeException("Unable to fetch notes for NCube: " + name + ", app: " + app + ", version: " + version, e); }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch notes for NCube: " + name + ", app: " + app + ", version: " + version;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
         finally
         {
             jdbcCleanup(stmt);
@@ -706,10 +956,10 @@ public class NCubeManager
      */
     public boolean updateTestData(Connection connection, String app, String name, String version, String testData)
     {
-        if (connection == null || app == null || name == null || version == null)
-        {
-            throw new IllegalArgumentException("None of the arguments to updateTestData() can be null. App: " + app + ", NCube: " + name + ", version: " + version + ", connection: " + connection);
-        }
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateVersion(version);
 
         synchronized(cubeList)
         {
@@ -734,7 +984,12 @@ public class NCubeManager
                 return true;
             }
             catch(IllegalStateException e) { throw e; }
-            catch(Exception e) { throw new RuntimeException("Unable to update test data for NCube: " + name + ", app: " + app + ", version: " + version, e); }
+            catch(Exception e)
+            {
+                String s = "Unable to update test data for NCube: " + name + ", app: " + app + ", version: " + version;
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
             finally
             {
                 jdbcCleanup(stmt);
@@ -747,19 +1002,27 @@ public class NCubeManager
      * @return String serialized JSON test data.  Use JsonReader to turn it back into
      * Java objects.
      */
-    public static String getTestData(Connection connection, String app, String name, String version)
+    public static String getTestData(Connection connection, String app, String name, String version, Date sysDate)
     {
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateVersion(version);
+        if (sysDate == null)
+        {
+            sysDate = new Date();
+        }
+
         PreparedStatement stmt = null;
         try
         {
-            if (connection == null || app == null || name == null || version == null)
-            {
-                throw new IllegalArgumentException("None of the arguments to getTestData() can be null. App: " + app + ", NCube: " + name + ", version: " + version + ", connection: " + connection);
-            }
-            stmt = connection.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?");
+            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            stmt = connection.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
             stmt.setString(1, app);
             stmt.setString(2, name);
             stmt.setString(3, version);
+            stmt.setDate(4, systemDate);
+            stmt.setDate(5, systemDate);
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next())
@@ -770,7 +1033,12 @@ public class NCubeManager
             throw new IllegalArgumentException("No NCube matching passed in parameters.");
         }
         catch (IllegalArgumentException e) { throw e; }
-        catch (Exception e) { throw new RuntimeException("Unable to fetch test data for NCube: " + name + ", app: " + app + ", version: " + version, e); }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch test data for NCube: " + name + ", app: " + app + ", version: " + version;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
         finally
         {
             jdbcCleanup(stmt);
@@ -794,7 +1062,9 @@ public class NCubeManager
         }
         catch (IOException e)
         {
-            throw new RuntimeException("Failed to load ncube from resource: " + name, e);
+            String s = "Failed to load ncube from resource: " + name;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
         }
     }
 
@@ -825,7 +1095,9 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Failed to load ncubes from resource: " + name + ", last successful cube: " + lastSuccessful, e);
+            String s = "Failed to load ncubes from resource: " + name + ", last successful cube: " + lastSuccessful;
+            LOG.error(s);
+            throw new RuntimeException(s, e);
         }
     }
 }

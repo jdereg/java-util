@@ -27,13 +27,13 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -66,7 +66,7 @@ public class TestNCube
     private static final String APP_ID = "ncube.test";
     private static final boolean _debug = false;
     private static NCubeManager nCubeManager = NCubeManager.getInstance();
-    private int test_db = MYSQL;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private int test_db = HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
 
     private Connection getConnection() throws Exception
     {
@@ -99,6 +99,7 @@ public class TestNCube
             stmt.execute("CREATE TABLE n_cube ( " +
                     "n_cube_id bigint NOT NULL, " +
                     "n_cube_nm VARCHAR(100) NOT NULL, " +
+                    "tenant_id CHAR(64), " +
                     "cube_value_bin varbinary(999999), " +
                     "create_dt DATE NOT NULL, " +
                     "update_dt DATE DEFAULT NULL, " +
@@ -113,6 +114,7 @@ public class TestNCube
                     "app_cd VARCHAR(20), " +
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +
+                    "tags varbinary(999999), " +
                     "PRIMARY KEY (n_cube_id), " +
                     "UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd) " +
                     ");");
@@ -127,6 +129,7 @@ drop table n_cube;
 CREATE TABLE n_cube (
 n_cube_id bigint NOT NULL,
 n_cube_nm varchar(100) NOT NULL,
+n_tenant_id char(64),
 cube_value_bin longtext,
 create_dt date NOT NULL,
 update_dt date DEFAULT NULL,
@@ -141,6 +144,7 @@ business_expiration_dt date,
 app_cd varchar(20),
 test_data_bin longtext,
 notes_bin longtext,
+tags longtext,
 PRIMARY KEY (n_cube_id),
 UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd)
 );
@@ -316,7 +320,7 @@ DELIMITER ;
     @Test
     public void testDuplicateAxisName()
     {
-        NCube<Byte> ncube = new NCube<Byte>("Byte Cube");
+        NCube<Byte> ncube = new NCube<Byte>("Byte.Cube");
         ncube.setDefaultCellValue((byte) -1);
         Axis axis1 = getGenderAxis(true);
         ncube.addAxis(axis1);
@@ -741,7 +745,7 @@ DELIMITER ;
     @Test
     public void testDefaultColumn()
     {
-        NCube<Boolean> ncube = new NCube<Boolean>("Test Default Column");
+        NCube<Boolean> ncube = new NCube<Boolean>("Test.Default.Column");
         Axis axis = getGenderAxis(true);
         ncube.addAxis(axis);
 
@@ -787,7 +791,7 @@ DELIMITER ;
     @Test
     public void testClearCells()
     {
-        NCube<Boolean> ncube = new NCube<Boolean>("Test Default Column");
+        NCube<Boolean> ncube = new NCube<Boolean>("Test.Default.Column");
         Axis axis = getGenderAxis(true);
         ncube.addAxis(axis);
 
@@ -930,7 +934,7 @@ DELIMITER ;
     @Test
     public void testLongAxis()
     {
-        NCube<String> ncube = new NCube<String>("Long test");
+        NCube<String> ncube = new NCube<String>("Long.test");
         ncube.addAxis(getEvenAxis(false));
 
         Map coord = new HashMap();
@@ -1015,7 +1019,7 @@ DELIMITER ;
     @Test
     public void testBigDecimalRangeAxis()
     {
-        NCube<String> ncube = new NCube<String>("Big Decimal Range");
+        NCube<String> ncube = new NCube<String>("Big.Decimal.Range");
         Axis axis = getDecimalRangeAxis(false);
         ncube.addAxis(axis);
 
@@ -1074,7 +1078,7 @@ DELIMITER ;
     @Test
     public void testDoubleRangeAxis()
     {
-        NCube<String> ncube = new NCube<String>("Double Range");
+        NCube<String> ncube = new NCube<String>("Double.Range");
         Axis axis = getDoubleRangeAxis(false);
         ncube.addAxis(axis);
 
@@ -1110,7 +1114,7 @@ DELIMITER ;
     @Test
     public void testLongRangeAxis()
     {
-        NCube<String> ncube = new NCube<String>("Long Range");
+        NCube<String> ncube = new NCube<String>("Long.Range");
         Axis axis = getLongRangeAxis(false);
         ncube.addAxis(axis);
 
@@ -1146,7 +1150,7 @@ DELIMITER ;
     @Test
     public void testDateRangeAxis()
     {
-        NCube<String> ncube = new NCube<String>("Date Range");
+        NCube<String> ncube = new NCube<String>("Date.Range");
         Axis axis = getDateRangeAxis(false);
         ncube.addAxis(axis);
 
@@ -1678,7 +1682,7 @@ DELIMITER ;
     public void testDbApis() throws Exception
     {
         Connection conn = getConnection();
-        String name = "test.NCube " + System.currentTimeMillis();
+        String name = "test.NCube" + System.currentTimeMillis();
 
         NCube<String> ncube = new NCube<String>(name);
         ncube.addAxis(getStatesAxis());
@@ -1730,7 +1734,7 @@ DELIMITER ;
     @Test
     public void testAddingDeletingColumn1D()
     {
-        NCube<Long> ncube = new NCube<Long>("1D Delete Test");
+        NCube<Long> ncube = new NCube<Long>("1D.Delete.Test");
         Axis states = new Axis("States", AxisType.DISCRETE, AxisValueType.STRING, true);
         states.addColumn("IN");
         states.addColumn("OH");
@@ -1785,7 +1789,7 @@ DELIMITER ;
     @Test
     public void testAddingDeletingColumn2D()
     {
-        NCube<Double> ncube = new NCube<Double>("2D Delete Test");
+        NCube<Double> ncube = new NCube<Double>("2D.Delete.Test");
         Axis states = new Axis("States", AxisType.DISCRETE, AxisValueType.STRING, true);
         states.addColumn("IN");
         states.addColumn("OH");
@@ -2083,7 +2087,7 @@ DELIMITER ;
     @Test
     public void testGenericComparables()
     {
-        NCube<String> ncube = new NCube<String>("Test BigInteger");
+        NCube<String> ncube = new NCube<String>("Test.BigInteger");
         Axis age = new Axis("Age", AxisType.DISCRETE, AxisValueType.COMPARABLE, true);
         age.addColumn(new BigInteger("1"));
         age.addColumn(new BigInteger("2"));
@@ -2115,7 +2119,7 @@ DELIMITER ;
     @Test
     public void testGenericRangeComparables()
     {
-        NCube<String> ncube = new NCube<String>("Test Character");
+        NCube<String> ncube = new NCube<String>("Test.Character");
         Axis codes = new Axis("codes", AxisType.RANGE, AxisValueType.COMPARABLE, true);
         codes.addColumn(new Range('a', 'd'));
         codes.addColumn(new Range('d', 'm'));
@@ -3262,23 +3266,23 @@ DELIMITER ;
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         nCubeManager.createSnapshotCubes(getConnection(), APP_ID, version, "0.2.0");
 
-        String notes1 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1");
-        String notes2 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0");
+        String notes1 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
+        String notes2 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
 
         nCubeManager.updateNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        notes1 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1");
+        notes1 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
         assertTrue("".equals(notes1));
 
         nCubeManager.updateNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", "Trailer Config Notes");
-        notes1 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1");
+        notes1 = nCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
         assertTrue("Trailer Config Notes".equals(notes1));
 
         nCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0");
+        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
         assertTrue("".equals(testData));
 
         nCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", "This is JSON data");
-        testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0");
+        testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
@@ -3868,15 +3872,8 @@ DELIMITER ;
     @Test
     public void testNCubeManagerGetCubes() throws Exception
     {
-        try
-        {
-            nCubeManager.getNCubes(getConnection(), APP_ID, "0.0.1", "SNAPSHOT", null, new Date());
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
+        // This proves that null is turned into '%' (no exception thrown)
+        nCubeManager.getNCubes(getConnection(), APP_ID, "0.0.1", "SNAPSHOT", null, new Date());
     }
 
     @Test
@@ -3999,7 +3996,7 @@ DELIMITER ;
     {
         try
         {
-            nCubeManager.getNotes(null, "DASHBOARD", "DashboardRoles", "0.1.0");
+            nCubeManager.getNotes(null, "DASHBOARD", "DashboardRoles", "0.1.0", null);
             fail("should not make it here");
         }
         catch (Exception e)
@@ -4008,7 +4005,7 @@ DELIMITER ;
         }
 
         createCube();
-        String notes = nCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.0");
+        String notes = nCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", null);
         assertNotNull(notes);
         assertTrue(notes.length() > 0);
 
@@ -4034,7 +4031,7 @@ DELIMITER ;
 
         try
         {
-            nCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.1");
+            nCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.1", null);
             fail("Should not make it here");
         }
         catch (Exception e)
@@ -4050,7 +4047,7 @@ DELIMITER ;
     {
         try
         {
-            NCubeManager.getTestData(null, "DASHBOARD", "DashboardRoles", "0.1.0");
+            NCubeManager.getTestData(null, "DASHBOARD", "DashboardRoles", "0.1.0", null);
             fail("should not make it here");
         }
         catch (Exception e)
@@ -4059,7 +4056,7 @@ DELIMITER ;
         }
 
         createCube();
-        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.0");
+        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", null);
         assertNotNull(testData);
         assertTrue(testData.length() > 0);
 
@@ -4085,7 +4082,7 @@ DELIMITER ;
 
         try
         {
-            nCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.1");
+            nCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.1", null);
             fail("Should not make it here");
         }
         catch (Exception e)
@@ -4962,6 +4959,94 @@ DELIMITER ;
 //        }
 //        connection.close();
 //    }
+
+    @Test
+    public void testEmptyCube()
+    {
+        NCube ncube = new NCube("Empty");
+        assertNotNull(ncube.toHtml());  // Ensure it does not blow up with exception on completely empty n-cube.
+    }
+
+    @Test
+    public void testValidCubeNames()
+    {
+        NCubeManager.validateCubeName("This:is.legal#but-hard_to|read");
+        try
+        {
+            NCubeManager.validateCubeName("This:is.not/legal#and-hard_to|read");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+        try
+        {
+            NCubeManager.validateCubeName(" NotValid");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+    }
+
+    @Test
+    public void testValidVersionNumbers()
+    {
+        NCubeManager.validateVersion("0.0.0");
+        NCubeManager.validateVersion("9.9.9");
+        NCubeManager.validateVersion("9999.99999.9999");
+        try
+        {
+            NCubeManager.validateVersion("0.1.a");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+        try
+        {
+            NCubeManager.validateVersion("0.1.0.1");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+        try
+        {
+            NCubeManager.validateVersion("0.1");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+    }
+
+    @Test
+    public void testDuplicate()
+    {
+        NCube<String> ncube = nCubeManager.getNCubeFromResource("simpleJsonExpression.json");
+        NCube<String> dupe = ncube.duplicate("TestCube");
+
+        // Assert that the two n-cubes are equivalent
+        assertEquals(ncube, dupe);
+
+        // Assert that the two n-cubes have identical hashCode() values
+        assertEquals(ncube.hashCode(), dupe.hashCode());
+
+        // Assert that the two n-cubes are NOT identical (must have different internal IDs)
+        for (Axis axis : ncube.getAxes())
+        {
+            Axis dupeAxis = dupe.getAxis(axis.getName());
+            assertNotEquals(axis.getId(), dupeAxis.getId());
+
+            for (Column column : axis.getColumns())
+            {
+                Column thatColumn = dupeAxis.findColumn(column.getValue());
+                assertNotEquals(column.getId(), thatColumn.getId());
+            }
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

@@ -5022,33 +5022,58 @@ DELIMITER ;
     }
 
     @Test
-    public void testDuplicate()
+    public void testDuplicateEqualsAndHashCode()
     {
-        NCube<String> ncube = nCubeManager.getNCubeFromResource("simpleJsonExpression.json");
-        NCube<String> dupe = ncube.duplicate("TestCube");
+        simpleJsonCompare("2DSimpleJson.json");
+        simpleJsonCompare("approvalLimits.json");
+        simpleJsonCompare("big5D.json");
+        simpleJsonCompare("expressionAxis.json");
+        simpleJsonCompare("expressionAxis2.json");
+        simpleJsonCompare("idBasedCube.json");
+        simpleJsonCompare("idBasedCubeSet.json");
+        simpleJsonCompare("simpleJsonArrayTest.json");
+        simpleJsonCompare("simpleJsonExpression.json");
+        simpleJsonCompare("stringIds.json");
+        simpleJsonCompare("template1.json");
+        simpleJsonCompare("template2.json");
+        simpleJsonCompare("testAtCommand.json");
+        simpleJsonCompare("testCube1.json");
+        simpleJsonCompare("testCube2.json");
+        simpleJsonCompare("testCube3.json");
+        simpleJsonCompare("testCube4.json");
+        simpleJsonCompare("testCube5.json");
+        simpleJsonCompare("testCube6.json");
+        simpleJsonCompare("urlContent.json");
+    }
 
-        // Assert that the two n-cubes are equivalent
+    // ---------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------
+
+    private void simpleJsonCompare(String name)
+    {
+        NCube<?> ncube = nCubeManager.getNCubeFromResource(name);
+        int h1 = ncube.hashCode();
+        NCube dupe = ncube.duplicate(ncube.getName());
+        int h2 = dupe.hashCode();
         assertEquals(ncube, dupe);
+        assertEquals(h1, h2);
 
-        // Assert that the two n-cubes have identical hashCode() values
-        assertEquals(ncube.hashCode(), dupe.hashCode());
-
-        // Assert that the two n-cubes are NOT identical (must have different internal IDs)
+        // Verify that all Axis and Column IDs are different
         for (Axis axis : ncube.getAxes())
         {
             Axis dupeAxis = dupe.getAxis(axis.getName());
             assertNotEquals(axis.getId(), dupeAxis.getId());
 
-            for (Column column : axis.getColumns())
+            Iterator<Column> iThisCol = axis.getColumns().iterator();
+            Iterator<Column> iThatCol = dupeAxis.getColumns().iterator();
+            while (iThisCol.hasNext())
             {
-                Column thatColumn = dupeAxis.findColumn(column.getValue());
-                assertNotEquals(column.getId(), thatColumn.getId());
+                Column thisCol = iThisCol.next();
+                Column thatCol = iThatCol.next();
+                assertNotEquals(thisCol.getId(), thatCol.getId());
             }
         }
     }
-
-    // ---------------------------------------------------------------------------------
-    // ---------------------------------------------------------------------------------
 
     private NCube createCube() throws Exception
     {

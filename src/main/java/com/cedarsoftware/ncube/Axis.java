@@ -126,6 +126,19 @@ public class Axis
         return multiMatch;
     }
 
+    public void setMultiMatch(boolean state)
+    {
+        if (state == multiMatch)
+        {
+            return;
+        }
+        multiMatch = state;
+        if (hasScaffolding())
+        {
+            buildScaffolding();
+        }
+    }
+
     void buildScaffolding()
     {
         for (Column column : columns)

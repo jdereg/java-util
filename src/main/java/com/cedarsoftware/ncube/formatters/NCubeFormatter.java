@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.AxisType;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 
@@ -99,6 +100,17 @@ public abstract class NCubeFormatter
         // Step 3. Compute cell area size
         Axis top = axes.remove(candidate);
         axes.add(0, top);   // Top element is now first.
+        top = axes.remove(0);   // Grab 1st (candidate axis) one more time
+        if (top.getType() == AxisType.RULE)
+        {   // If top is a rule axis, place it last.  It is recognized that there could
+            // be more than one rule axis, and there could also be a single rule axis, in
+            // which this is a no-op.
+            axes.add(top);
+        }
+        else
+        {
+            axes.add(0, top);
+        }
         long width = axes.get(0).size();
         long height = 1;
         final int len = axes.size();

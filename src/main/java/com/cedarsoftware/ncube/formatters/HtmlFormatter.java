@@ -133,9 +133,9 @@ public class HtmlFormatter extends NCubeFormatter
 
         if (axes.size() == 1)
         {   // Ensure that one dimension is vertically down the page
-            s.append(" <th data-id=\"a" + topAxis.getId() +"\" class=\"ncube-head\">");
+            s.append(" <th data-id=\"a" + topAxis.getId() +"\" class=\"ncube-head\"><button type=\"button\" class=\"btn-sm btn-primary\">");
             s.append(topAxisName);
-            s.append("</th>\n");
+            s.append("</button></th>\n");
             s.append(" <th class=\"ncube-dead\"></th>\n");
             s.append("</tr>\n");
             Set<Long> coord = new LinkedHashSet<Long>();
@@ -162,9 +162,9 @@ public class HtmlFormatter extends NCubeFormatter
             }
             s.append(" <th data-id=\"a" + topAxis.getId() + "\" class=\"ncube-head\" colspan=\"");
             s.append(topAxis.size());
-            s.append("\">");
+            s.append("\"><button type=\"button\" class=\"btn-sm btn-primary\">");
             s.append(topAxisName);
-            s.append("</th>\n");
+            s.append("</button></th>\n");
             s.append("</tr>\n");
 
             // Second row (special case)
@@ -181,9 +181,9 @@ public class HtmlFormatter extends NCubeFormatter
             {
                 Axis axis = axes.get(i);
                 String axisName = axis.getName();
-                s.append(" <th data-id=\"a" + axis.getId() + "\" class=\"ncube-head\">");
+                s.append(" <th data-id=\"a" + axis.getId() + "\" class=\"ncube-head\"><button type=\"button\" class=\"btn-sm btn-primary\">");
                 s.append(axisName);
-                s.append("</th>\n");
+                s.append("</button></th>\n");
                 long colspan = 1;
 
                 for (int j=i + 1; j < axisCount; j++)

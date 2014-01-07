@@ -133,14 +133,14 @@ public class Axis
             return;
         }
         multiMatch = state;
-        if (hasScaffolding())
-        {
-            buildScaffolding();
-        }
+        buildScaffolding();
     }
 
     void buildScaffolding()
     {
+        rangeToCol.clear();
+        discreteToCol.clear();
+        idToCol.clear();
         for (Column column : columns)
         {
             addScaffolding(column);
@@ -152,7 +152,7 @@ public class Axis
         idToCol.put(column.id, column);
 
         if (!hasScaffolding())
-        {
+        {   // This check is required because this API may be called from other than buildScaffolding() (e.g., addColumn)
             return;
         }
 

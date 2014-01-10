@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import com.cedarsoftware.lang.CharSequenceUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -52,8 +53,8 @@ public class UniqueIdGenerator
      */
     static
     {
-        String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
-        if (StringUtilities.isEmpty(id))
+        String id = com.cedarsoftware.lang.SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
+        if (CharSequenceUtilities.isBlank(id))
         {
             byte[] ip;
             try

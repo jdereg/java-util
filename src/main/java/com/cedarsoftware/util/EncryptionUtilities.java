@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import com.cedarsoftware.lang.ByteUtilities;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -66,7 +68,7 @@ public class EncryptionUtilities
                 d.update(bb);
                 bb.clear();
             }
-            return StringUtilities.encode(d.digest());
+            return ByteUtilities.encode(d.digest());
         }
         catch(IOException e)
         {
@@ -90,7 +92,7 @@ public class EncryptionUtilities
 
         MessageDigest d = getMD5Digest();
         d.update(bytes);
-        return StringUtilities.encode(d.digest());
+        return ByteUtilities.encode(d.digest());
     }
 
     public static MessageDigest getMD5Digest()
@@ -117,7 +119,7 @@ public class EncryptionUtilities
 
         MessageDigest d = getSHA1Digest();
         d.update(bytes);
-        return StringUtilities.encode(d.digest());
+        return ByteUtilities.encode(d.digest());
     }
 
     public static MessageDigest getSHA1Digest()
@@ -144,7 +146,7 @@ public class EncryptionUtilities
 
         MessageDigest d = getSHA256Digest();
         d.update(bytes);
-        return StringUtilities.encode(d.digest());
+        return ByteUtilities.encode(d.digest());
     }
 
     public static MessageDigest getSHA256Digest()
@@ -171,7 +173,7 @@ public class EncryptionUtilities
 
         MessageDigest d = getSHA512Digest();
         d.update(bytes);
-        return StringUtilities.encode(d.digest());
+        return ByteUtilities.encode(d.digest());
     }
 
     public static MessageDigest getSHA512Digest()
@@ -234,7 +236,7 @@ public class EncryptionUtilities
     {
         try
         {
-            return StringUtilities.encode(createAesEncryptionCipher(key).doFinal(content.getBytes()));
+            return ByteUtilities.encode(createAesEncryptionCipher(key).doFinal(content.getBytes()));
         }
         catch (Exception e)
         {
@@ -249,7 +251,7 @@ public class EncryptionUtilities
     {
         try
         {
-            return new String(createAesDecryptionCipher(key).doFinal(StringUtilities.decode(hexStr)));
+            return new String(createAesDecryptionCipher(key).doFinal(ByteUtilities.decode(hexStr)));
         }
         catch (Exception e)
         {

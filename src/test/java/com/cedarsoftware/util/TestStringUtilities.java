@@ -1,18 +1,10 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.test.Asserter;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestDeprecatedStringUtilities
+public class TestStringUtilities
 {
-
-    @Test
-    public void testConstructor() throws IllegalAccessException, InstantiationException
-    {
-        Asserter.assertClassOnlyHasAPrivateDefaultConstructor(StringUtilities.class);
-    }
-
     @Test
     public void testString()
     {
@@ -24,13 +16,6 @@ public class TestDeprecatedStringUtilities
         Assert.assertEquals("1A", StringUtilities.encode(new byte[] {0x1A}));
         Assert.assertArrayEquals(new byte[] {0x1A}, StringUtilities.decode("1A"));
         Assert.assertEquals(2, StringUtilities.count("abcabc", 'a'));
-    }
-
-    @Test
-    public void testTrim()
-    {
-        Assert.assertEquals(null, StringUtilities.trim(null));
-        Assert.assertEquals("", StringUtilities.trim(""));
     }
 
     @Test

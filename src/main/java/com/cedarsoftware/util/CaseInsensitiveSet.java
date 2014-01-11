@@ -59,7 +59,12 @@ public class CaseInsensitiveSet<E> implements Set<E>
         if (!(other instanceof Set)) return false;
 
         Set that = (Set) other;
-        return that.size()==size() && containsAll(that);
+        if (that.size() != size())
+        {
+            return false;
+        }
+
+        return containsAll(that);
     }
 
     public CaseInsensitiveSet(Collection<? extends E> collection)

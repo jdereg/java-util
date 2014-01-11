@@ -27,13 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class ReflectionUtils
+public class ReflectionUtils
 {
     private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<Class, Collection<Field>>();
-
-    private ReflectionUtils() {
-        super();
-    }
 
     /**
      * Get a Mehod annotation, even if the method is on an object behind a
@@ -58,23 +54,19 @@ public final class ReflectionUtils
         {
             for (Class interFace : interfaces)
             {
-                Method m = getMethod(interFace, method.getName(), method.getParameterTypes());
-                a = m.getAnnotation(annoClass);
-                if (a != null)
+                try
                 {
-                    return a;
+                    Method m = interFace.getMethod(method.getName(), method.getParameterTypes());
+                    a = m.getAnnotation(annoClass);
+                    if (a != null)
+                    {
+                        return a;
+                    }
                 }
+                catch (Exception ignored) { }
             }
         }
         return null;
-    }
-
-    public static Method getMethod(Class c, String method, Class...types)  {
-        try {
-            return c.getMethod(method, types);
-        } catch (Exception nse) {
-            return null;
-        }
     }
 
     /**

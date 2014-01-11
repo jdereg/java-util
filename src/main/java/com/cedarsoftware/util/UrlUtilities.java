@@ -3,12 +3,25 @@ package com.cedarsoftware.util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.net.ssl.*;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.*;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -41,7 +54,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UrlUtilities
 {
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
-    private static String _referrer = null;
+    private static String _referer = null;
     private static String _userAgent = null;
     public static final String SET_COOKIE = "Set-Cookie";
     public static final String COOKIE_VALUE_DELIMITER = ";";
@@ -70,7 +83,7 @@ public class UrlUtilities
 
     public static void setReferer(String referer)
     {
-        _referrer = referer;
+        _referer = referer;
     }
 
     public static void setUserAgent(String userAgent)
@@ -97,9 +110,9 @@ public class UrlUtilities
     {
         URLConnection c = url.openConnection();
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
-        if (StringUtilities.hasContent(_referrer))
+        if (StringUtilities.hasContent(_referer))
         {
-            c.setRequestProperty("Referer", _referrer);
+            c.setRequestProperty("Referer", _referer);
         }
         if (StringUtilities.hasContent(_userAgent))
         {

@@ -2,11 +2,10 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.text.*;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
-import java.util.TimeZone;
 
 import static org.junit.Assert.*;
 
@@ -40,162 +39,9 @@ public class TestSimpleDateFormat
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(0, cal.get(Calendar.MINUTE));
-        assertEquals(0, cal.get(Calendar.SECOND));
-    }
-
-    @Test(expected=ParseException.class)
-    public void testSetLenient() throws Exception
-    {
-        //February 942, 1996
-        SafeSimpleDateFormat x = new SafeSimpleDateFormat("MMM dd, yyyy");
-        Date then = x.parse("March 33, 2013");
-
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(3, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(0, cal.get(Calendar.MINUTE));
-        assertEquals(0, cal.get(Calendar.SECOND));
-
-        x.setLenient(false);
-        then = x.parse("March 33, 2013");
-    }
-
-    @Test(expected=ParseException.class)
-    public void testSetCalendar() throws Exception
-    {
-        SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        x.setCalendar(Calendar.getInstance());
-
-        String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
-        assertEquals("2013-09-07 04:15:31", s);
-
-        Date then = x.parse(s);
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(4, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
-
-        SafeSimpleDateFormat x2 = new SafeSimpleDateFormat("MMM dd, yyyy");
-        then = x2.parse("March 33, 2013");
-
-        cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(7, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
-
-        cal.clear();
-        cal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
-        cal.setLenient(false);
-        x.setCalendar(cal);
-        x2.setCalendar(cal);
-
-        then = x2.parse(s);
-
-        cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(3, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(0, cal.get(Calendar.MINUTE));
-        assertEquals(0, cal.get(Calendar.SECOND));
-
-        then = x.parse("March 33, 2013");
-    }
-
-    @Test
-    public void testSetDateSymbols() throws Exception {
-        SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        x.setCalendar(Calendar.getInstance());
-
-        String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
-        assertEquals("2013-09-07 04:15:31", s);
-
-        Date then = x.parse(s);
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(4, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
-
-        x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        x.setNumberFormat(new NumberFormat() {
-            @Override
-            public StringBuffer format(double number, StringBuffer toAppendTo, FieldPosition pos) {
-                return toAppendTo;
-            }
-
-            @Override
-            public StringBuffer format(long number, StringBuffer toAppendTo, FieldPosition pos) {
-                return toAppendTo;
-            }
-
-            @Override
-            public Number parse(String source, ParsePosition parsePosition) {
-                return new Integer(0);
-            }
-        });
-        s = x.format(getDate(2013, 9, 7, 16, 15, 31));
-        assertEquals("2013-09-07 04:15:31", s);
-
-        //NumberFormat.getPercentInstance();
-    }
-
-    @Test
-    public void testTimeZone() throws Exception
-    {
-        SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
-        assertEquals("2013-09-07 04:15:31", s);
-
-        Date then = x.parse(s);
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(4, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
-
-        System.out.println(TimeZone.getDefault().getDisplayName());
-        x.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
-
-        then = x.parse(s);
-        cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(7, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
+        assertTrue(cal.get(Calendar.YEAR) == 2013);
+        assertTrue(cal.get(Calendar.MONTH) == 8);   // Sept
+        assertTrue(cal.get(Calendar.DAY_OF_MONTH) == 7);
     }
 
     @Test
@@ -370,22 +216,7 @@ public class TestSimpleDateFormat
 //        System.out.println("t = " + t[0]);
     }
 
-    @Test
-    public void testParseObject() {
-        SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd");
-        String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
-        String d = "date: " + s;
-        assertEquals("2013-09-07", s);
 
-        Object then = (Date)x.parseObject(d, new ParsePosition(5));
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTime((Date)then);
-        assertTrue(cal.get(Calendar.YEAR) == 2013);
-        assertTrue(cal.get(Calendar.MONTH) == 8);   // Sept
-        assertTrue(cal.get(Calendar.DAY_OF_MONTH) == 7);
-
-    }
     private Date getDate(int year, int month, int day, int hour, int min, int sec)
     {
         Calendar cal = Calendar.getInstance();
@@ -393,6 +224,4 @@ public class TestSimpleDateFormat
         cal.set(year, month - 1, day, hour, min, sec);
         return cal.getTime();
     }
-
-
 }

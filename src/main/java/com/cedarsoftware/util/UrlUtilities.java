@@ -436,13 +436,7 @@ public class UrlUtilities
         HttpURLConnection c = null;
         try
         {
-            c = (HttpURLConnection) getConnection(new URL(url), proxyServer, port, inCookies, outCookies, true, false, false, ignoreSec);
-
-            // Set cookies in the HTTP header
-            if (inCookies != null)
-            {   // [optional] place cookies (JSESSIONID) into HTTP headers
-                setCookies(c, inCookies);
-            }
+            c = (HttpURLConnection) getConnection(new URL(url), proxyServer, port, inCookies, true, false, false, ignoreSec);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
             InputStream stream = IOUtilities.getInputStream(c);
@@ -468,12 +462,12 @@ public class UrlUtilities
         }
     }
 
-    public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, Map outCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
+    public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
     {
         URLConnection c;
         if (proxyServer != null)
         {
-            Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress("squid.td.afg", 3128));
+            Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
             c = url.openConnection(proxy);
         }
         else
@@ -481,7 +475,6 @@ public class UrlUtilities
             c = url.openConnection();
         }
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
-
         c.setAllowUserInteraction(false);
         c.setDoOutput(output);
         c.setDoInput(input);
@@ -539,6 +532,11 @@ public class UrlUtilities
             {
                 LOG.warn("Could not access '" + url.toString() + "'", e);
             }
+        }
+        // Set cookies in the HTTP header
+        if (inCookies != null)
+        {   // [optional] place cookies (JSESSIONID) into HTTP headers
+            setCookies(c, inCookies);
         }
         return c;
     }

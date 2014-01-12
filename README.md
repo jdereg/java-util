@@ -7,13 +7,13 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.7.1</version>
+  <version>1.7.2</version>
 </dependency>
 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>json-io</artifactId>
-  <version>2.4.0</version>
+  <version>2.4.1</version>
 </dependency>
 ```
 
@@ -36,6 +36,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.7.2
+ * UrlUtilities.getContentFromUrl / getContentFromUrlAsString - removed hard-coded proxy server name
 * 1.7.1
  * UrlUtilities.getContentFromUrl / getContentFromUrlAsString - allow content to be fetched as String or binary (byte[]).
 * 1.7.0

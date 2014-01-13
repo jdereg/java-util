@@ -95,6 +95,8 @@ public class HtmlFormatter extends NCubeFormatter
                 "{\n" +
                 "color: white;\n" +
                 "}\n" +
+                "td:hover { background: #E0F0FF }\n" +
+                "th:hover { background: #A2A2A2 }\n" +
                 ".ncube-num\n" +
                 "{\n" +
                 "text-align: right;\n" +
@@ -133,9 +135,12 @@ public class HtmlFormatter extends NCubeFormatter
 
         if (axes.size() == 1)
         {   // Ensure that one dimension is vertically down the page
-            s.append(" <th data-id=\"a" + topAxis.getId() +"\" class=\"ncube-head\"><button type=\"button\" class=\"btn-sm btn-primary\">");
-            s.append(topAxisName);
-            s.append("</button></th>\n");
+            s.append(" <th data-id=\"a" + topAxis.getId() +"\" class=\"ncube-head\">");
+            s.append("  <div class=\"btn-group axis-menu\" data-id=\"" + topAxisName + "\">\n");
+            s.append("   <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
+            s.append("    <span>" + topAxisName + "</span><span class=\"caret\"></span>");
+            s.append("   </button></th>\n");
+            s.append("  </div>\n");
             s.append(" <th class=\"ncube-dead\"></th>\n");
             s.append("</tr>\n");
             Set<Long> coord = new LinkedHashSet<Long>();
@@ -162,10 +167,13 @@ public class HtmlFormatter extends NCubeFormatter
             }
             s.append(" <th data-id=\"a" + topAxis.getId() + "\" class=\"ncube-head\" colspan=\"");
             s.append(topAxis.size());
-            s.append("\"><button type=\"button\" class=\"btn-sm btn-primary\">");
-            s.append(topAxisName);
-            s.append("</button></th>\n");
-            s.append("</tr>\n");
+            s.append("\">");
+            s.append("  <div class=\"btn-group axis-menu\" data-id=\"" + topAxisName + "\">\n");
+            s.append("  <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
+            s.append("   <span>" + topAxisName + "</span><span class=\"caret\"></span>");
+            s.append("  </button>\n");
+            s.append("   </div>\n");
+            s.append(" </th>\n</tr>\n");
 
             // Second row (special case)
             s.append("<tr>\n");
@@ -181,9 +189,13 @@ public class HtmlFormatter extends NCubeFormatter
             {
                 Axis axis = axes.get(i);
                 String axisName = axis.getName();
-                s.append(" <th data-id=\"a" + axis.getId() + "\" class=\"ncube-head\"><button type=\"button\" class=\"btn-sm btn-primary\">");
-                s.append(axisName);
-                s.append("</button></th>\n");
+                s.append(" <th data-id=\"a" + axis.getId() + "\" class=\"ncube-head\">\n");
+                s.append("  <div class=\"btn-group axis-menu\" data-id=\"" + axisName + "\">\n");
+                s.append("   <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
+                s.append("    <span>" + axisName + "</span><span class=\"caret\"></span>");
+                s.append("   </button>\n");
+                s.append("   </div>\n");
+                s.append(" </th>\n");
                 long colspan = 1;
 
                 for (int j=i + 1; j < axisCount; j++)

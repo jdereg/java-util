@@ -101,7 +101,7 @@ public class NCubeManager
     /**
      * Used for testing.
      */
-    void clearCubeList()
+    public void clearCubeList()
     {
         synchronized(cubeList)
         {

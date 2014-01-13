@@ -3759,7 +3759,7 @@ DELIMITER ;
         Object o = ncube.getCell(coord, output);
         assertEquals(16, o);
         assertEquals(16, output.get("good"));
-        assertEquals(output.size(), 2);
+        assertEquals(output.size(), 3); // 3 because of _rule entry
         List stack = (List) output.get("stack");
         assertEquals(stack.size(), 2);
         NCube.StackEntry entry = (NCube.StackEntry) stack.get(1);
@@ -4378,7 +4378,7 @@ DELIMITER ;
             assertTrue(e instanceof IllegalArgumentException);
         }
 
-        Axis axis = new Axis("sorted", AxisType.RULE, AxisValueType.EXPRESSION, true, Axis.DISPLAY);
+        Axis axis = new Axis("sorted", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
         try
         {
             axis.addColumn(10);
@@ -5046,6 +5046,100 @@ DELIMITER ;
         simpleJsonCompare("urlContent.json");
     }
 
+    @Test
+    public void testMultipleRuleAxisBindingsThrowsExceptionInRuleMode() throws Exception
+    {
+        NCube ncube = NCubeManager.getInstance().getNCubeFromResource("multiRule.json");
+        ncube.setRuleMode(true);
+        Map coord = new HashMap();
+        coord.put("age", 10);
+        coord.put("weight", 50);
+        Map output = new HashMap();
+        try
+        {
+            ncube.getCells(coord, output);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("ultiple"));
+        }
+
+        ncube.setRuleMode(false);
+        ncube.getCells(coord, output);
+        assertEquals(output.get("weight"), "medium-weight");
+        assertEquals(output.get("age"), "adult");
+
+        ncube.setRuleMode(true);
+        output.clear();
+        coord.put("age", 10);
+        coord.put("weight", 150);
+        ncube.getCells(coord, output);
+        assertEquals(output.get("weight"), "medium-weight");
+        assertEquals(output.get("age"), "adult");
+
+        output.clear();
+        coord.put("age", 35);
+        coord.put("weight", 150);
+        ncube.getCells(coord, output);
+        assertEquals(output.get("weight"), "medium-weight");
+        assertEquals(output.get("age"), "adult");
+
+        output.clear();
+        coord.put("age", 42);
+        coord.put("weight", 205);
+        ncube.getCells(coord, output);
+        assertEquals(output.get("weight"), "heavy-weight");
+        assertEquals(output.get("age"), "middle-aged");
+    }
+
+    @Test
+    public void testMultipleRuleAxisBindingsOKInMultiDim() throws Exception
+    {
+        NCube ncube = NCubeManager.getInstance().getNCubeFromResource("multiRule2.json");
+        Map coord = new HashMap();
+        coord.put("age", 10);
+        coord.put("weight", 60);
+        Map output = new HashMap();
+        ncube.getCells(coord, output);
+        assertEquals(output.get("weight"), "light-weight");
+
+        // The age is 'adult' because two rules are matching on the age axis (intentional rule error)
+        // This test illustrates that I can match 2 or more rules on one rule axis, 1 on a 2nd rule
+        // axis, and it does not violate 'ruleMode'.
+        assertEquals(output.get("age"), "adult");
+    }
+
+    @Test
+    public void testRuleStopCondition() throws Exception
+    {
+        NCube ncube = NCubeManager.getInstance().getNCubeFromResource("multiRuleHalt.json");
+        Map coord = new HashMap();
+        coord.put("age", 10);
+        coord.put("weight", 60);
+        Map output = new HashMap();
+        ncube.getCells(coord, output);
+        assertEquals(output.get("age"), "young");
+        assertEquals(output.get("weight"), "light-weight");
+        Map ruleOut = (Map) output.get("_rule");
+        assertFalse((Boolean) ruleOut.get("ruleStop"));
+
+        coord.put("age", 25);
+        coord.put("weight", 60);
+        output.clear();
+        ncube.getCells(coord, output);
+        ruleOut = (Map) output.get("_rule");
+        assertTrue((Boolean) ruleOut.get("ruleStop"));
+
+        coord.put("age", 45);
+        coord.put("weight", 60);
+        output.clear();
+        ncube.getCells(coord, output);
+        assertEquals(output.get("age"), "middle-aged");
+        assertEquals(output.get("weight"), "light-weight");
+        ruleOut = (Map) output.get("_rule");
+        assertFalse((Boolean) ruleOut.get("ruleStop"));
+    }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

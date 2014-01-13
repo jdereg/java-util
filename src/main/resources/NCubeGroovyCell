@@ -1,3 +1,5 @@
+import com.cedarsoftware.ncube.exception.RuleStop
+
 /**
  * Base class for all GroovyExpression and GroovyMethod's within n-cube CommandCells.
  * @see com.cedarsoftware.ncube.GroovyBase
@@ -42,6 +44,11 @@ class NCubeGroovyCell
             throw new IllegalArgumentException('NCube "' + ncube + '" not loaded into NCubeManager, attempting relative (@) reference to cell: ' + coord.toString());
         }
         return ncubeMgr.getCube(name).getCell(input, output);
+    }
+
+    def ruleStop()
+    {
+        throw new RuleStop();
     }
 
     def run()

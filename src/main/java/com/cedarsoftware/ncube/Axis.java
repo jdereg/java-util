@@ -96,6 +96,10 @@ public class Axis
             {
                 throw new IllegalArgumentException("NEAREST type axis '" + name + "' cannot have a default column");
             }
+            if (type == AxisType.RULE)
+            {
+                throw new IllegalArgumentException("RULE type axis '" + name + "' cannot have default column. Set last column to 'true' to act as default.");
+            }
             defaultCol = new Column(null);
             defaultCol.setDisplayOrder(Integer.MAX_VALUE);  // Always at the end
             columns.add(defaultCol);

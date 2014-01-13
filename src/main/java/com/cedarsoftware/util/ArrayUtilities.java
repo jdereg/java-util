@@ -1,29 +1,27 @@
-/*
- *         Copyright (c) Cedar Software LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you
- * may not use this file except in compliance with the License.  You may
- * obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Array;
+
 /**
- * Useful utilities for working with Java arrays.
+ * Handy utilities for working with Java arrays.
  *
- * @author John DeRegnaucourt (jdereg@gmail.com)
- * @author Ken Partlow (kpartlow@gmail.com)
- *
+ * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
+ *         <br/>
+ *         Copyright (c) Cedar Software LLC
+ *         <br/><br/>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br/><br/>
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <br/><br/>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
-@Deprecated
-public final class ArrayUtilities
+public class ArrayUtilities
 {
     /**
      * Immutable common arrays.
@@ -54,7 +52,7 @@ public final class ArrayUtilities
      */
     public static boolean isEmpty(final Object array)
     {
-        return com.cedarsoftware.lang.reflect.ArrayUtilities.isEmpty(array);
+        return array == null || Array.getLength(array) == 0;
     }
 
     /**
@@ -64,13 +62,12 @@ public final class ArrayUtilities
      * <p/>
      * <code>return (array == null) ? 0 : array.length;</code>
      *
-     * @deprecated use com.cedarsoftware.lang.reflect.ArrayUtilities.size();
      * @param array array to check
      * @return true if empty or null
      */
     public static int size(final Object array)
     {
-        return com.cedarsoftware.lang.reflect.ArrayUtilities.size(array);
+        return array == null ? 0 : Array.getLength(array);
     }
 
 
@@ -87,12 +84,11 @@ public final class ArrayUtilities
      */
     public static Object[] shallowCopy(final Object[] array)
     {
-        return com.cedarsoftware.lang.reflect.ArrayUtilities.shallowCopy(array);
-//        if (array == null)
-//        {
-//            return null;
-//        }
-//        return array.clone();
+        if (array == null)
+        {
+            return null;
+        }
+        return array.clone();
     }
 
     /**
@@ -117,32 +113,35 @@ public final class ArrayUtilities
      */
     public static Object[] addAll(final Object[] array1, final Object[] array2)
     {
-        return com.cedarsoftware.lang.reflect.ArrayUtilities.addAll(array1, array2);
-//        if (array1 == null)
-//        {
-//            return shallowCopy(array2);
-//        }
-//        else if (array2 == null)
-//        {
-//            return shallowCopy(array1);
-//        }
-//        final Object[] newArray = (Object[]) Array.newInstance(array1.getClass().getComponentType(),
-//                array1.length + array2.length);
-//        System.arraycopy(array1, 0, newArray, 0, array1.length);
-//        System.arraycopy(array2, 0, newArray, array1.length, array2.length);
-//        return newArray;
+        if (array1 == null)
+        {
+            return shallowCopy(array2);
+        }
+        else if (array2 == null)
+        {
+            return shallowCopy(array1);
+        }
+        final Object[] newArray = (Object[]) Array.newInstance(array1.getClass().getComponentType(),
+                array1.length + array2.length);
+        System.arraycopy(array1, 0, newArray, 0, array1.length);
+        System.arraycopy(array2, 0, newArray, array1.length, array2.length);
+        return newArray;
     }
 
-    public static <T> T[] removeItem(T[] array, int pos)
+    public static Object removeItem(Object array, int pos)
     {
-        return com.cedarsoftware.lang.reflect.ArrayUtilities.remove(array, pos);
+        int length = Array.getLength(array);
+        Object dest = Array.newInstance(array.getClass().getComponentType(), length - 1);
+
+        System.arraycopy(array, 0, dest, 0, pos);
+        System.arraycopy(array, pos + 1, dest, pos, length - pos - 1);
+        return dest;
     }
 
-    /**
-     * @deprecated Use com.cedarsoftware.lang.reflect.ArrayUtilities.createSubarray instead
-     */
-    public static <T> T[] getArraySubset(T[] array, int start, int end)
+    public static Object[] getArraySubset(Object[] ids, int start, int end)
     {
-        return com.cedarsoftware.lang.reflect.ArrayUtilities.createSubarray(array, start, end);
+        Object[] subset = new Object[end - start];
+        System.arraycopy(ids, start, subset, 0, end - start);
+        return subset;
     }
 }

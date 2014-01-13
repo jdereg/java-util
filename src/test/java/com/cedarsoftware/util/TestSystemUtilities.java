@@ -1,9 +1,9 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.test.Asserter;
-import org.junit.Assert;
 import org.junit.Test;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -25,28 +25,12 @@ import org.junit.Test;
 public class TestSystemUtilities
 {
     @Test
-    public void testConstructor() {
-        Asserter.assertClassOnlyHasAPrivateDefaultConstructor(SystemUtilities.class);
-
-    }
-
-    @Test
     public void testGetExternalVariable()
     {
-        Assert.assertNotNull(SystemUtilities.getExternalVariable("PATH"));
-        Assert.assertNotNull(SystemUtilities.getExternalVariable("Path"));
-
-        Assert.assertNull(SystemUtilities.getExternalVariable("foo"));
-
-        Assert.assertNull(System.getenv("java.vm.version"));
-        Assert.assertNotNull(SystemUtilities.getExternalVariable("java.vm.version"));
-        Assert.assertNotNull(SystemUtilities.getExternalVariable("java.vm.vendor"));
-
-        //System.out.println(System.getProperties().size());
-        //Enumeration e = System.getProperties().keys();
-        //while (e.hasMoreElements()) {
-        //    System.out.println(e.nextElement());
-        //}
-        //Assert.assertNotNull(SystemUtilities.getExternalVariable(""));
+        String win = SystemUtilities.getExternalVariable("Path");
+        String nix = SystemUtilities.getExternalVariable("PATH");
+        assertTrue(win != null || nix != null);
+        long x = UniqueIdGenerator.getUniqueId();
+        assertTrue(x > 0);
     }
 }

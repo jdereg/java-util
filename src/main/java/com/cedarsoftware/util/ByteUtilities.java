@@ -68,7 +68,6 @@ public final class ByteUtilities
 	public static String encode(final byte[] bytes)
 	{
 		StringBuilder sb = new StringBuilder(bytes.length << 1);
-		int len = bytes.length;
 		for (byte aByte : bytes)
 		{
 			sb.append(convertDigit(aByte >> 4));

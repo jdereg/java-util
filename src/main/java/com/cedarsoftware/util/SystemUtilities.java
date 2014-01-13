@@ -19,18 +19,24 @@ package com.cedarsoftware.util;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-@Deprecated
-public final class SystemUtilities
+public class SystemUtilities
 {
-    private SystemUtilities() {
-        super();
-    }
-
     /**
-     * @deprecated use com.cedarsoftware.lang.SystemUtilities
+     * Fetch value from environment variable and if not set, then fetch from
+     * System properties.  If neither available, return null.
+     * @param var String key of variable to return
      */
     public static String getExternalVariable(String var)
     {
-        return com.cedarsoftware.lang.SystemUtilities.getExternalVariable(var);
+        String variable = System.getenv().get(var);
+        if (StringUtilities.isEmpty(variable))
+        {
+            variable = System.getProperty(var);
+        }
+        if (StringUtilities.isEmpty(variable))
+        {
+            variable = null;
+        }
+        return variable;
     }
 }

@@ -3759,7 +3759,7 @@ DELIMITER ;
         Object o = ncube.getCell(coord, output);
         assertEquals(16, o);
         assertEquals(16, output.get("good"));
-        assertEquals(output.size(), 3); // 3 because of _rule entry
+        assertEquals(output.size(), 2);
         List stack = (List) output.get("stack");
         assertEquals(stack.size(), 2);
         NCube.StackEntry entry = (NCube.StackEntry) stack.get(1);

@@ -18,7 +18,7 @@ The input coordinate map is referenced through the variable 'input'.  The output
 
 The condition column can contain multiple statements.  Think of it like a method body.  The value of the last statement executed is evaluated as the condition. Your code has access to the input coordinate (map), output map, ncube, ncubeMgr, and execution stack (these are the variable names).  All Java code libraries and Groovy can be accessed as well.  For example, println from Groovy can be added to the conditions for debugging (as well as added to the executed cell).  The Groovy expression (or methods) in the executed cell can write multiple outputs to the output map.
 
-As each condition on the Rule axis is executed, the n-cube rule engine writes information to a ".rule" entry into the output map.  This .rule entry is a Map which includes the condition number executed, the condition expression executed, and other useful information.  This allows you to evaluate the rule exection while developing the rules, to see rules fired.  
+As each condition on the Rule axis is executed, the n-cube rule engine writes information to a "_rule" entry into the output map.  This _rule entry is a Map which includes the condition number executed, the condition expression executed, and other useful information.  This allows you to evaluate the rule exection while developing the rules, to see rules fired.
 
 In general, as cells execute, they write to the output map.  The input coordinate could be written to as well.  If it is modified, and a further n-cube is referenced, any modifications to the input coordinate will remain in place until that execution path returns.  When the execution path of the rules finishes and returns, the input map is restored to it's prior condition before execution. When returning then to an outer n-cube (or the code that called ncube.getCells()), that code will see no changes to the input map.  The output map will, of course, contain whatever changes were written to it.  
 
@@ -57,6 +57,8 @@ n-cube can be used free for personal use.  If you plan to included it within a c
 
 Version History
 * 2.1.0
+ * Rule conditions and statements can stop rule execution.  ruleStop() can be called from the condition column or from a Groovy expression or method cell.
+ * Output Map is written to in the '_rule' key of the output map, which is a Map, with an entry to indicate whether or not rules where stopped prematurely.  In the future, other useful rule execution will be added to this map.
  * id's specified in simple JSON format can be long, string, double, or boolean. Allows aliasing columns to be referenced by cells' id field.
  * HTML formatting code moved into separate internal formatters package, where other n-cube formatters would be placed.
 * 2.0.1

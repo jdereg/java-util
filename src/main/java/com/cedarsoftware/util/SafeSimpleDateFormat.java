@@ -1,17 +1,7 @@
 package com.cedarsoftware.util;
 
-import java.text.DateFormatSymbols;
-import java.text.FieldPosition;
-import java.text.Format;
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TimeZone;
+import java.text.*;
+import java.util.*;
 
 /**
  * This class implements a Thread-Safe (re-entrant) SimpleDateFormat
@@ -41,18 +31,19 @@ import java.util.TimeZone;
 public class SafeSimpleDateFormat extends Format
 {
     private final String _format;
-    private static final ThreadLocal<Map<String, SimpleDateFormat>> _dateFormats = new ThreadLocal<Map<String, SimpleDateFormat>>()
+    private static final ThreadLocal<Map<String, DateFormat>> _dateFormats = new ThreadLocal<Map<String, DateFormat>>()
     {
-        public Map<String, SimpleDateFormat> initialValue()
+        public Map<String, DateFormat> initialValue()
         {
-            return new HashMap<String, SimpleDateFormat>();
+            return new HashMap<String, DateFormat>();
         }
     };
 
-    private SimpleDateFormat getDateFormat(String format)
+    // No Locale information?  This doesn't work well with internationalization.
+    private DateFormat getDateFormat(String format)
     {
-        Map<String, SimpleDateFormat> formatters = _dateFormats.get();
-        SimpleDateFormat formatter = formatters.get(format);
+        Map<String, DateFormat> formatters = _dateFormats.get();
+        DateFormat formatter = formatters.get(format);
         if (formatter == null)
         {
             formatter = new SimpleDateFormat(format);
@@ -101,13 +92,4 @@ public class SafeSimpleDateFormat extends Format
         getDateFormat(_format).setLenient(lenient);
     }
 
-    public void setDateFormatSymbols(DateFormatSymbols symbols)
-    {
-        getDateFormat(_format).setDateFormatSymbols(symbols);
-    }
-
-    public void set2DigitYearStart(Date date)
-    {
-        getDateFormat(_format).set2DigitYearStart(date);
-    }
 }

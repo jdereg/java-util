@@ -31,6 +31,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Useful utilities for working with UrlConnections and IO.
@@ -56,6 +58,7 @@ public class UrlUtilities
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
     private static String _referer = null;
     private static String _userAgent = null;
+    private static final Pattern resPattern = Pattern.compile("res:\\/\\/(.+)", Pattern.CASE_INSENSITIVE);
     public static final String SET_COOKIE = "Set-Cookie";
     public static final String COOKIE_VALUE_DELIMITER = ";";
     public static final String PATH = "path";
@@ -436,7 +439,9 @@ public class UrlUtilities
         HttpURLConnection c = null;
         try
         {
-            c = (HttpURLConnection) getConnection(new URL(url), proxyServer, port, inCookies, true, false, false, ignoreSec);
+            Matcher m = resPattern.matcher(url);
+            URL u = m.matches() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+            c = (HttpURLConnection) getConnection(u, proxyServer, port, inCookies, true, false, false, ignoreSec);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
             InputStream stream = IOUtilities.getInputStream(c);
@@ -479,7 +484,10 @@ public class UrlUtilities
         c.setDoOutput(output);
         c.setDoInput(input);
         c.setUseCaches(cache);
-        HttpURLConnection.setFollowRedirects(true);
+        if (c instanceof HttpURLConnection)
+        {
+            HttpURLConnection.setFollowRedirects(true);
+        }
         c.setReadTimeout(220000);
         c.setConnectTimeout(45000);
 

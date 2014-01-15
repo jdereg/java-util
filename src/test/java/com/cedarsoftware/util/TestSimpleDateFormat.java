@@ -183,7 +183,6 @@ public class TestSimpleDateFormat
         assertEquals(15, cal.get(Calendar.MINUTE));
         assertEquals(31, cal.get(Calendar.SECOND));
 
-        System.out.println(TimeZone.getDefault().getDisplayName());
         x.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
 
         then = x.parse(s);

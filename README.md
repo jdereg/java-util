@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.7.3</version>
+  <version>1.7.4</version>
 </dependency>
 
 <dependency>
@@ -36,7 +36,7 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
-* 1.7.3
+* 1.7.4
  * Added "res" protocol (resource) to UrlUtilities to allow files from classpath to easily be loaded.  Useful for testing.
 * 1.7.2
  * UrlUtilities.getContentFromUrl / getContentFromUrlAsString - removed hard-coded proxy server name

@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.7.3</version>
+    <version>1.7.4-SNAPSHOT</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -21,7 +21,7 @@
         <url>https://github.com/Uriljdereg/java-util</url>
         <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
-      <tag>1.7.3.201401151714</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <developers>

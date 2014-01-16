@@ -46,7 +46,7 @@ class NCubeGroovyCell
         return ncubeMgr.getCube(name).getCell(input, output);
     }
 
-    def ruleStop()
+    void ruleStop()
     {
         throw new RuleStop();
     }

@@ -1,0 +1,50 @@
+{
+    "ncube":"idNoValue",
+    "ruleMode":false,
+    "axes":
+        [
+            {
+                "name":"Age",
+                "type":"DISCRETE",
+                "valueType":"LONG",
+                "hasDefault":true,
+                "preferredOrder":1,
+                "multiMatch":false,
+                "columns":
+                    [
+                        {"id":18},
+                        {"id":36},
+                        {"id":65}
+                    ]
+            },
+            {
+                "name":"State",
+                "type":"DISCRETE",
+                "valueType":"STRING",
+                "hasDefault":false,
+                "preferredOrder":1,
+                "multiMatch":false,
+                "columns":
+                    [
+                        {"id":"GA"},
+                        {"id":"OH"},
+                        {"id":"TX"}
+                    ]
+            }
+        ],
+    "cells":
+        [
+            {"id":[18,"GA"],"value":"18 GA"},
+            {"id":[18,"OH"],"value":"18 OH"},
+            {"id":[18,"TX"],"value":"18 TX"},
+            {"id":[36,"GA"],"value":"36 GA"},
+            {"id":[36,"OH"],"value":"36 OH"},
+            {"id":[36,"TX"],"value":"36 TX"},
+            {"id":[65,"GA"],"value":"65 GA"},
+            {"id":[65,"OH"],"value":"65 OH"},
+            {"id":[65,"TX"],"value":"65 TX"},
+            {"id":["GA"],"value":"GA"},
+            {"id":["OH"],"value":"OH"},
+            {"id":["TX"],"value":"TX"}
+        ]
+}

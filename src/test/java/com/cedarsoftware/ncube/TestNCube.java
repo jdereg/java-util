@@ -462,7 +462,7 @@ DELIMITER ;
         }
         long stop = System.nanoTime();
         double diff = (stop - start) / 1000.0;
-        println("time to build and read allCellsInBigCube = " + diff / 1000.0);
+        System.out.println("time to build and read allCellsInBigCube = " + diff / 1000.0);
 //        assertTrue(ncube.toHtml() != null);
     }
 
@@ -5140,6 +5140,23 @@ DELIMITER ;
         ruleOut = (Map) output.get("_rule");
         assertFalse((Boolean) ruleOut.get("ruleStop"));
     }
+
+    @Test
+    public void testIdNoValue()
+    {
+        NCube<String> ncube = NCubeManager.getInstance().getNCubeFromResource("idNoValue.json");
+        Map coord = new HashMap();
+        coord.put("age", 18);
+        coord.put("state", "OH");
+        String s = ncube.getCell(coord);
+        assertEquals("18 OH", s);
+
+        coord.put("age", 19);
+        coord.put("state", "TX");
+        s = ncube.getCell(coord);
+        assertEquals("TX", s);
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

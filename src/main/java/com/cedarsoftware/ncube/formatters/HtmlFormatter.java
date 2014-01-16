@@ -318,7 +318,7 @@ public class HtmlFormatter extends NCubeFormatter
             }
 
             String id = "k" + setToString(coord);
-            s.append(cellValue instanceof Number ? " <td data-id=\"" + id + "\" class=\"ncube-num\">" : " <td data-id=\"" + id + "\">");
+            s.append(cellValue instanceof Number ? " <td data-id=\"" + id + "\" class=\"ncube-num cell\">" : " <td data-id=\"" + id + "\" class=\"cell\">");
             s.append(strCell);
             s.append("</td>\n");
         }

@@ -4916,10 +4916,35 @@ DELIMITER ;
     }
 
 //    @Test
+//    public void testTruckingImport() throws Exception
+//    {
+//        List<NCube> cubes = NCubeManager.getInstance().getNCubesFromResource("product_selection.json");
+//        Connection connection = getConnection();
+//
+//        String[] apps = new String[] {"UD.REF.APP"};
+//        String[] versions = new String[] {"0.1.0", "1.0.0", "2.0.0", "2.0.1"};
+//        for (int a=0; a < apps.length; a++)
+//        {
+//            for (int v=0; v < versions.length; v++)
+//            {
+//                for (int n=0; n < cubes.size(); n++)
+//                {
+//                    NCube ncube = cubes.get(n);
+//                    System.out.println(ncube.getName() + ": " + apps[a] + ":" + versions[v]);
+//                    nCubeManager.deleteCube(connection, apps[a], ncube.getName(), versions[v], true);
+//                    nCubeManager.createCube(connection, apps[a], ncube, versions[v]);
+//                }
+//            }
+//        }
+//        connection.close();
+//    }
+
+
+//    @Test
 //    public void testCreateBunchOfCubes() throws Exception
 //    {
 //        String[] apps = new String[] {"BILLING", "CLAIMS", "UD.REF.APP", "DASHBOARD"};
-//        String[] versions = new String[] {"0.1.0", "1.0.0", "1.1.0", "2.0.0", "2.0.1", "2.1.0"};
+//        String[] versions = new String[] {"0.1.0", "1.0.0", "2.0.0", "2.0.1"};
 //        String[] cubes = new String[] {
 //                "2DSimpleJson.json",
 //                "approvalLimits.json",
@@ -4940,7 +4965,9 @@ DELIMITER ;
 //                "testCube4.json",
 //                "testCube5.json",
 //                "testCube6.json",
-//                "urlContent.json"
+//                "urlContent.json",
+//                "nCubeBUSpecificFieldsScope.json",
+//
 //        };
 //
 //        Connection connection = getConnection();

@@ -445,6 +445,15 @@ public class Axis
         assignDisplayOrder(cols);
         return true;
 	}
+
+    public void updateColumn(long id, Comparable value)
+    {
+        Column col = idToCol.get(id);
+        deleteColumnById(id);
+        col = addColumn(value);
+        col.id = id;
+        buildScaffolding();
+    }
 	
 	private static void assignDisplayOrder(final List<Column> cols) 
 	{

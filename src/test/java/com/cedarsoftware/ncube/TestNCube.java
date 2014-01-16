@@ -462,7 +462,7 @@ DELIMITER ;
         }
         long stop = System.nanoTime();
         double diff = (stop - start) / 1000.0;
-        System.out.println("time to build and read allCellsInBigCube = " + diff / 1000.0);
+        println("time to build and read allCellsInBigCube = " + diff / 1000.0);
 //        assertTrue(ncube.toHtml() != null);
     }
 
@@ -5155,6 +5155,12 @@ DELIMITER ;
         coord.put("state", "TX");
         s = ncube.getCell(coord);
         assertEquals("TX", s);
+    }
+
+    @Test
+    public void testUpdateColumn()
+    {
+        // TODO: Write this test for the new API
     }
 
     // ---------------------------------------------------------------------------------

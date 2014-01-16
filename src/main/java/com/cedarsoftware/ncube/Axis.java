@@ -130,6 +130,18 @@ public class Axis
         return multiMatch;
     }
 
+    /**
+     * Use Column id to retrieve column (hash map lookup), O(1)
+     */
+    public Column getColumnById(long id)
+    {
+        return idToCol.get(id);
+    }
+
+    /**
+     * Turn on multiMatch for this axis.
+     * @param state boolean true turns on multiMatch, false turns it off.
+     */
     public void setMultiMatch(boolean state)
     {
         if (state == multiMatch)
@@ -341,20 +353,31 @@ public class Axis
 			return null;
 		}
 
+        return deleteColumnById(col.id);
+	}
+
+    Column deleteColumnById(long id)
+    {
+        Column col = idToCol.get(id);
+        if (col == null)
+        {
+            return null;
+        }
+
         columns.remove(col);
         if (col.isDefault())
         {
             defaultCol = null;
         }
-		
-		List<Column> cols = new ArrayList<Column>(columns);
-		sortColumnsByDisplayOrder(cols);
+
+        List<Column> cols = new ArrayList<Column>(columns);
+        sortColumnsByDisplayOrder(cols);
         assignDisplayOrder(cols);
 
         // Remove column from scaffolding
-        removeColumnFromScaffolding(value, col);
+        removeColumnFromScaffolding(col.getValueThatMatches(), col);
         return col;
-	}
+    }
 
     private void removeColumnFromScaffolding(Comparable value, Column col)
     {

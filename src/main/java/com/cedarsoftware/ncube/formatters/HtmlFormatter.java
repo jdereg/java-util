@@ -294,6 +294,7 @@ public class HtmlFormatter extends NCubeFormatter
     private void buildCell(StringBuilder s, Set<Long> coord)
     {
         Object cellValue = ncube.getCellByIdNoExecute(coord);
+        String id = "k" + setToString(coord);
         if (cellValue != null)
         {
             String strCell;
@@ -317,14 +318,15 @@ public class HtmlFormatter extends NCubeFormatter
                 strCell = cellValue.toString();
             }
 
-            String id = "k" + setToString(coord);
             s.append(cellValue instanceof Number ? " <td data-id=\"" + id + "\" class=\"ncube-num cell\">" : " <td data-id=\"" + id + "\" class=\"cell\">");
             s.append(strCell);
             s.append("</td>\n");
         }
         else
         {
-            s.append(" <td></td>\n");
+            s.append(" <td data-id=\"");
+            s.append(id);
+            s.append("\" class=\"cell\"></td>");
         }
     }
 

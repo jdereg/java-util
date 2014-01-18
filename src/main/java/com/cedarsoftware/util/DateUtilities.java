@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  */
 public class DateUtilities
 {
-    private static String mos = "(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)";
+    private static final String mos = "(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)";
     private static final Pattern datePattern1 = Pattern.compile("(\\d{4})[\\./-](\\d{1,2})[\\./-](\\d{1,2})");
     private static final Pattern datePattern2 = Pattern.compile("(\\d{1,2})[\\./-](\\d{1,2})[\\./-](\\d{4})");
     private static final Pattern datePattern3 = Pattern.compile(mos + "[ ,]+(\\d{1,2})[ ,]+(\\d{4})", Pattern.CASE_INSENSITIVE);

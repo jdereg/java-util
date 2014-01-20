@@ -28,7 +28,7 @@ public class SystemUtilities
      */
     public static String getExternalVariable(String var)
     {
-        String variable = System.getenv().get(var);
+        String variable = System.getenv(var);
         if (StringUtilities.isEmpty(variable))
         {
             variable = System.getProperty(var);

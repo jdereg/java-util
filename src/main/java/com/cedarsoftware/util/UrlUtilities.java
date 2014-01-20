@@ -58,7 +58,8 @@ public class UrlUtilities
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
     private static String _referer = null;
     private static String _userAgent = null;
-    private static final Pattern resPattern = Pattern.compile("res:\\/\\/(.+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
+    //private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/.*", Pattern.CASE_INSENSITIVE);
     public static final String SET_COOKIE = "Set-Cookie";
     public static final String COOKIE_VALUE_DELIMITER = ";";
     public static final String PATH = "path";
@@ -436,12 +437,12 @@ public class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
     {
-        HttpURLConnection c = null;
+        URLConnection c = null;
         try
         {
             Matcher m = resPattern.matcher(url);
-            URL u = m.matches() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
-            c = (HttpURLConnection) getConnection(u, proxyServer, port, inCookies, true, false, false, ignoreSec);
+            URL u = m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+            c = (URLConnection) getConnection(u, proxyServer, port, inCookies, true, false, false, ignoreSec);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
             InputStream stream = IOUtilities.getInputStream(c);
@@ -463,7 +464,9 @@ public class UrlUtilities
         }
         finally
         {
-            disconnect(c);
+            if (c instanceof HttpURLConnection) {
+                disconnect((HttpURLConnection)c);
+            }
         }
     }
 

@@ -1,7 +1,9 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
+import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.UniqueIdGenerator;
+import com.cedarsoftware.util.io.JsonReader;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -15,6 +17,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Implements an Axis of an NCube. When modeling, think of an axis as a 'condition'
@@ -50,6 +54,7 @@ public class Axis
     private Column defaultCol;
 	private int preferredOrder = SORTED;
     private boolean multiMatch = false;
+    private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
 
     // used to get O(1) on SET axis for the discrete elements in the Set
     private transient Map<Comparable, Column> discreteToCol = new TreeMap<Comparable, Column>();
@@ -263,8 +268,17 @@ public class Axis
 		return cols;
 	}
 
-	public Column addColumn(Comparable value)
-	{
+    /**
+     * Given the passed in 'raw' value, get a Column from the passed in value, which entails
+     * converting the 'raw' value to the correct type, promoting the value to the appropriate
+     * internal value for comparison, and so on.
+     * @param value Comparable typically a primitive, but can also be an n-cube Range, RangeSet, CommandCell,
+     *              or 2D, 3D, or LatLon
+     * @return a Column with the up-promoted value as the column's value, and a unique ID on the column.  If
+     * the original value is a Range or RangeSet, the components in the Range or RangeSet are also up-promoted.
+     */
+    Column createColumnFromValue(Comparable value)
+    {
         Comparable v;
         if (value == null)
         {  // Attempting to add Default column to axis
@@ -317,8 +331,14 @@ public class Axis
                 throw new IllegalStateException("New axis type added without complete support.");
             }
         }
-		Column column = new Column(v);
-        if (v == null)
+        return new Column(v);
+    }
+
+	public Column addColumn(Comparable value)
+	{
+        Column column = createColumnFromValue(value);
+
+        if (column.getValue() == null)
         {
             defaultCol = column;
         }
@@ -326,8 +346,8 @@ public class Axis
         // New columns are always added at the end in terms of displayOrder, but internally they are added
         // in the correct sort order location.  The sort order of the list is required because binary searches
         // are done against it.
-        column.setDisplayOrder(v == null ? Integer.MAX_VALUE : size());
-        int where = Collections.binarySearch(columns, v);
+        column.setDisplayOrder(column.getValue() == null ? Integer.MAX_VALUE : size());
+        int where = Collections.binarySearch(columns, column.getValue());
         if (where < 0)
         {
             where = Math.abs(where + 1);
@@ -369,10 +389,6 @@ public class Axis
         {
             defaultCol = null;
         }
-
-        List<Column> cols = new ArrayList<Column>(columns);
-        sortColumnsByDisplayOrder(cols);
-        assignDisplayOrder(cols);
 
         // Remove column from scaffolding
         removeColumnFromScaffolding(col.getValueThatMatches(), col);
@@ -431,12 +447,12 @@ public class Axis
 		
 		if (curPos < 0 || curPos >= columns.size() || newPos < 0 || newPos >= columns.size())
 		{
-			throw new IllegalArgumentException("Position must be >= 0 and < number of Columns to reorder column, axis '" + name +"'");
+			throw new IllegalArgumentException("Position must be >= 0 and < number of Columns to reorder column, axis '" + name + "'");
 		}
 
         if (columns.get(curPos).isDefault() || columns.get(newPos).isDefault())
         {
-            throw new IllegalArgumentException("Cannot move 'Default' column, axis '" + name +"'");
+            throw new IllegalArgumentException("Cannot move 'Default' column, axis '" + name + "'");
         }
 
         List<Column> cols = new ArrayList<Column>(columns);
@@ -446,15 +462,174 @@ public class Axis
         return true;
 	}
 
+    /**
+     * Update (change) the value of an existing column.  This entails not only
+     * changing the value, but resorting the axis's columns (columns are always in
+     * sorted order for quick retrieval).  The display order of the columns is not
+     * rebuilt, because the column is changed in-place (e.g., changing Mon to Monday
+     * does not change it's display order.)
+     * @param id long Column ID to update
+     * @param value 'raw' value to set into the new column (will be up-promoted).
+     */
     public void updateColumn(long id, Comparable value)
     {
         Column col = idToCol.get(id);
         deleteColumnById(id);
-        col = addColumn(value);
-        col.id = id;
+        Column newCol = createColumnFromValue(value);
+        newCol.setId(id);
+        newCol.setDisplayOrder(col.getDisplayOrder());
+
+        // Updated column is added in the same 'displayOrder' location.  For example, the months are a
+        // displayOrder Axis type.  Updating 'Jun' to 'June' will use the same displayOrder value.
+        // However, the columns are stored internally in sorted order (for fast lookup), so we need to
+        // find where it should go (updating Fune to June, for example (fixing a misspelling), will
+        // result in the column being sorted to a different location (while maintaining its display
+        // order, because displayOrder is stored on the column).
+        int where = Collections.binarySearch(columns, newCol.getValue());
+        if (where < 0)
+        {
+            where = Math.abs(where + 1);
+        }
+        columns.add(where, newCol);
+        addScaffolding(newCol);
+    }
+
+    public void updateColumns(Axis newCols)
+    {
+        columns.clear();
+        int order = 1;
+
+        for (Column column : newCols.columns)
+        {
+            column.setDisplayOrder(order++);
+            if (column.getId() < 0)
+            {   // Create new ID for new column
+                column.setId(UniqueIdGenerator.getUniqueId());
+            }
+            columns.add(column);
+        }
+
+        // Columns must be stored sorted for fast retrieval, regardless of whether the
+        // preferred order is SORTED or DISPLAY.  Display order was already marked above,
+        // from newCols.
+        Collections.sort(columns, new Comparator<Column>()
+        {
+            public int compare(Column c1, Column c2)
+            {
+                return c1.compareTo(c2);
+            }
+        });
+
+        // Put default column back if it was already there.
+        if (defaultCol != null)
+        {
+            columns.add(defaultCol);
+        }
+
         buildScaffolding();
     }
-	
+
+    // Take the passed in value, and prepare it to be allowed on a given axis type.
+    public Comparable convertStringToColumnValue(String value)
+    {
+        switch(type)
+        {
+            case DISCRETE:
+                return convertStringToDiscreteValue(value, valueType);
+
+            case RANGE:
+                Matcher matcher = rangePattern.matcher(value);
+                if (matcher.find())
+                {
+                    String one = matcher.group(1);
+                    String two = matcher.group(2);
+                    return new Range(convertStringToDiscreteValue(one.trim(), valueType), convertStringToDiscreteValue(two.trim(), valueType));
+                }
+                else
+                {
+                    throw new IllegalArgumentException("Value (" + value + ") cannot be parsed as a Range.  Use [value1, value2].");
+                }
+
+            case SET:
+                // TODO: Parse SETs
+                break;
+
+            case NEAREST:
+                // TODO: Parse items on NEAREST (not just lat/lon, but also numbers, Strings, etc.)
+                break;
+
+            case RULE:
+                return convertStringToDiscreteValue(value, valueType);
+
+            default:
+                throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to process value: " + value);
+        }
+        return "";
+    }
+
+    private Comparable convertStringToDiscreteValue(String input, AxisValueType valType)
+    {
+        switch(valType)
+        {
+            case STRING:
+                return input;
+
+            case LONG:
+                try
+                {
+                    return Long.parseLong(input);
+                }
+                catch (NumberFormatException e)
+                {
+                    break;
+                }
+
+            case BIG_DECIMAL:
+                try
+                {
+                    return new BigDecimal(input);
+                }
+                catch (Exception e)
+                {
+                    throw new IllegalArgumentException("Could not parse big decimal: " + input, e);
+                }
+
+            case DOUBLE:
+                try
+                {
+                    return new Double(input);
+                }
+                catch (Exception e)
+                {
+                    throw new IllegalArgumentException("Could not parse double: " + input, e);
+                }
+
+            case DATE:
+                try
+                {
+                    return DateUtilities.parseDate(input);
+                }
+                catch (Exception e)
+                {
+                    throw new IllegalArgumentException("Could not parse date: " + input, e);
+                }
+
+            case EXPRESSION:
+                return new GroovyExpression(input);
+
+            case COMPARABLE:
+                try
+                {
+                    return (Comparable) JsonReader.jsonToJava(input);
+                }
+                catch (Exception e)
+                {
+                    throw new IllegalArgumentException("Could not convert JSON string to Java Comparable instance, json: " + input, e);
+                }
+        }
+        throw new IllegalArgumentException("Unsupported axis value type (" + valueType + ") for axis '" + name + "', trying to process value: " + input);
+    }
+
 	private static void assignDisplayOrder(final List<Column> cols) 
 	{
 		final int size = cols.size(); 

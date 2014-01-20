@@ -62,7 +62,7 @@ public class Column implements Comparable<Comparable>
         return id;
     }
 
-    void set(long id)
+    void setId(long id)
     {
         this.id = id;
     }
@@ -122,12 +122,12 @@ public class Column implements Comparable<Comparable>
         return value;
     }
 	
-	public void setDisplayOrder(int order)
+	void setDisplayOrder(int order)
 	{
 		displayOrder = order;
 	}
 	
-	public int getDisplayOrder()
+	int getDisplayOrder()
 	{
 		return displayOrder;
 	}

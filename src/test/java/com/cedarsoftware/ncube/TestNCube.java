@@ -1894,6 +1894,7 @@ DELIMITER ;
         assertTrue(cols2.get(5).getValue().equals("Sat"));
         assertTrue(cols2.get(6).getValue().equals("Sun"));
 
+        // Delete middle
         ncube.deleteColumn("Days", "Wed");
 
         axis.setColumnOrder(Axis.SORTED);
@@ -1917,10 +1918,40 @@ DELIMITER ;
         // Ensure no gaps left in display order after column is removed
         assertTrue(cols2.get(0).getDisplayOrder() == 0);
         assertTrue(cols2.get(1).getDisplayOrder() == 1);
-        assertTrue(cols2.get(2).getDisplayOrder() == 2);
-        assertTrue(cols2.get(3).getDisplayOrder() == 3);
-        assertTrue(cols2.get(4).getDisplayOrder() == 4);
-        assertTrue(cols2.get(5).getDisplayOrder() == 5);
+        assertTrue(cols2.get(2).getDisplayOrder() == 3);
+        assertTrue(cols2.get(3).getDisplayOrder() == 4);
+        assertTrue(cols2.get(4).getDisplayOrder() == 5);
+        assertTrue(cols2.get(5).getDisplayOrder() == 6);
+
+        // Delete First
+        ncube.deleteColumn("Days", "Mon");
+        cols2 = axis.getColumns();
+        assertTrue(cols2.get(0).getValue().equals("Tue"));
+        assertTrue(cols2.get(1).getValue().equals("Thu"));
+        assertTrue(cols2.get(2).getValue().equals("Fri"));
+        assertTrue(cols2.get(3).getValue().equals("Sat"));
+        assertTrue(cols2.get(4).getValue().equals("Sun"));
+
+        // Ensure no gaps left in display order after column is removed
+        assertTrue(cols2.get(0).getDisplayOrder() == 1);
+        assertTrue(cols2.get(1).getDisplayOrder() == 3);
+        assertTrue(cols2.get(2).getDisplayOrder() == 4);
+        assertTrue(cols2.get(3).getDisplayOrder() == 5);
+        assertTrue(cols2.get(4).getDisplayOrder() == 6);
+
+        // Delete Last
+        ncube.deleteColumn("Days", "Sun");
+        cols2 = axis.getColumns();
+        assertTrue(cols2.get(0).getValue().equals("Tue"));
+        assertTrue(cols2.get(1).getValue().equals("Thu"));
+        assertTrue(cols2.get(2).getValue().equals("Fri"));
+        assertTrue(cols2.get(3).getValue().equals("Sat"));
+
+        // Ensure no gaps left in display order after column is removed
+        assertTrue(cols2.get(0).getDisplayOrder() == 1);
+        assertTrue(cols2.get(1).getDisplayOrder() == 3);
+        assertTrue(cols2.get(2).getDisplayOrder() == 4);
+        assertTrue(cols2.get(3).getDisplayOrder() == 5);
     }
 
     @Test
@@ -5187,7 +5218,143 @@ DELIMITER ;
     @Test
     public void testUpdateColumn()
     {
-        // TODO: Write this test for the new API
+        Axis dow = getShortDaysOfWeekAxis();
+        Column wed = dow.findColumn("Wed");
+        dow.updateColumn(wed.id, "aWed");
+        wed = dow.getColumns().get(2);
+        assertEquals(wed.getValue(), "aWed");
+
+        Column mon = dow.findColumn("Mon");
+        dow.updateColumn(mon.id, "aMon");
+        mon = dow.getColumns().get(0);
+        assertEquals(mon.getValue(), "aMon");
+
+        Column sun = dow.findColumn("Sun");
+        dow.updateColumn(sun.id, "aSun");
+        sun = dow.getColumns().get(6);
+        assertEquals(sun.getValue(), "aSun");
+
+        List<Column> cols = dow.getColumnsWithoutDefault();
+        assertEquals(cols.get(4).getValue(), "aMon");
+        assertEquals(cols.get(5).getValue(), "aSun");
+        assertEquals(cols.get(6).getValue(), "aWed");
+    }
+
+    @Test
+    public void testProveDefaultLast()
+    {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED);
+        axis.addColumn("alpha");
+        axis.addColumn("charlie");
+        axis.addColumn("bravo");
+        List<Column> cols = axis.getColumns();
+        assertEquals(cols.get(0).getValue(), "alpha");
+        assertEquals(cols.get(1).getValue(), "bravo");
+        assertEquals(cols.get(2).getValue(), "charlie");
+        assertEquals(cols.get(3).getValue(), null);
+
+        axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.SORTED);
+        axis.addColumn("alpha");
+        axis.addColumn("charlie");
+        axis.addColumn("bravo");
+        cols = axis.getColumns();
+        assertEquals(3, cols.size());
+        assertEquals(cols.get(0).getValue(), "alpha");
+        assertEquals(cols.get(1).getValue(), "bravo");
+        assertEquals(cols.get(2).getValue(), "charlie");
+
+        axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY);
+        axis.addColumn("alpha");
+        axis.addColumn("charlie");
+        axis.addColumn("bravo");
+        cols = axis.getColumns();
+        assertEquals(cols.get(0).getValue(), "alpha");
+        assertEquals(cols.get(1).getValue(), "charlie");
+        assertEquals(cols.get(2).getValue(), "bravo");
+        assertEquals(cols.get(3).getValue(), null);
+
+        axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
+        axis.addColumn("alpha");
+        axis.addColumn("charlie");
+        axis.addColumn("bravo");
+        cols = axis.getColumns();
+        assertEquals(3, cols.size());
+        assertEquals(cols.get(0).getValue(), "alpha");
+        assertEquals(cols.get(1).getValue(), "charlie");
+        assertEquals(cols.get(2).getValue(), "bravo");
+    }
+
+    @Test
+    public void testConvertDiscreteColumnValue() throws Exception
+    {
+        // Strings
+        Axis states = getStatesAxis();
+        assertEquals(states.convertStringToColumnValue("OH"), "OH");
+
+        // Longs
+        Axis longs = new Axis("longs", AxisType.DISCRETE, AxisValueType.LONG, false);
+        assertEquals(-1L, longs.convertStringToColumnValue("-1"));
+        assertEquals(0L, longs.convertStringToColumnValue("0"));
+        assertEquals(1L, longs.convertStringToColumnValue("1"));
+        assertEquals(12345678901234L, longs.convertStringToColumnValue("12345678901234"));
+        assertEquals(-12345678901234L, longs.convertStringToColumnValue("-12345678901234"));
+        try
+        {
+            longs.convertStringToColumnValue("-12345.678901234");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("supported"));
+        }
+
+        // BigDecimals
+        Axis bigDec = new Axis("bigDec", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, false);
+        assertEquals(new BigDecimal("-1"), bigDec.convertStringToColumnValue("-1"));
+        assertEquals(new BigDecimal("0"), bigDec.convertStringToColumnValue("0"));
+        assertEquals(new BigDecimal("1"), bigDec.convertStringToColumnValue("1"));
+        assertEquals(new BigDecimal("12345678901234"), bigDec.convertStringToColumnValue("12345678901234"));
+        assertEquals(new BigDecimal("-12345678901234"), bigDec.convertStringToColumnValue("-12345678901234"));
+        assertEquals(new BigDecimal("-12345.678901234"), bigDec.convertStringToColumnValue("-12345.678901234"));
+
+        // Doubles
+        Axis doubles = new Axis("bigDec", AxisType.DISCRETE, AxisValueType.DOUBLE, false);
+        assertEquals(-1.0, doubles.convertStringToColumnValue("-1"));
+        assertEquals(0.0, doubles.convertStringToColumnValue("0"));
+        assertEquals(1.0, doubles.convertStringToColumnValue("1"));
+        assertEquals(12345678901234.0, doubles.convertStringToColumnValue("12345678901234"));
+        assertEquals(-12345678901234.0, doubles.convertStringToColumnValue("-12345678901234"));
+        assertEquals(-12345.678901234, doubles.convertStringToColumnValue("-12345.678901234"));
+
+        // Dates
+        Axis dates = new Axis("Dates", AxisType.DISCRETE, AxisValueType.DATE, false);
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(2014, 0, 18, 0, 0, 0);
+        assertEquals(dates.convertStringToColumnValue("1/18/2014"), cal.getTime());
+        cal.clear();
+        cal.set(2014, 6, 9, 13, 10, 58);
+        assertEquals(dates.convertStringToColumnValue("2014 Jul 9 13:10:58"), cal.getTime());
+        try
+        {
+            dates.convertStringToColumnValue("2014 Ju1y 9 13:10:58");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            // Used 1 not L
+        }
+
+        // Expression
+        Axis exp = new Axis("Condition", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
+        assertEquals(new GroovyExpression("println 'Hello'"), exp.convertStringToColumnValue("println 'Hello'"));
+
+        // Comparable (this allows user to create Java Comparable object instances as Column values!
+        Axis comp = new Axis("Comparable", AxisType.DISCRETE, AxisValueType.COMPARABLE, false);
+        cal.clear();
+        cal.set(2014, 0, 18, 16, 26, 0);
+        String json = JsonWriter.objectToJson(cal);
+        assertEquals(cal, comp.convertStringToColumnValue(json));
     }
 
     // ---------------------------------------------------------------------------------

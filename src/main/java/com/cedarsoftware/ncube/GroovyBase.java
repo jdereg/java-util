@@ -55,6 +55,17 @@ public abstract class GroovyBase extends CommandCell
         super(cmd);
     }
 
+    public boolean equals(Object other)
+    {
+        if (!(other instanceof GroovyBase))
+        {
+            return false;
+        }
+
+        GroovyBase that = (GroovyBase) other;
+        return getCmd().equals(that.getCmd());
+    }
+
     protected static String fixClassName(String name)
     {
         return groovyProgramClassName.matcher(name).replaceAll("_");

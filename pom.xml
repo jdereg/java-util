@@ -35,7 +35,7 @@
     <properties>
         <version.hsqldb>2.3.1</version.hsqldb>
         <version.json-io>2.4.1</version.json-io>
-        <version.java-util>1.7.1</version.java-util>
+        <version.java-util>1.8.0</version.java-util>
         <version.commons.logging>1.1.3</version.commons.logging>
         <version.junit>4.11</version.junit>
         <version.groovy>2.2.1</version.groovy>

@@ -54,36 +54,36 @@ import java.util.regex.Pattern;
  */
 public class NCubeManager
 {
-    private final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
+    private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Pattern validCubeName = Pattern.compile("[0-9a-zA-Z:.|#_-]+");
     private static final Pattern validVersion = Pattern.compile("^(\\d+\\.)(\\d+\\.)(\\*|\\d+)$");
-
-    public static NCubeManager getInstance()
-    {
-        return new NCubeManager();
-    }
 
     /**
      * @param name String name of an NCube.
      * @return NCube instance with the given name.  Please note
      * that the cube must be loaded first before calling this.
      */
-    public NCube getCube(String name)
+    public static NCube getCube(String name, String version)
     {
-   		return cubeList.get(name);
+   		return cubeList.get(makeCacheKey(name, version));
+    }
+
+    static String makeCacheKey(String name, String version)
+    {
+        return name + '.' + version;
     }
 
     /**
      * Add a cube to the internal map of available cubes.
      * @param ncube NCube to add to the list.
      */
-    public void addCube(NCube ncube)
+    static void addCube(NCube ncube, String version)
     {
         synchronized(cubeList)
         {
-            cubeList.put(ncube.getName(), ncube);
-            ncube.setManager(this);
+            ncube.setVersion(version);
+            cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
         }
     }
 
@@ -92,7 +92,7 @@ public class NCubeManager
      * loaded (cached) in memory.  A copy of the internal cache
      * is returned.
      */
-    public Map<String, NCube> getCachedNCubes()
+    public static Map<String, NCube> getCachedNCubes()
     {
         synchronized (cubeList)
         { return new TreeMap<String, NCube>(cubeList); }
@@ -101,7 +101,7 @@ public class NCubeManager
     /**
      * Used for testing.
      */
-    public void clearCubeList()
+    public static void clearCubeList()
     {
         synchronized(cubeList)
         {
@@ -188,7 +188,7 @@ public class NCubeManager
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
      * @return NCube that matches, or null if not found.
      */
-    public NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
+    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         validateConnection(connection);
         validateApp(app);
@@ -230,17 +230,17 @@ public class NCubeManager
                         throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
                     }
 
-                    cubeList.put(ncube.getName(), ncube);
+                    addCube(ncube, version);
                     Set<String> subCubeList = ncube.getReferencedCubeNames();
 
                     for (String cubeName : subCubeList)
                     {
-                        if (!cubeList.containsKey(cubeName))
+                        final String cacheKey = makeCacheKey(cubeName, version);
+                        if (!cubeList.containsKey(cacheKey))
                         {
                             loadCube(connection, app, cubeName, version, status, sysDate);
                         }
                     }
-                    ncube.setManager(this);
                     return ncube;
                 }
                 return null; // Indicates not found
@@ -262,7 +262,7 @@ public class NCubeManager
     /**
      * Retrieve all cube names that are deeply referenced by the named app, cube (name), version, and status.
      */
-    public void getReferencedCubeNames(Connection connection, String app, String name, String version, String status, Date sysDate, Set<String> refs)
+    public static void getReferencedCubeNames(Connection connection, String app, String name, String version, String status, Date sysDate, Set<String> refs)
     {
         validateConnection(connection);
         validateApp(app);
@@ -336,7 +336,7 @@ public class NCubeManager
      * Retrieve all n-cubes that have a name that matches the SQL like statement, within the specified app, status,
      * version, and system date.
      */
-    public Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
+    public static Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
     {
         validateConnection(connection);
         validateApp(app);
@@ -372,7 +372,7 @@ public class NCubeManager
             while (rs.next())
             {
                 NCubeInfoDto dto = new NCubeInfoDto();
-                dto.id = rs.getLong("n_cube_id");
+                dto.id = Long.toString(rs.getLong("n_cube_id"));
                 dto.name = rs.getString("n_cube_nm");
                 byte[] notes = rs.getBytes("notes_bin");
                 dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
@@ -406,7 +406,7 @@ public class NCubeManager
     /**
      * Duplicate the specified n-cube, given it the new name, and the same app, version, status as the source n-cube.
      */
-    public void duplicate(Connection connection, String newName, String name, String newApp, String app, String newVersion, String version, String status, Date sysDate)
+    public static void duplicate(Connection connection, String newName, String name, String newApp, String app, String newVersion, String version, String status, Date sysDate)
     {
         NCube ncube = loadCube(connection, app, name, version, status, sysDate);
         NCube copy = ncube.duplicate(newName);
@@ -420,7 +420,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getAppNames(Connection connection, Date sysDate)
+    public static Object[] getAppNames(Connection connection, Date sysDate)
     {
         validateConnection(connection);
         if (sysDate == null)
@@ -460,7 +460,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getAppVersions(Connection connection, String app, String status, Date sysDate)
+    public static Object[] getAppVersions(Connection connection, String app, String status, Date sysDate)
     {
         validateConnection(connection);
         validateApp(app);
@@ -508,7 +508,7 @@ public class NCubeManager
      * @param ncube NCube to be updated.
      * @return boolean true on success, false otherwise
      */
-    public boolean updateCube(Connection connection, String app, NCube ncube, String version)
+    public static boolean updateCube(Connection connection, String app, NCube ncube, String version)
     {
         validateConnection(connection);
         validateApp(app);
@@ -555,7 +555,7 @@ public class NCubeManager
      * @param connection JDBC connection
      * @param ncube NCube to be persisted
      */
-    public void createCube(Connection connection, String app, NCube ncube, String version)
+    public static void createCube(Connection connection, String app, NCube ncube, String version)
     {
         validateConnection(connection);
         validateApp(app);
@@ -601,7 +601,7 @@ public class NCubeManager
                     }
                 }
 
-                cubeList.put(ncube.getName(), ncube);
+                addCube(ncube, version);
             }
             catch (IllegalStateException e) { throw e; }
             catch (Exception e)
@@ -627,7 +627,7 @@ public class NCubeManager
      * @param version String version to move from SNAPSHOT to RELEASE
      * @return int count of ncubes that were released
      */
-    public int releaseCubes(Connection connection, String app, String version)
+    public static int releaseCubes(Connection connection, String app, String version)
     {
         validateConnection(connection);
         validateApp(app);
@@ -677,7 +677,7 @@ public class NCubeManager
      * an entire set of NCubes and places a new version label on them,
      * in SNAPSHOT status.
      */
-    public int createSnapshotCubes(Connection connection, String app, String relVersion, String newSnapVer)
+    public static int createSnapshotCubes(Connection connection, String app, String relVersion, String newSnapVer)
     {
         validateConnection(connection);
         validateApp(app);
@@ -763,7 +763,7 @@ public class NCubeManager
     /**
      * Change the SNAPSHOT version value.
      */
-    public void changeVersionValue(Connection connection, String app, String currVersion, String newSnapVer)
+    public static void changeVersionValue(Connection connection, String app, String currVersion, String newSnapVer)
     {
         validateConnection(connection);
         validateApp(app);
@@ -817,7 +817,7 @@ public class NCubeManager
      * @param connection JDBC connection
      * @param name NCube to be deleted
      */
-    public boolean deleteCube(Connection connection, String app, String name, String version, boolean allowDelete)
+    public static boolean deleteCube(Connection connection, String app, String name, String version, boolean allowDelete)
     {
         validateConnection(connection);
         validateApp(app);
@@ -843,7 +843,7 @@ public class NCubeManager
                 int rows = stmt.executeUpdate();
                 if (rows > 0)
                 {
-                    cubeList.remove(name);
+                    cubeList.remove(makeCacheKey(name, version));
                     return true;
                 }
                 return false;
@@ -865,7 +865,7 @@ public class NCubeManager
      * Update the notes associated to an NCube
      * @return true if the update succeeds, false otherwise
      */
-    public boolean updateNotes(Connection connection, String app, String name, String version, String notes)
+    public static boolean updateNotes(Connection connection, String app, String name, String version, String notes)
     {
         validateConnection(connection);
         validateApp(app);
@@ -907,7 +907,7 @@ public class NCubeManager
      * Get the notes associated to an NCube
      * @return String notes.
      */
-    public String getNotes(Connection connection, String app, String name, String version, Date sysDate)
+    public static String getNotes(Connection connection, String app, String name, String version, Date sysDate)
     {
         validateConnection(connection);
         validateApp(app);
@@ -954,7 +954,7 @@ public class NCubeManager
      * Update the test data associated to an NCube
      * @return true if the update succeeds, false otherwise
      */
-    public boolean updateTestData(Connection connection, String app, String name, String version, String testData)
+    public static boolean updateTestData(Connection connection, String app, String name, String version, String testData)
     {
         validateConnection(connection);
         validateApp(app);
@@ -1045,7 +1045,7 @@ public class NCubeManager
         }
     }
 
-    public NCube getNCubeFromResource(String name)
+    public static NCube getNCubeFromResource(String name)
     {
         try
         {
@@ -1057,7 +1057,7 @@ public class NCubeManager
             reader.close();
             String json = JsonWriter.objectToJson(jObj);
             NCube ncube = NCube.fromSimpleJson(json);
-            addCube(ncube);
+            addCube(ncube, "file");
             return ncube;
         }
         catch (IOException e)
@@ -1068,7 +1068,7 @@ public class NCubeManager
         }
     }
 
-    public List<NCube> getNCubesFromResource(String name)
+    public static List<NCube> getNCubesFromResource(String name)
     {
         String lastSuccessful = "";
         try
@@ -1086,7 +1086,7 @@ public class NCubeManager
                 JsonObject ncube = (JsonObject) cube;
                 String json = JsonWriter.objectToJson(ncube);
                 NCube nCube = NCube.fromSimpleJson(json);
-                addCube(nCube);
+                addCube(nCube, "file");
                 lastSuccessful = nCube.getName();
                 cubeList.add(nCube);
             }

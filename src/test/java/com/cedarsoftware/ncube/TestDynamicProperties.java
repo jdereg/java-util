@@ -10,7 +10,7 @@ public class TestDynamicProperties extends NCubeTester {
 
     @Test
     public void testCprStyleProperties() {
-        NCube cpr = nCubeManager.getNCubeFromResource("cpr.json");
+        NCube cpr = NCubeManager.getNCubeFromResource("cpr.json");
 
         Assert.assertEquals("CPR", cpr.getName());
 

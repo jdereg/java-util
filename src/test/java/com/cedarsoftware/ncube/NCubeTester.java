@@ -14,12 +14,10 @@ import java.util.Map;
  */
 public class NCubeTester {
 
-    protected static NCubeManager nCubeManager = NCubeManager.getInstance();
-
     @After
     public void tearDown() throws Exception
     {
-        nCubeManager.clearCubeList();
+        NCubeManager.clearCubeList();
     }
 
     public Map getCprMap(String prop, String bu, String env) {

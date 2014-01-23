@@ -37,9 +37,9 @@ import java.util.Date;
  */
 public class Column implements Comparable<Comparable>
 {
-	final long id;
+	long id;
 	private int displayOrder;
-	private final Comparable value;
+	private Comparable value;
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -62,6 +62,11 @@ public class Column implements Comparable<Comparable>
         return id;
     }
 
+    void setId(long id)
+    {
+        this.id = id;
+    }
+
     public int hashCode()
     {
     	final long x = id;
@@ -81,6 +86,11 @@ public class Column implements Comparable<Comparable>
 	{
 		return value;
 	}
+
+    void setValue(Comparable v)
+    {
+        value = v;
+    }
 
     public boolean isDefault()
     {
@@ -112,12 +122,12 @@ public class Column implements Comparable<Comparable>
         return value;
     }
 	
-	public void setDisplayOrder(int order)
+	void setDisplayOrder(int order)
 	{
 		displayOrder = order;
 	}
 	
-	public int getDisplayOrder()
+	int getDisplayOrder()
 	{
 		return displayOrder;
 	}

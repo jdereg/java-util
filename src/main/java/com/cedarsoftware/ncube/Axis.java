@@ -13,9 +13,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -494,8 +496,30 @@ public class Axis
         addScaffolding(newCol);
     }
 
-    public void updateColumns(Axis newCols)
+    /**
+     * Update columns on this Axis, from the passed in Axis.  Columns that exist on both axes,
+     * will have their values updated.  Columns that exist on this axis, but not exist in the
+     * 'newCols' will be deleted (and returned as a Set of deleted Columns).  Columns that
+     * exist in newCols but not on this are new columns.
+     *
+     * NOTE: The columns field within the newCols axis are NOT in sorted order as they normally are
+     * within the Axis class.  Instead, they are in display order (this order is typically set forth by a UI).
+     * Axis is used as a Data-Transfer-Object (DTO) in this case, not the normal way it is typically used
+     * where the columns would always be sorted for quick access.
+     */
+    public Set<Column> updateColumns(Axis newCols)
     {
+        Set<Column> colsToDelete = new HashSet<Column>();
+        newCols.buildScaffolding();
+
+        for (Column col : columns)
+        {
+            if (!newCols.idToCol.containsKey(col.id))
+            {
+                colsToDelete.add(col);
+            }
+        }
+
         columns.clear();
         int order = 1;
 
@@ -527,6 +551,7 @@ public class Axis
         }
 
         buildScaffolding();
+        return colsToDelete;
     }
 
     // Take the passed in value, and prepare it to be allowed on a given axis type.

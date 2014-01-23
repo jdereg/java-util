@@ -23,7 +23,7 @@ import java.util.Date;
  *         limitations under the License.
  */public class NCubeInfoDto
 {
-	public long id;
+	public String id;
 	public Date createDate;
 	public Date updateDate;
 	public String createHid;

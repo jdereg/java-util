@@ -3,11 +3,11 @@ import com.cedarsoftware.ncube.exception.RuleStop
 def getRelativeCubeCell =
         { name, coord ->
             input.putAll(coord);
-            if (ncubeMgr.getCube(name) == null)
+            if (ncubeMgr.getCube(name, ncube.getVersion()) == null)
             {
                 throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString());
             };
-            return ncubeMgr.getCube(name).getCell(input, output);
+            return ncubeMgr.getCube(name, ncube.getVersion()).getCell(input, output);
         };
 
 def getRelativeCell =
@@ -18,11 +18,11 @@ def getRelativeCell =
 
 def getFixedCell =
         { name, coord ->
-            if (ncubeMgr.getCube(name) == null)
+            if (ncubeMgr.getCube(name, ncube.getVersion()) == null)
             {
                 throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString());
             };
-            return ncubeMgr.getCube(name).getCell(input, output)
+            return ncubeMgr.getCube(name, ncube.getVersion()).getCell(input, output)
         };
 
 def ruleStop = { throw new RuleStop(); }

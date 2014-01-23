@@ -2,7 +2,6 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -27,9 +26,9 @@ public class TestSystemUtilities
     @Test
     public void testGetExternalVariable()
     {
-        //String win = SystemUtilities.getExternalVariable("Path");
+        String win = SystemUtilities.getExternalVariable("Path");
         String nix = SystemUtilities.getExternalVariable("PATH");
-        assertTrue(nix != null);
+        assertTrue(nix != null || win != null);
         long x = UniqueIdGenerator.getUniqueId();
         assertTrue(x > 0);
     }

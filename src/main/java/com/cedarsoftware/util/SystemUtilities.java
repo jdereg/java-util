@@ -28,15 +28,15 @@ public class SystemUtilities
      */
     public static String getExternalVariable(String var)
     {
-        String variable = System.getenv(var);
-        if (StringUtilities.isEmpty(variable))
+        String value = System.getenv(var);
+        if (StringUtilities.isEmpty(value))
         {
-            variable = System.getProperty(var);
+            value = System.getProperty(var);
         }
-        if (StringUtilities.isEmpty(variable))
+        if (StringUtilities.isEmpty(value))
         {
-            variable = null;
+            value = null;
         }
-        return variable;
+        return value;
     }
 }

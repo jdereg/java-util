@@ -5240,6 +5240,55 @@ DELIMITER ;
     }
 
     @Test
+    public void testUpdateColumns()
+    {
+        NCube<String> ncube = NCubeManager.getNCubeFromResource("updateColumns.json");
+        assertEquals(30, ncube.cells.size());
+
+        // Delete 1st, middle, and last column
+        Map<Object, Long> valueToId = new HashMap<Object, Long>();
+        Axis code = ncube.getAxis("code");
+        for (Column column : code.getColumns())
+        {
+            valueToId.put(column.getValue(), column.getId());
+        }
+        Axis axisDto = new Axis("code", AxisType.DISCRETE, AxisValueType.LONG, true);
+        axisDto.addColumn(2);
+        axisDto.addColumn(4);
+        List<Column> cols = axisDto.getColumns();
+        for (Column column : cols)
+        {
+            long id = valueToId.get(column.getValue());
+            column.setId(id);
+        }
+        // 1,3,5 deleted
+        ncube.updateColumns(axisDto);
+        assertEquals(15, ncube.cells.size());
+
+        // Delete 1st, middle, last on state axis
+        code = ncube.getAxis("state");
+        for (Column column : code.getColumns())
+        {
+            valueToId.put(column.getValue(), column.getId());
+        }
+        axisDto = new Axis("state", AxisType.DISCRETE, AxisValueType.STRING, true);
+        axisDto.addColumn("CA");
+        axisDto.addColumn("TX");
+        cols = axisDto.getColumns();
+        for (Column column : cols)
+        {
+            long id = valueToId.get(column.getValue());
+            column.setId(id);
+        }
+
+        ncube.updateColumns(axisDto);
+        assertEquals(6, ncube.cells.size());
+
+        ncube.deleteColumn("code", null);
+        assertEquals(4, ncube.cells.size());
+    }
+
+    @Test
     public void testProveDefaultLast()
     {
         Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED);

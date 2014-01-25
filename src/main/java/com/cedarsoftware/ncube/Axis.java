@@ -507,16 +507,16 @@ public class Axis
      * Axis is used as a Data-Transfer-Object (DTO) in this case, not the normal way it is typically used
      * where the columns would always be sorted for quick access.
      */
-    public Set<Column> updateColumns(Axis newCols)
+    public Set<Long> updateColumns(final Axis newCols)
     {
-        Set<Column> colsToDelete = new HashSet<Column>();
+        Set<Long> colsToDelete = new HashSet<Long>();
         newCols.buildScaffolding();
 
         for (Column col : columns)
         {
             if (!newCols.idToCol.containsKey(col.id))
             {
-                colsToDelete.add(col);
+                colsToDelete.add(col.id);
             }
         }
 
@@ -525,12 +525,15 @@ public class Axis
 
         for (Column column : newCols.columns)
         {
-            column.setDisplayOrder(order++);
-            if (column.getId() < 0)
-            {   // Create new ID for new column
-                column.setId(UniqueIdGenerator.getUniqueId());
+            if (!column.isDefault())
+            {
+                column.setDisplayOrder(order++);
+                if (column.getId() < 0)
+                {   // Create new ID for new column
+                    column.setId(UniqueIdGenerator.getUniqueId());
+                }
+                columns.add(column);
             }
-            columns.add(column);
         }
 
         // Columns must be stored sorted for fast retrieval, regardless of whether the

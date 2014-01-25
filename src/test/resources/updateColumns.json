@@ -1,0 +1,72 @@
+{
+    "ncube":"UpdateColumnsTest",
+    "ruleMode":false,
+    "axes":
+        [
+            {
+                "name":"Code",
+                "type":"DISCRETE",
+                "valueType":"LONG",
+                "hasDefault":true,
+                "preferredOrder":1,
+                "multiMatch":true,
+                "columns":
+                    [
+                        {"id":1},
+                        {"id":2},
+                        {"id":3},
+                        {"id":4},
+                        {"id":5}
+                    ]
+            },
+            {
+                "name":"State",
+                "type":"DISCRETE",
+                "valueType":"STRING",
+                "hasDefault":false,
+                "preferredOrder":1,
+                "multiMatch":false,
+                "columns":
+                    [
+                        {"id":"AL"},
+                        {"id":"CA"},
+                        {"id":"OH"},
+                        {"id":"TX"},
+                        {"id":"WY"}
+                    ]
+            }
+        ],
+    "cells":
+        [
+            {"id":[1,"AL"], "value":"1 AL"},
+            {"id":[2,"AL"], "value":"2 AL"},
+            {"id":[3,"AL"], "value":"3 AL"},
+            {"id":[4,"AL"], "value":"4 AL"},
+            {"id":[5,"AL"], "value":"5 AL"},
+            {"id":[1,"CA"], "value":"1 CA"},
+            {"id":[2,"CA"], "value":"2 CA"},
+            {"id":[3,"CA"], "value":"3 CA"},
+            {"id":[4,"CA"], "value":"4 CA"},
+            {"id":[5,"CA"], "value":"5 CA"},
+            {"id":[1,"OH"], "value":"1 OH"},
+            {"id":[2,"OH"], "value":"2 OH"},
+            {"id":[3,"OH"], "value":"3 OH"},
+            {"id":[4,"OH"], "value":"4 OH"},
+            {"id":[5,"OH"], "value":"5 OH"},
+            {"id":[1,"TX"], "value":"1 TX"},
+            {"id":[2,"TX"], "value":"2 TX"},
+            {"id":[3,"TX"], "value":"3 TX"},
+            {"id":[4,"TX"], "value":"4 TX"},
+            {"id":[5,"TX"], "value":"5 TX"},
+            {"id":[1,"WY"], "value":"1 WY"},
+            {"id":[2,"WY"], "value":"2 WY"},
+            {"id":[3,"WY"], "value":"3 WY"},
+            {"id":[4,"WY"], "value":"4 WY"},
+            {"id":[5,"WY"], "value":"5 WY"},
+            {"id":["AL"], "value":"def AL"},
+            {"id":["CA"], "value":"def CA"},
+            {"id":["OH"], "value":"def OH"},
+            {"id":["TX"], "value":"def TX"},
+            {"id":["WY"], "value":"def WY"}
+        ]
+}

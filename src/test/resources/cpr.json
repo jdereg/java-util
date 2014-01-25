@@ -1,0 +1,57 @@
+{
+    "ncube":"CPR",
+    "axes":[
+        {
+            "name":"bu",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "id":"Biz1"},
+                { "id":"Biz2"}
+            ]},
+        {
+            "name":"env",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "id":"SANDBOX"},
+                { "id":"DEV"},
+                { "id":"INT"},
+                { "id":"UAT"},
+                { "id":"CERT"},
+                { "id":"PROD"}
+            ]},
+        {
+            "name":"cprName",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":true,
+            "preferredOrder":0,
+            "columns":[
+                { "id":"cdn-url"},
+                { "id":"cdn-base"},
+                { "id":"cdn-layout"}
+            ]}
+    ],
+    "cells":[
+        { "id":["Biz1", "SANDBOX", "cdn-base"],    "type":"string",    "value":"res://pages"},
+        { "id":["Biz1", "SANDBOX", "cdn-layout"],  "type":"string",    "value":"Biz1/SANDBOX"},
+        { "id":["Biz1", "SANDBOX", "cdn-url"],     "type":"exp",       "value":"@([cprName:'cdn-base']) + '/' + @([cprName:'cdn-layout'])"},
+
+        { "id":["Biz1", "DEV",  "cdn-base"],    "type":"exp",       "value":"@([env:'SANDBOX'])"},
+        { "id":["Biz1", "DEV",  "cdn-layout"],  "type":"string",    "value":"Biz1/DEV"},
+        { "id":["Biz1", "DEV",  "cdn-url"],     "type":"exp",       "value":"@([cprName:'cdn-base']) + '/' + @([cprName:'cdn-layout'])"},
+
+        { "id":["Biz2",  "SANDBOX", "cdn-base"],    "type":"exp",       "value":"@([bu:'Biz1'])"},
+        { "id":["Biz2",  "SANDBOX", "cdn-layout"], "type":"string",     "value":"Biz2/SANDBOX"},
+        { "id":["Biz2",  "SANDBOX", "cdn-url"],     "type":"exp",       "value":"@([cprName:'cdn-base']) + '/' + @([cprName:'cdn-layout'])"},
+
+        { "id":["Biz2",  "DEV",  "cdn-base"],    "type":"exp",       "value":"@([bu:'Biz1', env:'SANDBOX'])"},
+        { "id":["Biz2",  "DEV",  "cdn-layout"],  "type":"string",    "value":"Biz2/DEV"},
+        { "id":["Biz2",  "DEV",  "cdn-url"],     "type":"exp",       "value":"@([cprName:'cdn-base']) + '/' + @([cprName:'cdn-layout'])"}
+    ]
+}

@@ -138,13 +138,13 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
 
         private static final long serialVersionUID = -4681165782204849813L;
-        Set<K> localSet;
         Map<K, V> localMap;
+        Iterator<K> iter;
 
         public LocalSet(Set<K> s, Map<K, V> m)
         {
             super(s);
-            this.localSet = s;
+            this.iter = super.iterator();
             this.localMap = m;
         }
 
@@ -152,7 +152,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             return new Iterator<K>()
             {
-                Iterator<K> iter = localSet.iterator();
                 K lastRetured = null;
 
                 public boolean hasNext()

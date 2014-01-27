@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.8.0</version>
+  <version>1.8.1</version>
 </dependency>
 
 <dependency>
@@ -37,6 +37,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.8.1
+ * Fixed CaseInsensitiveMap() removeAll() was not removing when accessed via .keySet()
 * 1.8.0
  * Added DateUtilities.  See description above.
 * 1.7.4

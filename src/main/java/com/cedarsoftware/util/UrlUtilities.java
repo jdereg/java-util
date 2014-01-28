@@ -59,7 +59,6 @@ public class UrlUtilities
     private static String _referer = null;
     private static String _userAgent = null;
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
-    //private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/.*", Pattern.CASE_INSENSITIVE);
     public static final String SET_COOKIE = "Set-Cookie";
     public static final String COOKIE_VALUE_DELIMITER = ";";
     public static final String PATH = "path";
@@ -202,7 +201,6 @@ public class UrlUtilities
      *
      * @param conn a java.net.URLConnection - must be open, or IOException will
      *             be thrown
-     * @throws IOException Thrown if conn is not open.
      */
     public static void getCookies(URLConnection conn, Map store)
     {
@@ -442,7 +440,7 @@ public class UrlUtilities
         {
             Matcher m = resPattern.matcher(url);
             URL u = m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
-            c = (URLConnection) getConnection(u, proxyServer, port, inCookies, true, false, false, ignoreSec);
+            c = getConnection(u, proxyServer, port, inCookies, true, false, false, ignoreSec);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
             InputStream stream = IOUtilities.getInputStream(c);
@@ -464,7 +462,8 @@ public class UrlUtilities
         }
         finally
         {
-            if (c instanceof HttpURLConnection) {
+            if (c instanceof HttpURLConnection)
+            {
                 disconnect((HttpURLConnection)c);
             }
         }

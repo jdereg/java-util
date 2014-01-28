@@ -126,17 +126,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      */
     public Set<K> keySet()
     {
-        Set temp = new LinkedHashSet();
-        for (Object key : map.keySet())
-        {
-            temp.add(key instanceof CaseInsensitiveString ? key.toString() : key);
-        }
-        return new LocalSet(temp, this);
+        return new LocalSet(map.keySet(), this);
     }
 
     private class LocalSet extends LinkedHashSet<K>
     {
-
         private static final long serialVersionUID = -4681165782204849813L;
         Map<K, V> localMap;
         Iterator<K> iter;
@@ -146,6 +140,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             super(s);
             this.iter = super.iterator();
             this.localMap = m;
+        }
+
+        public boolean contains(Object o)
+        {
+            return localMap.containsKey(o);
         }
 
         public Iterator<K> iterator()
@@ -160,8 +159,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 }
 
                 public K next()
-                {
+                {   // Allow iterated item to become stored string
                     lastRetured = iter.next();
+                    if (lastRetured instanceof CaseInsensitiveString)
+                    {
+                        lastRetured = (K)lastRetured.toString();
+                    }
                     return lastRetured;
                 }
 
@@ -169,7 +172,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 {
                     iter.remove();
                     localMap.remove(lastRetured);
-
                 }
             };
         }

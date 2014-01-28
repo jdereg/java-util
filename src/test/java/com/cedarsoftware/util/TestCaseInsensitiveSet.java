@@ -2,9 +2,15 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -276,6 +282,29 @@ public class TestCaseInsensitiveSet
         assertTrue(s.contains("One"));
         assertTrue(s.contains("Two"));
         assertTrue(s.contains("Three"));
+    }
+
+    @Test
+    public void testKeySet()
+    {
+        Set s = get123();
+        assertTrue(s.contains("oNe"));
+        assertTrue(s.contains("tWo"));
+        assertTrue(s.contains("tHree"));
+
+        s = get123();
+        Iterator i = s.iterator();
+        i.next();
+        i.remove();
+        assertEquals(2, s.size());
+
+        i.next();
+        i.remove();
+        assertEquals(1, s.size());
+
+        i.next();
+        i.remove();
+        assertEquals(0, s.size());
     }
 
     private Set get123()

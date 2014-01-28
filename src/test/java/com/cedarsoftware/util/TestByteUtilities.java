@@ -14,16 +14,16 @@ public class TestByteUtilities
 	@Test
 	public void testDecode() 
 	{
-		Assert.assertArrayEquals(_array1, CaseInsensitiveSet.ByteUtilities.decode(_str1));
-		Assert.assertArrayEquals(_array2, CaseInsensitiveSet.ByteUtilities.decode(_str2));
-		Assert.assertArrayEquals(null, CaseInsensitiveSet.ByteUtilities.decode("456"));
+		Assert.assertArrayEquals(_array1, ByteUtilities.decode(_str1));
+		Assert.assertArrayEquals(_array2, ByteUtilities.decode(_str2));
+		Assert.assertArrayEquals(null, ByteUtilities.decode("456"));
 
 	}
 	
 	@Test
 	public void testEncode() 
 	{
-		Assert.assertEquals(_str1, CaseInsensitiveSet.ByteUtilities.encode(_array1));
-		Assert.assertEquals(_str2, CaseInsensitiveSet.ByteUtilities.encode(_array2));
+		Assert.assertEquals(_str1, ByteUtilities.encode(_array1));
+		Assert.assertEquals(_str2, ByteUtilities.encode(_array2));
 	}
 }

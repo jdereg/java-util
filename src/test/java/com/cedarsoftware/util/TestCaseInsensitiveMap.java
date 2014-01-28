@@ -346,14 +346,37 @@ public class TestCaseInsensitiveMap
         map3.put(16, 16);
         map3.put(null, null);
 
-        assertTrue(map1.hashCode() != map2.hashCode());    // By design: case sensitive maps will [rightly] compute has of ABC and abc differently
-        assertTrue(map1.hashCode() != map3.hashCode());    // By design: case sensitive maps will [rightly] compute has of ABC and abc differently
+        assertTrue(map1.hashCode() != map2.hashCode());    // By design: case sensitive maps will [rightly] compute hash of ABC and abc differently
+        assertTrue(map1.hashCode() != map3.hashCode());    // By design: case sensitive maps will [rightly] compute hash of ABC and abc differently
         assertTrue(map2.hashCode() == map3.hashCode());
 
         assertTrue(map1.equals(map2));
         assertTrue(map1.equals(map3));
         assertTrue(map3.equals(map1));
         assertTrue(map2.equals(map3));
+    }
+
+    @Test
+    public void testKeySet()
+    {
+        Map m = createSimpleMap();
+        assertTrue(m.keySet().contains("oNe"));
+        assertTrue(m.keySet().contains("thRee"));
+        assertTrue(m.keySet().contains("fiVe"));
+
+        m = createSimpleMap();
+        Iterator i = m.keySet().iterator();
+        i.next();
+        i.remove();
+        assertEquals(2, m.size());
+
+        i.next();
+        i.remove();
+        assertEquals(1, m.size());
+
+        i.next();
+        i.remove();
+        assertEquals(0, m.size());
     }
 
     // ---------------------------------------------------

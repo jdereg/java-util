@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.8.1</version>
+  <version>1.8.2</version>
 </dependency>
 
 <dependency>
@@ -21,6 +21,7 @@ Also, check out json-io at https://github.com/jdereg/json-io
 
 Including in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays [ ]
+* **ByteUtilities** - Useful routines for converting byte[] to HEX character [] and visa-versa.
 * **CaseInsensitiveMap** - When Strings are used as keys, they are compared without case. Can be used as regular Map with any Java object as keys, just specially handles Strings.
 * **CaseInsensitiveSet** - Set implementation that ignores String case for contains() calls, yet can have any object added to it (does not limit you to adding only Strings to it).
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, y/m/d and m/d/y ordering as well.
@@ -37,6 +38,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.8.2
+ * CaseInsensitiveMap.keySet() returns a Set that is case insenstive (not a CaseInsensitiveSet, just a Set that ignores case).  Iterator this Set properly returns each originally stored item.
 * 1.8.1
  * Fixed CaseInsensitiveMap() removeAll() was not removing when accessed via .keySet()
 * 1.8.0

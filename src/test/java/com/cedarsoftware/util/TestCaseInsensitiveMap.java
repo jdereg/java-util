@@ -2,9 +2,20 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -73,9 +84,18 @@ public class TestCaseInsensitiveMap
         boolean foundOne = false, foundThree = false, foundFive = false;
         for (String key : keySet)
         {
-            if (key.equals("One")) foundOne = true;
-            if (key.equals("thREe")) foundThree = true;
-            if (key.equals("Five")) foundFive = true;
+            if (key.equals("One"))
+            {
+                foundOne = true;
+            }
+            if (key.equals("thREe"))
+            {
+                foundThree = true;
+            }
+            if (key.equals("Five"))
+            {
+                foundFive = true;
+            }
         }
         assertTrue(foundOne);
         assertTrue(foundThree);
@@ -99,9 +119,18 @@ public class TestCaseInsensitiveMap
         {
             String key = entry.getKey();
             Object value = entry.getValue();
-            if (key.equals("One") && value.equals("Two")) foundOne = true;
-            if (key.equals("thREe") && value.equals("four")) foundThree = true;
-            if (key.equals("Five") && value.equals("Six")) foundFive = true;
+            if (key.equals("One") && value.equals("Two"))
+            {
+                foundOne = true;
+            }
+            if (key.equals("thREe") && value.equals("four"))
+            {
+                foundThree = true;
+            }
+            if (key.equals("Five") && value.equals("Six"))
+            {
+                foundFive = true;
+            }
         }
         assertTrue(foundOne);
         assertTrue(foundThree);
@@ -357,26 +386,182 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySet()
+    public void testKeySetContains()
     {
         Map m = createSimpleMap();
-        assertTrue(m.keySet().contains("oNe"));
-        assertTrue(m.keySet().contains("thRee"));
-        assertTrue(m.keySet().contains("fiVe"));
+        Set s = m.keySet();
+        assertTrue(s.contains("oNe"));
+        assertTrue(s.contains("thRee"));
+        assertTrue(s.contains("fiVe"));
+    }
 
-        m = createSimpleMap();
-        Iterator i = m.keySet().iterator();
-        i.next();
+    @Test
+    public void testKeySetContainsAll()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        Set items = new HashSet();
+        items.add("one");
+        items.add("five");
+        assertTrue(s.containsAll(items));
+    }
+
+    @Test
+    public void testKeySetRemove()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        assertTrue(s.remove("oNe"));
+        assertTrue(s.remove("thRee"));
+        assertTrue(s.remove("fiVe"));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testKeySetRemoveAll()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        Set items = new HashSet();
+        items.add("one");
+        items.add("five");
+        assertTrue(s.removeAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("three"));
+        assertTrue(m.containsKey("three"));
+    }
+
+    @Test
+    public void testKeySetRetainAll()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        Set items = new HashSet();
+        items.add("three");
+        assertTrue(s.retainAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("three"));
+        assertTrue(m.containsKey("three"));
+    }
+
+    @Test
+    public void testKeySetToObjectArray()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        Object[] array = s.toArray();
+        assertEquals(array[0], "One");
+        assertEquals(array[1], "Three");
+        assertEquals(array[2], "Five");
+    }
+
+    @Test
+    public void testKeySetToTypedArray()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        String[] array = (String[]) s.toArray(new String[]{});
+        assertEquals(array[0], "One");
+        assertEquals(array[1], "Three");
+        assertEquals(array[2], "Five");
+
+        array = (String[]) s.toArray(new String[]{"","","",""});
+        assertEquals(array[0], "One");
+        assertEquals(array[1], "Three");
+        assertEquals(array[2], "Five");
+        assertEquals(array[3], null);
+        assertEquals(4, array.length);
+
+        array = (String[]) s.toArray(new String[]{"","",""});
+        assertEquals(array[0], "One");
+        assertEquals(array[1], "Three");
+        assertEquals(array[2], "Five");
+        assertEquals(3, array.length);
+    }
+
+    @Test
+    public void testKeySetClear()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        s.clear();
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testKeySetHashCode()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        int h = s.hashCode();
+        Set s2 = new HashSet();
+        s2.add("One");
+        s2.add("Three");
+        s2.add("Five");
+        assertNotEquals(h, s2.hashCode());
+
+        s2 = new CaseInsensitiveSet();
+        s2.add("One");
+        s2.add("Three");
+        s2.add("Five");
+        assertEquals(h, s2.hashCode());
+    }
+
+    @Test
+    public void testKeySetIteratorActions()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        Iterator i = s.iterator();
+        Object o = i.next();
+        assertTrue(o instanceof String);
         i.remove();
         assertEquals(2, m.size());
+        assertEquals(2, s.size());
 
-        i.next();
+        o = i.next();
+        assertTrue(o instanceof String);
         i.remove();
         assertEquals(1, m.size());
+        assertEquals(1, s.size());
 
-        i.next();
+        o = i.next();
+        assertTrue(o instanceof String);
         i.remove();
         assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testKeySetEquals()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+
+        Set s2 = new HashSet();
+        s2.add("One");
+        s2.add("Three");
+        s2.add("Five");
+        assertTrue(s2.equals(s));
+        assertTrue(s.equals(s2));
+
+        Set s3 = new HashSet();
+        s3.add("one");
+        s3.add("three");
+        s3.add("five");
+        assertTrue(s3.equals(s));
+        assertTrue(s.equals(s3));
+
+        Set s4 = new CaseInsensitiveSet();
+        s4.add("one");
+        s4.add("three");
+        s4.add("five");
+        assertTrue(s4.equals(s));
+        assertTrue(s.equals(s4));
     }
 
     // ---------------------------------------------------

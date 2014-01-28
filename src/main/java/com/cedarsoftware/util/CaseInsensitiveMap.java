@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.util.AbstractMap;
+import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -120,38 +122,182 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     }
 
     /**
-     * @return Set of Keys from the Map.  This API is implemented to allow
-     *         this class to unwrap the internal structure placed around String
-     *         keys, returning them as the original String keys, retaining their case.
+     * Returns a {@link Set} view of the keys contained in this map.
+     * The set is backed by the map, so changes to the map are
+     * reflected in the set, and vice-versa.  If the map is modified
+     * while an iteration over the set is in progress (except through
+     * the iterator's own <tt>remove</tt> operation), the results of
+     * the iteration are undefined.  The set supports element removal,
+     * which removes the corresponding mapping from the map, via the
+     * <tt>Iterator.remove</tt>, <tt>Set.remove</tt>,
+     * <tt>removeAll</tt>, <tt>retainAll</tt>, and <tt>clear</tt>
+     * operations.  It does not support the <tt>add</tt> or <tt>addAll</tt>
+     * operations.
      */
     public Set<K> keySet()
     {
-        return new LocalSet(map.keySet(), this);
+        return new LocalSet();
     }
 
-    private class LocalSet extends LinkedHashSet<K>
+    private class LocalSet extends AbstractSet<K>
     {
-        private static final long serialVersionUID = -4681165782204849813L;
-        Map<K, V> localMap;
-        Iterator<K> iter;
+        final Map<K, V> localMap = CaseInsensitiveMap.this;
+        final Iterator<Entry<K, V>> iter = localMap.entrySet().iterator();
 
-        public LocalSet(Set<K> s, Map<K, V> m)
-        {
-            super(s);
-            this.iter = super.iterator();
-            this.localMap = m;
-        }
+        public LocalSet()
+        { }
 
         public boolean contains(Object o)
         {
             return localMap.containsKey(o);
         }
 
+        public boolean containsAll(Collection c)
+        {
+            for (Object o : c)
+            {
+                if (!localMap.containsKey(o))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public boolean remove(Object o)
+        {
+            boolean exists = localMap.containsKey(o);
+            localMap.remove(o);
+            return exists;
+        }
+
+        public boolean removeAll(Collection c)
+        {
+            int size = size();
+            for (Object o : c)
+            {
+                localMap.remove(o);
+            }
+            return size() != size;
+        }
+
+        public boolean retainAll(Collection c)
+        {
+            Map other = new CaseInsensitiveMap();
+            for (Object o : c)
+            {
+                other.put(o, null);
+            }
+
+            int origSize = size();
+
+            for (Entry<K, V> entry : localMap.entrySet())
+            {
+                if (!other.containsKey(entry.getKey()))
+                {
+                    localMap.remove(entry.getKey());
+                }
+            }
+
+            return size() != origSize;
+        }
+
+        public boolean add(K o)
+        {
+            throw new UnsupportedOperationException("Cannot add() to a 'view' of a Map.  See JavaDoc for Map.keySet()");
+        }
+
+        public boolean addAll(Collection c)
+        {
+            throw new UnsupportedOperationException("Cannot addAll() to a 'view' of a Map.  See JavaDoc for Map.keySet()");
+        }
+
+        public Object[] toArray()
+        {
+            Object[] items = new Object[size()];
+            int i=0;
+            for (Entry<K, V> entry : map.entrySet())
+            {
+                Object key = entry.getKey();
+                items[i++] = key instanceof CaseInsensitiveString ? key.toString() : key;
+            }
+            return items;
+        }
+
+        public <T> T[] toArray(T[] a)
+        {
+            if (a.length < size())
+            {
+                // Make a new array of a's runtime type, but my contents:
+                return (T[]) Arrays.copyOf(toArray(), size(), a.getClass());
+            }
+            System.arraycopy(toArray(), 0, a, 0, size());
+            if (a.length > size())
+            {
+                a[size()] = null;
+            }
+            return a;
+        }
+
+        public int size()
+        {
+            return map.size();
+        }
+
+        public boolean isEmpty()
+        {
+            return map.isEmpty();
+        }
+
+        public void clear()
+        {
+            map.clear();
+        }
+
+        public int hashCode()
+        {
+            int h = 0;
+
+            // Use map.entrySet() so that we walk through the CaseInsensitiveStrings generating a hashCode
+            // that is based on the lowerCase() value of the Strings.
+            for (Entry<K, V> entry : map.entrySet())
+            {
+                if (entry.getKey() != null)
+                {
+                    h += entry.getKey().hashCode();
+                }
+            }
+            return h;
+        }
+
+        public boolean equals(Object o)
+        {
+            if (!(o instanceof Set))
+            {
+                return false;
+            }
+
+            Set that = (Set) o;
+            if (that.size() != map.size())
+            {
+                return false;
+            }
+
+            for (Object obj : that)
+            {
+                if (!contains(obj))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public Iterator<K> iterator()
         {
             return new Iterator<K>()
             {
-                K lastRetured = null;
+                K lastReturned = null;
 
                 public boolean hasNext()
                 {
@@ -160,29 +306,87 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
                 public K next()
                 {   // Allow iterated item to become stored string
-                    lastRetured = iter.next();
-                    if (lastRetured instanceof CaseInsensitiveString)
+                    Map.Entry<K, V> entry = iter.next();
+                    lastReturned = entry.getKey();
+                    if (lastReturned instanceof CaseInsensitiveString)
                     {
-                        lastRetured = (K)lastRetured.toString();
+                        lastReturned = (K) lastReturned.toString();
                     }
-                    return lastRetured;
+                    return lastReturned;
                 }
 
                 public void remove()
                 {
-                    iter.remove();
-                    localMap.remove(lastRetured);
+                    localMap.remove(lastReturned);
                 }
             };
         }
     }
 
-    /**
-     * @return Set of Map.Entry for each entry in the Map.  This API is
-     *         implemented to allow this class to unwrap the internal structure placed
-     *         around String keys, returning them as the original String keys, retaining
-     *         their case.
-     */
+//    public Set<Entry<K, V>> entrySet()
+//    {
+//        return new EntrySet();
+//    }
+//
+//    private class EntrySet<E> extends LinkedHashSet<E>
+//    {
+//        final Map<K, V> localMap = CaseInsensitiveMap.this;
+//        final Iterator<Entry<K, V>> iter = map.entrySet().iterator();
+//
+//        public EntrySet()
+//        { }
+//
+//        public int size()
+//        {
+//            return map.size();
+//        }
+//
+//        public boolean isEmpty()
+//        {
+//            return map.isEmpty();
+//        }
+//
+//        public void clear()
+//        {
+//            map.clear();
+//        }
+//
+//        public Iterator iterator()
+//        {
+//            return new Iterator()
+//            {
+//                Entry lastRetured = null;
+//
+//                public boolean hasNext()
+//                {
+//                    return iter.hasNext();
+//                }
+//
+//                public Object next()
+//                {   // Allow iterated item to become stored string
+//                    Map.Entry entry = iter.next();
+//                    lastRetured = entry;
+//                    if (entry.getKey() instanceof CaseInsensitiveString)
+//                    {
+//                        lastRetured = new AbstractMap.SimpleImmutableEntry(entry.getKey().toString(), entry.getValue());
+//                    }
+//                    return lastRetured;
+//                }
+//
+//                public void remove()
+//                {
+//                    localMap.remove(lastRetured);
+//                }
+//            };
+//        }
+//    }
+
+        /**
+         * @return Set of Map.Entry for each entry in the Map.  This API is
+         *         implemented to allow this class to unwrap the internal structure placed
+         *         around String keys, returning them as the original String keys, retaining
+         *         their case.
+         */
     public Set<Entry<K, V>> entrySet()
     {
         Set<Entry<K, V>> insensitiveEntrySet = map.entrySet();

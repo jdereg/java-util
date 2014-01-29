@@ -121,6 +121,88 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.remove(key);
     }
 
+    // delegates
+    public int size()
+    {
+        return map.size();
+    }
+
+    public boolean isEmpty()
+    {
+        return map.isEmpty();
+    }
+
+    public boolean equals(Object other)
+    {
+        if (other == this) return true;
+        if (!(other instanceof Map)) return false;
+
+        Map<?, ?> that = (Map<?, ?>) other;
+        if (that.size() != size())
+        {
+            return false;
+        }
+
+        for (Entry entry : that.entrySet())
+        {
+            final Object thatKey = entry.getKey();
+            if (!containsKey(thatKey))
+            {
+                return false;
+            }
+
+            Object thatValue = entry.getValue();
+            Object thisValue = get(thatKey);
+
+            if (thatValue == null || thisValue == null)
+            {   // Perform null checks
+                if (thatValue != thisValue)
+                {
+                    return false;
+                }
+            }
+            else if (!thisValue.equals(thatValue))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public int hashCode()
+    {
+        int h = 0;
+        for (Entry<K, V> entry : map.entrySet())
+        {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+            int hKey = key == null ? 0 : key.hashCode();
+            int hValue = value == null ? 0 : value.hashCode();
+            h += hKey ^ hValue;
+        }
+        return h;
+    }
+
+    public String toString()
+    {
+        return map.toString();
+    }
+
+    public void clear()
+    {
+        map.clear();
+    }
+
+    public boolean containsValue(Object value)
+    {
+        return map.containsValue(value);
+    }
+
+    public Collection<V> values()
+    {
+        return map.values();
+    }
+
     /**
      * Returns a {@link Set} view of the keys contained in this map.
      * The set is backed by the map, so changes to the map are
@@ -142,26 +224,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     private class LocalSet extends AbstractSet<K>
     {
         final Map<K, V> localMap = CaseInsensitiveMap.this;
-        final Iterator<Entry<K, V>> iter = localMap.entrySet().iterator();
+        final Iterator iter;
 
         public LocalSet()
-        { }
+        {
+            iter = new LinkedHashSet(map.keySet()).iterator();
+        }
 
         public boolean contains(Object o)
         {
             return localMap.containsKey(o);
-        }
-
-        public boolean containsAll(Collection c)
-        {
-            for (Object o : c)
-            {
-                if (!localMap.containsKey(o))
-                {
-                    return false;
-                }
-            }
-            return true;
         }
 
         public boolean remove(Object o)
@@ -169,16 +241,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             boolean exists = localMap.containsKey(o);
             localMap.remove(o);
             return exists;
-        }
-
-        public boolean removeAll(Collection c)
-        {
-            int size = size();
-            for (Object o : c)
-            {
-                localMap.remove(o);
-            }
-            return size() != size;
         }
 
         public boolean retainAll(Collection c)
@@ -297,7 +359,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             return new Iterator<K>()
             {
-                K lastReturned = null;
+                Object lastReturned = null;
 
                 public boolean hasNext()
                 {
@@ -305,14 +367,13 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 }
 
                 public K next()
-                {   // Allow iterated item to become stored string
-                    Map.Entry<K, V> entry = iter.next();
-                    lastReturned = entry.getKey();
+                {
+                    lastReturned = iter.next();
                     if (lastReturned instanceof CaseInsensitiveString)
                     {
-                        lastReturned = (K) lastReturned.toString();
+                        lastReturned = lastReturned.toString();
                     }
-                    return lastReturned;
+                    return (K) lastReturned;
                 }
 
                 public void remove()
@@ -323,91 +384,211 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         }
     }
 
-//    public Set<Entry<K, V>> entrySet()
-//    {
-//        return new EntrySet();
-//    }
-//
-//    private class EntrySet<E> extends LinkedHashSet<E>
-//    {
-//        final Map<K, V> localMap = CaseInsensitiveMap.this;
-//        final Iterator<Entry<K, V>> iter = map.entrySet().iterator();
-//
-//        public EntrySet()
-//        { }
-//
-//        public int size()
-//        {
-//            return map.size();
-//        }
-//
-//        public boolean isEmpty()
-//        {
-//            return map.isEmpty();
-//        }
-//
-//        public void clear()
-//        {
-//            map.clear();
-//        }
-//
-//        public Iterator iterator()
-//        {
-//            return new Iterator()
-//            {
-//                Entry lastRetured = null;
-//
-//                public boolean hasNext()
-//                {
-//                    return iter.hasNext();
-//                }
-//
-//                public Object next()
-//                {   // Allow iterated item to become stored string
-//                    Map.Entry entry = iter.next();
-//                    lastRetured = entry;
-//                    if (entry.getKey() instanceof CaseInsensitiveString)
-//                    {
-//                        lastRetured = new AbstractMap.SimpleImmutableEntry(entry.getKey().toString(), entry.getValue());
-//                    }
-//                    return lastRetured;
-//                }
-//
-//                public void remove()
-//                {
-//                    localMap.remove(lastRetured);
-//                }
-//            };
-//        }
-//    }
-
-        /**
-         * @return Set of Map.Entry for each entry in the Map.  This API is
-         *         implemented to allow this class to unwrap the internal structure placed
-         *         around String keys, returning them as the original String keys, retaining
-         *         their case.
-         */
     public Set<Entry<K, V>> entrySet()
     {
-        Set<Entry<K, V>> insensitiveEntrySet = map.entrySet();
-        Set<Entry<K, V>> returnEntrySet = new LinkedHashSet<Entry<K, V>>();
+        return new EntrySet();
+    }
 
-        for (Entry entry : insensitiveEntrySet)
+    private class EntrySet<E> extends LinkedHashSet<E>
+    {
+        final Map<K, V> localMap = CaseInsensitiveMap.this;
+        final Iterator<Entry> iter;
+
+        public EntrySet()
         {
-            if (entry.getKey() instanceof CaseInsensitiveString)
-            {
-                CaseInsensitiveString key = (CaseInsensitiveString) entry.getKey();
-                entry = new AbstractMap.SimpleImmutableEntry<K, V>((K) key.toString(), (V) entry.getValue());
-            }
-            returnEntrySet.add(entry);
+            iter = new LinkedHashSet(map.entrySet()).iterator();
         }
 
-        return returnEntrySet;
+        public int size()
+        {
+            return map.size();
+        }
+
+        public boolean isEmpty()
+        {
+            return map.isEmpty();
+        }
+
+        public void clear()
+        {
+            map.clear();
+        }
+
+        public boolean equals(Object o)
+        {
+            if (o == this) return true;
+            if (!(o instanceof Set)) return false;
+
+            Set<Entry> that = (Set) o;
+            if (size() != that.size()) return false;
+
+            for (Entry entry : that)
+            {
+                final Object thatKey = entry.getKey();
+                if (!containsKey(thatKey))
+                {
+                    return false;
+                }
+
+                Object thatValue = entry.getValue();
+                Object thisValue = get(thatKey);
+
+                if (thatValue == null || thisValue == null)
+                {   // Perform null checks
+                    if (thatValue != thisValue)
+                    {
+                        return false;
+                    }
+                }
+                else if (!thisValue.equals(thatValue))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public boolean contains(Object o)
+        {
+            if (!(o instanceof Entry))
+            {
+                return false;
+            }
+
+            Entry that = (Entry) o;
+            if (localMap.containsKey(that.getKey()))
+            {
+                Object value = localMap.get(that.getKey());
+                if (value == null)
+                {
+                    return that.getValue() == null;
+                }
+                return value.equals(that.getValue());
+            }
+            return false;
+        }
+
+        public boolean remove(Object o)
+        {
+            boolean exists = contains(o);
+            if (!exists)
+            {
+                return false;
+            }
+            Entry that = (Entry) o;
+            localMap.remove(that.getKey());
+            return true;
+        }
+
+        /**
+         * This method is required.  JDK method is broken, as it relies
+         * on iterator solution.  This method is fast because contains()
+         * and remove() are both hashed O(1) look ups.
+         */
+        public boolean removeAll(Collection c)
+        {
+            boolean modified = false;
+
+            for (Object o : c)
+            {
+                if (contains(o))
+                {
+                    remove(o);
+                    modified = true;
+                }
+            }
+            return modified;
+        }
+
+        public boolean retainAll(Collection c)
+        {
+            // Create fast-access O(1) to all elements within passed in Collection
+            Map other = new CaseInsensitiveMap();
+            for (Object o : c)
+            {
+                if (o instanceof Entry)
+                {
+                    other.put(((Entry)o).getKey(), ((Entry) o).getValue());
+                }
+            }
+
+            int origSize = size();
+
+            // Drop all items that are not in the passed in Collection
+            for (Entry<K, V> entry : localMap.entrySet())
+            {
+                Object key = entry.getKey();
+                Object value = entry.getValue();
+                if (!other.containsKey(key))
+                {   // Key not even present, nuke the entry
+                    localMap.remove(key);
+                }
+                else
+                {   // Key present, now check value match
+                    Object v = other.get(key);
+                    if (v == null)
+                    {
+                        if (value != null)
+                        {
+                            localMap.remove(key);
+                        }
+                    }
+                    else
+                    {
+                        if (!v.equals(value))
+                        {
+                            localMap.remove(key);
+                        }
+                    }
+                }
+            }
+
+            return size() != origSize;
+        }
+
+        public boolean add(E o)
+        {
+            throw new UnsupportedOperationException("Cannot add() to a 'view' of a Map.  See JavaDoc for Map.entrySet()");
+        }
+
+        public boolean addAll(Collection c)
+        {
+            throw new UnsupportedOperationException("Cannot addAll() to a 'view' of a Map.  See JavaDoc for Map.entrySet()");
+        }
+
+        public Iterator iterator()
+        {
+            return new Iterator()
+            {
+                Entry lastReturned = null;
+
+                public boolean hasNext()
+                {
+                    return iter.hasNext();
+                }
+
+                public Object next()
+                {   // Allow iterated item to become stored string
+                    lastReturned = iter.next();
+                    if (lastReturned.getKey() instanceof CaseInsensitiveString)
+                    {
+                        lastReturned = new AbstractMap.SimpleImmutableEntry(lastReturned.getKey().toString(), lastReturned.getValue());
+                    }
+                    return lastReturned;
+                }
+
+                public void remove()
+                {
+                    localMap.remove(lastReturned.getKey());
+                }
+            };
+        }
     }
 
     /**
      * Internal class used to wrap String keys.  This class ignores the
-     * case of Strings when they are compared.
+     * case of Strings when they are compared.  Based on known usage,
+     * null checks, proper instance, etc. are dropped.
      */
     private static class CaseInsensitiveString
     {
@@ -425,129 +606,13 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public int hashCode()
         {
-            if (caseInsensitiveString == null)
-            {
-                return 0;
-            }
             return caseInsensitiveString.toLowerCase().hashCode();
         }
 
         public boolean equals(Object obj)
         {
-            if (!(obj instanceof CaseInsensitiveString))
-            {
-                return false;
-            }
-
-            if (this == obj)
-            {
-                return true;
-            }
-
             CaseInsensitiveString other = (CaseInsensitiveString) obj;
-            if (caseInsensitiveString == null)
-            {
-                return other.caseInsensitiveString == null;
-            }
-            else
-            {
-                return caseInsensitiveString.equalsIgnoreCase(other.caseInsensitiveString);
-            }
+            return caseInsensitiveString.equalsIgnoreCase(other.caseInsensitiveString);
         }
-    }
-
-    // delegates
-    public int size()
-    {
-        return map.size();
-    }
-
-    public boolean isEmpty()
-    {
-        return map.isEmpty();
-    }
-
-    public boolean equals(Object other)
-    {
-        if (other == this) return true;
-        if (!(other instanceof Map)) return false;
-
-        Map<?, ?> that = (Map<?, ?>) other;
-        if (that.size() != size())
-        {
-            return false;
-        }
-
-        for (Entry entry : that.entrySet())
-        {
-            final Object thatKey = entry.getKey();
-            if (!containsKey(thatKey))
-            {
-                 return false;
-            }
-
-            Object thatValue = entry.getValue();
-            Object thisValue = get(thatKey);
-
-            if (thatValue == null || thisValue == null)
-            {   // Perform null checks
-                if (thatValue != thisValue)
-                {
-                    return false;
-                }
-            }
-            else if (!thisValue.equals(thatValue))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public int hashCode()
-    {
-        int h = 0;
-        for (Entry<K, V> entry : entrySet())
-        {
-            Object key = entry.getKey();
-            if (key != null)
-            {
-                if (key instanceof String)
-                {
-                    h += ((String) key).toLowerCase().hashCode();
-                }
-                else
-                {
-                    h += key.hashCode();
-                }
-            }
-
-            Object value = entry.getValue();
-            if (value != null)
-            {
-                h += value.hashCode();
-            }
-        }
-        return h;
-    }
-
-    public String toString()
-    {
-        return map.toString();
-    }
-
-    public void clear()
-    {
-        map.clear();
-    }
-
-    public boolean containsValue(Object value)
-    {
-        return map.containsValue(value);
-    }
-
-    public Collection<V> values()
-    {
-        return map.values();
     }
 }

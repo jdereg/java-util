@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -246,6 +248,12 @@ public class TestCaseInsensitiveMap
         other.put("five", "Six");
         assertFalse(a.equals(other));
 
+        other.clear();
+        other.put("One", "Two");
+        other.put("Three", "Four");
+        other.put("Five", "six");   // lowercase six
+        assertFalse(a.equals(other));
+
         assertFalse(a.equals("Foo"));
 
         other.put("FIVE", null);
@@ -263,7 +271,7 @@ public class TestCaseInsensitiveMap
         b.put("ONE", "Two");
         b.put("THREE", "Four");
         b.put("FIVE", "Six");
-        assertTrue(a.hashCode() == b.hashCode());
+        assertEquals(a.hashCode(), b.hashCode());
 
         b = new CaseInsensitiveMap();
         b.put("One", "Two");
@@ -385,6 +393,8 @@ public class TestCaseInsensitiveMap
         assertTrue(map2.equals(map3));
     }
 
+    // --------- Test returned keySet() operations ---------
+
     @Test
     public void testKeySetContains()
     {
@@ -393,6 +403,7 @@ public class TestCaseInsensitiveMap
         assertTrue(s.contains("oNe"));
         assertTrue(s.contains("thRee"));
         assertTrue(s.contains("fiVe"));
+        assertFalse(s.contains("dog"));
     }
 
     @Test
@@ -404,6 +415,8 @@ public class TestCaseInsensitiveMap
         items.add("one");
         items.add("five");
         assertTrue(s.containsAll(items));
+        items.add("dog");
+        assertFalse(s.containsAll(items));
     }
 
     @Test
@@ -411,6 +424,11 @@ public class TestCaseInsensitiveMap
     {
         Map m = createSimpleMap();
         Set s = m.keySet();
+
+        s.remove("Dog");
+        assertEquals(3, m.size());
+        assertEquals(3, s.size());
+
         assertTrue(s.remove("oNe"));
         assertTrue(s.remove("thRee"));
         assertTrue(s.remove("fiVe"));
@@ -431,6 +449,14 @@ public class TestCaseInsensitiveMap
         assertEquals(1, s.size());
         assertTrue(s.contains("three"));
         assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add("dog");
+        s.removeAll(items);
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("three"));
+        assertTrue(m.containsKey("three"));
     }
 
     @Test
@@ -445,6 +471,17 @@ public class TestCaseInsensitiveMap
         assertEquals(1, s.size());
         assertTrue(s.contains("three"));
         assertTrue(m.containsKey("three"));
+
+        m = createSimpleMap();
+        s = m.keySet();
+        items.clear();
+        items.add("dog");
+        items.add("one");
+        assertTrue(s.retainAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("one"));
+        assertTrue(m.containsKey("one"));
     }
 
     @Test
@@ -468,7 +505,7 @@ public class TestCaseInsensitiveMap
         assertEquals(array[1], "Three");
         assertEquals(array[2], "Five");
 
-        array = (String[]) s.toArray(new String[]{"","","",""});
+        array = (String[]) s.toArray(new String[4]);
         assertEquals(array[0], "One");
         assertEquals(array[1], "Three");
         assertEquals(array[2], "Five");
@@ -564,6 +601,320 @@ public class TestCaseInsensitiveMap
         assertTrue(s.equals(s4));
     }
 
+    @Test
+    public void testKeySetAddNotSupported()
+    {
+        Map m = createSimpleMap();
+        Set s = m.keySet();
+        try
+        {
+            s.add("Bitcoin");
+            fail("should not make it here");
+        }
+        catch (UnsupportedOperationException e)
+        { }
+
+        Set items = new HashSet();
+        items.add("Food");
+        items.add("Water");
+
+        try
+        {
+            s.addAll(items);
+            fail("should not make it here");
+        }
+        catch (UnsupportedOperationException e)
+        { }
+    }
+
+    // ---------------- returned Entry Set tests ---------
+
+    @Test
+    public void testEntrySetContains()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        assertTrue(s.contains(getEntry("one", "Two")));
+        assertTrue(s.contains(getEntry("tHree", "Four")));
+        assertFalse(s.contains(getEntry("one", "two")));    // Value side is case-sensitive (needs 'Two' not 'two')
+    }
+
+    @Test
+    public void testEntrySetContainsAll()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("one", "Two"));
+        items.add(getEntry("thRee", "Four"));
+        assertTrue(s.containsAll(items));
+
+        items = new HashSet();
+        items.add(getEntry("one", "two"));
+        items.add(getEntry("thRee", "Four"));
+        assertFalse(s.containsAll(items));
+    }
+
+    @Test
+    public void testEntrySetRemove()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+
+        assertFalse(s.remove(getEntry("Cat", "Six")));
+        assertEquals(3, m.size());
+        assertEquals(3, s.size());
+
+        assertTrue(s.remove(getEntry("oNe", "Two")));
+        assertTrue(s.remove(getEntry("thRee", "Four")));
+
+        assertFalse(s.remove(getEntry("Dog", "Two")));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+
+        assertTrue(s.remove(getEntry("fiVe", "Six")));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetRemoveAll()
+    {
+        // Pure JDK test that fails
+//        LinkedHashMap<String, Object> mm = new LinkedHashMap<String, Object>();
+//        mm.put("One", "Two");
+//        mm.put("Three", "Four");
+//        mm.put("Five", "Six");
+//        Set ss = mm.entrySet();
+//        Set itemz = new HashSet();
+//        itemz.add(getEntry("One", "Two"));
+//        itemz.add(getEntry("Five", "Six"));
+//        ss.removeAll(itemz);
+//
+//        itemz.clear();
+//        itemz.add(getEntry("dog", "Two"));
+//        assertFalse(ss.removeAll(itemz));
+//        assertEquals(1, mm.size());
+//        assertEquals(1, ss.size());
+//        assertTrue(ss.contains(getEntry("Three", "Four")));
+//        assertTrue(mm.containsKey("Three"));
+//
+//        itemz.clear();
+//        itemz.add(getEntry("Three", "Four"));
+//        assertTrue(ss.removeAll(itemz));  // fails - bug in JDK (Watching to see if this gets fixed)
+//        assertEquals(0, mm.size());
+//        assertEquals(0, ss.size());
+
+        // Cedar Software code handles removeAll from entrySet perfectly
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("one", "Two"));
+        items.add(getEntry("five", "Six"));
+        assertTrue(s.removeAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains(getEntry("three", "Four")));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add(getEntry("dog", "Two"));
+        assertFalse(s.removeAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains(getEntry("three", "Four")));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add(getEntry("three", "Four"));
+        assertTrue(s.removeAll(items));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetRetainAll()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("three", "Four"));
+        assertTrue(s.retainAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains(getEntry("three", "Four")));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add("dog");
+        assertTrue(s.retainAll(items));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetToObjectArray()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Object[] array = s.toArray();
+        assertEquals(3, array.length);
+
+        Map.Entry entry = (Map.Entry) array[0];
+        assertEquals("One", entry.getKey());
+        assertEquals("Two", entry.getValue());
+
+        entry = (Map.Entry) array[1];
+        assertEquals("Three", entry.getKey());
+        assertEquals("Four", entry.getValue());
+
+        entry = (Map.Entry) array[2];
+        assertEquals("Five", entry.getKey());
+        assertEquals("Six", entry.getValue());
+    }
+
+    @Test
+    public void testEntrySetToTypedArray()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Map.Entry[] array = (Map.Entry[]) s.toArray(new Map.Entry[]{});
+        assertEquals(array[0], getEntry("One", "Two"));
+        assertEquals(array[1], getEntry("Three", "Four"));
+        assertEquals(array[2], getEntry("Five", "Six"));
+
+        s = m.entrySet();   // Should not need to do this (JDK has same issue)
+        array = (Map.Entry[]) s.toArray(new Map.Entry[4]);
+        assertEquals(array[0], getEntry("One", "Two"));
+        assertEquals(array[1], getEntry("Three", "Four"));
+        assertEquals(array[2], getEntry("Five", "Six"));
+        assertEquals(array[3], null);
+        assertEquals(4, array.length);
+
+        s = m.entrySet();
+        array = (Map.Entry[]) s.toArray(new Map.Entry[]{getEntry(1, 1), getEntry(2, 2), getEntry(3, 3)});
+        assertEquals(array[0], getEntry("One", "Two"));
+        assertEquals(array[1], getEntry("Three", "Four"));
+        assertEquals(array[2], getEntry("Five", "Six"));
+        assertEquals(3, array.length);
+    }
+
+    @Test
+    public void testEntrySetClear()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        s.clear();
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetHashCode()
+    {
+        Map m = createSimpleMap();
+        Map m2 = new CaseInsensitiveMap();
+        m2.put("one", "Two");
+        m2.put("three", "Four");
+        m2.put("five", "Six");
+        assertEquals(m.hashCode(), m2.hashCode());
+
+        Map m3 = new LinkedHashMap();
+        m3.put("One", "Two");
+        m3.put("Three", "Four");
+        m3.put("Five", "Six");
+        assertNotEquals(m.hashCode(), m3.hashCode());
+    }
+
+    @Test
+    public void testEntrySetIteratorActions()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Iterator i = s.iterator();
+        Object o = i.next();
+        assertTrue(o instanceof Map.Entry);
+        i.remove();
+        assertEquals(2, m.size());
+        assertEquals(2, s.size());
+
+        o = i.next();
+        assertTrue(o instanceof Map.Entry);
+        i.remove();
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+
+        o = i.next();
+        assertTrue(o instanceof Map.Entry);
+        i.remove();
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetEquals()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+
+        Set s2 = new HashSet();
+        s2.add(getEntry("One", "Two"));
+        s2.add(getEntry("Three", "Four"));
+        s2.add(getEntry("Five", "Six"));
+        assertTrue(s.equals(s2));
+
+        s2.clear();
+        s2.add(getEntry("One", "Two"));
+        s2.add(getEntry("Three", "Four"));
+        s2.add(getEntry("Five", "six"));    // lowercase six
+        assertFalse(s.equals(s2));
+
+        s2.clear();
+        s2.add(getEntry("One", "Two"));
+        s2.add(getEntry("Thre", "Four"));   // missing 'e' on three
+        s2.add(getEntry("Five", "Six"));
+        assertFalse(s.equals(s2));
+
+        Set s3 = new HashSet();
+        s3.add(getEntry("one", "Two"));
+        s3.add(getEntry("three", "Four"));
+        s3.add(getEntry("five","Six"));
+        assertTrue(s.equals(s3));
+
+        Set s4 = new CaseInsensitiveSet();
+        s4.add(getEntry("one", "Two"));
+        s4.add(getEntry("three", "Four"));
+        s4.add(getEntry("five","Six"));
+        assertTrue(s.equals(s4));
+    }
+
+    @Test
+    public void testEntrySetAddNotSupport()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+
+        try
+        {
+            s.add(10);
+            fail("should not make it here");
+        }
+        catch (UnsupportedOperationException e)
+        { }
+
+        Set s2 = new HashSet();
+        s2.add("food");
+        s2.add("water");
+
+        try
+        {
+            s.addAll(s2);
+            fail("should not make it here");
+        }
+        catch (UnsupportedOperationException e)
+        { }
+    }
+
     // ---------------------------------------------------
     private CaseInsensitiveMap<String, Object> createSimpleMap()
     {
@@ -574,4 +925,28 @@ public class TestCaseInsensitiveMap
         return stringMap;
     }
 
+    private Map.Entry getEntry(final Object key, final Object value)
+    {
+        return new Map.Entry()
+        {
+            Object myValue = value;
+
+            public Object getKey()
+            {
+                return key;
+            }
+
+            public Object getValue()
+            {
+                return value;
+            }
+
+            public Object setValue(Object value)
+            {
+                Object save = myValue;
+                myValue = value;
+                return save;
+            }
+        };
+    }
 }

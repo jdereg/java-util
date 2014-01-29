@@ -33,6 +33,22 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet() { map = new CaseInsensitiveMap<E, Object>(); }
 
+    public CaseInsensitiveSet(Collection<? extends E> collection)
+    {
+        map = new CaseInsensitiveMap<E, Object>(collection.size());
+        addAll(collection);
+    }
+
+    public CaseInsensitiveSet(int initialCapacity)
+    {
+        map = new CaseInsensitiveMap<E, Object>(initialCapacity);
+    }
+
+    public CaseInsensitiveSet(int initialCapacity, float loadFactor)
+    {
+        map = new CaseInsensitiveMap<E, Object>(initialCapacity, loadFactor);
+    }
+
     public int hashCode()
     {
         int hash = 0;
@@ -60,25 +76,6 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
         Set that = (Set) other;
         return that.size()==size() && containsAll(that);
-    }
-
-    public CaseInsensitiveSet(Collection<? extends E> collection)
-    {
-        map = new CaseInsensitiveMap<E, Object>(collection.size());
-        for (E item : collection)
-        {
-            map.put(item, null);
-        }
-    }
-
-    public CaseInsensitiveSet(int initialCapacity)
-    {
-        map = new CaseInsensitiveMap<E, Object>(initialCapacity);
-    }
-
-    public CaseInsensitiveSet(int initialCapacity, float loadFactor)
-    {
-        map = new CaseInsensitiveMap<E, Object>(initialCapacity, loadFactor);
     }
 
     public int size()
@@ -127,27 +124,23 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean containsAll(Collection<?> c)
     {
-        boolean fail = false;
         for (Object o : c)
         {
             if (!map.containsKey(o))
             {
-                 fail = true;
-                break;
+                return false;
             }
         }
-        return !fail;
+        return true;
     }
 
     public boolean addAll(Collection<? extends E> c)
     {
-        int origSize = map.size();
-
         for (E elem : c)
         {
             map.put(elem, null);
         }
-        return map.size() != origSize;
+        return map.size() != c.size();
     }
 
     public boolean retainAll(Collection<?> c)
@@ -158,8 +151,6 @@ public class CaseInsensitiveSet<E> implements Set<E>
             other.put(o, null);
         }
 
-        int origSize = map.size();
-
         for (Object elem : map.keySet())
         {
             if (!other.containsKey(elem))
@@ -167,18 +158,16 @@ public class CaseInsensitiveSet<E> implements Set<E>
                 map.remove(elem);
             }
         }
-        return map.size() != origSize;
+        return map.size() != c.size();
     }
 
     public boolean removeAll(Collection<?> c)
     {
-        int origSize = map.size();
-
         for (Object elem : c)
         {
             map.remove(elem);
         }
-        return map.size() != origSize;
+        return map.size() != c.size();
     }
 
     public void clear()

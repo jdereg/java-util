@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.8.3</version>
+  <version>1.8.2</version>
 </dependency>
 
 <dependency>
@@ -38,10 +38,9 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
-* 1.8.3
- * CaseInsensitiveMap methods keySet() and entrySet() return Sets that are identical to how the JDK returns 'view' Sets on the underlying storage.  This means that all operations, besides add() and addAll(), are supported.
 * 1.8.2
- * CaseInsensitiveMap.keySet() returns a Set that is case insenstive (not a CaseInsensitiveSet, just a Set that ignores case).  Iterator this Set properly returns each originally stored item.
+ * CaseInsensitiveMap methods keySet() and entrySet() return Sets that are identical to how the JDK returns 'view' Sets on the underlying storage.  This means that all operations, besides add() and addAll(), are supported.
+ * CaseInsensitiveMap.keySet() returns a Set that is case insensitive (not a CaseInsensitiveSet, just a Set that ignores case).  Iterator this Set properly returns each originally stored item.
 * 1.8.1
  * Fixed CaseInsensitiveMap() removeAll() was not removing when accessed via .keySet()
 * 1.8.0

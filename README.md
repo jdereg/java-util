@@ -42,7 +42,7 @@ Version History
  * ReflectionUtilities has new getClassAnnotation(classToCheck, annotation) API which will return the annotation if it exists within the classes super class hierarchy or interface hierachy.  Similarly, the getMethodAnnotation() API does the same thing for method annotations (allow inheritance - class or interface).
 * 1.8.2
  * CaseInsensitiveMap methods keySet() and entrySet() return Sets that are identical to how the JDK returns 'view' Sets on the underlying storage.  This means that all operations, besides add() and addAll(), are supported.
- * CaseInsensitiveMap.keySet() returns a Set that is case insensitive (not a CaseInsensitiveSet, just a Set that ignores case).  Iterator this Set properly returns each originally stored item.
+ * CaseInsensitiveMap.keySet() returns a Set that is case insensitive (not a CaseInsensitiveSet, just a Set that ignores case).  Iterating this Set properly returns each originally stored item.
 * 1.8.1
  * Fixed CaseInsensitiveMap() removeAll() was not removing when accessed via .keySet()
 * 1.8.0

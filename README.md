@@ -7,13 +7,13 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.8.2</version>
+  <version>1.8.3</version>
 </dependency>
 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>json-io</artifactId>
-  <version>2.4.1</version>
+  <version>2.4.2</version>
 </dependency>
 ```
 
@@ -38,6 +38,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.8.3
+ * ReflectionUtilities has new getClassAnnotation(classToCheck, annotation) API which will return the annotation if it exists within the classes super class hierarchy or interface hierachy.  Similarly, the getMethodAnnotation() API does the same thing for method annotations (allow inheritance - class or interface).
 * 1.8.2
  * CaseInsensitiveMap methods keySet() and entrySet() return Sets that are identical to how the JDK returns 'view' Sets on the underlying storage.  This means that all operations, besides add() and addAll(), are supported.
  * CaseInsensitiveMap.keySet() returns a Set that is case insensitive (not a CaseInsensitiveSet, just a Set that ignores case).  Iterator this Set properly returns each originally stored item.

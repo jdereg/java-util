@@ -7,7 +7,10 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -31,40 +34,80 @@ public final class ReflectionUtils
 {
     private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<Class, Collection<Field>>();
 
-    private ReflectionUtils() {
+    private ReflectionUtils()
+    {
         super();
     }
 
     /**
-     * Get a Mehod annotation, even if the method is on an object behind a
-     * JDK proxy, CGLib proxy, Javassist proxy, etc.  First the method is
-     * directly inspected for the annotation, and if not found there, the
-     * interfaces are inspected for the class containing the method, which
-     * are then checked for the annotation.
-     * @param method Method to check for annotation
-     * @param annoClass Annotation class
-     * @return Annotation if found, null otherwise.
+     * Determine if the passed in class (classToCheck) has the annotation (annoClass) on itself,
+     * any of its super classes, any of it's interfaces, or any of it's super interfaces.
+     * This is a exhaustive check throughout the complete inheritance hierarchy.
+     * @return the Annotation if found, null otherwise.
      */
-    public static Annotation getMethodAnnotation(Method method, Class annoClass)
+    public static Annotation getClassAnnotation(final Class classToCheck, final Class annoClass)
     {
-        Annotation a = method.getAnnotation(annoClass);
-        if (a != null)
-        {
-            return a;
-        }
+        final Set<Class> visited = new HashSet<Class>();
+        final LinkedList<Class> stack = new LinkedList<Class>();
+        stack.add(classToCheck);
 
-        Class[] interfaces = method.getDeclaringClass().getInterfaces();
-        if (interfaces != null)
+        while (!stack.isEmpty())
         {
-            for (Class interFace : interfaces)
+            Class classToChk = stack.pop();
+            if (classToChk == null || visited.contains(classToChk))
             {
-                Method m = getMethod(interFace, method.getName(), method.getParameterTypes());
-                a = m.getAnnotation(annoClass);
-                if (a != null)
-                {
-                    return a;
-                }
+                continue;
             }
+            visited.add(classToChk);
+            Annotation a = classToChk.getAnnotation(annoClass);
+            if (a != null)
+            {
+                return a;
+            }
+            stack.push(classToChk.getSuperclass());
+            addInterfaces(classToChk, stack);
+        }
+        return null;
+    }
+
+    private static void addInterfaces(final Class classToCheck, final LinkedList<Class> stack)
+    {
+        if (classToCheck == null)
+        {
+            return;
+        }
+        for (Class interFace : classToCheck.getInterfaces())
+        {
+            stack.push(interFace);
+        }
+    }
+
+    public static Annotation getMethodAnnotation(final Method method, final Class annoClass)
+    {
+        final Set<Class> visited = new HashSet<Class>();
+        final LinkedList<Class> stack = new LinkedList<Class>();
+        stack.add(method.getDeclaringClass());
+
+        while (!stack.isEmpty())
+        {
+            Class classToChk = stack.pop();
+            if (classToChk == null || visited.contains(classToChk))
+            {
+                continue;
+            }
+            visited.add(classToChk);
+            Method m = getMethod(classToChk, method.getName(), method.getParameterTypes());
+            if (m == null)
+            {
+                continue;
+            }
+            Annotation a = m.getAnnotation(annoClass);
+            if (a != null)
+            {
+                return a;
+            }
+            stack.push(classToChk.getSuperclass());
+            addInterfaces(method.getDeclaringClass(), stack);
         }
         return null;
     }

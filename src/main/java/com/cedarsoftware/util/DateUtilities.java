@@ -70,7 +70,15 @@ public class DateUtilities
 
     public static Date parseDate(String dateStr)
     {
+        if (dateStr == null)
+        {
+            return null;
+        }
         dateStr = dateStr.trim();
+        if ("".equals(dateStr))
+        {
+            return null;
+        }
 
         // Determine which date pattern (Matcher) to use
         Matcher matcher = datePattern1.matcher(dateStr);

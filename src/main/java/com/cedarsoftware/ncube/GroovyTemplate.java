@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class GroovyTemplate extends CommandCell
+public class GroovyTemplate extends UrlCommandCell
 {
     private static final Pattern scripletPattern = Pattern.compile("<%(.*?)%>");
     private static final Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
@@ -41,7 +41,7 @@ public class GroovyTemplate extends CommandCell
 
     public GroovyTemplate(String cmd)
     {
-        super(cmd);
+        super(cmd, true);
     }
 
     public void getCubeNamesFromCommandText(final Set<String> cubeNames)
@@ -90,6 +90,11 @@ public class GroovyTemplate extends CommandCell
                 scopeKeys.add(m1.group(2));
             }
         }
+    }
+
+    protected void fetch()
+    {
+
     }
 
     public Object runFinal(final Map args)

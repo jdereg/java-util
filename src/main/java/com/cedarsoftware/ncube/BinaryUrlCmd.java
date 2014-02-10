@@ -24,49 +24,22 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class BinaryUrlCmd extends CommandCell
+public class BinaryUrlCmd extends UrlCommandCell
 {
     private byte[] content;
-    private final boolean cache;
 
     public BinaryUrlCmd(boolean cache)
     {
-        super("");
-        this.cache = cache;
+        super("", cache);
     }
 
-    protected void processUrl(Map args)
+    protected void fetch()
     {
-        if (getUrl() == null)
-        {
-            return;
-        }
-        try
-        {
-            content = UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
-        }
-        catch (Exception e)
-        {
-            NCube ncube = (NCube) args.get("ncube");
-            setCompileErrorMsg("Failed to load binary cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-            throw new RuntimeException(getCompileErrorMsg(), e);
-        }
-        if (cache)
-        {
-            setUrl(null);  // indicates that URL has been processed
-        }
+        content = UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
     }
 
     protected Object runFinal(Map args)
     {
         return content;
-    }
-
-    public void getCubeNamesFromCommandText(Set<String> cubeNames)
-    {
-    }
-
-    public void getScopeKeys(Set<String> scopeKeys)
-    {
     }
 }

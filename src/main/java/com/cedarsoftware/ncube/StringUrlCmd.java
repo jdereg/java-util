@@ -24,48 +24,20 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class StringUrlCmd extends CommandCell
+public class StringUrlCmd extends UrlCommandCell
 {
-    private final boolean cache;
-
     public StringUrlCmd(boolean cache)
     {
-        super("");
-        this.cache = cache;
+        super("", cache);
     }
 
-    protected void processUrl(Map args)
+    protected void fetch()
     {
-        if (getUrl() == null)
-        {
-            return;
-        }
-        try
-        {
-            setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
-        }
-        catch (Exception e)
-        {
-            NCube ncube = (NCube) args.get("ncube");
-            setCompileErrorMsg("Failed to load string cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-            throw new RuntimeException(getCompileErrorMsg(), e);
-        }
-        if (cache)
-        {
-            setUrl(null);  // indicates that URL has been processed
-        }
+        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
     }
 
     protected Object runFinal(Map args)
     {
         return getCmd();
-    }
-
-    public void getCubeNamesFromCommandText(Set<String> cubeNames)
-    {
-    }
-
-    public void getScopeKeys(Set<String> scopeKeys)
-    {
     }
 }

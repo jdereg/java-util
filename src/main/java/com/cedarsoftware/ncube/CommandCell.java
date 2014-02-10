@@ -48,10 +48,10 @@ import java.util.regex.Pattern;
  */
 public abstract class CommandCell implements Comparable<CommandCell>
 {
+    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([^\\[\\(]+)(\\[[^\\]]*\\])");
     private volatile transient Class runnableCode = null;
 	private String cmd;
     private volatile transient String compileErrorMsg = null;
-    private String url = null;
     static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
     static final String proxyServer;
     static final int proxyPort;
@@ -94,7 +94,6 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     public Object run(Map args)
     {
-        processUrl(args);
         if (getCompileErrorMsg() != null)
         {   // If the cell failed to compile earlier, do not keep trying to recompile or run it.
             throw new IllegalStateException(getCompileErrorMsg());
@@ -103,8 +102,6 @@ public abstract class CommandCell implements Comparable<CommandCell>
         preRun(args);
         return runFinal(args);
     }
-
-    protected void processUrl(Map args) { }
 
     protected Object runFinal(Map args)
     {
@@ -165,16 +162,6 @@ public abstract class CommandCell implements Comparable<CommandCell>
     public int compareTo(CommandCell cmdCell)
     {
         return cmd.compareToIgnoreCase(cmdCell.cmd);
-    }
-
-    public void setUrl(String url)
-    {
-        this.url = url;
-    }
-
-    public String getUrl()
-    {
-        return url;
     }
 
     public abstract void getScopeKeys(Set<String> scopeKeys);

@@ -4833,9 +4833,10 @@ DELIMITER ;
     @Test
     public void testTemplateRequiredScope()
     {
+        NCubeManager.getNCubeFromResource("stringIds.json");
         NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
         Set<String> scope = ncube.getRequiredScope();
-        assertTrue(scope.size() == 2);
+        assertTrue(scope.size() == 4);
         assertTrue(scope.contains("CODE"));
         assertTrue(scope.contains("OVERDUE"));
 
@@ -5403,6 +5404,45 @@ DELIMITER ;
         cal.set(2014, 0, 18, 16, 26, 0);
         String json = JsonWriter.objectToJson(cal);
         assertEquals(cal, comp.convertStringToColumnValue(json));
+    }
+
+    @Test
+    public void testShortHandReferences()
+    {
+        NCubeManager.getNCubeFromResource("stringIds.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
+        Map coord = new HashMap();
+        coord.put("code", "FixedExp");
+        assertEquals(6.28, ncube.getCell(coord));
+
+        coord.put("code", "FixedExtExp");
+        assertEquals("young OH", ncube.getCell(coord));
+
+        coord.put("code", "RelativeExp");
+        assertEquals(32, ncube.getCell(coord));
+
+        coord.put("code", "RelativeExtExp");
+        assertEquals("adult TX", ncube.getCell(coord));
+    }
+
+    @Test
+    public void testExpandableUrlRef()
+    {
+        NCubeManager.getNCubeFromResource("urlPieces.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
+
+        Map coord = new HashMap();
+        coord.put("env_level", "local");
+        coord.put("protocol", "http");
+        coord.put("content", "features");
+        String html = (String) ncube.getCell(coord);
+        assertNotNull(html);
+
+        coord.put("env_level", "local");
+        coord.put("protocol", "https");
+        coord.put("content", "features");
+        String html1 = (String) ncube.getCell(coord);
+        assertEquals(html, html1);
     }
 
     // ---------------------------------------------------------------------------------

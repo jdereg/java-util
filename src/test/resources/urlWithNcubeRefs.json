@@ -1,0 +1,18 @@
+{
+    "ncube":"UrlNCube",
+    "axes":[ {
+        "name":"content",
+        "type":"DISCRETE",
+        "valueType":"STRING",
+        "hasDefault":false,
+        "preferredOrder":0,
+        "columns":[
+            { "id":"features"},
+            { "id":"quickstart"}
+        ]
+    }],
+    "cells":[
+        { "id":["features"], "type":"string", "url":"@UrlPieces[:]/html/features"},
+        { "id":["quickstart"], "type":"string", "url":"@UrlPieces[:]/html/quick-start"}
+    ]
+}

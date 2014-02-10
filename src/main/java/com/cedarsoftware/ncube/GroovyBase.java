@@ -30,13 +30,16 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public abstract class GroovyBase extends CommandCell
+public abstract class GroovyBase extends UrlCommandCell
 {
+    private static final Pattern groovyAbsRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^(]+)[(]([^)]*)[)]");
+    private static final Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^\\[\\(]+)(\\[[^\\]]*\\])");
+    private static final Pattern groovyAbsRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
+    private static final Pattern groovyAbsRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$](\\[[^\\]]*\\])");
+    private static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([^(]+)[(]([^)]*)[)]");
+    private static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
+    private static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
     private static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");
-    static final Pattern groovyRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^(]+)[(]([^)]*)[)]");
-    static final Pattern groovyRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
-    static final Pattern groovyRefCubeCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)@([^(]+)[(]([^)]*)[)]");
-    static final Pattern groovyRefCellPattern2 = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
     private static final Pattern groovyUniqueClassPattern = Pattern.compile("~([a-zA-Z0-9_]+)~");
     private static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
     private static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
@@ -52,7 +55,7 @@ public abstract class GroovyBase extends CommandCell
 
     public GroovyBase(String cmd)
     {
-        super(cmd);
+        super(cmd, true);
     }
 
     public boolean equals(Object other)
@@ -78,6 +81,8 @@ public abstract class GroovyBase extends CommandCell
         NCube ncube = (NCube) args.get("ncube");
         compileIfNeeded(ncube.getName());
     }
+
+    protected void fetch() { }
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method
@@ -121,16 +126,28 @@ public abstract class GroovyBase extends CommandCell
 
     static String expandNCubeShortCuts(String groovy)
     {
-        Matcher m = groovyRefCubeCellPattern.matcher(groovy);
+        Matcher m = groovyAbsRefCubeCellPattern.matcher(groovy);
         String exp = m.replaceAll("$1getFixedCell('$2',$3)");
 
-        m = groovyRefCellPattern.matcher(exp);
+        m = groovyAbsRefCubeCellPatternA.matcher(exp);
+        exp = m.replaceAll("$1getFixedCell('$2',$3)");
+
+        m = groovyAbsRefCellPattern.matcher(exp);
         exp = m.replaceAll("$1ncube.getCell($2,output)");
 
-        m = groovyRefCubeCellPattern2.matcher(exp);
+        m = groovyAbsRefCellPatternA.matcher(exp);
+        exp = m.replaceAll("$1ncube.getCell($2,output)");
+
+        m = groovyRelRefCubeCellPattern.matcher(exp);
         exp = m.replaceAll("$1getRelativeCubeCell('$2',$3)");
 
-        m = groovyRefCellPattern2.matcher(exp);
+        m = groovyRelRefCubeCellPatternA.matcher(exp);
+        exp = m.replaceAll("$1getRelativeCubeCell('$2',$3)");
+
+        m = groovyRelRefCellPattern.matcher(exp);
+        exp = m.replaceAll("$1getRelativeCell($2)");
+
+        m = groovyRelRefCellPatternA.matcher(exp);
         exp = m.replaceAll("$1getRelativeCell($2)");
         return exp;
     }
@@ -142,13 +159,25 @@ public abstract class GroovyBase extends CommandCell
 
     static void getCubeNamesFromText(final Set<String> cubeNames, final String text)
     {
-        Matcher m = groovyRefCubeCellPattern.matcher(text);
+        Matcher m = groovyAbsRefCubeCellPattern.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
         }
 
-        m = groovyRefCubeCellPattern2.matcher(text);
+        m = groovyAbsRefCubeCellPatternA.matcher(text);
+        while (m.find())
+        {
+            cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
+        }
+
+        m = groovyRelRefCubeCellPattern.matcher(text);
+        while (m.find())
+        {
+            cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
+        }
+
+        m = groovyRelRefCubeCellPatternA.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change

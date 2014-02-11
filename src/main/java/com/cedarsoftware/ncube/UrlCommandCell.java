@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -23,6 +24,7 @@ import java.util.regex.Matcher;
  */
 public abstract class UrlCommandCell extends CommandCell
 {
+    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([^\\[\\(]+)(\\[[^\\]]*\\])");
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;
@@ -43,7 +45,7 @@ public abstract class UrlCommandCell extends CommandCell
         return url;
     }
 
-    public Object run(Map args)
+    protected void preRun(Map args)
     {
         if (url != null)
         {
@@ -54,7 +56,6 @@ public abstract class UrlCommandCell extends CommandCell
             }
         }
         processUrl(args);
-        return super.run(args);
     }
 
     protected void processUrl(Map args)
@@ -67,20 +68,20 @@ public abstract class UrlCommandCell extends CommandCell
 
         try
         {
-            fetch();
+            fetchContentFromUrl();
         }
         catch (Exception e)
         {
             setCompileErrorMsg("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-            throw new RuntimeException(getCompileErrorMsg(), e);
+            throw new IllegalStateException(getCompileErrorMsg(), e);
         }
         if (cache)
         {
-            setUrl(null);  // indicates that URL has been processed
+            setUrl(null);  // indicates that content has been processed
         }
     }
 
-    protected abstract void fetch();
+    protected abstract void fetchContentFromUrl();
 
     protected String expandUrl(Map args)
     {

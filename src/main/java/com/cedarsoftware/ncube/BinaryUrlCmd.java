@@ -33,7 +33,7 @@ public class BinaryUrlCmd extends UrlCommandCell
         super("", cache);
     }
 
-    protected void fetch()
+    protected void fetchContentFromUrl()
     {
         content = UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
     }

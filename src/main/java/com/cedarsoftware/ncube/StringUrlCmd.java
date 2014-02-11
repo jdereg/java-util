@@ -31,7 +31,7 @@ public class StringUrlCmd extends UrlCommandCell
         super("", cache);
     }
 
-    protected void fetch()
+    protected void fetchContentFromUrl()
     {
         setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
     }

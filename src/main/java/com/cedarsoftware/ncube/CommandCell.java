@@ -48,7 +48,6 @@ import java.util.regex.Pattern;
  */
 public abstract class CommandCell implements Comparable<CommandCell>
 {
-    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([^\\[\\(]+)(\\[[^\\]]*\\])");
     private volatile transient Class runnableCode = null;
 	private String cmd;
     private volatile transient String compileErrorMsg = null;

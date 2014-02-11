@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyClassLoader;
 
 import java.io.InputStream;
@@ -53,9 +54,9 @@ public abstract class GroovyBase extends UrlCommandCell
         groovyCell = groovyClassLoader.parseClass(groovy);
     }
 
-    public GroovyBase(String cmd)
+    public GroovyBase(String cmd, boolean cache)
     {
-        super(cmd, true);
+        super(cmd, cache);
     }
 
     public boolean equals(Object other)
@@ -82,7 +83,10 @@ public abstract class GroovyBase extends UrlCommandCell
         compileIfNeeded(ncube.getName());
     }
 
-    protected void fetch() { }
+    protected void fetchContentFromUrl()
+    {
+        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
+    }
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method

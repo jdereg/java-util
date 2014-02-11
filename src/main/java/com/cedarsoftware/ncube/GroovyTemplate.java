@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.UrlUtilities;
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 
@@ -39,9 +40,9 @@ public class GroovyTemplate extends UrlCommandCell
     private static final Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
     private Template resolvedTemplate;
 
-    public GroovyTemplate(String cmd)
+    public GroovyTemplate(String cmd, boolean cache)
     {
-        super(cmd, true);
+        super(cmd, cache);
     }
 
     public void getCubeNamesFromCommandText(final Set<String> cubeNames)
@@ -92,9 +93,9 @@ public class GroovyTemplate extends UrlCommandCell
         }
     }
 
-    protected void fetch()
+    protected void fetchContentFromUrl()
     {
-
+        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
     }
 
     public Object runFinal(final Map args)

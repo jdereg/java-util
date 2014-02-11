@@ -57,7 +57,12 @@ public class GroovyMethod extends GroovyBase
 {
     public GroovyMethod(String cmd)
     {
-        super(cmd);
+        super(cmd, true);
+    }
+
+    public GroovyMethod(String cmd, boolean cache)
+    {
+        super(cmd, cache);
     }
 
     public String buildGroovy(String theirGroovy, String cubeName)

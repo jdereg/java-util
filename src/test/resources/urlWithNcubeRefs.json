@@ -8,11 +8,19 @@
         "preferredOrder":0,
         "columns":[
             { "id":"features"},
-            { "id":"quickstart"}
+            { "id":"quickstart"},
+            { "id":"emailHelp"},
+            { "id":"sendHelp"},
+            { "id":"hello"},
+            { "id":"95"}
         ]
     }],
     "cells":[
         { "id":["features"], "type":"string", "url":"@UrlPieces[:]/html/features"},
-        { "id":["quickstart"], "type":"string", "url":"@UrlPieces[:]/html/quick-start"}
+        { "id":["quickstart"], "type":"string", "url":"@UrlPieces[:]/html/quick-start"},
+        { "id":["emailHelp"], "type":"template", "url":"@UrlPieces[:]/help/EmailHelp.txt"},
+        { "id":["sendHelp"], "type":"template", "url":"@UrlPieces[:]/help/SendHelp.txt"},
+        { "id":["hello"], "type":"exp", "url":"@UrlPieces[:]/snippets/hello.groovy"},
+        { "id":["95"], "type":"exp", "url":"@UrlPieces[:]/snippets/number.groovy"}
     ]
 }

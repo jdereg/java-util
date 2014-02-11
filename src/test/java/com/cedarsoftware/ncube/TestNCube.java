@@ -5438,11 +5438,64 @@ DELIMITER ;
         String html = (String) ncube.getCell(coord);
         assertNotNull(html);
 
-        coord.put("env_level", "local");
         coord.put("protocol", "https");
         coord.put("content", "features");
         String html1 = (String) ncube.getCell(coord);
         assertEquals(html, html1);
+
+        coord.put("protocol", "http");
+        coord.put("content", "quickstart");
+        String html2 = (String) ncube.getCell(coord);
+        assertNotEquals(html, html2);
+    }
+
+    @Test
+    public void testTemplateFromUrl()
+    {
+        NCubeManager.getNCubeFromResource("urlPieces.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
+
+        Map coord = new HashMap();
+        coord.put("env_level", "local");
+        coord.put("protocol", "http");
+        coord.put("content", "emailHelp");
+        String html = (String) ncube.getCell(coord);
+        assertNotNull(html);
+
+        coord.put("protocol", "https");
+        coord.put("content", "emailHelp");
+        String html1 = (String) ncube.getCell(coord);
+        assertEquals(html, html1);
+
+        coord.put("protocol", "http");
+        coord.put("content", "sendHelp");
+        String html2 = (String) ncube.getCell(coord);
+        assertNotEquals(html, html2);
+    }
+
+    @Test
+    public void testExpressionFromUrl()
+    {
+        NCubeManager.getNCubeFromResource("urlPieces.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
+
+        Map coord = new HashMap();
+        coord.put("env_level", "local");
+        coord.put("protocol", "http");
+        coord.put("content", "hello");
+        String html = (String) ncube.getCell(coord);
+        assertNotNull(html);
+        assertEquals("Hello, world.", html);
+
+        coord.put("protocol", "https");
+        coord.put("content", "hello");
+        String html1 = (String) ncube.getCell(coord);
+        assertEquals(html, html1);
+
+        coord.put("protocol", "http");
+        coord.put("content", "95");
+        Integer num = (Integer) ncube.getCell(coord);
+        assertEquals(95, num.intValue());
     }
 
     // ---------------------------------------------------------------------------------

@@ -79,6 +79,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected void preRun(Map args)
     {
+        super.preRun(args);
         NCube ncube = (NCube) args.get("ncube");
         compileIfNeeded(ncube.getName());
     }

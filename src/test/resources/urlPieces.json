@@ -23,9 +23,7 @@
         ]}
     ],
     "cells":[
-        { "id":["https","local"], "type":"string", "value":"https://www.myotherdrive.com/"},
-        { "id":["http","local"], "type":"string", "value":"http://www.myotherdrive.com/"},
-        { "id":["https","dev"], "type":"string", "value":"https://www.google.com/"},
-        { "id":["http","dev"], "type":"string", "value":"http://www.google.com/"}
+        { "id":["https","local"], "type":"string", "value":"https://www.myotherdrive.com"},
+        { "id":["http","local"], "type":"string", "value":"http://www.myotherdrive.com"}
     ]
 }

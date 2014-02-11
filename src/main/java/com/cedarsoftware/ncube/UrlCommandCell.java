@@ -105,6 +105,7 @@ public abstract class UrlCommandCell extends CommandCell
             last = m.end();
         }
 
+        expandedUrl.append(url.substring(last));
         return expandedUrl.toString();
     }
 

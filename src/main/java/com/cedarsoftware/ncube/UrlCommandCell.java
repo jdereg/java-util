@@ -54,16 +54,12 @@ public abstract class UrlCommandCell extends CommandCell
                 url = expandUrl(args);
                 urlExpanded = true;
             }
+            processUrl(args);
         }
-        processUrl(args);
     }
 
-    protected void processUrl(Map args)
+    private void processUrl(Map args)
     {
-        if (getUrl() == null)
-        {
-            return;
-        }
         NCube ncube = (NCube) args.get("ncube");
 
         try

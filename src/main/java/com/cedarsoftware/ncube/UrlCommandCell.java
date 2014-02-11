@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.UrlUtilities;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -77,7 +79,10 @@ public abstract class UrlCommandCell extends CommandCell
         }
     }
 
-    protected abstract void fetchContentFromUrl();
+    protected void fetchContentFromUrl()
+    {
+        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
+    }
 
     protected String expandUrl(Map args)
     {

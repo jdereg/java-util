@@ -84,11 +84,6 @@ public abstract class GroovyBase extends UrlCommandCell
         compileIfNeeded(ncube.getName());
     }
 
-    protected void fetchContentFromUrl()
-    {
-        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
-    }
-
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method
      * immediately returns.  Insta-check because it is just a ref == null check.

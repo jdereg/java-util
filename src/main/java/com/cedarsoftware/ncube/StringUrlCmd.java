@@ -31,11 +31,6 @@ public class StringUrlCmd extends UrlCommandCell
         super("", cache);
     }
 
-    protected void fetchContentFromUrl()
-    {
-        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
-    }
-
     protected Object runFinal(Map args)
     {
         return getCmd();

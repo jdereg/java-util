@@ -93,11 +93,6 @@ public class GroovyTemplate extends UrlCommandCell
         }
     }
 
-    protected void fetchContentFromUrl()
-    {
-        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
-    }
-
     public Object runFinal(final Map args)
     {
         // args.input, args.output, args.ncube, args.ncubeMgr, and args.stack,

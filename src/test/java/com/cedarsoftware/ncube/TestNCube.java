@@ -5434,17 +5434,17 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("env_level", "local");
         coord.put("protocol", "http");
-        coord.put("content", "features");
+        coord.put("content", "ai");
         String html = (String) ncube.getCell(coord);
         assertNotNull(html);
 
         coord.put("protocol", "https");
-        coord.put("content", "features");
+        coord.put("content", "ai");
         String html1 = (String) ncube.getCell(coord);
         assertEquals(html, html1);
 
         coord.put("protocol", "http");
-        coord.put("content", "quickstart");
+        coord.put("content", "lwt");
         String html2 = (String) ncube.getCell(coord);
         assertNotEquals(html, html2);
     }
@@ -5458,17 +5458,17 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("env_level", "local");
         coord.put("protocol", "http");
-        coord.put("content", "emailHelp");
+        coord.put("content", "ai");
         String html = (String) ncube.getCell(coord);
         assertNotNull(html);
 
         coord.put("protocol", "https");
-        coord.put("content", "emailHelp");
+        coord.put("content", "ai");
         String html1 = (String) ncube.getCell(coord);
         assertEquals(html, html1);
 
         coord.put("protocol", "http");
-        coord.put("content", "sendHelp");
+        coord.put("content", "vend");
         String html2 = (String) ncube.getCell(coord);
         assertNotEquals(html, html2);
     }

@@ -7,13 +7,13 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.8.3</version>
+  <version>1.8.4</version>
 </dependency>
 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>json-io</artifactId>
-  <version>2.4.2</version>
+  <version>2.4.5</version>
 </dependency>
 ```
 
@@ -38,6 +38,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.8.4
+ * UrlUtilities, fixed issue where the default settings for the connection were changed, not the settings on the actual connection.
 * 1.8.3
  * ReflectionUtilities has new getClassAnnotation(classToCheck, annotation) API which will return the annotation if it exists within the classes super class hierarchy or interface hierachy.  Similarly, the getMethodAnnotation() API does the same thing for method annotations (allow inheritance - class or interface).
 * 1.8.2

@@ -847,7 +847,7 @@ DELIMITER ;
 
         try
         {
-            genderAxis.addColumn(6.6);
+            genderAxis.addColumn(new Date());
             assertTrue("should throw exception", false);
         }
         catch (IllegalArgumentException expected)
@@ -892,7 +892,7 @@ DELIMITER ;
             ncube.getCell(coord);
             assertTrue("should throw exception", false);
         }
-        catch (IllegalArgumentException expected)
+        catch (CoordinateNotFoundException expected)
         {
         }
 

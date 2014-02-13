@@ -800,7 +800,7 @@ public class Axis
 	 * @param value Comparable to promote
 	 * @return promoted value, or the same value if no promotion occurs.
 	 */
-	private Comparable promoteValue(Comparable value) 
+	public Comparable promoteValue(Comparable value)
 	{
 		switch(valueType)
 		{
@@ -828,6 +828,14 @@ public class Axis
 		{
 			return (String) value;
 		}
+        else if (value instanceof Number)
+        {
+            return value.toString();
+        }
+        else if (value instanceof Boolean)
+        {
+            return value.toString();
+        }
 		throw getBadTypeException(value, "String");
 	}
 	
@@ -929,6 +937,10 @@ public class Axis
 		{
 			return (Date) value;
 		}
+        else if (value instanceof String)
+        {
+            return DateUtilities.parseDate((String)value);
+        }
 		else if (value instanceof Calendar)
 		{
 			return ((Calendar)value).getTime();

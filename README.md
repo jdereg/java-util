@@ -56,6 +56,10 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.  If you plan to included it within a commercial application, please contact John DeRegnaucourt, jdereg@gmail.com.
 
 Version History
+* 2.3.1
+ * Date axis be created from, or matched with, a String that passed DateUtilities.parseDate().
+ * String axis can be created from, or matched with, a Number instance.
+ * Axis.promoteValue() has been made public.
 * 2.3.0
  * Groovy expression, method, and template cells can be loaded from 'url' instead of having content directly in 'value' field.  In addition, the 'cache' attribute can be added.  When 'true', the template, expression, or method, is loaded and compiled once, and then stored in memory. If 'cache' attribute is 'false', then the content is retrieved on each access.
  * Within the url, other n-cubes can be referenced.  For example, @settings[:]/html/index.html.  In this example, the current input coordinate that directed access to the cell containing the URL reference, is passed as input to the referenced n-cube(s).  This allows a 'settings-type' n-cube to be used to keep track of actual domains, ports, contexts, etc., leaving the URLs in all the other cubes not needed to be changed when the domain, port, etc. is changed.

@@ -373,7 +373,15 @@ public class UrlUtilities
     {
         try
         {
-            return new String(getContentFromUrl(url), "UTF-8");
+            byte[] content = getContentFromUrl(url);
+            if (content == null)
+            {
+                return null;
+            }
+            else
+            {
+                return new String(content, "UTF-8");
+            }
         }
         catch (UnsupportedEncodingException e)
         {
@@ -522,17 +530,10 @@ public class UrlUtilities
 
                 // Create an ssl socket factory with our all-trusting manager
                 final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-                HttpsURLConnection.setDefaultSSLSocketFactory( sslSocketFactory );
+                sc.setSSLSocketFactory(sslSocketFactory);
                 sc.setHostnameVerifier(new HostnameVerifier()
                 {
                     public boolean verify(String s, SSLSession sslSession)
-                    {
-                        return true;
-                    }
-                });
-                HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier()
-                {
-                    public boolean verify(String hostname, SSLSession session)
                     {
                         return true;
                     }

@@ -38,6 +38,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.8.5
+ * The Set returned from the CaseInsensitiveMap.entrySet() now contains Abstract.SimpleEntry, not Abstract.SimpleImmutableEntrys, which allows the entry value to be modified.
 * 1.8.4
  * UrlUtilities, fixed issue where the default settings for the connection were changed, not the settings on the actual connection.
 * 1.8.3

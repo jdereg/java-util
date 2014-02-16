@@ -2,6 +2,8 @@ n-cube
 ======
 n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and Enterprise Spreadsheet, built as a hyper-space.  
 
+<a class="coinbase-button" data-code="fa9649e67f105fa5aa0dee4e7bfd9dd9" data-button-style="custom_large" data-custom="n-cube" href="https://coinbase.com/checkouts/fa9649e67f105fa5aa0dee4e7bfd9dd9">Donate Bitcoins</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
+
 What are the components of an n-cube?
 An n-cube has a set of axes (plural of axis), each of which adds a dimension.  Each axis can contain a different number of elements.  These elements are called columns.
 

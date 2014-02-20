@@ -461,21 +461,71 @@ public class UrlUtilities
      * byte[].
      *
      * @param url URL to hit
-     * @param proxyServer String named of proxy server
-     * @param port port to access proxy server
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
-     * @param ignoreSec if true, SSL connection will always be trusted.
+     * @param proxy Proxy server to create connection (or null if not needed)
+     * @param factory custom SSLSocket factory (or null if not needed)
+     * @param verifier custom Hostnameverifier (or null if not needed)
      * @return byte[] of content fetched from URL.
      */
-    public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
+    public static byte[] getContentFromUrl(String url, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier)
     {
         URLConnection c = null;
         try
         {
             Matcher m = resPattern.matcher(url);
             URL u = m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
-            c = getConnection(u, proxyServer, port, inCookies, true, false, false, ignoreSec);
+
+            c = getConnection(u, null, true, false, false, proxy, factory, verifier);
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
+            InputStream stream = IOUtilities.getInputStream(c);
+            IOUtilities.transfer(stream, out);
+            stream.close();
+
+            return out.toByteArray();
+        }
+        catch (SSLHandshakeException sslE)
+        {
+            // Don't read error response.  it will just cause another exception.
+            LOG.warn("SSL Exception: " + url, sslE);
+            return null;
+        }
+        catch (Exception e)
+        {
+            readErrorResponse(c);
+            LOG.warn("Exception occurred fetching content from url: " + url, e);
+            return null;
+        }
+        finally
+        {
+            if (c instanceof HttpURLConnection)
+            {
+                disconnect((HttpURLConnection)c);
+            }
+        }
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param proxy Proxy server to create connection (or null if not needed)
+     * @param factory custom SSLSocket factory (or null if not needed)
+     * @param verifier custom Hostnameverifier (or null if not needed)
+     * @return byte[] of content fetched from URL.
+     */
+    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier)
+    {
+        URLConnection c = null;
+        try
+        {
+            Matcher m = resPattern.matcher(url);
+            URL u = m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+
+            c = getConnection(u, inCookies, true, false, false, proxy, factory, verifier);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
             InputStream stream = IOUtilities.getInputStream(c);
@@ -508,6 +558,38 @@ public class UrlUtilities
                 disconnect((HttpURLConnection)c);
             }
         }
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxyServer String named of proxy server
+     * @param port port to access proxy server
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param ignoreSec if true, SSL connection will always be trusted.
+     * @return byte[] of content fetched from URL.
+     */
+    public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
+    {
+        //  if proxy server is passed
+        Proxy proxy = null;
+        if (proxyServer != null) {
+            proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
+        }
+
+        //  If we are trusting all ssl connections
+        SSLSocketFactory factory = null;
+        HostnameVerifier verifier = null;
+        if (ignoreSec) {
+            factory = buildNaiveSSLSocketFactory();
+            verifier = NAIVE_VERIFIER;
+        }
+
+        return getContentFromUrl(url, inCookies, outCookies, proxy, factory, verifier);
     }
 
     public static SSLSocketFactory buildNaiveSSLSocketFactory() {
@@ -566,49 +648,14 @@ public class UrlUtilities
         return c;
     }
 
+
     public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
     {
-        URLConnection c;
-        if (proxyServer != null)
-        {
-            Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
-            c = url.openConnection(proxy);
-        }
-        else
-        {
-            c = url.openConnection();
-        }
-        c.setRequestProperty("Accept-Encoding", "gzip, deflate");
-        c.setAllowUserInteraction(false);
-        c.setDoOutput(output);
-        c.setDoInput(input);
-        c.setUseCaches(cache);
-        if (c instanceof HttpURLConnection)
-        {
-            HttpURLConnection.setFollowRedirects(true);
-        }
-        c.setReadTimeout(220000);
-        c.setConnectTimeout(45000);
+        Proxy proxy = (proxyServer == null) ?  null : new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
+        SSLSocketFactory sslFactory = ignoreSec ? buildNaiveSSLSocketFactory() : null;
+        HostnameVerifier verifier = ignoreSec ? NAIVE_VERIFIER : null;
 
-        if (c instanceof HttpsURLConnection && ignoreSec)
-        {
-            HttpsURLConnection sc = (HttpsURLConnection) c;
-            try
-            {
-                sc.setSSLSocketFactory(buildNaiveSSLSocketFactory());
-                sc.setHostnameVerifier(NAIVE_VERIFIER);
-            }
-            catch(Exception e)
-            {
-                LOG.warn("Could not access '" + url.toString() + "'", e);
-            }
-        }
-        // Set cookies in the HTTP header
-        if (inCookies != null)
-        {   // [optional] place cookies (JSESSIONID) into HTTP headers
-            setCookies(c, inCookies);
-        }
-        return c;
+        return getConnection(url, inCookies, input, output, cache, proxy, sslFactory, verifier);
     }
 
     public static String getHostName()

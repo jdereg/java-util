@@ -390,6 +390,28 @@ public class UrlUtilities
     /**
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxy proxy to use to create connection
+     * @return String read from URL or null in the case of error.
+     */
+    public static String getContentFromUrlAsString(String url, Proxy proxy)
+    {
+        try
+        {
+            byte[] bytes = getContentFromUrl(url, proxy);
+            return bytes == null ? null : new String(bytes, "UTF-8");
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            throw new RuntimeException("UTF-8 not supported by your JVM.  Get a newer JVM.", e);
+        }
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
      * String.
      *
      * @param url URL to hit
@@ -397,22 +419,7 @@ public class UrlUtilities
      */
     public static String getContentFromUrlAsString(String url)
     {
-        try
-        {
-            byte[] content = getContentFromUrl(url);
-            if (content == null)
-            {
-                return null;
-            }
-            else
-            {
-                return new String(content, "UTF-8");
-            }
-        }
-        catch (UnsupportedEncodingException e)
-        {
-            throw new RuntimeException("UTF-8 not supported by your JVM.  Get a newer JVM.", e);
-        }
+        return getContentFromUrlAsString(url, Proxy.NO_PROXY);
     }
 
     /**
@@ -425,7 +432,21 @@ public class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url)
     {
-        return getContentFromUrl(url, null, 0, null, null, true);
+        return getContentFromUrl(url, Proxy.NO_PROXY);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxy proxy to use to create connection
+     * @return byte[] read from URL or null in the case of error.
+     */
+    public static byte[] getContentFromUrl(String url, Proxy proxy)
+    {
+        return getContentFromUrl(url, null, null, proxy, buildNaiveSSLSocketFactory(), NAIVE_VERIFIER);
     }
 
 
@@ -651,7 +672,7 @@ public class UrlUtilities
 
     public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
     {
-        Proxy proxy = (proxyServer == null) ?  null : new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
+        Proxy proxy = (proxyServer == null) ?  Proxy.NO_PROXY : new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
         SSLSocketFactory sslFactory = ignoreSec ? buildNaiveSSLSocketFactory() : null;
         HostnameVerifier verifier = ignoreSec ? NAIVE_VERIFIER : null;
 

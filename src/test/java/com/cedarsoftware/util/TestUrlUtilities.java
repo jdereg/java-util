@@ -3,6 +3,9 @@ package com.cedarsoftware.util;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.net.ssl.SSLSocketFactory;
+import java.net.Proxy;
+
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -32,7 +35,20 @@ public class TestUrlUtilities
 //        Assert.assertNull(content);
 
         String content = UrlUtilities.getContentFromUrlAsString(url);
-        Assert.assertNotNull(content);
+        Assert.assertTrue(content.contains("google.com"));
+    }
+
+    @Test
+    public void testSSLTrust() throws Exception
+    {
+        String url = "https://www.google.com/";
+
+        Assert.assertNull(UrlUtilities.getContentFromUrl(url, null, null, null, null, null));
+
+        SSLSocketFactory f = UrlUtilities.buildNaiveSSLSocketFactory();
+        Assert.assertNotNull(UrlUtilities.getContentFromUrl(url, null, null, null, f, UrlUtilities.NAIVE_VERIFIER));
+
+        String content = UrlUtilities.getContentFromUrlAsString("http://www.google.com", Proxy.NO_PROXY);
         Assert.assertTrue(content.contains("google.com"));
     }
 }

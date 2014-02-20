@@ -56,7 +56,7 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static final Pattern validCubeName = Pattern.compile("[0-9a-zA-Z:.|#_-]+");
+    private static final Pattern validCubeName = Pattern.compile("[" + NCube.validCubeNameChars + "]+");
     private static final Pattern validVersion = Pattern.compile("^(\\d+\\.)(\\d+\\.)(\\*|\\d+)$");
 
     /**

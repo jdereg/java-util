@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  */
 public abstract class UrlCommandCell extends CommandCell
 {
-    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([^\\[\\(]+)(\\[[^\\]]*\\])");
+    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)(\\[[^\\]]*\\])");
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;

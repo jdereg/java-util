@@ -33,17 +33,17 @@ import java.util.regex.Pattern;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    private static final Pattern groovyAbsRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^(]+)[(]([^)]*)[)]");
-    private static final Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([^\\[\\(]+)(\\[[^\\]]*\\])");
-    private static final Pattern groovyAbsRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
-    private static final Pattern groovyAbsRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$](\\[[^\\]]*\\])");
-    private static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([^(]+)[(]([^)]*)[)]");
-    private static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
-    private static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
-    private static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");
-    private static final Pattern groovyUniqueClassPattern = Pattern.compile("~([a-zA-Z0-9_]+)~");
-    private static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
-    private static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
+    static final Pattern groovyAbsRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([" + NCube.validCubeNameChars + "]+)[(]([^)]*)[)]");
+    static final Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([" + NCube.validCubeNameChars + "]+)(\\[[^\\]]*\\])");
+    static final Pattern groovyAbsRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
+    static final Pattern groovyAbsRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$](\\[[^\\]]*\\])");
+    static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)[(]([^)]*)[)]");
+    static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
+    static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
+    static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");
+    static final Pattern groovyUniqueClassPattern = Pattern.compile("~([a-zA-Z0-9_]+)~");
+    static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
+    static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
     static GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
     static final Class groovyCell;
 

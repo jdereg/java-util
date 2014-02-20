@@ -2,14 +2,13 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+import java.lang.reflect.Array;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,8 +16,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static java.lang.Math.abs;
 
 /**
  * Format an NCube into an HTML document
@@ -135,10 +132,10 @@ public class HtmlFormatter extends NCubeFormatter
 
         if (axes.size() == 1)
         {   // Ensure that one dimension is vertically down the page
-            s.append(" <th data-id=\"a" + topAxis.getId() +"\" class=\"ncube-head\">");
-            s.append("  <div class=\"btn-group axis-menu\" data-id=\"" + topAxisName + "\">\n");
+            s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"ncube-head\">");
+            s.append("  <div class=\"btn-group axis-menu\" data-id=\"").append(topAxisName).append("\">\n");
             s.append("   <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
-            s.append("    <span>" + topAxisName + "</span><span class=\"caret\"></span>");
+            s.append("    <span>").append(topAxisName).append("</span><span class=\"caret\"></span>");
             s.append("   </button></th>\n");
             s.append("  </div>\n");
             s.append(" <th class=\"ncube-dead\"></th>\n");
@@ -149,7 +146,7 @@ public class HtmlFormatter extends NCubeFormatter
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
-                s.append(" <th data-id=\"c" + column.getId() + "\" class=\"ncube-col\">");
+                s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\">");
                 s.append(column.isDefault() ? "Default" : column.toString());
                 coord.clear();
                 coord.add(topColumns.get(i).getId());
@@ -163,14 +160,14 @@ public class HtmlFormatter extends NCubeFormatter
             int deadCols = axes.size() - 1;
             if (deadCols > 0)
             {
-                s.append(" <th class=\"ncube-dead\" colspan=\"" + deadCols + "\"></th>\n");
+                s.append(" <th class=\"ncube-dead\" colspan=\"").append(deadCols).append("\"></th>\n");
             }
-            s.append(" <th data-id=\"a" + topAxis.getId() + "\" class=\"ncube-head\" colspan=\"");
+            s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"ncube-head\" colspan=\"");
             s.append(topAxis.size());
             s.append("\">");
-            s.append("  <div class=\"btn-group axis-menu\" data-id=\"" + topAxisName + "\">\n");
+            s.append("  <div class=\"btn-group axis-menu\" data-id=\"").append(topAxisName).append("\">\n");
             s.append("  <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
-            s.append("   <span>" + topAxisName + "</span><span class=\"caret\"></span>");
+            s.append("   <span>").append(topAxisName).append("</span><span class=\"caret\"></span>");
             s.append("  </button>\n");
             s.append("   </div>\n");
             s.append(" </th>\n</tr>\n");
@@ -189,10 +186,10 @@ public class HtmlFormatter extends NCubeFormatter
             {
                 Axis axis = axes.get(i);
                 String axisName = axis.getName();
-                s.append(" <th data-id=\"a" + axis.getId() + "\" class=\"ncube-head\">\n");
-                s.append("  <div class=\"btn-group axis-menu\" data-id=\"" + axisName + "\">\n");
+                s.append(" <th data-id=\"a").append(axis.getId()).append("\" class=\"ncube-head\">\n");
+                s.append("  <div class=\"btn-group axis-menu\" data-id=\"").append(axisName).append("\">\n");
                 s.append("   <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
-                s.append("    <span>" + axisName + "</span><span class=\"caret\"></span>");
+                s.append("    <span>").append(axisName).append("</span><span class=\"caret\"></span>");
                 s.append("   </button>\n");
                 s.append("   </div>\n");
                 s.append(" </th>\n");
@@ -211,7 +208,7 @@ public class HtmlFormatter extends NCubeFormatter
 
             for (Column column : topColumns)
             {
-                s.append(" <th data-id=\"c" + column.getId() + "\" class=\"ncube-col\">");
+                s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\">");
                 s.append(column.toString());
                 s.append("</th>\n");
             }
@@ -244,12 +241,12 @@ public class HtmlFormatter extends NCubeFormatter
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"c" + column.getId() + "\" class=\"ncube-col\">");
+                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\">");
                         }
                         else
                         {   // Need to show rowspan attribute
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"c" + column.getId() + "\" class=\"ncube-col\" rowspan=\"");
+                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\" rowspan=\"");
                             s.append(span);
                             s.append("\">");
                         }
@@ -293,40 +290,83 @@ public class HtmlFormatter extends NCubeFormatter
 
     private void buildCell(StringBuilder s, Set<Long> coord)
     {
-        Object cellValue = ncube.getCellByIdNoExecute(coord);
         String id = "k" + setToString(coord);
-        if (cellValue != null)
+        s.append(" <td data-id=\"").append(id).append("\" class=\"cell\">");
+        if (ncube.containsCellById(coord))
         {
-            String strCell;
-            if (cellValue instanceof Date || cellValue instanceof Number)
-            {
-                strCell = Column.formatDiscreteValue((Comparable) cellValue);
-            }
-            else if (cellValue.getClass().isArray())
-            {
-                try
-                {
-                    strCell = JsonWriter.objectToJson(cellValue);
-                }
-                catch (IOException e)
-                {
-                    throw new IllegalStateException("Error with simple JSON format", e);
-                }
-            }
-            else
-            {
-                strCell = cellValue.toString();
-            }
+            s.append(getCellValueAsString(ncube.getCellByIdNoExecute(coord)));
+        }
+        s.append("</td>\n");
+    }
 
-            s.append(cellValue instanceof Number ? " <td data-id=\"" + id + "\" class=\"ncube-num cell\">" : " <td data-id=\"" + id + "\" class=\"cell\">");
-            s.append(strCell);
-            s.append("</td>\n");
+    private static String getCellValueAsString(Object cellValue)
+    {
+        if (cellValue == null)
+        {
+            return "null";
+        }
+        boolean isArray = cellValue.getClass().isArray();
+
+        if (cellValue instanceof Date || cellValue instanceof Number || cellValue instanceof String)
+        {
+            return Column.formatDiscreteValue((Comparable) cellValue);
+        }
+        else if (cellValue instanceof Boolean || cellValue instanceof Character)
+        {
+            return String.valueOf(cellValue);
+        }
+        else if (isArray && JsonReader.isPrimitive(cellValue.getClass().getComponentType()))
+        {
+            StringBuilder str = new StringBuilder();
+            str.append('[');
+            final int len = Array.getLength(cellValue);
+            final int len1 = len - 1;
+
+            for (int i=0; i < len; i++)
+            {
+                Object elem = Array.get(cellValue, i);
+                str.append(elem.toString());
+                if (i < len1)
+                {
+                    str.append(", ");
+                }
+            }
+            str.append(']');
+            return str.toString();
+        }
+        else if (isArray && Object[].class == cellValue.getClass())
+        {
+            StringBuilder str = new StringBuilder();
+            str.append('[');
+            final int len = Array.getLength(cellValue);
+            final int len1 = len - 1;
+
+            for (int i=0; i < len; i++)
+            {
+                Object elem = Array.get(cellValue, i);
+                str.append(getCellValueAsString(elem));
+                if (i < len1)
+                {
+                    str.append(", ");
+                }
+            }
+            str.append(']');
+            return str.toString();
+        }
+        else if (cellValue instanceof CommandCell)
+        {
+            return ((CommandCell) cellValue).getCmd();
         }
         else
         {
-            s.append(" <td data-id=\"");
-            s.append(id);
-            s.append("\" class=\"cell\"></td>");
+            try
+            {
+                return JsonWriter.objectToJson(cellValue);
+            }
+            catch (IOException e)
+            {
+                throw new IllegalStateException("Error with simple JSON format", e);
+            }
         }
     }
 

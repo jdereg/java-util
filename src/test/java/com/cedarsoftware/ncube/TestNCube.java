@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -5496,6 +5497,44 @@ DELIMITER ;
         coord.put("content", "95");
         Integer num = (Integer) ncube.getCell(coord);
         assertEquals(95, num.intValue());
+    }
+
+    @Test
+    public void testNCubeNameParser()
+    {
+        String name = "['Less than $10,000':['startIncurredAmount':'0','endIncurredAmount':'10000'],'$10,000 - $25,000':['startIncurredAmount':'10000','endIncurredAmount':'25000'],'$25,000 - $50,000':['startIncurredAmount':'25000','endIncurredAmount':'50000'],'More than $50,000':['startIncurredAmount':'50000','endIncurredAmount':'0']]";
+        Matcher m = UrlCommandCell.groovyRelRefCubeCellPatternA.matcher(name);
+        assertFalse(m.find());
+
+        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        assertFalse(m.find());
+
+        m = GroovyBase.groovyAbsRefCubeCellPattern.matcher(name);
+        assertFalse(m.find());
+
+        m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
+        assertFalse(m.find());
+
+        name = "@Foo([:])";
+
+        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m.find();
+        assertEquals("Foo", m.group(2));
+
+        name = "@Foo([:])";
+        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m.find();
+        assertEquals("Foo", m.group(2));
+
+        name = "$Foo([alpha:'bravo'])";
+        m = GroovyBase.groovyAbsRefCubeCellPattern.matcher(name);
+        m.find();
+        assertEquals("Foo", m.group(2));
+
+        name = "$Foo[:]";
+        m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
+        m.find();
+        assertEquals("Foo", m.group(2));
     }
 
     // ---------------------------------------------------------------------------------

@@ -2,6 +2,8 @@ n-cube
 ======
 n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and Enterprise Spreadsheet, built as a hyper-space.  
 
+<a class="coinbase-button" data-code="ea75c2592d599361328895696e420338" data-button-style="custom_large" data-custom="n-cube" href="https://coinbase.com/checkouts/ea75c2592d599361328895696e420338">Donate Bitcoins</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
+
 What are the components of an n-cube?
 An n-cube has a set of axes (plural of axis), each of which adds a dimension.  Each axis can contain a different number of elements.  These elements are called columns.
 
@@ -56,6 +58,9 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.  If you plan to included it within a commercial application, please contact John DeRegnaucourt, jdereg@gmail.com.
 
 Version History
+* 2.3.2
+ * HTML formatting improved to handle all cell data types
+ * Parse routine that fetches n-cube names was matching too broad a string for n-cube name.
 * 2.3.1
  * Date axis be created from, or matched with, a String that passed DateUtilities.parseDate().
  * String axis can be created from, or matched with, a Number instance.

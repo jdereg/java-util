@@ -16,6 +16,7 @@ To include in your project:
   <version>2.4.5</version>
 </dependency>
 ```
+<a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Donate Bitcoins</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
 
 Also, check out json-io at https://github.com/jdereg/json-io
 

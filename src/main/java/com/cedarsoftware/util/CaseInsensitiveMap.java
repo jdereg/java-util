@@ -585,7 +585,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                     lastReturned = iter.next();
                     if (lastReturned.getKey() instanceof CaseInsensitiveString)
                     {
-                        lastReturned = new AbstractMap.SimpleImmutableEntry(lastReturned.getKey().toString(), lastReturned.getValue());
+                        lastReturned = new AbstractMap.SimpleEntry(lastReturned.getKey().toString(), lastReturned.getValue());
                     }
                     return lastReturned;
                 }

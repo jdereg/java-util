@@ -6,6 +6,7 @@ import org.apache.commons.logging.LogFactory;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
@@ -68,6 +69,31 @@ public class UrlUtilities
     public static final String COOKIE = "Cookie";
     public static final char NAME_VALUE_SEPARATOR = '=';
     public static final char DOT = '.';
+
+    public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
+    {
+            new X509TrustManager()
+            {
+                public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
+                {
+                }
+                public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
+                {
+                }
+                public X509Certificate[] getAcceptedIssuers()
+                {
+                    return null;
+                }
+            }
+    };
+
+    public static final HostnameVerifier NAIVE_VERIFIER = new HostnameVerifier()
+    {
+        public boolean verify(String s, SSLSession sslSession)
+        {
+            return true;
+        }
+    };
 
     static
     {
@@ -420,7 +446,8 @@ public class UrlUtilities
     {
         try
         {
-            return new String(getContentFromUrl(url, proxyServer, port, inCookies, outCookies, ignoreSec), "UTF-8");
+            byte[] bytes = getContentFromUrl(url, proxyServer, port, inCookies, outCookies, ignoreSec);
+            return bytes == null ? null : new String(bytes, "UTF-8");
         }
         catch (UnsupportedEncodingException e)
         {
@@ -462,6 +489,12 @@ public class UrlUtilities
 
             return out.toByteArray();
         }
+        catch (SSLHandshakeException sslE)
+        {
+            // Don't read error response.  it will just cause another exception.
+            LOG.warn("SSL Exception: " + url, sslE);
+            return null;
+        }
         catch (Exception e)
         {
             readErrorResponse(c);
@@ -475,6 +508,62 @@ public class UrlUtilities
                 disconnect((HttpURLConnection)c);
             }
         }
+    }
+
+    public static SSLSocketFactory buildNaiveSSLSocketFactory() {
+        try {
+            //  could be other algorithms (prob need to calculate this another way.
+            final SSLContext sslContext = SSLContext.getInstance( "SSL" );
+            sslContext.init(null, NAIVE_TRUST_MANAGER, new SecureRandom());
+
+            // Create an ssl socket factory with our all-trusting manager
+            return sslContext.getSocketFactory();
+        } catch (Exception e) {
+            // failed to build trusting socket factory
+            return null;
+        }
+    }
+
+    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, Proxy proxy, SSLSocketFactory socketFactory, HostnameVerifier verifier) throws IOException
+    {
+        //Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
+        URLConnection c = (proxy != null) ? url.openConnection(proxy) : url.openConnection();
+        c.setRequestProperty("Accept-Encoding", "gzip, deflate");
+        c.setAllowUserInteraction(false);
+        c.setDoOutput(output);
+        c.setDoInput(input);
+        c.setUseCaches(cache);
+        c.setReadTimeout(220000);
+        c.setConnectTimeout(45000);
+
+        if (c instanceof HttpURLConnection)
+        {
+            ((HttpURLConnection)c).setFollowRedirects(true);
+        }
+
+        if (c instanceof HttpsURLConnection)
+        {
+            try
+            {
+                HttpsURLConnection sc = (HttpsURLConnection) c;
+                if (socketFactory != null) {
+                    sc.setSSLSocketFactory(socketFactory);
+                }
+                if (verifier != null) {
+                    sc.setHostnameVerifier(verifier);
+                }
+            }
+            catch(Exception e)
+            {
+                LOG.warn("Could not access '" + url.toString() + "'", e);
+            }
+        }
+        // Set cookies in the HTTP header
+        if (inCookies != null)
+        {   // [optional] place cookies (JSESSIONID) into HTTP headers
+            setCookies(c, inCookies);
+        }
+        return c;
     }
 
     public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
@@ -506,38 +595,8 @@ public class UrlUtilities
             HttpsURLConnection sc = (HttpsURLConnection) c;
             try
             {
-                // Create a trust manager that does not validate certificate chains
-                final TrustManager[] trustAllCerts = new TrustManager[]
-                {
-                    new X509TrustManager()
-                    {
-                        public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
-                        {
-                        }
-                        public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
-                        {
-                        }
-                        public X509Certificate[] getAcceptedIssuers()
-                        {
-                            return null;
-                        }
-                    }
-                };
-
-                // Install the all-trusting trust manager
-                final SSLContext sslContext = SSLContext.getInstance( "SSL" );
-                sslContext.init(null, trustAllCerts, new SecureRandom());
-
-                // Create an ssl socket factory with our all-trusting manager
-                final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-                sc.setSSLSocketFactory(sslSocketFactory);
-                sc.setHostnameVerifier(new HostnameVerifier()
-                {
-                    public boolean verify(String s, SSLSession sslSession)
-                    {
-                        return true;
-                    }
-                });
+                sc.setSSLSocketFactory(buildNaiveSSLSocketFactory());
+                sc.setHostnameVerifier(NAIVE_VERIFIER);
             }
             catch(Exception e)
             {

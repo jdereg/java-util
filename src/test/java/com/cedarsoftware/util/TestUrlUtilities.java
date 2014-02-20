@@ -1,9 +1,8 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -27,8 +26,13 @@ public class TestUrlUtilities
     @Test
     public void testSslContentRetrieval() throws Exception
     {
-        String content = UrlUtilities.getContentFromUrlAsString("https://www.myotherdrive.com");
-        assertNotNull(content);
-        assertTrue(content.contains("MyOtherDrive.com"));
+        String url = "https://www.google.com/";
+//      should I show the fail case?
+//        String content = UrlUtilities.getContentFromUrlAsString(url, null, 0, null, null, false);
+//        Assert.assertNull(content);
+
+        String content = UrlUtilities.getContentFromUrlAsString(url);
+        Assert.assertNotNull(content);
+        Assert.assertTrue(content.contains("google.com"));
     }
 }

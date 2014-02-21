@@ -2,7 +2,6 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -482,23 +481,6 @@ public class TestCaseInsensitiveMap
         assertEquals(1, s.size());
         assertTrue(s.contains("one"));
         assertTrue(m.containsKey("one"));
-
-
-        m = createSimpleMap();
-        s = m.keySet();
-        assertTrue(s.retainAll(null));
-
-        m = new CaseInsensitiveMap<String, Object>();
-        s = m.keySet();
-        assertFalse(s.retainAll(null));
-        assertEquals(0, m.size());
-        assertEquals(0, s.size());
-
-        m = createSimpleMap();
-        s = m.keySet();
-        assertTrue(s.retainAll(new ArrayList()));
-        assertEquals(0, m.size());
-        assertEquals(0, s.size());
     }
 
     @Test
@@ -616,19 +598,6 @@ public class TestCaseInsensitiveMap
         s4.add("five");
         assertTrue(s4.equals(s));
         assertTrue(s.equals(s4));
-
-        CaseInsensitiveMap<String, Object> secondStringMap = createSimpleMap();
-        assertFalse(s.equals("one"));
-
-        assertTrue(s.equals(secondStringMap.keySet()));
-        // case-insensitive (and doesn't matter what value is...
-        secondStringMap.put("five", "FiVety");
-        assertTrue(s.equals(secondStringMap.keySet()));
-        secondStringMap.put("six", "sixty");
-        assertFalse(s.equals(secondStringMap.keySet()));
-        secondStringMap.remove("five");
-        assertFalse(s.equals(secondStringMap.keySet()));
-
     }
 
     @Test
@@ -667,13 +636,6 @@ public class TestCaseInsensitiveMap
         assertTrue(s.contains(getEntry("one", "Two")));
         assertTrue(s.contains(getEntry("tHree", "Four")));
         assertFalse(s.contains(getEntry("one", "two")));    // Value side is case-sensitive (needs 'Two' not 'two')
-
-        assertFalse(s.contains("one"));    // Value side is case-sensitive (needs 'Two' not 'two')
-        assertFalse(s.contains(getEntry("one", null)));    // Value side is case-sensitive (needs 'Two' not 'two')
-
-        m.put("one", null);
-        s = m.entrySet();
-        assertTrue(s.contains(getEntry("one", null)));    // Value side is case-sensitive (needs 'Two' not 'two')
     }
 
     @Test
@@ -787,18 +749,6 @@ public class TestCaseInsensitiveMap
         assertTrue(s.retainAll(items));
         assertEquals(0, m.size());
         assertEquals(0, s.size());
-
-
-        m = createSimpleMap();
-        s = m.entrySet();
-        assertTrue(s.retainAll(null));
-
-
-
-        m = new CaseInsensitiveMap<String, Object>();
-        s = m.entrySet();
-        assertFalse(s.retainAll(new ArrayList()));
-
     }
 
     @Test
@@ -936,7 +886,6 @@ public class TestCaseInsensitiveMap
         s4.add(getEntry("five","Six"));
         assertTrue(s.equals(s4));
 
-        CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
         CaseInsensitiveMap<String, Object> secondStringMap = createSimpleMap();
         assertFalse(s.equals("one"));
 

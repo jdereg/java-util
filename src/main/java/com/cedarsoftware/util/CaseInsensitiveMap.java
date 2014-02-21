@@ -245,19 +245,13 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean retainAll(Collection c)
         {
-            int origSize = size();
-
-            if (c == null || c.isEmpty()) {
-                localMap.clear();
-                return origSize != localMap.size();
-            }
-
             Map other = new CaseInsensitiveMap();
             for (Object o : c)
             {
                 other.put(o, null);
             }
 
+            int origSize = size();
 
             for (Entry<K, V> entry : localMap.entrySet())
             {
@@ -508,14 +502,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean retainAll(Collection c)
         {
-            int origSize = size();
-
-            // fast track if collection sent in is empty
-            if (c == null || c.isEmpty()) {
-                localMap.clear();
-                return size() != origSize;
-            }
-
             // Create fast-access O(1) to all elements within passed in Collection
             Map other = new CaseInsensitiveMap();
             for (Object o : c)
@@ -526,6 +512,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 }
             }
 
+            int origSize = size();
 
             // Drop all items that are not in the passed in Collection
             for (Entry<K, V> entry : localMap.entrySet())

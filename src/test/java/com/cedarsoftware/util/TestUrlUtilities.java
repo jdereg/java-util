@@ -1,12 +1,15 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
 import java.net.Proxy;
 import java.util.HashMap;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 
 /**
@@ -28,26 +31,29 @@ import java.util.HashMap;
  */
 public class TestUrlUtilities
 {
+    private static final String httpsUrl = "https://www.myotherdrive.com";
+    private static final String httpsGoogleUrl = "https://www.google.com";
+    private static final String domain  = "myotherdrive.com";
+    private static final String httpUrl = "http://www.myotherdrive.com";
+
     @Test
     public void testGetContentFromUrlAsString() throws Exception
     {
-        String content1 = UrlUtilities.getContentFromUrlAsString("https://www.google.com", Proxy.NO_PROXY);
-        String content2 = UrlUtilities.getContentFromUrlAsString("https://www.google.com");
+        String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
+        String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl);
 
-        Assert.assertTrue(content1.contains("google.com"));
-        Assert.assertTrue(content2.contains("google.com"));
+        assertTrue(content1.contains(domain));
+        assertTrue(content2.contains(domain));
 
-        //  Allow for 3% difference between pages between requests to handle time and hash value changes.
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content1, content2), .03);
+        assertEquals(content1, content2);
 
-        String content3 = UrlUtilities.getContentFromUrlAsString("http://www.google.com", Proxy.NO_PROXY);
-        String content4 = UrlUtilities.getContentFromUrlAsString("http://www.google.com");
+        String content3 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
+        String content4 = UrlUtilities.getContentFromUrlAsString(httpUrl);
 
-        Assert.assertTrue(content3.contains("google.com"));
-        Assert.assertTrue(content4.contains("google.com"));
+        assertTrue(content3.contains(domain));
+        assertTrue(content4.contains(domain));
 
-        //  Allow for 3% difference between pages between requests to handle time and hash value changes.
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content3, content4), .03);
+        assertEquals(content3, content4);
     }
 
     @Test
@@ -56,44 +62,45 @@ public class TestUrlUtilities
         SSLSocketFactory f = UrlUtilities.buildNaiveSSLSocketFactory();
         HostnameVerifier v = UrlUtilities.NAIVE_VERIFIER;
 
-        byte[] content1 = UrlUtilities.getContentFromUrl("https://www.google.com", Proxy.NO_PROXY);
-        byte[] content2 = UrlUtilities.getContentFromUrl("https://www.google.com");
-        byte[] content3 = UrlUtilities.getContentFromUrl("https://www.google.com", Proxy.NO_PROXY, f, v);
-        byte[] content4 = UrlUtilities.getContentFromUrl("https://www.google.com", null, 0, null, null, true);
-        byte[] content5 = UrlUtilities.getContentFromUrl("https://www.google.com", null, null, Proxy.NO_PROXY, f, v);
+        byte[] content1 = UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY);
+        byte[] content2 = UrlUtilities.getContentFromUrl(httpsUrl);
+        byte[] content3 = UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY, f, v);
+        byte[] content4 = UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true);
+        byte[] content5 = UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v);
 
         //  Allow for 3% difference between pages between requests to handle time and hash value changes.
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content1, content2), .03);
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content2, content3), .03);
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content3, content4), .03);
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content4, content5), .03);
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content5, content1), .03);
+        assertEquals(new String(content1), new String(content2));
+        assertEquals(new String(content2), new String(content3));
+        assertEquals(new String(content3), new String(content4));
+        assertEquals(new String(content4), new String(content5));
+        assertEquals(new String(content5), new String(content1));
 
-        Assert.assertNull(UrlUtilities.getContentFromUrl("https://www.google.com", Proxy.NO_PROXY, null, null));
-        Assert.assertNull(UrlUtilities.getContentFromUrl("https://www.google.com", null, null, Proxy.NO_PROXY, null, null));
-        Assert.assertNull(UrlUtilities.getContentFromUrl("https://www.google.com", null, 0, null, null, false));
+        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
+        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
+        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
 
-        byte[] content6 = UrlUtilities.getContentFromUrl("http://www.google.com", Proxy.NO_PROXY, null, null);
-        byte[] content7 = UrlUtilities.getContentFromUrl("http://www.google.com", null, 0, null, null, false);
-        byte[] content8 = UrlUtilities.getContentFromUrl("http://www.google.com", null, null, Proxy.NO_PROXY, null, null);
+        byte[] content6 = UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null);
+        byte[] content7 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false);
+        byte[] content8 = UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null);
 
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content6, content7), .03);
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content7, content8), .03);
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content8, content1), .03);
+        assertEquals(new String(content6), new String(content7));
+        assertEquals(new String(content7), new String(content8));
+        assertEquals(new String(content8), new String(content1));
 
-        Assert.assertNull(UrlUtilities.getContentFromUrl("http://www.google.com/google-sucks.html", null, null, Proxy.NO_PROXY, null, null));
+        // 404
+        assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-sucks.html", null, null, Proxy.NO_PROXY, null, null));
     }
 
     @Test
     public void testSSLTrust() throws Exception
     {
-        String content1 = UrlUtilities.getContentFromUrlAsString("https://www.google.com", Proxy.NO_PROXY);
-        String content2 = UrlUtilities.getContentFromUrlAsString("https://www.google.com", null, 0, null, null, true);
+        String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
+        String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, 0, null, null, true);
 
-        Assert.assertTrue(content1.contains("google.com"));
-        Assert.assertTrue(content2.contains("google.com"));
+        assertTrue(content1.contains(domain));
+        assertTrue(content2.contains(domain));
 
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(content1, content2), .03);
+        assertEquals(content1, content2);
 
     }
 
@@ -102,53 +109,16 @@ public class TestUrlUtilities
     {
         HashMap cookies = new HashMap();
 
-        byte[] bytes1 = UrlUtilities.getContentFromUrl("http://www.google.com", null, 0, cookies, cookies, false);
+        byte[] bytes1 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
 
-        Assert.assertEquals(1, cookies.size());
-        Assert.assertTrue(cookies.containsKey("google.com"));
+        assertEquals(1, cookies.size());
+        assertTrue(cookies.containsKey(domain));
 
-        byte[] bytes2 = UrlUtilities.getContentFromUrl("http://www.google.com", null, 0, cookies, cookies, false);
+        byte[] bytes2 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
 
-        Assert.assertEquals(1, cookies.size());
-        Assert.assertTrue(cookies.containsKey("google.com"));
+        assertEquals(1, cookies.size());
+        assertTrue(cookies.containsKey(domain));
 
-        Assert.assertEquals(0.0, ComputeLevenshteinDistancePercentage(bytes1, bytes2), .03);
+        assertEquals(new String(bytes1), new String(bytes2));
     }
-
-    public double ComputeLevenshteinDistancePercentage(String s,String t) {
-        int[][] distance = new int[s.length() + 1][t.length() + 1];
-
-        for (int i = 0; i <= s.length(); i++)
-            distance[i][0] = i;
-        for (int j = 1; j <= t.length(); j++)
-            distance[0][j] = j;
-
-        for (int i = 1; i <= s.length(); i++)
-            for (int j = 1; j <= t.length(); j++)
-                distance[i][j] = Math.min(Math.min(
-                        distance[i - 1][j] + 1,
-                        distance[i][j - 1] + 1),
-                        distance[i - 1][j - 1]+ ((s.charAt(i - 1) == t.charAt(j - 1)) ? 0 : 1));
-
-        return (double)distance[s.length()][t.length()]/(double)Math.max(s.length(), t.length());
-    }
-
-    public double ComputeLevenshteinDistancePercentage(byte[] s, byte[] t) {
-        int[][] distance = new int[s.length + 1][t.length + 1];
-
-        for (int i = 0; i <= s.length; i++)
-            distance[i][0] = i;
-        for (int j = 1; j <= t.length; j++)
-            distance[0][j] = j;
-
-        for (int i = 1; i <= s.length; i++)
-            for (int j = 1; j <= t.length; j++)
-                distance[i][j] = Math.min(Math.min(
-                        distance[i - 1][j] + 1,
-                        distance[i][j - 1] + 1),
-                        distance[i - 1][j - 1] + ((s[i - 1] == t[j - 1]) ? 0 : 1));
-
-        return (double)distance[s.length][t.length]/(double)Math.max(s.length, t.length);
-    }
-
 }

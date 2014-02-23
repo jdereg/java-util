@@ -2,12 +2,14 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -257,6 +259,11 @@ public class TestCaseInsensitiveMap
 
         other.put("FIVE", null);
         assertFalse(a.equals(other));
+
+        a = createSimpleMap();
+        b = createSimpleMap();
+        a.put("Five", null);
+        assertNotEquals(a, b);
     }
 
     @Test
@@ -636,6 +643,8 @@ public class TestCaseInsensitiveMap
         assertTrue(s.contains(getEntry("one", "Two")));
         assertTrue(s.contains(getEntry("tHree", "Four")));
         assertFalse(s.contains(getEntry("one", "two")));    // Value side is case-sensitive (needs 'Two' not 'two')
+
+        assertFalse(s.contains("Not an entry"));
     }
 
     @Test
@@ -746,6 +755,26 @@ public class TestCaseInsensitiveMap
 
         items.clear();
         items.add("dog");
+        assertTrue(s.retainAll(items));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetRetainAll2()
+    {
+        Map m = createSimpleMap();
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("three", null));
+        assertTrue(s.retainAll(items));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+
+        m = createSimpleMap();
+        s = m.entrySet();
+        items.clear();
+        items.add(getEntry("three", 16));
         assertTrue(s.retainAll(items));
         assertEquals(0, m.size());
         assertEquals(0, s.size());
@@ -932,7 +961,80 @@ public class TestCaseInsensitiveMap
         { }
     }
 
+    @Test
+    public void testEntrySetKeyInsensitive()
+    {
+        Map<String, Object> m = createSimpleMap();
+        int one = 0;
+        int three = 0;
+        int five = 0;
+        for (Map.Entry<String, Object> entry : m.entrySet())
+        {
+            if (entry.equals(new AbstractMap.SimpleEntry("one", "Two")))
+            {
+                one++;
+            }
+            if (entry.equals(new AbstractMap.SimpleEntry("thrEe", "Four")))
+            {
+                three++;
+            }
+            if (entry.equals(new AbstractMap.SimpleEntry("FIVE", "Six")))
+            {
+                five++;
+            }
+        }
+
+        assertEquals(1, one);
+        assertEquals(1, three);
+        assertEquals(1, five);
+    }
+
+    // Used only during development right now
+//    @Test
+//    public void testPerformance()
+//    {
+//        Map<String, String> map = new CaseInsensitiveMap();
+//        Map<String, String> copy = new LinkedHashMap();
+//        Random random = new Random();
+//
+//        long start = System.nanoTime();
+//
+//        for (int i=0; i < 1000000; i++)
+//        {
+//            String key = StringUtilities.getRandomString(random, 1, 10);
+//            String value = StringUtilities.getRandomString(random, 1, 10);
+//            map.put(key, value);
+//            copy.put(key.toLowerCase(), value);
+//        }
+//
+//        long stop = System.nanoTime();
+//        System.out.println((stop - start) / 1000000);
+//
+//        start = System.nanoTime();
+//
+////        for (Map.Entry<String, String> entry : map.entrySet())
+////        {
+////
+////        }
+////
+////        for (Object key : copy.keySet())
+////        {
+////
+////        }
+//
+//        for (Map.Entry<String, String> entry : map.entrySet())
+//        {
+//            String value = map.get(entry.getKey());
+//        }
+//
+//        stop = System.nanoTime();
+//
+//        System.out.println((stop - start) / 1000000);
+//    }
+
     // ---------------------------------------------------
+
+
     private CaseInsensitiveMap<String, Object> createSimpleMap()
     {
         CaseInsensitiveMap<String, Object> stringMap = new CaseInsensitiveMap<String, Object>();

@@ -151,11 +151,13 @@ public class CaseInsensitiveSet<E> implements Set<E>
             other.put(o, null);
         }
 
-        for (Object elem : map.keySet())
+        Iterator i = map.keySet().iterator();
+        while (i.hasNext())
         {
+            Object elem = i.next();
             if (!other.containsKey(elem))
             {
-                map.remove(elem);
+                i.remove();
             }
         }
         return map.size() != c.size();

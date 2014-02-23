@@ -177,7 +177,7 @@ public class UrlUtilities
             {
                 return;
             }
-            LOG.warn("error response: " + ((HttpURLConnection) c).getResponseMessage());
+            LOG.warn("HTTP error response: " + ((HttpURLConnection) c).getResponseMessage());
             // read the response body
             ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
             int count;
@@ -186,19 +186,19 @@ public class UrlUtilities
             {
                 out.write(bytes, 0, count);
             }
-            LOG.warn("error Code:  " + error);
+            LOG.warn("HTTP error Code:  " + error);
         }
         catch (ConnectException e)
         {
-            LOG.error("Connection exception trying to read error response", e);
+            LOG.error("Connection exception trying to read HTTP error response", e);
         }
         catch (IOException e)
         {
-            LOG.error("IO Exception trying to read error response", e);
+            LOG.error("IO Exception trying to read HTTP error response", e);
         }
         catch (Exception e)
         {
-            LOG.error("Exception trying to read error response", e);
+            LOG.error("Exception trying to read HTTP error response", e);
         }
         finally
         {
@@ -504,10 +504,10 @@ public class UrlUtilities
 
             return out.toByteArray();
         }
-        catch (SSLHandshakeException sslE)
+        catch (SSLHandshakeException e)
         {
             // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception: " + url, sslE);
+            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
             return null;
         }
         catch (Exception e)
@@ -560,10 +560,9 @@ public class UrlUtilities
 
             return out.toByteArray();
         }
-        catch (SSLHandshakeException sslE)
-        {
-            // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception: " + url, sslE);
+        catch (SSLHandshakeException e)
+        {   // Don't read error response.  it will just cause another exception.
+            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
             return null;
         }
         catch (Exception e)
@@ -598,14 +597,16 @@ public class UrlUtilities
     {
         //  if proxy server is passed
         Proxy proxy = null;
-        if (proxyServer != null) {
+        if (proxyServer != null)
+        {
             proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
         }
 
         //  If we are trusting all ssl connections
         SSLSocketFactory factory = null;
         HostnameVerifier verifier = null;
-        if (ignoreSec) {
+        if (ignoreSec)
+        {
             factory = buildNaiveSSLSocketFactory();
             verifier = NAIVE_VERIFIER;
         }
@@ -613,16 +614,20 @@ public class UrlUtilities
         return getContentFromUrl(url, inCookies, outCookies, proxy, factory, verifier);
     }
 
-    public static SSLSocketFactory buildNaiveSSLSocketFactory() {
-        try {
+    public static SSLSocketFactory buildNaiveSSLSocketFactory()
+    {
+        try
+        {
             //  could be other algorithms (prob need to calculate this another way.
-            final SSLContext sslContext = SSLContext.getInstance( "SSL" );
+            final SSLContext sslContext = SSLContext.getInstance("SSL");
             sslContext.init(null, NAIVE_TRUST_MANAGER, new SecureRandom());
 
             // Create an ssl socket factory with our all-trusting manager
             return sslContext.getSocketFactory();
-        } catch (Exception e) {
-            // failed to build trusting socket factory
+        }
+        catch (Exception e)
+        {
+            LOG.warn("Failed to build SSLSocketFactory", e);
             return null;
         }
     }
@@ -640,8 +645,8 @@ public class UrlUtilities
         c.setConnectTimeout(45000);
 
         if (c instanceof HttpURLConnection)
-        {
-            ((HttpURLConnection)c).setFollowRedirects(true);
+        {   // setFollowRedirects is a static (global) method / setting - resetting it in case other code changed it?
+            HttpURLConnection.setFollowRedirects(true);
         }
 
         if (c instanceof HttpsURLConnection)
@@ -675,7 +680,6 @@ public class UrlUtilities
         Proxy proxy = (proxyServer == null) ?  Proxy.NO_PROXY : new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
         SSLSocketFactory sslFactory = ignoreSec ? buildNaiveSSLSocketFactory() : null;
         HostnameVerifier verifier = ignoreSec ? NAIVE_VERIFIER : null;
-
         return getConnection(url, inCookies, input, output, cache, proxy, sslFactory, verifier);
     }
 

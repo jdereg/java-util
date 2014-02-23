@@ -7,6 +7,7 @@ import java.math.BigInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -25,7 +26,7 @@ import static org.junit.Assert.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TesMathUtilities
+public class TestMathUtilities
 {
     @Test
     public void testMinimumLong()
@@ -50,6 +51,9 @@ public class TesMathUtilities
         assertEquals(-100000000, min);
         min = MathUtilities.minimum(-100000000, 100000000);
         assertEquals(-100000000, min);
+
+        long[] values = {45, -13, 123213123};
+        assertEquals(-13, MathUtilities.minimum(values));
     }
 
     @Test
@@ -75,6 +79,9 @@ public class TesMathUtilities
         assertTrue(-100000000.0 == min);
         min = MathUtilities.minimum(-100000000.0, 100000000.0);
         assertTrue(-100000000.0 == min);
+
+        double[] values = {45.1, -13.1, 123213123.1};
+        assertTrue(-13.1 == MathUtilities.minimum(values));
     }
 
     @Test
@@ -84,6 +91,23 @@ public class TesMathUtilities
         assertEquals(new BigInteger("-1"), minBi);
         minBi = MathUtilities.minimum(new BigInteger("-121908747902834709812347908123432423"), new BigInteger("0"), new BigInteger("9780234508972317045230477890478903240978234"));
         assertEquals(new BigInteger("-121908747902834709812347908123432423"), minBi);
+
+        BigInteger[] bigies = new BigInteger[] {new BigInteger("1"), new BigInteger("-1")};
+        assertEquals(new BigInteger("-1"), MathUtilities.minimum(bigies));
+
+        try
+        {
+            MathUtilities.minimum((BigInteger)null);
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
+
+        try
+        {
+            MathUtilities.minimum(new BigInteger[]{new BigInteger("1"), null, new BigInteger("3")});
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
     }
 
     @Test
@@ -93,6 +117,23 @@ public class TesMathUtilities
         assertEquals(new BigDecimal("-1"), minBd);
         minBd = MathUtilities.minimum(new BigDecimal("-121908747902834709812347908123432423.123"), new BigDecimal("0"), new BigDecimal("9780234508972317045230477890478903240978234.123"));
         assertEquals(new BigDecimal("-121908747902834709812347908123432423.123"), minBd);
+
+        BigDecimal[] bigies = new BigDecimal[] {new BigDecimal("1.1"), new BigDecimal("-1.1")};
+        assertEquals(new BigDecimal("-1.1"), MathUtilities.minimum(bigies));
+
+        try
+        {
+            MathUtilities.minimum((BigDecimal)null);
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
+
+        try
+        {
+            MathUtilities.minimum(new BigDecimal[]{new BigDecimal("1"), null, new BigDecimal("3")});
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
     }
 
     @Test
@@ -118,6 +159,9 @@ public class TesMathUtilities
         assertEquals(100000000, max);
         max = MathUtilities.maximum(-100000000, 100000000);
         assertEquals(100000000, max);
+
+        long[] values = {45, -13, 123213123};
+        assertEquals(123213123, MathUtilities.maximum(values));
     }
 
     @Test
@@ -143,6 +187,9 @@ public class TesMathUtilities
         assertTrue(100000000.0 == max);
         max = MathUtilities.maximum(-100000000.0, 100000000.0);
         assertTrue(100000000.0 == max);
+
+        double[] values = {45.1, -13.1, 123213123.1};
+        assertTrue(123213123.1 == MathUtilities.maximum(values));
     }
 
     @Test
@@ -152,6 +199,23 @@ public class TesMathUtilities
         assertEquals(new BigInteger("-1"), minBi);
         minBi = MathUtilities.minimum(new BigInteger("-121908747902834709812347908123432423"), new BigInteger("0"), new BigInteger("9780234508972317045230477890478903240978234"));
         assertEquals(new BigInteger("-121908747902834709812347908123432423"), minBi);
+
+        BigInteger[] bigies = new BigInteger[] {new BigInteger("1"), new BigInteger("-1")};
+        assertEquals(new BigInteger("1"), MathUtilities.maximum(bigies));
+
+        try
+        {
+            MathUtilities.maximum((BigInteger)null);
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
+
+        try
+        {
+            MathUtilities.minimum(new BigInteger[]{new BigInteger("1"), null, new BigInteger("3")});
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
     }
 
     @Test
@@ -161,5 +225,22 @@ public class TesMathUtilities
         assertEquals(new BigDecimal("1"), minBd);
         minBd = MathUtilities.maximum(new BigDecimal("-121908747902834709812347908123432423.123"), new BigDecimal("0"), new BigDecimal("9780234508972317045230477890478903240978234.123"));
         assertEquals(new BigDecimal("9780234508972317045230477890478903240978234.123"), minBd);
+
+        BigDecimal[] bigies = new BigDecimal[] {new BigDecimal("1.1"), new BigDecimal("-1.1")};
+        assertEquals(new BigDecimal("1.1"), MathUtilities.maximum(bigies));
+
+        try
+        {
+            MathUtilities.maximum((BigDecimal)null);
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
+
+        try
+        {
+            MathUtilities.maximum(new BigDecimal[]{new BigDecimal("1"), null, new BigDecimal("3")});
+            fail("Should not make it here");
+        }
+        catch (Exception ignored) { }
     }
 }

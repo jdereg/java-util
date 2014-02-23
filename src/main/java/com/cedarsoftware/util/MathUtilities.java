@@ -32,15 +32,7 @@ public class MathUtilities
      */
     public static long minimum(long... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to minimum()");
-        }
         int len = values.length;
-        if (len == 1)
-        {
-            return values[0];
-        }
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -59,15 +51,7 @@ public class MathUtilities
      */
     public static long maximum(long... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to maximum()");
-        }
         int len = values.length;
-        if (len == 1)
-        {
-            return values[0];
-        }
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -86,15 +70,7 @@ public class MathUtilities
      */
     public static double minimum(double... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to minimum()");
-        }
         int len = values.length;
-        if (len == 1)
-        {
-            return values[0];
-        }
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -113,15 +89,7 @@ public class MathUtilities
      */
     public static double maximum(double... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to maximum()");
-        }
         int len = values.length;
-        if (len == 1)
-        {
-            return values[0];
-        }
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -140,20 +108,23 @@ public class MathUtilities
      */
     public static BigInteger minimum(BigInteger... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to minimum()");
-        }
-
         int len = values.length;
         if (len == 1)
         {
+            if (values[0] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigInteger entry to minimum()");
+            }
             return values[0];
         }
         BigInteger current = values[0];
 
         for (int i=1; i < len; i++)
         {
+            if (values[i] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigInteger entry to minimum()");
+            }
             current = values[i].min(current);
         }
 
@@ -168,20 +139,23 @@ public class MathUtilities
      */
     public static BigInteger maximum(BigInteger... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to maximum()");
-        }
-
         int len = values.length;
         if (len == 1)
         {
+            if (values[0] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigInteger entry to maximum()");
+            }
             return values[0];
         }
         BigInteger current = values[0];
 
         for (int i=1; i < len; i++)
         {
+            if (values[i] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigInteger entry to maximum()");
+            }
             current = values[i].max(current);
         }
 
@@ -196,20 +170,23 @@ public class MathUtilities
      */
     public static BigDecimal minimum(BigDecimal... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to minimum()");
-        }
-
         int len = values.length;
         if (len == 1)
         {
+            if (values[0] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to minimum()");
+            }
             return values[0];
         }
         BigDecimal current = values[0];
 
         for (int i=1; i < len; i++)
         {
+            if (values[i] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to minimum()");
+            }
             current = values[i].min(current);
         }
 
@@ -224,20 +201,23 @@ public class MathUtilities
      */
     public static BigDecimal maximum(BigDecimal... values)
     {
-        if (values == null || values.length == 0)
-        {
-            throw new IllegalArgumentException("null or empty[] passed to maximum()");
-        }
-
         int len = values.length;
         if (len == 1)
         {
+            if (values[0] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to maximum()");
+            }
             return values[0];
         }
         BigDecimal current = values[0];
 
         for (int i=1; i < len; i++)
         {
+            if (values[i] == null)
+            {
+                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to maximum()");
+            }
             current = values[i].max(current);
         }
 

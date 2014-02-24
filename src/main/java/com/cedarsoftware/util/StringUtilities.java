@@ -196,7 +196,7 @@ public final class StringUtilities
      * @param t String two
      * @return the 'edit distance' (Levenshtein distance) between the two strings.
      */
-    public static int levenshteinDistance(String s, String t)
+    public static int levenshteinDistance(CharSequence s, CharSequence t)
     {
         // degenerate cases
         if (s == null || "".equals(s))

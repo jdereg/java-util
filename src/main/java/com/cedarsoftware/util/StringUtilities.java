@@ -347,7 +347,7 @@ public final class StringUtilities
     public static String getRandomString(Random random, int minLen, int maxLen)
     {
         StringBuilder s = new StringBuilder();
-        int length = minLen + random.nextInt(maxLen + 1);
+        int length = minLen + random.nextInt(maxLen - minLen + 1);
         for (int i=0; i < length; i++)
         {
             s.append(getRandomChar(random, i == 0));

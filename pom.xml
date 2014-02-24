@@ -33,7 +33,7 @@
     </developers>
 
     <properties>
-        <version.json.io>2.4.5</version.json.io>
+        <version.json.io>2.5.1</version.json.io>
         <version.commons.logging>1.1.1</version.commons.logging>
         <version.junit>4.11</version.junit>
     </properties>

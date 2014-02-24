@@ -2,9 +2,9 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeSet;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -102,15 +102,16 @@ public class TestStringUtilities
     public void testRandomString()
     {
         Random random = new Random(42);
-        Set<Integer> lengths = new HashSet<Integer>();
-        int i=0;
-        while (lengths.size() < 11)
+        Set<String> strings = new TreeSet<String>();
+        for (int i=0; i < 100000; i++)
         {
-            String s = StringUtilities.getRandomString(random, 0, 10);
-            lengths.add(s.length());
-            i++;
+            String s = StringUtilities.getRandomString(random, 3, 9);
+            strings.add(s);
         }
 
-        assertTrue(lengths.size() == 11);
+        for (String s : strings)
+        {
+            assertTrue(s.length() >= 3 && s.length() <= 9);
+        }
     }
 }

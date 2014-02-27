@@ -36,6 +36,7 @@
         <version.json.io>2.5.1</version.json.io>
         <version.commons.logging>1.1.1</version.commons.logging>
         <version.junit>4.11</version.junit>
+        <version.guava>16.0.1</version.guava>
     </properties>
 
     <pluginRepositories>
@@ -140,6 +141,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${version.junit}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${version.guava}</version>
             <scope>test</scope>
         </dependency>
 

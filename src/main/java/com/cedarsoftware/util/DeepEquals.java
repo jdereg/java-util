@@ -51,6 +51,7 @@ public class DeepEquals
 {
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<Class, Boolean>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<Class, Boolean>();
+    private static double eplison = 1e-6;    
 
     private static class DualKey
     {
@@ -130,6 +131,12 @@ public class DeepEquals
             if (!dualKey._key1.getClass().equals(dualKey._key2.getClass()))
             {   // Must be same class
                 return false;
+            }
+            
+            if (dualKey._key1 instanceof Double || dualKey._key1 instanceof Float)
+            {
+            	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, eplison))
+            		continue;
             }
 
             // Handle all [] types.  In order to be equal, the arrays must be the same 
@@ -430,6 +437,36 @@ public class DeepEquals
         }
 
         return true;
+    }
+    
+    /**
+     * Compare if two floating point numbers are within a given range
+     * 
+     * @param a
+     * @param b
+     * @param epsilon
+     * @return
+     */
+    private static boolean compareFloatingPointNumbers(Object a, Object b, double epsilon)
+    {
+    	double a1, b1;
+    	if (a instanceof Double) 
+    	{
+			a1 = (Double) a;
+		} else
+		{
+			a1 = (Float) a;
+		}
+    	
+    	if (b instanceof Double) 
+    	{
+			b1 = (Double) b;
+		} else
+		{
+			b1 = (Float) b;
+		}
+    	
+    	return Math.abs(a1 - b1) < epsilon; 
     }
 
     /**

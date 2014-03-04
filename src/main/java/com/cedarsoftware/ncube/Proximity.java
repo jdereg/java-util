@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.proximity.Distance;
+import com.cedarsoftware.util.StringUtilities;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -71,7 +72,7 @@ public class Proximity
         }
         else if (source instanceof String)
         {
-            return levenshteinDistance((String)source, (String) target);
+            return StringUtilities.levenshteinDistance((String) source, (String) target);
         }
         else if (source instanceof Distance)
         {
@@ -81,47 +82,4 @@ public class Proximity
         "\nSource: " + source.getClass().getName() + ", Source Value: " + source +
         "\nTarget Value: " + target);
 	}
-	
-    public static int levenshteinDistance(CharSequence str1, CharSequence str2)
-    {
-        if (str1 == null || "".equals(str1))
-        {
-            return str2 == null || "".equals(str2) ? 0 : str2.length();
-        }
-        else if (str2 == null || "".equals(str2))
-        {
-            return str1.length();
-        }
-
-        final int len1 = str1.length();
-        final int len2 = str2.length();
-        final int[][] distance = new int[len1 + 1][len2 + 1];
-
-        for (int i = 0; i <= len1; i++)
-        {
-            distance[i][0] = i;
-        }
-
-        for (int j = 1; j <= len2; j++)
-        {
-            distance[0][j] = j;
-        }
-
-        for (int i = 1; i <= len1; i++)
-        {
-            for (int j = 1; j <= len2; j++)
-            {
-                distance[i][j] = minimum(
-                        distance[i - 1][j] + 1,
-                        distance[i][j - 1] + 1,
-                        distance[i - 1][j - 1] + ((str1.charAt(i - 1) == str2.charAt(j - 1)) ? 0 : 1));
-            }
-        }
-        return distance[len1][len2];
-    }
-    
-    private static int minimum(int a, int b, int c)
-    {
-        return min(min(a, b), c);
-    }
 }

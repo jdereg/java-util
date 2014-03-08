@@ -812,6 +812,53 @@ public class NCubeManager
         }
     }
 
+    public static boolean renameCube(Connection connection, String oldName, String newName, String app, String version)
+    {
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(version);
+        validateCubeName(oldName);
+        validateCubeName(newName);
+
+        if (oldName.equalsIgnoreCase(newName))
+        {
+            throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName);
+        }
+
+        synchronized(cubeList)
+        {
+            PreparedStatement stmt1 = null;
+
+            try
+            {
+                stmt1 = connection.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'");
+                stmt1.setString(1, newName);
+                stmt1.setString(2, app);
+                stmt1.setString(3, version);
+                stmt1.setString(4, oldName);
+                int count = stmt1.executeUpdate();
+                if (count < 1)
+                {
+                    throw new IllegalArgumentException("No n-cube found to rename, for app:" + app + ", version: " + version + ", original name: " + oldName);
+                }
+
+                cubeList.remove(makeCacheKey(oldName, version));
+                return true;
+            }
+            catch (IllegalStateException e) { throw e; }
+            catch (Exception e)
+            {
+                String s = "Unable to rename n-cube due to an error: " + e.getMessage();
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
+            finally
+            {
+                jdbcCleanup(stmt1);
+            }
+        }
+    }
+
     /**
      * Delete the named NCube from the database
      * @param connection JDBC connection

@@ -7,18 +7,20 @@
             "hasDefault":false,
             "preferredOrder":0,
             "columns":[
-                { "value":"Google"},
-                { "value":"MyOtherDriveUrl"},
-                { "value":"MyOtherDriveUri" },
-                { "value":"MyOtherDriveUrlSSL"},
-                { "value":"MyOtherDriveUriSSL" }
+                { "id":"Google"},
+                { "id":"MOD"},
+                { "id":"MyOtherDriveUrl"},
+                { "id":"MyOtherDriveUri" },
+                { "id":"MyOtherDriveUrlSSL"},
+                { "id":"MyOtherDriveUriSSL" }
             ]
     }],
     "cells":[
-        { "key":{"Sites":"Google"}, "type":"string", "cache":false, "url":"http://www.google.com"},
-        { "key":{"Sites":"MyOtherDriveUrl" }, "type":"template", "url":"http://localhost/sample.html"},
-        { "key":{"Sites":"MyOtherDriveUri" }, "type":"template", "url":"html/quick-start"},
-        { "key":{"Sites":"MyOtherDriveUrlSSL" }, "type":"exp", "url":"http://localhost/sampleGroovy.groovy"},
-        { "key":{"Sites":"MyOtherDriveUriSSL" }, "type":"template", "url":"html/quick-start"}
+        { "id":["Google"], "type":"string", "cache":false, "url":"http://www.google.com"},
+        { "id":["MOD"], "type":"binary", "cache":false, "url":"http://www.myotherdrive.com"},
+        { "id":["MyOtherDriveUrl"], "type":"template", "url":"http://localhost/sample.html"},
+        { "id":["MyOtherDriveUri"], "type":"template", "url":"html/quick-start"},
+        { "id":["MyOtherDriveUrlSSL"], "type":"exp", "url":"http://localhost/sampleGroovy.groovy"},
+        { "id":["MyOtherDriveUriSSL"], "type":"template", "url":"html/quick-start"}
     ]
 }

@@ -3334,6 +3334,208 @@ DELIMITER ;
     }
 
     @Test
+    public void testRenameNCube() throws Exception
+    {
+        NCube ncube1 = getTestNCube3D_Boolean();
+        NCube ncube2 = getTestNCube2D(true);
+
+        String version = "0.1.1";
+        NCubeManager.createCube(getConnection(), APP_ID, ncube1, version);
+        NCubeManager.createCube(getConnection(), APP_ID, ncube2, version);
+
+        NCubeManager.renameCube(getConnection(), ncube1.getName(), "test.Floppy", APP_ID, version);
+
+        Object[] cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, "SNAPSHOT", "test.%", new Date());
+
+        assertTrue(cubeList != null);
+        assertTrue(cubeList.length == 2);
+
+        NCubeInfoDto nc1 = (NCubeInfoDto) cubeList[0];
+        NCubeInfoDto nc2 = (NCubeInfoDto) cubeList[1];
+
+        assertTrue(nc1.name.equals("test.Floppy") || nc2.name.equals("test.Floppy"));
+        assertFalse(nc1.name.equals("test.Floppy") && nc2.name.equals("test.Floppy"));
+
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, "test.Floppy", version, true));
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
+    }
+
+    @Test
+    public void testGetReferencedCubeNames() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("template1.json");
+        NCube n2 = NCubeManager.getNCubeFromResource("template2.json");
+
+        String ver = "1.1.1";
+        NCubeManager.createCube(getConnection(), APP_ID, n1, ver);
+        NCubeManager.createCube(getConnection(), APP_ID, n2, ver);
+
+        Set refs = new TreeSet();
+        NCubeManager.getReferencedCubeNames(getConnection(), APP_ID, n1.getName(), ver, "SNAPSHOT", null, refs);
+        assertEquals(1, refs.size());
+        assertTrue(refs.contains("Template2Cube"));
+
+        refs.clear();
+        NCubeManager.getReferencedCubeNames(getConnection(), APP_ID, n2.getName(), ver, "SNAPSHOT", null, refs);
+        assertEquals(1, refs.size());
+        assertTrue(refs.contains("Template1Cube"));
+
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), ver, true));
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n2.getName(), ver, true));
+    }
+
+    @Test
+    public void testDuplicateNCube() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
+        String ver = "1.1.1";
+        NCubeManager.createCube(getConnection(), APP_ID, n1, ver);
+
+        NCubeManager.duplicate(getConnection(), "IdTest", "IdTest", APP_ID, APP_ID, "1.1.2", ver, "SNAPSHOT", null);
+        NCube n2 = NCubeManager.loadCube(getConnection(), APP_ID, "IdTest", ver, "SNAPSHOT", null);
+
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), ver, true));
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n2.getName(), "1.1.2", true));
+        assertTrue(n1.equals(n2));
+    }
+
+    @Test
+    public void testGetAppNames() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
+        String version = "1.1.99";
+        NCubeManager.createCube(getConnection(), APP_ID, n1, version);
+
+        Object[] names = NCubeManager.getAppNames(getConnection(), null);
+        boolean foundName = false;
+        for (Object name : names)
+        {
+            if ("ncube.test".equals(name))
+            {
+                foundName = true;
+                break;
+            }
+        }
+
+        Object[] vers = NCubeManager.getAppVersions(getConnection(), APP_ID, "SNAPSHOT", null);
+        boolean foundVer = false;
+        for (Object ver : vers)
+        {
+            if (version.equals(ver))
+            {
+                foundVer = true;
+                break;
+            }
+        }
+
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), version, true));
+        assertTrue(foundName);
+        assertTrue(foundVer);
+    }
+
+    @Test
+    public void testChangeVersionValue() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
+        String version = "1.1.99";
+        NCubeManager.createCube(getConnection(), APP_ID, n1, version);
+
+        NCubeManager.changeVersionValue(getConnection(), APP_ID, version, "1.1.20");
+        NCube n2 = NCubeManager.loadCube(getConnection(), APP_ID, "IdTest", "1.1.20", "SNAPSHOT", null);
+
+        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), "1.1.20", true));
+        assertEquals(n1, n2);
+    }
+
+    @Test
+    public void testContainsCellRuleAxis() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("multiRule.json");
+        n1.setRuleMode(false);
+        Map coord = new HashMap();
+        coord.put("age", 17);
+        coord.put("weight", 99);
+        boolean b = n1.containsCell(coord, false);
+        assertTrue(b);
+        b = n1.containsCell(coord, true);
+        assertTrue(b);
+    }
+
+    @Test
+    public void testUpdateColumnValue()
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("updateColumns.json");
+        Axis state = n1.getAxis("state");
+        Column col = state.findColumn("WY");
+
+        Map coord = new HashMap();
+        coord.put("code", 1);
+        coord.put("state", "WY");
+        String val = (String) n1.getCell(coord);
+        assertEquals("1 WY", val);
+
+        n1.updateColumn(col.id, "ZZ");
+
+        coord.put("state", "ZZ");
+        val = (String) n1.getCell(coord);
+        assertEquals("1 WY", val);
+    }
+
+    @Test
+    public void testBinaryUrl() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("urlContent.json");
+        Map coord = new HashMap();
+        coord.put("sites", "MOD");
+        byte[] mod = (byte[]) n1.getCell(coord);
+        assertNotNull(mod);
+        assertTrue(mod.length > 0);
+        String content = new String(mod);
+        assertTrue(content.contains("MyOtherDrive"));
+    }
+
+    @Test
+    public void testProximity()
+    {
+        try
+        {
+            Proximity.distance(null, "hey");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+
+        try
+        {
+            Proximity.distance("yo", null);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+
+        try
+        {
+            Proximity.distance("yo", 16);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+    }
+
+    @Test
+    public void testAxisMultiMatch()
+    {
+        Axis axis = getContinentAxis();
+        assertFalse(axis.isMultiMatch());
+        axis.setMultiMatch(true);
+        assertTrue(axis.isMultiMatch());
+        assertNotNull(axis.toString());
+    }
+
+    @Test
     public void testWildcardSet()
     {
         NCube<String> ncube = new NCube("test.WildcardSet");

@@ -1075,6 +1075,11 @@ public class Axis
                     }
                 }
             }
+            else if (type == AxisType.DISCRETE || type == AxisType.NEAREST)
+            {
+                cols.add(findColumn(promotedValue));
+            }
+
             if (cols.isEmpty() && hasDefaultColumn())
             {   // Add in default, but only if no matches occurred.
                 cols.add(defaultCol);

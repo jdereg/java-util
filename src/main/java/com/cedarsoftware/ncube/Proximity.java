@@ -7,7 +7,6 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 import static java.lang.Math.abs;
-import static java.lang.Math.min;
 
 /**
  * Class used to compute distance (proximity) for many different

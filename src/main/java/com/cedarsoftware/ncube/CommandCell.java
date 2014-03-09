@@ -54,8 +54,6 @@ public abstract class CommandCell implements Comparable<CommandCell>
     static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
     static final String proxyServer;
     static final int proxyPort;
-    private static Method runMethod = null;
-    private static Constructor constructor = null;
 
     static
     {
@@ -108,18 +106,9 @@ public abstract class CommandCell implements Comparable<CommandCell>
     {
         try
         {
-            if (runMethod == null)
-            {
-                synchronized(CommandCell.class)
-                {
-                    if (runMethod == null)
-                    {
-                        runMethod = runnableCode.getDeclaredMethod("run", null);
-                        constructor = runnableCode.getConstructor(Map.class);
-                    }
-                }
-            }
-            return runMethod.invoke(constructor.newInstance(args));
+            Method m = runnableCode.getDeclaredMethod("run", null);
+            Constructor target = runnableCode.getConstructor(Map.class);
+            return m.invoke(target.newInstance(args));
         }
         catch(InvocationTargetException e)
         {

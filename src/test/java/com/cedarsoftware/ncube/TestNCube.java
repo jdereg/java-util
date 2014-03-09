@@ -3389,13 +3389,13 @@ DELIMITER ;
     {
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
         String ver = "1.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, n1, ver);
+        Connection conn = getConnection();
+        NCubeManager.createCube(conn, APP_ID, n1, ver);
+        NCubeManager.duplicate(conn, n1.getName(), n1.getName(), APP_ID, APP_ID, "1.1.2", ver, "SNAPSHOT", null);
+        NCube n2 = NCubeManager.loadCube(conn, APP_ID, n1.getName(), ver, "SNAPSHOT", null);
 
-        NCubeManager.duplicate(getConnection(), "IdTest", "IdTest", APP_ID, APP_ID, "1.1.2", ver, "SNAPSHOT", null);
-        NCube n2 = NCubeManager.loadCube(getConnection(), APP_ID, "IdTest", ver, "SNAPSHOT", null);
-
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), ver, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n2.getName(), "1.1.2", true));
+        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), ver, true));
+        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n2.getName(), "1.1.2", true));
         assertTrue(n1.equals(n2));
     }
 
@@ -3436,14 +3436,16 @@ DELIMITER ;
     @Test
     public void testChangeVersionValue() throws Exception
     {
+        Connection conn = getConnection();
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
         String version = "1.1.99";
-        NCubeManager.createCube(getConnection(), APP_ID, n1, version);
+        NCubeManager.createCube(conn, APP_ID, n1, version);
 
-        NCubeManager.changeVersionValue(getConnection(), APP_ID, version, "1.1.20");
-        NCube n2 = NCubeManager.loadCube(getConnection(), APP_ID, "IdTest", "1.1.20", "SNAPSHOT", null);
+        NCubeManager.changeVersionValue(conn, APP_ID, version, "1.1.20");
 
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), "1.1.20", true));
+        NCube n2 = NCubeManager.loadCube(conn, APP_ID, n1.getName(), "1.1.20", "SNAPSHOT", new Date());
+
+        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), "1.1.20", true));
         assertEquals(n1, n2);
     }
 

@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyClassLoader;
 
 import java.io.InputStream;
@@ -37,7 +36,7 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([" + NCube.validCubeNameChars + "]+)(\\[[^\\]]*\\])");
     static final Pattern groovyAbsRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
     static final Pattern groovyAbsRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$](\\[[^\\]]*\\])");
-    static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)[(]([^)]*)[)]");
+    static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)[(](.*?\\[.*?:.*?\\])[)]");
     static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
     static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
     static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");

@@ -1,6 +1,14 @@
 n-cube
 ======
-n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and Enterprise Spreadsheet, built as a hyper-space.  
+n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and Enterprise Spreadsheet, built as a hyper-space.  To include in your project:
+
+```
+<dependency>
+  <groupId>com.cedarsoftware</groupId>
+  <artifactId>n-cube</artifactId>
+  <version>2.3.3</version>
+</dependency>
+```
 
 <a class="coinbase-button" data-code="ea75c2592d599361328895696e420338" data-button-style="custom_large" data-custom="n-cube" href="https://coinbase.com/checkouts/ea75c2592d599361328895696e420338">Donate Bitcoins</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
 
@@ -58,6 +66,10 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.  If you plan to included it within a commercial application, please contact John DeRegnaucourt, jdereg@gmail.com.
 
 Version History
+* 2.3.3
+ * RenameNCube() API added to NCubeManager.
+ * The regex that locates the relative n-cube references e.g. @otherCube[x:val], improved to no longer incorrectly find annotations as n-cube references.
+ * Levenshtein algorithm moved to CedarSoftware's java-util library. N-cube already had a dependence on java-util.
 * 2.3.2
  * HTML formatting improved to handle all cell data types
  * Parse routine that fetches n-cube names was matching too broad a string for n-cube name.

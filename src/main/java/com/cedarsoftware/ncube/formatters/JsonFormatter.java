@@ -138,7 +138,7 @@ public class JsonFormatter extends NCubeFormatter
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();
             writeKeys(item.getKey());
-            writeValues(item.getValue());
+            writeValue(item.getValue());
             endObject();
             comma();
         }
@@ -147,12 +147,10 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     public void writeKeys(Set<Column> keys) {
-        _builder.append("\"keys\":");
+        _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
-
-            //c.getId();
-            c.getValue();
+            _builder.append(c.getValue());
             comma();
         }
         _builder.setLength(_builder.length()-1);
@@ -160,10 +158,17 @@ public class JsonFormatter extends NCubeFormatter
         comma();
     }
 
-    public void writeValues(Object o) {
+    public void writeValue(Object o) {
+        _builder.append(String.format("\"type\":\"%s\",", convertValueType(o)));
         _builder.append("\"value\":");
         startArray();
+        _builder.append(o.toString());
         endArray();
+    }
+
+    public String convertValueType(Object type) {
+        System.out.println(type.getClass());
+        return "STRING";
     }
 
     public String convertType(AxisType type) {

@@ -1,9 +1,10 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.util.io.JsonWriter;
+import com.cedarsoftware.ncube.*;
 
-import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Format an NCube into an JSON document
@@ -26,6 +27,8 @@ import java.io.IOException;
  */
 public class JsonFormatter extends NCubeFormatter
 {
+    StringBuilder _builder = new StringBuilder();
+
     public JsonFormatter(NCube ncube)
     {
         super(ncube);
@@ -41,11 +44,186 @@ public class JsonFormatter extends NCubeFormatter
     {
         try
         {
-            return JsonWriter.objectToJson(ncube);
+            _builder.setLength(0);
+
+            startObject();
+            addItem("ncube", ncube.getName(), true);
+            //addItem("version", ncube.getVersion(), true);
+            addItem("ruleMode", ncube.getRuleMode(), true);
+
+            writeAxes(ncube.getAxes());
+            writeCells(ncube.getCellMap());
+
+            //addCellDefinitions(ncube.getCellDefinitions());
+            //addItem(b, "defaultCellValue", ncube.getDefaultCellValue());
+            // cell definitions
+
+            endObject();
+
+            return _builder.toString();
         }
-        catch (IOException e)
+        //catch (IOException e)
+        finally
         {
-            throw new IllegalStateException("Unable to format NCube '" + ncube.getName() + "' into JSON", e);
+            //throw new IllegalStateException("Unable to format NCube '" + ncube.getName() + "' into JSON", e);
         }
+    }
+
+    public void startArray() {
+        _builder.append("[");
+    }
+
+    public void endArray() {
+        _builder.append("]");
+    }
+
+    public void startObject() {
+        _builder.append("{");
+    }
+
+    public void endObject() {
+        _builder.append("}");
+    }
+
+    public void comma() {
+        _builder.append(",");
+    }
+
+    public void writeAxes(List<Axis> axes) {
+        _builder.append("\"axes\":");
+        startArray();
+        for (Axis item : axes) {
+            writeAxis(item);
+            comma();
+        }
+        _builder.setLength(_builder.length()-1);
+        endArray();
+        comma();
+    }
+
+    public void writeAxis(Axis a)
+    {
+        startObject();
+        addItem("name", a.getName(), true);
+        addItem("type", convertType(a.getType()), true);
+        addItem("valueType", convertAxisValueType(a.getValueType()), true);
+        addItem("hasDefault", a.hasDefaultColumn(), true);
+        addItem("preferredOrder", a.getColumnOrder(), true);
+        writeColumns(a.getColumns());
+        endObject();
+    }
+
+    public void writeColumns(List<Column> columns) {
+        _builder.append("\"columns\":");
+        startArray();
+        for(Column item : columns ) {
+            writeColumn(item);
+            comma();
+        }
+        _builder.setLength(_builder.length()-1);
+        endArray();
+    }
+
+    public void writeColumn(Column c) {
+        startObject();
+        //  Check to see if id exists anywhere. then optimize
+        addItem("id", c.getId(), true);
+        addItem("value", c.getValue(), false);
+        endObject();
+    }
+
+    public void writeCells(Map<Set<Column>, ?> cells) {
+        _builder.append("\"cells\":");
+        startArray();
+        for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
+            startObject();
+            writeKeys(item.getKey());
+            writeValue(item.getValue());
+            endObject();
+            comma();
+        }
+        _builder.setLength(_builder.length()-1);
+        endArray();
+    }
+
+    public void writeKeys(Set<Column> keys) {
+        _builder.append("\"id\":");
+        startArray();
+        for (Column c : keys) {
+            _builder.append(c.getValue());
+            comma();
+        }
+        _builder.setLength(_builder.length()-1);
+        endArray();
+        comma();
+    }
+
+    public void writeValue(Object o) {
+        _builder.append(String.format("\"type\":\"%s\",", convertValueType(o)));
+        _builder.append("\"value\":");
+        startArray();
+        _builder.append(o.toString());
+        endArray();
+    }
+
+    public String convertValueType(Object type) {
+        System.out.println(type.getClass());
+        return "STRING";
+    }
+
+    public String convertType(AxisType type) {
+        switch (type) {
+            case NEAREST:
+                return "NEAREST";
+            case RANGE:
+                return "RANGE";
+            case SET:
+                return "SET";
+            case DISCRETE:
+                return "DISCRETE";
+            case RULE:
+                return "RULE";
+        }
+        throw new IllegalArgumentException("Invalid Axis Type");
+    }
+
+    public String convertAxisValueType(AxisValueType type) {
+        switch (type) {
+            case BIG_DECIMAL:
+                return "BIGDECIMAL";
+            case COMPARABLE:
+                return "COMPARABLE";
+            case DATE:
+                return "DATE";
+            case DOUBLE:
+                return "DOUBLE";
+            case EXPRESSION:
+                return "EXPRESSION";
+            case LONG:
+                return "LONG";
+            case STRING:
+                return "STRING";
+        }
+        throw new IllegalArgumentException("Invalid Axis Value Type");
+    }
+
+    public void addItem(String name, String value, boolean includeComma) {
+        _builder.append(String.format("\"%s\":\"%s\"", name, value));
+        if (includeComma) {
+            _builder.append(",");
+        }
+    }
+
+    public void addItem(String name, Comparable c, boolean includeComma) {
+        addItem(name, c.toString(), includeComma);
+    }
+
+
+    public void addItem(String name, long value, boolean includeComma) {
+        addItem(name, Long.toString(value), includeComma);
+    }
+
+    public void addItem(String name, boolean value, boolean includeComma) {
+        addItem(name, value ? "true" : "false", includeComma);
     }
 }

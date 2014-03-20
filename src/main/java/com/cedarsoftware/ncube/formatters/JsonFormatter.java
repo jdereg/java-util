@@ -1,7 +1,9 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.*;
+import com.cedarsoftware.util.io.JsonWriter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,7 +98,7 @@ public class JsonFormatter extends NCubeFormatter
             writeAxis(item);
             comma();
         }
-        _builder.setLength(_builder.length()-1);
+        _builder.setLength(_builder.length() - 1);
         endArray();
         comma();
     }
@@ -105,8 +107,8 @@ public class JsonFormatter extends NCubeFormatter
     {
         startObject();
         addItem("name", a.getName(), true);
-        addItem("type", convertType(a.getType()), true);
-        addItem("valueType", convertAxisValueType(a.getValueType()), true);
+        addItem("type", a.getType().name(), true);
+        addItem("valueType", a.getValueType().name(), true);
         addItem("hasDefault", a.hasDefaultColumn(), true);
         addItem("preferredOrder", a.getColumnOrder(), true);
         writeColumns(a.getColumns());
@@ -120,7 +122,7 @@ public class JsonFormatter extends NCubeFormatter
             writeColumn(item);
             comma();
         }
-        _builder.setLength(_builder.length()-1);
+        _builder.setLength(_builder.length() - 1);
         endArray();
     }
 
@@ -142,7 +144,7 @@ public class JsonFormatter extends NCubeFormatter
             endObject();
             comma();
         }
-        _builder.setLength(_builder.length()-1);
+        _builder.setLength(_builder.length() - 1);
         endArray();
     }
 
@@ -153,7 +155,7 @@ public class JsonFormatter extends NCubeFormatter
             _builder.append(c.getValue());
             comma();
         }
-        _builder.setLength(_builder.length()-1);
+        _builder.setLength(_builder.length() - 1);
         endArray();
         comma();
     }
@@ -167,44 +169,7 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     public String convertValueType(Object type) {
-        System.out.println(type.getClass());
         return "STRING";
-    }
-
-    public String convertType(AxisType type) {
-        switch (type) {
-            case NEAREST:
-                return "NEAREST";
-            case RANGE:
-                return "RANGE";
-            case SET:
-                return "SET";
-            case DISCRETE:
-                return "DISCRETE";
-            case RULE:
-                return "RULE";
-        }
-        throw new IllegalArgumentException("Invalid Axis Type");
-    }
-
-    public String convertAxisValueType(AxisValueType type) {
-        switch (type) {
-            case BIG_DECIMAL:
-                return "BIGDECIMAL";
-            case COMPARABLE:
-                return "COMPARABLE";
-            case DATE:
-                return "DATE";
-            case DOUBLE:
-                return "DOUBLE";
-            case EXPRESSION:
-                return "EXPRESSION";
-            case LONG:
-                return "LONG";
-            case STRING:
-                return "STRING";
-        }
-        throw new IllegalArgumentException("Invalid Axis Value Type");
     }
 
     public void addItem(String name, String value, boolean includeComma) {
@@ -215,7 +180,7 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     public void addItem(String name, Comparable c, boolean includeComma) {
-        addItem(name, c.toString(), includeComma);
+        addItem(name, c == null ? "null" : c.toString(), includeComma);
     }
 
 

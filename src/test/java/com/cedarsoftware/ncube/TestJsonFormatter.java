@@ -19,10 +19,12 @@ public class TestJsonFormatter {
     public void testFormatter() throws Exception {
         NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonArrayTest.json");
 
-        System.out.println(JsonWriter.objectToJson(ncube));
+        assertNotNull(ncube.toFormattedJson());
 
-        System.out.println("\n------------------\n");
-        System.out.println(ncube.toFormattedJson());
+        //System.out.println(JsonWriter.objectToJson(ncube));
+
+        //System.out.println("\n------------------\n");
+        //System.out.println(ncube.toFormattedJson());
 
     }
 }

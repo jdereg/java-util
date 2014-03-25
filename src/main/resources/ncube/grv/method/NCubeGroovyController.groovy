@@ -1,4 +1,6 @@
-package ncube.grv.exp
+package ncube.grv.method
+
+import ncube.grv.exp.NCubeGroovyExpression
 
 import java.lang.reflect.Method;
 
@@ -16,7 +18,14 @@ class NCubeGroovyController extends NCubeGroovyExpression
         super.run(args);
 
         // Invoke the Groovy method named in the input Map at the key 'method'.
-        Method methodToRun = getClass().getMethod(input.method, null);
-        return methodToRun.invoke(this, null);
+        try
+        {
+            Method methodToRun = getClass().getMethod(input.method, null);
+            return methodToRun.invoke(this, null);
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 }

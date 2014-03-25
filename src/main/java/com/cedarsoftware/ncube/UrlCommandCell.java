@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UrlUtilities;
+import groovy.lang.GroovyShell;
 
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +27,7 @@ import java.util.regex.Pattern;
  */
 public abstract class UrlCommandCell extends CommandCell
 {
-    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)(\\[[^\\]]*\\])");
+    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)(\\[[^\\]]+\\])");
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;
@@ -90,6 +91,8 @@ public abstract class UrlCommandCell extends CommandCell
         Matcher m = groovyRelRefCubeCellPatternA.matcher(url);
         StringBuilder expandedUrl = new StringBuilder();
         int last = 0;
+        Map input = (Map) args.get("input");
+        GroovyShell shell = new GroovyShell();
 
         while (m.find())
         {
@@ -100,7 +103,10 @@ public abstract class UrlCommandCell extends CommandCell
             {
                 throw new IllegalStateException("Reference to not-loaded NCube '" + cubeName + "', from NCube '" + ncube.getName() + "', url: " + url);
             }
-            Object val = refCube.getCell((Map) args.get("input"));
+
+            Map coord = (Map) shell.evaluate(m.group(3));
+            input.putAll(coord);
+            Object val = refCube.getCell(input);
             val = (val == null) ? "" : val.toString();
             expandedUrl.append(val);
             last = m.end();

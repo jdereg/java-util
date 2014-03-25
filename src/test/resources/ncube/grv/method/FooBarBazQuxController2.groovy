@@ -1,7 +1,4 @@
-package groovy;
-
-import ncube.grv.exp.NCubeGroovyController;
-
+package ncube.grv.method
 /**
  * Example Controller-type class.  The methods in this class
  * correspond to columns on a method axis.  When getCell()
@@ -16,7 +13,7 @@ class FooBarBazQuxController2 extends NCubeGroovyController
 {
     def foo()
     {
-        return 2;
+        return 3;
     }
 
     def bar()

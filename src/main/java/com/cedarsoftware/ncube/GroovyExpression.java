@@ -76,4 +76,9 @@ public class GroovyExpression extends GroovyBase
     {
         return "run";
     }
+
+    protected String getCodeBase()
+    {
+        return "/ncube/grv/exp";
+    }
 }

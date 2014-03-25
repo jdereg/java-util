@@ -3754,7 +3754,7 @@ DELIMITER ;
         coord.put("method", "foo");
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
-                "package ncube.grv.exp; class Junk extends NCubeGroovyController " +
+                "package ncube.grv.method; class Junk extends NCubeGroovyController " +
                         "{\n" +
                         "def foo() {\n" +
                         " int x = input.age * 10;" +
@@ -3792,7 +3792,7 @@ DELIMITER ;
         coord.put("age", 25);
         coord.put("method", "doIt");
         ncube.setCell(new GroovyMethod(
-                "package ncube.grv.exp; class Junk extends NCubeGroovyController {" +
+                "package ncube.grv.method; class Junk extends NCubeGroovyController {" +
                         "def doIt()" +
                         "{" +
                         " int x = input['age'] * 10;" +
@@ -3880,7 +3880,7 @@ DELIMITER ;
         coord.put("age", 25);
         coord.put("method", "oldify");
         ncube.setCell(new GroovyMethod(
-                "import ncube.grv.exp.NCubeGroovyController; " +
+                "import ncube.grv.method.NCubeGroovyController; " +
                         "class Chicken extends NCubeGroovyController" +
                         "{" +
                         "def oldify() " +
@@ -5778,16 +5778,16 @@ DELIMITER ;
 
         coord.put("method", "foo");
         coord.put("state", "TX");
-        assertEquals(2, ncube.getCell(coord));
+        assertEquals(3, ncube.getCell(coord));
 
         coord.put("method", "bar");
-        assertEquals(6, ncube.getCell(coord));
+        assertEquals(9, ncube.getCell(coord));
 
         coord.put("method", "baz");
-        assertEquals(18, ncube.getCell(coord));
+        assertEquals(27, ncube.getCell(coord));
 
         coord.put("method", "qux");
-        assertEquals(54, ncube.getCell(coord));
+        assertEquals(81, ncube.getCell(coord));
     }
 
     // ---------------------------------------------------------------------------------

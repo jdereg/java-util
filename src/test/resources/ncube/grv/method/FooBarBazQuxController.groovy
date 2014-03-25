@@ -1,6 +1,4 @@
-package groovy;
-
-import ncube.grv.exp.NCubeGroovyController;
+package ncube.grv.method
 
 class FooBarBazQuxController extends NCubeGroovyController
 {

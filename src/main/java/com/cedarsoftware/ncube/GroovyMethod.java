@@ -69,13 +69,17 @@ public class GroovyMethod extends GroovyBase
 
     public String buildGroovy(String theirGroovy, String cubeName)
     {
-        Matcher m = groovyClassNamePattern.matcher(theirGroovy);
-        return m.replaceAll("class $1_" + getCmdHash() + " extends");
+        return theirGroovy;
     }
 
     protected String getMethodToExecute(Map args)
     {
         Map input = (Map) args.get("input");
         return (String)input.get("method");
+    }
+
+    protected String getCodeBase()
+    {
+        return "/ncube/grv/method";
     }
 }

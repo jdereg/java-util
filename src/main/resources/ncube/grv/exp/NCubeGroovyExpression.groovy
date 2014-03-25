@@ -1,3 +1,5 @@
+package ncube.grv.exp
+
 import com.cedarsoftware.ncube.exception.RuleStop
 
 /**
@@ -5,7 +7,7 @@ import com.cedarsoftware.ncube.exception.RuleStop
  * @see com.cedarsoftware.ncube.GroovyBase
  * @author John DeRegnaucourt
  */
-class NCubeGroovyCell
+class NCubeGroovyExpression
 {
     def input;
     def output;
@@ -13,7 +15,7 @@ class NCubeGroovyCell
     def ncube;
     def ncubeMgr;
 
-    NCubeGroovyCell(Map args)
+    def run(Map args)
     {
         input = args.input;
         output = args.output;
@@ -22,13 +24,19 @@ class NCubeGroovyCell
         ncubeMgr = args.ncubeMgr;
     }
 
-    def getFixedCell(String name, Map coord)
+    def getFixedCell(Map coord)
     {
-        if (ncubeMgr.getCube(name, ncube.getVersion()) == null)
+        return ncube.getCell(coord, output);
+    }
+
+    def getFixedCubeCell(String name, Map coord)
+    {
+        def cube = ncubeMgr.getCube(name, ncube.getVersion())
+        if (cube == null)
         {
             throw new IllegalArgumentException('NCube "' + name + '" not loaded into NCubeManager, attempting fixed ($) reference to cell: ' + coord.toString());
         }
-        return ncubeMgr.getCube(name, ncube.getVersion()).getCell(coord, output);
+        return cube.getCell(coord, output);
     }
 
     def getRelativeCell(Map coord)
@@ -40,20 +48,16 @@ class NCubeGroovyCell
     def getRelativeCubeCell(String name, Map coord)
     {
         input.putAll(coord);
-        if (ncubeMgr.getCube(name, ncube.getVersion()) == null)
+        def cube = ncubeMgr.getCube(name, ncube.getVersion())
+        if (cube == null)
         {
             throw new IllegalArgumentException('NCube "' + name + '" not loaded into NCubeManager, attempting relative (@) reference to cell: ' + coord.toString());
         }
-        return ncubeMgr.getCube(name, ncube.getVersion()).getCell(input, output);
+        return cube.getCell(input, output);
     }
 
     void ruleStop()
     {
         throw new RuleStop();
-    }
-
-    def run()
-    {
-        throw new IllegalStateException("This method should be overridden");
     }
 }

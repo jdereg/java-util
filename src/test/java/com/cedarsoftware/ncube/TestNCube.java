@@ -3743,24 +3743,28 @@ DELIMITER ;
     public void testGroovyTwoMethods() throws Exception
     {
         NCube ncube = new NCube("GroovyCube");
-        Axis axis = new Axis("age", AxisType.DISCRETE, AxisValueType.LONG, false);
-        axis.addColumn(25);
-        axis.addColumn(35);
-        axis.addColumn(45);
+        Axis axis = new Axis("method", AxisType.DISCRETE, AxisValueType.STRING, false);
+        axis.addColumn("foo");
+        axis.addColumn("bar");
+        axis.addColumn("baz");
         ncube.addAxis(axis);
         NCubeManager.addCube(ncube, "test");
 
         Map coord = new HashMap();
+        coord.put("method", "foo");
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
-                "def run()" +
-                        "{" +
+                "package ncube.grv.method; class Junk extends NCubeGroovyController " +
+                        "{\n" +
+                        "def foo() {\n" +
                         " int x = input.age * 10;" +
                         " jump(x)" +
                         "}\n" +
-                        "int jump(int x) { x * 2; }"), coord);
+                        "int jump(int x) { x * 2; }" +
+                        "}"), coord);
 
         Map output = new HashMap();
+        coord.put("method", "foo");
         coord.put("age", 25);
         long start = System.currentTimeMillis();
         Object o = null;
@@ -3786,26 +3790,30 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("age", 25);
+        coord.put("method", "doIt");
         ncube.setCell(new GroovyMethod(
-                "def run()" +
+                "package ncube.grv.method; class Junk extends NCubeGroovyController {" +
+                        "def doIt()" +
                         "{" +
                         " int x = input['age'] * 10;" +
-                        " return ~Fargo~.freeze(jump(x))" +
+                        " return Fargo.freeze(jump(x))" +
                         "}\n" +
                         "int jump(int x) { x * 2; }\n" +
                         "\n" +
-                        "static class ~Fargo~ {" +
+                        "static class Fargo {" +
                         "static int freeze(int d) {" +
                         "  -d" +
-                        "}}"), coord);
+                        "}}}"), coord);
 
         Map output = new HashMap();
         coord.put("age", 25);
+        coord.put("method", "doIt");
         long start = System.currentTimeMillis();
         Object o = null;
         for (int i = 0; i < 1000; i++)
         {
             o = ncube.getCell(coord, output);
+            assertEquals(o, -500);
         }
         long stop = System.currentTimeMillis();
         println("execute GroovyMethod 1000 times = " + (stop - start));
@@ -3870,19 +3878,25 @@ DELIMITER ;
 
         coord = new HashMap();
         coord.put("age", 25);
+        coord.put("method", "oldify");
         ncube.setCell(new GroovyMethod(
-                "def run() " +
+                "import ncube.grv.method.NCubeGroovyController; " +
+                        "class Chicken extends NCubeGroovyController" +
+                        "{" +
+                        "def oldify() " +
                         "{" +
                         " input['age'] * 10;" +
-                        "}"), coord);
+                        "}}"), coord);
 
         Map output = new HashMap();
         coord.put("age", 25);
+        coord.put("method", "oldify");
         long start = System.currentTimeMillis();
         Object o = null;
         for (int i = 0; i < 1000; i++)
         {
             o = ncube.getCell(coord, output);
+            assertEquals(o, 250);
         }
         long stop = System.currentTimeMillis();
         println("execute GroovyMethod 1,000 times = " + (stop - start));
@@ -4380,10 +4394,6 @@ DELIMITER ;
         assertEquals(6.28, ans);
         assertEquals(coord.get("code"), "exp");
 
-        coord.put("code", "method");
-        ans = ncube.getCell(coord);
-        assertEquals(7.28, ans);
-
         coord.put("code", "expArray");
         ans = ncube.getCell(coord);
         Object[] ret = (Object[]) ans;
@@ -4571,6 +4581,23 @@ DELIMITER ;
         coord.put("gender", "male");
         coord.put("vehicleCylinders", 8);
         coord.put("state", "TX");
+        Map output = new HashMap();
+        Map<Map<String, Column>, ?> steps = ncube.getCells(coord, output);
+        assertEquals(new BigDecimal("119.0"), output.get("premium"));
+        assertTrue(steps.size() == 4);
+    }
+
+    // This test ensures that identical expressions result in a single dynamic Groovy class being generated for them.
+    @Test
+    public void testDuplicateExpression() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("duplicateExpression.json");
+
+        Map coord = new HashMap();
+        coord.put("vehiclePrice", 5000.0);
+        coord.put("driverAge", 22);
+        coord.put("gender", "male");
+        coord.put("vehicleCylinders", 8);
         Map output = new HashMap();
         Map<Map<String, Column>, ?> steps = ncube.getCells(coord, output);
         assertEquals(new BigDecimal("119.0"), output.get("premium"));
@@ -5021,16 +5048,6 @@ DELIMITER ;
         NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
         Map coord = new HashMap();
         coord.put("code", "expWithImport");
-        String str = ncube.getCell(coord);
-        assertEquals(str, "I love Bitcoin");
-    }
-
-    @Test
-    public void testMethodWithImports()
-    {
-        NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
-        Map coord = new HashMap();
-        coord.put("code", "methodWithImport");
         String str = ncube.getCell(coord);
         assertEquals(str, "I love Bitcoin");
     }
@@ -5739,6 +5756,38 @@ DELIMITER ;
         m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
+    }
+
+    @Test
+    public void testGroovyMethods()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        assertEquals(2, ncube.getCell(coord));
+
+        coord.put("method", "bar");
+        assertEquals(4, ncube.getCell(coord));
+
+        coord.put("method", "baz");
+        assertEquals(8, ncube.getCell(coord));
+
+        coord.put("method", "qux");
+        assertEquals(16, ncube.getCell(coord));
+
+        coord.put("method", "foo");
+        coord.put("state", "TX");
+        assertEquals(3, ncube.getCell(coord));
+
+        coord.put("method", "bar");
+        assertEquals(9, ncube.getCell(coord));
+
+        coord.put("method", "baz");
+        assertEquals(27, ncube.getCell(coord));
+
+        coord.put("method", "qux");
+        assertEquals(81, ncube.getCell(coord));
     }
 
     // ---------------------------------------------------------------------------------

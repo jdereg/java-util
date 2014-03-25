@@ -1,12 +1,9 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
-import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -50,6 +47,7 @@ public abstract class CommandCell implements Comparable<CommandCell>
 {
     private volatile transient Class runnableCode = null;
 	private String cmd;
+    private String cmdHash;
     private volatile transient String compileErrorMsg = null;
     static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
     static final String proxyServer;
@@ -78,8 +76,8 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     public CommandCell(String cmd)
 	{
-		this.cmd = cmd;
-	}
+        setCmd(cmd);
+    }
 
     public Class getRunnableCode()
     {
@@ -102,43 +100,35 @@ public abstract class CommandCell implements Comparable<CommandCell>
         return runFinal(args);
     }
 
-    protected Object runFinal(Map args)
-    {
-        try
-        {
-            Method m = runnableCode.getDeclaredMethod("run", null);
-            Constructor target = runnableCode.getConstructor(Map.class);
-            return m.invoke(target.newInstance(args));
-        }
-        catch(InvocationTargetException e)
-        {
-            Throwable cause = e.getCause();
-            if (cause instanceof CoordinateNotFoundException)
-            {
-                throw (RuntimeException) cause;
-            }
-            else if (cause instanceof RuleStop)
-            {
-                throw (RuleStop) cause;
-            }
-            throw new RuntimeException("Exception occurred invoking run() method on Groovy code.", e) ;
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Error occurred invoking run() method on Groovy code.", e);
-        }
-    }
+    protected abstract void preRun(Map args);
 
-    protected void preRun(Map args) {}
+    protected abstract Object runFinal(Map args);
 
     public String getCmd()
 	{
 		return cmd;
 	}
 
+    public String getCmdHash()
+    {
+        return cmdHash;
+    }
+
     public void setCmd(String cmd)
     {
         this.cmd = cmd;
+        if (cmd == null)
+        {
+            cmd = "";
+        }
+        try
+        {
+            cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
+        }
     }
 
     public String toString()

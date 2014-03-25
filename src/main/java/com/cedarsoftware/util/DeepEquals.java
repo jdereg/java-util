@@ -585,6 +585,14 @@ public class DeepEquals
                 stack.addAll(0, ((Map)obj).values());
                 continue;
             }
+            
+            if (obj instanceof Double || obj instanceof Float)
+            {
+            	// just take the integral value for hashcode 
+            	// equality tests things more comprehensively 
+            	stack.add(Math.round(((Number) obj).doubleValue()));
+            	continue;
+            }
 
             if (hasCustomHashCode(obj.getClass()))
             {   // A real hashCode() method exists, call it.

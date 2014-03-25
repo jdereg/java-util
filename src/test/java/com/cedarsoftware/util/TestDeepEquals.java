@@ -131,8 +131,7 @@ public class TestDeepEquals {
 						true, Math.tan(Math.PI / 4), 1));
 		Set<Class1> x2 = Sets.newHashSet(new Class1(true, 1, 1), new Class1(
 				true, 2, 6));
-		// TODO make this happen
-		// assertTrue(DeepEquals.deepEquals(x1, x2));
+		assertTrue(DeepEquals.deepEquals(x1, x2));
 	}
 
 	@Test

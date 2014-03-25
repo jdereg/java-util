@@ -1,9 +1,9 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.*;
-import com.cedarsoftware.util.io.JsonWriter;
 
-import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +30,9 @@ import java.util.Set;
 public class JsonFormatter extends NCubeFormatter
 {
     StringBuilder _builder = new StringBuilder();
+    Map<Long, Object> columnMap;
+
+    private String _quotedStringFormat = "\"%s\"";
 
     public JsonFormatter(NCube ncube)
     {
@@ -49,15 +52,15 @@ public class JsonFormatter extends NCubeFormatter
             _builder.setLength(0);
 
             startObject();
-            addItem("ncube", ncube.getName(), true);
-            //addItem("version", ncube.getVersion(), true);
-            addItem("ruleMode", ncube.getRuleMode(), true);
+            writeAttribute("ncube", ncube.getName(), true);
+            //writeAttribute("version", ncube.getVersion(), true);
+            writeAttribute("ruleMode", ncube.getRuleMode(), true);
+            //writeAttribute("defaultCellValue", ncube.getDefaultCellValue());
 
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
 
             //addCellDefinitions(ncube.getCellDefinitions());
-            //addItem(b, "defaultCellValue", ncube.getDefaultCellValue());
             // cell definitions
 
             endObject();
@@ -103,14 +106,36 @@ public class JsonFormatter extends NCubeFormatter
         comma();
     }
 
+    public boolean doesIdExistElsewhere(Object value) {
+        return false;
+    }
+
+    // default is false, so no need to write those out.
     public void writeAxis(Axis a)
     {
         startObject();
-        addItem("name", a.getName(), true);
-        addItem("type", a.getType().name(), true);
-        addItem("valueType", a.getValueType().name(), true);
-        addItem("hasDefault", a.hasDefaultColumn(), true);
-        addItem("preferredOrder", a.getColumnOrder(), true);
+
+        // required inputs
+        writeAttribute("name", a.getName(), true);
+        writeAttribute("type", a.getType().name(), true);
+        writeAttribute("valueType", a.getValueType().name(), true);
+
+        //  optional inputs that can use defaults
+        if (a.getColumnOrder() != Axis.SORTED)
+        {
+            writeAttribute("preferredOrder", a.getColumnOrder(), true);
+        }
+
+        if (a.hasDefaultColumn())
+        {
+            writeAttribute("hasDefault", a.hasDefaultColumn(), true);
+        }
+
+        if (a.isMultiMatch())
+        {
+            writeAttribute("multiMatch", a.isMultiMatch(), true);
+        }
+
         writeColumns(a.getColumns());
         endObject();
     }
@@ -129,8 +154,16 @@ public class JsonFormatter extends NCubeFormatter
     public void writeColumn(Column c) {
         startObject();
         //  Check to see if id exists anywhere. then optimize
-        addItem("id", c.getId(), true);
-        addItem("value", c.getValue(), false);
+
+        if (doesIdExistElsewhere(c.getValue()))
+        {
+            writeAttribute("id", c.getId(), true);
+            writeValue("value", c.getValue());
+        } else {
+            writeValue("id", c.getValue());
+        }
+        //writeAttribute("displayOrder", c.getDisplayOrder(), true);
+        //writeAttribute("value", c.getValue(), false);
         endObject();
     }
 
@@ -140,7 +173,7 @@ public class JsonFormatter extends NCubeFormatter
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();
             writeKeys(item.getKey());
-            writeValue(item.getValue());
+            writeValue("value", item.getValue());
             endObject();
             comma();
         }
@@ -152,7 +185,7 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
-            _builder.append(c.getValue());
+            writeValue(c.getValue());
             comma();
         }
         _builder.setLength(_builder.length() - 1);
@@ -160,35 +193,60 @@ public class JsonFormatter extends NCubeFormatter
         comma();
     }
 
+
     public void writeValue(Object o) {
-        _builder.append(String.format("\"type\":\"%s\",", convertValueType(o)));
-        _builder.append("\"value\":");
-        startArray();
+        if (o == null) {
+            _builder.append("null");
+            return;
+        }
+
+        if (o instanceof Array) {
+            startArray();
+            for (int i=0; i<Array.getLength(o); i++) {
+                writeValue(Array.get(o, i));
+            }
+            endArray();
+            return;
+        }
+
+        if (o instanceof Collection) {
+            Collection c = (Collection)o;
+            startArray();
+            for (Object it : c) {
+                writeValue(it);
+            }
+            endArray();
+            return;
+        }
+
         _builder.append(o.toString());
-        endArray();
     }
 
-    public String convertValueType(Object type) {
-        return "STRING";
+    public void writeValue(String attr, Object o) {
+        //_builder.append(String.format("\"type\":\"%s\",", convertValueType(o)));
+        _builder.append(String.format(_quotedStringFormat, attr));
+        _builder.append(':');
+
+        writeValue(o);
     }
 
-    public void addItem(String name, String value, boolean includeComma) {
+    //public String convertValueType(Object type)
+    //{
+        //return "STRING";
+    //}
+
+    public void writeAttribute(String name, String value, boolean includeComma) {
         _builder.append(String.format("\"%s\":\"%s\"", name, value));
         if (includeComma) {
             _builder.append(",");
         }
     }
 
-    public void addItem(String name, Comparable c, boolean includeComma) {
-        addItem(name, c == null ? "null" : c.toString(), includeComma);
+    public void writeAttribute(String name, long value, boolean includeComma) {
+        writeAttribute(name, Long.toString(value), includeComma);
     }
 
-
-    public void addItem(String name, long value, boolean includeComma) {
-        addItem(name, Long.toString(value), includeComma);
-    }
-
-    public void addItem(String name, boolean value, boolean includeComma) {
-        addItem(name, value ? "true" : "false", includeComma);
+    public void writeAttribute(String name, boolean value, boolean includeComma) {
+        writeAttribute(name, value ? "true" : "false", includeComma);
     }
 }

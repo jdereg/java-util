@@ -466,8 +466,38 @@ public class DeepEquals
 			b1 = (Float) b;
 		}
     	
-    	return Math.abs(a1 - b1) < epsilon; 
+    	return nearlyEqual(a1, b1, epsilon); 
     }
+    
+	/**
+	 * Correcly handles floating point comparisions. <br/>
+	 * source: http://floating-point-gui.de/errors/comparison/
+	 * 
+	 * @param a
+	 *            first number
+	 * @param b
+	 *            second number
+	 * @param epsilon
+	 * @return true if a and b are close enough
+	 */
+    private static boolean nearlyEqual(double a, double b, double epsilon) {
+		final double absA = Math.abs(a);
+		final double absB = Math.abs(b);
+		final double diff = Math.abs(a - b);
+
+		if (a == b) 
+		{ // shortcut, handles infinities
+			return true;
+		} else if (a == 0 || b == 0 || diff < Double.MIN_NORMAL) 
+		{
+			// a or b is zero or both are extremely close to it
+			// relative error is less meaningful here
+			return diff < (epsilon * Double.MIN_NORMAL);
+		} else 
+		{ // use relative error
+			return diff / (absA + absB) < epsilon;
+		}
+	}
 
     /**
      * Determine if the passed in class has a non-Object.equals() method.  This

@@ -1,7 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.UniqueIdGenerator;
-
 import java.util.Set;
 
 /**
@@ -37,7 +35,7 @@ import java.util.Set;
  * the coordinate that called into this cell.
  *
  * @author John DeRegnaucourt
- * Copyright (c) 2012-2013, John DeRegnaucourt.  All rights reserved.
+ * Copyright (c) 2012-2014, John DeRegnaucourt.  All rights reserved.
  */
 public class GroovyExpression extends GroovyBase
 {
@@ -56,24 +54,20 @@ public class GroovyExpression extends GroovyBase
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder();
-        String className = "NGrvExp" + fixClassName(cubeName) + UniqueIdGenerator.getUniqueId();
+        groovy.append("package ncube.grv.exp;\n");
+        String className = fixClassName(cubeName) + '_' + getCmdHash();
+
         for (String importLine : imports)
         {
             groovy.append(importLine);
             groovy.append('\n');
         }
+
         groovy.append("class ");
         groovy.append(className);
-        groovy.append(" extends NCubeGroovyCell");
-        groovy.append("\n{\n");
-        groovy.append(className);
-        groovy.append("(Map args)\n{\n");
-        groovy.append("  super(args);\n");
-        groovy.append("}\n\n");
-        groovy.append("def run()\n{\n");
+        groovy.append(" extends NCubeGroovyExpression { def run(Map args) { super.run(args); ");
         groovy.append(groovyCodeWithoutImportStatements);
-        groovy.append("  \n}\n}");
+        groovy.append("}}");
         return groovy.toString();
     }
-
 }

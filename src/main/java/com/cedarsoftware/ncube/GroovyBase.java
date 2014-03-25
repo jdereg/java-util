@@ -1,10 +1,9 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.UniqueIdGenerator;
 import groovy.lang.GroovyClassLoader;
+import groovy.lang.GroovyCodeSource;
 
-import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -40,18 +39,10 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
     static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
     static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");
-    static final Pattern groovyUniqueClassPattern = Pattern.compile("~([a-zA-Z0-9_]+)~");
     static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
     static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
-    static GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
-    static final Class groovyCell;
-
-    static
-    {
-        InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("NCubeGroovyCell");
-        String groovy = new String(IOUtilities.inputStreamToBytes(in));
-        groovyCell = groovyClassLoader.parseClass(groovy);
-    }
+    static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
+    static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
 
     public GroovyBase(String cmd, boolean cache)
     {
@@ -99,6 +90,11 @@ public abstract class GroovyBase extends UrlCommandCell
                     return;
                 }
 
+                if (compiledClasses.containsKey(getCmdHash()))
+                {   // Already been compiled, re-use class
+                    setRunnableCode(compiledClasses.get(getCmdHash()));
+                    return;
+                }
                 try
                 {
                     compile(cubeName);
@@ -114,28 +110,29 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected void compile(String cubeName) throws Exception
     {
-        Matcher m = groovyUniqueClassPattern.matcher(getCmd());
-        String theirGroovy = m.replaceAll("$1" + UniqueIdGenerator.getUniqueId());
-
-        String groovy = buildGroovy(theirGroovy, cubeName);
+        String groovy = buildGroovy(getCmd(), cubeName);
         String exp = expandNCubeShortCuts(groovy);
 
-        setRunnableCode(groovyClassLoader.parseClass(exp));
+        GroovyCodeSource grvCodeSrc = new GroovyCodeSource(exp, fixClassName(cubeName) + "_" + getCmdHash(), "/ncube/grv/exp");
+        grvCodeSrc.setCachable(false);
+        setRunnableCode(groovyClassLoader.parseClass(grvCodeSrc, false));
+
+        compiledClasses.put(getCmdHash(), getRunnableCode());
     }
 
     static String expandNCubeShortCuts(String groovy)
     {
         Matcher m = groovyAbsRefCubeCellPattern.matcher(groovy);
-        String exp = m.replaceAll("$1getFixedCell('$2',$3)");
+        String exp = m.replaceAll("$1getFixedCubeCell('$2',$3)");
 
         m = groovyAbsRefCubeCellPatternA.matcher(exp);
-        exp = m.replaceAll("$1getFixedCell('$2',$3)");
+        exp = m.replaceAll("$1getFixedCubeCell('$2',$3)");
 
         m = groovyAbsRefCellPattern.matcher(exp);
-        exp = m.replaceAll("$1ncube.getCell($2,output)");
+        exp = m.replaceAll("$1getFixedCell($2)");
 
         m = groovyAbsRefCellPatternA.matcher(exp);
-        exp = m.replaceAll("$1ncube.getCell($2,output)");
+        exp = m.replaceAll("$1getFixedCell($2)");
 
         m = groovyRelRefCubeCellPattern.matcher(exp);
         exp = m.replaceAll("$1getRelativeCubeCell('$2',$3)");

@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.UrlUtilities;
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 
@@ -106,7 +105,7 @@ public class GroovyTemplate extends UrlCommandCell
                 cmd = replaceScriptletNCubeRefs(cmd, scripletPattern, "<%", "%>");
                 cmd = replaceScriptletNCubeRefs(cmd, velocityPattern, "${", "}");
 
-                InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("NCubeTemplateClosures");
+                InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("ncube/grv/closure/NCubeTemplateClosures.groovy");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
 
                 cmd = "<% " + groovyClosures + " %>" + cmd;

@@ -2,8 +2,10 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -50,6 +52,7 @@ public abstract class CommandCell implements Comparable<CommandCell>
 {
     private volatile transient Class runnableCode = null;
 	private String cmd;
+    private String cmdHash;
     private volatile transient String compileErrorMsg = null;
     static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
     static final String proxyServer;
@@ -78,8 +81,8 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     public CommandCell(String cmd)
 	{
-		this.cmd = cmd;
-	}
+        setCmd(cmd);
+    }
 
     public Class getRunnableCode()
     {
@@ -106,9 +109,11 @@ public abstract class CommandCell implements Comparable<CommandCell>
     {
         try
         {
-            Method m = runnableCode.getDeclaredMethod("run", null);
-            Constructor target = runnableCode.getConstructor(Map.class);
-            return m.invoke(target.newInstance(args));
+            Constructor c = runnableCode.getConstructor();
+            Object commandCell = c.newInstance();
+
+            Method run = runnableCode.getMethod("run", Map.class);
+            return run.invoke(commandCell, args);
         }
         catch(InvocationTargetException e)
         {
@@ -121,12 +126,17 @@ public abstract class CommandCell implements Comparable<CommandCell>
             {
                 throw (RuleStop) cause;
             }
-            throw new RuntimeException("Exception occurred invoking run() method on Groovy code.", e) ;
+            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "()", e) ;
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Error occurred invoking run() method on Groovy code.", e);
+            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "()", e);
         }
+    }
+
+    protected String getMethodToExecute(Map args)
+    {
+        return "run";
     }
 
     protected void preRun(Map args) {}
@@ -136,9 +146,26 @@ public abstract class CommandCell implements Comparable<CommandCell>
 		return cmd;
 	}
 
+    public String getCmdHash()
+    {
+        return cmdHash;
+    }
+
     public void setCmd(String cmd)
     {
         this.cmd = cmd;
+        if (cmd == null)
+        {
+            cmd = "";
+        }
+        try
+        {
+            cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
+        }
     }
 
     public String toString()

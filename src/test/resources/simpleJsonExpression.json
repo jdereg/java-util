@@ -9,7 +9,6 @@
             "preferredOrder":0,
             "columns":[
                 { "id":"exp" },
-                { "id":"method" },
                 { "id":"program" },
                 { "id":"program2" },
                 { "id":"expArray" },
@@ -29,7 +28,6 @@
                 { "id":"stdTemplate3" },
                 { "id":"string" },
                 { "id":"expWithImport" },
-                { "id":"methodWithImport" },
                 { "id":"FixedExp"},
                 { "id":"FixedExtExp"},
                 { "id":"RelativeExp"},
@@ -37,9 +35,7 @@
             ]}],
     "cells":[
         { "id":["exp"], "type":"exp", "value": "input.code = 'intVal'; def x=$(input); input.code = 'doubleVal'; def y = $(input); x * y" },
-        { "id":["method"], "type":"method", "value": "def run() { $([code:'intVal']) * $([code:'doubleVal']) + 1 }" },
         { "id":["expWithImport"], "type":"exp", "value": "import java.text.*; MessageFormat.format('I love {0}', 'Bitcoin'); " },
-        { "id":["methodWithImport"], "type":"method", "value": "import java.text.*; def run() { MessageFormat.format('I love {0}', 'Bitcoin'); }" },
         { "id":["expArray"], "type":"exp", "value":["5", "2 * 5", "def x = 10; def y = 20; x + y"] },
         { "id":["stdTemplate"], "type":"template", "value":"Dear <%=@([code:'intVal'])%>, Your balance of ${@([code:'doubleVal'])} is ${input.overdue}."},
         { "id":["stdTemplate2"], "type":"template", "value":"<%= @([code:'intVal']) %>, Your balance is ${ input.overdue } ${@([code:'doubleVal'])}"},

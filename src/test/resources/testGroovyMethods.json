@@ -1,0 +1,87 @@
+{
+    "ncube": "TestCube",
+    "defaultCellValue": "ZZZ",
+    "axes": [
+        {
+            "name": "method",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": false,
+            "preferredOrder": 0,
+            "columns": [
+                {
+                    "id": "foo"
+                },
+                {
+                    "id": "bar"
+                },
+                {
+                    "id": "baz"
+                },
+                {
+                    "id": "qux"
+                }
+            ]
+        },
+        {
+            "name": "state",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": false,
+            "preferredOrder": 0,
+            "columns": [
+                {
+                    "id": "OH"
+                },
+                {
+                    "id": "TX"
+                },
+                {
+                    "id": "GA"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": ["foo", "OH"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController.groovy"
+        },
+        {
+            "id": ["bar", "OH"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController.groovy"
+        },
+        {
+            "id": ["baz", "OH"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController.groovy"
+        },
+        {
+            "id": ["qux", "OH"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController.groovy"
+        },
+        {
+            "id": ["foo", "TX"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController2.groovy"
+        },
+        {
+            "id": ["bar", "TX"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController2.groovy"
+        },
+        {
+            "id": ["baz", "TX"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController2.groovy"
+        },
+        {
+            "id": ["qux", "TX"],
+            "type": "method",
+            "url": "res://groovy/FooBarBazQuxController2.groovy"
+        }
+    ]
+}

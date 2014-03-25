@@ -2,7 +2,10 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UniqueIdGenerator;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This class is used to hold Groovy Programs.  The code must start
@@ -55,6 +58,8 @@ import java.util.Set;
  */
 public class GroovyMethod extends GroovyBase
 {
+    static final Pattern groovyClassNamePattern = Pattern.compile("class[\\s]+([0-9a-zA-Z_\\$]+)[\\s]+extends");
+
     public GroovyMethod(String cmd)
     {
         super(cmd, true);
@@ -67,25 +72,13 @@ public class GroovyMethod extends GroovyBase
 
     public String buildGroovy(String theirGroovy, String cubeName)
     {
-        StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
-        Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
-        StringBuilder groovy = new StringBuilder();
-        String className = "NGrvMethod" + fixClassName(cubeName) + UniqueIdGenerator.getUniqueId();
-        for (String importLine : imports)
-        {
-            groovy.append(importLine);
-            groovy.append('\n');
-        }
-        groovy.append("class ");
-        groovy.append(className);
-        groovy.append(" extends NCubeGroovyCell");
-        groovy.append("\n{\n");
-        groovy.append(className);
-        groovy.append("(Map args)\n{\n");
-        groovy.append("  super(args);\n");
-        groovy.append("}\n\n");
-        groovy.append(groovyCodeWithoutImportStatements);
-        groovy.append("\n}");
-        return groovy.toString();
+        Matcher m = groovyClassNamePattern.matcher(theirGroovy);
+        return m.replaceAll("class $1_" + getCmdHash() + " extends");
+    }
+
+    protected String getMethodToExecute(Map args)
+    {
+        Map input = (Map) args.get("input");
+        return (String)input.get("method");
     }
 }

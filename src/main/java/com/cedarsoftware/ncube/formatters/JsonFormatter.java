@@ -108,7 +108,7 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     public void writeAxes(List<Axis> axes) {
-        _builder.append(String.format(_quotedStringFormat, axes));
+        _builder.append(String.format(_quotedStringFormat, "axes"));
         _builder.append(':');
         startArray();
         for (Axis item : axes) {
@@ -348,11 +348,17 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append(String.format(_quotedStringFormat, name));
         _builder.append(":");
         _builder.append(value);
+        if (includeComma) {
+            _builder.append(",");
+        }
     }
 
     public void writeAttribute(String name, boolean value, boolean includeComma) {
         _builder.append(String.format(_quotedStringFormat, name));
         _builder.append(":");
         _builder.append(value);
+        if (includeComma) {
+            _builder.append(",");
+        }
     }
 }

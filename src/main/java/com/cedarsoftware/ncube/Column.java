@@ -127,7 +127,7 @@ public class Column implements Comparable<Comparable>
 		displayOrder = order;
 	}
 	
-	int getDisplayOrder()
+	public int getDisplayOrder()
 	{
 		return displayOrder;
 	}

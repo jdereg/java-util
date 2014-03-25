@@ -123,4 +123,8 @@ public abstract class UrlCommandCell extends CommandCell
     public void getScopeKeys(Set<String> scopeKeys)
     {
     }
+
+    public boolean isCacheable() {
+        return cache;
+    }
 }

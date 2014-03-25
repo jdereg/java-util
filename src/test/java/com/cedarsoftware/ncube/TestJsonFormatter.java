@@ -21,10 +21,10 @@ public class TestJsonFormatter {
 
         assertNotNull(ncube.toFormattedJson());
 
-        //System.out.println(JsonWriter.objectToJson(ncube));
+        System.out.println(JsonWriter.objectToJson(ncube));
 
-        //System.out.println("\n------------------\n");
-        //System.out.println(ncube.toFormattedJson());
+        System.out.println("\n------------------\n");
+        System.out.println(ncube.toFormattedJson());
 
     }
 }

@@ -1,8 +1,11 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.*;
+import com.cedarsoftware.util.io.JsonWriter;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Array;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -185,6 +188,7 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
+            //c.getId();  Only do getValue() if unique
             writeValue(c.getValue());
             comma();
         }
@@ -219,7 +223,21 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
-        _builder.append(o.toString());
+        if (!(o instanceof String)) {
+            try
+            {
+                ByteArrayOutputStream out = new ByteArrayOutputStream(9182);
+                JsonWriter w = new JsonWriter(out);
+                w.write(o);
+                _builder.append(out.toString("UTF-8"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return;
+        }
+        //System.out.println(o.getClass());
+        _builder.append(String.format(_quotedStringFormat, o.toString()));
     }
 
     public void writeValue(String attr, Object o) {

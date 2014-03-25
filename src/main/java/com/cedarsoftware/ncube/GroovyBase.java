@@ -3,7 +3,6 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.exception.RuleStop;
 import groovy.lang.GroovyClassLoader;
-import groovy.lang.GroovyCodeSource;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

@@ -1,12 +1,21 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.*;
+import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.GroovyExpression;
+import com.cedarsoftware.ncube.GroovyMethod;
+import com.cedarsoftware.ncube.GroovyTemplate;
+import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Array;
-import java.nio.charset.Charset;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +45,7 @@ public class JsonFormatter extends NCubeFormatter
     Map<Long, Object> columnMap;
 
     private String _quotedStringFormat = "\"%s\"";
+
 
     public JsonFormatter(NCube ncube)
     {
@@ -98,7 +108,8 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     public void writeAxes(List<Axis> axes) {
-        _builder.append("\"axes\":");
+        _builder.append(String.format(_quotedStringFormat, axes));
+        _builder.append(':');
         startArray();
         for (Axis item : axes) {
             writeAxis(item);
@@ -161,8 +172,10 @@ public class JsonFormatter extends NCubeFormatter
         if (doesIdExistElsewhere(c.getValue()))
         {
             writeAttribute("id", c.getId(), true);
+            writeType(c.getValue());
             writeValue("value", c.getValue());
         } else {
+            writeType(c.getValue());
             writeValue("id", c.getValue());
         }
         //writeAttribute("displayOrder", c.getDisplayOrder(), true);
@@ -170,12 +183,59 @@ public class JsonFormatter extends NCubeFormatter
         endObject();
     }
 
+    /**
+     * According to parseJsonValue reading in, if your item is one of the following end types it does not need to
+     * specify the end type:  String, Long, Boolean, Double.  These items will all be picked up automatically
+     * so to save on those types I don't write out the type.
+     * @param cell Cell to write
+     */
+    public void writeType(Object cell) {
+        if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
+            return;
+        }
+
+        String type = null;
+
+        if (cell instanceof BigDecimal) {
+            type = "bigdec";
+        } else if (cell instanceof Float) {
+            type = "float";
+        } else if (cell instanceof Integer) {
+            type = "int";
+        } else if (cell instanceof BigInteger) {
+            type = "bigint";
+        } else if (cell instanceof Byte) {
+            type = "byte";
+        } else if (cell instanceof Short) {
+            type = "short";
+        } else if (cell instanceof Date) {
+            type = "date";
+        } else if (cell instanceof GroovyExpression) {
+            type = "exp";
+        } else if (cell instanceof GroovyMethod) {
+            type = "method";
+        } else if (cell instanceof GroovyTemplate) {
+            type = "template";
+        } else if (cell instanceof byte[]) {
+            type = "binary";
+        } else {
+            // probably object[].  This is really legal, but don't want to handle this yet.
+            throw new IllegalArgumentException("Could not pull type:  " + cell.getClass());
+        }
+
+        if (type == null) {
+            return;
+        }
+
+        writeAttribute("type", type, true);
+    }
+
     public void writeCells(Map<Set<Column>, ?> cells) {
         _builder.append("\"cells\":");
         startArray();
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();
-            writeKeys(item.getKey());
+            writeIds(item.getKey());
             writeValue("value", item.getValue());
             endObject();
             comma();
@@ -184,7 +244,7 @@ public class JsonFormatter extends NCubeFormatter
         endArray();
     }
 
-    public void writeKeys(Set<Column> keys) {
+    public void writeIds(Set<Column> keys) {
         _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
@@ -201,6 +261,20 @@ public class JsonFormatter extends NCubeFormatter
     public void writeValue(Object o) {
         if (o == null) {
             _builder.append("null");
+            return;
+        }
+
+        if (o instanceof GroovyExpression || o instanceof GroovyMethod) {
+            GroovyExpression cmd = (GroovyExpression)o;
+            writeAttribute("type", "exp", true);
+            if (cmd.isCacheable()) {
+                writeAttribute("cache", cmd.isCacheable(), true);
+            }
+            if (cmd.getUrl() != null) {
+                writeAttribute("url", cmd.getUrl(), true);
+            } else if (cmd.getCmd() != null) {
+                writeAttribute("value", cmd.getCmd(), true);
+            }
             return;
         }
 
@@ -222,6 +296,7 @@ public class JsonFormatter extends NCubeFormatter
             endArray();
             return;
         }
+
 
         if (!(o instanceof String)) {
             try
@@ -248,23 +323,36 @@ public class JsonFormatter extends NCubeFormatter
         writeValue(o);
     }
 
-    //public String convertValueType(Object type)
-    //{
-        //return "STRING";
-    //}
+    public void writeAttribute(String name, String value, boolean includeComma) throws IllegalArgumentException {
 
-    public void writeAttribute(String name, String value, boolean includeComma) {
-        _builder.append(String.format("\"%s\":\"%s\"", name, value));
+
+        try
+        {
+            StringWriter w = new StringWriter(value.length());
+            JsonWriter.writeJsonUtf8String(value, w);
+
+            _builder.append(String.format(_quotedStringFormat, name));
+            _builder.append(':');
+            _builder.append(w.toString());
+        } catch (IOException e) {
+            // this way or hide the exception and write null for value?
+            throw new IllegalArgumentException(String.format("Error writing attribute '%s' with value '%s'", name, value));
+        }
+
         if (includeComma) {
             _builder.append(",");
         }
     }
 
     public void writeAttribute(String name, long value, boolean includeComma) {
-        writeAttribute(name, Long.toString(value), includeComma);
+        _builder.append(String.format(_quotedStringFormat, name));
+        _builder.append(":");
+        _builder.append(value);
     }
 
     public void writeAttribute(String name, boolean value, boolean includeComma) {
-        writeAttribute(name, value ? "true" : "false", includeComma);
+        _builder.append(String.format(_quotedStringFormat, name));
+        _builder.append(":");
+        _builder.append(value);
     }
 }

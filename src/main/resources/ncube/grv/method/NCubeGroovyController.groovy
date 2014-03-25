@@ -13,19 +13,12 @@ class NCubeGroovyController extends NCubeGroovyExpression
 {
     NCubeGroovyController(){}
 
-    def run(Map args)
+    def run(Map args) throws Exception
     {
         super.run(args);
 
         // Invoke the Groovy method named in the input Map at the key 'method'.
-        try
-        {
-            Method methodToRun = getClass().getMethod(input.method, null);
-            return methodToRun.invoke(this, null);
-        }
-        catch(Exception e)
-        {
-            e.printStackTrace();
-        }
+        Method methodToRun = getClass().getMethod(input.method, null);
+        return methodToRun.invoke(this, null);
     }
 }

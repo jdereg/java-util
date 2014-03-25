@@ -1,8 +1,13 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+import com.cedarsoftware.ncube.exception.RuleStop;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyCodeSource;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -67,11 +72,42 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract String buildGroovy(String theirGroovy, String cubeName);
 
+    protected abstract String getMethodToExecute(Map args);
+
     protected void preRun(Map args)
     {
         super.preRun(args);
         NCube ncube = (NCube) args.get("ncube");
         compileIfNeeded(ncube.getName());
+    }
+
+    protected Object runFinal(Map args)
+    {
+        try
+        {
+            Constructor c = getRunnableCode().getConstructor();
+            Object groovyExecutableCell = c.newInstance();
+
+            Method runMethod = getRunnableCode().getMethod("run", Map.class);
+            return runMethod.invoke(groovyExecutableCell, args);
+        }
+        catch(InvocationTargetException e)
+        {
+            Throwable cause = e.getCause();
+            if (cause instanceof CoordinateNotFoundException)
+            {
+                throw (RuntimeException) cause;
+            }
+            else if (cause instanceof RuleStop)
+            {
+                throw (RuleStop) cause;
+            }
+            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "()", e) ;
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "()", e);
+        }
     }
 
     /**
@@ -114,8 +150,8 @@ public abstract class GroovyBase extends UrlCommandCell
         String exp = expandNCubeShortCuts(groovy);
 
         GroovyCodeSource grvCodeSrc = new GroovyCodeSource(exp, fixClassName(cubeName) + "_" + getCmdHash(), "/ncube/grv/exp");
-        grvCodeSrc.setCachable(false);
-        setRunnableCode(groovyClassLoader.parseClass(grvCodeSrc, false));
+        grvCodeSrc.setCachable(true);
+        setRunnableCode(groovyClassLoader.parseClass(grvCodeSrc, true));
 
         compiledClasses.put(getCmdHash(), getRunnableCode());
     }

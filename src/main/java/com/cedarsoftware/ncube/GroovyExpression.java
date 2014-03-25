@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -69,5 +70,10 @@ public class GroovyExpression extends GroovyBase
         groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("}}");
         return groovy.toString();
+    }
+
+    protected String getMethodToExecute(Map args)
+    {
+        return "run";
     }
 }

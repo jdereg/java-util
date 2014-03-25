@@ -3,7 +3,6 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.UrlUtilities;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Process a binary type (byte[]) that is specified at a URL.

@@ -1,14 +1,9 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
-import com.cedarsoftware.ncube.exception.RuleStop;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -105,41 +100,9 @@ public abstract class CommandCell implements Comparable<CommandCell>
         return runFinal(args);
     }
 
-    protected Object runFinal(Map args)
-    {
-        try
-        {
-            Constructor c = runnableCode.getConstructor();
-            Object commandCell = c.newInstance();
+    protected abstract void preRun(Map args);
 
-            Method run = runnableCode.getMethod("run", Map.class);
-            return run.invoke(commandCell, args);
-        }
-        catch(InvocationTargetException e)
-        {
-            Throwable cause = e.getCause();
-            if (cause instanceof CoordinateNotFoundException)
-            {
-                throw (RuntimeException) cause;
-            }
-            else if (cause instanceof RuleStop)
-            {
-                throw (RuleStop) cause;
-            }
-            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "()", e) ;
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "()", e);
-        }
-    }
-
-    protected String getMethodToExecute(Map args)
-    {
-        return "run";
-    }
-
-    protected void preRun(Map args) {}
+    protected abstract Object runFinal(Map args);
 
     public String getCmd()
 	{

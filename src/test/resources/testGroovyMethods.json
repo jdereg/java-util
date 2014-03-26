@@ -46,42 +46,42 @@
         {
             "id": ["foo", "OH"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["bar", "OH"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["baz", "OH"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["qux", "OH"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["foo", "TX"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
         },
         {
             "id": ["bar", "TX"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
         },
         {
             "id": ["baz", "TX"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
         },
         {
             "id": ["qux", "TX"],
             "type": "method",
-            "url": "res://ncube/grv/method/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
         }
     ]
 }

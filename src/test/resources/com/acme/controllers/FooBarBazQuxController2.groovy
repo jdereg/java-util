@@ -1,4 +1,7 @@
-package ncube.grv.method
+package com.acme.controllers
+
+import ncube.grv.method.NCubeGroovyController
+
 /**
  * Example Controller-type class.  The methods in this class
  * correspond to columns on a method axis.  When getCell()

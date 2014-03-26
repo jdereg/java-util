@@ -54,9 +54,7 @@ public class GroovyExpression extends GroovyBase
     {
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
-        StringBuilder groovy = new StringBuilder();
-        groovy.append("package ncube.grv.exp;\n");
-        String className = fixClassName(cubeName) + '_' + getCmdHash();
+        StringBuilder groovy = new StringBuilder("package ncube.grv.exp;\n");
 
         for (String importLine : imports)
         {
@@ -64,6 +62,7 @@ public class GroovyExpression extends GroovyBase
             groovy.append('\n');
         }
 
+        String className = fixClassName(cubeName) + '_' + getCmdHash();
         groovy.append("class ");
         groovy.append(className);
         groovy.append(" extends NCubeGroovyExpression { def run(Map args) { super.run(args); ");
@@ -75,10 +74,5 @@ public class GroovyExpression extends GroovyBase
     protected String getMethodToExecute(Map args)
     {
         return "run";
-    }
-
-    protected String getCodeBase()
-    {
-        return "/ncube/grv/exp";
     }
 }

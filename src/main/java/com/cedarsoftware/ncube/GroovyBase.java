@@ -145,13 +145,10 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected void compile(String cubeName) throws Exception
     {
-        String groovy = buildGroovy(getCmd(), cubeName);
-        String exp = expandNCubeShortCuts(groovy);
-        setRunnableCode(groovyClassLoader.parseClass(exp));
+        String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cubeName));
+        setRunnableCode(groovyClassLoader.parseClass(groovySource));
         compiledClasses.put(getCmdHash(), getRunnableCode());
     }
-
-    protected abstract String getCodeBase();
 
     static String expandNCubeShortCuts(String groovy)
     {

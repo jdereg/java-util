@@ -54,8 +54,6 @@ import java.util.regex.Pattern;
  */
 public class GroovyMethod extends GroovyBase
 {
-    static final Pattern groovyClassNamePattern = Pattern.compile("class[\\s]+([0-9a-zA-Z_\\$]+)[\\s]+extends");
-
     public GroovyMethod(String cmd)
     {
         super(cmd, true);
@@ -75,10 +73,5 @@ public class GroovyMethod extends GroovyBase
     {
         Map input = (Map) args.get("input");
         return (String)input.get("method");
-    }
-
-    protected String getCodeBase()
-    {
-        return "/ncube/grv/method";
     }
 }

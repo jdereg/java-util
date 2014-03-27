@@ -15,7 +15,7 @@ class NCubeGroovyExpression
     def ncube;
     def ncubeMgr;
 
-    def run(Map args)
+    def run(Map args, String signature)
     {
         input = args.input;
         output = args.output;

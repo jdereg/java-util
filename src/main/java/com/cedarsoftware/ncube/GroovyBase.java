@@ -46,6 +46,20 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
     static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
     static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
+    static final Map<String, Constructor> constructorMap = new LinkedHashMap()
+    {
+        protected boolean removeEldestEntry(Map.Entry eldest)
+        {
+            return super.removeEldestEntry(eldest);
+        }
+    };
+    static final Map<String, Method> methodMap = new LinkedHashMap()
+    {
+        protected boolean removeEldestEntry(Map.Entry eldest)
+        {
+            return super.removeEldestEntry(eldest);
+        }
+    };
 
     public GroovyBase(String cmd, boolean cache)
     {
@@ -67,10 +81,7 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         try
         {
-            final Constructor c = getRunnableCode().getConstructor();
-            final Object exp = c.newInstance();
-            final Method runMethod = getRunnableCode().getMethod("run", Map.class);
-            return runMethod.invoke(exp, args);
+            return executeGroovy(args);
         }
         catch(InvocationTargetException e)
         {
@@ -89,6 +100,44 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "()", e);
         }
+    }
+
+    /**
+     * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
+     */
+    protected Object executeGroovy(final Map args) throws Exception
+    {
+        final String className = getRunnableCode().getName() + '.' + getCmdHash();
+        Constructor c = constructorMap.get(className);
+        if (c == null)
+        {
+            synchronized(GroovyBase.class)
+            {
+                c = constructorMap.get(className);
+                if (c == null)
+                {
+                    c = getRunnableCode().getConstructor();
+                    constructorMap.put(className, c);
+                }
+            }
+        }
+
+        final Object exp = c.newInstance();
+        Method runMethod = methodMap.get(className);
+
+        if (runMethod == null)
+        {
+            synchronized(GroovyBase.class)
+            {
+                runMethod = methodMap.get(className);
+                if (runMethod == null)
+                {
+                    runMethod = getRunnableCode().getMethod("run", Map.class, String.class);
+                    methodMap.put(className, runMethod);
+                }
+            }
+        }
+        return runMethod.invoke(exp, args, getCmdHash());
     }
 
     /**

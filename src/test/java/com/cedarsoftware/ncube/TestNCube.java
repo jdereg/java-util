@@ -5788,6 +5788,19 @@ DELIMITER ;
 
         coord.put("method", "qux");
         assertEquals(81, ncube.getCell(coord));
+
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        assertEquals(2, ncube.getCell(coord));
+
+        coord.put("method", "bar");
+        assertEquals(4, ncube.getCell(coord));
+
+        coord.put("method", "baz");
+        assertEquals(8, ncube.getCell(coord));
+
+        coord.put("method", "qux");
+        assertEquals(16, ncube.getCell(coord));
     }
 
     // ---------------------------------------------------------------------------------

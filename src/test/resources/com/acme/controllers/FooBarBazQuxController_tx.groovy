@@ -12,7 +12,7 @@ import ncube.grv.method.NCubeGroovyController
  * call its sibling methods.  This is done purely to highlight
  * the available methods in the parent class.
  */
-class FooBarBazQuxController_tx extends NCubeGroovyController
+class FooBarBazQuxController_TX extends NCubeGroovyController
 {
     def foo()
     {

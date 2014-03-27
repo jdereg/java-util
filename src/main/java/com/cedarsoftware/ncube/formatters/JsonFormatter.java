@@ -229,9 +229,8 @@ public class JsonFormatter extends NCubeFormatter
             type = "binary";
         } else if (cell instanceof Object[]) {
             type = walkArraysForType((Object[]) cell);
-            // probably object[].  This is really legal, but don't want to handle this yet.
         } else {
-            throw new IllegalArgumentException("Could not pull type:  " + cell.getClass());
+//            throw new IllegalArgumentException("Could not pull type:  " + cell.getClass());
         }
         return type;
     }
@@ -263,6 +262,10 @@ public class JsonFormatter extends NCubeFormatter
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
         _builder.append("\"cells\":");
+        if (cells == null || cells.isEmpty()) {
+            _builder.append("null");
+            return;
+        }
         startArray();
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();

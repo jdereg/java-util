@@ -6,9 +6,9 @@ import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.GroovyMethod;
 import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.util.io.JsonWriter;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Array;
@@ -42,7 +42,6 @@ import java.util.Set;
 public class JsonFormatter extends NCubeFormatter
 {
     StringBuilder _builder = new StringBuilder();
-    Map<Long, Object> columnMap;
 
     private String _quotedStringFormat = "\"%s\"";
 
@@ -80,10 +79,9 @@ public class JsonFormatter extends NCubeFormatter
 
             return _builder.toString();
         }
-        //catch (IOException e)
-        finally
+        catch (IOException e)
         {
-            //throw new IllegalStateException("Unable to format NCube '" + ncube.getName() + "' into JSON", e);
+            throw new IllegalArgumentException(String.format("Unable to format NCube '%s' into JSON:  '%s'", ncube.getName(), e.toString()));
         }
     }
 
@@ -107,7 +105,7 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append(",");
     }
 
-    public void writeAxes(List<Axis> axes) {
+    public void writeAxes(List<Axis> axes) throws IOException {
         _builder.append(String.format(_quotedStringFormat, "axes"));
         _builder.append(':');
         startArray();
@@ -125,7 +123,7 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     // default is false, so no need to write those out.
-    public void writeAxis(Axis a)
+    public void writeAxis(Axis a) throws IOException
     {
         startObject();
 
@@ -154,7 +152,7 @@ public class JsonFormatter extends NCubeFormatter
         endObject();
     }
 
-    public void writeColumns(List<Column> columns) {
+    public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
         startArray();
         for(Column item : columns ) {
@@ -165,7 +163,7 @@ public class JsonFormatter extends NCubeFormatter
         endArray();
     }
 
-    public void writeColumn(Column c) {
+    public void writeColumn(Column c) throws IOException {
         startObject();
         //  Check to see if id exists anywhere. then optimize
 
@@ -190,8 +188,19 @@ public class JsonFormatter extends NCubeFormatter
      * @param cell Cell to write
      */
     public void writeType(Object cell) {
-        if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
+        String type = getType(cell);
+
+        if (type == null) {
             return;
+        }
+
+        writeAttribute("type", type, true);
+    }
+
+    private String getType(Object cell)
+    {
+        if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
+            return null;
         }
 
         String type = null;
@@ -218,24 +227,47 @@ public class JsonFormatter extends NCubeFormatter
             type = "template";
         } else if (cell instanceof byte[]) {
             type = "binary";
-        } else {
+        } else if (cell instanceof Object[]) {
+            type = walkArraysForType((Object[]) cell);
             // probably object[].  This is really legal, but don't want to handle this yet.
+        } else {
             throw new IllegalArgumentException("Could not pull type:  " + cell.getClass());
         }
-
-        if (type == null) {
-            return;
-        }
-
-        writeAttribute("type", type, true);
+        return type;
     }
 
-    public void writeCells(Map<Set<Column>, ?> cells) {
+    public String walkArraysForType(Object[] items) {
+
+        if (items == null || items.length == 0) {
+            return null;
+        }
+
+        String first = null;
+
+        for (int i=0; i<items.length; i++) {
+
+            String type = getType(items[i]);
+
+            if (first == null) {
+                first = type;
+            }
+
+            if (first != null && type != null && !first.equalsIgnoreCase(type))
+            {
+                return null;
+            }
+        }
+
+        return first;
+    }
+
+    public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
         _builder.append("\"cells\":");
         startArray();
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();
             writeIds(item.getKey());
+            writeType(item.getValue());
             writeValue("value", item.getValue());
             endObject();
             comma();
@@ -244,7 +276,7 @@ public class JsonFormatter extends NCubeFormatter
         endArray();
     }
 
-    public void writeIds(Set<Column> keys) {
+    public void writeIds(Set<Column> keys) throws IOException {
         _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
@@ -258,31 +290,35 @@ public class JsonFormatter extends NCubeFormatter
     }
 
 
-    public void writeValue(Object o) {
+    public void writeValue(Object o) throws IOException {
         if (o == null) {
             _builder.append("null");
             return;
         }
 
-        if (o instanceof GroovyExpression || o instanceof GroovyMethod) {
-            GroovyExpression cmd = (GroovyExpression)o;
-            writeAttribute("type", "exp", true);
+        if (o instanceof UrlCommandCell) {
+            UrlCommandCell cmd = (UrlCommandCell)o;
+            startObject();
             if (cmd.isCacheable()) {
                 writeAttribute("cache", cmd.isCacheable(), true);
             }
             if (cmd.getUrl() != null) {
-                writeAttribute("url", cmd.getUrl(), true);
+                writeAttribute("url", cmd.getUrl(), false);
             } else if (cmd.getCmd() != null) {
-                writeAttribute("value", cmd.getCmd(), true);
+                writeAttribute("value", cmd.getCmd(), false);
             }
+            endObject();
             return;
         }
 
-        if (o instanceof Array) {
+        if (o.getClass().isArray()) {
+            //  check types
             startArray();
             for (int i=0; i<Array.getLength(o); i++) {
                 writeValue(Array.get(o, i));
+                comma();
             }
+            _builder.setLength(_builder.length() - 1);
             endArray();
             return;
         }
@@ -292,30 +328,28 @@ public class JsonFormatter extends NCubeFormatter
             startArray();
             for (Object it : c) {
                 writeValue(it);
+                comma();
             }
+            _builder.setLength(_builder.length() - 1);
             endArray();
             return;
         }
 
 
         if (!(o instanceof String)) {
-            try
-            {
-                ByteArrayOutputStream out = new ByteArrayOutputStream(9182);
-                JsonWriter w = new JsonWriter(out);
-                w.write(o);
-                _builder.append(out.toString("UTF-8"));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
+            _builder.append(o.toString());
             return;
         }
         //System.out.println(o.getClass());
-        _builder.append(String.format(_quotedStringFormat, o.toString()));
+
+        //ByteArrayOutputStream out = new ByteArrayOutputStream(9182);
+        StringWriter w = new StringWriter();
+        JsonWriter.writeJsonUtf8String((String)o, w);
+        _builder.append(w.toString());
+        //_builder.append(String.format(_quotedStringFormat, o.toString()));
     }
 
-    public void writeValue(String attr, Object o) {
+    public void writeValue(String attr, Object o) throws IOException {
         //_builder.append(String.format("\"type\":\"%s\",", convertValueType(o)));
         _builder.append(String.format(_quotedStringFormat, attr));
         _builder.append(':');

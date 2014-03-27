@@ -50,14 +50,14 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {
-            return super.removeEldestEntry(eldest);
+            return size() > 500;
         }
     };
     static final Map<String, Method> methodMap = new LinkedHashMap()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {
-            return super.removeEldestEntry(eldest);
+            return size() > 500;
         }
     };
 

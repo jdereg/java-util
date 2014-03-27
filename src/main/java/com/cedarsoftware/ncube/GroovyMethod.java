@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube;
 
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * This class is used to hold Groovy Programs.  The code must start

@@ -32,12 +32,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -1364,32 +1364,32 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("age", 1);
         ncube.setCell(1.0, coord);
-        assertEquals((Object)1.0, ncube.getCell(coord));
+        assertEquals((Object) 1.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(18, 22));
         coord.put("age", 18);
         ncube.setCell(2.0, coord);
-        assertEquals((Object)2.0, ncube.getCell(coord));
+        assertEquals((Object) 2.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(5, 8));
         coord.put("age", 6);
         ncube.setCell(3.0, coord);
-        assertEquals((Object)3.0, ncube.getCell(coord));
+        assertEquals((Object) 3.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(30, 40));
         coord.put("age", 35);
         ncube.setCell(4.0, coord);
-        assertEquals((Object)4.0, ncube.getCell(coord));
+        assertEquals((Object) 4.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(1, 4));
         coord.put("age", 1);
         ncube.setCell(5.0, coord);
-        assertEquals((Object)5.0, ncube.getCell(coord));
+        assertEquals((Object) 5.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(40, 50));
         coord.put("age", 40);
         ncube.setCell(6.0, coord);
-        assertEquals((Object)6.0, ncube.getCell(coord));
+        assertEquals((Object) 6.0, ncube.getCell(coord));
     }
 
     @Test

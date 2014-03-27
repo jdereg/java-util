@@ -94,7 +94,7 @@ public class GroovyTemplate extends UrlCommandCell
 
     public Object runFinal(final Map args)
     {
-        // args.input, args.output, args.ncube, args.ncubeMgr, and args.stack,
+        // args.input, args.output, args.ncube, and args.stack,
         // are ALWAYS set by NCube before the execution gets here.
         try
         {

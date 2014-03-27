@@ -1,33 +1,38 @@
-package ncube.grv.method
+package ncube.grv.method;
 
-import ncube.grv.exp.NCubeGroovyExpression
+import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Base class for all GroovyExpression and GroovyMethod's within n-cube CommandCells.
  * @see com.cedarsoftware.ncube.GroovyBase
  * @author John DeRegnaucourt
  */
-class NCubeGroovyController extends NCubeGroovyExpression
+public class NCubeGroovyController extends NCubeGroovyExpression
 {
     // LRU Cache reflective method look ups
-    static class MethodMap<K, V> extends LinkedHashMap<K, V>
+    private static final Map<String, Method> methodCache = new LinkedHashMap()
     {
-        protected boolean removeEldestEntry(Map.Entry<K, V> eldest)
+        protected boolean removeEldestEntry(Map.Entry eldest)
         {
             return size() > 500;
         }
     };
 
-    private static final MethodMap<String, Method> methodCache = new MethodMap();
+    public NCubeGroovyController(){}
 
-    NCubeGroovyController(){}
-
-    def run(Map args, String signature) throws Exception
+    /**
+     * Run the groovy method named by the column on the 'method' axis.
+     *  The args passed in contain the 'input' Map, 'output' Map, 'ncube',
+     *  and the 'stack.'
+     */
+    public Object run(Map args, String signature) throws Exception
     {
         super.run(args, signature);
-        String methodKey = getClass().getName() + '.' + input.method + '.' + signature;
+        String methodKey = getClass().getName() + '.' + input.get("method") + '.' + signature;
         Method method = methodCache.get(methodKey);
 
         if (method == null)
@@ -37,7 +42,7 @@ class NCubeGroovyController extends NCubeGroovyExpression
                 method = methodCache.get(methodKey);
                 if (method == null)
                 {
-                    method = getClass().getMethod(input.method);
+                    method = getClass().getMethod((String) input.get("method"));
                     methodCache.put(methodKey, method);
                 }
             }

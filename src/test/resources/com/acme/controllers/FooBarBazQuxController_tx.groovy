@@ -12,7 +12,7 @@ import ncube.grv.method.NCubeGroovyController
  * call its sibling methods.  This is done purely to highlight
  * the available methods in the parent class.
  */
-class FooBarBazQuxController2 extends NCubeGroovyController
+class FooBarBazQuxController_tx extends NCubeGroovyController
 {
     def foo()
     {
@@ -21,7 +21,7 @@ class FooBarBazQuxController2 extends NCubeGroovyController
 
     def bar()
     {
-//        return @[method:'foo'] * 2;   // the call below is identical to this call, however, it does not cause IDE complaints
+//        @[method:'foo'] * 3;   // the call below is identical to this call, however, it does not cause IDE complaints
         return getRelativeCell([method:'foo']) * 3;
     }
 

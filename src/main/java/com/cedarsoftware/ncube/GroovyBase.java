@@ -42,7 +42,6 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)[(](.*?\\[.*?:.*?\\])[)]");
     static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
     static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
-    static final Pattern groovyProgramClassName = Pattern.compile("([^a-zA-Z0-9_])");
     static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
     static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
     static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
@@ -51,22 +50,6 @@ public abstract class GroovyBase extends UrlCommandCell
     public GroovyBase(String cmd, boolean cache)
     {
         super(cmd, cache);
-    }
-
-    public boolean equals(Object other)
-    {
-        if (!(other instanceof GroovyBase))
-        {
-            return false;
-        }
-
-        GroovyBase that = (GroovyBase) other;
-        return getCmd().equals(that.getCmd());
-    }
-
-    protected static String fixClassName(String name)
-    {
-        return groovyProgramClassName.matcher(name).replaceAll("_");
     }
 
     protected abstract String buildGroovy(String theirGroovy, String cubeName);
@@ -84,11 +67,10 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         try
         {
-            Constructor c = getRunnableCode().getConstructor();
-            Object groovyExecutableCell = c.newInstance();
-
-            Method runMethod = getRunnableCode().getMethod("run", Map.class);
-            return runMethod.invoke(groovyExecutableCell, args);
+            final Constructor c = getRunnableCode().getConstructor();
+            final Object exp = c.newInstance();
+            final Method runMethod = getRunnableCode().getMethod("run", Map.class);
+            return runMethod.invoke(exp, args);
         }
         catch(InvocationTargetException e)
         {

@@ -3744,19 +3744,19 @@ DELIMITER ;
     {
         NCube ncube = new NCube("GroovyCube");
         Axis axis = new Axis("method", AxisType.DISCRETE, AxisValueType.STRING, false);
-        axis.addColumn("foo");
+        axis.addColumn("doIt");
         axis.addColumn("bar");
         axis.addColumn("baz");
         ncube.addAxis(axis);
         NCubeManager.addCube(ncube, "test");
 
         Map coord = new HashMap();
-        coord.put("method", "foo");
+        coord.put("method", "doIt");
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
                 "package ncube.grv.method; class Junk extends NCubeGroovyController " +
                         "{\n" +
-                        "def foo() {\n" +
+                        "def doIt() {\n" +
                         " int x = input.age * 10;" +
                         " jump(x)" +
                         "}\n" +
@@ -3764,7 +3764,7 @@ DELIMITER ;
                         "}"), coord);
 
         Map output = new HashMap();
-        coord.put("method", "foo");
+        coord.put("method", "doIt");
         coord.put("age", 25);
         long start = System.currentTimeMillis();
         Object o = null;

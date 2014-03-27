@@ -49,7 +49,7 @@ public abstract class CommandCell implements Comparable<CommandCell>
 	private String cmd;
     private String cmdHash;
     private volatile transient String compileErrorMsg = null;
-    static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[.][?]?([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
+    static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[?]?[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
     static final String proxyServer;
     static final int proxyPort;
 
@@ -77,6 +77,22 @@ public abstract class CommandCell implements Comparable<CommandCell>
     public CommandCell(String cmd)
 	{
         setCmd(cmd);
+    }
+
+    public boolean equals(Object other)
+    {
+        if (!(other instanceof CommandCell))
+        {
+            return false;
+        }
+
+        CommandCell that = (CommandCell) other;
+        return getCmd().equals(that.getCmd());
+    }
+
+    public int hashCode()
+    {
+        return cmd == null ? 0 : cmd.hashCode();
     }
 
     public Class getRunnableCode()

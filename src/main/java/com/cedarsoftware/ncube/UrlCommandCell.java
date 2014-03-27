@@ -31,6 +31,7 @@ public abstract class UrlCommandCell extends CommandCell
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;
+    private boolean urlFetched = false;
 
     public UrlCommandCell(String cmd, boolean cache)
     {
@@ -50,7 +51,7 @@ public abstract class UrlCommandCell extends CommandCell
 
     protected void preRun(Map args)
     {
-        if (url != null)
+        if (url != null && !urlFetched)
         {
             if (!urlExpanded)
             {
@@ -58,6 +59,10 @@ public abstract class UrlCommandCell extends CommandCell
                 urlExpanded = true;
             }
             processUrl(args);
+            if (cache)
+            {
+                urlFetched = true;
+            }
         }
     }
 
@@ -73,10 +78,6 @@ public abstract class UrlCommandCell extends CommandCell
         {
             setCompileErrorMsg("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
             throw new IllegalStateException(getCompileErrorMsg(), e);
-        }
-        if (cache)
-        {
-            setUrl(null);  // indicates that content has been processed
         }
     }
 

@@ -106,6 +106,8 @@ public class NCubeManager
         synchronized(cubeList)
         {
             cubeList.clear();
+            GroovyBase.compiledClasses.clear();
+            GroovyBase.groovyClassLoader.clearCache();
         }
     }
 

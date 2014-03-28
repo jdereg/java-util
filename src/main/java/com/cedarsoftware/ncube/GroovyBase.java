@@ -107,33 +107,33 @@ public abstract class GroovyBase extends UrlCommandCell
      */
     protected Object executeGroovy(final Map args) throws Exception
     {
-        final String className = getRunnableCode().getName() + '.' + getCmdHash();
-        Constructor c = constructorMap.get(className);
+        final String cacheKey = getCmdHash();
+        Constructor c = constructorMap.get(cacheKey);
         if (c == null)
         {
             synchronized(GroovyBase.class)
             {
-                c = constructorMap.get(className);
+                c = constructorMap.get(cacheKey);
                 if (c == null)
                 {
                     c = getRunnableCode().getConstructor();
-                    constructorMap.put(className, c);
+                    constructorMap.put(cacheKey, c);
                 }
             }
         }
 
         final Object exp = c.newInstance();
-        Method runMethod = methodMap.get(className);
+        Method runMethod = methodMap.get(cacheKey);
 
         if (runMethod == null)
         {
             synchronized(GroovyBase.class)
             {
-                runMethod = methodMap.get(className);
+                runMethod = methodMap.get(cacheKey);
                 if (runMethod == null)
                 {
                     runMethod = getRunnableCode().getMethod("run", Map.class, String.class);
-                    methodMap.put(className, runMethod);
+                    methodMap.put(cacheKey, runMethod);
                 }
             }
         }

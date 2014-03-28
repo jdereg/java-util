@@ -51,7 +51,7 @@ public class NCubeGroovyController extends NCubeGroovyExpression
     public Object run(Map args, String signature) throws Exception
     {
         super.run(args);
-        String methodKey = getClass().getName() + '.' + input.get("method") + '.' + signature;
+        String methodKey = (String) input.get("method") + '.' + signature;
         Method method = methodCache.get(methodKey);
 
         if (method == null)

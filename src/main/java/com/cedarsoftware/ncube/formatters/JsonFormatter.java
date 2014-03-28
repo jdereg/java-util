@@ -66,16 +66,15 @@ public class JsonFormatter extends NCubeFormatter
             _builder.setLength(0);
 
             startObject();
-            writeAttribute("ncube", ncube.getName(), true);
-            //writeAttribute("version", ncube.getVersion(), true);
-            writeAttribute("ruleMode", ncube.getRuleMode(), true);
-            //writeAttribute("defaultCellValue", ncube.getDefaultCellValue());
 
+            writeAttribute("ncube", ncube.getName(), true);
+            writeAttribute("ruleMode", ncube.getRuleMode(), true);
+            if (ncube.getDefaultCellValue() != null) {
+                writeValue("defaultCellValue", ncube.getDefaultCellValue());
+                comma();
+            }
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
-
-            //addCellDefinitions(ncube.getCellDefinitions());
-            // cell definitions
 
             endObject();
 
@@ -136,16 +135,8 @@ public class JsonFormatter extends NCubeFormatter
 
         //  optional inputs that can use defaults
         writeAttribute("preferredOrder", a.getColumnOrder(), true);
-
-        if (a.hasDefaultColumn())
-        {
-            writeAttribute("hasDefault", a.hasDefaultColumn(), true);
-        }
-
-        if (a.isMultiMatch())
-        {
-            writeAttribute("multiMatch", a.isMultiMatch(), true);
-        }
+        writeAttribute("hasDefault", a.hasDefaultColumn(), true);
+        writeAttribute("multiMatch", a.isMultiMatch(), true);
 
         writeColumns(a.getColumns());
         endObject();

@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -44,37 +45,37 @@ public class TestJsonFormatter {
     public void runAllTests()
     {
         String[] strings = new String[] {
-                "2DSimpleJson.json",
-                "approvalLimits.json",
+                //"2DSimpleJson.json",
+                //"approvalLimits.json",
                 "big5D.json",
-                "cpr.json",
-                "duplicateExpression.json",
-                "expressionAxis.json",
-                "expressionAxis2.json",
-                "idBasedCube.json",
-                "idBasedCubeSet.json",
-                "idNoValue.json",
-                "multiRule.json",
-                "multiRule2.json",
-                "multiRuleHalt.json",
-                "simpleJsonArrayTest.json",
-                "simpleJsonExpression.json",
-                "stringIds.json",
-                "template1.json",
-                "template2.json",
-                "testAtCommand.json",
-                "testCube1.json",
-                "testCube2.json",
-                "testCube3.json",
-                "testCube4.json",
-                "testCube5.json",
-                "testCube6.json",
-                "testCubeList.json",
-                "testGroovyMethods.json",
-                "updateColumns.json",
-                "urlContent.json",
-                "urlPieces.json",
-                "urlWithNcubeRefs.json"
+                //"cpr.json",
+                //"duplicateExpression.json",
+                //"expressionAxis.json",
+                //"expressionAxis2.json",
+                //"idBasedCube.json",
+                //"idBasedCubeSet.json",
+                //"idNoValue.json",
+                //"multiRule.json",
+                //"multiRule2.json",
+                //"multiRuleHalt.json",
+                //"simpleJsonArrayTest.json",
+                //"simpleJsonExpression.json",
+                //"stringIds.json",
+                //"template1.json",
+                //"template2.json",
+                //"testAtCommand.json",
+                //"testCube1.json",
+                //"testCube2.json",
+                //"testCube3.json",
+                //"testCube4.json",
+                //"testCube5.json",
+                //"testCube6.json",
+                //"testCubeList.json",
+                //"testGroovyMethods.json",
+                //"updateColumns.json",
+                //"urlContent.json",
+                //"urlPieces.json",
+                //"urlWithNcubeRefs.json"
         };
 //        File dir = new File("C:\\Development\\Java\\Idea\\n-cube\\src\\test\\resources");
 //        File[] files = dir.listFiles(new FilenameFilter() {
@@ -93,10 +94,11 @@ public class TestJsonFormatter {
             {
                 NCube ncube = NCubeManager.getNCubeFromResource(f);
                 String s = ncube.toFormattedJson();
-                //System.out.println(s);
+                System.out.println(s);
                 NCube res = NCube.fromSimpleJson(s);
-                //Assert.assertEquals(res, ncube);
+                Assert.assertEquals(res, ncube);
             } catch (Exception e) {
+                System.out.println(f);
                 //System.out.println("Exception:  " + e);
             }
 

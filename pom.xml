@@ -33,7 +33,7 @@
     </developers>
 
     <properties>
-        <version.json.io>2.5.1</version.json.io>
+        <version.json.io>2.5.2</version.json.io>
         <version.commons.logging>1.1.1</version.commons.logging>
         <version.junit>4.11</version.junit>
     </properties>
@@ -67,6 +67,12 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.8.1</version>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>

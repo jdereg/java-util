@@ -5724,36 +5724,36 @@ DELIMITER ;
     public void testNCubeNameParser()
     {
         String name = "['Less than $10,000':['startIncurredAmount':'0','endIncurredAmount':'10000'],'$10,000 - $25,000':['startIncurredAmount':'10000','endIncurredAmount':'25000'],'$25,000 - $50,000':['startIncurredAmount':'25000','endIncurredAmount':'50000'],'More than $50,000':['startIncurredAmount':'50000','endIncurredAmount':'0']]";
-        Matcher m = UrlCommandCell.groovyRelRefCubeCellPatternA.matcher(name);
+        Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(name);
         assertFalse(m.find());
 
-        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name);
         assertFalse(m.find());
 
-        m = GroovyBase.groovyAbsRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPattern.matcher(name);
         assertFalse(m.find());
 
-        m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPatternA.matcher(name);
         assertFalse(m.find());
 
         name = "@Foo([:])";
 
-        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
 
         name = "@Foo([:])";
-        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
 
         name = "$Foo([alpha:'bravo'])";
-        m = GroovyBase.groovyAbsRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPattern.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
 
         name = "$Foo[:]";
-        m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPatternA.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
     }

@@ -6,7 +6,6 @@ import groovy.lang.GroovyShell;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  *  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -27,7 +26,6 @@ import java.util.regex.Pattern;
  */
 public abstract class UrlCommandCell extends CommandCell
 {
-    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)(.*?\\[.*?:.*?\\])");
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;
@@ -89,7 +87,7 @@ public abstract class UrlCommandCell extends CommandCell
     protected String expandUrl(Map args)
     {
         NCube ncube = (NCube) args.get("ncube");
-        Matcher m = groovyRelRefCubeCellPatternA.matcher(url);
+        Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
         StringBuilder expandedUrl = new StringBuilder();
         int last = 0;
         Map input = (Map) args.get("input");

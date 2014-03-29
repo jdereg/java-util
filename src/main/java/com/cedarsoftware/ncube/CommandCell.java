@@ -49,7 +49,6 @@ public abstract class CommandCell implements Comparable<CommandCell>
 	private String cmd;
     private String cmdHash;
     private volatile transient String compileErrorMsg = null;
-    static final Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[?]?[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
     static final String proxyServer;
     static final int proxyPort;
 

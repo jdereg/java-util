@@ -35,8 +35,6 @@ import java.util.regex.Pattern;
  */
 public class GroovyTemplate extends UrlCommandCell
 {
-    private static final Pattern scripletPattern = Pattern.compile("<%(.*?)%>");
-    private static final Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
     private Template resolvedTemplate;
 
     public GroovyTemplate(String cmd, boolean cache)
@@ -46,14 +44,14 @@ public class GroovyTemplate extends UrlCommandCell
 
     public void getCubeNamesFromCommandText(final Set<String> cubeNames)
     {
-        Matcher m = scripletPattern.matcher(getCmd());
+        Matcher m = Regexes.scripletPattern.matcher(getCmd());
 
         while (m.find())
         {
             GroovyBase.getCubeNamesFromText(cubeNames, m.group(1));
         }
 
-        m = velocityPattern.matcher(getCmd());
+        m = Regexes.velocityPattern.matcher(getCmd());
 
         while (m.find())
         {
@@ -69,22 +67,22 @@ public class GroovyTemplate extends UrlCommandCell
      */
     public void getScopeKeys(Set<String> scopeKeys)
     {
-        Matcher m = scripletPattern.matcher(getCmd());  // <%  %>
+        Matcher m = Regexes.scripletPattern.matcher(getCmd());  // <%  %>
 
         while (m.find())
         {
-            Matcher m1 = inputVar.matcher(m.group(1));
+            Matcher m1 = Regexes.inputVar.matcher(m.group(1));
             while (m1.find())
             {
                 scopeKeys.add(m1.group(2));
             }
         }
 
-        m = velocityPattern.matcher(getCmd());          // ${   }
+        m = Regexes.velocityPattern.matcher(getCmd());          // ${   }
 
         while (m.find())
         {
-            Matcher m1 = inputVar.matcher(m.group(1));
+            Matcher m1 = Regexes.inputVar.matcher(m.group(1));
             while (m1.find())
             {
                 scopeKeys.add(m1.group(2));
@@ -102,8 +100,8 @@ public class GroovyTemplate extends UrlCommandCell
             {
                 String cmd = getCmd();
                 // Expand code : perform <% @()  $() %> and ${ @()   $() } substitutions before passing to template engine.
-                cmd = replaceScriptletNCubeRefs(cmd, scripletPattern, "<%", "%>");
-                cmd = replaceScriptletNCubeRefs(cmd, velocityPattern, "${", "}");
+                cmd = replaceScriptletNCubeRefs(cmd, Regexes.scripletPattern, "<%", "%>");
+                cmd = replaceScriptletNCubeRefs(cmd, Regexes.velocityPattern, "${", "}");
 
                 InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("ncube/grv/closure/NCubeTemplateClosures.groovy");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));

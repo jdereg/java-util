@@ -10,7 +10,7 @@
             "columns":[
                 { "id":1, "type":"exp", "value":"@TestCube([:]) > 5.0" },
                 { "id":2, "type":"exp", "value":"@TestCube([age:input.age]) < 5.0" },
-                { "id":3, "type":"exp", "value":"@TestCube([aGe:input.AGe]) == 5.0" }
+                { "id":3, "type":"exp", "value":"@TestCube([aGe:input?.AGe]) == 5.0" }
             ]
         },
         {

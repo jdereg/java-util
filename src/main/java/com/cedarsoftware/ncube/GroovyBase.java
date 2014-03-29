@@ -12,7 +12,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Base class for Groovy CommandCells.
@@ -35,15 +34,6 @@ import java.util.regex.Pattern;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    static final Pattern groovyAbsRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([" + NCube.validCubeNameChars + "]+)[(]([^)]*)[)]");
-    static final Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$]([" + NCube.validCubeNameChars + "]+)(\\[[^\\]]*\\])");
-    static final Pattern groovyAbsRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)[$][(]([^)]*)[)]");
-    static final Pattern groovyAbsRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$](\\[[^\\]]*\\])");
-    static final Pattern groovyRelRefCubeCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)[(](.*?\\[.*?:.*?\\])[)]");
-    static final Pattern groovyRelRefCellPattern = Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]*)[)]");
-    static final Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[[^\\]]*\\])");
-    static final Pattern groovyExplicitCubeRefPattern = Pattern.compile("ncubeMgr\\.getCube\\(['\"]([^']+)['\"]\\)");
-    static final Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
     static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
     static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
     static final Map<String, Constructor> constructorMap = new LinkedHashMap()
@@ -106,6 +96,16 @@ public abstract class GroovyBase extends UrlCommandCell
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
     protected Object executeGroovy(final Map args) throws Exception
+    {
+        Constructor c = getRunnableCode().getConstructor();
+        final Object exp = c.newInstance();
+        Method runMethod = getRunnableCode().getMethod("run", Map.class, String.class);
+        return runMethod.invoke(exp, args, getCmdHash());
+    }
+    /**
+     * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
+     */
+    protected Object executeGroovyXXXX(final Map args) throws Exception
     {
         final String cacheKey = getCmdHash();
         Constructor c = constructorMap.get(cacheKey);
@@ -183,28 +183,28 @@ public abstract class GroovyBase extends UrlCommandCell
 
     static String expandNCubeShortCuts(String groovy)
     {
-        Matcher m = groovyAbsRefCubeCellPattern.matcher(groovy);
+        Matcher m = Regexes.groovyAbsRefCubeCellPattern.matcher(groovy);
         String exp = m.replaceAll("$1getFixedCubeCell('$2',$3)");
 
-        m = groovyAbsRefCubeCellPatternA.matcher(exp);
+        m = Regexes.groovyAbsRefCubeCellPatternA.matcher(exp);
         exp = m.replaceAll("$1getFixedCubeCell('$2',$3)");
 
-        m = groovyAbsRefCellPattern.matcher(exp);
+        m = Regexes.groovyAbsRefCellPattern.matcher(exp);
         exp = m.replaceAll("$1getFixedCell($2)");
 
-        m = groovyAbsRefCellPatternA.matcher(exp);
+        m = Regexes.groovyAbsRefCellPatternA.matcher(exp);
         exp = m.replaceAll("$1getFixedCell($2)");
 
-        m = groovyRelRefCubeCellPattern.matcher(exp);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(exp);
         exp = m.replaceAll("$1getRelativeCubeCell('$2',$3)");
 
-        m = groovyRelRefCubeCellPatternA.matcher(exp);
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(exp);
         exp = m.replaceAll("$1getRelativeCubeCell('$2',$3)");
 
-        m = groovyRelRefCellPattern.matcher(exp);
+        m = Regexes.groovyRelRefCellPattern.matcher(exp);
         exp = m.replaceAll("$1getRelativeCell($2)");
 
-        m = groovyRelRefCellPatternA.matcher(exp);
+        m = Regexes.groovyRelRefCellPatternA.matcher(exp);
         exp = m.replaceAll("$1getRelativeCell($2)");
         return exp;
     }
@@ -216,31 +216,31 @@ public abstract class GroovyBase extends UrlCommandCell
 
     static void getCubeNamesFromText(final Set<String> cubeNames, final String text)
     {
-        Matcher m = groovyAbsRefCubeCellPattern.matcher(text);
+        Matcher m = Regexes.groovyAbsRefCubeCellPattern.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
         }
 
-        m = groovyAbsRefCubeCellPatternA.matcher(text);
+        m = Regexes.groovyAbsRefCubeCellPatternA.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
         }
 
-        m = groovyRelRefCubeCellPattern.matcher(text);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
         }
 
-        m = groovyRelRefCubeCellPatternA.matcher(text);
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
         }
 
-        m = groovyExplicitCubeRefPattern.matcher(text);
+        m = Regexes.groovyExplicitCubeRefPattern.matcher(text);
         while (m.find())
         {
             cubeNames.add(m.group(1));  // based on Regex pattern - if pattern changes, this could change
@@ -254,7 +254,7 @@ public abstract class GroovyBase extends UrlCommandCell
      */
     public void getScopeKeys(Set<String> scopeKeys)
     {
-        Matcher m = inputVar.matcher(getCmd());
+        Matcher m = Regexes.inputVar.matcher(getCmd());
         while (m.find())
         {
             scopeKeys.add(m.group(2));
@@ -263,7 +263,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
     public Set<String> getImports(String text, StringBuilder newGroovy)
     {
-        Matcher m = importPattern.matcher(text);
+        Matcher m = Regexes.importPattern.matcher(text);
         Set<String> importNames = new LinkedHashSet<String>();
         while (m.find())
         {

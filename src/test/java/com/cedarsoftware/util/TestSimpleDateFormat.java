@@ -188,19 +188,29 @@ public class TestSimpleDateFormat
         assertEquals(4, cal.get(Calendar.HOUR_OF_DAY));
         assertEquals(15, cal.get(Calendar.MINUTE));
         assertEquals(31, cal.get(Calendar.SECOND));
+        
+        TimeZone localTz = TimeZone.getDefault();
+        
+        TimeZone tzLA = TimeZone.getTimeZone("America/Los_Angeles");
 
-        x.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+		long txDiff = localTz.getRawOffset() + localTz.getDSTSavings()
+				- tzLA.getRawOffset() - tzLA.getDSTSavings();
 
+        x.setTimeZone(tzLA);
+
+        Calendar expectedDate = Calendar.getInstance();
+        expectedDate.setTimeInMillis(then.getTime() + txDiff);
+        
         then = x.parse(s);
         cal = Calendar.getInstance();
         cal.clear();
         cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(7, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
+        assertEquals(expectedDate.get(Calendar.YEAR), cal.get(Calendar.YEAR));
+        assertEquals(expectedDate.get(Calendar.MONTH), cal.get(Calendar.MONTH));   // Sept
+        assertEquals(expectedDate.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.DAY_OF_MONTH));
+        assertEquals(expectedDate.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.HOUR_OF_DAY));
+        assertEquals(expectedDate.get(Calendar.MINUTE), cal.get(Calendar.MINUTE));
+        assertEquals(expectedDate.get(Calendar.SECOND), cal.get(Calendar.SECOND));
     }
 
     @Test

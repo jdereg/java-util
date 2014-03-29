@@ -40,5 +40,5 @@ interface Regexes
     Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)(\\[.*?:.*?\\])");
     Pattern groovyRelRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]+)[)]");
     Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[.*?:.*?\\])");
-    Pattern groovyExplicitCubeRefPattern = Pattern.compile("NCubeManager\\.getCube\\(['\"]" + NCube.validCubeNameChars + "['\"]\\)");
+    Pattern groovyExplicitCubeRefPattern = Pattern.compile("NCubeManager[.]getCube[(]['\"]" + NCube.validCubeNameChars + "['\"][)]");
 }

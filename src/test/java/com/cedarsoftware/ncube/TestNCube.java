@@ -396,7 +396,7 @@ DELIMITER ;
     public void testAllCellsInBigCube()
     {
         long start = System.nanoTime();
-        NCube<Long> ncube = new NCube<Long>("bigCube");
+        NCube<Long> ncube = new NCube("bigCube");
 
         for (int i = 0; i < 5; i++)
         {

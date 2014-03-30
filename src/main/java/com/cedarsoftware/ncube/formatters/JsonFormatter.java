@@ -7,6 +7,7 @@ import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.GroovyMethod;
 import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.StringUrlCmd;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -18,6 +19,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +50,7 @@ public class JsonFormatter extends NCubeFormatter
 
     private String _quotedStringFormat = "\"%s\"";
 
+    private HashMap<Long, Object> _ids = new HashMap<Long, Object>();
 
     public JsonFormatter(NCube ncube)
     {
@@ -64,6 +68,8 @@ public class JsonFormatter extends NCubeFormatter
         try
         {
             _builder.setLength(0);
+            _ids.clear();
+            walkIds(ncube.getAxes());
 
             startObject();
 
@@ -86,6 +92,44 @@ public class JsonFormatter extends NCubeFormatter
         }
     }
 
+    public void walkIds(List<Axis> axes) {
+        HashSet<Comparable> set = new HashSet<Comparable>();
+        for (Axis item : axes) {
+            for (Column c : item.getColumns()) {
+                if (!c.isDefault()) {
+                    // only use value for id on String and Longs
+                    if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
+                        if (!set.contains(c.getValue())) {
+                            set.add(c.getValue());
+                            _ids.put(c.getId(), c.getValue());
+                        }
+                    }
+                }
+            }
+        }
+
+        long id = 0;
+        for (Axis item : axes) {
+            for (Column c : item.getColumns()) {
+                if (!c.isDefault()) {
+
+                    Object o = _ids.get(c.getId());
+
+                    // haven't generated an id for this guy yet.
+                    if (o == null) {
+
+                        while (set.contains(id)) {
+                            id++;
+                        }
+
+                        set.add(id);
+                        _ids.put(c.getId(), id);
+                    }
+                }
+            }
+        }
+
+    }
     public void startArray() {
         _builder.append("[");
     }
@@ -160,17 +204,25 @@ public class JsonFormatter extends NCubeFormatter
         startObject();
         //  Check to see if id exists anywhere. then optimize
 
-        if (doesIdExistElsewhere(c.getValue()))
-        {
-            writeAttribute("id", c.getId(), true);
-            writeType(c.getValue());
-            writeValue("value", c.getValue());
+        Object o = _ids.get(c.getId());
+
+        if (o.equals(c.getValue())) {
+            writeValueType(c.getValue());
+            writeValue("id", o);
         } else {
-            writeType(c.getValue());
-            writeValue("id", c.getValue());
+            writeAttribute("id", (Long)o, true);
+            writeValueType(c.getValue());
+            if (isUrlCommandCell(c.getValue())) {
+                UrlCommandCell cmd = (UrlCommandCell)c.getValue();
+                if (cmd.getUrl() != null) {
+                    writeAttribute("url", cmd.getUrl(), false);
+                } else if (cmd.getCmd() != null) {
+                    writeAttribute("value", cmd.getCmd(), false);
+                }
+            } else {
+                writeValue("value", c.getValue());
+            }
         }
-        //writeAttribute("displayOrder", c.getDisplayOrder(), true);
-        //writeAttribute("value", c.getValue(), false);
         endObject();
     }
 
@@ -180,7 +232,7 @@ public class JsonFormatter extends NCubeFormatter
      * so to save on those types I don't write out the type.
      * @param cell Cell to write
      */
-    public void writeType(Object cell) {
+    public void writeValueType(Object cell) {
         String type = getType(cell);
 
         if (type == null) {
@@ -226,8 +278,6 @@ public class JsonFormatter extends NCubeFormatter
             type = "binary";
         } else if (cell instanceof Object[]) {
             type = walkArraysForType((Object[]) cell);
-        } else {
-//            throw new IllegalArgumentException("Could not pull type:  " + cell.getClass());
         }
         return type;
     }
@@ -240,9 +290,9 @@ public class JsonFormatter extends NCubeFormatter
 
         String first = null;
 
-        for (int i=0; i<items.length; i++) {
-
-            String type = getType(items[i]);
+        for (Object o : items)
+        {
+            String type = getType(o);
 
             if (first == null) {
                 first = type;
@@ -260,14 +310,14 @@ public class JsonFormatter extends NCubeFormatter
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
         _builder.append("\"cells\":");
         if (cells == null || cells.isEmpty()) {
-            _builder.append("null");
+            _builder.append("[]");
             return;
         }
         startArray();
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();
             writeIds(item.getKey());
-            writeType(item.getValue());
+            writeValueType(item.getValue());
             writeCacheable(item.getValue());
             if (isUrlCommandCell(item.getValue())) {
                 UrlCommandCell cmd = (UrlCommandCell)item.getValue();
@@ -307,9 +357,12 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
-            //c.getId();  Only do getValue() if unique
-            writeObject(c.getValue());
-            comma();
+            Object o = _ids.get(c.getId());
+            if (o != null)
+            {
+                writeObject(o);
+                comma();
+            }
         }
         _builder.setLength(_builder.length() - 1);
         endArray();
@@ -335,6 +388,16 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
+        if (o instanceof Range) {
+            Range r = (Range)o;
+            startArray();
+            writeObject(r.getLow());
+            comma();
+            writeObject(r.getHigh());
+            endArray();
+            return;
+        }
+
         if (o instanceof Collection) {
             Collection c = (Collection)o;
             startArray();
@@ -346,7 +409,6 @@ public class JsonFormatter extends NCubeFormatter
             endArray();
             return;
         }
-
 
         if (!(o instanceof String)) {
             _builder.append(o.toString());

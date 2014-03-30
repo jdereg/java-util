@@ -533,6 +533,7 @@ public class NCubeManager
                 {
                     throw new IllegalStateException("Only one (1) row should be updated.");
                 }
+                ncube.setVersion(version);
                 return true;
             }
             catch (IllegalStateException e) { throw e; }

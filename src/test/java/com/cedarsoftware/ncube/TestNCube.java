@@ -32,12 +32,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -5576,7 +5576,8 @@ DELIMITER ;
         }
         catch (Exception e)
         {
-            assertTrue(e.getMessage().contains("supported"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("parse"));
         }
 
         // BigDecimals

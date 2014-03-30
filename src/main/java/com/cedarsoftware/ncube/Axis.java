@@ -609,7 +609,7 @@ public class Axis
                 }
                 catch (NumberFormatException e)
                 {
-                    break;
+                    throw new IllegalArgumentException("Could not parse long integer: " + input, e);
                 }
 
             case BIG_DECIMAL:
@@ -629,7 +629,7 @@ public class Axis
                 }
                 catch (Exception e)
                 {
-                    throw new IllegalArgumentException("Could not parse double: " + input, e);
+                    throw new IllegalArgumentException("Could not parse floating point number: " + input, e);
                 }
 
             case DATE:

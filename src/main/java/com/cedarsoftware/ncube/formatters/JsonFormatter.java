@@ -8,6 +8,7 @@ import com.cedarsoftware.ncube.GroovyMethod;
 import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.Range;
+import com.cedarsoftware.ncube.RangeSet;
 import com.cedarsoftware.ncube.StringUrlCmd;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -21,6 +22,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -212,7 +214,7 @@ public class JsonFormatter extends NCubeFormatter
         } else {
             writeAttribute("id", (Long)o, true);
             writeValueType(c.getValue());
-            if (isUrlCommandCell(c.getValue())) {
+            if (c.getValue() instanceof UrlCommandCell) {
                 UrlCommandCell cmd = (UrlCommandCell)c.getValue();
                 if (cmd.getUrl() != null) {
                     writeAttribute("url", cmd.getUrl(), false);
@@ -319,7 +321,7 @@ public class JsonFormatter extends NCubeFormatter
             writeIds(item.getKey());
             writeValueType(item.getValue());
             writeCacheable(item.getValue());
-            if (isUrlCommandCell(item.getValue())) {
+            if ((item.getValue() instanceof UrlCommandCell)) {
                 UrlCommandCell cmd = (UrlCommandCell)item.getValue();
                 if (cmd.getUrl() != null) {
                     writeAttribute("url", cmd.getUrl(), false);
@@ -336,13 +338,10 @@ public class JsonFormatter extends NCubeFormatter
         endArray();
     }
 
-    public boolean isUrlCommandCell(Object o) {
-        return o instanceof UrlCommandCell;
-    }
 
     public void writeCacheable(Object o)
     {
-        if (!isUrlCommandCell(o)) {
+        if (!(o instanceof UrlCommandCell)) {
             return;
         }
 
@@ -388,12 +387,31 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
+        if (o instanceof UrlCommandCell) {
+            UrlCommandCell cmd = (UrlCommandCell)o;
+            writeObject(cmd.getCmd());
+            return;
+        }
+
         if (o instanceof Range) {
             Range r = (Range)o;
             startArray();
             writeObject(r.getLow());
             comma();
             writeObject(r.getHigh());
+            endArray();
+            return;
+        }
+
+        if (o instanceof RangeSet) {
+            RangeSet r = (RangeSet)o;
+            Iterator i = r.iterator();
+            startArray();
+            while (i.hasNext()) {
+                writeObject(i.next());
+                comma();
+            }
+            _builder.setLength(_builder.length() - 1);
             endArray();
             return;
         }

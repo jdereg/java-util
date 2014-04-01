@@ -389,7 +389,11 @@ public class JsonFormatter extends NCubeFormatter
 
         if (o instanceof UrlCommandCell) {
             UrlCommandCell cmd = (UrlCommandCell)o;
-            writeObject(cmd.getCmd());
+            if (cmd.getUrl() != null) {
+                writeObject(cmd.getUrl());
+            } else if (cmd.getCmd() != null) {
+                writeObject(cmd.getCmd());
+            }
             return;
         }
 

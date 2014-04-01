@@ -4350,7 +4350,7 @@ DELIMITER ;
         coord.put("Code", "ints");
         Object[] ints = (Object[]) ncube.getCell(coord);
         assertEquals(ints[0], 0L);
-        assertEquals(ints[1], 1L);
+        assertEquals(ints[1], 1);
         assertEquals(ints[2], 4L);
 
         coord.put("Code", "strings");
@@ -4377,10 +4377,10 @@ DELIMITER ;
         arrays = (Object[]) ncube.getCell(coord);
 
         assertEquals("1.0", arrays[0]);
-        Object[] sub = (Object[]) arrays[1];
-        assertEquals("1.a", sub[0]);
-        sub = (Object[]) arrays[2];
-        assertEquals("1.b", sub[0]);
+        List sub = (List) arrays[1];
+        assertEquals("1.a", sub.get(0));
+        sub = (List) arrays[2];
+        assertEquals("1.b", sub.get(0));
         assertEquals("2.0", arrays[3]);
     }
 

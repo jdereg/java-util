@@ -55,17 +55,17 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     static
     {
-        proxyServer = SystemUtilities.getExternalVariable("NCUBE_PROXY_SERVER");
-        String proxiePort = SystemUtilities.getExternalVariable("NCUBE_PROXY_PORT");
+        proxyServer = SystemUtilities.getExternalVariable("http.proxy.host");
+        String port = SystemUtilities.getExternalVariable("http.proxy.port");
         if (proxyServer != null)
         {
             try
             {
-                proxyPort = Integer.parseInt(proxiePort);
+                proxyPort = Integer.parseInt(port);
             }
             catch (Exception e)
             {
-                throw new IllegalArgumentException("NCUBE_PROXY_PORT must be an integer: " + proxiePort, e);
+                throw new IllegalArgumentException("http.proxy.port must be an integer: " + port, e);
             }
         }
         else

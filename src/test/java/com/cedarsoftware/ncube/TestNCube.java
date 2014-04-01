@@ -5715,10 +5715,10 @@ DELIMITER ;
         String html1 = (String) ncube.getCell(coord);
         assertEquals(html, html1);
 
-        coord.put("protocol", "http");
-        coord.put("content", "95");
-        Integer num = (Integer) ncube.getCell(coord);
-        assertEquals(95, num.intValue());
+//        coord.put("protocol", "http");
+//        coord.put("content", "95");
+//        Integer num = (Integer) ncube.getCell(coord);
+//        assertEquals(95, num.intValue());
     }
 
     @Test

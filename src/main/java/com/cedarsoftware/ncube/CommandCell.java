@@ -1,12 +1,12 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * A 'CommandCell' represents an executable cell. NCube ships
@@ -45,12 +45,13 @@ import java.util.regex.Pattern;
  */
 public abstract class CommandCell implements Comparable<CommandCell>
 {
+    private String cmd;
+    private transient String cmdHash;
     private volatile transient Class runnableCode = null;
-	private String cmd;
-    private String cmdHash;
     private volatile transient String compileErrorMsg = null;
     static final String proxyServer;
     static final int proxyPort;
+    private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
 
     static
     {
@@ -126,24 +127,28 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     public String getCmdHash()
     {
+        if (StringUtilities.isEmpty(cmd))
+        {
+            return nullSHA1;
+        }
+
+        if (cmdHash == null)
+        {
+            try
+            {
+                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
+            }
+            catch (UnsupportedEncodingException e)
+            {
+                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
+            }
+        }
         return cmdHash;
     }
 
     public void setCmd(String cmd)
     {
         this.cmd = cmd;
-        if (cmd == null)
-        {
-            cmd = "";
-        }
-        try
-        {
-            cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
-        }
-        catch (UnsupportedEncodingException e)
-        {
-            cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
-        }
     }
 
     public String toString()

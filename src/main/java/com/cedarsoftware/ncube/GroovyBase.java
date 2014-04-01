@@ -94,19 +94,6 @@ public abstract class GroovyBase extends UrlCommandCell
 
     /**
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
-     * Keeping around for quick no-cache testing.
-     */
-
-//    protected Object executeGroovy(final Map args) throws Exception
-//    {
-//        Constructor c = getRunnableCode().getConstructor();
-//        final Object exp = c.newInstance();
-//        Method runMethod = getRunnableCode().getMethod("run", Map.class, String.class);
-//        return runMethod.invoke(exp, args, getCmdHash());
-//    }
-
-    /**
-     * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
     protected Object executeGroovy(final Map args) throws Exception
     {

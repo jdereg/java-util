@@ -100,4 +100,14 @@ public class Range implements Comparable<Range>
 	{
 		return !(high.compareTo(that.low) <= 0 || low.compareTo(that.high) >= 0);
 	}
+
+    public Comparable getLow()
+    {
+        return low;
+    }
+
+    public Comparable getHigh()
+    {
+        return high;
+    }
 }

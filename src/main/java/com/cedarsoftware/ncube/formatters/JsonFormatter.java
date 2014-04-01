@@ -325,7 +325,12 @@ public class JsonFormatter extends NCubeFormatter
                 UrlCommandCell cmd = (UrlCommandCell)item.getValue();
                 if (cmd.getUrl() != null) {
                     writeAttribute("url", cmd.getUrl(), false);
-                } else if (cmd.getCmd() != null) {
+                } else
+                {
+                    if (cmd.getCmd() == null)
+                    {
+                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                    }
                     writeAttribute("value", cmd.getCmd(), false);
                 }
             } else {
@@ -389,9 +394,16 @@ public class JsonFormatter extends NCubeFormatter
 
         if (o instanceof UrlCommandCell) {
             UrlCommandCell cmd = (UrlCommandCell)o;
-            if (cmd.getUrl() != null) {
+            if (cmd.getUrl() != null)
+            {
                 writeObject(cmd.getUrl());
-            } else if (cmd.getCmd() != null) {
+            }
+            else
+            {
+                if (cmd.getCmd() == null)
+                {
+                    throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                }
                 writeObject(cmd.getCmd());
             }
             return;

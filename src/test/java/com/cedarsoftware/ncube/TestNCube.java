@@ -396,7 +396,7 @@ DELIMITER ;
     public void testAllCellsInBigCube()
     {
         long start = System.nanoTime();
-        NCube<Long> ncube = new NCube<Long>("bigCube");
+        NCube<Long> ncube = new NCube("bigCube");
 
         for (int i = 0; i < 5; i++)
         {
@@ -1364,32 +1364,32 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("age", 1);
         ncube.setCell(1.0, coord);
-        assertEquals((Object)1.0, ncube.getCell(coord));
+        assertEquals((Object) 1.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(18, 22));
         coord.put("age", 18);
         ncube.setCell(2.0, coord);
-        assertEquals((Object)2.0, ncube.getCell(coord));
+        assertEquals((Object) 2.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(5, 8));
         coord.put("age", 6);
         ncube.setCell(3.0, coord);
-        assertEquals((Object)3.0, ncube.getCell(coord));
+        assertEquals((Object) 3.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(30, 40));
         coord.put("age", 35);
         ncube.setCell(4.0, coord);
-        assertEquals((Object)4.0, ncube.getCell(coord));
+        assertEquals((Object) 4.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(1, 4));
         coord.put("age", 1);
         ncube.setCell(5.0, coord);
-        assertEquals((Object)5.0, ncube.getCell(coord));
+        assertEquals((Object) 5.0, ncube.getCell(coord));
 
         axis.addColumn(new Range(40, 50));
         coord.put("age", 40);
         ncube.setCell(6.0, coord);
-        assertEquals((Object)6.0, ncube.getCell(coord));
+        assertEquals((Object) 6.0, ncube.getCell(coord));
     }
 
     @Test
@@ -3744,19 +3744,19 @@ DELIMITER ;
     {
         NCube ncube = new NCube("GroovyCube");
         Axis axis = new Axis("method", AxisType.DISCRETE, AxisValueType.STRING, false);
-        axis.addColumn("foo");
+        axis.addColumn("doIt");
         axis.addColumn("bar");
         axis.addColumn("baz");
         ncube.addAxis(axis);
         NCubeManager.addCube(ncube, "test");
 
         Map coord = new HashMap();
-        coord.put("method", "foo");
+        coord.put("method", "doIt");
         coord.put("age", 25);
         ncube.setCell(new GroovyMethod(
                 "package ncube.grv.method; class Junk extends NCubeGroovyController " +
                         "{\n" +
-                        "def foo() {\n" +
+                        "def doIt() {\n" +
                         " int x = input.age * 10;" +
                         " jump(x)" +
                         "}\n" +
@@ -3764,7 +3764,7 @@ DELIMITER ;
                         "}"), coord);
 
         Map output = new HashMap();
-        coord.put("method", "foo");
+        coord.put("method", "doIt");
         coord.put("age", 25);
         long start = System.currentTimeMillis();
         Object o = null;
@@ -5576,7 +5576,8 @@ DELIMITER ;
         }
         catch (Exception e)
         {
-            assertTrue(e.getMessage().contains("supported"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("parse"));
         }
 
         // BigDecimals
@@ -5724,36 +5725,36 @@ DELIMITER ;
     public void testNCubeNameParser()
     {
         String name = "['Less than $10,000':['startIncurredAmount':'0','endIncurredAmount':'10000'],'$10,000 - $25,000':['startIncurredAmount':'10000','endIncurredAmount':'25000'],'$25,000 - $50,000':['startIncurredAmount':'25000','endIncurredAmount':'50000'],'More than $50,000':['startIncurredAmount':'50000','endIncurredAmount':'0']]";
-        Matcher m = UrlCommandCell.groovyRelRefCubeCellPatternA.matcher(name);
+        Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(name);
         assertFalse(m.find());
 
-        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name);
         assertFalse(m.find());
 
-        m = GroovyBase.groovyAbsRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPattern.matcher(name);
         assertFalse(m.find());
 
-        m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPatternA.matcher(name);
         assertFalse(m.find());
 
         name = "@Foo([:])";
 
-        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
 
         name = "@Foo([:])";
-        m = GroovyBase.groovyRelRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
 
         name = "$Foo([alpha:'bravo'])";
-        m = GroovyBase.groovyAbsRefCubeCellPattern.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPattern.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
 
         name = "$Foo[:]";
-        m = GroovyBase.groovyAbsRefCubeCellPatternA.matcher(name);
+        m = Regexes.groovyAbsRefCubeCellPatternA.matcher(name);
         m.find();
         assertEquals("Foo", m.group(2));
     }
@@ -5788,6 +5789,19 @@ DELIMITER ;
 
         coord.put("method", "qux");
         assertEquals(81, ncube.getCell(coord));
+
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        assertEquals(2, ncube.getCell(coord));
+
+        coord.put("method", "bar");
+        assertEquals(4, ncube.getCell(coord));
+
+        coord.put("method", "baz");
+        assertEquals(8, ncube.getCell(coord));
+
+        coord.put("method", "qux");
+        assertEquals(16, ncube.getCell(coord));
     }
 
     // ---------------------------------------------------------------------------------

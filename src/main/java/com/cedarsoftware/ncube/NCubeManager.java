@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -56,8 +55,6 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static final Pattern validCubeName = Pattern.compile("[" + NCube.validCubeNameChars + "]+");
-    private static final Pattern validVersion = Pattern.compile("^(\\d+\\.)(\\d+\\.)(\\*|\\d+)$");
 
     /**
      * @param name String name of an NCube.
@@ -106,6 +103,8 @@ public class NCubeManager
         synchronized(cubeList)
         {
             cubeList.clear();
+            GroovyBase.compiledClasses.clear();
+            GroovyBase.groovyClassLoader.clearCache();
         }
     }
 
@@ -144,7 +143,7 @@ public class NCubeManager
             throw new IllegalArgumentException("n-cube name cannot be null or empty");
         }
 
-        Matcher m = validCubeName.matcher(cubeName);
+        Matcher m = Regexes.validCubeName.matcher(cubeName);
         if (m.find())
         {
             if (cubeName.equals(m.group(0)))
@@ -162,7 +161,7 @@ public class NCubeManager
             throw new IllegalArgumentException("n-cube version cannot be null or empty");
         }
 
-        Matcher m = validVersion.matcher(version);
+        Matcher m = Regexes.validVersion.matcher(version);
         if (m.find())
         {
             return;
@@ -534,6 +533,7 @@ public class NCubeManager
                 {
                     throw new IllegalStateException("Only one (1) row should be updated.");
                 }
+                ncube.setVersion(version);
                 return true;
             }
             catch (IllegalStateException e) { throw e; }

@@ -66,22 +66,22 @@
         {
             "id": ["foo", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
         },
         {
             "id": ["bar", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
         },
         {
             "id": ["baz", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
         },
         {
             "id": ["qux", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController2.groovy"
+            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
         }
     ]
 }

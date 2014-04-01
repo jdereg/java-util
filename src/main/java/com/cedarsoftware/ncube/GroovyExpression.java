@@ -62,10 +62,10 @@ public class GroovyExpression extends GroovyBase
             groovy.append('\n');
         }
 
-        String className = fixClassName(cubeName) + '_' + getCmdHash();
+        String className = "N_" + getCmdHash();
         groovy.append("class ");
         groovy.append(className);
-        groovy.append(" extends NCubeGroovyExpression { def run(Map args) { super.run(args); ");
+        groovy.append(" extends NCubeGroovyExpression { def run(Map args, String signature) { super.run(args); ");
         groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("}}");
         return groovy.toString();

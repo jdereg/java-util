@@ -6,7 +6,6 @@ import groovy.lang.GroovyShell;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  *  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -27,10 +26,10 @@ import java.util.regex.Pattern;
  */
 public abstract class UrlCommandCell extends CommandCell
 {
-    static final Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@([" + NCube.validCubeNameChars + "]+)(.*?\\[.*?:.*?\\])");
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;
+    private boolean urlFetched = false;
 
     public UrlCommandCell(String cmd, boolean cache)
     {
@@ -50,7 +49,7 @@ public abstract class UrlCommandCell extends CommandCell
 
     protected void preRun(Map args)
     {
-        if (url != null)
+        if (url != null && !urlFetched)
         {
             if (!urlExpanded)
             {
@@ -58,6 +57,10 @@ public abstract class UrlCommandCell extends CommandCell
                 urlExpanded = true;
             }
             processUrl(args);
+            if (cache)
+            {
+                urlFetched = true;
+            }
         }
     }
 
@@ -74,10 +77,6 @@ public abstract class UrlCommandCell extends CommandCell
             setCompileErrorMsg("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
             throw new IllegalStateException(getCompileErrorMsg(), e);
         }
-        if (cache)
-        {
-            setUrl(null);  // indicates that content has been processed
-        }
     }
 
     protected void fetchContentFromUrl()
@@ -88,7 +87,7 @@ public abstract class UrlCommandCell extends CommandCell
     protected String expandUrl(Map args)
     {
         NCube ncube = (NCube) args.get("ncube");
-        Matcher m = groovyRelRefCubeCellPatternA.matcher(url);
+        Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
         StringBuilder expandedUrl = new StringBuilder();
         int last = 0;
         Map input = (Map) args.get("input");

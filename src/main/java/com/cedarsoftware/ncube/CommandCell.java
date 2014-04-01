@@ -107,9 +107,9 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     public Object run(Map args)
     {
-        if (getCompileErrorMsg() != null)
+        if (compileErrorMsg != null)
         {   // If the cell failed to compile earlier, do not keep trying to recompile or run it.
-            throw new IllegalStateException(getCompileErrorMsg());
+            throw new IllegalStateException(compileErrorMsg);
         }
 
         preRun(args);

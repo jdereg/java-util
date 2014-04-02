@@ -1,0 +1,29 @@
+{
+    "ncube":"activityTypes",
+    "defaultCellValue" : null,
+    "ruleMode" : false,
+    "axes":[
+        {
+           "name":"businessDivisionCode",
+            "type":"DISCRETE",
+            "hasDefault":true,
+            "multiMatch":false,
+            "valueType":"STRING",
+            "columns":[
+                    {
+                        "id":1,
+                        "value":null
+                    }
+                ],
+            "preferredOrder":0,
+            "multiMatch":false
+        }
+    ],
+    "cells":[
+            {
+                "id":[1],
+                "type":"exp",
+                "value":"[CRC:'Cancel Reason Change',\r\n            CNRW:'Cancel Rewrite',\r\n            CANC:'Cancellation',\r\n            ENDT:'Endorsement',\r\n            NRI:'Non Renewal',\r\n            NRRC:'Non Renewal Reason Change',\r\n            REIN:'Reinstatement',\r\n            REMINDER:'Reminder',\r\n            RNR:'Reverse Non Renewal',\r\n            REWRITE:'Rewrite',\r\n            TEMPREIN:'Temporary Reinstatement']"
+            }
+        ]
+}

@@ -19,8 +19,12 @@ public class TestJsonFormatter {
         //runAllTests();
         //List<String> s = getAllTestFiles();
         List<String> s = new ArrayList<String>();
-        s.add("simpleJsonArrayTest.json");
+        s.add("test.json");
         runAllTests(s);
+
+
+        //String json = cube.toFormattedJson();
+        //System.out.println(json);
     }
 
     public List<String> getAllTestFiles()
@@ -39,7 +43,7 @@ public class TestJsonFormatter {
 
         List<String> names = new ArrayList<String>(files.length);
         for (File f : files) {
-            if (names.add(f.getName()));
+            names.add(f.getName());
         }
         return names;
     }

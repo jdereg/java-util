@@ -18,6 +18,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ public class JsonFormatter extends NCubeFormatter
     private String _quotedStringFormat = "\"%s\"";
 
     private HashMap<Long, Object> _ids = new HashMap<Long, Object>();
+    private long _idCounter;
 
     public JsonFormatter(NCube ncube)
     {
@@ -71,6 +73,7 @@ public class JsonFormatter extends NCubeFormatter
         {
             _builder.setLength(0);
             _ids.clear();
+            _idCounter = 0;
             walkIds(ncube.getAxes());
 
             startObject();
@@ -109,29 +112,8 @@ public class JsonFormatter extends NCubeFormatter
                 }
             }
         }
-
-        long id = 0;
-        for (Axis item : axes) {
-            for (Column c : item.getColumns()) {
-                if (!c.isDefault()) {
-
-                    Object o = _ids.get(c.getId());
-
-                    // haven't generated an id for this guy yet.
-                    if (o == null) {
-
-                        while (set.contains(id)) {
-                            id++;
-                        }
-
-                        set.add(id);
-                        _ids.put(c.getId(), id);
-                    }
-                }
-            }
-        }
-
     }
+
     public void startArray() {
         _builder.append("[");
     }
@@ -208,17 +190,21 @@ public class JsonFormatter extends NCubeFormatter
 
         Object o = _ids.get(c.getId());
 
-        if (o.equals(c.getValue())) {
+        if (o != null && o.equals(c.getValue())) {
             writeValueType(c.getValue());
-            writeValue("id", o);
+            writeId(c.getId(), false);
         } else {
-            writeAttribute("id", (Long)o, true);
+            writeId(c.getId(), true);
             writeValueType(c.getValue());
             if (c.getValue() instanceof UrlCommandCell) {
                 UrlCommandCell cmd = (UrlCommandCell)c.getValue();
                 if (cmd.getUrl() != null) {
                     writeAttribute("url", cmd.getUrl(), false);
-                } else if (cmd.getCmd() != null) {
+                } else {
+                    if (cmd.getCmd() == null)
+                    {
+                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                    }
                     writeAttribute("value", cmd.getCmd(), false);
                 }
             } else {
@@ -361,18 +347,12 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append("\"id\":");
         startArray();
         for (Column c : keys) {
-            Object o = _ids.get(c.getId());
-            if (o != null)
-            {
-                writeObject(o);
-                comma();
-            }
+            writeIdValue(c.getId(), true);
         }
         _builder.setLength(_builder.length() - 1);
         endArray();
         comma();
     }
-
 
     public void writeObject(Object o) throws IOException {
         if (o == null) {
@@ -462,6 +442,40 @@ public class JsonFormatter extends NCubeFormatter
         _builder.append(':');
 
         writeObject(o);
+    }
+
+    public void writeId(Long longId, boolean addComma) throws IOException {
+
+        _builder.append(String.format(_quotedStringFormat, "id"));
+        _builder.append(':');
+
+
+        writeIdValue(longId, addComma);
+    }
+
+    public void writeIdValue(Long longId, boolean addComma) throws IOException {
+
+        Object id = _ids.get(longId);
+
+        if (id == null) {
+            id = new Double(++_idCounter);
+            _ids.put(longId, id);
+        }
+
+        if (id instanceof Double) {
+            _builder.append(new DecimalFormat("#.0").format(((Double)id).doubleValue()));
+        } else if (id instanceof Number) {
+            _builder.append(((Number)id).longValue());
+        } else {
+            String value = id.toString();
+            StringWriter w = new StringWriter(value.length());
+            JsonWriter.writeJsonUtf8String(value, w);
+            _builder.append(w.toString());
+        }
+
+        if (addComma) {
+            comma();
+        }
     }
 
     public void writeAttribute(String name, String value, boolean includeComma) throws IllegalArgumentException {

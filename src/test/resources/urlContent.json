@@ -7,20 +7,28 @@
             "hasDefault":false,
             "preferredOrder":0,
             "columns":[
-                { "id":"Google"},
-                { "id":"MOD"},
-                { "id":"MyOtherDriveUrl"},
-                { "id":"MyOtherDriveUri" },
+                { "id":"StringFromLocalUrl"},
+                { "id":"StringFromRemoteUrl"},
+                { "id":"StringFromValue"},
+                { "id":"BinaryFromLocalUrl"},
+                { "id":"BinaryFromRemoteUrl"},
+                { "id":"TemplateFromLocalUrl"},
+                { "id":"TemplateFromRemoteUrl" },
                 { "id":"MyOtherDriveUrlSSL"},
+                { "id":"GroovyExpression"},
                 { "id":"MyOtherDriveUriSSL" }
             ]
     }],
     "cells":[
-        { "id":["Google"], "type":"string", "cache":false, "url":"http://www.google.com"},
-        { "id":["MOD"], "type":"binary", "cache":false, "url":"http://www.myotherdrive.com"},
-        { "id":["MyOtherDriveUrl"], "type":"template", "url":"http://localhost/sample.html"},
-        { "id":["MyOtherDriveUri"], "type":"template", "url":"html/quick-start"},
-        { "id":["MyOtherDriveUrlSSL"], "type":"exp", "url":"http://localhost/sampleGroovy.groovy"},
+        { "id":["StringFromLocalUrl"], "type":"string", "cache":false, "url":"res://files/hello.groovy"},
+        { "id":["StringFromRemoteUrl"], "type":"string", "cache":false, "url":"http://tests.codetested.com/ncube/hello.groovy"},
+        { "id":["StringFromValue"], "type":"string", "cache":false, "value":"return \"Local Hello, world.\""},
+        { "id":["BinaryFromLocalUrl"], "type":"binary", "cache":false, "url":"res://files/hello.groovy"},
+        { "id":["BinaryFromRemoteUrl"], "type":"binary", "cache":false, "url":"http://tests.codetested.com/ncube/hello.groovy"},
+        { "id":["TemplateFromLocalUrl"], "type":"template", "url":"res://files/hello.template"},
+        { "id":["TemplateFromRemoteUrl"], "type":"template", "url":"http://tests.codetested.com/ncube/hello.template"},
+        { "id":["MyOtherDriveUrlSSL"], "type":"exp", "url":"http://tests.codetested.com/ncube/hello.groovy"},
+        { "id":["GroovyExpression"], "type":"string", "value":"return \"Hello, world.\""},
         { "id":["MyOtherDriveUriSSL"], "type":"template", "url":"html/quick-start"}
     ]
 }

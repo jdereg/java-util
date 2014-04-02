@@ -15,10 +15,10 @@ import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -50,6 +50,14 @@ import java.util.Set;
 public class JsonFormatter extends NCubeFormatter
 {
     StringBuilder _builder = new StringBuilder();
+
+    static final ThreadLocal<SimpleDateFormat> _dateFormat = new ThreadLocal<SimpleDateFormat>()
+    {
+        public SimpleDateFormat initialValue()
+        {
+            return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+        }
+    };
 
     private String _quotedStringFormat = "\"%s\"";
 
@@ -220,7 +228,7 @@ public class JsonFormatter extends NCubeFormatter
      * so to save on those types I don't write out the type.
      * @param cell Cell to write
      */
-    public void writeValueType(Object cell) {
+    public void writeValueType(Object cell) throws IOException {
         String type = getType(cell);
 
         if (type == null) {
@@ -236,40 +244,59 @@ public class JsonFormatter extends NCubeFormatter
             return null;
         }
 
-        String type = null;
-
         if (cell instanceof BigDecimal) {
-            type = "bigdec";
-        } else if (cell instanceof Float) {
-            type = "float";
-        } else if (cell instanceof Integer) {
-            type = "int";
-        } else if (cell instanceof BigInteger) {
-            type = "bigint";
-        } else if (cell instanceof Byte) {
-            type = "byte";
-        } else if (cell instanceof Short) {
-            type = "short";
-        } else if (cell instanceof Date) {
-            type = "date";
-        } else if (cell instanceof GroovyExpression) {
-            type = "exp";
-        } else if (cell instanceof GroovyMethod) {
-            type = "method";
-        } else if (cell instanceof GroovyTemplate) {
-            type = "template";
-        } else if (cell instanceof StringUrlCmd) {
-            type = "string";
-        } else if (cell instanceof BinaryUrlCmd) {
-            type = "binary";
-        } else if (cell instanceof byte[]) {
-            type = "binary";
-        } else if (cell instanceof Object[]) {
-            type = walkArraysForType((Object[]) cell);
+            return "bigdec";
         }
-        return type;
+
+        if (cell instanceof Float) {
+            return "float";
+        }
+
+        if (cell instanceof Integer) {
+            return "int";
+        }
+
+        if (cell instanceof BigInteger) {
+            return "bigint";
+        }
+
+        if (cell instanceof Byte) {
+            return "byte";
+        }
+
+        if (cell instanceof Short) {
+            return "short";
+        }
+
+        if (cell instanceof Date) {
+            return "date";
+        }
+
+        if (cell instanceof GroovyExpression) {
+            return "exp";
+        }
+
+        if (cell instanceof GroovyMethod) {
+            return "method";
+        }
+
+        if (cell instanceof GroovyTemplate) {
+            return "template";
+        }
+
+        if (cell instanceof StringUrlCmd) {
+            return "string";
+        }
+
+        if (cell instanceof BinaryUrlCmd)
+        {
+            return "binary";
+        }
+
+        return null;
     }
 
+    /*
     public String walkArraysForType(Object[] items) {
 
         if (items == null || items.length == 0) {
@@ -294,6 +321,7 @@ public class JsonFormatter extends NCubeFormatter
 
         return first;
     }
+    */
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
         _builder.append("\"cells\":");
@@ -304,7 +332,7 @@ public class JsonFormatter extends NCubeFormatter
         startArray();
         for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
             startObject();
-            writeIds(item.getKey());
+            writeIds(item);
             writeValueType(item.getValue());
             writeCacheable(item.getValue());
             if ((item.getValue() instanceof UrlCommandCell)) {
@@ -343,23 +371,44 @@ public class JsonFormatter extends NCubeFormatter
         }
 
     }
-    public void writeIds(Set<Column> keys) throws IOException {
+
+    public boolean isAllDefault(Set<Column> cols) throws IOException {
+        for (Column c : cols) {
+            if (!c.isDefault()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException {
+
         _builder.append("\"id\":");
         startArray();
-        for (Column c : keys) {
-            writeIdValue(c.getId(), true);
+        if (!isAllDefault(item.getKey())) {
+            for (Column c : item.getKey()) {
+                if (!c.isDefault()) {
+                    writeIdValue(c.getId(), true);
+                }
+            }
+            _builder.setLength(_builder.length() - 1);
         }
-        _builder.setLength(_builder.length() - 1);
         endArray();
         comma();
     }
 
     public void writeObject(Object o) throws IOException {
+        assert(!(o instanceof Collection));
+        assert(!(o instanceof Object[]));
+
         if (o == null) {
             _builder.append("null");
             return;
         }
 
+        assert(!(o.getClass().isArray()));
+
+        /*
         if (o.getClass().isArray()) {
             //  check types
             startArray();
@@ -389,6 +438,20 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
+        if (o instanceof Collection) {
+            Collection c = (Collection)o;
+            startArray();
+            for (Object it : c) {
+                writeObject(it);
+                comma();
+            }
+            _builder.setLength(_builder.length() - 1);
+            endArray();
+            return;
+        }
+
+        */
+
         if (o instanceof Range) {
             Range r = (Range)o;
             startArray();
@@ -412,15 +475,8 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
-        if (o instanceof Collection) {
-            Collection c = (Collection)o;
-            startArray();
-            for (Object it : c) {
-                writeObject(it);
-                comma();
-            }
-            _builder.setLength(_builder.length() - 1);
-            endArray();
+        if (o instanceof Date) {
+            _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date)o)));
             return;
         }
 
@@ -465,7 +521,7 @@ public class JsonFormatter extends NCubeFormatter
         if (id instanceof Double) {
             _builder.append(new DecimalFormat("#.0").format(((Double)id).doubleValue()));
         } else if (id instanceof Number) {
-            _builder.append(((Number)id).longValue());
+            _builder.append(((Number) id).longValue());
         } else {
             String value = id.toString();
             StringWriter w = new StringWriter(value.length());
@@ -478,21 +534,13 @@ public class JsonFormatter extends NCubeFormatter
         }
     }
 
-    public void writeAttribute(String name, String value, boolean includeComma) throws IllegalArgumentException {
+    public void writeAttribute(String name, String value, boolean includeComma) throws IOException {
+        StringWriter w = new StringWriter(value.length());
+        JsonWriter.writeJsonUtf8String(value, w);
 
-
-        try
-        {
-            StringWriter w = new StringWriter(value.length());
-            JsonWriter.writeJsonUtf8String(value, w);
-
-            _builder.append(String.format(_quotedStringFormat, name));
-            _builder.append(':');
-            _builder.append(w.toString());
-        } catch (IOException e) {
-            // this way or hide the exception and write null for value?
-            throw new IllegalArgumentException(String.format("Error writing attribute '%s' with value '%s'", name, value));
-        }
+        _builder.append(String.format(_quotedStringFormat, name));
+        _builder.append(':');
+        _builder.append(w.toString());
 
         if (includeComma) {
             _builder.append(",");

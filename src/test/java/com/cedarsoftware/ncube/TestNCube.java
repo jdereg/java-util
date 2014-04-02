@@ -3486,14 +3486,32 @@ DELIMITER ;
     @Test
     public void testBinaryUrl() throws Exception
     {
+        NCubeManager.getNCubeFromResource("template1.json");
+        NCubeManager.getNCubeFromResource("template2.json");
         NCube n1 = NCubeManager.getNCubeFromResource("urlContent.json");
         Map coord = new HashMap();
-        coord.put("sites", "MOD");
-        byte[] mod = (byte[]) n1.getCell(coord);
-        assertNotNull(mod);
-        assertTrue(mod.length > 0);
-        String content = new String(mod);
-        assertTrue(content.contains("MyOtherDrive"));
+        coord.put("sites", "BinaryFromLocalUrl");
+        byte[] localBinaryBytes = (byte[]) n1.getCell(coord);
+        assertEquals("return \"Local Hello, world.\"", new String(localBinaryBytes));
+
+        coord.put("sites", "BinaryFromRemoteUrl");
+        byte[] remoteBinaryBytes = (byte[]) n1.getCell(coord);
+        assertEquals("return \"Hello, world.\"", new String(remoteBinaryBytes));
+
+        coord.put("sites", "StringFromLocalUrl");
+        assertEquals("return \"Local Hello, world.\"", (String)n1.getCell(coord));
+
+        coord.put("sites", "StringFromValue");
+        assertEquals("return \"Local Hello, world.\"", (String)n1.getCell(coord));
+
+        coord.put("sites", "StringFromRemoteUrl");
+        assertEquals("return \"Hello, world.\"", (String)n1.getCell(coord));
+
+        coord.put("sites", "TemplateFromLocalUrl");
+        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", (String)n1.getCell(coord));
+
+        coord.put("sites", "TemplateFromRemoteUrl");
+        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", (String)n1.getCell(coord));
     }
 
     @Test
@@ -4394,13 +4412,6 @@ DELIMITER ;
         assertEquals(6.28, ans);
         assertEquals(coord.get("code"), "exp");
 
-        coord.put("code", "expArray");
-        ans = ncube.getCell(coord);
-        Object[] ret = (Object[]) ans;
-        assertEquals(5, ret[0]);
-        assertEquals(10, ret[1]);
-        assertEquals(30, ret[2]);
-
         // Type promotion from double to BigDecimal
         coord.put("CODE", "bigdec");
         ans = ncube.getCell(coord);
@@ -5020,16 +5031,50 @@ DELIMITER ;
         String str = (String) ncube.getCell(coord);
         assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
         long stop = System.nanoTime();
-//        System.out.println("str = " + str);
-//        System.out.println((stop - start)/1000000);
+        //        System.out.println("str = " + str);
+        //        System.out.println((stop - start)/1000000);
         coord.put("state", "OH");
         coord.put("code", 1);
         start = System.nanoTime();
         str = (String) ncube.getCell(coord);
         assertEquals("You saved 0.14 on your boat insurance. Does this 0.15 work?", str);
         stop = System.nanoTime();
-//        System.out.println("str = " + str);
-//        System.out.println((stop - start)/1000000);
+        //        System.out.println("str = " + str);
+        //        System.out.println((stop - start)/1000000);
+
+        coord.put("state", "AL");
+        coord.put("code", 1);
+        str = (String) ncube.getCell(coord);
+        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
+
+        coord.put("state", "AR");
+        coord.put("code", 1);
+        str = (String) ncube.getCell(coord);
+        assertEquals("Dear Bitcoin, please continue your upward growth trajectory.", str);
+    }
+
+    @Test
+    public void testTemplateWithEquivalentCube()
+    {
+        NCubeManager.getNCubeFromResource("template2-equivalent.json");   // Get it loaded
+        NCube ncube = NCubeManager.getNCubeFromResource("template1.json");
+        Map coord = new HashMap();
+        coord.put("state", "GA");
+        coord.put("code", 1);
+        long start = System.nanoTime();
+        String str = (String) ncube.getCell(coord);
+        assertEquals("You saved 0.15 on your car insurance. Does this 0.12 work?", str);
+        long stop = System.nanoTime();
+        //        System.out.println("str = " + str);
+        //        System.out.println((stop - start)/1000000);
+        coord.put("state", "OH");
+        coord.put("code", 1);
+        start = System.nanoTime();
+        str = (String) ncube.getCell(coord);
+        assertEquals("You saved 0.14 on your boat insurance. Does this 0.15 work?", str);
+        stop = System.nanoTime();
+        //        System.out.println("str = " + str);
+        //        System.out.println((stop - start)/1000000);
 
         coord.put("state", "AL");
         coord.put("code", 1);

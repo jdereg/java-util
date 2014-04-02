@@ -1,0 +1,1 @@
+You saved <%= @Template2Cube([state:'TX'])%> on your <%= @Template1Cube([code:3])%> insurance. Does this <%= @Template2Cube([state:'TX']) %> work?

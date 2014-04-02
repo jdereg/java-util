@@ -27,20 +27,23 @@
     "cells":[
         {
             "key":{"Code":"ints"},
-            "value":[0, 1, 4]
+            "type":"exp",
+            "value":"[0L, 1, 4L] as Object[]"
         },
         {
             "key":{"Code":"strings"},
-            "value": ["alpha", "bravo", "charlie"]
+            "type":"exp",
+            "value": "['alpha','bravo','charlie'] as Object[]"
         },
         {
             "key":{"Code":"arrays"},
-            "value":[[0, 1, 6],["a","b","c"]]
+            "type":"exp",
+            "value":"[[0L, 1L, 6L] as Object[],['a','b','c'] as Object[]] as Object[]"
         },
         {
             "key":{"code":"crazy"},
             "type":"exp",
-            "value": ["return '1.0'", ["return '1.a'"],["return '1.b'"], "return '2.0'"]
+            "value": "['1.0', ['1.a'],['1.b'], '2.0'] as Object[]"
         }
     ]
 }

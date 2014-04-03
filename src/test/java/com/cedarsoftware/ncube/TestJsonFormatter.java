@@ -15,11 +15,11 @@ import java.util.List;
 public class TestJsonFormatter {
 
     @Test
-    public void testFormatter() throws Exception {
-        //runAllTests();
-        //List<String> s = getAllTestFiles();
-        List<String> s = new ArrayList<String>();
-        s.add("simpleJsonArrayTest.json");
+    public void testJsonFormatter() throws Exception {
+        // when running a single test.
+        //List<String> s = new ArrayList<String>();
+        //s.add("template2.json");
+        List<String> s = getAllTestFiles();
         runAllTests(s);
     }
 
@@ -30,16 +30,20 @@ public class TestJsonFormatter {
 
         File[] files = dir.listFiles(new FilenameFilter()
         {
+            //  The *CubeError.json are files that have intentional parsing errors
+            //  testCubeList.json is an array of cubes and JsonFormatter only knows aboue one cube at a time.
             public boolean accept(File f, String s)
             {
                 return s != null && s.endsWith(".json") &&
-                        !(s.endsWith("idBasedCubeError.json") || s.endsWith("idBasedCubeError2.json"));
+                        !(s.endsWith("idBasedCubeError.json") ||
+                          s.endsWith("idBasedCubeError2.json") ||
+                          s.endsWith("testCubeList.json"));
             }
         });
 
         List<String> names = new ArrayList<String>(files.length);
         for (File f : files) {
-            if (names.add(f.getName()));
+            names.add(f.getName());
         }
         return names;
     }
@@ -48,25 +52,10 @@ public class TestJsonFormatter {
     {
         for (String f : strings)
         {
-            //System.out.print("\"" + f.getName() + "\",\n");
-
-
-            try
-            {
-                NCube ncube = NCubeManager.getNCubeFromResource(f);
-                String s = ncube.toFormattedJson();
-                System.out.println(s);
-                NCube res = NCube.fromSimpleJson(s);
-                Assert.assertEquals(res, ncube);
-            } catch (Exception e) {
-                System.out.println("Exception:  " + f);
-                e.printStackTrace();
-            } catch (Error e) {
-                System.out.println("Error: " + f);
-                e.printStackTrace();
-                //System.out.println("Exception:  " + e);
-            }
-
+            NCube ncube = NCubeManager.getNCubeFromResource(f);
+            String s = ncube.toFormattedJson();
+            NCube res = NCube.fromSimpleJson(s);
+            Assert.assertEquals(res, ncube);
         }
     }
 }

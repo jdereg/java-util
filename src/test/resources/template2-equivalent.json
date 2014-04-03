@@ -1,0 +1,53 @@
+{
+    "ncube": "Template2Cube",
+    "ruleMode": false,
+    "axes": [
+        {
+            "name": "State",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "preferredOrder": 0,
+            "hasDefault": true,
+            "multiMatch": false,
+            "columns": [
+                {
+                    "id": "AR"
+                },
+                {
+                    "id": "GA"
+                },
+                {
+                    "id": "OH"
+                },
+                {
+                    "id": "TX"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": ["GA"],
+            "type": "template",
+            "value": "<%=if (@Template1Cube([code:2]) > 0) return @Template1Cube([code:2]); else return 1.11;%>"
+        },
+        {
+            "id": [],
+            "value": "Bitcoin"
+        },
+        {
+            "id": ["AR"],
+            "value": "upward"
+        },
+        {
+            "id": ["TX"],
+            "type": "template",
+            "value": "<%=@Template1Cube([code:2])%>"
+        },
+        {
+            "id": ["OH"],
+            "type": "template",
+            "value": "<%=if (true) @Template1Cube([code:2]) else { input.bitcoin = 9; }%>"
+        }
+    ]
+}

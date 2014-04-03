@@ -87,4 +87,17 @@ public class Point3D implements Comparable<Point3D>, Distance<Point3D>
 	{
 		return "(" + x + ", " + y + ", " + z + ")";
 	}
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+
+    }
+    public double getZ() {
+        return z;
+    }
+
 }

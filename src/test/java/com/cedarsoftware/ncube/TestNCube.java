@@ -5478,6 +5478,8 @@ DELIMITER ;
         assertEquals(cols.get(4).getValue(), "aMon");
         assertEquals(cols.get(5).getValue(), "aSun");
         assertEquals(cols.get(6).getValue(), "aWed");
+
+        assertEquals(0, cols.get(4).compareTo(new Column(null)));
     }
 
     @Test

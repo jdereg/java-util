@@ -14,6 +14,7 @@ import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
@@ -161,10 +162,6 @@ public class JsonFormatter extends NCubeFormatter
         comma();
     }
 
-    public boolean doesIdExistElsewhere(Object value) {
-        return false;
-    }
-
     // default is false, so no need to write those out.
     public void writeAxis(Axis a) throws IOException
     {
@@ -186,15 +183,25 @@ public class JsonFormatter extends NCubeFormatter
 
     public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
+
         startArray();
+
+        boolean commaWritten = false;
+
         for(Column item : columns ) {
             if (!item.isDefault())
             {
+                commaWritten = true;
                 writeColumn(item);
                 comma();
             }
         }
-        _builder.setLength(_builder.length() - 1);
+
+        if (commaWritten)
+        {
+            _builder.setLength(_builder.length() - 1);
+        }
+
         endArray();
     }
 
@@ -217,7 +224,7 @@ public class JsonFormatter extends NCubeFormatter
                 } else {
                     if (cmd.getCmd() == null)
                     {
-                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                        throw new IOException("Command and URL cannot both be null, n-cube: " + ncube.getName());
                     }
                     writeAttribute("value", cmd.getCmd(), false);
                 }
@@ -306,7 +313,7 @@ public class JsonFormatter extends NCubeFormatter
             return "point3d";
         }
 
-        if (cell instanceof BinaryUrlCmd)
+        if (cell instanceof BinaryUrlCmd || cell instanceof byte[])
         {
             return "binary";
         }
@@ -353,6 +360,7 @@ public class JsonFormatter extends NCubeFormatter
             writeIds(item);
             writeValueType(item.getValue());
             writeCacheable(item.getValue());
+
             if ((item.getValue() instanceof UrlCommandCell)) {
                 UrlCommandCell cmd = (UrlCommandCell)item.getValue();
                 if (cmd.getUrl() != null) {
@@ -361,7 +369,7 @@ public class JsonFormatter extends NCubeFormatter
                 {
                     if (cmd.getCmd() == null)
                     {
-                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                        throw new IOException("Command and URL cannot both be null, n-cube: " + ncube.getName());
                     }
                     writeAttribute("value", cmd.getCmd(), false);
                 }
@@ -390,25 +398,22 @@ public class JsonFormatter extends NCubeFormatter
 
     }
 
-    public boolean isAllDefault(Set<Column> cols) throws IOException {
-        for (Column c : cols) {
-            if (!c.isDefault()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException {
 
         _builder.append("\"id\":");
         startArray();
-        if (!isAllDefault(item.getKey())) {
-            for (Column c : item.getKey()) {
-                if (!c.isDefault()) {
-                    writeIdValue(c.getId(), true);
-                }
+
+        boolean commaWritten = false;
+
+        for (Column c : item.getKey()) {
+            if (!c.isDefault()) {
+                commaWritten = true;
+                writeIdValue(c.getId(), true);
             }
+        }
+
+        if (commaWritten)
+        {
             _builder.setLength(_builder.length() - 1);
         }
         endArray();
@@ -423,8 +428,6 @@ public class JsonFormatter extends NCubeFormatter
             _builder.append("null");
             return;
         }
-
-        assert(!(o.getClass().isArray()));
 
         if (o instanceof String) {
             StringWriter w = new StringWriter();
@@ -448,6 +451,7 @@ public class JsonFormatter extends NCubeFormatter
         if (o instanceof Point3D) {
             Point3D p = (Point3D)o;
             _builder.append(String.format(_threeDoubleFormat, p.getX(), p.getY(), p.getZ()));
+            return;
         }
 
         if (o instanceof Range) {
@@ -477,6 +481,12 @@ public class JsonFormatter extends NCubeFormatter
             _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date)o)));
             return;
         }
+
+        if (o instanceof byte[]) {
+            _builder.append(String.format(_quotedStringFormat, StringUtilities.encode((byte[])o)));
+            return;
+        }
+
 
         //  TODO: verify - Other types handled as string with no extr quotes (Long, Byte, Short), etc.
         _builder.append(o.toString());

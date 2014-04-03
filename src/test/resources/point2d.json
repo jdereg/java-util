@@ -1,9 +1,9 @@
 {
-    "ncube":"ScatterPlot",
+    "ncube":"Nearest2D",
     "ruleMode":false,
     "axes":[
         {
-            "name":"Plot",
+            "name":"Point",
             "type":"NEAREST",
             "valueType":"COMPARABLE",
             "preferredOrder":0,
@@ -13,17 +13,27 @@
                 {
                     "id":1.0,
                     "type":"point2d",
-                    "value":"1, 1"
+                    "value":"-1.000000,0.000000"
                 },
                 {
                     "id":2.0,
                     "type":"point2d",
-                    "value":"4, 4"
+                    "value":"0.000000,-1.000000"
                 },
                 {
                     "id":3.0,
                     "type":"point2d",
-                    "value":"100, 100"
+                    "value":"0.000000,0.000000"
+                },
+                {
+                    "id":4.0,
+                    "type":"point2d",
+                    "value":"0.000000,1.000000"
+                },
+                {
+                    "id":5.0,
+                    "type":"point2d",
+                    "value":"1.000000,0.000000"
                 }
             ]
         }
@@ -31,21 +41,33 @@
     "cells":[
         {
             "id":[
-                1.0
-            ],
-            "value":"Joey"
-        },
-        {
-            "id":[
                 3.0
             ],
-            "value":"Zane"
+            "value":"0.0, 0.0"
         },
         {
             "id":[
                 2.0
             ],
-            "value":"Michelle"
+            "value":"0.0, -1.0"
+        },
+        {
+            "id":[
+                5.0
+            ],
+            "value":"1.0, 0.0"
+        },
+        {
+            "id":[
+                1.0
+            ],
+            "value":"-1.0, 0.0"
+        },
+        {
+            "id":[
+                4.0
+            ],
+            "value":"0.0, 1.0"
         }
     ]
 }

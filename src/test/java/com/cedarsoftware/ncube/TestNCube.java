@@ -9,6 +9,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -2382,7 +2383,32 @@ DELIMITER ;
     @Test
     public void testNearestAxisType()
     {
-        NCube<String> ncube = new NCube<String>("Nearest2D");
+        NCube ncube = NCubeManager.getNCubeFromResource("Point2dOld.json");
+
+        Map<String, Object> coord = new HashMap<String, Object>();
+
+        coord.put("Point", new Point2D(0.0, 0.0));
+        Assert.assertEquals("0.0, 0.0", ncube.getCell(coord));
+
+        coord.put("Point", new Point2D(-0.1, 0.1));
+        Assert.assertEquals("0.0, 0.0", ncube.getCell(coord));
+
+        coord.put("Point", new Point2D(0.49, 0.49));
+        Assert.assertEquals("0.0, 0.0", ncube.getCell(coord));
+
+        coord.put("Point", new Point2D(0.55, 0.0));
+        Assert.assertEquals("1.0, 0.0", ncube.getCell(coord));
+
+        coord.put("Point", new Point2D(-1.0, 50));
+        Assert.assertEquals("0.0, 1.0", ncube.getCell(coord));
+
+        coord.put("Point", new Point2D(-1.5, -0.4));
+        Assert.assertEquals("-1.0, 0.0", ncube.getCell(coord));
+
+        coord.put("Point", new Point2D(0.5, -0.6));
+        Assert.assertEquals("0.0, -1.0", ncube.getCell(coord));
+
+        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
 
         Axis points = null;
         try
@@ -2400,47 +2426,6 @@ DELIMITER ;
         points.addColumn(new Point2D(0.0, 1.0));
         points.addColumn(new Point2D(-1.0, 0.0));
         points.addColumn(new Point2D(0.0, -1.0));
-        ncube.addAxis(points);
-
-        Map<String, Object> coord = new HashMap<String, Object>();
-        coord.put("Point", new Point2D(0.0, 0.0));
-        ncube.setCell("0.0, 0.0", coord);
-        coord.put("Point", new Point2D(1.0, 0.0));
-        ncube.setCell("1.0, 0.0", coord);
-        coord.put("Point", new Point2D(0.0, 1.0));
-        ncube.setCell("0.0, 1.0", coord);
-        coord.put("Point", new Point2D(-1.0, 0.0));
-        ncube.setCell("-1.0, 0.0", coord);
-        coord.put("Point", new Point2D(0.0, -1.0));
-        ncube.setCell("0.0, -1.0", coord);
-
-        coord.put("Point", new Point2D(0.0, 0.0));
-        String s = ncube.getCell(coord);
-        assertTrue("0.0, 0.0".equals(s));
-
-        coord.put("Point", new Point2D(-0.1, 0.1));
-        s = ncube.getCell(coord);
-        assertTrue("0.0, 0.0".equals(s));
-
-        coord.put("Point", new Point2D(0.49, 0.49));
-        s = ncube.getCell(coord);
-        assertTrue("0.0, 0.0".equals(s));
-
-        coord.put("Point", new Point2D(0.55, 0.0));
-        s = ncube.getCell(coord);
-        assertTrue("1.0, 0.0".equals(s));
-
-        coord.put("Point", new Point2D(-1.0, 50));
-        s = ncube.getCell(coord);
-        assertTrue("0.0, 1.0".equals(s));
-
-        coord.put("Point", new Point2D(-1.5, -0.4));
-        s = ncube.getCell(coord);
-        assertTrue("-1.0, 0.0".equals(s));
-
-        coord.put("Point", new Point2D(0.5, -0.6));
-        s = ncube.getCell(coord);
-        assertTrue("0.0, -1.0".equals(s));
 
         assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
 
@@ -2562,25 +2547,18 @@ DELIMITER ;
     @Test
     public void testLatLonAxisType()
     {
-        NCube<String> ncube = new NCube<String>("LatLonNearest");
+        Map<String, Object> coord = new HashMap<String, Object>();
+        NCube cube = NCubeManager.getNCubeFromResource("latlon.json");
 
         String axisName = "Lat / Lon";
-        Axis points = new Axis(axisName, AxisType.NEAREST, AxisValueType.COMPARABLE, false);
-        LatLon springboro = new LatLon(39.580209, -84.213693);
-        LatLon breck = new LatLon(39.479094, -106.052431);
-        LatLon austin = new LatLon(30.426752, -97.808664);
-        points.addColumn(springboro);
-        points.addColumn(breck);
-        points.addColumn(austin);
-        ncube.addAxis(points);
 
-        Map<String, Object> coord = new HashMap<String, Object>();
-        coord.put(axisName, springboro);
-        ncube.setCell("Springboro", coord);
-        coord.put(axisName, breck);
-        ncube.setCell("Breckenridge", coord);
-        coord.put(axisName, austin);
-        ncube.setCell("Austin", coord);
+        coord = new HashMap<String, Object>();
+        coord.put("Lat / Lon", new LatLon(25, -112));
+        Assert.assertEquals("Austin", cube.getCell(coord));
+
+        coord = new HashMap<String, Object>();
+        coord.put("Lat / Lon", new LatLon(35, -90));
+        Assert.assertEquals("Springboro", cube.getCell(coord));
 
         LatLon newYork = new LatLon(40.714353, -74.005973);
         LatLon losAngeles = new LatLon(34.052234, -118.243685);
@@ -2588,26 +2566,16 @@ DELIMITER ;
         LatLon elpaso = new LatLon(31.75872, -106.486931);
 
         coord.put(axisName, newYork);
-        String s = ncube.getCell(coord);
-        assertTrue("Springboro".equals(s));
+        Assert.assertEquals("Springboro", cube.getCell(coord));
 
         coord.put(axisName, losAngeles);
-        s = ncube.getCell(coord);
-        assertTrue("Breckenridge".equals(s));
+        Assert.assertEquals("Breckenridge", cube.getCell(coord));
 
         coord.put(axisName, phoenix);
-        s = ncube.getCell(coord);
-        assertTrue("Breckenridge".equals(s));
+        Assert.assertEquals("Breckenridge", cube.getCell(coord));
 
         coord.put(axisName, elpaso);
-        s = ncube.getCell(coord);
-        assertTrue("Austin".equals(s));
-
-        assertFalse(newYork.equals("string"));
-        s = phoenix.toString();
-        assertTrue(phoenix.toString().equals("(33.448377, -112.074037)"));
-
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        Assert.assertEquals("Austin", cube.getCell(coord));
     }
 
     @Test

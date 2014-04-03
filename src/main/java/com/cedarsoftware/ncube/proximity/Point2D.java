@@ -74,4 +74,7 @@ public class Point2D implements Comparable<Point2D>, Distance<Point2D>
 		}
 		return 0;	
 	}
+
+    public double getX() { return x; }
+    public double getY() { return y; }
 }

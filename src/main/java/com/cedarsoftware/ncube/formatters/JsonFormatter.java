@@ -11,13 +11,15 @@ import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
 import com.cedarsoftware.ncube.StringUrlCmd;
 import com.cedarsoftware.ncube.UrlCommandCell;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
@@ -60,8 +62,11 @@ public class JsonFormatter extends NCubeFormatter
     };
 
     private String _quotedStringFormat = "\"%s\"";
+    private String _twoDoubleFormat = "\"%f,%f\"";
+    private String _threeDoubleFormat = "\"%f,%f,%f\"";
 
-    private HashMap<Long, Object> _ids = new HashMap<Long, Object>();
+    private Map<Long, Object> _userIds = new HashMap<Long, Object>();
+    private Map<Long, Long> _generatedIds = new HashMap<Long, Long>();
     private long _idCounter;
 
     public JsonFormatter(NCube ncube)
@@ -80,7 +85,8 @@ public class JsonFormatter extends NCubeFormatter
         try
         {
             _builder.setLength(0);
-            _ids.clear();
+            _userIds.clear();
+            _generatedIds.clear();
             _idCounter = 0;
             walkIds(ncube.getAxes());
 
@@ -114,7 +120,7 @@ public class JsonFormatter extends NCubeFormatter
                     if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
                         if (!set.contains(c.getValue())) {
                             set.add(c.getValue());
-                            _ids.put(c.getId(), c.getValue());
+                            _userIds.put(c.getId(), c.getValue());
                         }
                     }
                 }
@@ -196,7 +202,7 @@ public class JsonFormatter extends NCubeFormatter
         startObject();
         //  Check to see if id exists anywhere. then optimize
 
-        Object o = _ids.get(c.getId());
+        Object o = _userIds.get(c.getId());
 
         if (o != null && o.equals(c.getValue())) {
             writeValueType(c.getValue());
@@ -286,6 +292,18 @@ public class JsonFormatter extends NCubeFormatter
 
         if (cell instanceof StringUrlCmd) {
             return "string";
+        }
+
+        if (cell instanceof LatLon) {
+            return "latlon";
+        }
+
+        if (cell instanceof Point2D) {
+            return "point2d";
+        }
+
+        if (cell instanceof Point3D) {
+            return "point3d";
         }
 
         if (cell instanceof BinaryUrlCmd)
@@ -408,49 +426,29 @@ public class JsonFormatter extends NCubeFormatter
 
         assert(!(o.getClass().isArray()));
 
-        /*
-        if (o.getClass().isArray()) {
-            //  check types
-            startArray();
-            for (int i=0; i<Array.getLength(o); i++) {
-                writeObject(Array.get(o, i));
-                comma();
-            }
-            _builder.setLength(_builder.length() - 1);
-            endArray();
+        if (o instanceof String) {
+            StringWriter w = new StringWriter();
+            JsonWriter.writeJsonUtf8String((String)o, w);
+            _builder.append(w.toString());
             return;
         }
 
-        if (o instanceof UrlCommandCell) {
-            UrlCommandCell cmd = (UrlCommandCell)o;
-            if (cmd.getUrl() != null)
-            {
-                writeObject(cmd.getUrl());
-            }
-            else
-            {
-                if (cmd.getCmd() == null)
-                {
-                    throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
-                }
-                writeObject(cmd.getCmd());
-            }
+        if (o instanceof LatLon) {
+            LatLon l = (LatLon)o;
+            _builder.append(String.format(_twoDoubleFormat, l.getLat(), l.getLon()));
             return;
         }
 
-        if (o instanceof Collection) {
-            Collection c = (Collection)o;
-            startArray();
-            for (Object it : c) {
-                writeObject(it);
-                comma();
-            }
-            _builder.setLength(_builder.length() - 1);
-            endArray();
+        if (o instanceof Point2D) {
+            Point2D l = (Point2D)o;
+            _builder.append(String.format(_twoDoubleFormat, l.getX(), l.getY()));
             return;
         }
 
-        */
+        if (o instanceof Point3D) {
+            Point3D p = (Point3D)o;
+            _builder.append(String.format(_threeDoubleFormat, p.getX(), p.getY(), p.getZ()));
+        }
 
         if (o instanceof Range) {
             Range r = (Range)o;
@@ -480,17 +478,9 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
-        if (!(o instanceof String)) {
-            _builder.append(o.toString());
-            return;
-        }
-        //System.out.println(o.getClass());
+        //  TODO: verify - Other types handled as string with no extr quotes (Long, Byte, Short), etc.
+        _builder.append(o.toString());
 
-        //ByteArrayOutputStream out = new ByteArrayOutputStream(9182);
-        StringWriter w = new StringWriter();
-        JsonWriter.writeJsonUtf8String((String)o, w);
-        _builder.append(w.toString());
-        //_builder.append(String.format(_quotedStringFormat, o.toString()));
     }
 
     public void writeValue(String attr, Object o) throws IOException {
@@ -511,22 +501,20 @@ public class JsonFormatter extends NCubeFormatter
 
     public void writeIdValue(Long longId, boolean addComma) throws IOException {
 
-        Object id = _ids.get(longId);
+        Object userId = _userIds.get(longId);
 
-        if (id == null) {
-            id = new Double(++_idCounter);
-            _ids.put(longId, id);
-        }
-
-        if (id instanceof Double) {
-            _builder.append(new DecimalFormat("#.0").format(((Double)id).doubleValue()));
-        } else if (id instanceof Number) {
-            _builder.append(((Number) id).longValue());
+        if (userId != null) {
+            writeObject(userId);
         } else {
-            String value = id.toString();
-            StringWriter w = new StringWriter(value.length());
-            JsonWriter.writeJsonUtf8String(value, w);
-            _builder.append(w.toString());
+            Long generatedId = _generatedIds.get(longId);
+
+            if (generatedId == null) {
+                generatedId = ++_idCounter;
+                _generatedIds.put(longId, generatedId);
+            }
+
+            _builder.append(generatedId);
+            _builder.append(".0");
         }
 
         if (addComma) {

@@ -183,6 +183,11 @@ public class JsonFormatter extends NCubeFormatter
     public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
 
+        if (columns == null || columns.isEmpty()) {
+            _builder.append("[]");
+            return;
+        }
+
         startArray();
 
         boolean commaWritten = false;
@@ -360,13 +365,16 @@ public class JsonFormatter extends NCubeFormatter
             startObject();
             writeIds(item);
             writeValueType(item.getValue());
-            writeCacheable(item.getValue());
 
             if ((item.getValue() instanceof UrlCommandCell)) {
                 UrlCommandCell cmd = (UrlCommandCell)item.getValue();
+                if (!cmd.isCacheable()) {
+                    writeAttribute("cache", cmd.isCacheable(), true);
+                }
                 if (cmd.getUrl() != null) {
                     writeAttribute("url", cmd.getUrl(), false);
-                } else
+                }
+                else
                 {
                     if (cmd.getCmd() == null)
                     {
@@ -384,20 +392,6 @@ public class JsonFormatter extends NCubeFormatter
         endArray();
     }
 
-
-    public void writeCacheable(Object o)
-    {
-        if (!(o instanceof UrlCommandCell)) {
-            return;
-        }
-
-        UrlCommandCell cmd = (UrlCommandCell)o;
-
-        if (!cmd.isCacheable()) {
-            writeAttribute("cache", cmd.isCacheable(), true);
-        }
-
-    }
 
     public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException {
 

@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
@@ -14,11 +15,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -2383,7 +2386,7 @@ DELIMITER ;
     @Test
     public void testNearestAxisType()
     {
-        NCube ncube = NCubeManager.getNCubeFromResource("Point2dOld.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("point2d.json");
 
         Map<String, Object> coord = new HashMap<String, Object>();
 
@@ -2542,6 +2545,8 @@ DELIMITER ;
         assertTrue(p1.compareTo(p2) == 0);
 
         assertTrue(countMatches(ncube.toHtml(), "<tr>") == 8);
+
+        System.out.println(ncube.toFormattedJson());
     }
 
     @Test
@@ -5473,6 +5478,8 @@ DELIMITER ;
         assertEquals(cols.get(4).getValue(), "aMon");
         assertEquals(cols.get(5).getValue(), "aSun");
         assertEquals(cols.get(6).getValue(), "aWed");
+
+        assertEquals(-1, cols.get(4).compareTo(new Column(null)));
     }
 
     @Test
@@ -5815,6 +5822,42 @@ DELIMITER ;
 
         coord.put("method", "qux");
         assertEquals(16, ncube.getCell(coord));
+    }
+
+    @Test(expected = IOException.class)
+    public void testInvalidUrlCommand() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");
+        Map<Set<Column>, Object> cells = new HashMap<Set<Column>, Object>();
+        Set<Column> cols = new HashSet<Column>();
+
+        GroovyTemplate t = new GroovyTemplate(null, false);
+
+
+        Column c = new Column(0, false);
+        c.setValue("String");
+
+        cols.add(c);
+        cells.put(cols, t);
+
+        JsonFormatter formatter = new JsonFormatter(ncube);
+        formatter.writeCells(cells);
+    }
+
+    @Test(expected = IOException.class)
+    public void testInvalidColumn() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");
+        Map<Set<Column>, Object> cells = new HashMap<Set<Column>, Object>();
+        List<Column> cols = new ArrayList<Column>();
+
+        Column c = new Column(0, false);
+        c.setValue(new GroovyTemplate(null, false));
+
+        cols.add(c);
+
+        JsonFormatter formatter = new JsonFormatter(ncube);
+        formatter.writeColumns(cols);
     }
 
     // ---------------------------------------------------------------------------------

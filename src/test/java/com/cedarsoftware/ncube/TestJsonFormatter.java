@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -8,6 +7,8 @@ import java.io.FilenameFilter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by kpartlow on 3/18/14.
@@ -18,7 +19,7 @@ public class TestJsonFormatter {
     public void testJsonFormatter() throws Exception {
         // when running a single test.
         //List<String> s = new ArrayList<String>();
-        //s.add("template2.json");
+        //s.add("testEmptyColumnList.json");
         List<String> s = getAllTestFiles();
         runAllTests(s);
     }
@@ -57,7 +58,7 @@ public class TestJsonFormatter {
             String s = ncube.toFormattedJson();
             //System.out.println(s);
             NCube res = NCube.fromSimpleJson(s);
-            Assert.assertEquals(res, ncube);
+            assertEquals(res, ncube);
         }
     }
 }

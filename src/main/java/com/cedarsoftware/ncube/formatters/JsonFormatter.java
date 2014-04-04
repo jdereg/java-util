@@ -22,7 +22,6 @@ import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.SimpleDateFormat;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -251,7 +250,7 @@ public class JsonFormatter extends NCubeFormatter
         writeAttribute("type", type, true);
     }
 
-    private String getType(Object cell)
+    private String getType(Object cell) throws IOException
     {
         if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
             return null;
@@ -318,7 +317,9 @@ public class JsonFormatter extends NCubeFormatter
             return "binary";
         }
 
+        // Types of Range and RangeSet
         return null;
+//        throw new IOException(String.format("Unsupported Object Type:  %s", cell.getClass().getName()));
     }
 
     /*
@@ -421,9 +422,6 @@ public class JsonFormatter extends NCubeFormatter
     }
 
     public void writeObject(Object o) throws IOException {
-        assert(!(o instanceof Collection));
-        assert(!(o instanceof Object[]));
-
         if (o == null) {
             _builder.append("null");
             return;
@@ -478,7 +476,7 @@ public class JsonFormatter extends NCubeFormatter
         }
 
         if (o instanceof Date) {
-            _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date)o)));
+            _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date) o)));
             return;
         }
 

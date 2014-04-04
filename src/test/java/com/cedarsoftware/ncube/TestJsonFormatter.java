@@ -53,10 +53,10 @@ public class TestJsonFormatter {
     {
         for (String f : strings)
         {
-            System.out.println("Starting " + f);
+            //System.out.println("Starting " + f);
             NCube ncube = NCubeManager.getNCubeFromResource(f);
             String s = ncube.toFormattedJson();
-            System.out.println(s);
+            //System.out.println(s);
             NCube res = NCube.fromSimpleJson(s);
             assertEquals(res, ncube);
         }

@@ -52,32 +52,27 @@
         {
             "id":["bytes"],
             "type":"byte",
-            "value":[0, 1, 4]
+            "value":[0, 1, 127]
         },
         {
             "id":["shorts"],
             "type":"short",
-            "value":[0, 1, 63000]
+            "value":[0, 1, 32767]
         },
         {
             "id":["ints"],
             "type":"int",
-            "value":[0, 1, 289000]
+            "value":[0, 1, 2147483647]
         },
         {
             "id":["longs"],
             "type":"long",
-            "value":[0, 1, 4]
+            "value":[0, 1, 9223372036854775807]
         },
         {
             "id":["bigints"],
             "type":"bigint",
-            "value":[0, 1, 4]
-        },
-        {
-            "id":["ints"],
-            "type":"int",
-            "value":[0, 1, 4]
+            "value":[0, 1, 9223372036854775807, "147573952589676410000"]
         },
         {
             "id":["strings"],
@@ -87,7 +82,7 @@
         {
             "id":["floats"],
             "type":"float",
-            "value": [1.0, 2.0, 3.0]
+            "value": [1.0, 2.0, 3.8]
         },
         {
             "id":["doubles"],

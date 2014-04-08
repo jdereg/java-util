@@ -110,7 +110,7 @@ public class JsonFormatter extends NCubeFormatter
         }
         catch (Exception e)
         {
-            throw new IllegalArgumentException(String.format("Unable to format NCube '%s' into JSON", ncube.getName()), e);
+            throw new IllegalStateException(String.format("Unable to format NCube '%s' into JSON", ncube.getName()), e);
         }
     }
 
@@ -186,10 +186,13 @@ public class JsonFormatter extends NCubeFormatter
     public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
 
+        /*
+        Always have at least one default column
         if (columns == null || columns.isEmpty()) {
             _builder.append("[]");
             return;
         }
+         */
 
         startArray();
 
@@ -231,7 +234,7 @@ public class JsonFormatter extends NCubeFormatter
                 } else {
                     if (cmd.getCmd() == null)
                     {
-                        throw new IOException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
                     }
                     writeAttribute("value", cmd.getCmd(), false);
                 }
@@ -276,7 +279,7 @@ public class JsonFormatter extends NCubeFormatter
         return getCellType(o, "column");
     }
 
-    protected String getCellType(Object cell, String type) throws IOException
+    String getCellType(Object cell, String type) throws IOException
     {
         if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
             return null;
@@ -331,7 +334,7 @@ public class JsonFormatter extends NCubeFormatter
             return "string";
         }
 
-        throw new IOException(String.format("Unsupported %s Type:  %s", cell.getClass().getName(), type));
+        throw new IllegalArgumentException(String.format("Unsupported %s Type:  %s", cell.getClass().getName(), type));
     }
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
@@ -358,7 +361,7 @@ public class JsonFormatter extends NCubeFormatter
                 {
                     if (cmd.getCmd() == null)
                     {
-                        throw new IOException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
                     }
                     writeAttribute("value", cmd.getCmd(), false);
                 }
@@ -464,10 +467,6 @@ public class JsonFormatter extends NCubeFormatter
             _builder.append(o);
             _builder.append('g');
             return;
-        }
-
-        if (o instanceof Number) {
-            throw new IllegalArgumentException("Unknown data type: " + o.getClass().getName());
         }
 
         if (o instanceof Boolean) {

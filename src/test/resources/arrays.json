@@ -92,12 +92,17 @@
         {
             "id":["bigdecimals"],
             "type":"bigdec",
-            "value": [15.1, 16.1, "19.1"]
+            "value": [15.1, 16.1, 18, "19.1"]
         },
         {
             "id":["booleans"],
             "type":"boolean",
             "value": [true, false, true, false]
+        },
+        {
+            "id":["crazy"],
+            "type":"exp",
+            "value": ["1.0", "1.a","1.b", "2.0"]
         }
     ]
 }

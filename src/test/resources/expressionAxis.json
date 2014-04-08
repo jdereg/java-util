@@ -9,7 +9,7 @@
             "preferredOrder":1,
             "columns":[
                 { "id":1, "type":"exp", "value":"true" },
-                { "id":2, "type":"exp", "value":"input?.vehiclePrice > 10000" },
+                { "id":2, "type":"exp", "value":"input?.vehiclePrice > 10000"},
                 { "id":3, "type":"exp", "value":"input.driverAge < 23" },
                 { "id":4, "type":"exp", "value":"input.gender.toLowerCase() == 'male'" },
                 { "id":5, "type":"exp", "value":"input.vehicleCylinders > 4" }

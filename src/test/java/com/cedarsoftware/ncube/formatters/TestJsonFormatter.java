@@ -1,5 +1,7 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.NCubeManager;
 import org.junit.Test;
 
 import java.io.File;
@@ -25,6 +27,12 @@ public class TestJsonFormatter {
         //s.add("urlContent.json");
         List<String> s = getAllTestFiles();
         runAllTests(s);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetCellTypeException() throws Exception {
+        JsonFormatter formatter = new JsonFormatter(null);
+        formatter.getCellType(new StringBuilder(), "cell");
     }
 
     @Test
@@ -93,6 +101,13 @@ public class TestJsonFormatter {
         assertEquals(new BigInteger("147573952589676410000"), ((Object[]) ncube.getCell(coord))[3]);
     }
 
+    @Test(expected=IllegalStateException.class)
+    public void testInvalidNCube() {
+        NCube ncube = new NCube(null);
+        JsonFormatter formatter = new JsonFormatter(ncube);
+        formatter.format();
+   }
+
     public List<String> getAllTestFiles()
     {
         URL u = getClass().getClassLoader().getResource("");
@@ -107,9 +122,9 @@ public class TestJsonFormatter {
                 return s != null && s.endsWith(".json") &&
                         !(s.endsWith("idBasedCubeError.json") ||
                           s.endsWith("idBasedCubeError2.json") ||
-                                s.endsWith("null.json") ||
+                                s.endsWith("error.json") ||
                                 s.endsWith("arrays.json") ||  /** won't have equivalency **/
-                          s.endsWith("testCubeList.json"));
+                          s.endsWith("testCubeList.json"));   /** list of cubes **/
             }
         });
 
@@ -124,10 +139,10 @@ public class TestJsonFormatter {
     {
         for (String f : strings)
         {
-            //System.out.println("Starting " + f);
+            System.out.println("Starting " + f);
             NCube ncube = NCubeManager.getNCubeFromResource(f);
             String s = ncube.toFormattedJson();
-            //System.out.println(s);
+            System.out.println(s);
             NCube res = NCube.fromSimpleJson(s);
             assertEquals(res, ncube);
         }

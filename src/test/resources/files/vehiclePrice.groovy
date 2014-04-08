@@ -1,0 +1,1 @@
+"input?.vehiclePrice > 10000"

@@ -1,0 +1,17 @@
+{
+    "ncube":"nocol",
+    "defaultCellValue":"bar",
+    "axes":[
+        {
+            "name":"test",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[]
+        }
+    ],
+    "cells":[
+        {"id":["foo"], "value":"bar"}
+    ]
+}

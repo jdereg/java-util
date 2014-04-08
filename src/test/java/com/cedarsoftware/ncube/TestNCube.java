@@ -15,7 +15,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -4457,6 +4456,40 @@ DELIMITER ;
         assertEquals(cal.get(Calendar.SECOND), 16);
     }
 
+    @Test(expected=CoordinateNotFoundException.class)
+    public void testNoColumnsNoCellsNoDefault() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("nocolumns-nocells-nodefault-error.json");
+
+        Map<String, Object> coord = new HashMap<String, Object>();
+        coord.put("test", "foo");
+
+        ncube.getCell(coord);
+    }
+
+    @Test
+    public void testNoColumnsNoCellsHasDefault() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("nocolumns-nocells-hasdefault.json");
+
+        Map<String, Object> coord = new HashMap<String, Object>();
+        coord.put("test", "foo");
+
+        assertEquals("bar", ncube.getCell(coord));
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testIdInCellDoesNotMatch() throws Exception
+    {
+        NCubeManager.getNCubeFromResource("id-in-cell-does-not-match-columns-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testUrlCommandWithoutValueAndUrl() throws Exception
+    {
+        NCubeManager.getNCubeFromResource("url-command-without-value-and-url-error.json");
+    }
+
     @Test
     public void testCaseInsensitiveCoordinate() throws Exception
     {
@@ -5669,7 +5702,7 @@ DELIMITER ;
     @Test(expected=RuntimeException.class)
     public void testNullCube()
     {
-        NCubeManager.getNCubeFromResource("null.json");
+        NCubeManager.getNCubeFromResource("null-error.json");
     }
 
 
@@ -5829,7 +5862,7 @@ DELIMITER ;
         assertEquals(16, ncube.getCell(coord));
     }
 
-    @Test(expected = IOException.class)
+    @Test(expected = IllegalStateException.class)
     public void testInvalidUrlCommand() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");
@@ -5849,7 +5882,7 @@ DELIMITER ;
         formatter.writeCells(cells);
     }
 
-    @Test(expected = IOException.class)
+    @Test(expected = IllegalStateException.class)
     public void testInvalidColumn() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");

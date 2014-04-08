@@ -1,0 +1,35 @@
+{
+    "ncube":"nullTest",
+    "ruleMode":false,
+    "axes":
+        [
+            {
+                "name":"State",
+                "type":"DISCRETE",
+                "valueType":"STRING",
+                "hasDefault":true,
+                "preferredOrder":1,
+                "multiMatch":false,
+                "columns":
+                    [
+                        {"id":"CA"},
+                        {"id":"OH"},
+                        {"id":"TX"},
+                        {"id":"NJ"},
+                        {"id":"AL"},
+                        {"id":null},
+                        {"id":"ID"}
+                    ]
+            }
+        ],
+    "cells":
+        [
+            {"id":["CA"], "value":"Hey Dude"},
+            {"id":["AL"], "value":"Goo"},
+            {"id":["TX"], "value":"Hey, Y'all"},
+            {"id":["ID"], "value":"Hello, would you like a potato?"},
+            {"id":["NJ"], "value":"What's Up!"},
+            {"id":[null], "value":"What's Up!"},
+            {"id":[],     "value":"Hello"}
+       ]
+}

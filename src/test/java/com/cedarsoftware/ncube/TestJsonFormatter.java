@@ -19,7 +19,7 @@ public class TestJsonFormatter {
     public void testJsonFormatter() throws Exception {
         // when running a single test.
         //List<String> s = new ArrayList<String>();
-        //s.add("testEmptyColumnList.json");
+        //s.add("urlContent.json");
         List<String> s = getAllTestFiles();
         runAllTests(s);
     }
@@ -38,6 +38,8 @@ public class TestJsonFormatter {
                 return s != null && s.endsWith(".json") &&
                         !(s.endsWith("idBasedCubeError.json") ||
                           s.endsWith("idBasedCubeError2.json") ||
+                                s.endsWith("null.json") ||
+                                s.endsWith("arrays.json") ||  /** won't have equivalency **/
                           s.endsWith("testCubeList.json"));
             }
         });

@@ -4,9 +4,12 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.math.BigInteger;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -22,6 +25,72 @@ public class TestJsonFormatter {
         //s.add("urlContent.json");
         List<String> s = getAllTestFiles();
         runAllTests(s);
+    }
+
+    @Test
+    public void testConvertArray() throws Exception {
+        //  Load Arrays Type, write to new formatted type (they'll become Groovy Expressions
+        NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
+
+        Map<String, Object> coord = new HashMap<String, Object>();
+
+        coord.put("Code", "longs");
+        assertEquals(new Long(9223372036854775807L), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "ints");
+        assertEquals(new Integer(2147483647), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "bytes");
+        assertEquals(new Byte((byte)127), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "shorts");
+        assertEquals(new Short((short)32767), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "booleans");
+        assertEquals(Boolean.TRUE, ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(Boolean.FALSE, ((Object[])ncube.getCell(coord))[3]);
+
+        coord.put("Code", "floats");
+        assertEquals(new Float(3.8), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "doubles");
+        assertEquals(new Double(10.1), ((Object[]) ncube.getCell(coord))[2]);
+
+        coord.put("Code", "bigints");
+        assertEquals(new BigInteger("0"), ((Object[]) ncube.getCell(coord))[0]);
+        assertEquals(new BigInteger("9223372036854775807"), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(new BigInteger("147573952589676410000"), ((Object[]) ncube.getCell(coord))[3]);
+
+
+        String s = ncube.toFormattedJson();
+        ncube = NCube.fromSimpleJson(s);
+
+        coord.put("Code", "longs");
+        assertEquals(new Long(9223372036854775807L), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "ints");
+        assertEquals(new Integer(2147483647), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "bytes");
+        assertEquals(new Byte((byte)127), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "shorts");
+        assertEquals(new Short((short)32767), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "booleans");
+        assertEquals(Boolean.TRUE, ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(Boolean.FALSE, ((Object[])ncube.getCell(coord))[3]);
+
+        coord.put("Code", "floats");
+        assertEquals(new Float(3.8), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "doubles");
+        assertEquals(new Double(10.1), ((Object[])ncube.getCell(coord))[2]);
+
+        coord.put("Code", "bigints");
+        assertEquals(new BigInteger("0"), ((Object[]) ncube.getCell(coord))[0]);
+        assertEquals(new BigInteger("9223372036854775807"), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(new BigInteger("147573952589676410000"), ((Object[]) ncube.getCell(coord))[3]);
     }
 
     public List<String> getAllTestFiles()

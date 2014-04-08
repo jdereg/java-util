@@ -92,7 +92,7 @@
         {
             "id":["bigdecimals"],
             "type":"bigdec",
-            "value": [15.1, 16.1, 19.1]
+            "value": [15.1, 16.1, "19.1"]
         },
         {
             "id":["booleans"],

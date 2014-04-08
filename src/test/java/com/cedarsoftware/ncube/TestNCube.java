@@ -2545,8 +2545,6 @@ DELIMITER ;
         assertTrue(p1.compareTo(p2) == 0);
 
         assertTrue(countMatches(ncube.toHtml(), "<tr>") == 8);
-
-        System.out.println(ncube.toFormattedJson());
     }
 
     @Test
@@ -5667,6 +5665,13 @@ DELIMITER ;
         coord.put("code", "RelativeExtExp");
         assertEquals("adult TX", ncube.getCell(coord));
     }
+
+    @Test(expected=RuntimeException.class)
+    public void testNullCube()
+    {
+        NCubeManager.getNCubeFromResource("null.json");
+    }
+
 
     @Test
     public void testExpandableUrlRef()

@@ -108,7 +108,7 @@ public class JsonFormatter extends NCubeFormatter
 
             return _builder.toString();
         }
-        catch (IOException e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException(String.format("Unable to format NCube '%s' into JSON", ncube.getName()), e);
         }
@@ -159,7 +159,7 @@ public class JsonFormatter extends NCubeFormatter
             writeAxis(item);
             comma();
         }
-        _builder.setLength(_builder.length() - 1);
+        uncomma();
         endArray();
         comma();
     }
@@ -206,7 +206,7 @@ public class JsonFormatter extends NCubeFormatter
 
         if (commaWritten)
         {
-            _builder.setLength(_builder.length() - 1);
+            uncomma();
         }
 
         endArray();
@@ -334,32 +334,6 @@ public class JsonFormatter extends NCubeFormatter
         throw new IOException(String.format("Unsupported %s Type:  %s", cell.getClass().getName(), type));
     }
 
-
-    /*
-    public String walkArraysForType(Object[] items) {
-
-        if (items == null || items.length == 0) {
-            return null;
-        }
-
-        String first = null;
-
-        for (Object o : items)
-        {
-            if (first == null) {
-                first = type;
-            }
-
-            if (first != null && type != null && !first.equalsIgnoreCase(type))
-            {
-                return null;
-            }
-        }
-
-        return first;
-    }
-    */
-
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
         _builder.append("\"cells\":");
         if (cells == null || cells.isEmpty()) {
@@ -394,7 +368,7 @@ public class JsonFormatter extends NCubeFormatter
             endObject();
             comma();
         }
-        _builder.setLength(_builder.length() - 1);
+        uncomma();
         endArray();
     }
 
@@ -415,10 +389,15 @@ public class JsonFormatter extends NCubeFormatter
 
         if (commaWritten)
         {
-            _builder.setLength(_builder.length() - 1);
+            uncomma();
         }
         endArray();
         comma();
+    }
+
+    private void uncomma()
+    {
+        _builder.setLength(_builder.length() - 1);
     }
 
     public void writeGroovyObject(Object o) throws IOException {
@@ -449,24 +428,26 @@ public class JsonFormatter extends NCubeFormatter
         }
 
         if (o instanceof Long) {
-            _builder.append((Long)o);
+            _builder.append(o);
             _builder.append('L');
             return;
         }
 
-        if (o instanceof Number) {
-            Number n = (Number)o;
-            _builder.append(n.longValue());
-
-            if (o instanceof BigInteger) {
-                _builder.append('g');
-            } else if (o instanceof Long)
-            {
-                _builder.append('L');
-            } else if (o instanceof Integer) {
-                _builder.append('i');
-            }
+        if (o instanceof BigDecimal)
+        {
+            _builder.append(((BigDecimal)o).toPlainString());
+            _builder.append('g');
             return;
+        }
+
+        if (o instanceof BigInteger)
+        {
+            _builder.append(o);
+            _builder.append('g');
+        }
+
+        if (o instanceof Number) {
+            throw new IllegalArgumentException("Unknown data type: " + o.getClass().getName());
         }
 
         if (o instanceof Boolean) {
@@ -483,7 +464,7 @@ public class JsonFormatter extends NCubeFormatter
                 writeGroovyObject(Array.get(o, i));
                 comma();
             }
-            _builder.setLength(_builder.length() - 1);
+            uncomma();
             endArray();
             _builder.append(" as Object[]");
             _builder.append("\"");
@@ -542,7 +523,7 @@ public class JsonFormatter extends NCubeFormatter
                 writeObject(i.next());
                 comma();
             }
-            _builder.setLength(_builder.length() - 1);
+            uncomma();
             endArray();
             return;
         }
@@ -563,11 +544,12 @@ public class JsonFormatter extends NCubeFormatter
             //  check types
             _builder.append("\"");
             startArray();
-            for (int i=0; i< Array.getLength(o); i++) {
+            int len = Array.getLength(o);
+            for (int i=0; i< len; i++) {
                 writeGroovyObject(Array.get(o, i));
                 comma();
             }
-            _builder.setLength(_builder.length() - 1);
+            uncomma();
             endArray();
             _builder.append(" as Object[]");
             _builder.append("\"");
@@ -598,15 +580,12 @@ public class JsonFormatter extends NCubeFormatter
                 writeObject(it);
                 comma();
             }
-            _builder.setLength(_builder.length() - 1);
+            uncomma();
             endArray();
             return;
         }
 
-
-
-
-        //  TODO: verify - Other types handled as string with no extr quotes (Long, Byte, Short), etc.
+        //  TODO: verify - Other types handled as string with no extra quotes (Long, Byte, Short), etc.
         _builder.append(o.toString());
 
     }

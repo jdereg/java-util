@@ -427,9 +427,20 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
+        if (o instanceof Integer) {
+            _builder.append(o);
+            _builder.append('i');
+            return;
+        }
+
         if (o instanceof Long) {
             _builder.append(o);
             _builder.append('L');
+            return;
+        }
+
+        if (o instanceof Byte || o instanceof Short) {
+            _builder.append(o);
             return;
         }
 
@@ -444,6 +455,7 @@ public class JsonFormatter extends NCubeFormatter
         {
             _builder.append(o);
             _builder.append('g');
+            return;
         }
 
         if (o instanceof Number) {

@@ -13,6 +13,12 @@
                     "value":"ints"
                 },
                 {
+                    "value":"bigints"
+                },
+                {
+                    "value":"booleans"
+                },
+                {
                     "value":"strings"
                 },
                 {
@@ -29,6 +35,16 @@
             "key":{"Code":"ints"},
             "type":"exp",
             "value":"[0L, 1, 4L] as Object[]"
+        },
+        {
+            "key":{"Code":"bigints"},
+            "type":"exp",
+            "value":"[0g, 5g, 600g] as Object[]"
+        },
+        {
+            "key":{"Code":"booleans"},
+            "type":"exp",
+            "value":"[true, false, false, true] as Object[]"
         },
         {
             "key":{"Code":"strings"},

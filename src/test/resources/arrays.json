@@ -10,10 +10,34 @@
             "preferredOrder":0,
             "columns":[
                 {
+                    "id":"bytes"
+                },
+                {
+                    "id":"shorts"
+                },
+                {
                     "id":"ints"
                 },
                 {
+                    "id":"longs"
+                },
+                {
+                    "id":"bigints"
+                },
+                {
                     "id":"strings"
+                },
+                {
+                    "id":"booleans"
+                },
+                {
+                    "id":"floats"
+                },
+                {
+                    "id":"doubles"
+                },
+                {
+                    "id":"bigdecimals"
                 },
                 {
                     "id":"arrays"
@@ -26,12 +50,59 @@
     ],
     "cells":[
         {
+            "id":["bytes"],
+            "type":"byte",
+            "value":[0, 1, 4]
+        },
+        {
+            "id":["shorts"],
+            "type":"short",
+            "value":[0, 1, 63000]
+        },
+        {
             "id":["ints"],
+            "type":"int",
+            "value":[0, 1, 289000]
+        },
+        {
+            "id":["longs"],
+            "type":"long",
+            "value":[0, 1, 4]
+        },
+        {
+            "id":["bigints"],
+            "type":"bigint",
+            "value":[0, 1, 4]
+        },
+        {
+            "id":["ints"],
+            "type":"int",
             "value":[0, 1, 4]
         },
         {
             "id":["strings"],
+            "type":"string",
             "value": ["alpha", "bravo", "charlie"]
+        },
+        {
+            "id":["floats"],
+            "type":"float",
+            "value": [1.0, 2.0, 3.0]
+        },
+        {
+            "id":["doubles"],
+            "type":"double",
+            "value": [8.0, 9.0, 10.1]
+        },
+        {
+            "id":["bigdecimals"],
+            "type":"bigdec",
+            "value": [15.1, 16.1, 19.1]
+        },
+        {
+            "id":["booleans"],
+            "type":"boolean",
+            "value": [true, false, true, false]
         }
     ]
 }

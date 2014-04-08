@@ -6,9 +6,12 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Created by kpartlow on 3/18/14.
@@ -22,6 +25,19 @@ public class TestJsonFormatter {
         //s.add("urlContent.json");
         List<String> s = getAllTestFiles();
         runAllTests(s);
+    }
+
+    @Test
+    public void testConvertArray() throws Exception {
+        //  Load Arrays Type, write to new formatted type (they'll become Groovy Expressions
+        NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
+
+        Map<String, Object> coord = new HashMap<String, Object>();
+        coord.put("Code", "ints");
+        Object[] ints = (Object[])ncube.getCell(coord);
+        assertNotNull(ints);
+        String s = ncube.toFormattedJson();
+        NCube res = NCube.fromSimpleJson(s);
     }
 
     public List<String> getAllTestFiles()

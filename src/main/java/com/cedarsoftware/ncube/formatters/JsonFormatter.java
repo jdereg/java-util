@@ -228,21 +228,29 @@ public class JsonFormatter extends NCubeFormatter
             writeId(c.getId(), true);
             writeType(getColumnType(c.getValue()));
             if (c.getValue() instanceof UrlCommandCell) {
-                UrlCommandCell cmd = (UrlCommandCell)c.getValue();
-                if (cmd.getUrl() != null) {
-                    writeAttribute("url", cmd.getUrl(), false);
-                } else {
-                    if (cmd.getCmd() == null)
-                    {
-                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
-                    }
-                    writeAttribute("value", cmd.getCmd(), false);
-                }
+                writeCommandCell((UrlCommandCell)c.getValue());
             } else {
                 writeValue("value", c.getValue());
             }
         }
         endObject();
+    }
+
+    public void writeCommandCell(UrlCommandCell cmd) throws IOException {
+        if (!cmd.isCacheable()) {
+            writeAttribute("cache", cmd.isCacheable(), true);
+        }
+        if (cmd.getUrl() != null) {
+            writeAttribute("url", cmd.getUrl(), false);
+        }
+        else
+        {
+            if (cmd.getCmd() == null)
+            {
+                throw new IllegalStateException("Command and URL cannot both be null on a command cell, n-cube: " + ncube.getName());
+            }
+            writeAttribute("value", cmd.getCmd(), false);
+        }
     }
 
     /**
@@ -344,29 +352,15 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
         startArray();
-        for (Map.Entry<Set<Column>, ?> item : cells.entrySet()) {
+        for (Map.Entry<Set<Column>, ?> cell : cells.entrySet()) {
             startObject();
-            writeIds(item);
-            writeType(getCellType(item.getValue(), "cell"));
+            writeIds(cell);
+            writeType(getCellType(cell.getValue(), "cell"));
 
-            if ((item.getValue() instanceof UrlCommandCell)) {
-                UrlCommandCell cmd = (UrlCommandCell)item.getValue();
-                if (!cmd.isCacheable()) {
-                    writeAttribute("cache", cmd.isCacheable(), true);
-                }
-                if (cmd.getUrl() != null) {
-                    writeAttribute("url", cmd.getUrl(), false);
-                }
-                else
-                {
-                    if (cmd.getCmd() == null)
-                    {
-                        throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
-                    }
-                    writeAttribute("value", cmd.getCmd(), false);
-                }
+            if ((cell.getValue() instanceof UrlCommandCell)) {
+                writeCommandCell((UrlCommandCell)cell.getValue());
             } else {
-                writeValue("value", item.getValue());
+                writeValue("value", cell.getValue());
             }
             endObject();
             comma();
@@ -403,7 +397,7 @@ public class JsonFormatter extends NCubeFormatter
         _builder.setLength(_builder.length() - 1);
     }
 
-    public void writeGroovyObject(Object o) throws IOException {
+    void writeGroovyObject(Object o) throws IOException {
         if (o instanceof String) {
             _builder.append("'");
             _builder.append(o.toString());
@@ -471,22 +465,6 @@ public class JsonFormatter extends NCubeFormatter
 
         if (o instanceof Boolean) {
             _builder.append(((Boolean)o).booleanValue() ? "true" : "false");
-            return;
-        }
-
-        if (o.getClass().isArray()) {
-            //Class c = o.getClass().getComponentType();
-            //  check types
-            _builder.append("\"");
-            startArray();
-            for (int i=0; i< Array.getLength(o); i++) {
-                writeGroovyObject(Array.get(o, i));
-                comma();
-            }
-            uncomma();
-            endArray();
-            _builder.append(" as Object[]");
-            _builder.append("\"");
             return;
         }
 
@@ -575,6 +553,7 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
+        /**  Never Called.  Keeping just to make sure not needed.
         if (o instanceof UrlCommandCell) {
             UrlCommandCell cmd = (UrlCommandCell)o;
             if (cmd.getUrl() != null)
@@ -603,6 +582,7 @@ public class JsonFormatter extends NCubeFormatter
             endArray();
             return;
         }
+        */
 
         //  TODO: verify - Other types handled as string with no extra quotes (Long, Byte, Short), etc.
         _builder.append(o.toString());

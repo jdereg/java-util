@@ -154,7 +154,10 @@ public class Column implements Comparable<Comparable>
 
 	public String toString()
 	{
-        if (value instanceof Range || value instanceof RangeSet || value instanceof Proximity)
+        // VERIFY:  Removed Proximity because it wasn't a type anymore
+        // Should we have Point2D, Point3D, and LatLong here?  or in formatDiscreteValue?
+        // JD -> Remove this comment when viewed.
+        if (value instanceof Range || value instanceof RangeSet)
         {
             return value.toString();
         }

@@ -1,0 +1,41 @@
+{
+    "ncube":"RuleColumnLoadedWithUrl",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"condition1",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"res://files/rules/ageBracket1.groovy" },
+                { "id":2, "type":"exp", "value":"res://files/rules/ageBracket2.groovy" },
+                { "id":3, "type":"exp", "value":"input.age >= 40" }
+            ]
+        },
+        {
+            "name":"condition2",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":10, "type":"exp", "value":"input.weight < 100" },
+                { "id":20, "type":"exp", "value":"input.weight < 200" },
+                { "id":30, "type":"exp", "value":"input.weight >= 200" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":[1, 10], "type":"exp", "value":"output.age = 'young'; output.weight='light-weight'" },
+        { "id":[2, 10], "type":"exp", "value":"output.age = 'adult'; output.weight='light-weight'" },
+        { "id":[3, 10], "type":"exp", "value":"output.age = 'middle-aged'; output.weight='light-weight'" },
+        { "id":[1, 20], "type":"exp", "value":"output.age = 'young'; output.weight='medium-weight'" },
+        { "id":[2, 20], "type":"exp", "value":"output.age = 'adult'; output.weight='medium-weight'" },
+        { "id":[3, 20], "type":"exp", "value":"output.age = 'middle-aged'; output.weight='medium-weight'" },
+        { "id":[1, 30], "type":"exp", "value":"output.age = 'young'; output.weight='heavy-weight'" },
+        { "id":[2, 30], "type":"exp", "value":"output.age = 'adult'; output.weight='heavy-weight'" },
+        { "id":[3, 30], "type":"exp", "value":"output.age = 'middle-aged'; output.weight='heavy-weight'" }
+    ]
+}

@@ -1,0 +1,1 @@
+input.age < 40

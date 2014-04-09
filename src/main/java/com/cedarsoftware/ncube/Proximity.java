@@ -31,8 +31,11 @@ import static java.lang.Math.abs;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class Proximity
+public final class Proximity
 {
+    private Proximity() {
+    }
+
 	public static double distance(Comparable source, Comparable target)
 	{
         if (source == null || target == null)

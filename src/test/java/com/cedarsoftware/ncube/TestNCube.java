@@ -2546,6 +2546,51 @@ DELIMITER ;
         assertTrue(countMatches(ncube.toHtml(), "<tr>") == 8);
     }
 
+    @Test(expected=RuntimeException.class)
+    public void testNCubeMissingColumnParserError() {
+        NCubeManager.getNCubeFromResource("ncube-missing-column-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testNCubeEmptyColumnsError() {
+        NCubeManager.getNCubeFromResource("ncube-column-not-array-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testNCubeEmptyAxesParseError() {
+        NCubeManager.getNCubeFromResource("ncube-empty-axes-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testNCubeMissingAxesParseError() {
+        NCubeManager.getNCubeFromResource("ncube-missing-axes-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testNCubeMissingNameParseError() {
+        NCubeManager.getNCubeFromResource("ncube-missing-name-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testLatLongParseError() {
+        NCubeManager.getNCubeFromResource("lat-lon-parse-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testDateParseError() {
+        NCubeManager.getNCubeFromResource("date-parse-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testPoint2dParseError() {
+        NCubeManager.getNCubeFromResource("point2d-parse-error.json");
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testPoint3dParseError() {
+        NCubeManager.getNCubeFromResource("point3d-parse-error.json");
+    }
+
     @Test
     public void testLatLonAxisType()
     {
@@ -3418,6 +3463,24 @@ DELIMITER ;
         assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), "1.1.20", true));
         assertEquals(n1, n2);
     }
+
+    /*
+    @Test
+    public void testLoadRuleFromUrl() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url-error.json");
+        //n1.setRuleMode(false);
+
+
+        Map coord = new HashMap();
+        coord.put("age", 17);
+        coord.put("weight", 99);
+        assertTrue(n1.containsCell(coord, false));
+
+        assertEquals("foo", (String) n1.getCell(coord));
+
+    }
+*/
 
     @Test
     public void testContainsCellRuleAxis() throws Exception

@@ -1,0 +1,23 @@
+{
+    "ncube":"Point3dParseError",
+    "ruleMode":false,
+    "axes":[
+        {
+            "name":"Lat / Lon",
+            "type":"NEAREST",
+            "valueType":"COMPARABLE",
+            "preferredOrder":0,
+            "hasDefault":false,
+            "multiMatch":false,
+            "columns":[
+                {
+                    "id":1.0,
+                    "type":"point3d",
+                    "value":"-97.808664"
+                }
+            ]
+        }
+    ],
+    "cells":[
+    ]
+}

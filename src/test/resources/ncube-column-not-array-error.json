@@ -1,0 +1,18 @@
+{
+    "ncube":"EmptyColumnError",
+    "ruleMode":false,
+    "axes":[
+        {
+            "name": "Lat / Lon",
+            "type": "NEAREST",
+            "valueType": "COMPARABLE",
+            "preferredOrder": 0,
+            "hasDefault": false,
+            "multiMatch": false,
+            "columns": { "id":"String" }
+
+        }
+    ],
+    "cells":[
+    ]
+}

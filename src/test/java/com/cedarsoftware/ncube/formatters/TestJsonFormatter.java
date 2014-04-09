@@ -108,6 +108,12 @@ public class TestJsonFormatter {
         formatter.format();
    }
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testWriteObjectException() throws Exception {
+        JsonFormatter formatter = new JsonFormatter(new NCube("foo"));
+        formatter.writeGroovyObject(new ArrayList());
+    }
+
     public List<String> getAllTestFiles()
     {
         URL u = getClass().getClassLoader().getResource("");

@@ -465,7 +465,7 @@ DELIMITER ;
         }
         long stop = System.nanoTime();
         double diff = (stop - start) / 1000.0;
-        println("time to build and read allCellsInBigCube = " + diff / 1000.0);
+//        println("time to build and read allCellsInBigCube = " + diff / 1000.0);
 //        assertTrue(ncube.toHtml() != null);
     }
 
@@ -5896,6 +5896,99 @@ DELIMITER ;
 
         JsonFormatter formatter = new JsonFormatter(ncube);
         formatter.writeColumns(cols);
+    }
+
+    @Test
+    public void testDefaultColumnOnRuleAxis() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleWithDefault.json");
+
+        Map output = new HashMap();
+        Map coord = new HashMap();
+
+        coord.put("state", "OH");
+        coord.put("age", 18);
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "OH 18");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "TX");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "TX 18");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "GA");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "GA 18");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "AZ");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "default 18");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "OH");
+        coord.put("age", 50);
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "OH 50");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "TX");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "TX 50");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "GA");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "GA 50");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "AZ");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "default 50");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "OH");
+        coord.put("age", 85);
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "OH 85");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "TX");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "TX 85");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "GA");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "GA 85");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "AZ");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "default 85");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "OH");
+        coord.put("age", 100);
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "OH default");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "TX");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "TX default");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "GA");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "GA default");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("state", "AZ");
+        ncube.getCell(coord, output);
+        assertEquals(output.get("text"), "default default");
+        assertTrue(ncube.containsCell(coord));
     }
 
     // ---------------------------------------------------------------------------------

@@ -1,0 +1,48 @@
+{
+    "ncube":"ruleWithDefault",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"condition1",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":true,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"input.state == 'OH'" },
+                { "id":2, "type":"exp", "value":"input.state == 'TX'" },
+                { "id":3, "type":"exp", "value":"input.state == 'GA'" }
+            ]
+        },
+        {
+            "name":"condition2",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":true,
+            "preferredOrder":1,
+            "columns":[
+                { "id":10, "type":"exp", "value":"input.age <= 18" },
+                { "id":20, "type":"exp", "value":"input.age > 18 && input.age <= 50" },
+                { "id":30, "type":"exp", "value":"input.age > 50 && input.age <= 85" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":[1, 10], "type":"exp", "value":"output.text='OH 18'" },
+        { "id":[2, 10], "type":"exp", "value":"output.text='TX 18'" },
+        { "id":[3, 10], "type":"exp", "value":"output.text='GA 18'" },
+        { "id":[10], "type":"exp", "value":"output.text='default 18'" },
+        { "id":[1, 20], "type":"exp", "value":"output.text='OH 50'" },
+        { "id":[2, 20], "type":"exp", "value":"output.text='TX 50'" },
+        { "id":[3, 20], "type":"exp", "value":"output.text='GA 50'" },
+        { "id":[20], "type":"exp", "value":"output.text='default 50'" },
+        { "id":[1, 30], "type":"exp", "value":"output.text='OH 85'" },
+        { "id":[2, 30], "type":"exp", "value":"output.text='TX 85'" },
+        { "id":[3, 30], "type":"exp", "value":"output.text='GA 85'" },
+        { "id":[30], "type":"exp", "value":"output.text='default 85'" },
+        { "id":[1], "type":"exp", "value":"output.text='OH default'" },
+        { "id":[2], "type":"exp", "value":"output.text='TX default'" },
+        { "id":[3], "type":"exp", "value":"output.text='GA default'" },
+        { "id":[], "type":"exp", "value":"output.text='default default'"}
+    ]
+}

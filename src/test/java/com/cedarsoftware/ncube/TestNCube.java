@@ -40,6 +40,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -5770,6 +5771,16 @@ DELIMITER ;
         NCubeManager.getNCubeFromResource("null-error.json");
     }
 
+    @Test
+    public void testCoordinateNotFoundException() {
+        RuntimeException r = new RuntimeException();
+        try {
+            throw new CoordinateNotFoundException("foo", r);
+        } catch (Exception e) {
+            assertEquals("foo", e.getMessage());
+            assertSame(r, e.getCause());
+        }
+    }
 
     @Test
     public void testExpandableUrlRef()

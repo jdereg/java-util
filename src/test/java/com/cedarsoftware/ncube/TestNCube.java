@@ -2223,6 +2223,8 @@ DELIMITER ;
         assertTrue(ncube.getNumDimensions() == 0);
     }
 
+
+
     @Test
     public void testRangeSetAxisErrors()
     {
@@ -5924,6 +5926,16 @@ DELIMITER ;
         coord.put("method", "qux");
         assertEquals(16, ncube.getCell(coord));
     }
+
+    @Test(expected = RuntimeException.class)
+    public void testCommandCellReferencedCubeNotFoundOnExpandUrl() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("expand-url-cube-not-found-error.json");
+        Map<String, Object> map = new HashMap<String,Object>();
+        map.put("Sites", "StringFromLocalUrl");
+        ncube.getCell(map);
+    }
+
 
     @Test(expected = IllegalStateException.class)
     public void testInvalidUrlCommand() throws Exception

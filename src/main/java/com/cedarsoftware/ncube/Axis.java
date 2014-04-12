@@ -1245,7 +1245,7 @@ public class Axis
         }
     }
 
-    List<Column> getColumnsWithoutDefault()
+    public List<Column> getColumnsWithoutDefault()
     {
         if (defaultCol != null)
         {

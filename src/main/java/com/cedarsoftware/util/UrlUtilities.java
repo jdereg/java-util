@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class UrlUtilities
+public final class UrlUtilities
 {
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
     private static String _referer = null;

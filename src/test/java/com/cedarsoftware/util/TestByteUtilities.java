@@ -3,6 +3,9 @@ package com.cedarsoftware.util;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
+
 public class TestByteUtilities
 {
 	private byte[] _array1 = new byte[] { -1, 0};
@@ -10,7 +13,19 @@ public class TestByteUtilities
 	
 	private String _str1 = "FF00";
 	private String _str2 = "01234567";
-	
+
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Class c = ByteUtilities.class;
+        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+
+        Constructor<ByteUtilities> con = c.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
+
 	@Test
 	public void testDecode() 
 	{

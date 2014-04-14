@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.io.UnsupportedEncodingException;
+
 /**
  * Useful String utilities for common tasks
  *
@@ -133,6 +135,23 @@ public final class StringUtilities
         }
 
         return bytes;
+    }
+
+    /**
+     * Convert a String into a byte[] with a particular encoding.
+     * Preferable used when the encoding is one of the guaranteed Java types
+     * and you don't want to have to catch the UnsupportedEncodingException
+     * required by Java
+     *
+     * @param s string to encode into bytes
+     * @param encoding
+     */
+    public static byte[] getBytes(String s, String encoding) {
+        try {
+            return s.getBytes(encoding);
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalArgumentException(String.format("Invalid Encoding:  %s", encoding), e);
+        }
     }
 
     /**

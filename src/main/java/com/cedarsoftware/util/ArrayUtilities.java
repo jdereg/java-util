@@ -21,7 +21,7 @@ import java.lang.reflect.Array;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ArrayUtilities
+public final class ArrayUtilities
 {
     /**
      * Immutable common arrays.

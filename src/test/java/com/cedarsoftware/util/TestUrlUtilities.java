@@ -4,6 +4,8 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.Proxy;
 import java.util.HashMap;
 
@@ -35,6 +37,19 @@ public class TestUrlUtilities
     private static final String httpsGoogleUrl = "https://www.google.com";
     private static final String domain  = "myotherdrive.com";
     private static final String httpUrl = "http://www.myotherdrive.com";
+
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Class c = UrlUtilities.class;
+        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+
+        Constructor<UrlUtilities> con = c.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
+
 
     @Test
     public void testGetContentFromUrlAsString() throws Exception

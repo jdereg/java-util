@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.9.0</version>
+  <version>1.9.1</version>
 </dependency>
 
 <dependency>
@@ -40,6 +40,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.9.1
+ * Floating-point allow difference by epsilon value (currently hard-coded on DeepEquals.  Will likely be optional parameter in future version).
 * 1.9.0
  * MathUtilities added.  Currently, variable length minimum(arg0, arg1, ... argn) and maximum() functions added.  Available for long, double, BigInteger, and BigDecimal.   These cover the smaller types.
  * CaseInsensitiveMap and CaseInsensitiveSet keySet() and entrySet() are faster as they do not make a copy of the entries.  Internally, CaseInsensitiveString caches it's hash, speeding up repeated access.

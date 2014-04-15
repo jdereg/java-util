@@ -51,6 +51,7 @@ public class DeepEquals
 {
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<Class, Boolean>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<Class, Boolean>();
+    private static double eplison = 1e-6;    
 
     private static class DualKey
     {
@@ -130,6 +131,12 @@ public class DeepEquals
             if (!dualKey._key1.getClass().equals(dualKey._key2.getClass()))
             {   // Must be same class
                 return false;
+            }
+            
+            if (dualKey._key1 instanceof Double || dualKey._key1 instanceof Float)
+            {
+            	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, eplison))
+            		continue;
             }
 
             // Handle all [] types.  In order to be equal, the arrays must be the same 
@@ -433,6 +440,47 @@ public class DeepEquals
     }
 
     /**
+     * Compare if two floating point numbers are within a given range
+     */
+    private static boolean compareFloatingPointNumbers(Object a, Object b, double epsilon)
+    {
+        double a1 = a instanceof Double ? (Double) a : (Float) a;
+        double b1 = b instanceof Double ? (Double) b : (Float) b;
+        return nearlyEqual(a1, b1, epsilon);
+    }
+
+    /**
+     * Correcly handles floating point comparisions. <br/>
+     * source: http://floating-point-gui.de/errors/comparison/
+     *
+     * @param a       first number
+     * @param b       second number
+     * @param epsilon
+     * @return true if a and b are close enough
+     */
+    private static boolean nearlyEqual(double a, double b, double epsilon)
+    {
+        final double absA = Math.abs(a);
+        final double absB = Math.abs(b);
+        final double diff = Math.abs(a - b);
+
+        if (a == b)
+        { // shortcut, handles infinities
+            return true;
+        }
+        else if (a == 0 || b == 0 || diff < Double.MIN_NORMAL)
+        {
+            // a or b is zero or both are extremely close to it
+            // relative error is less meaningful here
+            return diff < (epsilon * Double.MIN_NORMAL);
+        }
+        else
+        { // use relative error
+            return diff / (absA + absB) < epsilon;
+        }
+    }
+
+    /**
      * Determine if the passed in class has a non-Object.equals() method.  This
      * method caches its results in static ConcurrentHashMap to benefit
      * execution performance.
@@ -517,6 +565,14 @@ public class DeepEquals
                 stack.addAll(0, ((Map)obj).keySet());
                 stack.addAll(0, ((Map)obj).values());
                 continue;
+            }
+            
+            if (obj instanceof Double || obj instanceof Float)
+            {
+            	// just take the integral value for hashcode 
+            	// equality tests things more comprehensively 
+            	stack.add(Math.round(((Number) obj).doubleValue()));
+            	continue;
             }
 
             if (hasCustomHashCode(obj.getClass()))

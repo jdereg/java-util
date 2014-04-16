@@ -51,9 +51,9 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class JsonFormatter implements NCubeFormatter
+public class JsonFormatter extends NCubeFormatter
 {
-    private StringBuilder _builder = new StringBuilder();
+    StringBuilder _builder = new StringBuilder();
 
     static final ThreadLocal<SimpleDateFormat> _dateFormat = new ThreadLocal<SimpleDateFormat>()
     {
@@ -72,46 +72,32 @@ public class JsonFormatter implements NCubeFormatter
     private Map<Long, Long> _generatedIds = new HashMap<Long, Long>();
     private long _idCounter;
 
-    //private NCube _ncube;
-    /*
-    public String format(Collection<NCube> cubes)
+    public JsonFormatter(NCube ncube)
     {
-        startArray();
-        for (NCube c : cubes)
-        {
-            writeNCube(c);
-        }
-        endArray();
-        return _builder.toString();
+        super(ncube);
+        this.ncube = ncube;
     }
-    */
 
     /**
      * Use this API to generate a JSON view of this NCube.
-     *
+     * @param headers ignored
      * @return String containing a JSON view of this NCube.
      */
-    public String format(NCube ncube)
+    public String format(String ... headers)
     {
-        writeNCube(ncube);
-        return _builder.toString();
-    }
-
-    public void writeNCube(NCube ncube) {
         try
         {
+            _builder.setLength(0);
             _userIds.clear();
             _generatedIds.clear();
             _idCounter = 0;
-
             walkIds(ncube.getAxes());
 
             startObject();
 
             writeAttribute("ncube", ncube.getName(), true);
             writeAttribute("ruleMode", ncube.getRuleMode(), true);
-            if (ncube.getDefaultCellValue() != null)
-            {
+            if (ncube.getDefaultCellValue() != null) {
                 writeValue("defaultCellValue", ncube.getDefaultCellValue());
                 comma();
             }
@@ -119,6 +105,8 @@ public class JsonFormatter implements NCubeFormatter
             writeCells(ncube.getCellMap());
 
             endObject();
+
+            return _builder.toString();
         }
         catch (Exception e)
         {
@@ -126,20 +114,14 @@ public class JsonFormatter implements NCubeFormatter
         }
     }
 
-    public void walkIds(List<Axis> axes)
-    {
+    public void walkIds(List<Axis> axes) {
         HashSet<Comparable> set = new HashSet<Comparable>();
-        for (Axis item : axes)
-        {
-            for (Column c : item.getColumns())
-            {
-                if (!c.isDefault())
-                {
+        for (Axis item : axes) {
+            for (Column c : item.getColumns()) {
+                if (!c.isDefault()) {
                     // only use value for id on String and Longs
-                    if ((c.getValue() instanceof String) || (c.getValue() instanceof Long))
-                    {
-                        if (!set.contains(c.getValue()))
-                        {
+                    if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
+                        if (!set.contains(c.getValue())) {
                             set.add(c.getValue());
                             _userIds.put(c.getId(), c.getValue());
                         }
@@ -149,38 +131,31 @@ public class JsonFormatter implements NCubeFormatter
         }
     }
 
-    public void startArray()
-    {
+    public void startArray() {
         _builder.append("[");
     }
 
-    public void endArray()
-    {
+    public void endArray() {
         _builder.append("]");
     }
 
-    public void startObject()
-    {
+    public void startObject() {
         _builder.append("{");
     }
 
-    public void endObject()
-    {
+    public void endObject() {
         _builder.append("}");
     }
 
-    public void comma()
-    {
+    public void comma() {
         _builder.append(",");
     }
 
-    public void writeAxes(List<Axis> axes) throws IOException
-    {
+    public void writeAxes(List<Axis> axes) throws IOException {
         _builder.append(String.format(_quotedStringFormat, "axes"));
         _builder.append(':');
         startArray();
-        for (Axis item : axes)
-        {
+        for (Axis item : axes) {
             writeAxis(item);
             comma();
         }
@@ -189,6 +164,7 @@ public class JsonFormatter implements NCubeFormatter
         comma();
     }
 
+    // default is false, so no need to write those out.
     public void writeAxis(Axis a) throws IOException
     {
         startObject();
@@ -207,8 +183,7 @@ public class JsonFormatter implements NCubeFormatter
         endObject();
     }
 
-    public void writeColumns(List<Column> columns) throws IOException
-    {
+    public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
 
         /*
@@ -223,8 +198,7 @@ public class JsonFormatter implements NCubeFormatter
 
         boolean commaWritten = false;
 
-        for (Column item : columns)
-        {
+        for(Column item : columns ) {
             if (!item.isDefault())
             {
                 commaWritten = true;
@@ -241,49 +215,39 @@ public class JsonFormatter implements NCubeFormatter
         endArray();
     }
 
-    public void writeColumn(Column c) throws IOException
-    {
+    public void writeColumn(Column c) throws IOException {
         startObject();
         //  Check to see if id exists anywhere. then optimize
 
         Object o = _userIds.get(c.getId());
 
-        if (o != null && o.equals(c.getValue()))
-        {
+        if (o != null && o.equals(c.getValue())) {
             writeType(getColumnType(c.getValue()));
             writeId(c.getId(), false);
-        }
-        else
-        {
+        } else {
             writeId(c.getId(), true);
             writeType(getColumnType(c.getValue()));
-            if (c.getValue() instanceof UrlCommandCell)
-            {
-                writeCommandCell((UrlCommandCell) c.getValue());
-            }
-            else
-            {
+            if (c.getValue() instanceof UrlCommandCell) {
+                writeCommandCell((UrlCommandCell)c.getValue());
+            } else {
                 writeValue("value", c.getValue());
             }
         }
         endObject();
     }
 
-    public void writeCommandCell(UrlCommandCell cmd) throws IOException
-    {
-        if (!cmd.isCacheable())
-        {
+    public void writeCommandCell(UrlCommandCell cmd) throws IOException {
+        if (!cmd.isCacheable()) {
             writeAttribute("cache", cmd.isCacheable(), true);
         }
-        if (cmd.getUrl() != null)
-        {
+        if (cmd.getUrl() != null) {
             writeAttribute("url", cmd.getUrl(), false);
         }
         else
         {
             if (cmd.getCmd() == null)
             {
-                throw new IllegalStateException("Command and URL cannot both be null on a command cell");
+                throw new IllegalStateException("Command and URL cannot both be null on a command cell, n-cube: " + ncube.getName());
             }
             writeAttribute("value", cmd.getCmd(), false);
         }
@@ -293,38 +257,30 @@ public class JsonFormatter implements NCubeFormatter
      * According to parseJsonValue reading in, if your item is one of the following end types it does not need to
      * specify the end type:  String, Long, Boolean, Double.  These items will all be picked up automatically
      * so to save on those types I don't write out the type.
-     *
      * @param type Type to write, if null don't write anything because its a default type
      */
-    public void writeType(String type) throws IOException
-    {
-        if (type == null)
-        {
+    public void writeType(String type) throws IOException {
+        if (type == null) {
             return;
         }
 
         writeAttribute("type", type, true);
     }
 
-    private String getColumnType(Object o) throws IOException
-    {
-        if (o instanceof Range || o instanceof RangeSet)
-        {
+    private String getColumnType(Object o) throws IOException {
+        if (o instanceof Range || o instanceof RangeSet) {
             return null;
         }
 
-        if (o instanceof LatLon)
-        {
+        if (o instanceof LatLon) {
             return "latlon";
         }
 
-        if (o instanceof Point2D)
-        {
+        if (o instanceof Point2D) {
             return "point2d";
         }
 
-        if (o instanceof Point3D)
-        {
+        if (o instanceof Point3D) {
             return "point3d";
         }
 
@@ -333,43 +289,35 @@ public class JsonFormatter implements NCubeFormatter
 
     String getCellType(Object cell, String type) throws IOException
     {
-        if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean))
-        {
+        if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
             return null;
         }
 
-        if (cell instanceof BigDecimal)
-        {
+        if (cell instanceof BigDecimal) {
             return "bigdec";
         }
 
-        if (cell instanceof Float)
-        {
+        if (cell instanceof Float) {
             return "float";
         }
 
-        if (cell instanceof Integer)
-        {
+        if (cell instanceof Integer) {
             return "int";
         }
 
-        if (cell instanceof BigInteger)
-        {
+        if (cell instanceof BigInteger) {
             return "bigint";
         }
 
-        if (cell instanceof Byte)
-        {
+        if (cell instanceof Byte) {
             return "byte";
         }
 
-        if (cell instanceof Short)
-        {
+        if (cell instanceof Short) {
             return "short";
         }
 
-        if (cell instanceof Date)
-        {
+        if (cell instanceof Date) {
             return "date";
         }
 
@@ -378,50 +326,40 @@ public class JsonFormatter implements NCubeFormatter
             return "binary";
         }
 
-        if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray())
-        {
+        if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray()) {
             return "exp";
         }
 
-        if (cell instanceof GroovyMethod)
-        {
+        if (cell instanceof GroovyMethod) {
             return "method";
         }
 
-        if (cell instanceof GroovyTemplate)
-        {
+        if (cell instanceof GroovyTemplate) {
             return "template";
         }
 
-        if (cell instanceof StringUrlCmd)
-        {
+        if (cell instanceof StringUrlCmd) {
             return "string";
         }
 
         throw new IllegalArgumentException(String.format("Unsupported %s Type:  %s", cell.getClass().getName(), type));
     }
 
-    public void writeCells(Map<Set<Column>, ?> cells) throws IOException
-    {
+    public void writeCells(Map<Set<Column>, ?> cells) throws IOException {
         _builder.append("\"cells\":");
-        if (cells == null || cells.isEmpty())
-        {
+        if (cells == null || cells.isEmpty()) {
             _builder.append("[]");
             return;
         }
         startArray();
-        for (Map.Entry<Set<Column>, ?> cell : cells.entrySet())
-        {
+        for (Map.Entry<Set<Column>, ?> cell : cells.entrySet()) {
             startObject();
             writeIds(cell);
             writeType(getCellType(cell.getValue(), "cell"));
 
-            if ((cell.getValue() instanceof UrlCommandCell))
-            {
-                writeCommandCell((UrlCommandCell) cell.getValue());
-            }
-            else
-            {
+            if ((cell.getValue() instanceof UrlCommandCell)) {
+                writeCommandCell((UrlCommandCell)cell.getValue());
+            } else {
                 writeValue("value", cell.getValue());
             }
             endObject();
@@ -432,18 +370,15 @@ public class JsonFormatter implements NCubeFormatter
     }
 
 
-    public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException
-    {
+    public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException {
 
         _builder.append("\"id\":");
         startArray();
 
         boolean commaWritten = false;
 
-        for (Column c : item.getKey())
-        {
-            if (!c.isDefault())
-            {
+        for (Column c : item.getKey()) {
+            if (!c.isDefault()) {
                 commaWritten = true;
                 writeIdValue(c.getId(), true);
             }
@@ -462,47 +397,40 @@ public class JsonFormatter implements NCubeFormatter
         _builder.setLength(_builder.length() - 1);
     }
 
-    void writeGroovyObject(Object o) throws IOException
-    {
-        if (o instanceof String)
-        {
+    void writeGroovyObject(Object o) throws IOException {
+        if (o instanceof String) {
             _builder.append("'");
             _builder.append(o.toString());
             _builder.append("'");
             return;
         }
 
-        if (o instanceof GroovyExpression)
-        {
+        if (o instanceof GroovyExpression) {
             _builder.append("'");
-            _builder.append(((GroovyExpression) o).getCmd());
+            _builder.append(((GroovyExpression)o).getCmd());
             _builder.append("'");
             return;
         }
 
-        if (o instanceof Double)
-        {
-            _builder.append(String.format(_singleDoubleFormat, ((Double) o).doubleValue()));
+        if (o instanceof Double) {
+            _builder.append(String.format(_singleDoubleFormat, ((Double)o).doubleValue()));
             _builder.append('d');
             return;
         }
 
-        if (o instanceof Float)
-        {
-            _builder.append(String.format(_singleDoubleFormat, ((Float) o).floatValue()));
+        if (o instanceof Float) {
+            _builder.append(String.format(_singleDoubleFormat, ((Float)o).floatValue()));
             _builder.append('f');
             return;
         }
 
-        if (o instanceof Integer)
-        {
+        if (o instanceof Integer) {
             _builder.append(o);
             _builder.append('i');
             return;
         }
 
-        if (o instanceof Long)
-        {
+        if (o instanceof Long) {
             _builder.append(o);
             _builder.append('L');
             return;
@@ -515,8 +443,7 @@ public class JsonFormatter implements NCubeFormatter
             return;
         }
 
-        if (o instanceof Short)
-        {
+        if (o instanceof Short) {
             _builder.append(o);
             _builder.append("as Short");
             return;
@@ -524,7 +451,7 @@ public class JsonFormatter implements NCubeFormatter
 
         if (o instanceof BigDecimal)
         {
-            _builder.append(((BigDecimal) o).toPlainString());
+            _builder.append(((BigDecimal)o).toPlainString());
             _builder.append('g');
             return;
         }
@@ -536,55 +463,47 @@ public class JsonFormatter implements NCubeFormatter
             return;
         }
 
-        if (o instanceof Boolean)
-        {
-            _builder.append(((Boolean) o).booleanValue() ? "true" : "false");
+        if (o instanceof Boolean) {
+            _builder.append(((Boolean)o).booleanValue() ? "true" : "false");
             return;
         }
 
         throw new IllegalArgumentException("Unknown Groovy Type : " + o.getClass());
     }
 
-    void writeObject(Object o) throws IOException
-    {
-        if (o == null)
-        {
+    public void writeObject(Object o) throws IOException {
+        if (o == null) {
             _builder.append("null");
             return;
         }
 
-        if (o instanceof String)
-        {
+        if (o instanceof String) {
             StringWriter w = new StringWriter();
             JsonWriter.writeJsonUtf8String(o.toString(), w);
             _builder.append(w.toString());
             return;
         }
 
-        if (o instanceof LatLon)
-        {
-            LatLon l = (LatLon) o;
+        if (o instanceof LatLon) {
+            LatLon l = (LatLon)o;
             _builder.append(String.format(_twoDoubleFormat, l.getLat(), l.getLon()));
             return;
         }
 
-        if (o instanceof Point2D)
-        {
-            Point2D l = (Point2D) o;
+        if (o instanceof Point2D) {
+            Point2D l = (Point2D)o;
             _builder.append(String.format(_twoDoubleFormat, l.getX(), l.getY()));
             return;
         }
 
-        if (o instanceof Point3D)
-        {
-            Point3D p = (Point3D) o;
+        if (o instanceof Point3D) {
+            Point3D p = (Point3D)o;
             _builder.append(String.format(_threeDoubleFormat, p.getX(), p.getY(), p.getZ()));
             return;
         }
 
-        if (o instanceof Range)
-        {
-            Range r = (Range) o;
+        if (o instanceof Range) {
+            Range r = (Range)o;
             startArray();
             writeObject(r.getLow());
             comma();
@@ -593,13 +512,11 @@ public class JsonFormatter implements NCubeFormatter
             return;
         }
 
-        if (o instanceof RangeSet)
-        {
-            RangeSet r = (RangeSet) o;
+        if (o instanceof RangeSet) {
+            RangeSet r = (RangeSet)o;
             Iterator i = r.iterator();
             startArray();
-            while (i.hasNext())
-            {
+            while (i.hasNext()) {
                 writeObject(i.next());
                 comma();
             }
@@ -608,28 +525,24 @@ public class JsonFormatter implements NCubeFormatter
             return;
         }
 
-        if (o instanceof Date)
-        {
+        if (o instanceof Date) {
             _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date) o)));
             return;
         }
 
-        if (o instanceof byte[])
-        {
-            _builder.append(String.format(_quotedStringFormat, StringUtilities.encode((byte[]) o)));
+        if (o instanceof byte[]) {
+            _builder.append(String.format(_quotedStringFormat, StringUtilities.encode((byte[])o)));
             return;
         }
 
 
-        if (o.getClass().isArray())
-        {
+        if (o.getClass().isArray()) {
             //Class c = o.getClass().getComponentType();
             //  check types
             _builder.append("\"");
             startArray();
             int len = Array.getLength(o);
-            for (int i = 0; i < len; i++)
-            {
+            for (int i=0; i< len; i++) {
                 writeGroovyObject(Array.get(o, i));
                 comma();
             }
@@ -641,72 +554,65 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         /**  Never Called.  Keeping just to make sure not needed.
-         if (o instanceof UrlCommandCell) {
-         UrlCommandCell cmd = (UrlCommandCell)o;
-         if (cmd.getUrl() != null)
-         {
-         writeObject(cmd.getUrl());
-         }
-         else
-         {
-         if (cmd.getCmd() == null)
-         {
-         throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
-         }
-         writeObject(cmd.getCmd());
-         }
-         return;
-         }
+        if (o instanceof UrlCommandCell) {
+            UrlCommandCell cmd = (UrlCommandCell)o;
+            if (cmd.getUrl() != null)
+            {
+                writeObject(cmd.getUrl());
+            }
+            else
+            {
+                if (cmd.getCmd() == null)
+                {
+                    throw new IllegalStateException("Command and URL cannot both be null, n-cube: " + ncube.getName());
+                }
+                writeObject(cmd.getCmd());
+            }
+            return;
+        }
 
-         if (o instanceof Collection) {
-         Collection c = (Collection)o;
-         startArray();
-         for (Object it : c) {
-         writeObject(it);
-         comma();
-         }
-         uncomma();
-         endArray();
-         return;
-         }
-         */
+        if (o instanceof Collection) {
+            Collection c = (Collection)o;
+            startArray();
+            for (Object it : c) {
+                writeObject(it);
+                comma();
+            }
+            uncomma();
+            endArray();
+            return;
+        }
+        */
 
         //  TODO: verify - Other types handled as string with no extra quotes (Long, Byte, Short), etc.
         _builder.append(o.toString());
 
     }
 
-    public void writeValue(String attr, Object o) throws IOException
-    {
+    public void writeValue(String attr, Object o) throws IOException {
         _builder.append(String.format(_quotedStringFormat, attr));
         _builder.append(':');
 
         writeObject(o);
     }
 
-    public void writeId(Long longId, boolean addComma) throws IOException
-    {
+    public void writeId(Long longId, boolean addComma) throws IOException {
         _builder.append(String.format(_quotedStringFormat, "id"));
         _builder.append(':');
 
         writeIdValue(longId, addComma);
     }
 
-    public void writeIdValue(Long longId, boolean addComma) throws IOException
-    {
+    public void writeIdValue(Long longId, boolean addComma) throws IOException {
 
         Object userId = _userIds.get(longId);
 
-        if (userId != null)
-        {
+        if (userId != null) {
             writeObject(userId);
-        }
-        else
-        {
+        } else {
             Long generatedId = _generatedIds.get(longId);
 
-            if (generatedId == null)
-            {
+            if (generatedId == null) {
                 generatedId = ++_idCounter;
                 _generatedIds.put(longId, generatedId);
             }
@@ -715,14 +621,12 @@ public class JsonFormatter implements NCubeFormatter
             _builder.append(".0");
         }
 
-        if (addComma)
-        {
+        if (addComma) {
             comma();
         }
     }
 
-    public void writeAttribute(String name, String value, boolean includeComma) throws IOException
-    {
+    public void writeAttribute(String name, String value, boolean includeComma) throws IOException {
         StringWriter w = new StringWriter(value.length());
         JsonWriter.writeJsonUtf8String(value, w);
 
@@ -730,30 +634,25 @@ public class JsonFormatter implements NCubeFormatter
         _builder.append(':');
         _builder.append(w.toString());
 
-        if (includeComma)
-        {
+        if (includeComma) {
             _builder.append(",");
         }
     }
 
-    public void writeAttribute(String name, long value, boolean includeComma)
-    {
+    public void writeAttribute(String name, long value, boolean includeComma) {
         _builder.append(String.format(_quotedStringFormat, name));
         _builder.append(":");
         _builder.append(value);
-        if (includeComma)
-        {
+        if (includeComma) {
             _builder.append(",");
         }
     }
 
-    public void writeAttribute(String name, boolean value, boolean includeComma)
-    {
+    public void writeAttribute(String name, boolean value, boolean includeComma) {
         _builder.append(String.format(_quotedStringFormat, name));
         _builder.append(":");
         _builder.append(value);
-        if (includeComma)
-        {
+        if (includeComma) {
             _builder.append(",");
         }
     }

@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.proximity.Distance;
 import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.UniqueIdGenerator;
 
@@ -154,10 +155,7 @@ public class Column implements Comparable<Comparable>
 
 	public String toString()
 	{
-        // VERIFY:  Removed Proximity because it wasn't a type anymore
-        // Should we have Point2D, Point3D, and LatLong here?  or in formatDiscreteValue?
-        // JD -> Remove this comment when viewed.
-        if (value instanceof Range || value instanceof RangeSet)
+        if (value instanceof Range || value instanceof RangeSet || value instanceof Distance)
         {
             return value.toString();
         }

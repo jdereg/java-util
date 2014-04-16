@@ -46,15 +46,15 @@ import java.util.regex.Pattern;
  */
 public class Axis
 {
-    public static final int SORTED = 0;
-    public static final int DISPLAY = 1;
-    final long id;
-    private String name;
-    private final AxisType type;
-    private final AxisValueType valueType;
-    private final List<Column> columns = new ArrayList<Column>();
+	public static final int SORTED = 0;
+	public static final int DISPLAY = 1;
+	final long id;
+	private String name;
+	private final AxisType type;
+	private final AxisValueType valueType;
+	private final List<Column> columns = new ArrayList<Column>();
     private Column defaultCol;
-    private int preferredOrder = SORTED;
+	private int preferredOrder = SORTED;
     private boolean multiMatch = false;
     private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
 
@@ -69,21 +69,21 @@ public class Axis
 
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
-    {
-        this(name, type, valueType, hasDefault, SORTED);
-    }
+	{
+		this(name, type, valueType, hasDefault, SORTED);
+	}
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
     {
         this(name, type, valueType, hasDefault, order, false);
     }
 
-    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, boolean multiMatch)
-    {
-        this.name = name;
-        this.type = type;
+	public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, boolean multiMatch)
+	{
+		this.name = name;
+		this.type = type;
         this.preferredOrder = order;
-        this.valueType = valueType;
+		this.valueType = valueType;
         this.multiMatch = multiMatch;
         if (type == AxisType.RULE)
         {
@@ -109,14 +109,14 @@ public class Axis
             idToCol.put(defaultCol.id, defaultCol);
         }
         id = UniqueIdGenerator.getUniqueId();
-    }
+	}
 
     /**
      * Scaffolding is extra, indexing structures (transient members) that are not part of
      * the persistent state, but are created and maintained internally so that searches for
      * SETs (RANGE_SET)s are O(Log(n)) or better O(1) for the discrete value in a RANGE_SET.
      * Variables 'discreteToCol' and 'rangeToCol' fall into this category.
-     * <p/>
+     *
      * All column ids are mapped to the column instances to support the setCellById(),
      * getCellByIdNoExecute(), removeCellById(), and containsCellById().  Variable
      * 'idToCol' is the scaffolding member that maintains this relationship.  This is built-in
@@ -143,7 +143,6 @@ public class Axis
 
     /**
      * Turn on multiMatch for this axis.
-     *
      * @param state boolean true turns on multiMatch, false turns it off.
      */
     public void setMultiMatch(boolean state)
@@ -176,14 +175,14 @@ public class Axis
             return;
         }
 
-        RangeSet set = (RangeSet) column.getValue();
+        RangeSet set = (RangeSet)column.getValue();
         if (set == null)
         {   // Default column being processed
             return;
         }
 
         final int len = set.size();
-        for (int i = 0; i < len; i++)
+        for (int i=0; i < len; i++)
         {
             Comparable elem = set.get(i);
             if (elem instanceof Range)
@@ -225,7 +224,7 @@ public class Axis
         s.append("  preferred Order: ");
         s.append(getColumnOrder());
         s.append("\n");
-
+        
         for (Comparable value : columns)
         {
             s.append("  ");
@@ -236,42 +235,41 @@ public class Axis
         return s.toString();
     }
 
-    public String getName()
-    {
-        return name;
-    }
+	public String getName() 
+	{
+		return name;
+	}
 
-    void setName(String name)
-    {
-        this.name = name;
-    }
+	void setName(String name)
+	{
+		this.name = name;
+	}
 
-    public AxisType getType()
-    {
-        return type;
-    }
+	public AxisType getType() 
+	{
+		return type;
+	}
 
-    public AxisValueType getValueType()
-    {
-        return valueType;
-    }
-
-    public List<Column> getColumns()
-    {
+	public AxisValueType getValueType() 
+	{
+		return valueType;
+	}
+	
+	public List<Column> getColumns()
+	{
         List<Column> cols = new ArrayList<Column>(columns);
-        if (preferredOrder == SORTED)
-        {
-            return cols;    // Return a copy of the columns, not our internal values list.
-        }
-        sortColumnsByDisplayOrder(cols);
-        return cols;
-    }
+		if (preferredOrder == SORTED)
+		{
+			return cols;	// Return a copy of the columns, not our internal values list.
+		}
+		sortColumnsByDisplayOrder(cols);
+		return cols;
+	}
 
     /**
      * Given the passed in 'raw' value, get a Column from the passed in value, which entails
      * converting the 'raw' value to the correct type, promoting the value to the appropriate
      * internal value for comparison, and so on.
-     *
      * @param value Comparable typically a primitive, but can also be an n-cube Range, RangeSet, CommandCell,
      *              or 2D, 3D, or LatLon
      * @return a Column with the up-promoted value as the column's value, and a unique ID on the column.  If
@@ -301,7 +299,7 @@ public class Axis
             }
             else if (type == AxisType.RANGE)
             {
-                Range range = (Range) v;
+                Range range = (Range)v;
                 if (!multiMatch && doesOverlap(range))
                 {
                     throw new AxisOverlapException("Passed in Range overlaps existing Range on axis '" + name + "'");
@@ -309,7 +307,7 @@ public class Axis
             }
             else if (type == AxisType.SET)
             {
-                RangeSet set = (RangeSet) v;
+                RangeSet set = (RangeSet)v;
                 if (!multiMatch && doesOverlap(set))
                 {
                     throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis '" + name + "'");
@@ -334,8 +332,8 @@ public class Axis
         return new Column(v);
     }
 
-    public Column addColumn(Comparable value)
-    {
+	public Column addColumn(Comparable value)
+	{
         Column column = createColumnFromValue(value);
 
         if (column.getValue() == null)
@@ -358,24 +356,23 @@ public class Axis
     }
 
     /**
-     * This method deletes a column from an Axis.  It is intentionally package
-     * scoped because there are two parts to deleting a column - this removes
-     * the column from the Axis, the other part removes the Cells that reference
-     * the column (that is within NCube).
-     *
-     * @param value Comparable value used to identify the column to delete.
-     * @return Column that was deleted, or null if no column would be deleted.
-     */
-    Column deleteColumn(Comparable value)
-    {
-        Column col = findColumn(value);
-        if (col == null)
-        {    // Not found.
-            return null;
-        }
+	 * This method deletes a column from an Axis.  It is intentionally package
+	 * scoped because there are two parts to deleting a column - this removes
+	 * the column from the Axis, the other part removes the Cells that reference
+	 * the column (that is within NCube).
+	 * @param value Comparable value used to identify the column to delete.
+	 * @return Column that was deleted, or null if no column would be deleted.
+	 */
+	Column deleteColumn(Comparable value)
+	{
+		Column col = findColumn(value);
+		if (col == null)
+		{	// Not found.
+			return null;
+		}
 
         return deleteColumnById(col.id);
-    }
+	}
 
     Column deleteColumnById(long id)
     {
@@ -435,21 +432,21 @@ public class Axis
     }
 
     public boolean moveColumn(int curPos, int newPos)
-    {
-        if (preferredOrder != DISPLAY)
-        {
-            throw new IllegalStateException("Axis '" + name + "' must be in DISPLAY order to permit column reordering");
-        }
-
-        if (curPos == newPos)
-        {    // That was easy
-            return true;
-        }
-
-        if (curPos < 0 || curPos >= columns.size() || newPos < 0 || newPos >= columns.size())
-        {
-            throw new IllegalArgumentException("Position must be >= 0 and < number of Columns to reorder column, axis '" + name + "'");
-        }
+	{
+		if (preferredOrder != DISPLAY)
+		{
+			throw new IllegalStateException("Axis '" + name + "' must be in DISPLAY order to permit column reordering");
+		}
+		
+		if (curPos == newPos)
+		{	// That was easy
+			return true;
+		}
+		
+		if (curPos < 0 || curPos >= columns.size() || newPos < 0 || newPos >= columns.size())
+		{
+			throw new IllegalArgumentException("Position must be >= 0 and < number of Columns to reorder column, axis '" + name + "'");
+		}
 
         if (columns.get(curPos).isDefault() || columns.get(newPos).isDefault())
         {
@@ -461,7 +458,7 @@ public class Axis
         cols.add(newPos, cols.remove(curPos));
         assignDisplayOrder(cols);
         return true;
-    }
+	}
 
     /**
      * Update (change) the value of an existing column.  This entails not only
@@ -469,8 +466,7 @@ public class Axis
      * sorted order for quick retrieval).  The display order of the columns is not
      * rebuilt, because the column is changed in-place (e.g., changing Mon to Monday
      * does not change it's display order.)
-     *
-     * @param id    long Column ID to update
+     * @param id long Column ID to update
      * @param value 'raw' value to set into the new column (will be up-promoted).
      */
     public void updateColumn(long id, Comparable value)
@@ -501,7 +497,7 @@ public class Axis
      * will have their values updated.  Columns that exist on this axis, but not exist in the
      * 'newCols' will be deleted (and returned as a Set of deleted Columns).  Columns that
      * exist in newCols but not on this are new columns.
-     * <p/>
+     *
      * NOTE: The columns field within the newCols axis are NOT in sorted order as they normally are
      * within the Axis class.  Instead, they are in display order (this order is typically set forth by a UI).
      * Axis is used as a Data-Transfer-Object (DTO) in this case, not the normal way it is typically used
@@ -560,7 +556,7 @@ public class Axis
     // Take the passed in value, and prepare it to be allowed on a given axis type.
     public Comparable convertStringToColumnValue(String value)
     {
-        switch (type)
+        switch(type)
         {
             case DISCRETE:
                 return convertStringToDiscreteValue(value, valueType);
@@ -597,7 +593,7 @@ public class Axis
 
     private Comparable convertStringToDiscreteValue(String input, AxisValueType valType)
     {
-        switch (valType)
+        switch(valType)
         {
             case STRING:
                 return input;
@@ -658,83 +654,82 @@ public class Axis
         throw new IllegalArgumentException("Unsupported axis value type (" + valueType + ") for axis '" + name + "', trying to process value: " + input);
     }
 
-    private static void assignDisplayOrder(final List<Column> cols)
-    {
-        final int size = cols.size();
-        for (int k = 0; k < size; k++)
-        {
+	private static void assignDisplayOrder(final List<Column> cols) 
+	{
+		final int size = cols.size(); 
+		for (int k=0; k < size; k++)
+		{
             Column col = cols.get(k);
             col.setDisplayOrder(col.isDefault() ? Integer.MAX_VALUE : k);
-        }
-    }
-
-    public int getColumnOrder()
-    {
-        return preferredOrder;
-    }
-
-    public void setColumnOrder(int order)
-    {
-        preferredOrder = order;
-    }
-
-    private static void sortColumnsByDisplayOrder(List<Column> cols)
-    {
-        Collections.sort(cols, new Comparator<Column>()
-        {
-            public int compare(Column c1, Column c2)
-            {
-                return c1.getDisplayOrder() - c2.getDisplayOrder();
-            }
-        });
-    }
-
-    public int size()
-    {
-        return columns.size();
-    }
-
-    /**
-     * This method takes the input value (could be Number, String, Range, etc.)
-     * and 'promotes' it to the same type as the Axis.
-     *
-     * @param value Comparable value to promote (to highest of it's type [e.g., short to long])
-     * @return Comparable promoted value.  For example, a Long would be returned a
-     * Byte value were passed in, and this was a LONG axis.
-     */
-    public Comparable standardizeColumnValue(Comparable value)
-    {
-        if (value == null)
-        {
-            throw new IllegalArgumentException("'null' cannot be used as an axis value, axis: " + name);
-        }
-
-        if (type == AxisType.DISCRETE)
-        {
-            return promoteValue(value);
-        }
-        else if (type == AxisType.RANGE)
-        {
-            if (!(value instanceof Range))
-            {
-                throw new IllegalArgumentException("Must only add Range values to " + type + " axis '" + name + "' - attempted to add: " + value.getClass().getName());
-            }
-            return promoteRange(new Range(((Range) value).low, ((Range) value).high));
-        }
-        else if (type == AxisType.SET)
-        {
-            if (!(value instanceof RangeSet))
-            {
-                throw new IllegalArgumentException("Must only add RangeSet values to " + type + " axis '" + name + "' - attempted to add: " + value.getClass().getName());
-            }
+		}
+	}	
+	
+	public int getColumnOrder()
+	{
+		return preferredOrder;
+	}
+	
+	public void setColumnOrder(int order)
+	{
+		preferredOrder = order;
+	}	
+	
+	private static void sortColumnsByDisplayOrder(List<Column> cols)
+	{
+		Collections.sort(cols, new Comparator<Column>()
+		{
+			public int compare(Column c1, Column c2) 
+			{
+				return c1.getDisplayOrder() - c2.getDisplayOrder();
+			}
+		});
+	}
+	
+	public int size()
+	{
+		return columns.size();
+	}
+	
+	/**
+	 * This method takes the input value (could be Number, String, Range, etc.) 
+	 * and 'promotes' it to the same type as the Axis.
+	 * @param value Comparable value to promote (to highest of it's type [e.g., short to long])
+	 * @return Comparable promoted value.  For example, a Long would be returned a
+	 * Byte value were passed in, and this was a LONG axis.
+	 */
+	public Comparable standardizeColumnValue(Comparable value)
+	{
+		if (value == null)
+		{	
+			throw new IllegalArgumentException("'null' cannot be used as an axis value, axis: " + name);
+		}
+		
+		if (type == AxisType.DISCRETE)
+		{
+			return promoteValue(value);
+		}
+		else if (type == AxisType.RANGE)
+		{
+			if (!(value instanceof Range))
+			{
+				throw new IllegalArgumentException("Must only add Range values to " + type + " axis '" + name + "' - attempted to add: " + value.getClass().getName());
+			}
+			return promoteRange(new Range(((Range)value).low, ((Range)value).high));
+		}
+		else if (type == AxisType.SET)
+		{
+			if (!(value instanceof RangeSet))
+			{
+				throw new IllegalArgumentException("Must only add RangeSet values to " + type + " axis '" + name + "' - attempted to add: " + value.getClass().getName());
+			}
             RangeSet set = new RangeSet();
-            Iterator<Comparable> i = ((RangeSet) value).iterator();
+            Iterator<Comparable> i = ((RangeSet)value).iterator();
             while (i.hasNext())
             {
                 Comparable val = i.next();
                 if (val instanceof Range)
                 {
-                    promoteRange((Range) val);
+                    promoteRange((Range)val);
                 }
                 else
                 {
@@ -743,94 +738,92 @@ public class Axis
                 set.add(val);
             }
             return set;
-        }
-        else if (type == AxisType.NEAREST)
-        {    // Standardizing a NEAREST axis entails ensuring conformity amongst values (must all be Point2D, LatLon, Date, Long, String, etc.)
-            value = promoteValue(value);
-            if (!getColumnsWithoutDefault().isEmpty())
-            {
-                Column col = columns.iterator().next();
+		}
+		else if (type == AxisType.NEAREST)
+		{	// Standardizing a NEAREST axis entails ensuring conformity amongst values (must all be Point2D, LatLon, Date, Long, String, etc.)
+			value = promoteValue(value);
+			if (!getColumnsWithoutDefault().isEmpty())
+			{
+				Column col = columns.iterator().next();
                 if (value.getClass() != col.getValue().getClass())
-                {
-                    throw new IllegalArgumentException("Value '" + value.getClass().getName() + "' cannot be added to axis '" + name + "' where the values are of type: " + col.getValue().getClass().getName());
-                }
-            }
-            return value;    // First value added does not need to be checked
-        }
+				{
+					throw new IllegalArgumentException("Value '" + value.getClass().getName() + "' cannot be added to axis '" + name + "' where the values are of type: " + col.getValue().getClass().getName());
+				}
+			}
+			return value;	// First value added does not need to be checked
+		}
         else if (type == AxisType.RULE)
         {
             return value;
         }
-        else
-        {
-            throw new IllegalArgumentException("New AxisType added '" + type + "' but code support for it is not there.");
-        }
-    }
-
-    /**
-     * Promote passed in range's low and high values to the largest
-     * data type of their 'kinds' (e.g., byte to long).
-     *
-     * @param range Range to be promoted
-     * @return Range with the low and high values promoted and in proper order (low < high)
-     */
-    private Range promoteRange(Range range)
-    {
-        final Comparable low = promoteValue(range.low);
-        final Comparable high = promoteValue(range.high);
-        ensureOrder(range, low, high);
-        return range;
-    }
-
-    private static void ensureOrder(Range range, final Comparable low, final Comparable high)
-    {
-        if (low.compareTo(high) > 0)
-        {
-            range.low = high;
-            range.high = low;
-        }
-        else
-        {
-            range.low = low;
-            range.high = high;
-        }
-    }
-
-    /**
-     * Convert passed in value to a similar value of the highest type.  Axis
-     * values and inputs are always promoted before being stored or compared.
-     *
-     * @param value Comparable to promote
-     * @return promoted value, or the same value if no promotion occurs.
-     */
-    public Comparable promoteValue(Comparable value)
-    {
-        switch (valueType)
-        {
-            case STRING:
-                return getString(value);
-            case LONG:
-                return getLong(value);
-            case BIG_DECIMAL:
-                return getBigDecimal(value);
-            case DOUBLE:
-                return getDouble(value);
-            case DATE:
-                return getDate(value);
-            case COMPARABLE:
+		else
+		{
+			throw new IllegalArgumentException("New AxisType added '" + type + "' but code support for it is not there.");
+		}
+	}
+	
+	/**
+	 * Promote passed in range's low and high values to the largest
+	 * data type of their 'kinds' (e.g., byte to long).
+	 * @param range Range to be promoted
+	 * @return Range with the low and high values promoted and in proper order (low < high)
+	 */
+	private Range promoteRange(Range range) 
+	{
+		final Comparable low = promoteValue(range.low);
+		final Comparable high = promoteValue(range.high);
+		ensureOrder(range, low, high);
+		return range;
+	}
+	
+	private static void ensureOrder(Range range, final Comparable low, final Comparable high)
+	{
+		if (low.compareTo(high) > 0)
+		{
+			range.low = high;
+			range.high = low;
+		}
+		else
+		{
+			range.low = low;
+			range.high = high;
+		}
+	}	
+	
+	/**
+	 * Convert passed in value to a similar value of the highest type.  Axis
+	 * values and inputs are always promoted before being stored or compared.
+	 * @param value Comparable to promote
+	 * @return promoted value, or the same value if no promotion occurs.
+	 */
+	public Comparable promoteValue(Comparable value)
+	{
+		switch(valueType)
+		{
+			case STRING:
+				return getString(value);
+			case LONG:
+				return getLong(value);
+			case BIG_DECIMAL:
+				return getBigDecimal(value);
+			case DOUBLE:
+				return getDouble(value);
+			case DATE:
+				return getDate(value);
+			case COMPARABLE:
             case EXPRESSION:
-                return value;
-            default:
-                throw new IllegalArgumentException("AxisValueType '" + valueType + "' added but not code to support it.");
-        }
-    }
+				return value;
+			default:
+				throw new IllegalArgumentException("AxisValueType '" + valueType + "' added but not code to support it.");
+		}
+	}
 
-    private String getString(Comparable value)
-    {
-        if (value instanceof String)
-        {
-            return (String) value;
-        }
+	private String getString(Comparable value)
+	{
+		if (value instanceof String)
+		{
+			return (String) value;
+		}
         else if (value instanceof Number)
         {
             return value.toString();
@@ -839,157 +832,153 @@ public class Axis
         {
             return value.toString();
         }
-        throw getBadTypeException(value, "String");
-    }
-
-    /**
-     * Promote any Number (or String) type to a BigDecimal in the best possible manner.
-     *
-     * @return BigDecimal equivalent of value, or null if it could not be converted.
-     */
-    private BigDecimal getBigDecimal(Comparable value)
-    {
-        try
-        {
-            if (value instanceof BigDecimal)
-            {
-                return (BigDecimal) value;
-            }
-            else if (value instanceof BigInteger)
-            {
-                return new BigDecimal((BigInteger) value);
-            }
-            else if (value instanceof String)
-            {
-                return new BigDecimal((String) value);
-            }
-            else if (value instanceof Number)
-            {
-                return new BigDecimal(((Number) value).doubleValue());
-            }
-        }
-        catch (Exception e)
-        {
-            throw getConversionException(value, e);
-        }
-        throw getBadTypeException(value, "BigDecimal");
-    }
-
-    /**
-     * Promote Number (or String) to a Double in the best possible manner.
-     *
-     * @return Double equivalent of value, or null if it could not be converted.
-     */
-    private Double getDouble(Comparable value)
-    {
-        try
-        {
-            if (value instanceof Double)
-            {
-                return (Double) value;
-            }
-            else if (value instanceof Number)
-            {
-                return ((Number) value).doubleValue();
-            }
-            else if (value instanceof String)
-            {
-                return Double.valueOf((String) value);
-            }
-        }
-        catch (Exception e)
-        {
-            throw getConversionException(value, e);
-        }
-        throw getBadTypeException(value, "Double");
-    }
-
-    /**
-     * Promote Number (or String) to a Long in the best possible manner.
-     *
-     * @return Long equivalent of value, or null if it could not be converted.
-     */
-    private Long getLong(Comparable value)
-    {
-        try
-        {
-            if (value instanceof Long)
-            {
-                return (Long) value;
-            }
-            else if (value instanceof Number)
-            {
-                return ((Number) value).longValue();
-            }
-            else if (value instanceof String)
-            {
-                return Long.valueOf((String) value);
-            }
-        }
-        catch (Exception e)
-        {
-            throw getConversionException(value, e);
-        }
-        throw getBadTypeException(value, "Long");
-    }
-
-    /**
-     * Promote Number (or String) to a Long in the best possible manner.
-     *
-     * @return Long equivalent of value, or null if it could not be converted.
-     */
-    private Date getDate(Comparable value)
-    {
-        if (value instanceof Date)
-        {
-            return (Date) value;
-        }
+		throw getBadTypeException(value, "String");
+	}
+	
+	/**
+	 * Promote any Number (or String) type to a BigDecimal in the best possible manner.
+	 * @return BigDecimal equivalent of value, or null if it could not be converted.
+	 */
+	private BigDecimal getBigDecimal(Comparable value)
+	{
+		try 
+		{
+			if (value instanceof BigDecimal)
+			{
+				return (BigDecimal) value;
+			}
+			else if (value instanceof BigInteger)
+			{
+				return new BigDecimal((BigInteger)value);
+			}
+			else if (value instanceof String)
+			{
+				return new BigDecimal((String) value);
+			}
+			else if (value instanceof Number)
+			{
+				return new BigDecimal(((Number)value).doubleValue());
+			}
+		} 
+		catch (Exception e) 
+		{
+			throw getConversionException(value, e);
+		}
+		throw getBadTypeException(value, "BigDecimal");
+	}
+	
+	/**
+	 * Promote Number (or String) to a Double in the best possible manner.
+	 * @return Double equivalent of value, or null if it could not be converted.
+	 */
+	private Double getDouble(Comparable value)
+	{
+		try
+		{
+			if (value instanceof Double)
+			{
+				return (Double) value;
+			}
+			else if (value instanceof Number)
+			{
+				return ((Number)value).doubleValue();
+			}
+			else if (value instanceof String)
+			{
+				return Double.valueOf((String) value);
+			}
+		}
+		catch(Exception e)
+		{
+			throw getConversionException(value, e);
+		}
+		throw getBadTypeException(value, "Double");
+	}
+	
+	/**
+	 * Promote Number (or String) to a Long in the best possible manner.
+	 * @return Long equivalent of value, or null if it could not be converted.
+	 */
+	private Long getLong(Comparable value)
+	{
+		try
+		{
+			if (value instanceof Long)
+			{
+				return (Long) value;
+			}
+			else if (value instanceof Number)
+			{
+				return ((Number)value).longValue();
+			}
+			else if (value instanceof String)
+			{
+				return Long.valueOf((String) value);
+			}
+		}
+		catch(Exception e)
+		{
+			throw getConversionException(value, e);
+		}
+		throw getBadTypeException(value, "Long");
+	}
+			
+	/**
+	 * Promote Number (or String) to a Long in the best possible manner.
+	 * @return Long equivalent of value, or null if it could not be converted.
+	 */
+	private Date getDate(Comparable value)
+	{
+		if (value instanceof Date)
+		{
+			return (Date) value;
+		}
         else if (value instanceof String)
         {
-            return DateUtilities.parseDate((String) value);
+            return DateUtilities.parseDate((String)value);
         }
-        else if (value instanceof Calendar)
-        {
-            return ((Calendar) value).getTime();
-        }
-        else if (value instanceof Long)
-        {
-            return new Date((Long) value);
-        }
-        throw getBadTypeException(value, "Date");
-    }
-
-    private IllegalArgumentException getConversionException(Comparable value, Exception e)
-    {
-        return new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a Long for axis '" + name + "'", e);
-    }
-
-    private IllegalArgumentException getBadTypeException(Comparable value, String theType)
-    {
-        return new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to '" + theType + "' for axis '" + name + "'");
-    }
-
-    public boolean hasDefaultColumn()
-    {
-        return defaultCol != null;
-    }
-
-    /**
-     * @param value to test against this Axis
-     * @return boolean true if the value will be found along the access, false
-     * if the value does not match anything along the axis.
-     */
-    public boolean contains(Comparable value)
-    {
-        try
-        {
-            return findColumn(value) != null;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
+		else if (value instanceof Calendar)
+		{
+			return ((Calendar)value).getTime();
+		}
+		else if (value instanceof Long)
+		{
+			return new Date((Long)value);
+		}
+		throw getBadTypeException(value, "Date");
+	}
+	
+	private IllegalArgumentException getConversionException(Comparable value, Exception e)
+	{
+		return new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a Long for axis '" + name + "'", e);						
+	}
+	
+	private IllegalArgumentException getBadTypeException(Comparable value, String theType)
+	{
+		return new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to '" + theType + "' for axis '" + name + "'");
+	}
+	
+	public boolean hasDefaultColumn()
+	{
+		return defaultCol != null;
+	}
+	
+	/**
+	 * @param value to test against this Axis
+	 * @return boolean true if the value will be found along the access, false
+	 * if the value does not match anything along the axis.
+	 */
+	public boolean contains(Comparable value)
+	{
+		try 
+		{
+			return findColumn(value) != null;
+		}
+		catch (Exception e) 
+		{
+			return false;
+		}
+	}
 
     public Column getDefaultColumn()
     {
@@ -998,13 +987,12 @@ public class Axis
 
     /**
      * Locate the column (AvisValue) along an axis.
-     *
      * @param value Comparable - A value that can be checked against the axis
      * @return Column that 'matches' the passed in value, or null if no column
      * found.  'Matches' because matches depends on AxisType.
      */
-    Column findColumn(Comparable value)
-    {
+     Column findColumn(Comparable value)
+     {
         if (value == null)
         {
             if (defaultCol != null)
@@ -1017,11 +1005,11 @@ public class Axis
         final Comparable promotedValue = promoteValue(value);
         int pos;
         if (type == AxisType.DISCRETE || type == AxisType.RANGE)
-        {    // DISCRETE and RANGE axis searched in O(Log n) time using a binary search
+        {	// DISCRETE and RANGE axis searched in O(Log n) time using a binary search
             pos = binarySearchAxis(promotedValue);
         }
         else if (type == AxisType.SET)
-        {    // The SET axis searched in O(Log n)
+        {	// The SET axis searched in O(Log n)
             return findOnSetAxis(promotedValue);
         }
         else if (type == AxisType.NEAREST)
@@ -1105,7 +1093,7 @@ public class Axis
     }
 
     private Column findOnSetAxis(final Comparable promotedValue)
-    {
+	{
         Column col = discreteToCol.get(promotedValue);
         if (discreteToCol.containsKey(promotedValue))
         {
@@ -1134,31 +1122,31 @@ public class Axis
         });
     }
 
-    private int binarySearchAxis(final Comparable promotedValue)
-    {
+	private int binarySearchAxis(final Comparable promotedValue)
+	{
         List cols = getColumnsWithoutDefault();
-        return Collections.binarySearch(cols, promotedValue, new Comparator()
-        {
-            public int compare(Object o1, Object o2)
-            {
-                Column column = (Column) o1;
+		return Collections.binarySearch(cols, promotedValue, new Comparator()
+		{
+			public int compare(Object o1, Object o2)
+			{
+				Column column = (Column) o1;
 
-                if (type == AxisType.DISCRETE)
-                {
-                    return column.compareTo(promotedValue);
-                }
-                else if (type == AxisType.RANGE)
-                {
-                    Range range = (Range) column.getValue();
-                    return -1 * range.isWithin(promotedValue);
-                }
+				if (type == AxisType.DISCRETE)
+				{
+					return column.compareTo(promotedValue);
+				}
+				else if (type == AxisType.RANGE)
+				{
+					Range range = (Range)column.getValue();
+					return -1 * range.isWithin(promotedValue);
+				}
                 else
                 {
                     throw new IllegalStateException("Cannot binary search axis type: '" + type + "'");
                 }
-            }
-        });
-    }
+			}
+		});
+	}
 
     private int findNearest(final Comparable promotedValue)
     {
@@ -1170,7 +1158,7 @@ public class Axis
         {
             double d = Proximity.distance(promotedValue, column.getValue());
             if (d < min)
-            {    // Record column that set's new minimum record
+            {	// Record column that set's new minimum record
                 min = d;
                 savePos = pos;
             }
@@ -1184,7 +1172,6 @@ public class Axis
      * 'Range-type' axis.  This method is only called in non-multiMatch mode.
      * Test low range limit to see if it is valid.  Axis is already a RANGE type
      * before this method is called.
-     *
      * @param value Range (value) that is intended to be a new low range limit.
      * @return true if the Range overlaps this axis, false otherwise.
      */
@@ -1214,12 +1201,11 @@ public class Axis
             }
         }
         return false;
-    }
+	}
 
     /**
      * Test RangeSet to see if it overlaps any of the existing columns on
      * this cube.  Axis is already a RangeSet type before this method is called.
-     *
      * @param value RangeSet (value) to be checked
      * @return true if the RangeSet overlaps this axis, false otherwise.
      */
@@ -1234,7 +1220,7 @@ public class Axis
             }
         }
         return false;
-    }
+}
 
     private void doesMatchExistingValue(Comparable v)
     {

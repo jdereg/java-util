@@ -24,6 +24,6 @@
     ],
     "cells":[
         { "id":["http","local"], "type":"string", "value":"http://tests.codetested.com"},
-        { "id":["http","dev"], "type":"string", "value":"http://tests.codetested.com"}
+        { "id":["http","dev"], "type":"string", "value":"res://files"}
     ]
 }

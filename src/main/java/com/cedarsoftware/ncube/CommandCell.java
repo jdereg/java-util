@@ -166,12 +166,12 @@ public abstract class CommandCell implements Comparable<CommandCell>
         this.compileErrorMsg = compileErrorMsg;
     }
 
-    public abstract void getCubeNamesFromCommandText(Set<String> cubeNames);
+    public void getCubeNamesFromCommandText(Set<String> cubeNames) {}
 
     public int compareTo(CommandCell cmdCell)
     {
         return cmd.compareToIgnoreCase(cmdCell.cmd);
     }
 
-    public abstract void getScopeKeys(Set<String> scopeKeys);
+    public void getScopeKeys(Set<String> scopeKeys) {}
 }

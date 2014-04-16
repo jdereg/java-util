@@ -1,0 +1,154 @@
+NAME AND FUNCTIONAL DESCRIPTION OF EACH MODULE
+
+*Coin package*
+
+   clear_coins:  This procedure accepts a coin array and puts all zeros in it.
+
+   coin_box_value:  This function accepts a coin array and returns the monetary
+                    value of the coin array.
+
+   add_coin:  This procedure accepts a coin array and a new coin to be added to
+              the array.  If the coin is good, it is added to the proper pos-
+              ition in the array.  A status variable is returned indicating
+              that the coin was either good, bad (50,1) or invalid (2,john,etc).
+
+   move_coins:  This procedure adds the contents of the source array to the
+                destination array and clears out the source array.
+
+   make_change:  This procedure accepts a coin array and a change value.  The
+                 change value is dispensed in proper coins from the coin
+                 array.
+
+   load_machine_with_money:  This procedure reads in the four types of coins
+                             into the coin resevoir from the data file.  An
+                             error status is returned indicating success or
+                             failure of the operation.
+
+   write_money_from_machine:  This procedure writes the coin resevoir to a
+                              disk file.  An error status is returned indicating
+                              success or failure of the operation.
+
+   display_money:  This procedure displays the contents of a coin array.
+
+   has_correct_change:  This function returns a boolean value indicating there
+                        is/is not enough coins in the coin array to ensure 
+                        proper change.
+
+
+*Contents package*
+
+   clear_contents:  This procedure sets all the food prices and quantities to
+                    zero and resets the in_machine field.
+
+   item_price:  This function returns the price of an item specified by row and
+                column.
+
+   is_valid_item:  This function returns the value of the in machine field.
+
+   drop_item:  This procedure ensures that the slot chosen is valid and calls
+               drop_item_from_slot to decrement the quantity field.  It will
+               print an error message if the item is not availble.
+
+   load_machine_contents:  This procedure reads from the data file and loads
+                           the contents package with the proper information.
+
+   write_machine_contents:  This procedure writes the data from the contents
+                            package to the data file.
+
+   display_contents:  This procedure displays the number of each item, its
+                      price, based on the in_machine field.
+
+
+*Echo package*
+   
+   set_echo: This procedure sets the echo status on or off.
+
+   is_echo_on:  This function returns the echo status.
+
+
+*Help package*
+
+   print_help:  This procedure prints the help screen.
+
+
+*Machine package*
+   
+   insert_coin:  This procedure tries to add a coin to coin chute.  It calls
+                 coin_box_value to decide whether or not the coin can be
+                 added.  It clears selection if the value of coin chute is
+                 less than the maximum price in the machine and the coin
+                 input is not invalid.
+
+   make_selection:  This procedure calls selection button.  If selection button
+                    returns selection_complete true, make_selection drops item,
+                    moves money from coin chutes to resevoir, and returns
+                    change.
+
+   return_coins:  This procedure empties the coin chutes.
+
+   display_status:  This procedure displays the contents of the machine, the
+                    selection status, the make another selection status, and
+                    the please use correct change status.
+
+   display_money:  This procedure displays the contents of the coin chutes and
+                   the contents of the coin resevoirs.
+
+   load_machine:  This procedure creates a local machine.  Next it opens a
+                  data file, calls load money, calls load contents, closes
+                  files, and if there were no errors, it assigns the local
+                  machine to the real machine.
+
+   write_machine:  This procedure opens the output file, calls write money,
+                   calls write contents, and closes the output file.  If any
+                   errors occured, error messages are printed.
+
+
+*Selection package*
+
+   clear_selection:  This procedure resets the selection.
+
+   selection_button:  This procedure ensures valid input and puts the input
+                      into the selection variable.  It returns true in the
+                      selection_complete parameter if a selection is complete.
+
+   display_selection:  This procedure displays the selection status.
+
+   location:  This procedure converts selection type into a row and column
+              number.
+
+
+*Slot package*
+
+   clear_slot:  This procedure clears a specific slot.
+
+   fill_slot:  This procedure fills the slot with quantity and price specified
+               in the parameter list.
+
+   is_valid_slot:  This function returns the value of in_machine.  This ident-
+                   ifies whether or not the slot actually exists.
+
+   drop_item_from_slot:  This procedure receives a slot and decrements the
+                         quantity field by one if it can.  A boolean variable
+                         is returned indicating whether or not the item actually
+                         dropped.
+
+   slot_price:  This function returns the price of a supplied slot.
+
+   number_left:  This function returns the quantity of a supplied slot.
+
+
+*Token package*
+
+   get_next_token:  This procedure receives a line of text, cuts off the first
+                    token and returns the remainder of the line, and the
+                    first token.
+
+   more_tokens:  This function returns true if more tokens are left on the
+                 supllied line, false if more tokens are not available on the
+                 line.
+
+   token_to_string:  This function converts a token type to a string type.
+
+   read_line:  This function reads one line of text from standard input.
+
+   upcase:  This function converts a token passed in to upper case.

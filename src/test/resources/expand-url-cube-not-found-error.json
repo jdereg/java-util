@@ -1,0 +1,16 @@
+{
+    "ncube":"UrlCube",
+    "axes":[ {
+        "name":"Sites",
+        "type":"DISCRETE",
+        "valueType":"STRING",
+        "hasDefault":false,
+        "preferredOrder":0,
+        "columns":[
+            { "id":"StringFromLocalUrl"}
+        ]
+    }],
+    "cells":[
+        { "id":["StringFromLocalUrl"], "type":"string", "cache":false, "url":"@UrlPieces[:]/ncube/CS415P6.TXT" }
+    ]
+}

@@ -224,9 +224,6 @@ public class Axis
         s.append("  preferred Order: ");
         s.append(getColumnOrder());
         s.append("\n");
-        s.append("  multiMatch: " );
-        s.append(multiMatch);
-        s.append("\n");
         
         for (Comparable value : columns)
         {
@@ -1245,7 +1242,7 @@ public class Axis
         }
     }
 
-    public List<Column> getColumnsWithoutDefault()
+    List<Column> getColumnsWithoutDefault()
     {
         if (defaultCol != null)
         {

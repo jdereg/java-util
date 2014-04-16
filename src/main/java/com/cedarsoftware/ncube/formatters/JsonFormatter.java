@@ -14,7 +14,6 @@ import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
-import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
 
@@ -23,6 +22,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -53,12 +53,21 @@ import java.util.Set;
  */
 public class JsonFormatter extends NCubeFormatter
 {
-    private StringBuilder _builder = new StringBuilder();
-    static final SafeSimpleDateFormat _dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    StringBuilder _builder = new StringBuilder();
+
+    static final ThreadLocal<SimpleDateFormat> _dateFormat = new ThreadLocal<SimpleDateFormat>()
+    {
+        public SimpleDateFormat initialValue()
+        {
+            return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+        }
+    };
+
     private String _quotedStringFormat = "\"%s\"";
     private String _singleDoubleFormat = "%f";
     private String _twoDoubleFormat = "\"%f,%f\"";
     private String _threeDoubleFormat = "\"%f,%f,%f\"";
+
     private Map<Long, Object> _userIds = new HashMap<Long, Object>();
     private Map<Long, Long> _generatedIds = new HashMap<Long, Long>();
     private long _idCounter;
@@ -108,12 +117,14 @@ public class JsonFormatter extends NCubeFormatter
     public void walkIds(List<Axis> axes) {
         HashSet<Comparable> set = new HashSet<Comparable>();
         for (Axis item : axes) {
-            for (Column c : item.getColumnsWithoutDefault()) {
-                // only use value for id on String and Longs
-                if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
-                    if (!set.contains(c.getValue())) {
-                        set.add(c.getValue());
-                        _userIds.put(c.getId(), c.getValue());
+            for (Column c : item.getColumns()) {
+                if (!c.isDefault()) {
+                    // only use value for id on String and Longs
+                    if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
+                        if (!set.contains(c.getValue())) {
+                            set.add(c.getValue());
+                            _userIds.put(c.getId(), c.getValue());
+                        }
                     }
                 }
             }
@@ -174,7 +185,17 @@ public class JsonFormatter extends NCubeFormatter
 
     public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
+
+        /*
+        Always have at least one default column
+        if (columns == null || columns.isEmpty()) {
+            _builder.append("[]");
+            return;
+        }
+         */
+
         startArray();
+
         boolean commaWritten = false;
 
         for(Column item : columns ) {
@@ -199,13 +220,13 @@ public class JsonFormatter extends NCubeFormatter
         //  Check to see if id exists anywhere. then optimize
 
         Object o = _userIds.get(c.getId());
-        final String columnType = getColumnType(c.getValue());
+
         if (o != null && o.equals(c.getValue())) {
-            writeType(columnType);
+            writeType(getColumnType(c.getValue()));
             writeId(c.getId(), false);
         } else {
             writeId(c.getId(), true);
-            writeType(columnType);
+            writeType(getColumnType(c.getValue()));
             if (c.getValue() instanceof UrlCommandCell) {
                 writeCommandCell((UrlCommandCell)c.getValue());
             } else {
@@ -246,7 +267,7 @@ public class JsonFormatter extends NCubeFormatter
         writeAttribute("type", type, true);
     }
 
-    private static String getColumnType(Object o) throws IOException {
+    private String getColumnType(Object o) throws IOException {
         if (o instanceof Range || o instanceof RangeSet) {
             return null;
         }
@@ -266,7 +287,7 @@ public class JsonFormatter extends NCubeFormatter
         return getCellType(o, "column");
     }
 
-    static String getCellType(Object cell, String type) throws IOException
+    String getCellType(Object cell, String type) throws IOException
     {
         if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
             return null;
@@ -348,10 +369,12 @@ public class JsonFormatter extends NCubeFormatter
         endArray();
     }
 
+
     public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException {
 
         _builder.append("\"id\":");
         startArray();
+
         boolean commaWritten = false;
 
         for (Column c : item.getKey()) {
@@ -390,13 +413,13 @@ public class JsonFormatter extends NCubeFormatter
         }
 
         if (o instanceof Double) {
-            _builder.append(String.format(_singleDoubleFormat, (Double) o));
+            _builder.append(String.format(_singleDoubleFormat, ((Double)o).doubleValue()));
             _builder.append('d');
             return;
         }
 
         if (o instanceof Float) {
-            _builder.append(String.format(_singleDoubleFormat, (Float) o));
+            _builder.append(String.format(_singleDoubleFormat, ((Float)o).floatValue()));
             _builder.append('f');
             return;
         }
@@ -441,7 +464,7 @@ public class JsonFormatter extends NCubeFormatter
         }
 
         if (o instanceof Boolean) {
-            _builder.append((Boolean) o ? "true" : "false");
+            _builder.append(((Boolean)o).booleanValue() ? "true" : "false");
             return;
         }
 
@@ -503,7 +526,7 @@ public class JsonFormatter extends NCubeFormatter
         }
 
         if (o instanceof Date) {
-            _builder.append(String.format(_quotedStringFormat, _dateFormat.format(o)));
+            _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date) o)));
             return;
         }
 
@@ -512,7 +535,9 @@ public class JsonFormatter extends NCubeFormatter
             return;
         }
 
+
         if (o.getClass().isArray()) {
+            //Class c = o.getClass().getComponentType();
             //  check types
             _builder.append("\"");
             startArray();
@@ -567,12 +592,14 @@ public class JsonFormatter extends NCubeFormatter
     public void writeValue(String attr, Object o) throws IOException {
         _builder.append(String.format(_quotedStringFormat, attr));
         _builder.append(':');
+
         writeObject(o);
     }
 
     public void writeId(Long longId, boolean addComma) throws IOException {
         _builder.append(String.format(_quotedStringFormat, "id"));
         _builder.append(':');
+
         writeIdValue(longId, addComma);
     }
 

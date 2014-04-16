@@ -14,6 +14,7 @@ import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
 
@@ -22,7 +23,6 @@ import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -55,13 +55,7 @@ public class JsonFormatter implements NCubeFormatter
 {
     StringBuilder _builder = new StringBuilder();
 
-    static final ThreadLocal<SimpleDateFormat> _dateFormat = new ThreadLocal<SimpleDateFormat>()
-    {
-        public SimpleDateFormat initialValue()
-        {
-            return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-        }
-    };
+    static final SafeSimpleDateFormat _dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 
     private String _quotedStringFormat = "\"%s\"";
     private String _singleDoubleFormat = "%f";

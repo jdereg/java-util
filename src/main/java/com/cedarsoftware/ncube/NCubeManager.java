@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonObject;
@@ -8,6 +10,7 @@ import com.cedarsoftware.util.io.JsonWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,7 +33,7 @@ import java.util.regex.Matcher;
  * This class manages a list of NCubes.  This class is referenced
  * by NCube in one place - when it joins to other cubes, it consults
  * the NCubeManager to find the joined NCube.
- *
+ * <p/>
  * This class takes care of creating, loading, updating, releasing,
  * and deleting NCubes.  It also allows you to get a list of NCubes
  * matching a wildcard (SQL Like) string.
@@ -63,7 +66,7 @@ public class NCubeManager
      */
     public static NCube getCube(String name, String version)
     {
-   		return cubeList.get(makeCacheKey(name, version));
+        return cubeList.get(makeCacheKey(name, version));
     }
 
     static String makeCacheKey(String name, String version)
@@ -73,11 +76,12 @@ public class NCubeManager
 
     /**
      * Add a cube to the internal map of available cubes.
+     *
      * @param ncube NCube to add to the list.
      */
     static void addCube(NCube ncube, String version)
     {
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             ncube.setVersion(version);
             cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
@@ -92,7 +96,9 @@ public class NCubeManager
     public static Map<String, NCube> getCachedNCubes()
     {
         synchronized (cubeList)
-        { return new TreeMap<String, NCube>(cubeList); }
+        {
+            return new TreeMap<String, NCube>(cubeList);
+        }
     }
 
     /**
@@ -100,7 +106,7 @@ public class NCubeManager
      */
     public static void clearCubeList()
     {
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             cubeList.clear();
             GroovyBase.compiledClasses.clear();
@@ -116,7 +122,10 @@ public class NCubeManager
             {
                 stmt.close();
             }
-            catch (SQLException e) { LOG.error("Error closing JDBC Statement", e); }
+            catch (SQLException e)
+            {
+                LOG.error("Error closing JDBC Statement", e);
+            }
         }
     }
 
@@ -185,6 +194,7 @@ public class NCubeManager
 
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
+     *
      * @return NCube that matches, or null if not found.
      */
     public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
@@ -198,7 +208,7 @@ public class NCubeManager
             sysDate = new Date();
         }
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt = null;
             try
@@ -218,11 +228,7 @@ public class NCubeManager
                 {
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
-                    NCube<Object> ncube = (NCube) JsonReader.jsonToJava(json);
-                    for (Axis axis : ncube.getAxes())
-                    {
-                        axis.buildScaffolding();
-                    }
+                    NCube ncube = NCube.fromSimpleJson(json);
 
                     if (rs.next())
                     {
@@ -244,7 +250,10 @@ public class NCubeManager
                 }
                 return null; // Indicates not found
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
@@ -295,11 +304,7 @@ public class NCubeManager
             {
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
                 String json = new String(jsonBytes, "UTF-8");
-                NCube<Object> ncube = (NCube) JsonReader.jsonToJava(json);
-                for (Axis axis : ncube.getAxes())
-                {
-                    axis.buildScaffolding();
-                }
+                NCube ncube = NCube.fromSimpleJson(json);
 
                 if (rs.next())
                 {
@@ -318,7 +323,10 @@ public class NCubeManager
                 }
             }
         }
-        catch (IllegalStateException e) { throw e; }
+        catch (IllegalStateException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
             String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
@@ -503,8 +511,9 @@ public class NCubeManager
 
     /**
      * Update the passed in NCube.  Only SNAPSHOT ncubes can be updated.
+     *
      * @param connection JDBC connection
-     * @param ncube NCube to be updated.
+     * @param ncube      NCube to be updated.
      * @return boolean true on success, false otherwise
      */
     public static boolean updateCube(Connection connection, String app, NCube ncube, String version)
@@ -517,13 +526,13 @@ public class NCubeManager
             throw new IllegalArgumentException("NCube cannot be null for updating");
         }
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt = null;
             try
             {
                 stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'");
-                stmt.setBytes(1, JsonWriter.objectToJson(ncube).getBytes("UTF-8"));
+                stmt.setBytes(1, new JsonFormatter().format(ncube).getBytes("UTF-8"));
                 stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
                 stmt.setString(3, app);
                 stmt.setString(4, ncube.getName());
@@ -536,7 +545,10 @@ public class NCubeManager
                 ncube.setVersion(version);
                 return true;
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to update NCube: " + ncube.getName() + ", app: " + app + ", version: " + version;
@@ -552,8 +564,9 @@ public class NCubeManager
 
     /**
      * Persist the passed in NCube
+     *
      * @param connection JDBC connection
-     * @param ncube NCube to be persisted
+     * @param ncube      NCube to be persisted
      */
     public static void createCube(Connection connection, String app, NCube ncube, String version)
     {
@@ -566,7 +579,7 @@ public class NCubeManager
         }
         validateCubeName(ncube.getName());
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt = null;
             try
@@ -578,7 +591,7 @@ public class NCubeManager
                 ResultSet rs = stmt.executeQuery();
 
                 if (rs.next())
-                {	// NCube with same name and version number already exists.
+                {    // NCube with same name and version number already exists.
                     throw new IllegalStateException("NCube '" + ncube.getName() + "' (" + version + ") already exists.");
                 }
                 else
@@ -588,7 +601,8 @@ public class NCubeManager
                     stmt.setLong(1, UniqueIdGenerator.getUniqueId());
                     stmt.setString(2, app);
                     stmt.setString(3, ncube.getName());
-                    String json = JsonWriter.objectToJson(ncube);
+                    String json = new JsonFormatter().format(ncube);
+                    //                    String json = JsonWriter.objectToJson(ncube);
                     stmt.setBytes(4, json.getBytes("UTF-8"));
                     stmt.setString(5, version);
                     java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
@@ -603,7 +617,10 @@ public class NCubeManager
 
                 addCube(ncube, version);
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to save NCube: " + ncube.getName() + ", app: " + app + ", version: " + version + " to database";
@@ -624,7 +641,7 @@ public class NCubeManager
      * they join with.
      *
      * @param connection JDBC connection
-     * @param version String version to move from SNAPSHOT to RELEASE
+     * @param version    String version to move from SNAPSHOT to RELEASE
      * @return int count of ncubes that were released
      */
     public static int releaseCubes(Connection connection, String app, String version)
@@ -633,7 +650,7 @@ public class NCubeManager
         validateApp(app);
         validateVersion(version);
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt1 = null;
             PreparedStatement stmt2 = null;
@@ -655,7 +672,10 @@ public class NCubeManager
                 stmt2.setString(3, version);
                 return stmt2.executeUpdate();
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to release NCubes for app: " + app + ", version: " + version + ", due to an error: " + e.getMessage();
@@ -689,7 +709,7 @@ public class NCubeManager
             throw new IllegalArgumentException("New SNAPSHOT version " + relVersion + " cannot be the same as the RELEASE version.");
         }
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt0 = null;
             PreparedStatement stmt1 = null;
@@ -709,8 +729,9 @@ public class NCubeManager
 
                 stmt1 = connection.prepareStatement(
                         "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
-                        "FROM n_cube\n" +
-                        "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.RELEASE + "'");
+                                "FROM n_cube\n" +
+                                "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.RELEASE + "'"
+                );
 
                 stmt1.setString(1, app);
                 stmt1.setString(2, relVersion);
@@ -718,7 +739,8 @@ public class NCubeManager
 
                 stmt2 = connection.prepareStatement(
                         "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin)\n" +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                );
                 int count = 0;
 
                 while (rs.next())
@@ -744,7 +766,10 @@ public class NCubeManager
                 }
                 return count;
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to create SNAPSHOT NCubes for app: " + app + ", version: " + newSnapVer + ", due to an error: " + e.getMessage();
@@ -770,7 +795,7 @@ public class NCubeManager
         validateVersion(currVersion);
         validateVersion(newSnapVer);
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt1 = null;
             PreparedStatement stmt2 = null;
@@ -797,7 +822,10 @@ public class NCubeManager
                     throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + currVersion + ", therefore nothing changed.");
                 }
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to change SNAPSHOT version from " + currVersion + " to " + newSnapVer + " for app: " + app + ", due to an error: " + e.getMessage();
@@ -825,7 +853,7 @@ public class NCubeManager
             throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName);
         }
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt1 = null;
 
@@ -845,7 +873,10 @@ public class NCubeManager
                 cubeList.remove(makeCacheKey(oldName, version));
                 return true;
             }
-            catch (IllegalStateException e) { throw e; }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
             catch (Exception e)
             {
                 String s = "Unable to rename n-cube due to an error: " + e.getMessage();
@@ -861,8 +892,9 @@ public class NCubeManager
 
     /**
      * Delete the named NCube from the database
+     *
      * @param connection JDBC connection
-     * @param name NCube to be deleted
+     * @param name       NCube to be deleted
      */
     public static boolean deleteCube(Connection connection, String app, String name, String version, boolean allowDelete)
     {
@@ -871,7 +903,7 @@ public class NCubeManager
         validateCubeName(name);
         validateVersion(version);
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt = null;
             try
@@ -910,6 +942,7 @@ public class NCubeManager
 
     /**
      * Update the notes associated to an NCube
+     *
      * @return true if the update succeeds, false otherwise
      */
     public static boolean updateNotes(Connection connection, String app, String name, String version, String notes)
@@ -919,7 +952,7 @@ public class NCubeManager
         validateCubeName(name);
         validateVersion(version);
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt = null;
             try
@@ -941,8 +974,14 @@ public class NCubeManager
                 }
                 return true;
             }
-            catch(IllegalStateException e) { throw e; }
-            catch(Exception e) { throw new RuntimeException("Unable to update notes for NCube: " + name + ", app: " + app + ", version: " + version, e); }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException("Unable to update notes for NCube: " + name + ", app: " + app + ", version: " + version, e);
+            }
             finally
             {
                 jdbcCleanup(stmt);
@@ -952,6 +991,7 @@ public class NCubeManager
 
     /**
      * Get the notes associated to an NCube
+     *
      * @return String notes.
      */
     public static String getNotes(Connection connection, String app, String name, String version, Date sysDate)
@@ -984,7 +1024,10 @@ public class NCubeManager
             }
             throw new IllegalArgumentException("No NCube matching passed in parameters.");
         }
-        catch (IllegalArgumentException e) { throw e; }
+        catch (IllegalArgumentException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
             String s = "Unable to fetch notes for NCube: " + name + ", app: " + app + ", version: " + version;
@@ -999,6 +1042,7 @@ public class NCubeManager
 
     /**
      * Update the test data associated to an NCube
+     *
      * @return true if the update succeeds, false otherwise
      */
     public static boolean updateTestData(Connection connection, String app, String name, String version, String testData)
@@ -1008,7 +1052,7 @@ public class NCubeManager
         validateCubeName(name);
         validateVersion(version);
 
-        synchronized(cubeList)
+        synchronized (cubeList)
         {
             PreparedStatement stmt = null;
             try
@@ -1030,8 +1074,11 @@ public class NCubeManager
                 }
                 return true;
             }
-            catch(IllegalStateException e) { throw e; }
-            catch(Exception e)
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
+            catch (Exception e)
             {
                 String s = "Unable to update test data for NCube: " + name + ", app: " + app + ", version: " + version;
                 LOG.error(s, e);
@@ -1046,6 +1093,7 @@ public class NCubeManager
 
     /**
      * Get the Test Data associated to the NCube.
+     *
      * @return String serialized JSON test data.  Use JsonReader to turn it back into
      * Java objects.
      */
@@ -1079,7 +1127,10 @@ public class NCubeManager
             }
             throw new IllegalArgumentException("No NCube matching passed in parameters.");
         }
-        catch (IllegalArgumentException e) { throw e; }
+        catch (IllegalArgumentException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
             String s = "Unable to fetch test data for NCube: " + name + ", app: " + app + ", version: " + version;
@@ -1092,17 +1143,19 @@ public class NCubeManager
         }
     }
 
+    private static String getResourceAsString(String name) throws IOException
+    {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        URL url = NCubeManager.class.getResource("/" + name);
+        IOUtilities.transfer(new File(url.getFile()), out);
+        return new String(out.toByteArray(), "UTF-8");
+    }
+
     public static NCube getNCubeFromResource(String name)
     {
         try
         {
-            URL url = NCubeManager.class.getResource("/" + name);
-            File jsonFile = new File(url.getFile());
-            FileInputStream in = new FileInputStream(jsonFile);
-            JsonReader reader = new JsonReader(in, true);
-            JsonObject jObj = (JsonObject) reader.readObject();
-            reader.close();
-            String json = JsonWriter.objectToJson(jObj);
+            String json = getResourceAsString(name);
             NCube ncube = NCube.fromSimpleJson(json);
             addCube(ncube, "file");
             return ncube;
@@ -1115,16 +1168,39 @@ public class NCubeManager
         }
     }
 
+    /**
+     * Still used in getNCubesFromResource
+     *
+     * @param name
+     * @return
+     * @throws IOException
+     */
+    private static JsonObject getJsonObjectFromResource(String name) throws IOException
+    {
+        JsonReader reader = null;
+        try
+        {
+            URL url = NCubeManager.class.getResource("/" + name);
+            File jsonFile = new File(url.getFile());
+            FileInputStream in = new FileInputStream(jsonFile);
+            reader = new JsonReader(in, true);
+            return (JsonObject) reader.readObject();
+        }
+        finally
+        {
+            if (reader != null)
+            {
+                reader.close();
+            }
+        }
+    }
+
     public static List<NCube> getNCubesFromResource(String name)
     {
         String lastSuccessful = "";
         try
         {
-            URL url = NCubeManager.class.getResource("/" + name);
-            File arrayJsonCubes = new File(url.getFile());
-            FileInputStream in = new FileInputStream(arrayJsonCubes);
-            JsonReader reader = new JsonReader(in, true);
-            JsonObject ncubes = (JsonObject) reader.readObject();
+            JsonObject ncubes = (JsonObject) getJsonObjectFromResource(name);
             Object[] cubes = ncubes.getArray();
             List<NCube> cubeList = new ArrayList<NCube>(cubes.length);
 

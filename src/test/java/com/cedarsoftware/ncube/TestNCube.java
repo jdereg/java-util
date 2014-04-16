@@ -3378,6 +3378,15 @@ DELIMITER ;
         assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
     }
 
+    @Test(expected=RuntimeException.class)
+    public void testInvalidTemplate() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("template-with-error.json");
+        Map map = new HashMap<String, Object>();
+        map.put("State", "TX");
+        n1.getCell(map);
+    }
+
     @Test
     public void testGetReferencedCubeNames() throws Exception
     {
@@ -5964,7 +5973,7 @@ DELIMITER ;
         cols.add(c);
         cells.put(cols, t);
 
-        JsonFormatter formatter = new JsonFormatter(ncube);
+        JsonFormatter formatter = new JsonFormatter();
         formatter.writeCells(cells);
     }
 
@@ -5980,7 +5989,7 @@ DELIMITER ;
 
         cols.add(c);
 
-        JsonFormatter formatter = new JsonFormatter(ncube);
+        JsonFormatter formatter = new JsonFormatter();
         formatter.writeColumns(cols);
     }
 

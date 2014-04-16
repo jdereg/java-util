@@ -51,7 +51,7 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class JsonFormatter extends NCubeFormatter
+public class JsonFormatter implements NCubeFormatter
 {
     private StringBuilder _builder = new StringBuilder();
 
@@ -72,26 +72,38 @@ public class JsonFormatter extends NCubeFormatter
     private Map<Long, Long> _generatedIds = new HashMap<Long, Long>();
     private long _idCounter;
 
-    public JsonFormatter(NCube ncube)
+    //private NCube _ncube;
+    /*
+    public String format(Collection<NCube> cubes)
     {
-        super(ncube);
-        this.ncube = ncube;
+        startArray();
+        for (NCube c : cubes)
+        {
+            writeNCube(c);
+        }
+        endArray();
+        return _builder.toString();
     }
+    */
 
     /**
      * Use this API to generate a JSON view of this NCube.
      *
-     * @param headers ignored
      * @return String containing a JSON view of this NCube.
      */
-    public String format(String... headers)
+    public String format(NCube ncube)
     {
+        writeNCube(ncube);
+        return _builder.toString();
+    }
+
+    public void writeNCube(NCube ncube) {
         try
         {
-            _builder.setLength(0);
             _userIds.clear();
             _generatedIds.clear();
             _idCounter = 0;
+
             walkIds(ncube.getAxes());
 
             startObject();
@@ -107,8 +119,6 @@ public class JsonFormatter extends NCubeFormatter
             writeCells(ncube.getCellMap());
 
             endObject();
-
-            return _builder.toString();
         }
         catch (Exception e)
         {
@@ -273,7 +283,7 @@ public class JsonFormatter extends NCubeFormatter
         {
             if (cmd.getCmd() == null)
             {
-                throw new IllegalStateException("Command and URL cannot both be null on a command cell, n-cube: " + ncube.getName());
+                throw new IllegalStateException("Command and URL cannot both be null on a command cell");
             }
             writeAttribute("value", cmd.getCmd(), false);
         }

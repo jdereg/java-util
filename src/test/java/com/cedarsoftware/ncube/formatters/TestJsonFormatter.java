@@ -34,7 +34,7 @@ public class TestJsonFormatter
     @Test(expected = IllegalArgumentException.class)
     public void testGetCellTypeException() throws Exception
     {
-        JsonFormatter formatter = new JsonFormatter(null);
+        JsonFormatter formatter = new JsonFormatter();
         formatter.getCellType(new StringBuilder(), "cell");
     }
 
@@ -109,21 +109,21 @@ public class TestJsonFormatter
     public void testInvalidNCube()
     {
         NCube ncube = new NCube(null);
-        JsonFormatter formatter = new JsonFormatter(ncube);
-        formatter.format();
+        JsonFormatter formatter = new JsonFormatter();
+        formatter.format(ncube);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testWriteGroovyObjectException() throws Exception
     {
-        JsonFormatter formatter = new JsonFormatter(new NCube("foo"));
+        JsonFormatter formatter = new JsonFormatter();
         formatter.writeGroovyObject(new ArrayList());
     }
 
     @Test
     public void testWriteObjectException() throws Exception
     {
-        JsonFormatter formatter = new JsonFormatter(new NCube("foo"));
+        JsonFormatter formatter = new JsonFormatter();
         formatter.writeObject(null);
     }
 

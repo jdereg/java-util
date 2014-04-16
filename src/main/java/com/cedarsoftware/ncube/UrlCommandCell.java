@@ -71,15 +71,15 @@ public abstract class UrlCommandCell extends CommandCell
         //The exception case is never hit here.  Believe me, I tried to get it to happen.
         //in error cases, cmd will be set to null.  Let me know if we need to change this or
         //remove the commented code here.
-        //try
-        //{
+        try
+        {
             fetchContentFromUrl();
-        //}
-        //catch (Exception e)
-        //{
-            //setCompileErrorMsg("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-            //throw new IllegalStateException(getCompileErrorMsg(), e);
-        //}
+        }
+        catch (Exception e)
+        {
+            setCompileErrorMsg("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            throw new IllegalStateException(getCompileErrorMsg(), e);
+        }
     }
 
     protected void fetchContentFromUrl()

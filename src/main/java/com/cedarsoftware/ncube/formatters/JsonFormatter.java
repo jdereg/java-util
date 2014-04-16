@@ -61,6 +61,7 @@ public class JsonFormatter implements NCubeFormatter
     private String _singleDoubleFormat = "%f";
     private String _twoDoubleFormat = "\"%f,%f\"";
     private String _threeDoubleFormat = "\"%f,%f,%f\"";
+    private String _name;
 
     private Map<Long, Object> _userIds = new HashMap<Long, Object>();
     private Map<Long, Long> _generatedIds = new HashMap<Long, Long>();
@@ -78,6 +79,7 @@ public class JsonFormatter implements NCubeFormatter
     {
         try
         {
+            _name = ncube.getName();
             _builder.setLength(0);
             _userIds.clear();
             _generatedIds.clear();
@@ -108,14 +110,11 @@ public class JsonFormatter implements NCubeFormatter
     public void walkIds(List<Axis> axes) {
         HashSet<Comparable> set = new HashSet<Comparable>();
         for (Axis item : axes) {
-            for (Column c : item.getColumns()) {
-                if (!c.isDefault()) {
-                    // only use value for id on String and Longs
-                    if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
-                        if (!set.contains(c.getValue())) {
-                            set.add(c.getValue());
-                            _userIds.put(c.getId(), c.getValue());
-                        }
+            for (Column c : item.getColumnsWithoutDefault()) {
+                if ((c.getValue() instanceof String) || (c.getValue() instanceof Long)) {
+                    if (!set.contains(c.getValue())) {
+                        set.add(c.getValue());
+                        _userIds.put(c.getId(), c.getValue());
                     }
                 }
             }
@@ -212,12 +211,13 @@ public class JsonFormatter implements NCubeFormatter
 
         Object o = _userIds.get(c.getId());
 
+        String columnType = getColumnType(c.getValue());
         if (o != null && o.equals(c.getValue())) {
-            writeType(getColumnType(c.getValue()));
+            writeType(columnType);
             writeId(c.getId(), false);
         } else {
             writeId(c.getId(), true);
-            writeType(getColumnType(c.getValue()));
+            writeType(columnType);
             if (c.getValue() instanceof UrlCommandCell) {
                 writeCommandCell((UrlCommandCell)c.getValue());
             } else {
@@ -238,7 +238,7 @@ public class JsonFormatter implements NCubeFormatter
         {
             if (cmd.getCmd() == null)
             {
-                throw new IllegalStateException("Command and URL cannot both be null on a command cell");
+                throw new IllegalStateException("Command and URL cannot both be null on a command cell, n-cube: " + _name);
             }
             writeAttribute("value", cmd.getCmd(), false);
         }
@@ -258,7 +258,7 @@ public class JsonFormatter implements NCubeFormatter
         writeAttribute("type", type, true);
     }
 
-    private String getColumnType(Object o) throws IOException {
+    private static String getColumnType(Object o) throws IOException {
         if (o instanceof Range || o instanceof RangeSet) {
             return null;
         }
@@ -278,7 +278,7 @@ public class JsonFormatter implements NCubeFormatter
         return getCellType(o, "column");
     }
 
-    String getCellType(Object cell, String type) throws IOException
+    static String getCellType(Object cell, String type) throws IOException
     {
         if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
             return null;
@@ -404,13 +404,13 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof Double) {
-            _builder.append(String.format(_singleDoubleFormat, ((Double)o).doubleValue()));
+            _builder.append(String.format(_singleDoubleFormat, (Double) o));
             _builder.append('d');
             return;
         }
 
         if (o instanceof Float) {
-            _builder.append(String.format(_singleDoubleFormat, ((Float)o).floatValue()));
+            _builder.append(String.format(_singleDoubleFormat, (Float) o));
             _builder.append('f');
             return;
         }
@@ -455,7 +455,7 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof Boolean) {
-            _builder.append(((Boolean)o).booleanValue() ? "true" : "false");
+            _builder.append((Boolean)o ? "true" : "false");
             return;
         }
 
@@ -517,7 +517,7 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof Date) {
-            _builder.append(String.format(_quotedStringFormat, _dateFormat.format((Date) o)));
+            _builder.append(String.format(_quotedStringFormat, _dateFormat.format(o)));
             return;
         }
 

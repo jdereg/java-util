@@ -1,0 +1,141 @@
+                           Project #3
+
+     In this project, I have four actual UNIX processes
+executing.  The start program forks (spawns) off the three light
+weight kernels.  These light weight kernels have been modified
+since the original copy was given to me.  I have added a
+configuration file.  This file includes my unique queue id, the
+light weight kernel's id, the input, output, error, and dump file
+names.  There exists routines to load the configuration file
+into a structure.  Any process can get a local copy of this
+structure by calling GetConEnv.
+
+----------------------------------------------------------------
+   M E S S A G E    S T R U C T U R E
+
+ Position 0     Position 1    Position 2   Position 3...
+ 
+  [RESULT]     [DESTINATION]    [SOURCE]     [rp...]
+
+  0 = good     1, 2, or 3     1, 2, or 3   actual message text
+  1 = bad
+----------------------------------------------------------------
+
+
+  I. Light Weight Kernel #1
+
+   A.  The first light weight kernel has five light weight
+processes.  Init, input, receiver, sender, and Crouter.  Init
+process sets up the argv arrays, and co-starts the other light
+weight processes.
+
+   B.  The inputter process is a very simple one that reads a
+text file line by line, removes leading white space, and sends
+the line to Crouter via a lwk mailbox.
+
+   C.  The receiver process waits constantly on the UNIX mailbox
+until a message of its type appears.  It retrieves the message.
+Next, it checks to see if it is a "shut down" message.  If so,
+the message is passed onto Crouter and then receiver dies.  If it
+is not a shut down message, it is passed onto Crouter and it
+returns to waiting on the UNIX mailbox.  This process is
+duplicated in all three kernels.  For the sake of brevity, it is
+only described here.
+
+   D.  The sender process waits on the light weight mailbox
+between Crouter and itself.  When a message is available, it is
+extracted and checked for the "shut down" message.  If it is, the
+message is passed to the UNIX mailbox, and then the sender
+terminates.  If the message is not a "shut down" message, the
+sender, resets the SOURCE field of the message to the light
+weight kernel number.  Next the message is sent to the UNIX
+mailbox.  Again, this light weight process is used for all three
+light weight kernels.
+
+   E.  Crouter is the brains behind lwk #1.  It constantly loops
+checking the input mailbox for messages.  If none, it checks for
+the receiver mailbox.  This process is repeated until the other
+two light weight kernels have shut down.  First a picture of the
+table kept in Crouter might help:
+
+
+ C R O U T E R    T A B L E   (example)
+
+  mach no. | RP name | Cmd in Progress | exec count | queue
+-----------------------------------------------------------
+     3     |  rp1    |      \0         |     3      | --> nil
+     3     |  rp2    | rp2 command #4  |     2      | --> nodes
+     3     |  rp3    | rp3 command #2  |     2      | --> nodes
+     2     |  rp1    | rp1 command #5  |     3      | --> nodes
+     2     |  rp2    |      \0         |     2      | --> nodes
+     2     |  rp3    | rp3 command #5  |     3      | --> nil
+     
+
+   Whenever an available command is received from inputter, the
+matching rp name with the lowest exec count is selected for
+processing the command.  If there already is a command in
+progress, it is then queued for later retrieval.  The receiver
+mailbox is also being checked for returned commands.  It looks
+for a "shut down" command, in which case it increments a counter
+that tells Crouter a machine is done.  When this count reaches 2
+in this project, Crouter knows it is finished.  If the command
+was not a shut down command, it is searched for in the table and
+erased.  If there is a message available in the rp's table entry
+queue, it is dequeued and sent.  If input is finished, the table
+is compared for empty queues and no commands in progress.  When
+this event happens, we know we are finished and can send a "shut
+down" message to our own sender and receiver.
+
+ II.  Light Weight Kernel #2.
+  
+   A.  Srouter has its own table, much smaller than Crouter,
+though.  The rp name and it's mailbox are kept in the Srouter
+table.  Srouter waits on messages form receivers mailbox.  When
+it receives one, it is routed to the appropriate remote
+procedure.  Srouter shuts down on the special "shut down" message
+also, but passes it on to sender first.
+   B.  Output process.  This is the remote procedure.  It is the
+same for all six of the rp's.  It opens the output file and 80%
+of the time it outputs the command.  The output process shuts
+down when it receives a null message.
+
+III.  Light Weight Kernel #3.
+
+  (Exactly the same as lwk #2)
+
+
+
+
+                     Initialization Overview
+
+
+     If the input process starts first, it will read 5
+(BOUND_SIZE) lines from the file and send them to crouter and
+then will be context switched out.
+     During initialization, Crouter waits patiently on the
+receiver mailbox for the remote procedures to tell it what
+commands to put into the Crouter table.  When it receives two end
+of intro messages,  it forges into normal operating mode.
+     If receiver starts first, it will be context switched out
+because it will find no messages on the UNIX mailbox.
+     If sender starts first, it will be preempted because there
+will be no messages on the mailbox from Crouter.
+
+     As soon as Srouter gets control, it sends it's available
+commands and wakes up the rp's.  After sending initialization
+information, it forges into action.
+     If one of the rp's start, they'll hang on a mailbox until
+any messages are sent to it by Srouter.
+
+
+     The dump file output has been extensively modified.  Not
+only are all items now described, but also names instead of
+addresses are shown whenever possible.  The queue primitives in
+the kernel were made public so they could be accessed from within
+lwk processes.
+
+
+                                     John T. DeRegnaucourt
+     
+
+

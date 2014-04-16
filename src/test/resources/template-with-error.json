@@ -1,0 +1,16 @@
+{
+    "ncube":"TemplateErrorCube",
+    "axes":[ {
+        "name":"State",
+        "type":"DISCRETE",
+        "valueType":"STRING",
+        "hasDefault":true,
+        "preferredOrder":0,
+        "columns":[
+            { "value":"TX" }
+        ]}
+    ],
+    "cells":[
+        { "key":{"State":"TX" }, "type":"template", "value":"<%=<%=<%=input.state='GA';$(input)%>%>"}
+    ]
+}

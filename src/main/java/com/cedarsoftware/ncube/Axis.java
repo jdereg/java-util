@@ -224,7 +224,7 @@ public class Axis
         s.append("  preferred Order: ");
         s.append(getColumnOrder());
         s.append("\n");
-        s.append("  multiMatch ");
+        s.append("  multiMatch: ");
         s.append(multiMatch);
         s.append("\n");
         for (Comparable value : columns)

@@ -517,7 +517,7 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof Date) {
-            _builder.append(String.format(_quotedStringFormat, _dateFormat.get().format((Date) o)));
+            _builder.append(String.format(_quotedStringFormat, _dateFormat.format((Date) o)));
             return;
         }
 

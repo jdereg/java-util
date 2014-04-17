@@ -12,6 +12,7 @@
             { "id":"turing"},
             { "id":"vend"},
             { "id":"hello"},
+            { "id":"hello2"},
             { "id":"95"}
         ]
     }],
@@ -21,6 +22,7 @@
         { "id":["turing"], "type":"template", "url":"@UrlPieces[:]/ncube/CS480P1.TXT"},
         { "id":["vend"], "type":"template", "url":"@UrlPieces[:]/ncube/FUNCDESC.TXT"},
         { "id":["hello"], "type":"exp", "url":"@UrlPieces[:]/ncube/hello.groovy"},
+        { "id":["hello2"], "type":"exp", "url":"@UrlPieces[:]/ncube/hello2.groovy"},
         { "id":["95"], "type":"exp", "url":"@UrlPieces[:]/ncube/number.groovy"}
     ]
 }

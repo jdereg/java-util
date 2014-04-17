@@ -37,20 +37,15 @@ public class NCubeGroovyController extends NCubeGroovyExpression
         }
     };
 
-    public NCubeGroovyController(){}
-
     /**
      * Run the groovy method named by the column on the 'method' axis.
-     * @param args a Map that contains the 'input' Map, 'output' Map, 'ncube',
-     *  and the 'stack.'
      * @param signature String SHA1 of the source file.  This is used to
      * ensure the method cache 'key' is unique.  If someone uses the same
      * package and class name for two classes, but their source is different,
      * their methods will be keyed uniquely in the cache.
      */
-    public Object run(Map args, String signature) throws Exception
+    public Object run(String signature) throws Exception
     {
-        super.run(args);
         String methodKey = (String) input.get("method") + '.' + signature;
         Method method = methodCache.get(methodKey);
 

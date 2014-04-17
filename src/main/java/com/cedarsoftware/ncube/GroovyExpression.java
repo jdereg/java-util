@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
 
@@ -65,14 +66,24 @@ public class GroovyExpression extends GroovyBase
         String className = "N_" + getCmdHash();
         groovy.append("class ");
         groovy.append(className);
-        groovy.append(" extends NCubeGroovyExpression { def run(Map args, String signature) { super.run(args); ");
+        groovy.append(" extends NCubeGroovyExpression\n{\n\tdef run()\n\t{\n\t");
         groovy.append(groovyCodeWithoutImportStatements);
-        groovy.append("}}");
+        groovy.append("\n}\n}");
         return groovy.toString();
     }
 
     protected String getMethodToExecute(Map args)
     {
         return "run";
+    }
+
+    protected Method getRunMethod() throws NoSuchMethodException
+    {
+        return getRunnableCode().getMethod("run");
+    }
+
+    protected Object invokeRunMethod(Method runMethod, Object instance) throws Exception
+    {
+        return runMethod.invoke(instance);
     }
 }

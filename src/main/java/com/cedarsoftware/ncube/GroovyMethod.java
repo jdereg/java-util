@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 
 /**
@@ -72,5 +73,15 @@ public class GroovyMethod extends GroovyBase
     {
         Map input = (Map) args.get("input");
         return (String)input.get("method");
+    }
+
+    protected Method getRunMethod() throws NoSuchMethodException
+    {
+        return getRunnableCode().getMethod("run", String.class);
+    }
+
+    protected Object invokeRunMethod(Method runMethod, Object instance) throws Exception
+    {
+        return runMethod.invoke(instance, getCmdHash());
     }
 }

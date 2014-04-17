@@ -2,11 +2,14 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.util.StringUtilities;
 import groovy.lang.GroovyClassLoader;
+import groovy.lang.GroovyCodeSource;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -37,6 +40,13 @@ public abstract class GroovyBase extends UrlCommandCell
     static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
     static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
     static final Map<String, Constructor> constructorMap = new LinkedHashMap()
+    {
+        protected boolean removeEldestEntry(Map.Entry eldest)
+        {
+            return size() > 500;
+        }
+    };
+    static final Map<String, Method> initMethodMap = new LinkedHashMap()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {
@@ -97,6 +107,7 @@ public abstract class GroovyBase extends UrlCommandCell
      */
     protected Object executeGroovy(final Map args) throws Exception
     {
+        // Step 1: Construct the object (use default constructor)
         final String cacheKey = getCmdHash();
         Constructor c = constructorMap.get(cacheKey);
         if (c == null)
@@ -112,7 +123,27 @@ public abstract class GroovyBase extends UrlCommandCell
             }
         }
 
-        final Object exp = c.newInstance();
+        final Object instance = c.newInstance();
+
+        // Step 2: Call the inherited 'init(Map args)' method.  This technique saves the subclasses from having
+        // to implement a duplicate constructor that routes the Map up (Constructors are not inherited).
+        Method initMethod = initMethodMap.get(cacheKey);
+        if (initMethod == null)
+        {
+            synchronized(GroovyBase.class)
+            {
+                initMethod = initMethodMap.get(cacheKey);
+                if (initMethod == null)
+                {
+                    initMethod = getRunnableCode().getMethod("init", Map.class);
+                    initMethodMap.put(cacheKey, initMethod);
+                }
+            }
+        }
+
+        initMethod.invoke(instance, args);
+
+        // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method
         Method runMethod = methodMap.get(cacheKey);
 
         if (runMethod == null)
@@ -122,13 +153,17 @@ public abstract class GroovyBase extends UrlCommandCell
                 runMethod = methodMap.get(cacheKey);
                 if (runMethod == null)
                 {
-                    runMethod = getRunnableCode().getMethod("run", Map.class, String.class);
+                    runMethod = getRunMethod();
                     methodMap.put(cacheKey, runMethod);
                 }
             }
         }
-        return runMethod.invoke(exp, args, getCmdHash());
+        return invokeRunMethod(runMethod, instance);
     }
+
+    protected abstract Method getRunMethod() throws NoSuchMethodException;
+
+    protected abstract Object invokeRunMethod(Method runMethod, Object instance) throws Exception;
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method
@@ -166,8 +201,27 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected void compile(String cubeName) throws Exception
     {
-        String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cubeName));
-        setRunnableCode(groovyClassLoader.parseClass(groovySource));
+        String url = getUrl();
+        if (StringUtilities.hasContent(url))
+        {
+            url = url.trim();
+            GroovyCodeSource gcs;
+            if (url.toLowerCase().startsWith("res://"))
+            {   // URL to file within classpath
+                gcs = new GroovyCodeSource(GroovyBase.class.getClassLoader().getResource(url.substring(6)));
+            }
+            else
+            {   // URL to non-classpath file
+                gcs = new GroovyCodeSource(new URL(url));
+            }
+            gcs.setCachable(false);
+            setRunnableCode(groovyClassLoader.parseClass(gcs));
+        }
+        else
+        {
+            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cubeName));
+            setRunnableCode(groovyClassLoader.parseClass(groovySource));
+        }
         compiledClasses.put(getCmdHash(), getRunnableCode());
     }
 

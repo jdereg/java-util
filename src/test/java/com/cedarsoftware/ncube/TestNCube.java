@@ -3535,26 +3535,26 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("sites", "BinaryFromLocalUrl");
         byte[] localBinaryBytes = (byte[]) n1.getCell(coord);
-        assertEquals("return \"Local Hello, world.\"", new String(localBinaryBytes));
+        assertEquals(77383, localBinaryBytes.length);
 
         coord.put("sites", "BinaryFromRemoteUrl");
         byte[] remoteBinaryBytes = (byte[]) n1.getCell(coord);
-        assertEquals("return \"Hello, world.\"", new String(remoteBinaryBytes));
+        assertEquals(77383, remoteBinaryBytes.length);
 
         coord.put("sites", "StringFromLocalUrl");
-        assertEquals("return \"Local Hello, world.\"", (String)n1.getCell(coord));
+        assertEquals("CAFEBABE", n1.getCell(coord));
 
         coord.put("sites", "StringFromValue");
-        assertEquals("return \"Local Hello, world.\"", (String)n1.getCell(coord));
+        assertEquals("return \"Local Hello, world.\"", n1.getCell(coord));
 
         coord.put("sites", "StringFromRemoteUrl");
-        assertEquals("return \"Hello, world.\"", (String)n1.getCell(coord));
+        assertEquals("CAFEBABE", n1.getCell(coord));
 
         coord.put("sites", "TemplateFromLocalUrl");
-        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", (String)n1.getCell(coord));
+        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", n1.getCell(coord));
 
         coord.put("sites", "TemplateFromRemoteUrl");
-        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", (String)n1.getCell(coord));
+        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", n1.getCell(coord));
     }
 
     @Test

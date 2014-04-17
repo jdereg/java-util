@@ -175,7 +175,17 @@ public class JsonFormatter implements NCubeFormatter
 
     public void writeColumns(List<Column> columns) throws IOException {
         _builder.append("\"columns\":");
+
+        /*
+        Always have at least one default column
+        if (columns == null || columns.isEmpty()) {
+            _builder.append("[]");
+            return;
+        }
+         */
+
         startArray();
+
         boolean commaWritten = false;
 
         for(Column item : columns ) {
@@ -350,10 +360,12 @@ public class JsonFormatter implements NCubeFormatter
         endArray();
     }
 
+
     public void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException {
 
         _builder.append("\"id\":");
         startArray();
+
         boolean commaWritten = false;
 
         for (Column c : item.getKey()) {
@@ -443,7 +455,7 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof Boolean) {
-            _builder.append((Boolean) o ? "true" : "false");
+            _builder.append((Boolean)o ? "true" : "false");
             return;
         }
 
@@ -514,7 +526,9 @@ public class JsonFormatter implements NCubeFormatter
             return;
         }
 
+
         if (o.getClass().isArray()) {
+            //Class c = o.getClass().getComponentType();
             //  check types
             _builder.append("\"");
             startArray();
@@ -569,12 +583,14 @@ public class JsonFormatter implements NCubeFormatter
     public void writeValue(String attr, Object o) throws IOException {
         _builder.append(String.format(_quotedStringFormat, attr));
         _builder.append(':');
+
         writeObject(o);
     }
 
     public void writeId(Long longId, boolean addComma) throws IOException {
         _builder.append(String.format(_quotedStringFormat, "id"));
         _builder.append(':');
+
         writeIdValue(longId, addComma);
     }
 

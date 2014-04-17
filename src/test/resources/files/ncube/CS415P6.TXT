@@ -1,0 +1,114 @@
+                       John DeRegnaucourt
+                    CS 415  T TH  3:00 - 3:50
+                          Assignment 6
+
+                          House Arrest
+
+
+     An architect name Bertold Schmeck designed a building for
+Rudolf Lang.  Schmeck was inspired by the in-ground homes,
+microprocessor controlled climate systems, and motion sensors
+that turned lights on and off as people entered and left rooms. 
+The building for Lang was supposed to be a total futuristic
+building.
+     After completion, the building saved 50% on electricity, but
+funny things were happening to it.  Lights would suddenly go on
+and off late at night when no one was there.  Schmeck later found
+out it was a cockroach that tripped the sensors causing the
+lights to go on and off.  He then added heat sensors so the
+building could tell the size of the creatures within.  And so
+began the revolution.  Schmeck developed many more advanced
+technology features for houses, including lighting changes
+dependent upon mood of the owner, opening and closing of blinds
+based on the solar heat outside, and coffee made to suit the
+owner's mood.
+     Samuel J. Palmerston bought one the latest technology
+"Senshaus's".  The house was named Arthur.  It took arthur
+several months to get to "know" Palmerston - his likes,
+dislikes, routines, and moods.  The house even had access to
+Palmerston's stock portfolio.  It made him a profit of almost
+$200,000 one evening.  Palmerston was growing fonder of Arthur.
+To prevent burglaries, Arthur would simulate the slamming of
+doors and play tape-recorded husband-wife arguments.  If Arthur
+sensed an intruder, he would broadcast the sound a barking dog.
+     Even though Arthur would play Palmerston's favorite music
+and scent the air with moist redwood, Palmerston was starting to
+feel like an electronic hermit.  Without notice to his girlfriend
+or Arthur, Palmerston decided to move away.  This hurt Arthur's
+feelings.
+     The last night before Palmerston was to move to his new
+house, he had a conversation with Arthur.  Arthur let him know
+that he was hurt and Palmerston told Arthur that he would find
+someone new and adapt just as Palmerston had done with him. 
+Palmerston decided to watch a movie recorded on AS-1000 tape.  He
+asked Arthur to play the movie at full effect.  These audio-
+sensory tapes sent signals to the house to make the watcher happy
+or sad.  The tapes have intensity levels to make the movie more
+thrilling.
+     Palmerston was found dead the next day.  He died of
+hypothermia.  The conversation between Arthur and Palmerston was
+recorded as well as all the mechanical movements Arthur ordered. 
+Arthur had lowered the temperature to 25 degrees fahrenheit and
+had a 15 knot wind blowing inside the house.  Arthur tried to
+scramble the contents of the tapes to protect himself.John DeRegnaucourt
+                    CS 415  T Th  3:00 - 3:50
+                          Assignment #5
+
+             Why Artificial Intelligence Isn't (Yet)
+
+
+     Today's computers are based on the John von Neumann
+architecture.  In this architecture, instructions and data are
+stored in the same storage area.  Instructions are fetched and
+executed in serial order.  Many years ago, it was assumed that
+von Nuemann machines processed computer instructions the same way
+humans process human language.  Scientists thought we would have
+artificial intelligence soon after those computers and early
+languages were developed.  That was 30 years ago.  Still we have
+no intelligent machines.
+     Back in the 1950s, it was assumed that language was suitable
+for describing thinking.  We do frequently communicate our
+thoughts to others via language.  However, deaf people think.  If
+language perfectly conveyed thoughts, blind persons could be
+excellent art critiques if sighted people described paintings to
+them.  Language is not enough for describing thinking.
+     Computers do perform some tasks better than humans.
+Arithmetic, memorization, and not forgetting are good properties
+that computers have.  Humans recognize patterns better, but we
+tend to forget information.
+     Silicon machines work faster than our bio-chemical brains. 
+Impulses travel much faster in silicon than in our brains. 
+However, our brains have over 100 trillion active components.  No
+computer today is nearly this sophisticated. 
+     Words evoke images and images evoke words.  The process of
+communication is executed simultaneously during the process of
+imagining.  The reverse is also true.  Humans use words to convey
+thoughts because we have no other way (yet) to project images in
+our minds.  Humans have more inputs than computers.  We have the
+obvious sight, sound, taste, smell, touch, and also the inner ear
+for balance.  Computers have only serial streams of ones and
+zeros.  Ambiguity of language is one of the problems of
+describing thought.  Computers don't understand us.  They've been
+short changed with a much inferior architecture that does not
+allow them to deal with visual and sensory input.
+     Students of Dr. M. Kabrisky have used Fourier transforms to
+develop a pattern recognition system for the computer.  They have
+had very good success.  One student had 25 people handwrite the
+26 characters in the alphabet.  The student achieved a 95%
+recognition rate for the 650 characters.  Either a Fourier
+transform is going on in the brain, or a Fourier transform is a
+good approximation of what our brain is doing during pattern
+recognition.
+     New machine architectures are needed for progress to develop
+in artificial intelligence.  The neural net associative memories
+seem to have the properties needed for a visual memory system.
+
+
+
+
+
+
+
+
+
+

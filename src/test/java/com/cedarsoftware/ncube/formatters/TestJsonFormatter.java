@@ -111,7 +111,7 @@ public class TestJsonFormatter
         NCube ncube = new NCube(null);
         JsonFormatter formatter = new JsonFormatter();
         formatter.format(ncube);
-   }
+    }
 
     @Test(expected = IllegalArgumentException.class)
     public void testWriteGroovyObjectException() throws Exception
@@ -140,10 +140,10 @@ public class TestJsonFormatter
             {
                 return s != null && s.endsWith(".json") &&
                         !(s.endsWith("idBasedCubeError.json") ||
-                          s.endsWith("idBasedCubeError2.json") ||
+                                s.endsWith("idBasedCubeError2.json") ||
                                 s.endsWith("error.json") ||
                                 s.endsWith("arrays.json") ||  /** won't have equivalency **/
-                          s.endsWith("testCubeList.json"));   /** list of cubes **/
+                                s.endsWith("testCubeList.json"));   /** list of cubes **/
             }
         });
 

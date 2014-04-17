@@ -1,0 +1,233 @@
+                       John DeRegnaucourt
+                     CS 480  M W 4:10 - 5:25
+
+                 The Turing Programming Language
+
+     Readability is an important part of any programming
+language.  An easy to read programming language makes maintaining
+programs written in that language easy.  There are many factors
+that make a language readable, such as overall simplicity,
+orthogonality, control statements, data structures, and syntax. 
+The developers of the Turing language had these criterion in mind
+during the inception and creation of the language.  Their intent
+was to develop a language that was easy to learn, had concise and
+expressive syntax, handled errors gracefully and efficiently,
+control of program complexity, mathematically precise language
+definition, and a small, fast implementation.
+     The Turing language encompasses all of the above named
+features.  Simplicity helps make a programming language readable. 
+Turing is so simple that it can be used to teach young children
+how to program, yet with the Turing Plus extension, it can be
+used to develop operating systems more efficiently than C or Ada. 
+Having a small set of constructs helps make a language readable. 
+Turing's 'loop' statement with 'exit' eliminates a need for a
+'while' loop and a 'repeat until' loop such as Pascal has. 
+Semicolons are not needed at the end of a statement.  However,
+the language is such a full language with modules, variant
+records, dynamic arrays, that there are still many components. 
+As far as operator overloading goes, Turing is well behaved. 
+The language does not allow redefinition of the elementary
+symbols.  It does use +, however, for numbers as well as for
+concatenation of strings.  Turing allows some multiplicity, but
+not nearly as much as C.  An example is the shorthand notation i
++= 1, which is the same as i := i + 1.
+     Orthogonality is also an important consideration in a
+programming language.  Turing does not require the header and
+trailer program and end statements that Pascal does, or the
+main() function like C.  Procedures, however, are like Pascal and
+can have value or var parameters.  Functions, on the other hand,
+can return structure variables, where Pascal cannot.  The
+summation of numbers (eg. k := i + j + k) is similar to the
+concatenation of strings (eg. name := first + " " + last).  This
+slight overloading of the + symbol enhances readability and does
+not require a special function call to concatenate strings.
+     Also important to language readability is control
+statements.  Turing uses the loop end construct with an exit
+[when condition] to exit the loop when the condition is met. 
+This is more powerful than a while loop and a repeat until loop
+like Pascal has or the while and do while of C.  This is due to
+the fact that you can insert the exit condition at the top of the
+loop, the bottom, or any place in the middle.  Turing is, of
+course, a block structured programming language.
+     Data structures are also important to creating a readable
+and powerful language.  Turing supports records, records with
+variant parts, varying length strings, and dynamic array sizes. 
+Turing far exceeds the data structure capabilities of C and
+Pascal.  Almost any imaginable data structure can be created
+within Turing.
+     The syntax or form of a language is vital to how readable a
+program is.  C is not a pretty language to read.  It uses { }
+instead of begin and end statements to mark off blocks of code. 
+Pascal uses begin and end, but that is where Turing improves on
+Pascal's readability.  Turing ends its if statement block with
+end if and its loop block with end loop.  When looking at many
+nested levels of code, it is not as hard as C or Pascal to find
+matching block pairs.  As mentioned before, semicolons are not
+needed at the ends of lines.  This makes the code look cleaner. 
+Allowed length for identifiers is more than generous.  Also, the
+underscore character is allowed making variables easier to read. 
+C and Pascal both lose here.
+     Not only is Readability of a language an important
+acceptance criterion, but so is Writability.  Again, like
+readability, simplicity and orthogonality are important features
+to make a language easy in which to write code.  Turing does have
+many constructs, but not many more than Pascal.  Turing Plus does
+ad more, but the type of programmer who would use Turing Plus
+would welcome the extra Constructs.  Again Turing is more
+orthogonal that Pascal, and has quoted as being easier to learn
+than BASIC for school children.  Also too much orthogonality can
+indeed make a language more complex to write in.  Turing is not
+overly orthogonal.
+     Support for abstraction is a necessary feature for a
+writable language.  With Turing, complicated structures and
+operations can be stated simply, letting the programmer ignore
+implementation details.  Turing models provide excellent data
+hiding, are not complicated to write, and may be nested.  Queue
+functions can be implemented with arrays or linked lists, but
+with modules, the programmer does not have to know which method
+of implementation was used.  Like Pascal, tree structures can be
+produced in an elegant manner.
+     Reliability is a very important feature for the writability
+of a language.  With the addition of such hot features as
+assertions, Turing is an exceptional example of a reliable
+language.  Also many of the reliability features can be turned
+off at any time.  This may be useful for shortening the object
+code size once a program (or sections of a program ) is/are fully
+debugged.
+     Type checking can make a programmer fight with a language
+like Pascal or let the programmer be sloppy like C permits. 
+Turing is somewhere in between Pascal and C on type checking.  It
+does allow type-cheating which is analogous to C's type casting. 
+The language is also relaxed in the type checking of strings,
+which makes the language flexible to work with.  However,
+parameters must be typed when passed to functions and procedures
+as in Pascal.
+     Turing provides excellent exception handling.  There is
+built in exception handling.  Also, the programmer can develop
+his/her own error handlers.  It even supports a quit statement
+that redirects the guilt to the parent, the child, or self.
+     Aliasing is allowing two or more variables to reference the
+same memory location.  This is currently considered too dangerous
+to justify its advantages.  Turing allows aliasing.  The
+assignment of one pointer to another makes both reference the
+same memory location.  Also Turing Plus supports placing
+variables at absolute addresses as well as making a variable an
+address type.
+     Turing is a fascinating new language that should catch on. 
+It is a dramatic improvement over Pascal or Modula 2.  Turing
+Plus can be thought of as superior to Ada and C++.  The language
+is not nearly as huge as Ada, but supports all the necessary
+enhancements that Ada provides.John DeRegnaucourt
+                    CS 415  T TH  3:00 - 3:50
+                          Assignment 6
+
+                          House Arrest
+
+
+     An architect name Bertold Schmeck designed a building for
+Rudolf Lang.  Schmeck was inspired by the in-ground homes,
+microprocessor controlled climate systems, and motion sensors
+that turned lights on and off as people entered and left rooms. 
+The building for Lang was supposed to be a total futuristic
+building.
+     After completion, the building saved 50% on electricity, but
+funny things were happening to it.  Lights would suddenly go on
+and off late at night when no one was there.  Schmeck later found
+out it was a cockroach that tripped the sensors causing the
+lights to go on and off.  He then added heat sensors so the
+building could tell the size of the creatures within.  And so
+began the revolution.  Schmeck developed many more advanced
+technology features for houses, including lighting changes
+dependent upon mood of the owner, opening and closing of blinds
+based on the solar heat outside, and coffee made to suit the
+owner's mood.
+     Samuel J. Palmerston bought one the latest technology
+"Senshaus's".  The house was named Arthur.  It took arthur
+several months to get to "know" Palmerston - his likes,
+dislikes, routines, and moods.  The house even had access to
+Palmerston's stock portfolio.  It made him a profit of almost
+$200,000 one evening.  Palmerston was growing fonder of Arthur.
+To prevent burglaries, Arthur would simulate the slamming of
+doors and play tape-recorded husband-wife arguments.  If Arthur
+sensed an intruder, he would broadcast the sound a barking dog.
+     Even though Arthur would play Palmerston's favorite music
+and scent the air with moist redwood, Palmerston was starting to
+feel like an electronic hermit.  Without notice to his girlfriend
+or Arthur, Palmerston decided to move away.  This hurt Arthur's
+feelings.
+     The last night before Palmerston was to move to his new
+house, he had a conversation with Arthur.  Arthur let him know
+that he was hurt and Palmerston told Arthur that he would find
+someone new and adapt just as Palmerston had done with him. 
+Palmerston decided to watch a movie recorded on AS-1000 tape.  He
+asked Arthur to play the movie at full effect.  These audio-
+sensory tapes sent signals to the house to make the watcher happy
+or sad.  The tapes have intensity levels to make the movie more
+thrilling.
+     Palmerston was found dead the next day.  He died of
+hypothermia.  The conversation between Arthur and Palmerston was
+recorded as well as all the mechanical movements Arthur ordered. 
+Arthur had lowered the temperature to 25 degrees fahrenheit and
+had a 15 knot wind blowing inside the house.  Arthur tried to
+scramble the contents of the tapes to protect himself.John DeRegnaucourt
+                    CS 415  T Th  3:00 - 3:50
+                          Assignment #5
+
+             Why Artificial Intelligence Isn't (Yet)
+
+
+     Today's computers are based on the John von Neumann
+architecture.  In this architecture, instructions and data are
+stored in the same storage area.  Instructions are fetched and
+executed in serial order.  Many years ago, it was assumed that
+von Nuemann machines processed computer instructions the same way
+humans process human language.  Scientists thought we would have
+artificial intelligence soon after those computers and early
+languages were developed.  That was 30 years ago.  Still we have
+no intelligent machines.
+     Back in the 1950s, it was assumed that language was suitable
+for describing thinking.  We do frequently communicate our
+thoughts to others via language.  However, deaf people think.  If
+language perfectly conveyed thoughts, blind persons could be
+excellent art critiques if sighted people described paintings to
+them.  Language is not enough for describing thinking.
+     Computers do perform some tasks better than humans.
+Arithmetic, memorization, and not forgetting are good properties
+that computers have.  Humans recognize patterns better, but we
+tend to forget information.
+     Silicon machines work faster than our bio-chemical brains. 
+Impulses travel much faster in silicon than in our brains. 
+However, our brains have over 100 trillion active components.  No
+computer today is nearly this sophisticated. 
+     Words evoke images and images evoke words.  The process of
+communication is executed simultaneously during the process of
+imagining.  The reverse is also true.  Humans use words to convey
+thoughts because we have no other way (yet) to project images in
+our minds.  Humans have more inputs than computers.  We have the
+obvious sight, sound, taste, smell, touch, and also the inner ear
+for balance.  Computers have only serial streams of ones and
+zeros.  Ambiguity of language is one of the problems of
+describing thought.  Computers don't understand us.  They've been
+short changed with a much inferior architecture that does not
+allow them to deal with visual and sensory input.
+     Students of Dr. M. Kabrisky have used Fourier transforms to
+develop a pattern recognition system for the computer.  They have
+had very good success.  One student had 25 people handwrite the
+26 characters in the alphabet.  The student achieved a 95%
+recognition rate for the 650 characters.  Either a Fourier
+transform is going on in the brain, or a Fourier transform is a
+good approximation of what our brain is doing during pattern
+recognition.
+     New machine architectures are needed for progress to develop
+in artificial intelligence.  The neural net associative memories
+seem to have the properties needed for a visual memory system.
+
+
+
+
+
+
+
+
+
+

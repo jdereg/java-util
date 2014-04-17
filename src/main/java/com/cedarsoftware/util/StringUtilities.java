@@ -143,13 +143,17 @@ public final class StringUtilities
      * and you don't want to have to catch the UnsupportedEncodingException
      * required by Java
      *
-     * @param s string to encode into bytes
-     * @param encoding
+     * @param s        string to encode into bytes
+     * @param encoding encoding to use
      */
-    public static byte[] getBytes(String s, String encoding) {
-        try {
+    public static byte[] getBytes(String s, String encoding)
+    {
+        try
+        {
             return s.getBytes(encoding);
-        } catch (UnsupportedEncodingException e) {
+        }
+        catch (UnsupportedEncodingException e)
+        {
             throw new IllegalArgumentException(String.format("Invalid Encoding:  %s", encoding), e);
         }
     }
@@ -163,7 +167,6 @@ public final class StringUtilities
     public static String encode(byte[] bytes)
     {
         StringBuilder sb = new StringBuilder(bytes.length << 1);
-        int len = bytes.length;
         for (byte aByte : bytes)
         {
             sb.append(convertDigit(aByte >> 4));
@@ -192,7 +195,7 @@ public final class StringUtilities
 
         int count = 0;
         int len = s.length();
-        for (int i=0; i < len; i++)
+        for (int i = 0; i < len; i++)
         {
             if (s.charAt(i) == c)
             {

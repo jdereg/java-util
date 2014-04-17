@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.annotation.Annotation;
@@ -8,17 +9,19 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -78,6 +81,15 @@ public class TestReflectionUtils
 
     static class Bogus implements Blart
     {
+    }
+
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Constructor<ReflectionUtils> con = ReflectionUtils.class.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
     }
 
     @Test
@@ -201,5 +213,12 @@ public class TestReflectionUtils
         assertTrue(fields.size() > 0);
         assertTrue(fields.containsKey("firstDayOfWeek"));
         assertFalse(fields.containsKey("blart"));
+    }
+
+    @Test
+    public void testGetClassName() throws Exception
+    {
+        assertEquals("null", ReflectionUtils.getClassName(null));
+        assertEquals("java.lang.String", ReflectionUtils.getClassName("item"));
     }
 }

@@ -72,10 +72,14 @@ public final class ReflectionUtils
 
     private static void addInterfaces(final Class classToCheck, final LinkedList<Class> stack)
     {
-        if (classToCheck == null)
-        {
-            return;
-        }
+        /**
+         * Removed because it is never called.  You are always checking it in the two functions
+         * that call this method.
+         if (classToCheck == null)
+         {
+         return;
+         }
+         */
         for (Class interFace : classToCheck.getInterfaces())
         {
             stack.push(interFace);
@@ -203,5 +207,15 @@ public final class ReflectionUtils
         }
 
         return fieldMap;
+    }
+
+    /**
+     * Return the name of the class on the object, or "null" if the object is null.
+     * @param o Object to get the class name.
+     * @return String name of the class or "null"
+     */
+    public static String getClassName(Object o)
+    {
+        return o == null ? "null" : o.getClass().getName();
     }
 }

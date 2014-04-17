@@ -4,26 +4,34 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Created by kpartlow on 3/20/2014.
+ * @author Kenneth Partlow
+ *         <br/>
+ *         Copyright (c) Cedar Software LLC
+ *         <br/><br/>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br/><br/>
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <br/><br/>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
-
 public class TestMapUtilities
 {
     @Test
     public void testMapUtilitiesConstructor() throws Exception
     {
-        Class c = MapUtilities.class;
-        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
-
-        Constructor<MapUtilities> con = c.getDeclaredConstructor();
+        Constructor<MapUtilities> con = MapUtilities.class.getDeclaredConstructor();
         Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -31,40 +39,44 @@ public class TestMapUtilities
     }
 
     @Test(expected = ClassCastException.class)
-    public void testGetStringOnMapThatDoesNotSupportNullKeys() {
+    public void testGetWithWrongType() {
         Map map = new TreeMap();
         map.put("foo", Boolean.TRUE);
-
-        MapUtilities.getString(map, "foo");
+        String s = MapUtilities.get(map, "foo", null);
     }
 
+
+
     @Test
-    public void testGetString() {
+    public void testGet() {
         Map map = new HashMap();
-        Assert.assertNull(MapUtilities.getString(map, "foo"));
-        Assert.assertEquals("bar", MapUtilities.getString(map, "foo", "bar"));
+        Assert.assertEquals("bar", MapUtilities.get(map, "baz", "bar"));
+        Assert.assertEquals(7, (long) MapUtilities.get(map, "baz", 7));
+        Assert.assertEquals(new Long(7), MapUtilities.get(map, "baz", 7L));
+
+        // auto boxing tests
+        Assert.assertEquals(Boolean.TRUE, (Boolean)MapUtilities.get(map, "baz", true));
+        Assert.assertEquals(true, MapUtilities.get(map, "baz", Boolean.TRUE));
 
         map.put("foo", "bar");
+        Assert.assertEquals("bar", MapUtilities.get(map, "foo", null));
 
-        Assert.assertEquals("bar", MapUtilities.getString(map, "foo"));
-    }
+        map.put("foo", 5);
+        Assert.assertEquals(5, (long)MapUtilities.get(map, "foo", 9));
 
-    @Test(expected = ClassCastException.class)
-    public void testGetLongOnMapThatDoesNotSupportNullKeys() {
-        Map map = new TreeMap();
-        map.put("foo", Boolean.TRUE);
+        map.put("foo", 9L);
+        Assert.assertEquals(new Long(9), MapUtilities.get(map, "foo", null));
 
-        MapUtilities.getLong(map, "foo");
     }
 
     @Test
-    public void testGetLong() {
+    public void testIsEmpty() {
+        Assert.assertTrue(MapUtilities.isEmpty(null));
+
         Map map = new HashMap();
-        Assert.assertNull(MapUtilities.getLong(map, "foo"));
-        Assert.assertEquals((Object)Long.MIN_VALUE, MapUtilities.getLong(map, "foo", Long.MIN_VALUE));
+        Assert.assertTrue(MapUtilities.isEmpty(new HashMap()));
 
-        map.put("foo", Long.MAX_VALUE);
-
-        Assert.assertEquals((Object)Long.MAX_VALUE, MapUtilities.getLong(map, "foo"));
+        map.put("foo", "bar");
+        Assert.assertFalse(MapUtilities.isEmpty(map));
     }
 }

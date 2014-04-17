@@ -1,11 +1,15 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -28,6 +32,17 @@ import static org.junit.Assert.fail;
  */
 public class TestMathUtilities
 {
+    @Test
+    public void testMapUtilitiesConstructor() throws Exception
+    {
+        Constructor<MapUtilities> con = MapUtilities.class.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
+
+
     @Test
     public void testMinimumLong()
     {
@@ -82,6 +97,25 @@ public class TestMathUtilities
 
         double[] values = {45.1, -13.1, 123213123.1};
         assertTrue(-13.1 == MathUtilities.minimum(values));
+    }
+
+    @Test
+    public void testMinimumAndMaximumBigIntegerSingle() {
+        BigInteger n = new BigInteger("5000");
+        assertSame(n, MathUtilities.minimum(n));
+        assertSame(n, MathUtilities.maximum(n));
+    }
+
+    @Test
+    public void testMinimumAndMaximumBigDecimalSingle() {
+        BigDecimal n = new BigDecimal("5050000.5050566");
+        assertSame(n, MathUtilities.minimum(n));
+        assertSame(n, MathUtilities.maximum(n));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testMaximumBigIntegerWithNullInArray() {
+        assertEquals(new BigInteger("1"), MathUtilities.maximum(new BigInteger("1"), new BigInteger("2"), null));
     }
 
     @Test

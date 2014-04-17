@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -56,6 +55,21 @@ public class TestCaseInsensitiveMap
 
         assertTrue(stringMap.get("three").equals("Four"));
         assertTrue(stringMap.get("fIvE").equals("Six"));
+    }
+
+    @Test
+    public void testOffTypes()
+    {
+        CaseInsensitiveMap stringMap = new CaseInsensitiveMap();
+
+        stringMap.put(8L, "eight");
+        stringMap.put(12L, "thirteen");
+        stringMap.put("one", "two");
+        stringMap.put("three", "four");
+
+        assertEquals("two", stringMap.get("one"));
+        assertEquals("four", stringMap.get("three"));
+        assertEquals("eight", stringMap.get(8L));
     }
 
     @Test

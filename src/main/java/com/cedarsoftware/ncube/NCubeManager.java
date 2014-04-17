@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonObject;
@@ -8,6 +10,7 @@ import com.cedarsoftware.util.io.JsonWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,7 +33,7 @@ import java.util.regex.Matcher;
  * This class manages a list of NCubes.  This class is referenced
  * by NCube in one place - when it joins to other cubes, it consults
  * the NCubeManager to find the joined NCube.
- *
+ * <p/>
  * This class takes care of creating, loading, updating, releasing,
  * and deleting NCubes.  It also allows you to get a list of NCubes
  * matching a wildcard (SQL Like) string.
@@ -218,11 +221,7 @@ public class NCubeManager
                 {
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
-                    NCube<Object> ncube = (NCube) JsonReader.jsonToJava(json);
-                    for (Axis axis : ncube.getAxes())
-                    {
-                        axis.buildScaffolding();
-                    }
+                    NCube ncube = NCube.fromSimpleJson(json);
 
                     if (rs.next())
                     {
@@ -295,11 +294,7 @@ public class NCubeManager
             {
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
                 String json = new String(jsonBytes, "UTF-8");
-                NCube<Object> ncube = (NCube) JsonReader.jsonToJava(json);
-                for (Axis axis : ncube.getAxes())
-                {
-                    axis.buildScaffolding();
-                }
+                NCube ncube = NCube.fromSimpleJson(json);
 
                 if (rs.next())
                 {
@@ -523,7 +518,7 @@ public class NCubeManager
             try
             {
                 stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'");
-                stmt.setBytes(1, JsonWriter.objectToJson(ncube).getBytes("UTF-8"));
+                stmt.setBytes(1, new JsonFormatter().format(ncube).getBytes("UTF-8"));
                 stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
                 stmt.setString(3, app);
                 stmt.setString(4, ncube.getName());
@@ -588,7 +583,8 @@ public class NCubeManager
                     stmt.setLong(1, UniqueIdGenerator.getUniqueId());
                     stmt.setString(2, app);
                     stmt.setString(3, ncube.getName());
-                    String json = JsonWriter.objectToJson(ncube);
+                    String json = new JsonFormatter().format(ncube);
+                    //                    String json = JsonWriter.objectToJson(ncube);
                     stmt.setBytes(4, json.getBytes("UTF-8"));
                     stmt.setString(5, version);
                     java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
@@ -1092,17 +1088,19 @@ public class NCubeManager
         }
     }
 
+    private static String getResourceAsString(String name) throws IOException
+    {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        URL url = NCubeManager.class.getResource("/" + name);
+        IOUtilities.transfer(new File(url.getFile()), out);
+        return new String(out.toByteArray(), "UTF-8");
+    }
+
     public static NCube getNCubeFromResource(String name)
     {
         try
         {
-            URL url = NCubeManager.class.getResource("/" + name);
-            File jsonFile = new File(url.getFile());
-            FileInputStream in = new FileInputStream(jsonFile);
-            JsonReader reader = new JsonReader(in, true);
-            JsonObject jObj = (JsonObject) reader.readObject();
-            reader.close();
-            String json = JsonWriter.objectToJson(jObj);
+            String json = getResourceAsString(name);
             NCube ncube = NCube.fromSimpleJson(json);
             addCube(ncube, "file");
             return ncube;
@@ -1115,16 +1113,39 @@ public class NCubeManager
         }
     }
 
+    /**
+     * Still used in getNCubesFromResource
+     *
+     * @param name
+     * @return
+     * @throws IOException
+     */
+    private static JsonObject getJsonObjectFromResource(String name) throws IOException
+    {
+        JsonReader reader = null;
+        try
+        {
+            URL url = NCubeManager.class.getResource("/" + name);
+            File jsonFile = new File(url.getFile());
+            FileInputStream in = new FileInputStream(jsonFile);
+            reader = new JsonReader(in, true);
+            return (JsonObject) reader.readObject();
+        }
+        finally
+        {
+            if (reader != null)
+            {
+                reader.close();
+            }
+        }
+    }
+
     public static List<NCube> getNCubesFromResource(String name)
     {
         String lastSuccessful = "";
         try
         {
-            URL url = NCubeManager.class.getResource("/" + name);
-            File arrayJsonCubes = new File(url.getFile());
-            FileInputStream in = new FileInputStream(arrayJsonCubes);
-            JsonReader reader = new JsonReader(in, true);
-            JsonObject ncubes = (JsonObject) reader.readObject();
+            JsonObject ncubes = (JsonObject) getJsonObjectFromResource(name);
             Object[] cubes = ncubes.getArray();
             List<NCube> cubeList = new ArrayList<NCube>(cubes.length);
 

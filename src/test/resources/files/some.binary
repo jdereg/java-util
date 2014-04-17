@@ -1,1 +1,0 @@
-return "Local Hello, world."

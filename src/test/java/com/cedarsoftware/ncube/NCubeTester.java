@@ -2,10 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UrlUtilities;
 import org.junit.After;
-import org.junit.Before;
 
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 

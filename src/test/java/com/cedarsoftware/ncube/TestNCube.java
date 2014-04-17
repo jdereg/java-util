@@ -40,6 +40,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -3375,6 +3376,15 @@ DELIMITER ;
         assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
     }
 
+    @Test(expected=RuntimeException.class)
+    public void testInvalidTemplate() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource("template-with-error.json");
+        Map map = new HashMap<String, Object>();
+        map.put("State", "TX");
+        n1.getCell(map);
+    }
+
     @Test
     public void testGetReferencedCubeNames() throws Exception
     {
@@ -5768,6 +5778,20 @@ DELIMITER ;
         NCubeManager.getNCubeFromResource("null-error.json");
     }
 
+    @Test
+    public void testCoordinateNotFoundException()
+    {
+        RuntimeException r = new RuntimeException();
+        try
+        {
+            throw new CoordinateNotFoundException("foo", r);
+        }
+        catch (Exception e)
+        {
+            assertEquals("foo", e.getMessage());
+            assertSame(r, e.getCause());
+        }
+    }
 
     @Test
     public void testExpandableUrlRef()
@@ -5931,6 +5955,16 @@ DELIMITER ;
         assertEquals(16, ncube.getCell(coord));
     }
 
+    @Test(expected = RuntimeException.class)
+    public void testCommandCellReferencedCubeNotFoundOnExpandUrl() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("expand-url-cube-not-found-error.json");
+        Map<String, Object> map = new HashMap<String,Object>();
+        map.put("Sites", "StringFromLocalUrl");
+        ncube.getCell(map);
+    }
+
+
     @Test(expected = IllegalStateException.class)
     public void testInvalidUrlCommand() throws Exception
     {
@@ -5947,7 +5981,7 @@ DELIMITER ;
         cols.add(c);
         cells.put(cols, t);
 
-        JsonFormatter formatter = new JsonFormatter(ncube);
+        JsonFormatter formatter = new JsonFormatter();
         formatter.writeCells(cells);
     }
 
@@ -5963,7 +5997,7 @@ DELIMITER ;
 
         cols.add(c);
 
-        JsonFormatter formatter = new JsonFormatter(ncube);
+        JsonFormatter formatter = new JsonFormatter();
         formatter.writeColumns(cols);
     }
 

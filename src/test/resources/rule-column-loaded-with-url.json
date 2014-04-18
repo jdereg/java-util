@@ -22,7 +22,7 @@
             "preferredOrder":1,
             "columns":[
                 { "id":10, "type":"exp", "value":"input.weight < 100" },
-                { "id":20, "type":"exp", "value":"input.weight < 200" },
+                { "id":20, "type":"exp", "value":"input.weight >= 100 && input.weight < 200" },
                 { "id":30, "type":"exp", "value":"input.weight >= 200" }
             ]
         }
@@ -38,4 +38,4 @@
         { "id":[2, 30], "type":"exp", "value":"output.age = 'adult'; output.weight='heavy-weight'" },
         { "id":[3, 30], "type":"exp", "value":"output.age = 'middle-aged'; output.weight='heavy-weight'" }
     ]
-}
+}`

@@ -3474,23 +3474,22 @@ DELIMITER ;
         assertEquals(n1, n2);
     }
 
-    /*
     @Test
     public void testLoadRuleFromUrl() throws Exception
     {
-        NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url-error.json");
-        //n1.setRuleMode(false);
-
+        NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url.json");
+        n1.setRuleMode(false);
 
         Map coord = new HashMap();
         coord.put("age", 17);
         coord.put("weight", 99);
-        assertTrue(n1.containsCell(coord, false));
+        Map output = new HashMap();
 
-        assertEquals("foo", (String) n1.getCell(coord));
+        n1.getCells(coord, output);
 
+        assertEquals("light-weight", output.get("weight"));
+        assertEquals("young", output.get("age"));
     }
-*/
 
     @Test
     public void testContainsCellRuleAxis() throws Exception

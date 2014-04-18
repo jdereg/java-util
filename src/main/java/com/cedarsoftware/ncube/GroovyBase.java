@@ -39,21 +39,21 @@ public abstract class GroovyBase extends UrlCommandCell
 {
     static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
     static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
-    static final Map<String, Constructor> constructorMap = new LinkedHashMap()
+    static final Map<String, Constructor> constructorMap = new LinkedHashMap<String, Constructor>()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {
             return size() > 500;
         }
     };
-    static final Map<String, Method> initMethodMap = new LinkedHashMap()
+    static final Map<String, Method> initMethodMap = new LinkedHashMap<String, Method>()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {
             return size() > 500;
         }
     };
-    static final Map<String, Method> methodMap = new LinkedHashMap()
+    static final Map<String, Method> methodMap = new LinkedHashMap<String, Method>()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {

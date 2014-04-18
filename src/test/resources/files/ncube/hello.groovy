@@ -1,3 +1,9 @@
-package files.ncube
+import ncube.grv.exp.NCubeGroovyExpression
 
-return "Local Hello, world."
+class HelloWorld extends NCubeGroovyExpression
+{
+    def run()
+    {
+        "Hello, world."
+    }
+}

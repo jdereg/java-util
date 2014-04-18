@@ -33,13 +33,16 @@ public class NCubeGroovyExpression
     protected Object stack;
     protected NCube ncube;
 
-    public Object run(Map args) throws Exception
+    /**
+     * @param args a Map that contains the 'input' Map, 'output' Map, 'ncube',
+     *  and the 'stack.'
+     */
+    public void init(Map args)
     {
         input = (Map) args.get("input");
         output = (Map) args.get("output");
         stack = args.get("stack");
         ncube = (NCube) args.get("ncube");
-        return null;
     }
 
     public Object getFixedCell(Map coord)

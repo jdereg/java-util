@@ -21,11 +21,11 @@
             ]
     }],
     "cells":[
-        { "id":["StringFromLocalUrl"], "type":"string", "cache":false, "url":"res://files/hello.groovy"},
-        { "id":["StringFromRemoteUrl"], "type":"string", "cache":true, "url":"http://tests.codetested.com/ncube/hello.groovy"},
+        { "id":["StringFromLocalUrl"], "type":"string", "cache":false, "url":"res://files/some.txt"},
+        { "id":["StringFromRemoteUrl"], "type":"string", "cache":true, "url":"http://tests.codetested.com/ncube/some.txt"},
         { "id":["StringFromValue"], "type":"string", "value":"return \"Local Hello, world.\""},
-        { "id":["BinaryFromLocalUrl"], "type":"binary", "cache":false, "url":"res://files/hello.groovy"},
-        { "id":["BinaryFromRemoteUrl"], "type":"binary", "cache":false, "url":"http://tests.codetested.com/ncube/hello.groovy"},
+        { "id":["BinaryFromLocalUrl"], "type":"binary", "cache":false, "url":"res://files/message.wav"},
+        { "id":["BinaryFromRemoteUrl"], "type":"binary", "cache":false, "url":"http://tests.codetested.com/ncube/message.wav"},
         { "id":["BinaryFromValue"], "type":"binary", "value":"BEAC1099"},
         { "id":["TemplateFromLocalUrl"], "type":"template", "url":"res://files/hello.template"},
         { "id":["TemplateFromRemoteUrl"], "type":"template", "url":"http://tests.codetested.com/ncube/hello.template"},

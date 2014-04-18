@@ -1,9 +1,9 @@
 import ncube.grv.exp.NCubeGroovyExpression
 
-class NinetyFive extends NCubeGroovyExpression
+class HelloWorld extends NCubeGroovyExpression
 {
     def run()
     {
-        95
+        "Hello, world 2."
     }
 }

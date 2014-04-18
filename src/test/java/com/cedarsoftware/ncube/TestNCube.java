@@ -2224,8 +2224,6 @@ DELIMITER ;
         assertTrue(ncube.getNumDimensions() == 0);
     }
 
-
-
     @Test
     public void testRangeSetAxisErrors()
     {
@@ -3476,23 +3474,22 @@ DELIMITER ;
         assertEquals(n1, n2);
     }
 
-    /*
     @Test
     public void testLoadRuleFromUrl() throws Exception
     {
-        NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url-error.json");
-        //n1.setRuleMode(false);
-
+        NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url.json");
+        n1.setRuleMode(false);
 
         Map coord = new HashMap();
         coord.put("age", 17);
         coord.put("weight", 99);
-        assertTrue(n1.containsCell(coord, false));
+        Map output = new HashMap();
 
-        assertEquals("foo", (String) n1.getCell(coord));
+        n1.getCells(coord, output);
 
+        assertEquals("light-weight", output.get("weight"));
+        assertEquals("young", output.get("age"));
     }
-*/
 
     @Test
     public void testContainsCellRuleAxis() throws Exception
@@ -3537,26 +3534,26 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("sites", "BinaryFromLocalUrl");
         byte[] localBinaryBytes = (byte[]) n1.getCell(coord);
-        assertEquals("return \"Local Hello, world.\"", new String(localBinaryBytes));
+        assertEquals(77383, localBinaryBytes.length);
 
         coord.put("sites", "BinaryFromRemoteUrl");
         byte[] remoteBinaryBytes = (byte[]) n1.getCell(coord);
-        assertEquals("return \"Hello, world.\"", new String(remoteBinaryBytes));
+        assertEquals(77383, remoteBinaryBytes.length);
 
         coord.put("sites", "StringFromLocalUrl");
-        assertEquals("return \"Local Hello, world.\"", (String)n1.getCell(coord));
+        assertEquals("CAFEBABE", n1.getCell(coord));
 
         coord.put("sites", "StringFromValue");
-        assertEquals("return \"Local Hello, world.\"", (String)n1.getCell(coord));
+        assertEquals("return \"Local Hello, world.\"", n1.getCell(coord));
 
         coord.put("sites", "StringFromRemoteUrl");
-        assertEquals("return \"Hello, world.\"", (String)n1.getCell(coord));
+        assertEquals("CAFEBABE", n1.getCell(coord));
 
         coord.put("sites", "TemplateFromLocalUrl");
-        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", (String)n1.getCell(coord));
+        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", n1.getCell(coord));
 
         coord.put("sites", "TemplateFromRemoteUrl");
-        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", (String)n1.getCell(coord));
+        assertEquals("You saved 0.12 on your plane insurance. Does this 0.12 work?", n1.getCell(coord));
     }
 
     @Test
@@ -5781,11 +5778,15 @@ DELIMITER ;
     }
 
     @Test
-    public void testCoordinateNotFoundException() {
+    public void testCoordinateNotFoundException()
+    {
         RuntimeException r = new RuntimeException();
-        try {
+        try
+        {
             throw new CoordinateNotFoundException("foo", r);
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             assertEquals("foo", e.getMessage());
             assertSame(r, e.getCause());
         }
@@ -5857,6 +5858,12 @@ DELIMITER ;
         coord.put("content", "hello");
         String html1 = (String) ncube.getCell(coord);
         assertEquals(html, html1);
+
+        coord.put("protocol", "http");
+        coord.put("content", "hello2");
+        html = (String) ncube.getCell(coord);
+        assertNotNull(html);
+        assertEquals("Hello, world 2.", html);
 
         coord.put("protocol", "http");
         coord.put("content", "95");

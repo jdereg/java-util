@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class ReflectionUtils
+public class ReflectionUtils
 {
     private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<Class, Collection<Field>>();
 
@@ -72,10 +72,14 @@ public final class ReflectionUtils
 
     private static void addInterfaces(final Class classToCheck, final LinkedList<Class> stack)
     {
-        if (classToCheck == null)
-        {
-            return;
-        }
+        /**
+         * Removed because it is never called.  You are always checking it in the two functions
+         * that call this method.
+         if (classToCheck == null)
+         {
+         return;
+         }
+         */
         for (Class interFace : classToCheck.getInterfaces())
         {
             stack.push(interFace);
@@ -141,43 +145,53 @@ public final class ReflectionUtils
 
         while (curr != null)
         {
-            try
-            {
-                Field[] local = curr.getDeclaredFields();
-
-                for (Field field : local)
-                {
-                    if (!field.isAccessible())
-                    {
-                        try
-                        {
-                            field.setAccessible(true);
-                        }
-                        catch (Exception ignored) { }
-                    }
-
-                    int modifiers = field.getModifiers();
-                    if (!Modifier.isStatic(modifiers) &&
-                            !field.getName().startsWith("this$") &&
-                            !Modifier.isTransient(modifiers))
-                    {   // speed up: do not count static fields, do not go back up to enclosing object in nested case, do not consider transients
-                        fields.add(field);
-                    }
-                }
-            }
-            catch (ThreadDeath t)
-            {
-                throw t;
-            }
-            catch (Throwable ignored)
-            { }
-
+            getDeclaredFields(curr, fields);
             curr = curr.getSuperclass();
         }
         _reflectedFields.put(c, fields);
         return fields;
     }
 
+    /**
+     * Get all non static, non transient, fields of the passed in class, including
+     * private fields. Note, the special this$ field is also not returned.  The
+     * resulting fields are stored in a Collection.
+     * @param c Class instance
+     * that would need further processing (reference fields).  This
+     * makes field traversal on a class faster as it does not need to
+     * continually process known fields like primitives.
+     */
+    public static void getDeclaredFields(Class c, Collection<Field> fields) {
+        try
+        {
+            Field[] local = c.getDeclaredFields();
+
+            for (Field field : local)
+            {
+                if (!field.isAccessible())
+                {
+                    try
+                    {
+                        field.setAccessible(true);
+                    }
+                    catch (Exception ignored) { }
+                }
+
+                int modifiers = field.getModifiers();
+                if (!Modifier.isStatic(modifiers) &&
+                        !field.getName().startsWith("this$") &&
+                        !Modifier.isTransient(modifiers))
+                {   // speed up: do not count static fields, do not go back up to enclosing object in nested case, do not consider transients
+                    fields.add(field);
+                }
+            }
+        }
+        catch (Throwable ignored)
+        {
+            ExceptionUtilities.safelyIgnoreException(ignored);
+        }
+
+    }
     /**
      * Return all Fields from a class (including inherited), mapped by
      * String field name to java.lang.reflect.Field.
@@ -203,5 +217,15 @@ public final class ReflectionUtils
         }
 
         return fieldMap;
+    }
+
+    /**
+     * Return the name of the class on the object, or "null" if the object is null.
+     * @param o Object to get the class name.
+     * @return String name of the class or "null"
+     */
+    public static String getClassName(Object o)
+    {
+        return o == null ? "null" : o.getClass().getName();
     }
 }

@@ -21,6 +21,9 @@ package com.cedarsoftware.util;
  */
 public class SystemUtilities
 {
+    private SystemUtilities() {
+    }
+
     /**
      * Fetch value from environment variable and if not set, then fetch from
      * System properties.  If neither available, return null.

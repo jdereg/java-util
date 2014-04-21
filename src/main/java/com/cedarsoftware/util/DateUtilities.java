@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class DateUtilities
+public final class DateUtilities
 {
     private static final String mos = "(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)";
     private static final Pattern datePattern1 = Pattern.compile("(\\d{4})[\\./-](\\d{1,2})[\\./-](\\d{1,2})");
@@ -66,6 +66,10 @@ public class DateUtilities
         months.put("november", "11");
         months.put("dec", "12");
         months.put("december", "12");
+    }
+
+    private DateUtilities() {
+        super();
     }
 
     public static Date parseDate(String dateStr)

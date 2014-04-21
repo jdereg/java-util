@@ -1,14 +1,15 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.Assert.assertTrue;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
- * @author John DeRegnaucourt (jdereg@gmail.com)
+ * Useful InetAddress Utilities
+ *
+ * @author Kenneth Partlow
  *         <br/>
  *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
@@ -24,18 +25,27 @@ import static org.junit.Assert.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestUniqueIdGenerator
+public class InetAddressUtilities
 {
+    private static final Log LOG = LogFactory.getLog(InetAddressUtilities.class);
 
-    @Test
-    public void testUniqueIdGeneration() throws Exception
-    {
-        Set ids = new HashSet();
+    private InetAddressUtilities() {
+        super();
+    }
 
-        for (int i=0; i < 1000000; i++)
+    public static InetAddress getLocalHost() throws UnknownHostException {
+        return InetAddress.getLocalHost();
+    }
+
+    public static byte[] getIpAddress() {
+        try
         {
-            ids.add(UniqueIdGenerator.getUniqueId());
+            return getLocalHost().getAddress();
         }
-        assertTrue(ids.size() == 1000000);
+        catch (Exception e)
+        {
+            LOG.warn("Failed to obtain computer's IP address", e);
+            return new byte[] {0,0,0,0};
+        }
     }
 }

@@ -24,6 +24,11 @@ import java.math.BigInteger;
  */
 public class MathUtilities
 {
+    private MathUtilities()
+    {
+        super();
+    }
+
     /**
      * Calculate the minimum value from an array of values.
      *

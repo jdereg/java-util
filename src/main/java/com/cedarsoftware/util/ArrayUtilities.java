@@ -21,7 +21,7 @@ import java.lang.reflect.Array;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ArrayUtilities
+public final class ArrayUtilities
 {
     /**
      * Immutable common arrays.
@@ -138,10 +138,10 @@ public class ArrayUtilities
         return dest;
     }
 
-    public static Object[] getArraySubset(Object[] ids, int start, int end)
+    public static Object[] getArraySubset(Object[] array, int start, int end)
     {
-        Object[] subset = new Object[end - start];
-        System.arraycopy(ids, start, subset, 0, end - start);
-        return subset;
+        Object subset = Array.newInstance(array.getClass().getComponentType(), end-start);
+        System.arraycopy(array, start, subset, 0, end - start);
+        return (Object[])subset;
     }
 }

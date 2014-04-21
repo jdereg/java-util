@@ -1,6 +1,10 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 
 import static org.junit.Assert.assertTrue;
 
@@ -23,6 +27,15 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestSystemUtilities
 {
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Constructor<SystemUtilities> con = SystemUtilities.class.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
+
     @Test
     public void testGetExternalVariable()
     {

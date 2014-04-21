@@ -22,6 +22,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
+
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -83,6 +85,15 @@ public class TestReflectionUtils
     {
     }
 
+    public interface AAA {
+    }
+
+    public interface BBB extends AAA {
+    }
+
+    public class CCC implements BBB, AAA {
+    }
+
     @Test
     public void testConstructorIsPrivate() throws Exception {
         Constructor<ReflectionUtils> con = ReflectionUtils.class.getDeclaredConstructor();
@@ -104,6 +115,9 @@ public class TestReflectionUtils
         assertTrue(a instanceof ControllerClass);
 
         a = ReflectionUtils.getClassAnnotation(Bogus.class, ControllerClass.class);
+        assertNull(a);
+
+        a = ReflectionUtils.getClassAnnotation(CCC.class, ControllerClass.class);
         assertNull(a);
     }
 
@@ -178,6 +192,18 @@ public class TestReflectionUtils
         assertNull(a);
     }
 
+    @Test(expected=ThreadDeath.class)
+    public void testGetDeclaredFields() throws Exception {
+        Class c = Parent.class;
+
+        Field f = c.getDeclaredField("foo");
+
+        Collection<Field> fields = mock(Collection.class);
+        when(fields.add(f)).thenThrow(new ThreadDeath());
+        ReflectionUtils.getDeclaredFields(Parent.class, fields);
+    }
+
+
     @Test
     public void testDeepDeclaredFields() throws Exception
     {
@@ -213,6 +239,12 @@ public class TestReflectionUtils
         assertTrue(fields.size() > 0);
         assertTrue(fields.containsKey("firstDayOfWeek"));
         assertFalse(fields.containsKey("blart"));
+
+
+        Map<String, Field> test2 = ReflectionUtils.getDeepDeclaredFieldMap(Child.class);
+        assertEquals(2, test2.size());
+        assertTrue(test2.containsKey("com.cedarsoftware.util.TestReflectionUtils$Parent.foo"));
+        assertFalse(test2.containsKey("com.cedarsoftware.util.TestReflectionUtils$Child.foo"));
     }
 
     @Test
@@ -220,5 +252,19 @@ public class TestReflectionUtils
     {
         assertEquals("null", ReflectionUtils.getClassName(null));
         assertEquals("java.lang.String", ReflectionUtils.getClassName("item"));
+    }
+
+    @Test
+    public void testGetClassAnnotationsWithNul() throws Exception
+    {
+        assertNull(ReflectionUtils.getClassAnnotation(null, null));
+    }
+
+    private class Parent {
+        private String foo;
+    }
+
+    private class Child extends Parent {
+        private String foo;
     }
 }

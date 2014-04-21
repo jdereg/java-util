@@ -1,14 +1,16 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.Assert.assertTrue;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
+import java.net.InetAddress;
 
 /**
- * @author John DeRegnaucourt (jdereg@gmail.com)
+ * useful InetAddress Utilities
+ *
+ * @author Kenneth Partlow
  *         <br/>
  *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
@@ -24,18 +26,23 @@ import static org.junit.Assert.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestUniqueIdGenerator
+public class TestInetAddressUtilities
 {
+    @Test
+    public void testMapUtilitiesConstructor() throws Exception
+    {
+        Constructor<InetAddressUtilities> con = InetAddressUtilities.class.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
 
     @Test
-    public void testUniqueIdGeneration() throws Exception
-    {
-        Set ids = new HashSet();
-
-        for (int i=0; i < 1000000; i++)
-        {
-            ids.add(UniqueIdGenerator.getUniqueId());
-        }
-        assertTrue(ids.size() == 1000000);
+    public void testGetIpAddress() throws Exception {
+        byte[] bytes = InetAddress.getLocalHost().getAddress();
+        Assert.assertArrayEquals(bytes, InetAddressUtilities.getIpAddress());
     }
+
+
 }

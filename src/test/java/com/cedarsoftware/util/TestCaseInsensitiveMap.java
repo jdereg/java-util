@@ -58,18 +58,21 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testOffTypes()
+    public void testWithNonStringKeys()
     {
         CaseInsensitiveMap stringMap = new CaseInsensitiveMap();
 
-        stringMap.put(8L, "eight");
-        stringMap.put(12L, "thirteen");
-        stringMap.put("one", "two");
+        stringMap.put(97, "eight");
+        stringMap.put(19, "nineteen");
+        stringMap.put("a", "two");
         stringMap.put("three", "four");
+        stringMap.put(null, "null");
 
-        assertEquals("two", stringMap.get("one"));
+        assertEquals("two", stringMap.get("a"));
         assertEquals("four", stringMap.get("three"));
-        assertEquals("eight", stringMap.get(8L));
+        assertNull(stringMap.get(8L));
+        assertEquals("nineteen", stringMap.get(19));
+        assertEquals("null", stringMap.get(null));
     }
 
     @Test

@@ -35,7 +35,7 @@ public class TestMathUtilities
     @Test
     public void testMapUtilitiesConstructor() throws Exception
     {
-        Constructor<MapUtilities> con = MapUtilities.class.getDeclaredConstructor();
+        Constructor<MathUtilities> con = MathUtilities.class.getDeclaredConstructor();
         Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 

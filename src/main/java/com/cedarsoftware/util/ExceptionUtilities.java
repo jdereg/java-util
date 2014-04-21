@@ -1,14 +1,8 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
-
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.Assert.assertTrue;
-
 /**
- * @author John DeRegnaucourt (jdereg@gmail.com)
+ * Useful Exception Utilities
+ * @author Keneth Partlow
  *         <br/>
  *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
@@ -24,18 +18,28 @@ import static org.junit.Assert.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestUniqueIdGenerator
+public class ExceptionUtilities
 {
+    private ExceptionUtilities() {
+        super();
+    }
 
-    @Test
-    public void testUniqueIdGeneration() throws Exception
+    /**
+     * Safely Ignore a Throwable or rethrow if it is a Throwable that should
+     * not be ignored.
+     * @param t
+     */
+    public static void safelyIgnoreException(Throwable t)
     {
-        Set ids = new HashSet();
-
-        for (int i=0; i < 1000000; i++)
+        if (t instanceof ThreadDeath)
         {
-            ids.add(UniqueIdGenerator.getUniqueId());
+            throw (ThreadDeath) t;
         }
-        assertTrue(ids.size() == 1000000);
+
+        if (t instanceof OutOfMemoryError)
+        {
+            throw (OutOfMemoryError) t;
+        }
+
     }
 }

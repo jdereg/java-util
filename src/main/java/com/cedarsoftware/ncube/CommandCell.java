@@ -120,6 +120,16 @@ public abstract class CommandCell implements Comparable<CommandCell>
 
     protected abstract Object runFinal(Map args);
 
+    protected NCube getNCube(Map args)
+    {
+        NCube ncube = (NCube) args.get("ncube");
+        if (ncube == null)
+        {
+            throw new IllegalStateException("NCube not set for CommandCell to execute.  Arguments: " + args);
+        }
+        return ncube;
+    }
+
     public String getCmd()
 	{
 		return cmd;

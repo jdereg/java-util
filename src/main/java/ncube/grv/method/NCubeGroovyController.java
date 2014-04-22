@@ -1,5 +1,7 @@
 package ncube.grv.method;
 
+import com.cedarsoftware.ncube.Advice;
+import com.cedarsoftware.ncube.NCube;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Method;
@@ -61,7 +63,32 @@ public class NCubeGroovyController extends NCubeGroovyExpression
                 }
             }
         }
+
+        // If 'around' Advice has been added to n-cube, invoke it before calling Groovy method
+        // or expression
+        Advice advice = NCube.getAdvice();
+        boolean shouldContinue = true;
+        if (advice != null)
+        {
+            shouldContinue = advice.before(method, input, output);
+        }
+
         // Invoke the Groovy method named in the input Map at the key 'method'.
-        return method.invoke(this);
+        if (shouldContinue)
+        {
+            Object ret = method.invoke(this);
+
+            // If 'around' Advice has been added to n-cube, invoke it after calling Groovy method
+            // or expression
+            if (advice != null)
+            {
+                advice.after(method, input, output, ret);
+            }
+            return ret;
+        }
+        else
+        {
+            return null;
+        }
     }
 }

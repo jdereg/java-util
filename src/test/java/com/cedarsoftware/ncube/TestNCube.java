@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -5952,6 +5953,101 @@ DELIMITER ;
 
         coord.put("method", "qux");
         assertEquals(16, ncube.getCell(coord));
+    }
+
+    @Test
+    public void testAdvice()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+        Advice save = NCube.getAdvice();
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCube.setAdvice(new Advice()
+        {
+            public boolean before(Method method, Map input, Map output)
+            {
+                assertEquals(2, input.size());
+                boolean ret = true;
+                if ("foo".equals(method.getName()))
+                {
+                    assertEquals("foo", input.get("method"));
+                }
+                else if ("bar".equals(method.getName()))
+                {
+                    assertEquals("bar", input.get("method"));
+                }
+                else if ("qux".equals(method.getName()))
+                {
+                    assertEquals("qux", input.get("method"));
+                }
+                else if ("qaz".equals(method.getName()))
+                {
+                    ret = false;
+                }
+                return ret;
+            }
+
+            public void after(Method method, Map input, Map output, Object returnValue)
+            {
+                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(2, returnValue);
+                }
+                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(4, returnValue);
+                }
+                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
+                {
+                    assertEquals(81, returnValue);
+                }
+            }
+        });
+
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        ncube.getCell(coord);
+
+        coord.put("state", "OH");
+        coord.put("method", "bar");
+        ncube.getCell(coord);
+
+        coord.put("state", "TX");
+        coord.put("method", "qux");
+        ncube.getCell(coord);
+
+        NCube.setAdvice(save);
+    }
+
+    @Test
+    public void testAdviceNoCallForward()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+        Advice save = NCube.getAdvice();
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCube.setAdvice(new Advice()
+        {
+            public boolean before(Method method, Map input, Map output)
+            {
+                return false;
+            }
+
+            public void after(Method method, Map input, Map output, Object returnValue)
+            {
+                fail("should not make it here");
+            }
+        });
+
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        assertNull(ncube.getCell(coord));
+
+        NCube.setAdvice(save);
     }
 
     @Test(expected = RuntimeException.class)

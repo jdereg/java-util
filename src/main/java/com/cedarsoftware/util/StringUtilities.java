@@ -187,6 +187,51 @@ public final class StringUtilities
     }
 
     /**
+     * Convert strings containing DOS-style '*' or '?' to a regex String.
+     */
+    public static String wildcardToRegexString(String wildcard)
+    {
+        StringBuilder s = new StringBuilder(wildcard.length());
+        s.append('^');
+        for (int i = 0, is = wildcard.length(); i < is; i++)
+        {
+            char c = wildcard.charAt(i);
+            switch (c)
+            {
+                case '*':
+                    s.append(".*");
+                    break;
+
+                case '?':
+                    s.append('.');
+                    break;
+
+                // escape special regexp-characters
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '$':
+                case '^':
+                case '.':
+                case '{':
+                case '}':
+                case '|':
+                case '\\':
+                    s.append('\\');
+                    s.append(c);
+                    break;
+
+                default:
+                    s.append(c);
+                    break;
+            }
+        }
+        s.append('$');
+        return s.toString();
+    }
+
+    /**
      * The Levenshtein distance is a string metric for measuring the difference between two sequences.
      * Informally, the Levenshtein distance between two words is the minimum number of single-character edits
      * (i.e. insertions, deletions or substitutions) required to change one word into the other. The phrase

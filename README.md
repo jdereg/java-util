@@ -7,13 +7,13 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.9.1</version>
+  <version>1.9.2</version>
 </dependency>
 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>json-io</artifactId>
-  <version>2.5.1</version>
+  <version>2.5.2</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Donate Bitcoins</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -40,6 +40,8 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.9.2
+ * Added wildcard to regex pattern to StringUtilities.  This API turns a DOS-like wildcard pattern (where * matches anything and ? matches a single character) into a regex pattern useful in String.matches() API.
 * 1.9.1
  * Floating-point allow difference by epsilon value (currently hard-coded on DeepEquals.  Will likely be optional parameter in future version).
 * 1.9.0

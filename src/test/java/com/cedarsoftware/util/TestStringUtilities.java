@@ -114,4 +114,18 @@ public class TestStringUtilities
             assertTrue(s.length() >= 3 && s.length() <= 9);
         }
     }
+
+    @Test
+    public void testWildcard()
+    {
+        String name = "George Washington";
+        assertTrue(name.matches(StringUtilities.wildcardToRegexString("*")));
+        assertTrue(name.matches(StringUtilities.wildcardToRegexString("G*")));
+        assertTrue(name.matches(StringUtilities.wildcardToRegexString("*on")));
+        assertFalse(name.matches(StringUtilities.wildcardToRegexString("g*")));
+
+        name = "com.acme.util.string";
+        assertTrue(name.matches(StringUtilities.wildcardToRegexString("com.*")));
+        assertTrue(name.matches(StringUtilities.wildcardToRegexString("com.*.util.string")));
+    }
 }

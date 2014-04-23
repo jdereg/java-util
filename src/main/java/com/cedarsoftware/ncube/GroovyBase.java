@@ -160,12 +160,12 @@ public abstract class GroovyBase extends UrlCommandCell
             }
         }
 
-        return invokeRunMethod(runMethod, instance);
+        return invokeRunMethod(runMethod, instance, args);
     }
 
     protected abstract Method getRunMethod() throws NoSuchMethodException;
 
-    protected abstract Object invokeRunMethod(Method runMethod, Object instance) throws Exception;
+    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception;
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method

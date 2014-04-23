@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +61,7 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
+    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
 
     /**
      * @param name String name of an NCube.
@@ -87,6 +89,16 @@ public class NCubeManager
         {
             ncube.setVersion(version);
             cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
+            for (String regex : advices.keySet())
+            {
+                if (ncube.getName().matches(StringUtilities.wildcardToRegexString(regex)))
+                {
+                    for (Advice advice : advices.get(regex).values())
+                    {
+                        ncube.addAdvice(advice);
+                    }
+                }
+            }
         }
     }
 
@@ -113,6 +125,34 @@ public class NCubeManager
             cubeList.clear();
             GroovyBase.compiledClasses.clear();
             GroovyBase.groovyClassLoader.clearCache();
+            advices.clear();
+        }
+    }
+
+    /**
+     * Associate Advice to all n-cubes that match the passed in regular expression.
+     */
+    public static void addAdvice(String ncubeNameWildcard, Advice advice)
+    {
+        synchronized (cubeList)
+        {
+            Map<String, Advice> current = advices.get(ncubeNameWildcard);
+            if (current == null)
+            {
+                current = new LinkedHashMap<String, Advice>();
+                advices.put(ncubeNameWildcard, current);
+            }
+
+            current.put(advice.getName(), advice);
+            String regex = StringUtilities.wildcardToRegexString(ncubeNameWildcard);
+
+            for (NCube ncube : cubeList.values())
+            {
+                if (ncube.getName().matches(regex))
+                {
+                    ncube.addAdvice(advice);
+                }
+            }
         }
     }
 

@@ -5756,6 +5756,7 @@ DELIMITER ;
     @Test
     public void testShortHandReferences()
     {
+        NCubeManager.clearCubeList();
         NCubeManager.getNCubeFromResource("stringIds.json");
         NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
         Map coord = new HashMap();
@@ -5815,6 +5816,68 @@ DELIMITER ;
         coord.put("content", "lwt");
         String html2 = (String) ncube.getCell(coord);
         assertNotEquals(html, html2);
+    }
+
+    @Test
+    public void testExpression()
+    {
+        NCubeManager.clearCubeList();
+        NCubeManager.getNCubeFromResource("urlPieces.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice("*", new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("_btime1", System.nanoTime());
+                return true;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("_atime1", System.nanoTime());
+            }
+        });
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice("*", new Advice()
+        {
+            public String getName()
+            {
+                return "beta";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("_btime2", System.nanoTime());
+                return true;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("_atime2", System.nanoTime());
+            }
+        });
+
+        Map coord = new HashMap();
+        Map output = new HashMap();
+        coord.put("env_level", "local");
+        coord.put("protocol", "http");
+        coord.put("content", "95");
+        ncube.getCell(coord, output);
+
+        assertTrue((Long) output.get("_atime1") > (Long) output.get("_atime2"));
+        assertTrue((Long) output.get("_btime1") < (Long) output.get("_btime2"));
+        assertTrue((Long) output.get("_btime2") < (Long) output.get("_atime1"));
+        assertTrue((Long) output.get("_btime1") < (Long) output.get("_atime1"));
     }
 
     @Test
@@ -5958,14 +6021,19 @@ DELIMITER ;
     @Test
     public void testAdvice()
     {
+        NCubeManager.clearCubeList();
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-        Advice save = NCube.getAdvice();
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCube.setAdvice(new Advice()
+        NCubeManager.addAdvice(ncube.getName(), new Advice()
         {
-            public boolean before(Method method, Map input, Map output)
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
             {
                 assertEquals(2, input.size());
                 boolean ret = true;
@@ -5988,7 +6056,7 @@ DELIMITER ;
                 return ret;
             }
 
-            public void after(Method method, Map input, Map output, Object returnValue)
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
             {
                 if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
                 {
@@ -6018,25 +6086,29 @@ DELIMITER ;
         coord.put("method", "qux");
         ncube.getCell(coord);
 
-        NCube.setAdvice(save);
+        ncube.clearAdvices();
     }
 
     @Test
     public void testAdviceNoCallForward()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-        Advice save = NCube.getAdvice();
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCube.setAdvice(new Advice()
+        NCubeManager.addAdvice(ncube.getName(), new Advice()
         {
-            public boolean before(Method method, Map input, Map output)
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
             {
                 return false;
             }
 
-            public void after(Method method, Map input, Map output, Object returnValue)
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
             {
                 fail("should not make it here");
             }
@@ -6047,7 +6119,71 @@ DELIMITER ;
         coord.put("state", "OH");
         assertNull(ncube.getCell(coord));
 
-        NCube.setAdvice(save);
+        ncube.clearAdvices();
+    }
+
+    @Test
+    public void testMultiAdvice()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("_btime1", System.nanoTime());
+                return true;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("_atime1", System.nanoTime());
+            }
+        });
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        {
+            public String getName()
+            {
+                return "beta";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("_btime2", System.nanoTime());
+                return true;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("_atime2", System.nanoTime());
+            }
+        });
+
+        Map coord = new HashMap();
+        Map output = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("_atime1"));
+        assertTrue(output.containsKey("_btime1"));
+        assertTrue(output.containsKey("_atime2"));
+        assertTrue(output.containsKey("_btime2"));
+        assertTrue((Long)output.get("_atime1") > (Long)output.get("_atime2"));
+        assertTrue((Long)output.get("_btime1") < (Long)output.get("_btime2"));
+        assertTrue((Long)output.get("_btime2") < (Long)output.get("_atime1"));
+        assertTrue((Long)output.get("_btime1") < (Long)output.get("_atime1"));
+
+        ncube.clearAdvices();
     }
 
     @Test(expected = RuntimeException.class)

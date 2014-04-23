@@ -27,23 +27,31 @@ import java.util.Map;
 public interface Advice
 {
     /**
+     * What is the name of this advice?  "log", "perf", etc.  Names can be
+     * whatever you want.
+     */
+    String getName();
+
+    /**
      * This method is called before an n-cube expression or controller method is called.  This is only
      * used if the 'advice' handler is set on n-cube.
      * @param method Method being called
+     * @param ncube NCube that this advice is being called from
      * @param input Map containing the 'input' coordinate to getCell() type APIs
      * @param output Map containing the 'output' coordinate to getCell() type APIs
      * @return true if you want the method to be called (continue) false if you want execute to not go further (don't
      * call the method).
      */
-    boolean before(Method method, Map input, Map output);
+    boolean before(Method method, NCube ncube, Map input, Map output);
 
     /**
      * This method is called after a n-cube expression or controller method is called.  This is
      * only used if the 'advice' handler is set on n-cube.
      * @param method Method being called
+     * @param ncube NCube that this advice is being called from
      * @param input Map containing the 'input' coordinate to getCell() type APIs
      * @param output Map containing the 'output' coordinate to getCell() type APIs
      * @param returnValue Object return value of the method that was called.
      */
-    void after(Method method, Map input, Map output, Object returnValue);
+    void after(Method method, NCube ncube, Map input, Map output, Object returnValue);
 }

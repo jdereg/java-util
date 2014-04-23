@@ -11,9 +11,9 @@ import java.util.TreeSet;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class TestStringUtilities
 {
@@ -246,5 +246,9 @@ public class TestStringUtilities
         name = "com.acme.util.string";
         assertTrue(name.matches(StringUtilities.wildcardToRegexString("com.*")));
         assertTrue(name.matches(StringUtilities.wildcardToRegexString("com.*.util.string")));
+
+        name = "com.acme.util.string";
+        assertTrue(name.matches(StringUtilities.wildcardToRegexString("com.????.util.string")));
+        assertFalse(name.matches(StringUtilities.wildcardToRegexString("com.??.util.string")));
     }
 }

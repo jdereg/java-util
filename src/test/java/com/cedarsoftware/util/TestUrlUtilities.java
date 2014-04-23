@@ -144,5 +144,6 @@ public class TestUrlUtilities
         assertTrue(cookies.containsKey("codetested.com"));
         assertTrue(cookies.containsKey(domain));
 
+        assertTrue(new String(bytes2).contains("myotherdrive.com"));
     }
 }

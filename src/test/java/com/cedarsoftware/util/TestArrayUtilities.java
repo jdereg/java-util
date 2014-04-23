@@ -41,22 +41,22 @@ public class TestArrayUtilities
 
     @Test
     public void testIsEmpty() {
-        Assert.assertTrue(ArrayUtilities.isEmpty(new byte[] {}));
+        Assert.assertTrue(ArrayUtilities.isEmpty(new byte[]{}));
         Assert.assertTrue(ArrayUtilities.isEmpty(null));
-        Assert.assertFalse(ArrayUtilities.isEmpty(new byte[] {5}));
+        Assert.assertFalse(ArrayUtilities.isEmpty(new byte[]{5}));
     }
 
     @Test
     public void testSize() {
-        Assert.assertEquals(0, ArrayUtilities.size(new byte[] {}));
+        Assert.assertEquals(0, ArrayUtilities.size(new byte[]{}));
         Assert.assertEquals(0, ArrayUtilities.size(null));
-        Assert.assertEquals(1, ArrayUtilities.size(new byte[] {5}));
+        Assert.assertEquals(1, ArrayUtilities.size(new byte[]{5}));
     }
 
     @Test
     public void testShallowCopy() {
         String[] strings = new String[] { "foo", "bar", "baz"};
-        String[] copy = (String[])ArrayUtilities.shallowCopy(strings);
+        String[] copy = (String[]) ArrayUtilities.shallowCopy(strings);
         Assert.assertNotSame(strings, copy);
         int i=0;
         for (String s: strings) {
@@ -68,7 +68,7 @@ public class TestArrayUtilities
 
     @Test
     public void testAddAll() {
-        Assert.assertEquals(0, ArrayUtilities.size(new byte[] {}));
+        Assert.assertEquals(0, ArrayUtilities.size(new byte[]{}));
 
         //  Test One
         Long[] one = new Long[] { 1L, 2L };
@@ -111,20 +111,21 @@ public class TestArrayUtilities
         String[] strings = new String[] { "foo", "bar", "baz"};
         Assert.assertEquals(3, strings.length);
 
-        String[] test1 = (String[])ArrayUtilities.removeItem(strings, 2);
-        String[] subsetTest1 = (String[])ArrayUtilities.getArraySubset(strings, 0, 2);
+
+        String[] test1 = (String[]) ArrayUtilities.removeItem(strings, 2);
+        String[] subsetTest1 = (String[]) ArrayUtilities.getArraySubset(strings, 0, 2);
         String[] expected1 = new String[] { "foo", "bar" };
 
         Assert.assertArrayEquals(expected1, test1);
         Assert.assertArrayEquals(expected1, subsetTest1);
 
-        String[] test2 = (String[])ArrayUtilities.removeItem(strings, 0);
-        String[] subsetTest2 = (String[])ArrayUtilities.getArraySubset(strings, 1, 3);
+        String[] test2 = (String[]) ArrayUtilities.removeItem(strings, 0);
+        String[] subsetTest2 = (String[]) ArrayUtilities.getArraySubset(strings, 1, 3);
         String[] expected2 = new String[] { "bar", "baz" };
         Assert.assertArrayEquals(expected2, test2);
         Assert.assertArrayEquals(expected2, subsetTest2);
 
-        String[] test3 = (String[])ArrayUtilities.removeItem(strings, 1);
+        String[] test3 = (String[]) ArrayUtilities.removeItem(strings, 1);
         String[] expected3 = new String[] { "foo", "baz" };
 
         Assert.assertArrayEquals(expected3, test3);

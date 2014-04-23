@@ -22,7 +22,7 @@ import java.math.BigInteger;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class MathUtilities
+public final class MathUtilities
 {
     private MathUtilities()
     {

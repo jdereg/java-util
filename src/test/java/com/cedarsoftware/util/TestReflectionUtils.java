@@ -24,7 +24,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
-
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -203,7 +202,6 @@ public class TestReflectionUtils
         ReflectionUtils.getDeclaredFields(Parent.class, fields);
     }
 
-
     @Test
     public void testDeepDeclaredFields() throws Exception
     {
@@ -255,7 +253,7 @@ public class TestReflectionUtils
     }
 
     @Test
-    public void testGetClassAnnotationsWithNul() throws Exception
+    public void testGetClassAnnotationsWithNull() throws Exception
     {
         assertNull(ReflectionUtils.getClassAnnotation(null, null));
     }

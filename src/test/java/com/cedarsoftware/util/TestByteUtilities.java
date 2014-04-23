@@ -26,7 +26,7 @@ public class TestByteUtilities
         Assert.assertNotNull(con.newInstance());
     }
 
-	@Test
+    @Test
 	public void testDecode() 
 	{
 		Assert.assertArrayEquals(_array1, ByteUtilities.decode(_str1));

@@ -24,6 +24,7 @@ public class ExceptionUtilities
         super();
     }
 
+
     /**
      * Safely Ignore a Throwable or rethrow if it is a Throwable that should
      * not be ignored.

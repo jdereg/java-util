@@ -138,10 +138,10 @@ public final class ArrayUtilities
         return dest;
     }
 
-    public static Object[] getArraySubset(Object[] array, int start, int end)
+    public static Object getArraySubset(Object array, int start, int end)
     {
         Object subset = Array.newInstance(array.getClass().getComponentType(), end-start);
         System.arraycopy(array, start, subset, 0, end - start);
-        return (Object[])subset;
+        return subset;
     }
 }

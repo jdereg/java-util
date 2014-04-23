@@ -69,6 +69,7 @@ public class TestMapUtilities
 
     }
 
+
     @Test
     public void testIsEmpty() {
         Assert.assertTrue(MapUtilities.isEmpty(null));

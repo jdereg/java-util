@@ -18,6 +18,7 @@ public class TestExceptionUtilities
         Assert.assertNotNull(con.newInstance());
     }
 
+
     @Test(expected=ThreadDeath.class)
     public void testThreadDeathThrown() {
         ExceptionUtilities.safelyIgnoreException(new ThreadDeath());

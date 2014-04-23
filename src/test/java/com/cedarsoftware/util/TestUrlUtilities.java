@@ -36,7 +36,7 @@ public class TestUrlUtilities
 {
     private static final String httpsUrl = "https://www.myotherdrive.com";
     private static final String httpsGoogleUrl = "https://www.google.com";
-    private static final String domain  = "codetested.com";
+    private static final String domain  = "myotherdrive.com";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
 
     private static final String _expected = "<html>\n" +
@@ -59,17 +59,16 @@ public class TestUrlUtilities
         assertNotNull(con.newInstance());
     }
 
-
     @Test
     public void testGetContentFromUrlAsString() throws Exception
     {
-        //String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
-        //String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl);
+        String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
+        String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl);
 
-        //assertTrue(content1.contains(domain));
-        //assertTrue(content2.contains(domain));
+        assertTrue(content1.contains(domain));
+        assertTrue(content2.contains(domain));
 
-        //assertEquals(content1, content2);
+        assertEquals(content1, content2);
 
         String content3 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
         String content4 = UrlUtilities.getContentFromUrlAsString(httpUrl);
@@ -121,7 +120,11 @@ public class TestUrlUtilities
         String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
         String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, 0, null, null, true);
 
+        assertTrue(content1.contains(domain));
+        assertTrue(content2.contains(domain));
+
         assertEquals(content1, content2);
+
     }
 
     @Test
@@ -133,12 +136,13 @@ public class TestUrlUtilities
 
         assertEquals(1, cookies.size());
         assertTrue(cookies.containsKey("codetested.com"));
+        assertEquals(_expected, new String(bytes1));
 
-        byte[] bytes2 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
+        byte[] bytes2 = UrlUtilities.getContentFromUrl(httpsUrl, null, 0, cookies, cookies, false);
 
-        assertEquals(1, cookies.size());
+        assertEquals(2, cookies.size());
+        assertTrue(cookies.containsKey("codetested.com"));
         assertTrue(cookies.containsKey(domain));
 
-        assertEquals(new String(bytes1), new String(bytes2));
     }
 }

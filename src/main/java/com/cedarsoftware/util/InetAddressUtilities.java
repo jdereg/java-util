@@ -27,6 +27,7 @@ import java.net.UnknownHostException;
  */
 public class InetAddressUtilities
 {
+
     private static final Log LOG = LogFactory.getLog(InetAddressUtilities.class);
 
     private InetAddressUtilities() {

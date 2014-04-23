@@ -21,7 +21,9 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class MapUtilities {
+public class MapUtilities
+{
+
 
     /**
      * <p>Constructor is declared private since all methods are static.</p>

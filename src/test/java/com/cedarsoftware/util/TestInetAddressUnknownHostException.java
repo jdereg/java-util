@@ -11,7 +11,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.net.UnknownHostException;
 
 
-
 /**
  * Created by kpartlow on 4/19/2014.
  */
@@ -19,6 +18,7 @@ import java.net.UnknownHostException;
 @PrepareForTest({InetAddressUtilities.class})
 public class TestInetAddressUnknownHostException
 {
+
     @Test
     public void testGetIpAddressWithUnkownHost() throws Exception {
         PowerMockito.stub(PowerMockito.method(InetAddressUtilities.class, "getLocalHost")).toThrow(new UnknownHostException());

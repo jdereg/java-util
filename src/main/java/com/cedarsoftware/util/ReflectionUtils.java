@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ReflectionUtils
+public final class ReflectionUtils
 {
     private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<Class, Collection<Field>>();
 
@@ -72,14 +72,10 @@ public class ReflectionUtils
 
     private static void addInterfaces(final Class classToCheck, final LinkedList<Class> stack)
     {
-        /**
-         * Removed because it is never called.  You are always checking it in the two functions
-         * that call this method.
-         if (classToCheck == null)
-         {
-         return;
-         }
-         */
+        if (classToCheck == null)
+        {
+            return;
+        }
         for (Class interFace : classToCheck.getInterfaces())
         {
             stack.push(interFace);
@@ -192,6 +188,7 @@ public class ReflectionUtils
         }
 
     }
+
     /**
      * Return all Fields from a class (including inherited), mapped by
      * String field name to java.lang.reflect.Field.

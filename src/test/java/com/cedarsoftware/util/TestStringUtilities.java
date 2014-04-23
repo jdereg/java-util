@@ -155,7 +155,8 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testLength() {
+    public void testLength()
+    {
         assertEquals(0, StringUtilities.length(""));
         assertEquals(0, StringUtilities.length(null));
         assertEquals(3, StringUtilities.length("abc"));

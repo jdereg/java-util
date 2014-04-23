@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -82,8 +83,30 @@ public class GroovyExpression extends GroovyBase
         return getRunnableCode().getMethod("run");
     }
 
-    protected Object invokeRunMethod(Method runMethod, Object instance) throws Exception
+    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception
     {
-        return runMethod.invoke(instance);
+        // If 'around' Advice has been added to n-cube, invoke it before calling Groovy expression's run() method
+        NCube ncube = getNCube(args);
+        Map input = getInput(args);
+        Map output = getOutput(args);
+        List<Advice> advices = ncube.getAdvices();
+        for (Advice advice : advices)
+        {
+            if (!advice.before(runMethod, ncube, input, output))
+            {
+                return null;
+            }
+        }
+
+        Object ret = runMethod.invoke(instance);
+
+        // If 'around' Advice has been added to n-cube, invoke it after calling Groovy expression's run() method
+        int len = advices.size();
+        for (int i = len - 1; i >= 0; i--)
+        {
+            Advice advice = advices.get(i);
+            advice.after(runMethod, ncube, input, output, ret);
+        }
+        return ret;
     }
 }

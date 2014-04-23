@@ -10,10 +10,12 @@ import com.cedarsoftware.util.io.JsonWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -22,6 +24,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,6 +61,7 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
+    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
 
     /**
      * @param name String name of an NCube.
@@ -85,6 +89,16 @@ public class NCubeManager
         {
             ncube.setVersion(version);
             cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
+            for (String regex : advices.keySet())
+            {
+                if (ncube.getName().matches(StringUtilities.wildcardToRegexString(regex)))
+                {
+                    for (Advice advice : advices.get(regex).values())
+                    {
+                        ncube.addAdvice(advice);
+                    }
+                }
+            }
         }
     }
 
@@ -111,6 +125,34 @@ public class NCubeManager
             cubeList.clear();
             GroovyBase.compiledClasses.clear();
             GroovyBase.groovyClassLoader.clearCache();
+            advices.clear();
+        }
+    }
+
+    /**
+     * Associate Advice to all n-cubes that match the passed in regular expression.
+     */
+    public static void addAdvice(String ncubeNameWildcard, Advice advice)
+    {
+        synchronized (cubeList)
+        {
+            Map<String, Advice> current = advices.get(ncubeNameWildcard);
+            if (current == null)
+            {
+                current = new LinkedHashMap<String, Advice>();
+                advices.put(ncubeNameWildcard, current);
+            }
+
+            current.put(advice.getName(), advice);
+            String regex = StringUtilities.wildcardToRegexString(ncubeNameWildcard);
+
+            for (NCube ncube : cubeList.values())
+            {
+                if (ncube.getName().matches(regex))
+                {
+                    ncube.addAdvice(advice);
+                }
+            }
         }
     }
 
@@ -228,7 +270,7 @@ public class NCubeManager
                 {
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
-                    NCube ncube = NCube.fromSimpleJson(json);
+                    NCube ncube = ncubeFromJson(json);
 
                     if (rs.next())
                     {
@@ -304,7 +346,7 @@ public class NCubeManager
             {
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
                 String json = new String(jsonBytes, "UTF-8");
-                NCube ncube = NCube.fromSimpleJson(json);
+                NCube ncube = ncubeFromJson(json);
 
                 if (rs.next())
                 {
@@ -1156,7 +1198,7 @@ public class NCubeManager
         try
         {
             String json = getResourceAsString(name);
-            NCube ncube = NCube.fromSimpleJson(json);
+            NCube ncube = ncubeFromJson(json);
             addCube(ncube, "file");
             return ncube;
         }
@@ -1170,10 +1212,6 @@ public class NCubeManager
 
     /**
      * Still used in getNCubesFromResource
-     *
-     * @param name
-     * @return
-     * @throws IOException
      */
     private static JsonObject getJsonObjectFromResource(String name) throws IOException
     {
@@ -1182,16 +1220,13 @@ public class NCubeManager
         {
             URL url = NCubeManager.class.getResource("/" + name);
             File jsonFile = new File(url.getFile());
-            FileInputStream in = new FileInputStream(jsonFile);
+            InputStream in = new BufferedInputStream(new FileInputStream(jsonFile));
             reader = new JsonReader(in, true);
             return (JsonObject) reader.readObject();
         }
         finally
         {
-            if (reader != null)
-            {
-                reader.close();
-            }
+            IOUtilities.close(reader);
         }
     }
 
@@ -1200,7 +1235,7 @@ public class NCubeManager
         String lastSuccessful = "";
         try
         {
-            JsonObject ncubes = (JsonObject) getJsonObjectFromResource(name);
+            JsonObject ncubes = getJsonObjectFromResource(name);
             Object[] cubes = ncubes.getArray();
             List<NCube> cubeList = new ArrayList<NCube>(cubes.length);
 
@@ -1221,6 +1256,18 @@ public class NCubeManager
             String s = "Failed to load ncubes from resource: " + name + ", last successful cube: " + lastSuccessful;
             LOG.error(s);
             throw new RuntimeException(s, e);
+        }
+    }
+
+    static NCube ncubeFromJson(String json) throws IOException
+    {
+        try
+        {
+            return NCube.fromSimpleJson(json);
+        }
+        catch (Exception e)
+        {
+            return (NCube) JsonReader.jsonToJava(json);
         }
     }
 }

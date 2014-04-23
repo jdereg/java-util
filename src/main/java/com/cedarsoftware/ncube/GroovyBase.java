@@ -73,12 +73,13 @@ public abstract class GroovyBase extends UrlCommandCell
     protected void preRun(Map args)
     {
         super.preRun(args);
-        NCube ncube = (NCube) args.get("ncube");
+        NCube ncube = getNCube(args);
         compileIfNeeded(ncube.getName());
     }
 
     protected Object runFinal(Map args)
     {
+        String cubeName = getNCube(args).getName();
         try
         {
             return executeGroovy(args);
@@ -88,17 +89,17 @@ public abstract class GroovyBase extends UrlCommandCell
             Throwable cause = e.getCause();
             if (cause instanceof CoordinateNotFoundException)
             {
-                throw (RuntimeException) cause;
+                throw (CoordinateNotFoundException) cause;
             }
             else if (cause instanceof RuleStop)
             {
                 throw (RuleStop) cause;
             }
-            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "()", e) ;
+            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "(), n-cube '" + cubeName + "', input: " + args.get("input"), e) ;
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "()", e);
+            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "(), n-cube '" + cubeName + "', input: " + args.get("input"), e);
         }
     }
 
@@ -112,7 +113,7 @@ public abstract class GroovyBase extends UrlCommandCell
         Constructor c = constructorMap.get(cacheKey);
         if (c == null)
         {
-            synchronized(GroovyBase.class)
+            synchronized (GroovyBase.class)
             {
                 c = constructorMap.get(cacheKey);
                 if (c == null)
@@ -130,7 +131,7 @@ public abstract class GroovyBase extends UrlCommandCell
         Method initMethod = initMethodMap.get(cacheKey);
         if (initMethod == null)
         {
-            synchronized(GroovyBase.class)
+            synchronized (GroovyBase.class)
             {
                 initMethod = initMethodMap.get(cacheKey);
                 if (initMethod == null)
@@ -148,7 +149,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (runMethod == null)
         {
-            synchronized(GroovyBase.class)
+            synchronized (GroovyBase.class)
             {
                 runMethod = methodMap.get(cacheKey);
                 if (runMethod == null)
@@ -158,12 +159,13 @@ public abstract class GroovyBase extends UrlCommandCell
                 }
             }
         }
-        return invokeRunMethod(runMethod, instance);
+
+        return invokeRunMethod(runMethod, instance, args);
     }
 
     protected abstract Method getRunMethod() throws NoSuchMethodException;
 
-    protected abstract Object invokeRunMethod(Method runMethod, Object instance) throws Exception;
+    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception;
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method

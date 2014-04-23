@@ -1,9 +1,11 @@
 package ncube.grv.method;
 
+import com.cedarsoftware.ncube.Advice;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,7 +31,7 @@ import java.util.Map;
 public class NCubeGroovyController extends NCubeGroovyExpression
 {
     // LRU Cache reflective method look ups
-    private static final Map<String, Method> methodCache = new LinkedHashMap()
+    private static final Map<String, Method> methodCache = new LinkedHashMap<String, Method>()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
         {
@@ -61,7 +63,29 @@ public class NCubeGroovyController extends NCubeGroovyExpression
                 }
             }
         }
+
+        // If 'around' Advice has been added to n-cube, invoke it before calling Groovy method
+        // or expression
+        List<Advice> advices = ncube.getAdvices();
+        for (Advice advice : advices)
+        {
+            if (!advice.before(method, ncube, input, output))
+            {
+                return null;
+            }
+        }
+
         // Invoke the Groovy method named in the input Map at the key 'method'.
-        return method.invoke(this);
+        Object ret = method.invoke(this);
+
+        // If 'around' Advice has been added to n-cube, invoke it after calling Groovy method
+        // or expression
+        int len = advices.size();
+        for (int i = len - 1; i >= 0; i--)
+        {
+            Advice advice = advices.get(i);
+            advice.after(method, ncube, input, output, ret);
+        }
+        return ret;
     }
 }

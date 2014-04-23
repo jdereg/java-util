@@ -80,7 +80,7 @@ public class GroovyMethod extends GroovyBase
         return getRunnableCode().getMethod("run", String.class);
     }
 
-    protected Object invokeRunMethod(Method runMethod, Object instance) throws Exception
+    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception
     {
         return runMethod.invoke(instance, getCmdHash());
     }

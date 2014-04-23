@@ -1,6 +1,6 @@
 import ncube.grv.exp.NCubeGroovyExpression
 
-class HelloWorld extends NCubeGroovyExpression
+class HelloWorld2 extends NCubeGroovyExpression
 {
     def run()
     {

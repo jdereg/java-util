@@ -126,9 +126,6 @@ public class TestEncryption
     {
         URL u = TestEncryption.class.getClassLoader().getResource("fast-md5-test.txt");
         assertEquals("188F47B5181320E590A6C3C34AD2EE75", EncryptionUtilities.fastMD5(new File(u.getFile())));
-
-        u = TestEncryption.class.getClassLoader().getResource("fast-md5-0-size.txt");
-        assertEquals("D41D8CD98F00B204E9800998ECF8427E", EncryptionUtilities.fastMD5(new File(u.getFile())));
     }
 
 

@@ -72,10 +72,6 @@ public final class ReflectionUtils
 
     private static void addInterfaces(final Class classToCheck, final LinkedList<Class> stack)
     {
-        if (classToCheck == null)
-        {
-            return;
-        }
         for (Class interFace : classToCheck.getInterfaces())
         {
             stack.push(interFace);

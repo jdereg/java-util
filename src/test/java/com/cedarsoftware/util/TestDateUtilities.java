@@ -9,6 +9,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 /**
@@ -151,6 +152,14 @@ public class TestDateUtilities
         assertEquals(c.getTime(), d1);
         d1 = DateUtilities.parseDate("16:43:27.123 01/18/2014");
         assertEquals(c.getTime(), d1);
+    }
+
+    @Test
+    public void testParseWithNull()
+    {
+        assertNull(DateUtilities.parseDate(null));
+        assertNull(DateUtilities.parseDate(""));
+        assertNull(DateUtilities.parseDate("     "));
     }
 
     @Test

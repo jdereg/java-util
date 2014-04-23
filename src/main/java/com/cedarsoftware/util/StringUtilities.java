@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Random;
 
 /**
@@ -146,7 +147,6 @@ public final class StringUtilities
     public static String encode(byte[] bytes)
     {
         StringBuilder sb = new StringBuilder(bytes.length << 1);
-        int len = bytes.length;
         for (byte aByte : bytes)
         {
             sb.append(convertDigit(aByte >> 4));
@@ -184,6 +184,51 @@ public final class StringUtilities
         }
 
         return count;
+    }
+
+    /**
+     * Convert strings containing DOS-style '*' or '?' to a regex String.
+     */
+    public static String wildcardToRegexString(String wildcard)
+    {
+        StringBuilder s = new StringBuilder(wildcard.length());
+        s.append('^');
+        for (int i = 0, is = wildcard.length(); i < is; i++)
+        {
+            char c = wildcard.charAt(i);
+            switch (c)
+            {
+                case '*':
+                    s.append(".*");
+                    break;
+
+                case '?':
+                    s.append('.');
+                    break;
+
+                // escape special regexp-characters
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '$':
+                case '^':
+                case '.':
+                case '{':
+                case '}':
+                case '|':
+                case '\\':
+                    s.append('\\');
+                    s.append(c);
+                    break;
+
+                default:
+                    s.append(c);
+                    break;
+            }
+        }
+        s.append('$');
+        return s.toString();
     }
 
     /**
@@ -359,5 +404,26 @@ public final class StringUtilities
     {
         int r = random.nextInt(26);
         return upper ? "" + (char)((int)'A' + r) : "" + (char)((int)'a' + r);
+    }
+
+    /**
+     * Convert a String into a byte[] with a particular encoding.
+     * Preferable used when the encoding is one of the guaranteed Java types
+     * and you don't want to have to catch the UnsupportedEncodingException
+     * required by Java
+     *
+     * @param s        string to encode into bytes
+     * @param encoding encoding to use
+     */
+    public static byte[] getBytes(String s, String encoding)
+    {
+        try
+        {
+            return s.getBytes(encoding);
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            throw new IllegalArgumentException(String.format("Invalid Encoding:  %s", encoding), e);
+        }
     }
 }

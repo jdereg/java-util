@@ -1,7 +1,10 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
@@ -28,6 +31,18 @@ import static org.junit.Assert.fail;
  */
 public class TestMathUtilities
 {
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Class c = MathUtilities.class;
+        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+
+        Constructor<MathUtilities> con = c.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
+
     @Test
     public void testMinimumLong()
     {

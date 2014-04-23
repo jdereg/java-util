@@ -1,8 +1,13 @@
 package com.cedarsoftware.util;
 
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 
 /**
@@ -25,6 +30,25 @@ import static org.junit.Assert.assertEquals;
 public class TestEncryption
 {
     public static final String QUICK_FOX = "The quick brown fox jumps over the lazy dog";
+
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Constructor<EncryptionUtilities> con = EncryptionUtilities.class.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        Assert.assertNotNull(con.newInstance());
+    }
+
+    @Test
+    public void testGetDigest() {
+        assertNotNull(EncryptionUtilities.getDigest("MD5"));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testGetDigestWithInvalidDigest() {
+        EncryptionUtilities.getDigest("foo");
+    }
 
     @Test
     public void testMD5()

@@ -3,8 +3,6 @@ package com.cedarsoftware.util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -55,16 +53,7 @@ public class UniqueIdGenerator
         String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
         if (StringUtilities.isEmpty(id))
         {
-            byte[] ip;
-            try
-            {
-                ip = InetAddress.getLocalHost().getAddress();
-            }
-            catch (UnknownHostException e)
-            {
-                ip = new byte[] {0, 0, 0, 0};
-                LOG.warn("Failed to obtain computer's IP address", e);
-            }
+            byte[] ip = InetAddressUtilities.getIpAddress();
             lastIp = ((int)ip[3] & 0xff) % 100;
         }
         else

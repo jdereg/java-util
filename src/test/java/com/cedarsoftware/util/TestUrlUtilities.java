@@ -4,10 +4,13 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.Proxy;
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -34,7 +37,27 @@ public class TestUrlUtilities
     private static final String httpsUrl = "https://www.myotherdrive.com";
     private static final String httpsGoogleUrl = "https://www.google.com";
     private static final String domain  = "myotherdrive.com";
-    private static final String httpUrl = "http://www.myotherdrive.com";
+    private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
+
+    private static final String _expected = "<html>\n" +
+            "<head>\n" +
+            "\t<title>URL Utilities Rocks!</title>\n" +
+            "</head>\n" +
+            "<body>\n" +
+            "<h1>Hello, John!</h1>\n" +
+            "</body>\n" +
+            "</html>";
+    @Test
+    public void testConstructorIsPrivate() throws Exception {
+        Class c = UrlUtilities.class;
+        assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+
+        Constructor<UrlUtilities> con = c.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        assertNotNull(con.newInstance());
+    }
 
     @Test
     public void testGetContentFromUrlAsString() throws Exception
@@ -50,8 +73,8 @@ public class TestUrlUtilities
         String content3 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
         String content4 = UrlUtilities.getContentFromUrlAsString(httpUrl);
 
-        assertTrue(content3.contains(domain));
-        assertTrue(content4.contains(domain));
+        assertTrue(content3.equals(_expected));
+        assertTrue(content4.equals(_expected));
 
         assertEquals(content3, content4);
     }
@@ -112,13 +135,14 @@ public class TestUrlUtilities
         byte[] bytes1 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
 
         assertEquals(1, cookies.size());
+        assertTrue(cookies.containsKey("codetested.com"));
+        assertEquals(_expected, new String(bytes1));
+
+        byte[] bytes2 = UrlUtilities.getContentFromUrl(httpsUrl, null, 0, cookies, cookies, false);
+
+        assertEquals(2, cookies.size());
+        assertTrue(cookies.containsKey("codetested.com"));
         assertTrue(cookies.containsKey(domain));
 
-        byte[] bytes2 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
-
-        assertEquals(1, cookies.size());
-        assertTrue(cookies.containsKey(domain));
-
-        assertEquals(new String(bytes1), new String(bytes2));
     }
 }

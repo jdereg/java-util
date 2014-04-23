@@ -93,16 +93,22 @@ public class EncryptionUtilities
         return ByteUtilities.encode(d.digest());
     }
 
-    public static MessageDigest getMD5Digest()
-    {
+
+    public static MessageDigest getDigest(String digest) {
         try
         {
-            return MessageDigest.getInstance("MD5");
+            return MessageDigest.getInstance(digest);
         }
         catch (NoSuchAlgorithmException e)
         {
-            throw new IllegalStateException("The requested MessageDigest (MD5) does not exist", e);
+            throw new IllegalArgumentException(String.format("The requested MessageDigest (%s) does not exist", digest), e);
         }
+
+    }
+
+    public static MessageDigest getMD5Digest()
+    {
+        return getDigest("MD5");
     }
 
     /**
@@ -122,14 +128,7 @@ public class EncryptionUtilities
 
     public static MessageDigest getSHA1Digest()
     {
-        try
-        {
-            return MessageDigest.getInstance("SHA-1");
-        }
-        catch (NoSuchAlgorithmException e)
-        {
-            throw new IllegalStateException("The requested MessageDigest (SHA-1) does not exist", e);
-        }
+        return getDigest("SHA-1");
     }
 
     /**
@@ -149,14 +148,7 @@ public class EncryptionUtilities
 
     public static MessageDigest getSHA256Digest()
     {
-        try
-        {
-            return MessageDigest.getInstance("SHA-256");
-        }
-        catch (NoSuchAlgorithmException e)
-        {
-            throw new IllegalStateException("The requested MessageDigest (SHA-256) does not exist", e);
-        }
+        return getDigest("SHA-256");
     }
 
     /**
@@ -176,14 +168,7 @@ public class EncryptionUtilities
 
     public static MessageDigest getSHA512Digest()
     {
-        try
-        {
-            return MessageDigest.getInstance("SHA-512");
-        }
-        catch (NoSuchAlgorithmException e)
-        {
-            throw new IllegalStateException("The requested MessageDigest (SHA-512) does not exist", e);
-        }
+        return getDigest("SHA-512");
     }
 
     public static byte[] createCipherBytes(String key, int bitsNeeded)

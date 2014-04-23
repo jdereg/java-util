@@ -37,7 +37,7 @@ import java.util.zip.InflaterInputStream;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class IOUtilities
+public final class IOUtilities
 {
     private static final int TRANSFER_BUFFER = 32768;
 

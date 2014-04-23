@@ -35,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 public class TestUrlUtilities
 {
     private static final String httpsUrl = "https://www.myotherdrive.com";
-    private static final String httpsGoogleUrl = "https://www.google.com";
+    //private static final String httpsGoogleUrl = "https://www.google.com";
     private static final String domain  = "myotherdrive.com";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
 
@@ -52,7 +52,7 @@ public class TestUrlUtilities
         Class c = UrlUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<UrlUtilities> con = c.getDeclaredConstructor();
+        Constructor<UrlUtilities> con = UrlUtilities.class.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -98,9 +98,10 @@ public class TestUrlUtilities
         assertEquals(new String(content4), new String(content5));
         assertEquals(new String(content5), new String(content1));
 
-        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
-        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
-        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
+            //TODO - add in when we find self-signing site.
+//        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
+//        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
+//        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
 
         byte[] content6 = UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null);
         byte[] content7 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false);
@@ -108,7 +109,6 @@ public class TestUrlUtilities
 
         assertEquals(new String(content6), new String(content7));
         assertEquals(new String(content7), new String(content8));
-        assertEquals(new String(content8), new String(content1));
 
         // 404
         assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-sucks.html", null, null, Proxy.NO_PROXY, null, null));
@@ -144,5 +144,6 @@ public class TestUrlUtilities
         assertTrue(cookies.containsKey("codetested.com"));
         assertTrue(cookies.containsKey(domain));
 
+        assertTrue(new String(bytes2).contains("myotherdrive.com"));
     }
 }

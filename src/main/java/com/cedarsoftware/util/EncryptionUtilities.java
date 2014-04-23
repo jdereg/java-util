@@ -17,7 +17,6 @@ import java.security.spec.AlgorithmParameterSpec;
  * Useful encryption utilities that simplify tasks like getting an
  * encrypted String return value (or MD5 hash String) for String or
  * Stream input.
- *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
  *         Copyright (c) Cedar Software LLC
@@ -36,7 +35,9 @@ import java.security.spec.AlgorithmParameterSpec;
  */
 public class EncryptionUtilities
 {
-    private EncryptionUtilities() { }
+    private EncryptionUtilities()
+    {
+    }
 
     /**
      * Super-fast MD5 calculation from entire file.  Uses FileChannel and
@@ -50,25 +51,9 @@ public class EncryptionUtilities
         try
         {
             in = new FileInputStream(file);
-            FileChannel ch = in.getChannel();
-            MessageDigest d = getMD5Digest();
-            ByteBuffer bb = ByteBuffer.allocateDirect(65536);
-            int nRead;
-
-            while ((nRead = ch.read(bb)) != -1)
-            {
-                if (nRead == 0)
-                {
-                    continue;
-                }
-                bb.position(0);
-                bb.limit(nRead);
-                d.update(bb);
-                bb.clear();
-            }
-            return ByteUtilities.encode(d.digest());
+            return calculateMD5Hash(in.getChannel());
         }
-        catch(IOException e)
+        catch (IOException e)
         {
             return null;
         }
@@ -78,23 +63,38 @@ public class EncryptionUtilities
         }
     }
 
+    public static String calculateMD5Hash(FileChannel ch) throws IOException
+    {
+        ByteBuffer bb = ByteBuffer.allocateDirect(65536);
+        MessageDigest d = getMD5Digest();
+
+        int nRead;
+
+        while ((nRead = ch.read(bb)) != -1)
+        {
+            if (nRead == 0)
+            {
+                continue;
+            }
+            bb.position(0);
+            bb.limit(nRead);
+            d.update(bb);
+            bb.clear();
+        }
+        return ByteUtilities.encode(d.digest());
+    }
+
     /**
      * Calculate an MD5 Hash String from the passed in byte[].
      */
     public static String calculateMD5Hash(byte[] bytes)
     {
-        if (bytes == null)
-        {
-            return null;
-        }
-
-        MessageDigest d = getMD5Digest();
-        d.update(bytes);
-        return ByteUtilities.encode(d.digest());
+        return calculateHash(getMD5Digest(), bytes);
     }
 
 
-    public static MessageDigest getDigest(String digest) {
+    public static MessageDigest getDigest(String digest)
+    {
         try
         {
             return MessageDigest.getInstance(digest);
@@ -116,14 +116,7 @@ public class EncryptionUtilities
      */
     public static String calculateSHA1Hash(byte[] bytes)
     {
-        if (bytes == null)
-        {
-            return null;
-        }
-
-        MessageDigest d = getSHA1Digest();
-        d.update(bytes);
-        return ByteUtilities.encode(d.digest());
+        return calculateHash(getSHA1Digest(), bytes);
     }
 
     public static MessageDigest getSHA1Digest()
@@ -136,14 +129,7 @@ public class EncryptionUtilities
      */
     public static String calculateSHA256Hash(byte[] bytes)
     {
-        if (bytes == null)
-        {
-            return null;
-        }
-
-        MessageDigest d = getSHA256Digest();
-        d.update(bytes);
-        return ByteUtilities.encode(d.digest());
+        return calculateHash(getSHA256Digest(), bytes);
     }
 
     public static MessageDigest getSHA256Digest()
@@ -156,14 +142,7 @@ public class EncryptionUtilities
      */
     public static String calculateSHA512Hash(byte[] bytes)
     {
-        if (bytes == null)
-        {
-            return null;
-        }
-
-        MessageDigest d = getSHA512Digest();
-        d.update(bytes);
-        return ByteUtilities.encode(d.digest());
+        return calculateHash(getSHA512Digest(), bytes);
     }
 
     public static MessageDigest getSHA512Digest()
@@ -195,7 +174,7 @@ public class EncryptionUtilities
 
     /**
      * Creates a Cipher from the passed in key, using the passed in mode.
-     * @param key SecretKeySpec
+     * @param key  SecretKeySpec
      * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
      * @return Cipher instance created with the passed in key and mode.
      */
@@ -240,5 +219,19 @@ public class EncryptionUtilities
         {
             throw new IllegalStateException("Error occurred decrypting data", e);
         }
+    }
+
+    /**
+     * Calculate an SHA-256 Hash String from the passed in byte[].
+     */
+    public static String calculateHash(MessageDigest d, byte[] bytes)
+    {
+        if (bytes == null)
+        {
+            return null;
+        }
+
+        d.update(bytes);
+        return ByteUtilities.encode(d.digest());
     }
 }

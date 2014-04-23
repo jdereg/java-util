@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestUniqueIdGenerator
 {
+
     @Test
     public void testUniqueIdGeneration() throws Exception
     {

@@ -110,6 +110,8 @@ public class TestMathUtilities
         BigInteger[] bigies = new BigInteger[] {new BigInteger("1"), new BigInteger("-1")};
         assertEquals(new BigInteger("-1"), MathUtilities.minimum(bigies));
 
+        assertEquals(new BigInteger("500"), MathUtilities.minimum(new BigInteger("500")));
+
         try
         {
             MathUtilities.minimum((BigInteger)null);
@@ -136,6 +138,7 @@ public class TestMathUtilities
         BigDecimal[] bigies = new BigDecimal[] {new BigDecimal("1.1"), new BigDecimal("-1.1")};
         assertEquals(new BigDecimal("-1.1"), MathUtilities.minimum(bigies));
 
+        assertEquals(new BigDecimal("500.99"), MathUtilities.minimum(new BigDecimal("500.99")));
         try
         {
             MathUtilities.minimum((BigDecimal)null);
@@ -218,6 +221,8 @@ public class TestMathUtilities
         BigInteger[] bigies = new BigInteger[] {new BigInteger("1"), new BigInteger("-1")};
         assertEquals(new BigInteger("1"), MathUtilities.maximum(bigies));
 
+        assertEquals(new BigInteger("500"), MathUtilities.maximum(new BigInteger("500")));
+
         try
         {
             MathUtilities.maximum((BigInteger)null);
@@ -233,6 +238,12 @@ public class TestMathUtilities
         catch (Exception ignored) { }
     }
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testNullInMaximumBigInteger()
+    {
+        MathUtilities.maximum(new BigInteger("1"), null);
+    }
+
     @Test
     public void testMaximumBigDecimal()
     {
@@ -243,6 +254,8 @@ public class TestMathUtilities
 
         BigDecimal[] bigies = new BigDecimal[] {new BigDecimal("1.1"), new BigDecimal("-1.1")};
         assertEquals(new BigDecimal("1.1"), MathUtilities.maximum(bigies));
+
+        assertEquals(new BigDecimal("1.5"), MathUtilities.maximum(new BigDecimal("1.5")));
 
         try
         {

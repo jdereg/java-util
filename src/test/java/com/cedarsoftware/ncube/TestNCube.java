@@ -4517,16 +4517,6 @@ DELIMITER ;
         assertEquals(cal.get(Calendar.YEAR), 2013);
         assertEquals(cal.get(Calendar.MONTH), 7);
         assertEquals(cal.get(Calendar.DAY_OF_MONTH), 31);
-
-        // Time format
-        coord.put("CODE", "timeVal");
-        ans = ncube.getCell(coord);
-        cal.clear();
-        cal.setTime((Date) ans);
-        assertTrue(ans instanceof Date);
-        assertEquals(cal.get(Calendar.HOUR_OF_DAY), 6);
-        assertEquals(cal.get(Calendar.MINUTE), 50);
-        assertEquals(cal.get(Calendar.SECOND), 16);
     }
 
     @Test(expected=CoordinateNotFoundException.class)

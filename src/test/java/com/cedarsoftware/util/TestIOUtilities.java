@@ -17,6 +17,7 @@ import java.net.URLConnection;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -52,6 +53,102 @@ public class TestIOUtilities
         URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
         IOUtilities.transfer(new File(u.getFile()), c, null);
         assertEquals(_expected, new String(s.toByteArray(), "UTF-8"));
+    }
+
+    @Test
+    public void testTransferFileToOutputStreamWithDeflate() throws Exception {
+        File f = File.createTempFile("test", "test");
+
+        // perform test
+        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.inflate");
+        FileInputStream in = new FileInputStream(new File(inUrl.getFile()));
+        URLConnection c = mock(URLConnection.class);
+        when(c.getInputStream()).thenReturn(in);
+        when(c.getContentEncoding()).thenReturn("deflate");
+        IOUtilities.transfer(c, f, null);
+        IOUtilities.close(in);
+
+        // load actual result
+        FileInputStream actualIn = new FileInputStream(f);
+        ByteArrayOutputStream actualResult = new ByteArrayOutputStream(8192);
+        IOUtilities.transfer(actualIn, actualResult);
+        IOUtilities.close(actualIn);
+        IOUtilities.close(actualResult);
+
+
+        // load expected result
+        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
+        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
+        IOUtilities.transfer(expected, expectedResult);
+        IOUtilities.close(expected);
+        assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
+        f.delete();
+    }
+
+
+    @Test
+    public void testTransferWithGzip() throws Exception {
+        gzipTransferTest("gzip");
+    }
+
+    @Test
+    public void testTransferWithXGzip() throws Exception {
+        gzipTransferTest("x-gzip");
+    }
+
+    public void gzipTransferTest(String encoding) throws Exception {
+        File f = File.createTempFile("test", "test");
+
+        // perform test
+        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
+        FileInputStream in = new FileInputStream(new File(inUrl.getFile()));
+        URLConnection c = mock(URLConnection.class);
+        when(c.getInputStream()).thenReturn(in);
+        when(c.getContentEncoding()).thenReturn(encoding);
+        IOUtilities.transfer(c, f, null);
+        IOUtilities.close(in);
+
+        // load actual result
+        FileInputStream actualIn = new FileInputStream(f);
+        ByteArrayOutputStream actualResult = new ByteArrayOutputStream(8192);
+        IOUtilities.transfer(actualIn, actualResult);
+        IOUtilities.close(actualIn);
+        IOUtilities.close(actualResult);
+
+
+        // load expected result
+        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
+        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
+        IOUtilities.transfer(expected, expectedResult);
+        IOUtilities.close(expected);
+        assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
+        f.delete();
+    }
+
+    @Test
+    public void testCompressBytes() throws Exception
+    {
+        // load start
+        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        ByteArrayOutputStream start = new ByteArrayOutputStream(8192);
+        FileInputStream in = new FileInputStream(inUrl.getFile());
+        IOUtilities.transfer(in, start);
+        IOUtilities.close(in);
+
+        // load expected result
+        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
+        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
+        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
+        IOUtilities.transfer(expected, expectedResult);
+        IOUtilities.close(expected);
+
+        ByteArrayOutputStream result = new ByteArrayOutputStream(8192);
+        IOUtilities.compressBytes(start, result);
+
+        assertArrayEquals(expectedResult.toByteArray(), result.toByteArray());
+
     }
 
     @Test

@@ -48,7 +48,6 @@
         { "id":["shortVal"], "type":"short", "value": -101 },
         { "id":["date1Val"], "type":"datetime", "value": "2013-08-30T22:00:01" },
         { "id":["date2Val"], "type":"date", "value": "2013-08-31" },
-        { "id":["timeVal"], "type":"time", "value": "06:50:16" },
         { "id":["string"], "type":"string", "value":"balance"},
         { "id":["FixedExp"], "type":"exp", "value":"$[code:'doubleVal']* 2"},
         { "id":["FixedExtExp"], "type":"exp", "value":"$idTest[Age:15,state:'OH']"},

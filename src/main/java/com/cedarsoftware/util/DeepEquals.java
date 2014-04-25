@@ -51,8 +51,8 @@ public class DeepEquals
 {
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<Class, Boolean>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<Class, Boolean>();
-    private static final double doubleEplison = 0.0000000000000001;
-    private static final double floatEplison = 0.0000001;
+    private static final double doubleEplison = 1e-15;
+    private static final double floatEplison = 1e-6;
 
     private static class DualKey
     {

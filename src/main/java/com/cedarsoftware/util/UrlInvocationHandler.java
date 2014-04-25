@@ -98,7 +98,7 @@ public class UrlInvocationHandler implements InvocationHandler
                 if (LOG.isDebugEnabled())
                 {    // DEBUG
                     String jsonCall = new String(ba_out.toByteArray(), "UTF-8");
-                    LOG.debug("Calling MOD server:\n    " + jsonCall);
+                    LOG.debug("Calling server:\n    " + jsonCall);
                 }
 
                 c.setRequestProperty("Content-Length", String.valueOf(ba_out.size()));

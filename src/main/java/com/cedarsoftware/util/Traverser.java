@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -157,7 +156,7 @@ public class Traverser
         }
     }
 
-    private void walkCollection(LinkedList stack, Collection col, Class[] skip)
+    private static void walkCollection(LinkedList stack, Collection col, Class[] skip)
     {
         for (Object o : col)
         {
@@ -168,13 +167,10 @@ public class Traverser
         }
     }
 
-    private void walkMap(LinkedList stack, Map map, Class[] skip)
+    private static void walkMap(LinkedList stack, Map map, Class[] skip)
     {
-        Iterator<Map.Entry> i = map.entrySet().iterator();
-
-        while (i.hasNext())
+        for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
         {
-            Map.Entry entry = i.next();
             Object o = entry.getKey();
 
             if (o != null && !o.getClass().isPrimitive())
@@ -203,7 +199,7 @@ public class Traverser
      * fields.  The fixed size includes the sizeof primitives plus the size
      * of the reference pointers (not the size of the referents).
      */
-    public class ClassInfo
+    public static class ClassInfo
     {
         private boolean _skip = false;
         private final Collection<Field> _refFields = new ArrayList<Field>();

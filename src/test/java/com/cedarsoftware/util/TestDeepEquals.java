@@ -1,29 +1,43 @@
 package com.cedarsoftware.util;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static java.lang.Math.cos;
-import static java.lang.Math.sin;
-import static java.lang.Math.tan;
-import static java.lang.Math.atan;
-import static java.lang.Math.log;
-import static java.lang.Math.pow;
-import static java.lang.Math.E;
-import static java.lang.Math.PI;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.junit.Test;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import static java.lang.Math.E;
+import static java.lang.Math.PI;
+import static java.lang.Math.atan;
+import static java.lang.Math.cos;
+import static java.lang.Math.log;
+import static java.lang.Math.pow;
+import static java.lang.Math.sin;
+import static java.lang.Math.tan;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
- * @author sapradhan8 <br/>
+ * @author John DeRegnaucourt
+ * @author sapradhan8
  * <br/>
  *         Licensed under the Apache License, Version 2.0 (the "License"); you
  *         may not use this file except in compliance with the License. You may
@@ -44,7 +58,6 @@ public class TestDeepEquals
     {
         Date date1 = new Date();
         Date date2 = date1;
-
         assertTrue(DeepEquals.deepEquals(date1, date2));
     }
 
@@ -52,7 +65,6 @@ public class TestDeepEquals
 	public void testEqualsWithNull()
     {
 		Date date1 = new Date();
-
 		assertFalse(DeepEquals.deepEquals(null, date1));
 		assertFalse(DeepEquals.deepEquals(date1, null));
 	}
@@ -101,9 +113,7 @@ public class TestDeepEquals
 	public void testOrderedCollection()
     {
 		List<String> a = Lists.newArrayList("one", "two", "three", "four", "five");
-		// TODO different impl of list be equivalent
-		// List<String> b = Lists.newLinkedList(a);
-		List<String> b = Lists.newArrayList("one", "two", "three", "four", "five");
+		List<String> b = Lists.newLinkedList(a);
 
 		assertTrue(DeepEquals.deepEquals(a, b));
 
@@ -140,20 +150,117 @@ public class TestDeepEquals
 	}
 
     @Test
-    public void testUnorderedMap()
+    public void testEquivalentMaps()
     {
-        Map<String, Integer> a = ImmutableMap.<String, Integer>of("one", 1, "two", 2, "three", 3, "four", 4, "five", 5);
-        // TODO different impl of maps be equivalent
-        // Map<String, Integer> b = Maps.newHashMap(ImmutableMap
-        // .<String, Integer> of("one", 1, "four", 4, "five", 5, "three",
-        // 3, "two", 2));
-        Map<String, Integer> b = ImmutableMap.<String, Integer>of("one", 1, "four", 4, "five", 5, "three", 3, "two", 2);
+        Map map1 = new LinkedHashMap();
+        fillMap(map1);
+        Map map2 = new HashMap();
+        fillMap(map2);
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+        assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
 
-        assertTrue(DeepEquals.deepEquals(a, b));
+        map1 = new TreeMap();
+        fillMap(map1);
+        map2 = new TreeMap();
+        map2 = Collections.synchronizedSortedMap((SortedMap) map2);
+        fillMap(map2);
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+        assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
     }
 
+    @Test
+    public void testInequivalentMaps()
+    {
+        Map map1 = new TreeMap();
+        fillMap(map1);
+        Map map2 = new HashMap();
+        fillMap(map2);
+        // Sorted versus non-sorted Map
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+
+        // Hashcodes are equals because the Maps have same elements
+        assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
+
+        map2 = new TreeMap();
+        fillMap(map2);
+        map2.remove("kilo");
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+
+        // Hashcodes are different because contents of maps are different
+        assertNotEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
+
+        map1 = new HashMap();
+        fillMap(map1);
+        map2 = new ConcurrentSkipListMap();
+        fillMap(map2);
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+        map2.remove("papa");
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    public void testEquivalentCollections()
+    {
+        // ordered Collection
+        Collection col1 = new ArrayList();
+        fillCollection(col1);
+        Collection col2 = new LinkedList();
+        fillCollection(col2);
+        assertTrue(DeepEquals.deepEquals(col1, col2));
+        assertEquals(DeepEquals.deepHashCode(col1), DeepEquals.deepHashCode(col2));
+
+        // unordered Collections (Set)
+        col1 = new LinkedHashSet();
+        fillCollection(col1);
+        col2 = new HashSet();
+        fillCollection(col2);
+        assertTrue(DeepEquals.deepEquals(col1, col2));
+        assertEquals(DeepEquals.deepHashCode(col1), DeepEquals.deepHashCode(col2));
+
+        col1 = new TreeSet();
+        fillCollection(col1);
+        col2 = new TreeSet();
+        Collections.synchronizedSortedSet((SortedSet) col2);
+        fillCollection(col2);
+        assertTrue(DeepEquals.deepEquals(col1, col2));
+        assertEquals(DeepEquals.deepHashCode(col1), DeepEquals.deepHashCode(col2));
+    }
+
+    @Test
+    public void testInequivalentCollections()
+    {
+        Collection col1 = new TreeSet();
+        fillCollection(col1);
+        Collection col2 = new HashSet();
+        fillCollection(col2);
+        assertFalse(DeepEquals.deepEquals(col1, col2));
+        assertEquals(DeepEquals.deepHashCode(col1), DeepEquals.deepHashCode(col2));
+
+        col2 = new TreeSet();
+        fillCollection(col2);
+        col2.remove("lima");
+        assertFalse(DeepEquals.deepEquals(col1, col2));
+        assertNotEquals(DeepEquals.deepHashCode(col1), DeepEquals.deepHashCode(col2));
+
+        assertFalse(DeepEquals.deepEquals(new HashMap(), new ArrayList()));
+        assertFalse(DeepEquals.deepEquals(new ArrayList(), new HashMap()));
+    }
+
+    @Test
+    public void testArray()
+    {
+        Object[] a1 = new Object[] {"alpha", "bravo", "charlie", "delta"};
+        Object[] a2 = new Object[] {"alpha", "bravo", "charlie", "delta"};
+
+        assertTrue(DeepEquals.deepEquals(a1, a2));
+        assertEquals(DeepEquals.deepHashCode(a1), DeepEquals.deepHashCode(a2));
+        a2[3] = "echo";
+        assertFalse(DeepEquals.deepEquals(a1, a2));
+        assertNotEquals(DeepEquals.deepHashCode(a1), DeepEquals.deepHashCode(a2));
+    }
+    
 	@Test
-	public void testHasCustomxxx()
+	public void testHasCustomMethod()
     {
 		assertFalse(DeepEquals.hasCustomEquals(EmptyClass.class));
 		assertFalse(DeepEquals.hasCustomHashCode(Class1.class));
@@ -178,7 +285,6 @@ public class TestDeepEquals
 		}
 	}
 
-	@SuppressWarnings("unused")
 	static class Class1
     {
 		private boolean b;
@@ -197,7 +303,6 @@ public class TestDeepEquals
 
 	}
 
-	@SuppressWarnings("unused")
 	static class Class2
     {
 		private Float f;
@@ -216,4 +321,64 @@ public class TestDeepEquals
 
 		public Class2() { }
 	}
+
+    private void fillMap(Map map)
+    {
+        map.put("zulu", 26);
+        map.put("alpha", 1);
+        map.put("bravo", 2);
+        map.put("charlie", 3);
+        map.put("delta", 4);
+        map.put("echo", 5);
+        map.put("foxtrot", 6);
+        map.put("golf", 7);
+        map.put("hotel", 8);
+        map.put("india", 9);
+        map.put("juliet", 10);
+        map.put("kilo", 11);
+        map.put("lima", 12);
+        map.put("mike", 13);
+        map.put("november", 14);
+        map.put("oscar", 15);
+        map.put("papa", 16);
+        map.put("quebec", 17);
+        map.put("romeo", 18);
+        map.put("sierra", 19);
+        map.put("tango", 20);
+        map.put("uniform", 21);
+        map.put("victor", 22);
+        map.put("whiskey", 23);
+        map.put("xray", 24);
+        map.put("yankee", 25);
+    }
+
+    private void fillCollection(Collection col)
+    {
+        col.add("zulu");
+        col.add("alpha");
+        col.add("bravo");
+        col.add("charlie");
+        col.add("delta");
+        col.add("echo");
+        col.add("foxtrot");
+        col.add("golf");
+        col.add("hotel");
+        col.add("india");
+        col.add("juliet");
+        col.add("kilo");
+        col.add("lima");
+        col.add("mike");
+        col.add("november");
+        col.add("oscar");
+        col.add("papa");
+        col.add("quebec");
+        col.add("romeo");
+        col.add("sierra");
+        col.add("tango");
+        col.add("uniform");
+        col.add("victor");
+        col.add("whiskey");
+        col.add("xray");
+        col.add("yankee");
+    }
 }

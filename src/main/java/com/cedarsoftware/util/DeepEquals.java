@@ -51,7 +51,8 @@ public class DeepEquals
 {
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<Class, Boolean>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<Class, Boolean>();
-    private static double eplison = 1e-6;    
+    private static final double doubleEplison = 0.0000000000000001;
+    private static final double floatEplison = 0.0000001;
 
     private static class DualKey
     {
@@ -128,15 +129,52 @@ public class DeepEquals
                 return false;
             }
 
-            if (!dualKey._key1.getClass().equals(dualKey._key2.getClass()))
+            if (dualKey._key1 instanceof Collection)
+            {   // If Collections, they both must be Collection
+                if (!(dualKey._key2 instanceof Collection))
+                {
+                    return false;
+                }
+            }
+
+            if (dualKey._key1 instanceof SortedSet)
+            {
+                if (!(dualKey._key2 instanceof SortedSet))
+                {
+                    return false;
+                }
+            }
+
+            if (dualKey._key1 instanceof Map)
+            {
+                if (!(dualKey._key2 instanceof Map))
+                {
+                    return false;
+                }
+            }
+
+            if (dualKey._key1 instanceof SortedMap)
+            {
+                if (!(dualKey._key2 instanceof SortedMap))
+                {
+                    return false;
+                }
+            }
+
+            if (!isContainerType(dualKey._key1) && !isContainerType(dualKey._key2) && !dualKey._key1.getClass().equals(dualKey._key2.getClass()))
             {   // Must be same class
                 return false;
             }
             
-            if (dualKey._key1 instanceof Double || dualKey._key1 instanceof Float)
+            if (dualKey._key1 instanceof Double)
             {
-            	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, eplison))
+            	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
             		continue;
+            }
+            if (dualKey._key1 instanceof Float)
+            {
+                if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))
+                    continue;
             }
 
             // Handle all [] types.  In order to be equal, the arrays must be the same 
@@ -234,6 +272,11 @@ public class DeepEquals
         }
 
         return true;
+    }
+
+    public static boolean isContainerType(Object o)
+    {
+        return o instanceof Collection || o instanceof Map;
     }
 
     /**

@@ -111,7 +111,7 @@ public class TestUrlUtilities
         assertEquals(new String(content7), new String(content8));
 
         // 404
-        assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-sucks.html", null, null, Proxy.NO_PROXY, null, null));
+        assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-bucks.html", null, null, Proxy.NO_PROXY, null, null));
     }
 
     @Test

@@ -136,10 +136,6 @@ public class Traverser
     private void walkFields(LinkedList stack, Object current, Class[] skip)
     {
         ClassInfo classInfo = getClassInfo(current.getClass(), skip);
-        if (classInfo._skip)
-        {
-            return;
-        }
 
         for (Field field : classInfo._refFields)
         {
@@ -195,9 +191,8 @@ public class Traverser
     }
 
     /**
-     * This class wraps a class in order to cache the fixed size of it's
-     * fields.  The fixed size includes the sizeof primitives plus the size
-     * of the reference pointers (not the size of the referents).
+     * This class wraps a class in order to cache the fields so they
+     * are only reflectively obtained once.
      */
     public static class ClassInfo
     {

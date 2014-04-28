@@ -41,7 +41,7 @@ Including in java-util:
 
 Version History
 * 1.10.0
- * DeepEquals.deepEquals() allows similar Map (or Collection) types to be compared without returning 'not equals' (false).  Example, HashMap and LinkedHashMap are compared on contents only.  However, compare a SortedSet (like TreeMap) to HashMap would fail unless the Map keys are in the same iterative order.
+ * Issue #3 fixed: DeepEquals.deepEquals() allows similar Map (or Collection) types to be compared without returning 'not equals' (false).  Example, HashMap and LinkedHashMap are compared on contents only.  However, compare a SortedSet (like TreeMap) to HashMap would fail unless the Map keys are in the same iterative order.
  * Tests added for UrlUtilities
  * Tests added for Traverser
 * 1.9.2

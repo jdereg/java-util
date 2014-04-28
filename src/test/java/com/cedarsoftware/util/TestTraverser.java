@@ -10,7 +10,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.TimeZone;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -53,6 +53,12 @@ public class TestTraverser
         Object[] dates;
         Alpha alpha;
         TimeZone zone = TimeZone.getDefault();
+        Delta delta;
+    }
+
+    class Delta
+    {
+        TimeZone timeZone = TimeZone.getDefault();
     }
 
     @Test
@@ -84,11 +90,11 @@ public class TestTraverser
         charlie.timezones.add(TimeZone.getTimeZone("GMT"));
         charlie.dates = new Date[] { new Date() };
 
-        final boolean[] visited = new boolean[4];
-        visited[0] = false;
-        visited[1] = false;
-        visited[2] = false;
-        visited[3] = false;
+        final int[] visited = new int[4];
+        visited[0] = 0;
+        visited[1] = 0;
+        visited[2] = 0;
+        visited[3] = 0;
 
         Traverser.Visitor visitor = new Traverser.Visitor()
         {
@@ -96,36 +102,36 @@ public class TestTraverser
             {
                 if (o instanceof Alpha)
                 {
-                    visited[0] = true;
+                    visited[0]++;
                 }
                 else if (o instanceof Beta)
                 {
-                    visited[1] = true;
+                    visited[1]++;
                 }
                 else if (o instanceof Charlie)
                 {
-                    visited[2] = true;
+                    visited[2]++;
                 }
                 else if (o instanceof TimeZone)
                 {
-                    visited[3] = true;
+                    visited[3]++;
                 }
             }
         };
         Traverser.traverse(alpha, visitor);
-        assertTrue(visited[0]);
-        assertTrue(visited[1]);
-        assertTrue(visited[2]);
-        assertTrue(visited[3]);
+        assertEquals(1, visited[0]);
+        assertEquals(1, visited[1]);
+        assertEquals(1, visited[2]);
+        assertTrue(visited[3] >= 1);
 
-        visited[0] = false;
-        visited[1] = false;
-        visited[2] = false;
-        visited[3] = false;
+        visited[0] = 0;
+        visited[1] = 0;
+        visited[2] = 0;
+        visited[3] = 0;
         Traverser.traverse(alpha, new Class[] { TimeZone.class }, visitor);
-        assertTrue(visited[0]);
-        assertTrue(visited[1]);
-        assertTrue(visited[2]);
-        assertFalse(visited[3]);
+        assertEquals(1, visited[0]);
+        assertEquals(1, visited[1]);
+        assertEquals(1, visited[2]);
+        assertEquals(0, visited[3]);
     }
 }

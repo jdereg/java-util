@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.9.2</version>
+  <version>1.10.0</version>
 </dependency>
 
 <dependency>
@@ -40,6 +40,10 @@ Including in java-util:
 * **UrlInvocationHandler**, **SessionAwareInvocationHandler**, **CookieAwareInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.10.0
+ * Issue #3 fixed: DeepEquals.deepEquals() allows similar Map (or Collection) types to be compared without returning 'not equals' (false).  Example, HashMap and LinkedHashMap are compared on contents only.  However, compare a SortedSet (like TreeMap) to HashMap would fail unless the Map keys are in the same iterative order.
+ * Tests added for UrlUtilities
+ * Tests added for Traverser
 * 1.9.2
  * Added wildcard to regex pattern to StringUtilities.  This API turns a DOS-like wildcard pattern (where * matches anything and ? matches a single character) into a regex pattern useful in String.matches() API.
 * 1.9.1

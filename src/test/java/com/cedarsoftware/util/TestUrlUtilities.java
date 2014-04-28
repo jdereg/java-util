@@ -4,10 +4,6 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -55,8 +51,10 @@ public class TestUrlUtilities
             "<h1>Hello, John!</h1>\n" +
             "</body>\n" +
             "</html>";
+
     @Test
-    public void testConstructorIsPrivate() throws Exception {
+    public void testConstructorIsPrivate() throws Exception
+    {
         Class c = UrlUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
@@ -153,6 +151,69 @@ public class TestUrlUtilities
         assertTrue(cookies.containsKey(domain));
 
         assertTrue(new String(bytes2).contains("myotherdrive.com"));
+    }
+
+    @Test
+    public void testHostName()
+    {
+        assertNotNull(UrlUtilities.getHostName());
+    }
+
+    @Test
+    public void testGetConnection() throws Exception
+    {
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), null, 0, null, true, false, false, true);
+        assertNotNull(c);
+        c.connect();
+        UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testGetConnection1() throws Exception
+    {
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection("http://www.yahoo.com", true, false, false);
+        assertNotNull(c);
+        c.connect();
+        UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testGetConnection2() throws Exception
+    {
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.yahoo.com"), true, false, false);
+        assertNotNull(c);
+        UrlUtilities.setTimeouts(c, 9000, 10000);
+        c.connect();
+        UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testReferrer()
+    {
+        // Not much of a test
+        UrlUtilities.setReferrer("http://www.google.com");
+    }
+
+    @Test
+    public void testAgent()
+    {
+        UrlUtilities.setUserAgent("chrome");
+        assertEquals("chrome", UrlUtilities.getUserAgent());
+    }
+
+    @Test
+    public void testCookies2() throws Exception
+    {
+        Map cookies = new HashMap();
+        Map gCookie = new HashMap();
+        gCookie.put("param", new HashMap());
+        cookies.put("google.com", gCookie);
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), cookies, true, false, false, null, null, null);
+        UrlUtilities.setCookies(c, cookies);
+        c.connect();
+        Map outCookies = new HashMap();
+        UrlUtilities.getCookies(c, outCookies);
+        UrlUtilities.disconnect(c);
     }
 
     @Test

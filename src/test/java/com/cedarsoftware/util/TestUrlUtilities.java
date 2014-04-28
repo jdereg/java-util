@@ -6,8 +6,11 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.net.HttpURLConnection;
 import java.net.Proxy;
+import java.net.URL;
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -36,7 +39,7 @@ public class TestUrlUtilities
 {
     private static final String httpsUrl = "https://www.myotherdrive.com";
     //private static final String httpsGoogleUrl = "https://www.google.com";
-    private static final String domain  = "myotherdrive.com";
+    private static final String domain = "myotherdrive.com";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
 
     private static final String _expected = "<html>\n" +
@@ -47,8 +50,10 @@ public class TestUrlUtilities
             "<h1>Hello, John!</h1>\n" +
             "</body>\n" +
             "</html>";
+
     @Test
-    public void testConstructorIsPrivate() throws Exception {
+    public void testConstructorIsPrivate() throws Exception
+    {
         Class c = UrlUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
@@ -98,7 +103,7 @@ public class TestUrlUtilities
         assertEquals(new String(content4), new String(content5));
         assertEquals(new String(content5), new String(content1));
 
-            //TODO - add in when we find self-signing site.
+        //TODO - add in when we find self-signing site.
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
@@ -145,5 +150,68 @@ public class TestUrlUtilities
         assertTrue(cookies.containsKey(domain));
 
         assertTrue(new String(bytes2).contains("myotherdrive.com"));
+    }
+
+    @Test
+    public void testHostName()
+    {
+        assertNotNull(UrlUtilities.getHostName());
+    }
+
+    @Test
+    public void testGetConnection() throws Exception
+    {
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), null, 0, null, true, false, false, true);
+        assertNotNull(c);
+        c.connect();
+        UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testGetConnection1() throws Exception
+    {
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection("http://www.yahoo.com", true, false, false);
+        assertNotNull(c);
+        c.connect();
+        UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testGetConnection2() throws Exception
+    {
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.yahoo.com"), true, false, false);
+        assertNotNull(c);
+        UrlUtilities.setTimeouts(c, 9000, 10000);
+        c.connect();
+        UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testReferrer()
+    {
+        // Not much of a test
+        UrlUtilities.setReferrer("http://www.google.com");
+    }
+
+    @Test
+    public void testAgent()
+    {
+        UrlUtilities.setUserAgent("chrome");
+        assertEquals("chrome", UrlUtilities.getUserAgent());
+    }
+
+    @Test
+    public void testCookies2() throws Exception
+    {
+        Map cookies = new HashMap();
+        Map gCookie = new HashMap();
+        gCookie.put("param", new HashMap());
+        cookies.put("google.com", gCookie);
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), cookies, true, false, false, null, null, null);
+        UrlUtilities.setCookies(c, cookies);
+        c.connect();
+        Map outCookies = new HashMap();
+        UrlUtilities.getCookies(c, outCookies);
+        UrlUtilities.disconnect(c);
     }
 }

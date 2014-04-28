@@ -134,21 +134,4 @@ public class TestTraverser
         assertEquals(1, visited[2]);
         assertEquals(0, visited[3]);
     }
-
-    @Test
-    public void testSkip()
-    {
-        Charlie charlie = new Charlie();
-        Delta delta = new Delta();
-        charlie.delta = delta;
-
-        Traverser.Visitor visitor = new Traverser.Visitor()
-        {
-            public void process(Object o)
-            {
-                System.out.println("o = " + o);
-            }
-        };
-        Traverser.traverse(charlie, new Class[] { TimeZone.class }, visitor);
-    }
 }

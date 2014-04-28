@@ -57,7 +57,7 @@ import java.util.regex.Pattern;
 public final class UrlUtilities
 {
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
-    private static String _referer = null;
+    private static String _referrer = null;
     private static String _userAgent = null;
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
     public static final String SET_COOKIE = "Set-Cookie";
@@ -110,9 +110,9 @@ public final class UrlUtilities
         super();
     }
 
-    public static void setReferer(String referer)
+    public static void setReferrer(String referrer)
     {
-        _referer = referer;
+        _referrer = referrer;
     }
 
     public static void setUserAgent(String userAgent)
@@ -125,6 +125,7 @@ public final class UrlUtilities
         return _userAgent;
     }
 
+    @Deprecated
     private static void setProperty(String name, String value)
     {
         System.setProperty(name, value);
@@ -139,9 +140,9 @@ public final class UrlUtilities
     {
         URLConnection c = url.openConnection();
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
-        if (StringUtilities.hasContent(_referer))
+        if (StringUtilities.hasContent(_referrer))
         {
-            c.setRequestProperty("Referer", _referer);
+            c.setRequestProperty("Referer", _referrer);
         }
         if (StringUtilities.hasContent(_userAgent))
         {

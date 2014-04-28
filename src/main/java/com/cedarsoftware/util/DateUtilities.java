@@ -167,11 +167,11 @@ public final class DateUtilities
 
         if (m < 0 || m > 11)
         {
-            error("Month must be between 1 and 12, date: " + dateStr);
+            error("Month must be between 1 and 12 inclusive, date: " + dateStr);
         }
         if (d < 1 || d > 31)
         {
-            error("Day must be between 1 and 31, date: " + dateStr);
+            error("Day must be between 1 and 31 inclusive, date: " + dateStr);
         }
 
         if (matcher == null)

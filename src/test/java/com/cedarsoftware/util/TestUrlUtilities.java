@@ -4,11 +4,19 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.Proxy;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -145,5 +153,43 @@ public class TestUrlUtilities
         assertTrue(cookies.containsKey(domain));
 
         assertTrue(new String(bytes2).contains("myotherdrive.com"));
+    }
+
+    @Test
+    public void testUserAgent() throws Exception
+    {
+        UrlUtilities.setUserAgent(null);
+        assertNull(UrlUtilities.getUserAgent());
+        UrlUtilities.setUserAgent("foo");
+        assertEquals("foo", UrlUtilities.getUserAgent());
+    }
+
+    @Test
+    public void testReferer() throws Exception
+    {
+        UrlUtilities.setReferer(null);
+        Field f = UrlUtilities.class.getDeclaredField("_referer");
+        f.setAccessible(true);
+        assertNull(f.get(null));
+
+
+        UrlUtilities.setReferer("noreferrer");
+        assertEquals("noreferrer", f.get(null));
+        UrlUtilities.setReferer("www.gai.com");
+        assertEquals("www.gai.com", f.get(null));
+    }
+
+    @Test
+    public void testGetConnection() throws Exception
+    {
+        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URLConnection c = UrlUtilities.getConnection(u, true, false, false);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        InputStream s = c.getInputStream();
+        IOUtilities.transfer(s, out);
+        IOUtilities.close(s);
+
+        assertArrayEquals("This is for an IO test!".getBytes(), out.toByteArray());
     }
 }

@@ -221,7 +221,25 @@ public class TestDateUtilities
 
         try
         {
+            DateUtilities.parseDate("00/01/2014");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+
+        try
+        {
             DateUtilities.parseDate("12/32/2014");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+
+        try
+        {
+            DateUtilities.parseDate("12/00/2014");
             fail("should not make it here");
         }
         catch (Exception e)

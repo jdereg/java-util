@@ -4,13 +4,17 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -162,10 +166,15 @@ public class TestUrlUtilities
     @Test
     public void testGetConnection() throws Exception
     {
-        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), null, 0, null, true, false, false, true);
-        assertNotNull(c);
-        c.connect();
-        UrlUtilities.disconnect(c);
+        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URLConnection c = UrlUtilities.getConnection(u, true, false, false);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        InputStream s = c.getInputStream();
+        IOUtilities.transfer(s, out);
+        IOUtilities.close(s);
+
+        assertArrayEquals("This is for an IO test!".getBytes(), out.toByteArray());
     }
 
     @Test
@@ -185,20 +194,6 @@ public class TestUrlUtilities
         UrlUtilities.setTimeouts(c, 9000, 10000);
         c.connect();
         UrlUtilities.disconnect(c);
-    }
-
-    @Test
-    public void testReferrer()
-    {
-        // Not much of a test
-        UrlUtilities.setReferrer("http://www.google.com");
-    }
-
-    @Test
-    public void testAgent()
-    {
-        UrlUtilities.setUserAgent("chrome");
-        assertEquals("chrome", UrlUtilities.getUserAgent());
     }
 
     @Test
@@ -228,29 +223,15 @@ public class TestUrlUtilities
     @Test
     public void testReferer() throws Exception
     {
-        UrlUtilities.setReferer(null);
-        Field f = UrlUtilities.class.getDeclaredField("_referer");
+        UrlUtilities.setReferrer(null);
+        Field f = UrlUtilities.class.getDeclaredField("_referrer");
         f.setAccessible(true);
         assertNull(f.get(null));
 
 
-        UrlUtilities.setReferer("noreferrer");
+        UrlUtilities.setReferrer("noreferrer");
         assertEquals("noreferrer", f.get(null));
-        UrlUtilities.setReferer("www.gai.com");
+        UrlUtilities.setReferrer("www.gai.com");
         assertEquals("www.gai.com", f.get(null));
-    }
-
-    @Test
-    public void testGetConnection() throws Exception
-    {
-        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
-        URLConnection c = UrlUtilities.getConnection(u, true, false, false);
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-        InputStream s = c.getInputStream();
-        IOUtilities.transfer(s, out);
-        IOUtilities.close(s);
-
-        assertArrayEquals("This is for an IO test!".getBytes(), out.toByteArray());
     }
 }

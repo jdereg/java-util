@@ -5461,6 +5461,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
+        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(4L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
         ncube.setRuleMode(true);
         output.clear();
@@ -5469,6 +5471,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
         output.clear();
         coord.put("age", 35);
@@ -5476,6 +5480,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
         output.clear();
         coord.put("age", 42);
@@ -5483,6 +5489,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "heavy-weight");
         assertEquals(output.get("age"), "middle-aged");
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
     }
 
     @Test
@@ -5513,15 +5521,15 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("age"), "young");
         assertEquals(output.get("weight"), "light-weight");
-        Map ruleOut = (Map) output.get("_rule");
-        assertFalse((Boolean) ruleOut.get("ruleStop"));
+        Map ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
 
         coord.put("age", 25);
         coord.put("weight", 60);
         output.clear();
         ncube.getCells(coord, output);
-        ruleOut = (Map) output.get("_rule");
-        assertTrue((Boolean) ruleOut.get("ruleStop"));
+        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertTrue((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
 
         coord.put("age", 45);
         coord.put("weight", 60);
@@ -5529,8 +5537,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("age"), "middle-aged");
         assertEquals(output.get("weight"), "light-weight");
-        ruleOut = (Map) output.get("_rule");
-        assertFalse((Boolean) ruleOut.get("ruleStop"));
+        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
     }
 
     @Test
@@ -6313,6 +6321,73 @@ DELIMITER ;
         ncube.getCell(coord, output);
         assertEquals(output.get("text"), "default default");
         assertTrue(ncube.containsCell(coord));
+    }
+
+    @Test
+    public void testMultiMatchAxisWithNoMatchAndNoDefault()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("multiMatch.json");
+
+        Map coord = new HashMap();
+        Map output = new HashMap();
+        coord.put("age", 85);
+        try
+        {
+            ncube.getCells(coord, output);
+            fail("Should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        coord.put("age", 16);
+        Map multi = ncube.getCells(coord, output);
+        System.out.println("multi = " + multi);
+        assertEquals(2, multi.size());
+    }
+
+    @Test
+    public void testRuleAxisWithNoMatchAndNoDefault()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleNoMatch.json");
+
+        Map coord = new HashMap();
+        Map output = new HashMap();
+        coord.put("age", 85);
+        ncube.getCells(coord, output);
+        assertEquals(1, output.size());
+        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(0L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+
+        coord.put("age", 22);
+        ncube.getCells(coord, output);
+        assertTrue(output.containsKey("adult"));
+        assertTrue(output.containsKey("old"));
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+    }
+
+    @Test
+    public void testContainsCellValue()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCell.json");
+
+        Map coord = new HashMap();
+        coord.put("gender", "Male");
+        assertTrue(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
     }
 
     // ---------------------------------------------------------------------------------

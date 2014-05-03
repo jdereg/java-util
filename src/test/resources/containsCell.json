@@ -1,0 +1,22 @@
+{
+    "ncube":"containsCell",
+    "defaultCellValue":"foo",
+    "axes":[
+        {
+            "name":"Gender",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":true,
+            "preferredOrder":0,
+            "columns":[
+                {
+                    "id":"Female"
+                },
+                {
+                    "id":"Male"
+                }
+            ]
+        }
+    ],
+    "cells":[{"id":["Female"],"value":"bar"}]
+}

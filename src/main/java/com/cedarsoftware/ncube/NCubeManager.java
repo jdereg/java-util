@@ -1254,7 +1254,7 @@ public class NCubeManager
         catch (Exception e)
         {
             String s = "Failed to load ncubes from resource: " + name + ", last successful cube: " + lastSuccessful;
-            LOG.error(s);
+            LOG.warn(s);
             throw new RuntimeException(s, e);
         }
     }
@@ -1267,6 +1267,7 @@ public class NCubeManager
         }
         catch (Exception e)
         {
+            LOG.error("Unable to load n-cube from simple JSON format.  Trying in serialized JSON format.", e);
             return (NCube) JsonReader.jsonToJava(json);
         }
     }

@@ -2549,47 +2549,56 @@ DELIMITER ;
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingColumnParserError() {
+    public void testNCubeMissingColumnParserError()
+    {
         NCubeManager.getNCubeFromResource("ncube-missing-column-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyColumnsError() {
+    public void testNCubeEmptyColumnsError()
+    {
         NCubeManager.getNCubeFromResource("ncube-column-not-array-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyAxesParseError() {
+    public void testNCubeEmptyAxesParseError()
+    {
         NCubeManager.getNCubeFromResource("ncube-empty-axes-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingAxesParseError() {
+    public void testNCubeMissingAxesParseError()
+    {
         NCubeManager.getNCubeFromResource("ncube-missing-axes-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingNameParseError() {
+    public void testNCubeMissingNameParseError()
+    {
         NCubeManager.getNCubeFromResource("ncube-missing-name-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testLatLongParseError() {
+    public void testLatLongParseError()
+    {
         NCubeManager.getNCubeFromResource("lat-lon-parse-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testDateParseError() {
+    public void testDateParseError()
+    {
         NCubeManager.getNCubeFromResource("date-parse-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testPoint2dParseError() {
+    public void testPoint2dParseError()
+    {
         NCubeManager.getNCubeFromResource("point2d-parse-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testPoint3dParseError() {
+    public void testPoint3dParseError()
+    {
         NCubeManager.getNCubeFromResource("point3d-parse-error.json");
     }
 
@@ -6388,8 +6397,114 @@ DELIMITER ;
         assertFalse(ncube.containsCellValue(coord, false));
         coord.put("gender", "Female");
         assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        try
+        {
+            ncube.containsCell(coord);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        try
+        {
+            ncube.containsCellValue(coord, false);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        ncube.setDefaultCellValue(null);
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        try
+        {
+            ncube.containsCell(coord);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        try
+        {
+            ncube.containsCellValue(coord, false);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
     }
 
+    @Test
+    public void testContainsCellValueRule()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCellRule.json");
+
+        Map coord = new HashMap();
+        coord.put("gender", "Male");
+        assertTrue(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        assertFalse(ncube.containsCell(coord));
+        assertFalse(ncube.containsCellValue(coord, false));
+
+        ncube.setDefaultCellValue(null);
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        assertFalse(ncube.containsCell(coord));
+
+        assertFalse(ncube.containsCellValue(coord, false));
+    }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

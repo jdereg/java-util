@@ -1,0 +1,22 @@
+{
+    "ncube":"containsCellRule",
+    "defaultCellValue":"foo",
+    "axes":[
+        {
+            "name":"Gender",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                {
+                    "id":1,"type":"exp","value":"input.gender=='Female'"
+                },
+                {
+                    "id":2,"type":"exp","value":"input.gender=='Male'"
+                }
+            ]
+        }
+    ],
+    "cells":[{"id":[1],"value":"bar"}]
+}

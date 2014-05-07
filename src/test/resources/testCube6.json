@@ -1,5 +1,6 @@
 {
     "ncube":"TestCube",
+    "defaultCellValueType":"date",
     "defaultCellValue":"2012-12-17T00:11:22",
     "axes":[
         {
@@ -10,22 +11,20 @@
             "preferredOrder":0,
             "columns":[
                 {
-                    "value":"Female"
+                    "id":"Female"
                 },
                 {
-                    "value":"Male"
+                    "id":"Male"
                 }
             ]
         }
     ],
     "cells":[
         {
-            "key":{"Gender":"Male"},
-            "value":1.0
+            "id":["Male"], "value":1.0
         },
         {
-            "key":{"Gender":"Female"},
-            "value":1.1
+            "id":["Female"], "value":1.1
         }
     ]
 }

@@ -84,8 +84,15 @@ public class JsonFormatter implements NCubeFormatter
 
             writeAttribute("ncube", name, true);
             writeAttribute("ruleMode", ncube.getRuleMode(), true);
-            if (ncube.getDefaultCellValue() != null)
+            Object defCellValue = ncube.getDefaultCellValue();
+            if (defCellValue != null)
             {
+                String valType = getCellType(defCellValue, "defaultCell");
+                if (valType != null)
+                {
+                    writeValue("defaultCellValueType", valType);
+                    comma();
+                }
                 writeValue("defaultCellValue", ncube.getDefaultCellValue());
                 comma();
             }
@@ -280,7 +287,7 @@ public class JsonFormatter implements NCubeFormatter
 
     static String getCellType(Object cell, String type)
     {
-        if (cell == null || (cell instanceof String) || (cell instanceof Double) || (cell instanceof Long) || (cell instanceof Boolean)) {
+        if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {
             return null;
         }
 
@@ -332,7 +339,7 @@ public class JsonFormatter implements NCubeFormatter
             return "string";
         }
 
-        throw new IllegalArgumentException(String.format("Unsupported %s Type:  %s", cell.getClass().getName(), type));
+        throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));
     }
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException

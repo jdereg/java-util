@@ -48,7 +48,8 @@ public class NCubeGroovyController extends NCubeGroovyExpression
      */
     public Object run(String signature) throws Exception
     {
-        String methodKey = (String) input.get("method") + '.' + signature;
+        String methodName = (String) input.get("method");
+        String methodKey = methodName + '.' + signature;
         Method method = methodCache.get(methodKey);
 
         if (method == null)
@@ -58,7 +59,7 @@ public class NCubeGroovyController extends NCubeGroovyExpression
                 method = methodCache.get(methodKey);
                 if (method == null)
                 {
-                    method = getClass().getMethod((String) input.get("method"));
+                    method = getClass().getMethod(methodName);
                     methodCache.put(methodKey, method);
                 }
             }
@@ -66,7 +67,7 @@ public class NCubeGroovyController extends NCubeGroovyExpression
 
         // If 'around' Advice has been added to n-cube, invoke it before calling Groovy method
         // or expression
-        List<Advice> advices = ncube.getAdvices();
+        List<Advice> advices = ncube.getAdvices(methodName);
         for (Advice advice : advices)
         {
             if (!advice.before(method, ncube, input, output))

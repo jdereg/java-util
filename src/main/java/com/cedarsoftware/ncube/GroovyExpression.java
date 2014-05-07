@@ -89,7 +89,7 @@ public class GroovyExpression extends GroovyBase
         NCube ncube = getNCube(args);
         Map input = getInput(args);
         Map output = getOutput(args);
-        List<Advice> advices = ncube.getAdvices();
+        List<Advice> advices = ncube.getAdvices("run");
         for (Advice advice : advices)
         {
             if (!advice.before(runMethod, ncube, input, output))

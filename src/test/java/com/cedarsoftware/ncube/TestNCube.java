@@ -2272,12 +2272,9 @@ DELIMITER ;
             age.addColumn(set);
             fail("should throw exception");
         }
-        catch (IllegalArgumentException expected)
+        catch (Exception expected)
         {
-            assertTrue(expected.getMessage().contains("nsupported"));
-            assertTrue(expected.getMessage().contains("type"));
-            assertTrue(expected.getMessage().contains("attempt"));
-            assertTrue(expected.getMessage().contains("convert"));
+            assertTrue(expected instanceof IllegalArgumentException);
         }
 
         try
@@ -6033,7 +6030,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + ".*()", new Advice()
         {
             public String getName()
             {
@@ -6042,6 +6039,7 @@ DELIMITER ;
 
             public boolean before(Method method, NCube ncube, Map input, Map output)
             {
+                output.put("before", true);
                 assertEquals(2, input.size());
                 boolean ret = true;
                 if ("foo".equals(method.getName()))
@@ -6065,6 +6063,7 @@ DELIMITER ;
 
             public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
             {
+                output.put("after", true);
                 if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
                 {
                     assertEquals(2, returnValue);
@@ -6080,18 +6079,238 @@ DELIMITER ;
             }
         });
 
+        Map output = new HashMap();
         Map coord = new HashMap();
         coord.put("method", "foo");
         coord.put("state", "OH");
-        ncube.getCell(coord);
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
 
+        output.clear();
         coord.put("state", "OH");
         coord.put("method", "bar");
-        ncube.getCell(coord);
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
 
+        output.clear();
         coord.put("state", "TX");
         coord.put("method", "qux");
-        ncube.getCell(coord);
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+
+        ncube.clearAdvices();
+    }
+
+    @Test
+    public void testAdviceSubsetMatching()
+    {
+        NCubeManager.clearCubeList();
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(ncube.getName() + ".ba*()", new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("before", true);
+                assertEquals(2, input.size());
+                boolean ret = true;
+                if ("foo".equals(method.getName()))
+                {
+                    assertEquals("foo", input.get("method"));
+                }
+                else if ("bar".equals(method.getName()))
+                {
+                    output.put("bar", true);
+                    assertEquals("bar", input.get("method"));
+                }
+                else if ("baz".equals(method.getName()))
+                {
+                    output.put("baz", true);
+                }
+                else if ("qux".equals(method.getName()))
+                {
+                    assertEquals("qux", input.get("method"));
+                }
+                else if ("qaz".equals(method.getName()))
+                {
+                    ret = false;
+                }
+                return ret;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("after", true);
+                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(2, returnValue);
+                }
+                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(4, returnValue);
+                }
+                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
+                {
+                    assertEquals(81, returnValue);
+                }
+            }
+        });
+
+        Map output = new HashMap();
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        ncube.getCell(coord, output);
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "bar");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("bar"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "baz");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("baz"));
+
+        output.clear();
+        coord.put("state", "TX");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz via getCell() which then is intercepted at sets the output keys before, after.
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz directly which is NOT intercepted
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
+
+        ncube.clearAdvices();
+    }
+
+    @Test
+    public void testAdviceSubsetMatchingLateLoad()
+    {
+        NCubeManager.clearCubeList();
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice("*.ba*()", new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("before", true);
+                assertEquals(2, input.size());
+                boolean ret = true;
+                if ("foo".equals(method.getName()))
+                {
+                    assertEquals("foo", input.get("method"));
+                }
+                else if ("bar".equals(method.getName()))
+                {
+                    output.put("bar", true);
+                    assertEquals("bar", input.get("method"));
+                }
+                else if ("baz".equals(method.getName()))
+                {
+                    output.put("baz", true);
+                }
+                else if ("qux".equals(method.getName()))
+                {
+                    assertEquals("qux", input.get("method"));
+                }
+                else if ("qaz".equals(method.getName()))
+                {
+                    ret = false;
+                }
+                return ret;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("after", true);
+                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(2, returnValue);
+                }
+                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(4, returnValue);
+                }
+                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
+                {
+                    assertEquals(81, returnValue);
+                }
+            }
+        });
+
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+
+        Map output = new HashMap();
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        ncube.getCell(coord, output);
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "bar");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("bar"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "baz");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("baz"));
+
+        output.clear();
+        coord.put("state", "TX");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz via getCell() which then is intercepted at sets the output keys before, after.
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz directly which is NOT intercepted
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
 
         ncube.clearAdvices();
     }
@@ -6103,7 +6322,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + "*", new Advice()
         {
             public String getName()
             {
@@ -6136,7 +6355,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
         {
             public String getName()
             {
@@ -6157,7 +6376,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
         {
             public String getName()
             {

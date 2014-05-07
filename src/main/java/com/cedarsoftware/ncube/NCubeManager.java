@@ -89,13 +89,35 @@ public class NCubeManager
         {
             ncube.setVersion(version);
             cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
-            for (String regex : advices.keySet())
+
+            for (String wildcard : advices.keySet())
             {
-                if (ncube.getName().matches(StringUtilities.wildcardToRegexString(regex)))
-                {
-                    for (Advice advice : advices.get(regex).values())
+                String regex = StringUtilities.wildcardToRegexString(wildcard);
+                Axis axis = ncube.getAxis("method");
+                if (axis != null)
+                {   // Controller methods
+                    for (Column column : axis.getColumnsWithoutDefault())
                     {
-                        ncube.addAdvice(advice);
+                        String method = column.getValue().toString();
+                        String classMethod = ncube.getName() + '.' + method + "()";
+                        if (classMethod.matches(regex))
+                        {
+                            for (Advice advice : advices.get(wildcard).values())
+                            {
+                                ncube.addAdvice(advice, method);
+                            }
+                        }
+                    }
+                }
+                else
+                {   // Expressions
+                    String classMethod = ncube.getName() + ".run()";
+                    if (classMethod.matches(regex))
+                    {
+                        for (Advice advice : advices.get(wildcard).values())
+                        {
+                            ncube.addAdvice(advice, "run");
+                        }
                     }
                 }
             }
@@ -132,25 +154,42 @@ public class NCubeManager
     /**
      * Associate Advice to all n-cubes that match the passed in regular expression.
      */
-    public static void addAdvice(String ncubeNameWildcard, Advice advice)
+    public static void addAdvice(String wildcard, Advice advice)
     {
         synchronized (cubeList)
         {
-            Map<String, Advice> current = advices.get(ncubeNameWildcard);
+            Map<String, Advice> current = advices.get(wildcard);
             if (current == null)
             {
                 current = new LinkedHashMap<String, Advice>();
-                advices.put(ncubeNameWildcard, current);
+                advices.put(wildcard, current);
             }
 
             current.put(advice.getName(), advice);
-            String regex = StringUtilities.wildcardToRegexString(ncubeNameWildcard);
+            String regex = StringUtilities.wildcardToRegexString(wildcard);
 
             for (NCube ncube : cubeList.values())
             {
-                if (ncube.getName().matches(regex))
-                {
-                    ncube.addAdvice(advice);
+                Axis axis = ncube.getAxis("method");
+                if (axis != null)
+                {   // Controller methods
+                    for (Column column : axis.getColumnsWithoutDefault())
+                    {
+                        String method = column.getValue().toString();
+                        String classMethod = ncube.getName() + '.' + method + "()";
+                        if (classMethod.matches(regex))
+                        {
+                            ncube.addAdvice(advice, method);
+                        }
+                    }
+                }
+                else
+                {   // Expressions
+                    String classMethod = ncube.getName() + ".run()";
+                    if (classMethod.matches(regex))
+                    {
+                        ncube.addAdvice(advice, "run");
+                    }
                 }
             }
         }

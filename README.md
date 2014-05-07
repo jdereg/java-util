@@ -67,11 +67,11 @@ n-cube can be used free for personal use.  If you plan to included it within a c
 
 Version History
 * 2.5.0
- * Advice can be specified to cube and method name, using wildcards.  For example, `*Controller.save*()` which would add the advice to all Controller classes methods that start with `save`.
- * `containsCellValue()` API added to NCube.  This will return 'true' if, and only if, the cell specified by the coordinate has an actual value located in the (defaultCellValue does not count).
- * `containsCell()` API changed.  It will return 'true' if the cell has a value, including the defaultCellValue, if it is not null.
+ * Advice can be specified to cube and method name, using wildcards.  For example, `*Controller.save*()` would add the advice to all n-cube Controller classes methods that start with `save`.
+ * `containsCellValue()` API added to NCube.  This will return 'true' if, and only if, the cell specified by the coordinate has an actual value located in it (defaultCellValue does not count).
+ * `containsCell()` API changed.  It will return `true` if the cell has a value, including the defaultCellValue, if it is not null.
  * Both `containsCell()` and `containsCellValue()` throw `CoordinateNotFoundException` if the specified coordinate falls outside the n-cubes defined hyper-space.
- * New public API on Axis, `promoteValue(AxisValueType type, Comparable value)`.  If the value passed in (say an int) is of the same kind as AxisValueType (say long) then the returned value will be the the larger AxisValueType (long in this example).  If the value type does not match, an intelligent conversion will be done.  For example, String to Date, Calendar to Date, Date to String, Long to String, Integer to String, String to BigDecimal, and so on.
+ * New public API added to Axis, `promoteValue(AxisValueType type, Comparable value)`.  If the value passed in (e.g. an int) is of the same kind as AxisValueType (e.g. long) then the returned value will be the the larger AxisValueType (long in this example).  If the `valueType` is not of the same basic nature as `value`, an intelligent conversion will be done.  For example, String to Date, Calendar to Date, Date to String, Long to String, Integer to String, String to BigDecimal, and so on.
  * When a Rule cube executes, the output map always contains an `_rule` entry.  There is a constant now defined on NCube (`RULE_EXEC_INFO`) which is used to fetch this meta-information Map.  A new Enum has been added, `RuleMetaKeys` which contains an enum for each rule-meta information entry in this Map.
 * 2.4.0
  * Advice interface added.  Allows before() and after() methods to be called before Controller methods or expressions are called.  Only expressions specified by 'url' can have advice placed around them.

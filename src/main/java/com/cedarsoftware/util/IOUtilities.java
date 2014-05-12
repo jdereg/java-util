@@ -223,6 +223,22 @@ public final class IOUtilities
         }
     }
 
+    /**
+     * Transfers a byte[] to the output stream of a URLConnection
+     * @param c  Connection to transfer output
+     * @param bytes the bytes to send
+     * @throws IOException
+     */
+    public static void transfer(URLConnection c, byte[] bytes) throws IOException {
+        OutputStream out = null;
+        try {
+            out = c.getOutputStream();
+            out.write(bytes);
+        } finally {
+            close(out);
+        }
+    }
+
     public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
     {
         DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed, 32768);

@@ -34,7 +34,7 @@ public class TestProxyFactory
     public void testProxyFactory() {
         final Set<String> set = new HashSet<String>();
 
-        AInt i = (AInt)ProxyFactory.create(AInt.class, new InvocationHandler(){
+        AInt i = ProxyFactory.create(AInt.class, new InvocationHandler(){
 
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable

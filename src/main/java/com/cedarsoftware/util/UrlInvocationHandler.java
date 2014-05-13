@@ -56,9 +56,7 @@ import java.net.HttpURLConnection;
  */
 public class UrlInvocationHandler implements InvocationHandler
 {
-    //private final URL _url;
     public static int SLEEP_TIME = 5000;
-    //public static int RETRY_ATTEMPTS = 20;
     private static final Log LOG = LogFactory.getLog(UrlInvocationHandler.class);
     private final UrlInvocationHandlerStrategy _strategy;
 
@@ -69,9 +67,8 @@ public class UrlInvocationHandler implements InvocationHandler
 
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
     {
-        int retry = _strategy.getRetryAttempts() + 1;
-
-        while (retry > 0)
+        int retry = _strategy.getRetryAttempts();
+        do
         {
             HttpURLConnection c = null;
 
@@ -112,7 +109,8 @@ public class UrlInvocationHandler implements InvocationHandler
             {
                 UrlUtilities.disconnect(c);
             }
-        }
+        } while (retry > 0);
+
         return null;
     }
 

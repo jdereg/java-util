@@ -251,4 +251,14 @@ public class TestStringUtilities
         assertTrue(name.matches(StringUtilities.wildcardToRegexString("com.????.util.string")));
         assertFalse(name.matches(StringUtilities.wildcardToRegexString("com.??.util.string")));
     }
+
+    @Test
+    public void testCreateString() {
+        assertEquals("foo", StringUtilities.createString(new byte[] {102, 111, 111}, "UTF-8"));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testCreateStringWithInvalidEncoding() {
+        StringUtilities.createString(new byte[] {102, 111, 111}, "baz");
+    }
 }

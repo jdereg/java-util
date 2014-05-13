@@ -167,11 +167,11 @@ public final class DateUtilities
 
         if (m < 0 || m > 11)
         {
-            error("Month must be between 1 and 12, date: " + dateStr);
+            error("Month must be between 1 and 12 inclusive, date: " + dateStr);
         }
-        if (d < 0 || d > 31)
+        if (d < 1 || d > 31)
         {
-            error("Day cannot be > 31, date: " + dateStr);
+            error("Day must be between 1 and 31 inclusive, date: " + dateStr);
         }
 
         if (matcher == null)
@@ -182,8 +182,8 @@ public final class DateUtilities
         {
             String hour = matcher.group(1);
             String min = matcher.group(2);
-            String sec = "00";
-            String milli = "000";
+            String sec = "0";
+            String milli = "0";
             if (matcher.groupCount() > 2)
             {
                 sec = matcher.group(3);
@@ -199,17 +199,17 @@ public final class DateUtilities
             int s = Integer.parseInt(sec);
             int ms = Integer.parseInt(milli);
 
-            if (h < 0 || h > 23)
+            if (h > 23)
             {
-                error("Hour must be between 0 and 23, time: " + dateStr);
+                error("Hour must be between 0 and 23 inclusive, time: " + dateStr);
             }
-            if (mn < 0 || mn > 59)
+            if (mn > 59)
             {
-                error("Minute must be between 0 and 59, time: " + dateStr);
+                error("Minute must be between 0 and 59 inclusive, time: " + dateStr);
             }
-            if (s < 0 || s > 59)
+            if (s > 59)
             {
-                error("Second must be between 0 and 59, time: " + dateStr);
+                error("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
             // regex enforces millis to 000 to 999 or none

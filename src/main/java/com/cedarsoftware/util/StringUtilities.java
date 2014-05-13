@@ -423,7 +423,28 @@ public final class StringUtilities
         }
         catch (UnsupportedEncodingException e)
         {
-            throw new IllegalArgumentException(String.format("Invalid Encoding:  %s", encoding), e);
+            throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
+        }
+    }
+
+    /**
+     * Convert a byte[] into a String with a particular encoding.
+     * Preferable used when the encoding is one of the guaranteed Java types
+     * and you don't want to have to catch the UnsupportedEncodingException
+     * required by Java
+     *
+     * @param bytes    bytes to encode into a string
+     * @param encoding encoding to use
+     */
+    public static String createString(byte[] bytes, String encoding)
+    {
+        try
+        {
+            return new String(bytes, encoding);
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
         }
     }
 }

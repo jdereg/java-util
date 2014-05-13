@@ -1,20 +1,12 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.io.JsonReader;
-import com.cedarsoftware.util.io.JsonWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
 
 /**
  * Useful utility for allowing Java code to make Ajax calls, yet the Java code
@@ -37,10 +29,8 @@ import java.net.URLConnection;
  * <pre>
  * Map cookies = new HashMap();
  * String url = "http://www.mycompany.com:80/json/"
- * InvocationHandler handler = new CookieAwareUrlInvocationHandler(new URL(url), cookies);
- *  // This will handle all cookies, or you could use (where 'sessionId' holds the value of the JSESSIONID
- * InvocationHandler handler = new SessionAwareUrlInvocationHandler(new URL(url), sessionId);
  *
+ * InvocationHandler handler = new UrlInvocationHandler(new UrlInvocationHandlerStrategyImplementation(url, ...));
  * Explorer explorer = (Explorer) ProxyFactory.create(Explorer.class, handler);
  *
  * At this point, your Java code can do this:
@@ -66,68 +56,44 @@ import java.net.URLConnection;
  */
 public class UrlInvocationHandler implements InvocationHandler
 {
-    private final URL _url;
+    //private final URL _url;
     public static int SLEEP_TIME = 5000;
-    public static int RETRY_ATTEMPTS = 20;
+    //public static int RETRY_ATTEMPTS = 20;
     private static final Log LOG = LogFactory.getLog(UrlInvocationHandler.class);
+    private final UrlInvocationHandlerStrategy _strategy;
 
-    public UrlInvocationHandler(URL url)
+    public UrlInvocationHandler(UrlInvocationHandlerStrategy strategy)
     {
-        _url = url;
+        _strategy = strategy;
     }
 
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
     {
-        int retry = RETRY_ATTEMPTS;
+        int retry = _strategy.getRetryAttempts() + 1;
+
         while (retry > 0)
         {
             HttpURLConnection c = null;
 
             try
             {
-                c = (HttpURLConnection) UrlUtilities.getConnection(_url, true, true, false);
+                c = (HttpURLConnection) UrlUtilities.getConnection(_strategy.buildURL(proxy, m, args), true, true, false);
                 c.setRequestMethod("POST");
-                setCookies(c);
 
-                // Formulate the JSON call as a String
-                ByteArrayOutputStream ba_out = new ByteArrayOutputStream();
-                JsonWriter jwr = new JsonWriter(ba_out);
-                jwr.write(new Object[] {m.getName(), args});
-                IOUtilities.close(jwr);
+                _strategy.setCookies(c);
 
-                if (LOG.isDebugEnabled())
-                {    // DEBUG
-                    String jsonCall = new String(ba_out.toByteArray(), "UTF-8");
-                    LOG.debug("Calling server:\n    " + jsonCall);
-                }
+                // Formulate the POST data for the output stream.
+                byte[] bytes = _strategy.generatePostData(proxy, m, args);
 
-                c.setRequestProperty("Content-Length", String.valueOf(ba_out.size()));
-                OutputStream out = c.getOutputStream();
-                ba_out.writeTo(out);
-                IOUtilities.close(out);
-                getCookies(c);
+                c.setRequestProperty("Content-Length", String.valueOf(bytes.length));
+
+                // send the post data
+                IOUtilities.transfer(c, bytes);
+
+                _strategy.getCookies(c);
 
                 // Get the return value of the call
-                JsonReader reader;
-
-                if (LOG.isDebugEnabled())
-                {
-                    ByteArrayOutputStream input = new ByteArrayOutputStream(32768);
-                    IOUtilities.transfer(IOUtilities.getInputStream(c), input);
-                    byte[] bytes = input.toByteArray();
-                    String jsonResp = new String(bytes, "UTF-8");
-                    LOG.debug(jsonResp);
-                    reader = new JsonReader(new ByteArrayInputStream(bytes));
-                }
-                else
-                {
-                    reader = new JsonReader(IOUtilities.getInputStream(c));
-                }
-                Object[] res = (Object[]) reader.readObject();
-
-                // Do we need to close reader?  Don't want to stop http keep alives.
-                reader.close();
-                Object result = res[0];
+                Object result = _strategy.readResponse(c);
                 checkForThrowable(result);
                 return result;
             }
@@ -172,13 +138,5 @@ public class UrlInvocationHandler implements InvocationHandler
             t.fillInStackTrace();
             throw t;
         }
-    }
-
-    protected void getCookies(URLConnection c) throws IOException
-    {
-    }
-
-    protected void setCookies(URLConnection conn) throws IOException
-    {
     }
 }

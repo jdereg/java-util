@@ -14,7 +14,6 @@ import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
@@ -399,15 +398,8 @@ public final class UrlUtilities
      */
     public static String getContentFromUrlAsString(String url, Proxy proxy)
     {
-        try
-        {
-            byte[] bytes = getContentFromUrl(url, proxy);
-            return bytes == null ? null : new String(bytes, "UTF-8");
-        }
-        catch (UnsupportedEncodingException e)
-        {
-            throw new RuntimeException("UTF-8 not supported by your JVM.  Get a newer JVM.", e);
-        }
+        byte[] bytes = getContentFromUrl(url, proxy);
+        return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
     }
 
     /**
@@ -466,15 +458,8 @@ public final class UrlUtilities
      */
     public static String getContentFromUrlAsString(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
     {
-        try
-        {
-            byte[] bytes = getContentFromUrl(url, proxyServer, port, inCookies, outCookies, ignoreSec);
-            return bytes == null ? null : new String(bytes, "UTF-8");
-        }
-        catch (UnsupportedEncodingException e)
-        {
-            throw new RuntimeException("UTF-8 not supported by your JVM.  Get a newer JVM.", e);
-        }
+        byte[] bytes = getContentFromUrl(url, proxyServer, port, inCookies, outCookies, ignoreSec);
+        return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
     }
 
     /**

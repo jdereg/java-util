@@ -4,14 +4,19 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -39,7 +44,7 @@ public class TestUrlUtilities
 {
     private static final String httpsUrl = "https://www.myotherdrive.com";
     //private static final String httpsGoogleUrl = "https://www.google.com";
-    private static final String domain = "myotherdrive.com";
+    private static final String domain  = "myotherdrive.com";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
 
     private static final String _expected = "<html>\n" +
@@ -103,7 +108,7 @@ public class TestUrlUtilities
         assertEquals(new String(content4), new String(content5));
         assertEquals(new String(content5), new String(content1));
 
-        //TODO - add in when we find self-signing site.
+            //TODO - add in when we find self-signing site.
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
@@ -161,10 +166,15 @@ public class TestUrlUtilities
     @Test
     public void testGetConnection() throws Exception
     {
-        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), null, 0, null, true, false, false, true);
-        assertNotNull(c);
-        c.connect();
-        UrlUtilities.disconnect(c);
+        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URLConnection c = UrlUtilities.getConnection(u, true, false, false);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        InputStream s = c.getInputStream();
+        IOUtilities.transfer(s, out);
+        IOUtilities.close(s);
+
+        assertArrayEquals("This is for an IO test!".getBytes(), out.toByteArray());
     }
 
     @Test
@@ -187,20 +197,6 @@ public class TestUrlUtilities
     }
 
     @Test
-    public void testReferrer()
-    {
-        // Not much of a test
-        UrlUtilities.setReferrer("http://www.google.com");
-    }
-
-    @Test
-    public void testAgent()
-    {
-        UrlUtilities.setUserAgent("chrome");
-        assertEquals("chrome", UrlUtilities.getUserAgent());
-    }
-
-    @Test
     public void testCookies2() throws Exception
     {
         Map cookies = new HashMap();
@@ -213,5 +209,29 @@ public class TestUrlUtilities
         Map outCookies = new HashMap();
         UrlUtilities.getCookies(c, outCookies);
         UrlUtilities.disconnect(c);
+    }
+
+    @Test
+    public void testUserAgent() throws Exception
+    {
+        UrlUtilities.setUserAgent(null);
+        assertNull(UrlUtilities.getUserAgent());
+        UrlUtilities.setUserAgent("foo");
+        assertEquals("foo", UrlUtilities.getUserAgent());
+    }
+
+    @Test
+    public void testReferer() throws Exception
+    {
+        UrlUtilities.setReferrer(null);
+        Field f = UrlUtilities.class.getDeclaredField("_referrer");
+        f.setAccessible(true);
+        assertNull(f.get(null));
+
+
+        UrlUtilities.setReferrer("noreferrer");
+        assertEquals("noreferrer", f.get(null));
+        UrlUtilities.setReferrer("www.gai.com");
+        assertEquals("www.gai.com", f.get(null));
     }
 }

@@ -26,31 +26,31 @@ public class TestUrlInvocationHandlerWithPlainReader
 
     @Test
     public void testWithBadUrl() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://cedarsoftware.com/invalid/url")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://cedarsoftware.com/invalid/url", "F012982348484444")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void test() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("test-passed", item.foo());
     }
 
     @Test
     public void testWithSessionAwareInvocationHandler() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerSessionAwareStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "54543")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("test-passed", item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json", "F012982348484444")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithNonInvocationException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-non-invocation-exception.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-non-invocation-exception.json", "F012982348484444")));
         Assert.assertNull(item.foo());
     }
 
@@ -67,10 +67,12 @@ public class TestUrlInvocationHandlerWithPlainReader
     private class UrlInvocationHandlerJsonStrategy implements UrlInvocationHandlerStrategy
     {
         private String _url;
+        private String _sessionId;
 
-        public UrlInvocationHandlerJsonStrategy(String url)
+        public UrlInvocationHandlerJsonStrategy(String url, String sessionId)
         {
             _url = url;
+            _sessionId = sessionId;
         }
 
         @Override
@@ -88,14 +90,12 @@ public class TestUrlInvocationHandlerWithPlainReader
         @Override
         public void getCookies(URLConnection c)
         {
-            //            UrlUtilities.getCookies(c, null);
         }
 
         @Override
         public void setCookies(URLConnection c)
         {
-            //            UrlUtilities.setCookies(c, _store);
-            //c.setRequestProperty("Cookie", "JSESSIONID=" + _sessionId);
+            c.setRequestProperty("Cookie", "JSESSIONID=" + _sessionId);
         }
 
         @Override
@@ -143,22 +143,4 @@ public class TestUrlInvocationHandlerWithPlainReader
             }
         }
     }
-
-    private class UrlInvocationHandlerSessionAwareStrategy extends UrlInvocationHandlerJsonStrategy {
-        private String _sessionId;
-
-        public UrlInvocationHandlerSessionAwareStrategy(String url, String sessionId)
-        {
-            super(url);
-            _sessionId = sessionId;
-        }
-
-        @Override
-        public void setCookies(URLConnection c)
-        {
-            c.setRequestProperty("Cookie", "JSESSIONID=" + _sessionId);
-        }
-
-    }
-
 }

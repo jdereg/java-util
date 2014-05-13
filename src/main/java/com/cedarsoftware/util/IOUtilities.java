@@ -232,7 +232,7 @@ public final class IOUtilities
     public static void transfer(URLConnection c, byte[] bytes) throws IOException {
         OutputStream out = null;
         try {
-            out = c.getOutputStream();
+            out = new BufferedOutputStream(c.getOutputStream());
             out.write(bytes);
         } finally {
             close(out);

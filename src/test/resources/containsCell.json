@@ -1,13 +1,12 @@
 {
-    "ncube":"TestCube",
-    "defaultCellValueType":"date",
-    "defaultCellValue":"2012-12-17T00:11:22",
+    "ncube":"containsCell",
+    "defaultCellValue":"foo",
     "axes":[
         {
             "name":"Gender",
             "type":"DISCRETE",
             "valueType":"STRING",
-            "hasDefault":true,
+            "hasDefault":false,
             "preferredOrder":0,
             "columns":[
                 {
@@ -19,12 +18,5 @@
             ]
         }
     ],
-    "cells":[
-        {
-            "id":["Male"], "value":1.0
-        },
-        {
-            "id":["Female"], "value":1.1
-        }
-    ]
+    "cells":[{"id":["Female"],"value":"bar"}]
 }

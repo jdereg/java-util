@@ -790,37 +790,60 @@ public class Axis
 			range.low = low;
 			range.high = high;
 		}
-	}	
-	
+	}
+
+    /**
+     * Convert passed in value to a similar value of the highest type.  If the
+     * valueType is not the same basic type as the value passed in, intelligent
+     * conversions will happen, and the result will be of the requested type.
+     *
+     * An intelligent conversion example - String to date, it will parse the String
+     * attempting to convert it to a date.  Or a String to a long, it will try to
+     * parse the String as a long.  Long to String, it will .toString() the long,
+     * and so on.
+     * @return promoted value, or the same value if no promotion occurs.
+     */
+    public static Comparable promoteValue(AxisValueType valueType, Comparable value)
+    {
+        switch(valueType)
+        {
+            case STRING:
+                return getString(value);
+            case LONG:
+                return getLong(value);
+            case BIG_DECIMAL:
+                return getBigDecimal(value);
+            case DOUBLE:
+                return getDouble(value);
+            case DATE:
+                return getDate(value);
+            case COMPARABLE:
+            case EXPRESSION:
+                return value;
+            default:
+                throw new IllegalArgumentException("AxisValueType '" + valueType + "' added but not code to support it.");
+        }
+    }
+
 	/**
 	 * Convert passed in value to a similar value of the highest type.  Axis
 	 * values and inputs are always promoted before being stored or compared.
 	 * @param value Comparable to promote
 	 * @return promoted value, or the same value if no promotion occurs.
 	 */
-	public Comparable promoteValue(Comparable value)
+	Comparable promoteValue(Comparable value)
 	{
-		switch(valueType)
-		{
-			case STRING:
-				return getString(value);
-			case LONG:
-				return getLong(value);
-			case BIG_DECIMAL:
-				return getBigDecimal(value);
-			case DOUBLE:
-				return getDouble(value);
-			case DATE:
-				return getDate(value);
-			case COMPARABLE:
-            case EXPRESSION:
-				return value;
-			default:
-				throw new IllegalArgumentException("AxisValueType '" + valueType + "' added but not code to support it.");
-		}
-	}
+        try
+        {
+            return promoteValue(valueType, value);
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Error promoting value for Axis: " + name, e);
+        }
+    }
 
-	private String getString(Comparable value)
+	private static String getString(Comparable value)
 	{
 		if (value instanceof String)
 		{
@@ -834,14 +857,14 @@ public class Axis
         {
             return value.toString();
         }
-		throw getBadTypeException(value, "String");
+        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'String'");
 	}
 	
 	/**
 	 * Promote any Number (or String) type to a BigDecimal in the best possible manner.
 	 * @return BigDecimal equivalent of value, or null if it could not be converted.
 	 */
-	private BigDecimal getBigDecimal(Comparable value)
+	private static BigDecimal getBigDecimal(Comparable value)
 	{
 		try 
 		{
@@ -864,16 +887,16 @@ public class Axis
 		} 
 		catch (Exception e) 
 		{
-			throw getConversionException(value, e);
+            throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'BigDecimal'", e);
 		}
-		throw getBadTypeException(value, "BigDecimal");
+        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'BigDecimal'");
 	}
 	
 	/**
 	 * Promote Number (or String) to a Double in the best possible manner.
 	 * @return Double equivalent of value, or null if it could not be converted.
 	 */
-	private Double getDouble(Comparable value)
+	private static Double getDouble(Comparable value)
 	{
 		try
 		{
@@ -892,16 +915,16 @@ public class Axis
 		}
 		catch(Exception e)
 		{
-			throw getConversionException(value, e);
+            throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'Double'", e);
 		}
-		throw getBadTypeException(value, "Double");
+        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Double'");
 	}
 	
 	/**
 	 * Promote Number (or String) to a Long in the best possible manner.
 	 * @return Long equivalent of value, or null if it could not be converted.
 	 */
-	private Long getLong(Comparable value)
+	private static Long getLong(Comparable value)
 	{
 		try
 		{
@@ -920,16 +943,16 @@ public class Axis
 		}
 		catch(Exception e)
 		{
-			throw getConversionException(value, e);
-		}
-		throw getBadTypeException(value, "Long");
+            throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'Long'", e);
+        }
+        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Long'");
 	}
 			
 	/**
 	 * Promote Number (or String) to a Long in the best possible manner.
 	 * @return Long equivalent of value, or null if it could not be converted.
 	 */
-	private Date getDate(Comparable value)
+	private static Date getDate(Comparable value)
 	{
 		if (value instanceof Date)
 		{
@@ -947,17 +970,12 @@ public class Axis
 		{
 			return new Date((Long)value);
 		}
-		throw getBadTypeException(value, "Date");
+        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Date'");
 	}
 	
 	private IllegalArgumentException getConversionException(Comparable value, Exception e)
 	{
 		return new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a Long for axis '" + name + "'", e);						
-	}
-	
-	private IllegalArgumentException getBadTypeException(Comparable value, String theType)
-	{
-		return new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to '" + theType + "' for axis '" + name + "'");
 	}
 	
 	public boolean hasDefaultColumn()

@@ -2272,12 +2272,9 @@ DELIMITER ;
             age.addColumn(set);
             fail("should throw exception");
         }
-        catch (IllegalArgumentException expected)
+        catch (Exception expected)
         {
-            assertTrue(expected.getMessage().contains("nsupported"));
-            assertTrue(expected.getMessage().contains("type"));
-            assertTrue(expected.getMessage().contains("attempt"));
-            assertTrue(expected.getMessage().contains("convert"));
+            assertTrue(expected instanceof IllegalArgumentException);
         }
 
         try
@@ -2549,47 +2546,56 @@ DELIMITER ;
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingColumnParserError() {
+    public void testNCubeMissingColumnParserError()
+    {
         NCubeManager.getNCubeFromResource("ncube-missing-column-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyColumnsError() {
+    public void testNCubeEmptyColumnsError()
+    {
         NCubeManager.getNCubeFromResource("ncube-column-not-array-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyAxesParseError() {
+    public void testNCubeEmptyAxesParseError()
+    {
         NCubeManager.getNCubeFromResource("ncube-empty-axes-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingAxesParseError() {
+    public void testNCubeMissingAxesParseError()
+    {
         NCubeManager.getNCubeFromResource("ncube-missing-axes-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingNameParseError() {
+    public void testNCubeMissingNameParseError()
+    {
         NCubeManager.getNCubeFromResource("ncube-missing-name-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testLatLongParseError() {
+    public void testLatLongParseError()
+    {
         NCubeManager.getNCubeFromResource("lat-lon-parse-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testDateParseError() {
+    public void testDateParseError()
+    {
         NCubeManager.getNCubeFromResource("date-parse-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testPoint2dParseError() {
+    public void testPoint2dParseError()
+    {
         NCubeManager.getNCubeFromResource("point2d-parse-error.json");
     }
 
     @Test(expected=RuntimeException.class)
-    public void testPoint3dParseError() {
+    public void testPoint3dParseError()
+    {
         NCubeManager.getNCubeFromResource("point3d-parse-error.json");
     }
 
@@ -5461,6 +5467,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
+        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(4L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
         ncube.setRuleMode(true);
         output.clear();
@@ -5469,6 +5477,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
         output.clear();
         coord.put("age", 35);
@@ -5476,6 +5486,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
         output.clear();
         coord.put("age", 42);
@@ -5483,6 +5495,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "heavy-weight");
         assertEquals(output.get("age"), "middle-aged");
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
     }
 
     @Test
@@ -5513,15 +5527,15 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("age"), "young");
         assertEquals(output.get("weight"), "light-weight");
-        Map ruleOut = (Map) output.get("_rule");
-        assertFalse((Boolean) ruleOut.get("ruleStop"));
+        Map ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
 
         coord.put("age", 25);
         coord.put("weight", 60);
         output.clear();
         ncube.getCells(coord, output);
-        ruleOut = (Map) output.get("_rule");
-        assertTrue((Boolean) ruleOut.get("ruleStop"));
+        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertTrue((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
 
         coord.put("age", 45);
         coord.put("weight", 60);
@@ -5529,8 +5543,8 @@ DELIMITER ;
         ncube.getCells(coord, output);
         assertEquals(output.get("age"), "middle-aged");
         assertEquals(output.get("weight"), "light-weight");
-        ruleOut = (Map) output.get("_rule");
-        assertFalse((Boolean) ruleOut.get("ruleStop"));
+        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
     }
 
     @Test
@@ -6016,7 +6030,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + ".*()", new Advice()
         {
             public String getName()
             {
@@ -6025,6 +6039,7 @@ DELIMITER ;
 
             public boolean before(Method method, NCube ncube, Map input, Map output)
             {
+                output.put("before", true);
                 assertEquals(2, input.size());
                 boolean ret = true;
                 if ("foo".equals(method.getName()))
@@ -6048,6 +6063,7 @@ DELIMITER ;
 
             public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
             {
+                output.put("after", true);
                 if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
                 {
                     assertEquals(2, returnValue);
@@ -6063,18 +6079,238 @@ DELIMITER ;
             }
         });
 
+        Map output = new HashMap();
         Map coord = new HashMap();
         coord.put("method", "foo");
         coord.put("state", "OH");
-        ncube.getCell(coord);
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
 
+        output.clear();
         coord.put("state", "OH");
         coord.put("method", "bar");
-        ncube.getCell(coord);
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
 
+        output.clear();
         coord.put("state", "TX");
         coord.put("method", "qux");
-        ncube.getCell(coord);
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+
+        ncube.clearAdvices();
+    }
+
+    @Test
+    public void testAdviceSubsetMatching()
+    {
+        NCubeManager.clearCubeList();
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(ncube.getName() + ".ba*()", new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("before", true);
+                assertEquals(2, input.size());
+                boolean ret = true;
+                if ("foo".equals(method.getName()))
+                {
+                    assertEquals("foo", input.get("method"));
+                }
+                else if ("bar".equals(method.getName()))
+                {
+                    output.put("bar", true);
+                    assertEquals("bar", input.get("method"));
+                }
+                else if ("baz".equals(method.getName()))
+                {
+                    output.put("baz", true);
+                }
+                else if ("qux".equals(method.getName()))
+                {
+                    assertEquals("qux", input.get("method"));
+                }
+                else if ("qaz".equals(method.getName()))
+                {
+                    ret = false;
+                }
+                return ret;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("after", true);
+                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(2, returnValue);
+                }
+                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(4, returnValue);
+                }
+                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
+                {
+                    assertEquals(81, returnValue);
+                }
+            }
+        });
+
+        Map output = new HashMap();
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        ncube.getCell(coord, output);
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "bar");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("bar"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "baz");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("baz"));
+
+        output.clear();
+        coord.put("state", "TX");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz via getCell() which then is intercepted at sets the output keys before, after.
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz directly which is NOT intercepted
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
+
+        ncube.clearAdvices();
+    }
+
+    @Test
+    public void testAdviceSubsetMatchingLateLoad()
+    {
+        NCubeManager.clearCubeList();
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice("*.ba*()", new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("before", true);
+                assertEquals(2, input.size());
+                boolean ret = true;
+                if ("foo".equals(method.getName()))
+                {
+                    assertEquals("foo", input.get("method"));
+                }
+                else if ("bar".equals(method.getName()))
+                {
+                    output.put("bar", true);
+                    assertEquals("bar", input.get("method"));
+                }
+                else if ("baz".equals(method.getName()))
+                {
+                    output.put("baz", true);
+                }
+                else if ("qux".equals(method.getName()))
+                {
+                    assertEquals("qux", input.get("method"));
+                }
+                else if ("qaz".equals(method.getName()))
+                {
+                    ret = false;
+                }
+                return ret;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("after", true);
+                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(2, returnValue);
+                }
+                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+                {
+                    assertEquals(4, returnValue);
+                }
+                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
+                {
+                    assertEquals(81, returnValue);
+                }
+            }
+        });
+
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+
+        Map output = new HashMap();
+        Map coord = new HashMap();
+        coord.put("method", "foo");
+        coord.put("state", "OH");
+        ncube.getCell(coord, output);
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "bar");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("bar"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "baz");
+        ncube.getCell(coord, output);
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+        assertTrue(output.containsKey("baz"));
+
+        output.clear();
+        coord.put("state", "TX");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz via getCell() which then is intercepted at sets the output keys before, after.
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+
+        output.clear();
+        coord.put("state", "OH");
+        coord.put("method", "qux");
+        ncube.getCell(coord, output);
+        // Controller method Qux calls baz directly which is NOT intercepted
+        assertFalse(output.containsKey("before"));
+        assertFalse(output.containsKey("after"));
 
         ncube.clearAdvices();
     }
@@ -6086,7 +6322,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + "*", new Advice()
         {
             public String getName()
             {
@@ -6119,7 +6355,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
         {
             public String getName()
             {
@@ -6140,7 +6376,7 @@ DELIMITER ;
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName(), new Advice()
+        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
         {
             public String getName()
             {
@@ -6315,6 +6551,179 @@ DELIMITER ;
         assertTrue(ncube.containsCell(coord));
     }
 
+    @Test
+    public void testMultiMatchAxisWithNoMatchAndNoDefault()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("multiMatch.json");
+
+        Map coord = new HashMap();
+        Map output = new HashMap();
+        coord.put("age", 85);
+        try
+        {
+            ncube.getCells(coord, output);
+            fail("Should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        coord.put("age", 16);
+        Map multi = ncube.getCells(coord, output);
+        System.out.println("multi = " + multi);
+        assertEquals(2, multi.size());
+    }
+
+    @Test
+    public void testRuleAxisWithNoMatchAndNoDefault()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleNoMatch.json");
+
+        Map coord = new HashMap();
+        Map output = new HashMap();
+        coord.put("age", 85);
+        ncube.getCells(coord, output);
+        assertEquals(1, output.size());
+        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(0L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+
+        coord.put("age", 22);
+        ncube.getCells(coord, output);
+        assertTrue(output.containsKey("adult"));
+        assertTrue(output.containsKey("old"));
+        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+    }
+
+    @Test
+    public void testContainsCellValue()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCell.json");
+
+        Map coord = new HashMap();
+        coord.put("gender", "Male");
+        assertTrue(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        try
+        {
+            ncube.containsCell(coord);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        try
+        {
+            ncube.containsCellValue(coord, false);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        ncube.setDefaultCellValue(null);
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        try
+        {
+            ncube.containsCell(coord);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+
+        try
+        {
+            ncube.containsCellValue(coord, false);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            assertTrue(e instanceof CoordinateNotFoundException);
+        }
+    }
+
+    @Test
+    public void testContainsCellValueRule()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCellRule.json");
+
+        Map coord = new HashMap();
+        coord.put("gender", "Male");
+        assertTrue(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        assertFalse(ncube.containsCell(coord));
+        assertFalse(ncube.containsCellValue(coord, false));
+
+        ncube.setDefaultCellValue(null);
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCell(coord));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCell(coord));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, true));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, true));
+
+        coord.put("gender", "Male");
+        assertFalse(ncube.containsCellValue(coord, false));
+        coord.put("gender", "Female");
+        assertTrue(ncube.containsCellValue(coord, false));
+
+        coord.put("gender", "GI Joe");
+        assertFalse(ncube.containsCell(coord));
+
+        assertFalse(ncube.containsCellValue(coord, false));
+    }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

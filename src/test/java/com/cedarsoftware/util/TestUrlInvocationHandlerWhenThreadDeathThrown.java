@@ -24,10 +24,6 @@ import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({UrlUtilities.class})
-
-/**
- * Created by kpartlow on 4/30/2014.
- */
 public class TestUrlInvocationHandlerWhenThreadDeathThrown
 {
     @Test(expected=ThreadDeath.class)

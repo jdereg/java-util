@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.text.DateFormatSymbols;
 import java.text.FieldPosition;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -401,6 +402,50 @@ public class TestSimpleDateFormat
         assertTrue(cal.get(Calendar.DAY_OF_MONTH) == 7);
 
     }
+
+    @Test
+    public void test2DigitYear() throws Exception {
+        SafeSimpleDateFormat x = new SafeSimpleDateFormat("yy-MM-dd");
+        String s = x.format(getDate(13, 9, 7, 16, 15, 31));
+        assertEquals("13-09-07", s);
+
+        Object then = (Date)x.parse(s);
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.setTime((Date)then);
+        assertEquals(2013, cal.get(Calendar.YEAR));
+        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
+
+        cal.add(Calendar.YEAR, 87);
+        x.set2DigitYearStart(cal.getTime());
+
+        Object fut = (Date)x.parse(s);
+
+        cal.clear();
+        cal.setTime((Date)fut);
+        assertEquals(2113, cal.get(Calendar.YEAR));
+        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
+    }
+
+    @Test
+    public void testSetSymbols() throws Exception {
+        SafeSimpleDateFormat x = new SafeSimpleDateFormat("yy.MM.dd hh:mm aaa");
+        String s = x.format(getDate(13, 9, 7, 16, 15, 31));
+        assertEquals("13.09.07 04:15 PM", s);
+
+        SimpleDateFormat format = new SimpleDateFormat("yy-MM-dd");
+        DateFormatSymbols symbols = format.getDateFormatSymbols();
+
+        String[] ampm = new String[] { "foo", "bar"};
+        symbols.setAmPmStrings(ampm);
+        x.setDateFormatSymbols(symbols);
+
+        s = x.format(getDate(13, 9, 7, 16, 15, 31));
+        assertEquals("13.09.07 04:15 bar", s);
+    }
+
     private Date getDate(int year, int month, int day, int hour, int min, int sec)
     {
         Calendar cal = Calendar.getInstance();

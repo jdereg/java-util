@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-interface Regexes
+public interface Regexes
 {
     Pattern importPattern = Pattern.compile("import[\\s]+[^;]+?;");
     Pattern inputVar = Pattern.compile("([^a-zA-Z0-9_.]|^)input[?]?[.]([a-zA-Z0-9_]+)", Pattern.CASE_INSENSITIVE);
@@ -44,4 +44,6 @@ interface Regexes
     Pattern groovyRelRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)@[(]([^)]+)[)]");
     Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)@(\\[.*?:.*?\\])");
     Pattern groovyExplicitCubeRefPattern = Pattern.compile("NCubeManager[.]getCube[(]['\"]" + NCube.validCubeNameChars + "['\"][)]");
+
+    Pattern cdnUrlPattern = Pattern.compile("^\\/dyn\\/([^\\/]+)\\/(.*)$");
 }

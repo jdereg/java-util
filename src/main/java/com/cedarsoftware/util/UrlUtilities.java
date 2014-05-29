@@ -588,10 +588,10 @@ public final class UrlUtilities
             proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
         }
 
-        //  If we are trusting all ssl connections
+        //  If we are trusting all ssl connections\
         SSLSocketFactory factory = null;
         HostnameVerifier verifier = null;
-        if (ignoreSec)
+        if (ignoreSec && url.startsWith("https"))
         {
             factory = buildNaiveSSLSocketFactory();
             verifier = NAIVE_VERIFIER;

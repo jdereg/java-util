@@ -54,7 +54,7 @@ public class UniqueIdGenerator
         if (StringUtilities.isEmpty(id))
         {
             byte[] ip = InetAddressUtilities.getIpAddress();
-            lastIp = ((int)ip[3] & 0xff) % 100;
+            lastIp = ((int)ip[ip.length-1] & 0xff) % 100;
         }
         else
         {

@@ -4066,9 +4066,9 @@ DELIMITER ;
         coord.put("type", "bad");
         ncube.setCell(new GroovyExpression("$([type:'beta'])"), coord);
         coord.put("type", "alpha");
-        ncube.setCell(new GroovyExpression("output['stack'] = stack; output.good=16"), coord);
+        ncube.setCell(new GroovyExpression("output['stack'] = 'foo'; output.good=16"), coord);
         coord.put("type", "beta");
-        ncube.setCell(new GroovyExpression("output.stack = stack; output.bad=26"), coord);
+        ncube.setCell(new GroovyExpression("output.stack = 'foo'; output.bad=26"), coord);
 
         coord.put("type", "good");
         Map output = new HashMap();
@@ -4076,12 +4076,8 @@ DELIMITER ;
         assertEquals(16, o);
         assertEquals(16, output.get("good"));
         assertEquals(output.size(), 2);
-        List stack = (List) output.get("stack");
-        assertEquals(stack.size(), 2);
-        NCube.StackEntry entry = (NCube.StackEntry) stack.get(1);
-        assertEquals(entry.cubeName, "GroovyCube");
-        assertEquals(entry.coord.size(), 1);
-        assertEquals(entry.coord.get("type"), "good");
+        String foo = (String) output.get("stack");
+        assertEquals("foo", foo) ;
 
         coord.put("type", "bad");
         output.clear();

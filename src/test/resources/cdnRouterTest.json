@@ -1,0 +1,26 @@
+{
+    "ncube":"CdnRouterTest",
+    "axes":[
+        {
+            "name":"content.type",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "id":"view"}
+        ]},
+        {
+            "name":"content.name",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                { "id":"index"}
+            ]}
+    ],
+    "cells":[
+        { "id":["view","index"], "type":"string", "url":"http://www.cedarsoftware.com/tests/ncube/some.txt"}
+    ]
+}

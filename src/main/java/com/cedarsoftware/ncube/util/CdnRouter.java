@@ -52,18 +52,16 @@ public class CdnRouter
             if (provider == null)
             {
                 String msg = "CdnRouter - CdnRoutingProvider has not been set into the CdnRouter.";
-                LOG.error(msg);
                 sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                 return;
             }
 
             // Peel off mime type and logical file name
             final String servletPath = request.getServletPath();
-            String[] info = getPathInfo(servletPath);
+            String[] info = getPathComponents(servletPath);
             if (info == null)
             {
                 String msg = "CdnRouter - File not found - servletPath: " + servletPath;   // Thx Corey Crider
-                LOG.warn(msg);
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, msg);
                 return;
             }
@@ -74,7 +72,6 @@ public class CdnRouter
             if (!provider.isAuthorized(type))
             {   // Thx Raja Gade
                 String msg = "CdnRouter - Unauthorized access, request: " + request.getRequestURL();
-                LOG.info(msg);
                 sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, msg);
                 return;
             }
@@ -88,7 +85,6 @@ public class CdnRouter
             if (StringUtilities.isEmpty(cubeName) || StringUtilities.isEmpty(version))
             {
                 String msg = "CdnRouter - CdnRoutingProvider did not set up '" + CUBE_NAME + "' or '" + CUBE_VERSION + "' in the Map coordinate.";
-                LOG.error(msg);
                 sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                 return;
             }
@@ -96,7 +92,7 @@ public class CdnRouter
             NCube routingCube = NCubeManager.getCube(cubeName, version);
             if (routingCube == null)
             {
-                Connection connection = (Connection) coord.get("router.connection");
+                Connection connection = (Connection) coord.get(CONNECTION);
                 String app = (String) coord.get(APP);
                 String status = (String) coord.get(STATUS);
                 Date date = (Date) coord.get(DATE);
@@ -104,7 +100,6 @@ public class CdnRouter
                 if (connection == null)
                 {
                     String msg = "CdnRouter - CdnRoutingProvider did not set up '" + CONNECTION + "' in the Map coordinate.";
-                    LOG.error(msg);
                     sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                     return;
                 }
@@ -112,7 +107,6 @@ public class CdnRouter
                 if (StringUtilities.isEmpty(app))
                 {
                     String msg = "CdnRouter - CdnRoutingProvider did not set '" + APP + "' in the Map coordinate.";
-                    LOG.error(msg);
                     sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                     return;
                 }
@@ -120,7 +114,6 @@ public class CdnRouter
                 if (StringUtilities.isEmpty(status))
                 {
                     String msg = "CdnRouter - CdnRoutingProvider did not set '" + STATUS + "' in the Map coordinate.";
-                    LOG.error(msg);
                     sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                     return;
                 }
@@ -129,64 +122,67 @@ public class CdnRouter
 
             coord.put(CONTENT_NAME, logicalName);
             coord.put(CONTENT_TYPE, type);
-            Object content = routingCube.getCell(coord);
+            Map output = new HashMap();
+            Object content = routingCube.getCell(coord, output, new CdnUrlExecutor(request, response));
 
             try
             {
+                setResponseHeaders(response);
                 OutputStream o = new BufferedOutputStream(response.getOutputStream());
                 if (content instanceof String)
                 {
-                    o.write(((String) content).getBytes());
+                    o.write(StringUtilities.getBytes((String)content, "UTF-8"));
                     IOUtilities.flush(o);
                 }
                 else if (content instanceof byte[])
                 {
-
                     o.write((byte[])content);
                     IOUtilities.flush(o);
                 }
                 else if (content == null)
                 {
                     String msg = "CdnRouter - No content at coordinate: " + coord;
-                    LOG.warn(msg);
                     sendErrorResponse(response, HttpServletResponse.SC_NO_CONTENT, msg);
                 }
                 else
                 {
                     String msg = "CdnRouter - CDN returned content that is not a String or byte[], class = " + content.getClass().getName();
-                    LOG.error(msg);
                     sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                 }
             }
             catch (IOException e)
             {
                 String msg = "CdnRouter - Error occurred writing HTTP response.";
-                LOG.error(msg, e);
                 sendErrorResponse(response, HttpServletResponse.SC_NO_CONTENT, msg);
             }
         }
         catch (Exception e)
         {
             String msg = "CdnRouter - Error occurred writing HTTP response: " + e.getMessage();
-            LOG.error(msg, e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
         }
+    }
+
+    private void setResponseHeaders(HttpServletResponse response)
+    {
+        response.setHeader("Cache-Control", "max-age=43200, proxy-revalidate");
     }
 
     /**
      * Send an HTTP error response
      */
-    private void sendErrorResponse(HttpServletResponse response, int error, String msg)
+    private static void sendErrorResponse(HttpServletResponse response, int error, String msg)
     {
         try
         {
-            response.sendError(error);
+            LOG.error(msg);
+            response.sendError(error, msg);
         }
-        catch (Exception ignored)
+        catch (Exception ignore)
         { }
     }
 
-    private String[] getPathInfo(String pathInfo)
+    private static String[] getPathComponents(String pathInfo)
     {
         if (pathInfo == null)
         {

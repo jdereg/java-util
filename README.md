@@ -34,6 +34,9 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.11.1
+ * Better IPv6 support (UniqueIdGenerator)
+ * Fixed UrlUtilities.getContentFromUrl() (byte[]) no longer setting up SSLFactory when http protocol used.
 * 1.11.0
  * `UrlInvocationHandler`, `UrlInvocationStrategy` - Updated to allow more generalized usage. Pass in your implementation of `UrlInvocationStrategy` which allows you to set the number of retry attempts, fill out the URL pattern, set up the POST data, and optionally set/get cookies.
  * Removed dependency on json-io.  Only remaining dependency is Apache commons-logging.

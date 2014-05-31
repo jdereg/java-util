@@ -17,7 +17,8 @@
                 { "id":"TemplateFromRemoteUrl" },
                 { "id":"MyOtherDriveUrlSSL"},
                 { "id":"GroovyExpression"},
-                { "id":"MyOtherDriveUriSSL" }
+                { "id":"MyOtherDriveUriSSL"},
+                { "id":"StringFromRemoteUrlBig" }
             ]
     }],
     "cells":[
@@ -31,6 +32,7 @@
         { "id":["TemplateFromRemoteUrl"], "type":"template", "url":"http://tests.codetested.com/ncube/hello.template"},
         { "id":["MyOtherDriveUrlSSL"], "type":"exp", "url":"http://tests.codetested.com/ncube/hello.groovy"},
         { "id":["GroovyExpression"], "type":"string", "value":"return \"Hello, world.\""},
-        { "id":["MyOtherDriveUriSSL"], "type":"template", "url":"html/quick-start"}
+        { "id":["MyOtherDriveUriSSL"], "type":"template", "url":"html/quick-start"},
+        { "id":["StringFromRemoteUrlBig"], "type":"string", "cache":false, "url":"http://tests.codetested.com/ncube/FUNCDESC.TXT"}
     ]
 }

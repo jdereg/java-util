@@ -22,7 +22,7 @@ public class TestNCubeConcurrencyIssue
     public void testConcurrencyWillFail() throws Exception
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-        URL url = NCubeManager.class.getResource("/files/some.txt");
+        URL url = NCubeManager.class.getResource("/files/ncube/FUNCDESC.txt");
         IOUtilities.transfer(new File(url.getFile()), out);
         final String expected = new String(out.toByteArray());
 

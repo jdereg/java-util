@@ -1,11 +1,19 @@
 package com.cedarsoftware.ncube.util;
 
 import com.cedarsoftware.ncube.CommandCell;
-import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
+import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.UrlUtilities;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Enumeration;
 import java.util.Map;
 
 /**
@@ -36,29 +44,114 @@ public class CdnUrlExecutor extends DefaultExecutor
         this.response = response;
     }
 
+    // TODO: Copy HTTP Response headers from Apache
     public Object executeCommand(CommandCell c, Map<String, Object> ctx)
     {
-        //if (c instanceof UrlCommandCell)
-        //{
-            //executeUrlCommand((UrlCommandCell)c, ctx);
-        //}
-        Object o = super.executeCommand(c, ctx);
+        String url = c.getUrl();
+        Object cmd = c.getCmd();
 
-        try
+        // ignore local caching
+        if (url != null)
         {
-            response.getOutputStream().write(o.toString().getBytes());
-        } catch (Exception e) {
-            // log this.
+            if (!c.isExpanded())
+            {
+                c.expandUrl(url, ctx);
+            }
+
+            OutputStream firstOut = null;
+            InputStream firstIn = null;
+
+            OutputStream secondOut = null;
+            InputStream secondIn = null;
+
+            try
+            {
+                HttpURLConnection conn = (HttpURLConnection)new URL(url).openConnection();
+                conn.setAllowUserInteraction(false);
+                conn.setRequestMethod(request.getMethod());
+
+                conn.setDoOutput(true); // true
+                conn.setDoInput(true); // true
+                conn.setUseCaches(false);  // false
+                UrlUtilities.setTimeouts(conn, 220000, 45000);
+
+                setupRequest(conn);
+                setupResponse(conn);
+
+                //firstIn = request.getInputStream();
+                //firstOut = new BufferedOutputStream(conn.getOutputStream(), 32768);
+                //IOUtilities.transfer(firstIn, firstOut);
+                //firstIn.close();
+                //firstOut.close();
+                if (conn.getResponseCode() == 200) {
+                    secondIn = new BufferedInputStream(conn.getInputStream(), 32768);
+                    secondOut = response.getOutputStream();
+                    IOUtilities.transfer(secondIn, secondOut);
+                    secondIn.close();
+                    secondOut.close();
+                    return null;
+                } else {
+                    response.sendError(conn.getResponseCode());
+                }
+
+
+            } catch (Exception e) {
+                try
+                {
+                    response.sendError(404);
+                } catch (IOException ignored) {
+                    //  do nothing.
+                }
+            } finally {
+                //IOUtilities.close(firstIn);
+                //IOUtilities.close(firstOut);
+                IOUtilities.close(secondIn);
+                IOUtilities.close(secondOut);
+            }
+
         }
-        return o;
-    }
 
-    // TODO: Copy HTTP Response headers from Apache
-    protected Object executeUrlCommand(UrlCommandCell c, Map<String, Object> ctx) {
-
-        // default does:
-        //super.exec(c, ctx);
         return null;
     }
+
+    public void sendRequest(InputStream s, OutputStream out) {
+    }
+    public void setupRequest(HttpURLConnection c) {
+
+        Enumeration headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements())
+        {
+            String key = (String) headerNames.nextElement();
+            String value = request.getHeader(key);
+            c.setRequestProperty(key, value);
+        }
+    }
+
+    public void setupResponse(HttpURLConnection c) {
+
+        if (response.containsHeader("Content-Length")) {
+            response.addIntHeader("Content-Length", c.getContentLength());
+        }
+
+        if (response.containsHeader("Last-Modified")) {
+            response.addDateHeader("Last-Modified", c.getLastModified());
+        }
+
+        if (response.containsHeader("Content-Encoding")) {
+            response.addHeader("Content-Encoding", c.getContentEncoding());
+        }
+
+        if (response.containsHeader("Content-Type"))
+        {
+            response.addHeader("Content-Type", c.getContentType());
+        }
+
+        if (response.containsHeader("Cache-Control")) {
+            response.addHeader("Cache-Control", c.getHeaderField("Cache-Control"));
+        }
+
+
+    }
+
 }
 

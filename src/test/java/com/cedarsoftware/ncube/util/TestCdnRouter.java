@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
@@ -30,8 +31,15 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
+        Vector<String> v = new Vector<String>();
+        v.add("Content-Type");
+        v.add("Accept-Encoding");
+
+
+
         when(request.getServletPath()).thenReturn("/dyn/view/index");
         when(request.getRequestURL()).thenReturn(new StringBuffer("http://www.cedarsoftware.com/ctx/dyn/view/index"));
+        when(request.getHeaderNames()).thenReturn(v.elements());
 
         ServletOutputStream out = new DumboOutputStream();
 

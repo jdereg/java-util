@@ -52,7 +52,7 @@ public class GroovyExpression extends GroovyBase
         super(cmd, cache);
     }
 
-    public String buildGroovy(String theirGroovy, String cubeName)
+    public String buildGroovy(String theirGroovy, String cubeName, String cmdHash)
     {
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
@@ -64,7 +64,7 @@ public class GroovyExpression extends GroovyBase
             groovy.append('\n');
         }
 
-        String className = "N_" + getCmdHash();
+        String className = "N_" + cmdHash;
         groovy.append("class ");
         groovy.append(className);
         groovy.append(" extends NCubeGroovyExpression\n{\n\tdef run()\n\t{\n\t");
@@ -83,7 +83,7 @@ public class GroovyExpression extends GroovyBase
         return getRunnableCode().getMethod("run");
     }
 
-    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception
+    protected Object invokeRunMethod(Method runMethod, Object instance, Map args, String cmdHash) throws Exception
     {
         // If 'around' Advice has been added to n-cube, invoke it before calling Groovy expression's run() method
         NCube ncube = getNCube(args);

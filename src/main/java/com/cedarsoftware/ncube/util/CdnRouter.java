@@ -3,16 +3,12 @@ package com.cedarsoftware.ncube.util;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.Regexes;
-import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.sql.Connection;
 import java.util.Date;
 import java.util.HashMap;
@@ -123,38 +119,8 @@ public class CdnRouter
             coord.put(CONTENT_NAME, logicalName);
             coord.put(CONTENT_TYPE, type);
             Map output = new HashMap();
-            Object content = routingCube.getCell(coord, output, new CdnUrlExecutor(request, response));
-
-            try
-            {
-                setResponseHeaders(response);
-                OutputStream o = new BufferedOutputStream(response.getOutputStream());
-                if (content instanceof String)
-                {
-                    o.write(StringUtilities.getBytes((String)content, "UTF-8"));
-                    IOUtilities.flush(o);
-                }
-                else if (content instanceof byte[])
-                {
-                    o.write((byte[])content);
-                    IOUtilities.flush(o);
-                }
-                else if (content == null)
-                {
-                    String msg = "CdnRouter - No content at coordinate: " + coord;
-                    sendErrorResponse(response, HttpServletResponse.SC_NO_CONTENT, msg);
-                }
-                else
-                {
-                    String msg = "CdnRouter - CDN returned content that is not a String or byte[], class = " + content.getClass().getName();
-                    sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
-                }
-            }
-            catch (IOException e)
-            {
-                String msg = "CdnRouter - Error occurred writing HTTP response.";
-                sendErrorResponse(response, HttpServletResponse.SC_NO_CONTENT, msg);
-            }
+            routingCube.getCell(coord, output, new CdnUrlExecutor(request, response));
+            return;
         }
         catch (Exception e)
         {

@@ -66,23 +66,16 @@ public abstract class GroovyBase extends UrlCommandCell
         super(cmd, cache);
     }
 
-    protected abstract String buildGroovy(String theirGroovy, String cubeName);
+    protected abstract String buildGroovy(String theirGroovy, String cubeName, String cmdHash);
 
     protected abstract String getMethodToExecute(Map args);
 
-    protected void preRun(Map args)
-    {
-        super.preRun(args);
-        NCube ncube = getNCube(args);
-        compileIfNeeded(ncube.getName());
-    }
-
-    protected Object runFinal(Map args)
+    public Object execute(Object data, Map args)
     {
         String cubeName = getNCube(args).getName();
         try
         {
-            return executeGroovy(args);
+            return executeGroovy(args, getCmdHash(data.toString()));
         }
         catch(InvocationTargetException e)
         {
@@ -106,10 +99,10 @@ public abstract class GroovyBase extends UrlCommandCell
     /**
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
-    protected Object executeGroovy(final Map args) throws Exception
+    protected Object executeGroovy(final Map args, String cmdHash) throws Exception
     {
         // Step 1: Construct the object (use default constructor)
-        final String cacheKey = getCmdHash();
+        final String cacheKey = cmdHash;
         Constructor c = constructorMap.get(cacheKey);
         if (c == null)
         {
@@ -160,19 +153,20 @@ public abstract class GroovyBase extends UrlCommandCell
             }
         }
 
-        return invokeRunMethod(runMethod, instance, args);
+        return invokeRunMethod(runMethod, instance, args, cmdHash);
     }
 
     protected abstract Method getRunMethod() throws NoSuchMethodException;
 
-    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception;
+    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args, String cmdHash) throws Exception;
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method
      * immediately returns.  Insta-check because it is just a ref == null check.
      */
-    private void compileIfNeeded(String cubeName)
+    public void prepare(Object data, Map ctx)
     {
+        String cmdHash = getCmdHash(data.toString());
         if (getRunnableCode() == null)
         {   // Not yet compiled, compile the cell (Lazy compilation)
             synchronized(GroovyBase.class)
@@ -183,25 +177,26 @@ public abstract class GroovyBase extends UrlCommandCell
                     return;
                 }
 
-                if (compiledClasses.containsKey(getCmdHash()))
+                if (compiledClasses.containsKey(cmdHash))
                 {   // Already been compiled, re-use class
-                    setRunnableCode(compiledClasses.get(getCmdHash()));
+                    setRunnableCode(compiledClasses.get(cmdHash));
                     return;
                 }
+                String cubeName = getNCube(ctx).getName();
                 try
                 {
-                    compile(cubeName);
+                    compile(cubeName, cmdHash);
                 }
                 catch (Exception e)
                 {
-                    setCompileErrorMsg("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cubeName + "'");
-                    throw new IllegalArgumentException(getCompileErrorMsg(), e);
+                    setErrorMessage("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cubeName + "'");
+                    throw new IllegalArgumentException(getErrorMessage(), e);
                 }
             }
         }
     }
 
-    protected void compile(String cubeName) throws Exception
+    protected void compile(String cubeName, String cmdHash) throws Exception
     {
         String url = getUrl();
         if (StringUtilities.hasContent(url))
@@ -221,10 +216,10 @@ public abstract class GroovyBase extends UrlCommandCell
         }
         else
         {
-            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cubeName));
+            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cubeName, cmdHash));
             setRunnableCode(groovyClassLoader.parseClass(groovySource));
         }
-        compiledClasses.put(getCmdHash(), getRunnableCode());
+        compiledClasses.put( cmdHash, getRunnableCode());
     }
 
     static String expandNCubeShortCuts(String groovy)

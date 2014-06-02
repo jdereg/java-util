@@ -905,7 +905,7 @@ DELIMITER ;
         // 'null' for coordinate
         try
         {
-            ncube.getCell(null);
+            ncube.getCell((Map)null);
             assertTrue("should throw exception", false);
         }
         catch (IllegalArgumentException expected)
@@ -1486,7 +1486,7 @@ DELIMITER ;
         ncube.setCell(true, coord);
         try
         {
-            ncube.getCell(null);    // (Object[]) cast makes it the whole argument list
+            ncube.getCell((Map)null);    // (Object[]) cast makes it the whole argument list
             assertTrue("should throw exception", false);
         }
         catch (IllegalArgumentException expected)

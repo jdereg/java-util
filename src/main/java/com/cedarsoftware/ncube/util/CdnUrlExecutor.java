@@ -8,6 +8,7 @@ import com.cedarsoftware.util.UrlUtilities;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,7 +39,7 @@ public class CdnUrlExecutor extends DefaultExecutor
     private HttpServletRequest request;
     private HttpServletResponse response;
 
-    CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)
+    public CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)
     {
         this.request = request;
         this.response = response;
@@ -68,7 +69,14 @@ public class CdnUrlExecutor extends DefaultExecutor
             {
                 HttpURLConnection conn = (HttpURLConnection)new URL(url).openConnection();
                 conn.setAllowUserInteraction(false);
-                conn.setRequestMethod(request.getMethod());
+
+                if (request.getMethod() != null)
+                {
+                    conn.setRequestMethod(request.getMethod());
+                }
+                else {
+                    conn.setRequestMethod("GET");
+                }
 
                 conn.setDoOutput(true); // true
                 conn.setDoInput(true); // true
@@ -78,11 +86,12 @@ public class CdnUrlExecutor extends DefaultExecutor
                 setupRequest(conn);
                 setupResponse(conn);
 
-                //firstIn = request.getInputStream();
-                //firstOut = new BufferedOutputStream(conn.getOutputStream(), 32768);
-                //IOUtilities.transfer(firstIn, firstOut);
-                //firstIn.close();
-                //firstOut.close();
+                firstIn = request.getInputStream();
+                firstOut = new BufferedOutputStream(conn.getOutputStream(), 32768);
+                IOUtilities.transfer(firstIn, firstOut);
+                firstIn.close();
+                firstOut.close();
+
                 if (conn.getResponseCode() == 200) {
                     secondIn = new BufferedInputStream(conn.getInputStream(), 32768);
                     secondOut = response.getOutputStream();
@@ -114,8 +123,6 @@ public class CdnUrlExecutor extends DefaultExecutor
         return null;
     }
 
-    public void sendRequest(InputStream s, OutputStream out) {
-    }
     public void setupRequest(HttpURLConnection c) {
 
         Enumeration headerNames = request.getHeaderNames();

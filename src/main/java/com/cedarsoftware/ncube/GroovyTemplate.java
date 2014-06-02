@@ -90,7 +90,7 @@ public class GroovyTemplate extends UrlCommandCell
         }
     }
 
-    public Object runFinal(final Map args)
+    public Object execute(final Object data, final Map args)
     {
         // args.input, args.output, args.ncube, and args.stack,
         // are ALWAYS set by NCube before the execution gets here.
@@ -98,7 +98,8 @@ public class GroovyTemplate extends UrlCommandCell
         {
             if (resolvedTemplate == null)
             {
-                String cmd = getCmd();
+                String cmd = data == null ? "" : data.toString();
+
                 // Expand code : perform <% @()  $() %> and ${ @()   $() } substitutions before passing to template engine.
                 cmd = replaceScriptletNCubeRefs(cmd, Regexes.scripletPattern, "<%", "%>");
                 cmd = replaceScriptletNCubeRefs(cmd, Regexes.velocityPattern, "${", "}");
@@ -120,7 +121,7 @@ public class GroovyTemplate extends UrlCommandCell
         {
             NCube ncube = (NCube) args.get("ncube");
             String errorMsg = "Error setting up Groovy template, NCube '" + ncube.getName() + "'";
-            setCompileErrorMsg(errorMsg + ", " + e.getMessage());
+            setErrorMessage(errorMsg + ", " + e.getMessage());
             throw new RuntimeException(errorMsg, e);
         }
     }

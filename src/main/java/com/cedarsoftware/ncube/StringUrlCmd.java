@@ -28,8 +28,8 @@ public class StringUrlCmd extends UrlCommandCell
         super("", cache);
     }
 
-    protected Object runFinal(Map args)
+    public Object execute(Object data, Map ctx)
     {
-        return getCmd();
+        return data;
     }
 }

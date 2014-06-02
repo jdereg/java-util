@@ -38,12 +38,27 @@ public class CdnUrlExecutor extends DefaultExecutor
 
     public Object executeCommand(CommandCell c, Map<String, Object> ctx)
     {
-        if (c instanceof UrlCommandCell)
+        //if (c instanceof UrlCommandCell)
+        //{
+            //executeUrlCommand((UrlCommandCell)c, ctx);
+        //}
+        Object o = super.executeCommand(c, ctx);
+
+        try
         {
-            // TODO: Copy HTTP Response headers from Apache
-            return c.run(ctx);
+            response.getOutputStream().write(o.toString().getBytes());
+        } catch (Exception e) {
+            // log this.
         }
-        return super.executeCommand(c, ctx);
+        return o;
+    }
+
+    // TODO: Copy HTTP Response headers from Apache
+    protected Object executeUrlCommand(UrlCommandCell c, Map<String, Object> ctx) {
+
+        // default does:
+        //super.exec(c, ctx);
+        return null;
     }
 }
 

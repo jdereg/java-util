@@ -1,9 +1,14 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 /**
@@ -23,16 +28,52 @@ import java.util.regex.Matcher;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public abstract class UrlCommandCell extends CommandCell
+public abstract class UrlCommandCell implements CommandCell
 {
+    private String cmd;
+    private transient String cmdHash;
+    private volatile transient Class runnableCode = null;
+    private volatile transient String errorMsg = null;
+    static final String proxyServer;
+    static final int proxyPort;
+    private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
+
     private String url = null;
     private final boolean cache;
     private boolean urlExpanded = false;
     private boolean urlFetched = false;
 
+    static
+    {
+        /**
+         * These shouldn't be set this way.  If they are going to be environment variables
+         * they should set it at Tomcat or application startup.  Then all proxying will
+         * be done automatically.
+         */
+        proxyServer = SystemUtilities.getExternalVariable("http.proxy.host");
+        String port = SystemUtilities.getExternalVariable("http.proxy.port");
+        if (proxyServer != null)
+        {
+            try
+            {
+                proxyPort = Integer.parseInt(port);
+            }
+            catch (Exception e)
+            {
+                throw new IllegalArgumentException("http.proxy.port must be an integer: " + port, e);
+            }
+        }
+        else
+        {
+            proxyPort = 0;
+        }
+    }
+
+
+
     public UrlCommandCell(String cmd, boolean cache)
     {
-        super(cmd);
+        this.cmd = cmd;
         this.cache = cache;
     }
 
@@ -46,48 +87,39 @@ public abstract class UrlCommandCell extends CommandCell
         return url;
     }
 
-    protected void preRun(Map args)
+    public Object fetch(Map args)
     {
-        if (url != null && !urlFetched)
-        {
-            if (!urlExpanded)
-            {
-                url = expandUrl(args);
-                urlExpanded = true;
-            }
-            processUrl(args);
-            if (cache)
-            {
-                urlFetched = true;
-            }
-        }
-    }
 
-    private void processUrl(Map args)
-    {
-        NCube ncube = (NCube) args.get("ncube");
-
-        //John:  Because of the way URLutilites handles exceptions (it returns null for content)
-        //The exception case is never hit here.  Believe me, I tried to get it to happen.
-        //in error cases, cmd will be set to null.  Let me know if we need to change this or
-        //remove the commented code here.
         try
         {
-            fetchContentFromUrl();
+            return fetchContentFromUrl();
         }
         catch (Exception e)
         {
-            setCompileErrorMsg("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-            throw new IllegalStateException(getCompileErrorMsg(), e);
+            NCube ncube = (NCube) args.get("ncube");
+            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            throw new IllegalStateException(getErrorMessage(), e);
         }
     }
 
-    protected void fetchContentFromUrl()
+    protected Object fetchContentFromUrl()
     {
-        setCmd(UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true));
+        return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
     }
 
-    protected String expandUrl(Map args)
+    public synchronized void cache(Object o) {
+        if (cmd != null) {
+            return;
+        }
+
+        if (cache && o instanceof String) {
+            cmd = (String)o;
+        }
+
+        setFetched();
+    }
+
+    public void expandUrl(String url, Map args)
     {
         NCube ncube = (NCube) args.get("ncube");
         Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
@@ -115,10 +147,149 @@ public abstract class UrlCommandCell extends CommandCell
         }
 
         expandedUrl.append(url.substring(last));
-        return expandedUrl.toString();
+
+        synchronized(this) {
+            if (!this.urlExpanded)
+            {
+                this.url = expandedUrl.toString();
+                this.urlExpanded = true;
+            }
+        }
     }
+
+    public synchronized boolean isExpanded() {
+        return this.urlExpanded;
+    }
+
 
     public boolean isCacheable() {
         return cache;
     }
+
+
+    public static NCube getNCube(Map args)
+    {
+        NCube ncube = (NCube) args.get("ncube");
+        if (ncube == null)
+        {
+            throw new IllegalStateException("'ncube' not set for CommandCell to execute.  Arguments: " + args);
+        }
+        return ncube;
+    }
+
+    public static Map getInput(Map args)
+    {
+        Map input = (Map) args.get("input");
+        if (input == null)
+        {
+            throw new IllegalStateException("'input' not set for CommandCell to execute.  Arguments: " + args);
+        }
+        return input;
+    }
+
+    public static Map getOutput(Map args)
+    {
+        Map output = (Map) args.get("output");
+        if (output == null)
+        {
+            throw new IllegalStateException("'output' not set for CommandCell to execute.  Arguments: " + args);
+        }
+        return output;
+
+    }
+
+    public boolean equals(Object other)
+    {
+        if (!(other instanceof CommandCell))
+        {
+            return false;
+        }
+
+        CommandCell that = (CommandCell) other;
+        return getCmd().equals(that.getCmd());
+    }
+
+    public int hashCode()
+    {
+        return cmd == null ? 0 : cmd.hashCode();
+    }
+
+    public synchronized boolean hasBeenFetched() {
+        return this.urlFetched;
+    }
+    public synchronized void setFetched() { this.urlFetched = this.cache; }
+
+    public void prepare(Object cmd, Map ctx) {
+    }
+
+    public Class getRunnableCode()
+    {
+        return runnableCode;
+    }
+
+    public void setRunnableCode(Class runnableCode)
+    {
+        this.runnableCode = runnableCode;
+    }
+
+    public String getCmd()
+    {
+        return cmd;
+    }
+
+
+    public String getCmdHash(String cmd)
+    {
+        if (StringUtilities.isEmpty(cmd))
+        {
+            return nullSHA1;
+        }
+
+        if (cmdHash == null)
+        {
+            try
+            {
+                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
+            }
+            catch (UnsupportedEncodingException e)
+            {
+                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
+            }
+        }
+        return cmdHash;
+    }
+
+
+    public void setCmd(String cmd)
+    {
+        this.cmd = cmd;
+    }
+
+    public String toString()
+    {
+        return cmd;
+    }
+
+    public boolean hasErrors() {
+        return errorMsg != null;
+    }
+    public String getErrorMessage()
+    {
+        return errorMsg;
+    }
+
+    public void setErrorMessage(String errorMsg)
+    {
+        this.errorMsg = errorMsg;
+    }
+
+    public int compareTo(CommandCell cmdCell)
+    {
+        return cmd.compareToIgnoreCase(cmdCell.getCmd());
+    }
+
+    public void getCubeNamesFromCommandText(Set<String> cubeNames) {}
+
+    public void getScopeKeys(Set<String> scopeKeys) {}
+
 }

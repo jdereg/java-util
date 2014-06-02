@@ -32,13 +32,30 @@ public class BinaryUrlCmd extends UrlCommandCell
         super("", cache);
     }
 
-    protected void fetchContentFromUrl()
+    protected Object fetchContentFromUrl()
     {
-        content = UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
+        return UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
     }
 
-    protected Object runFinal(Map args)
+    public synchronized void setContent(byte[] content) { this.content = content; }
+
+    public synchronized byte[] getContent() {return content; }
+
+    public Object execute(Object data, Map ctx)
     {
-        return content;
+        return data;
     }
+
+    public synchronized void cache(Object o) {
+        if (content != null) {
+            return;
+        }
+
+        if (isCacheable()) {
+            content = (byte[])o;
+        }
+
+        setFetched();
+    }
+
 }

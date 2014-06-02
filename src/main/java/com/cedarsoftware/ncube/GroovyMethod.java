@@ -64,7 +64,7 @@ public class GroovyMethod extends GroovyBase
         super(cmd, cache);
     }
 
-    public String buildGroovy(String theirGroovy, String cubeName)
+    public String buildGroovy(String theirGroovy, String cubeName, String cmdHash)
     {
         return theirGroovy;
     }
@@ -80,8 +80,8 @@ public class GroovyMethod extends GroovyBase
         return getRunnableCode().getMethod("run", String.class);
     }
 
-    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception
+    protected Object invokeRunMethod(Method runMethod, Object instance, Map args, String cmdHash) throws Exception
     {
-        return runMethod.invoke(instance, getCmdHash());
+        return runMethod.invoke(instance, cmdHash);
     }
 }

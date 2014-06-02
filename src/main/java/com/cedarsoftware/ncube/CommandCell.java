@@ -1,10 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.EncryptionUtilities;
-import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.SystemUtilities;
-
-import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,166 +38,30 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public abstract class CommandCell implements Comparable<CommandCell>
+public interface CommandCell extends Comparable<CommandCell>
 {
-    private String cmd;
-    private transient String cmdHash;
-    private volatile transient Class runnableCode = null;
-    private volatile transient String compileErrorMsg = null;
-    static final String proxyServer;
-    static final int proxyPort;
-    private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
+    String getCmd();
+    void setCmd(String cmd);
 
-    static
-    {
-        proxyServer = SystemUtilities.getExternalVariable("http.proxy.host");
-        String port = SystemUtilities.getExternalVariable("http.proxy.port");
-        if (proxyServer != null)
-        {
-            try
-            {
-                proxyPort = Integer.parseInt(port);
-            }
-            catch (Exception e)
-            {
-                throw new IllegalArgumentException("http.proxy.port must be an integer: " + port, e);
-            }
-        }
-        else
-        {
-            proxyPort = 0;
-        }
-    }
+    String getUrl();
 
-    public CommandCell(String cmd)
-	{
-        setCmd(cmd);
-    }
+    String getErrorMessage();
 
-    public boolean equals(Object other)
-    {
-        if (!(other instanceof CommandCell))
-        {
-            return false;
-        }
+    boolean hasErrors();
+    boolean hasBeenFetched();
 
-        CommandCell that = (CommandCell) other;
-        return getCmd().equals(that.getCmd());
-    }
+    boolean isCacheable();
+    boolean isExpanded();
 
-    public int hashCode()
-    {
-        return cmd == null ? 0 : cmd.hashCode();
-    }
+    void expandUrl(String url, Map ctx);
 
-    public Class getRunnableCode()
-    {
-        return runnableCode;
-    }
+    void prepare(Object data, Map ctx);
+    Object execute(Object data, Map ctx);
 
-    public void setRunnableCode(Class runnableCode)
-    {
-        this.runnableCode = runnableCode;
-    }
+    Object fetch(Map ctx);
+    void setFetched();
+    void cache(Object data);
 
-    public Object run(Map args)
-    {
-        if (compileErrorMsg != null)
-        {   // If the cell failed to compile earlier, do not keep trying to recompile or run it.
-            throw new IllegalStateException(compileErrorMsg);
-        }
-
-        preRun(args);
-        return runFinal(args);
-    }
-
-    protected abstract void preRun(Map args);
-
-    protected abstract Object runFinal(Map args);
-
-    protected NCube getNCube(Map args)
-    {
-        NCube ncube = (NCube) args.get("ncube");
-        if (ncube == null)
-        {
-            throw new IllegalStateException("NCube not set for CommandCell to execute.  Arguments: " + args);
-        }
-        return ncube;
-    }
-
-    protected Map getInput(Map args)
-    {
-        Map input = (Map) args.get("input");
-        if (input == null)
-        {
-            throw new IllegalStateException("'input' not set for CommandCell to execute.  Arguments: " + args);
-        }
-        return input;
-    }
-
-    protected Map getOutput(Map args)
-    {
-        Map output = (Map) args.get("output");
-        if (output == null)
-        {
-            throw new IllegalStateException("'output' not set for CommandCell to execute.  Arguments: " + args);
-        }
-        return output;
-
-    }
-
-    public String getCmd()
-	{
-		return cmd;
-	}
-
-    public String getCmdHash()
-    {
-        if (StringUtilities.isEmpty(cmd))
-        {
-            return nullSHA1;
-        }
-
-        if (cmdHash == null)
-        {
-            try
-            {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
-            }
-            catch (UnsupportedEncodingException e)
-            {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
-            }
-        }
-        return cmdHash;
-    }
-
-    public void setCmd(String cmd)
-    {
-        this.cmd = cmd;
-    }
-
-    public String toString()
-    {
-        return cmd;
-    }
-
-    public String getCompileErrorMsg()
-    {
-        return compileErrorMsg;
-    }
-
-    public void setCompileErrorMsg(String compileErrorMsg)
-    {
-        this.compileErrorMsg = compileErrorMsg;
-    }
-
-    public void getCubeNamesFromCommandText(Set<String> cubeNames) {}
-
-    public int compareTo(CommandCell cmdCell)
-    {
-        return cmd.compareToIgnoreCase(cmdCell.cmd);
-    }
-
-    public void getScopeKeys(Set<String> scopeKeys) {}
+    void getCubeNamesFromCommandText(Set<String> cubeNames);
+    void getScopeKeys(Set<String> scopeKeys);
 }

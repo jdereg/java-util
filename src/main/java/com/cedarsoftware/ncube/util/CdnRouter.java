@@ -120,7 +120,6 @@ public class CdnRouter
             coord.put(CONTENT_TYPE, type);
             Map output = new HashMap();
             routingCube.getCell(coord, output, new CdnUrlExecutor(request, response));
-            return;
         }
         catch (Exception e)
         {

@@ -93,12 +93,6 @@ public class TestUrlInvocationHandlerWithPlainReader
         }
 
         @Override
-        public String getMethodName()
-        {
-            return "POST";
-        }
-
-        @Override
         public void setRequestHeaders(URLConnection c)
         {
 

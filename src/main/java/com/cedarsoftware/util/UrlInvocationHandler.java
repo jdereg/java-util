@@ -75,8 +75,7 @@ public class UrlInvocationHandler implements InvocationHandler
             try
             {
                 c = (HttpURLConnection) UrlUtilities.getConnection(_strategy.buildURL(proxy, m, args), true, true, false);
-                c.setRequestMethod(_strategy.getMethodName());
-                //c.setRequestMethod("POST");
+                c.setRequestMethod("POST");
 
                 _strategy.setCookies(c);
 

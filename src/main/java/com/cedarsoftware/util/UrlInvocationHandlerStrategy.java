@@ -18,6 +18,9 @@ public interface UrlInvocationHandlerStrategy
     void setCookies(URLConnection c);
     void getCookies(URLConnection c);
 
+    String getMethodName();
+    void setRequestHeaders(URLConnection c);
+
     byte[] generatePostData(Object proxy, Method m, Object[] args) throws IOException;
     Object readResponse(URLConnection c) throws IOException;
 }

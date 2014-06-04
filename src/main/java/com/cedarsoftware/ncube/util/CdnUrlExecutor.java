@@ -3,6 +3,9 @@ package com.cedarsoftware.ncube.util;
 import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.UrlUtilities;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,6 +40,7 @@ public class CdnUrlExecutor extends DefaultExecutor
 {
     private HttpServletRequest request;
     private HttpServletResponse response;
+    private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
 
     public CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)
     {
@@ -58,22 +62,21 @@ public class CdnUrlExecutor extends DefaultExecutor
                 c.expandUrl(url, ctx);
             }
 
+            HttpURLConnection conn = null;
+
             try
             {
-                HttpURLConnection conn = (HttpURLConnection)new URL(url).openConnection();
+                conn = (HttpURLConnection)new URL(url).openConnection();
                 conn.setAllowUserInteraction(false);
 
                 conn.setRequestMethod(request.getMethod() != null ? request.getMethod() : "GET");
-
                 conn.setDoOutput(true); // true
                 conn.setDoInput(true); // true
                 conn.setReadTimeout(220000);
                 conn.setConnectTimeout(45000);
 
                 setupRequestHeaders(conn);
-
                 conn.connect();
-
                 transferToServer(conn);
 
                 int resCode = conn.getResponseCode();
@@ -82,12 +85,15 @@ public class CdnUrlExecutor extends DefaultExecutor
                     setupResponseHeaders(conn);
                     transferFromServer(conn);
                 } else {
-                    response.sendError(resCode);
+                    UrlUtilities.readErrorResponse(conn);
+                    response.sendError(resCode, conn.getResponseMessage());
                 }
             } catch (Exception e) {
                 try
                 {
-                    response.sendError(404);
+                    LOG.warn(e.getMessage(), e);
+                    UrlUtilities.readErrorResponse(conn);
+                    response.sendError(500, e.getMessage());
                 } catch (IOException ignored) {
                     //  do nothing.
                 }

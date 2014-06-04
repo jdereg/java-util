@@ -58,9 +58,6 @@ public class TestRoutingCapabilities
             // 404
         } catch (Exception e) {
             System.out.println(e);
-        } finally {
-            //IOUtilities.close(firstIn);
-            //IOUtilities.close(firstOut);
         }
 
 

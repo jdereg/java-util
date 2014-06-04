@@ -78,7 +78,7 @@ public class CdnUrlExecutor extends DefaultExecutor
 
                 int resCode = conn.getResponseCode();
 
-                if (resCode != 200) {
+                if (resCode == 200) {
                     setupResponseHeaders(conn);
                     transferFromServer(conn);
                 } else {

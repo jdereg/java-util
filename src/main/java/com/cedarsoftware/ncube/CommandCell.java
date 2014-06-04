@@ -50,7 +50,6 @@ public interface CommandCell extends Comparable<CommandCell>
     boolean hasErrors();
     boolean hasBeenFetched();
 
-    boolean isCacheable();
     boolean isExpanded();
 
     void expandUrl(String url, Map ctx);
@@ -59,7 +58,6 @@ public interface CommandCell extends Comparable<CommandCell>
     Object execute(Object data, Map ctx);
 
     Object fetch(Map ctx);
-    void setFetched();
     void cache(Object data);
 
     void getCubeNamesFromCommandText(Set<String> cubeNames);

@@ -9,9 +9,11 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import javax.servlet.ServletInputStream;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
@@ -32,18 +34,40 @@ public class TestCdnRouter
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
         Vector<String> v = new Vector<String>();
-        v.add("Content-Type");
+        v.add("Accept");
         v.add("Accept-Encoding");
+        v.add("Accept-Language");
+        v.add("User-Agent");
+        v.add("Cache-Control");
+
 
 
 
         when(request.getServletPath()).thenReturn("/dyn/view/index");
         when(request.getRequestURL()).thenReturn(new StringBuffer("http://www.cedarsoftware.com/ctx/dyn/view/index"));
         when(request.getHeaderNames()).thenReturn(v.elements());
+        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
+        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
+        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
+        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
+
+
+        when(response.containsHeader("Content-Length")).thenReturn(true);
+        when(response.containsHeader("Last-Modified")).thenReturn(true);
+        when(response.containsHeader("Expires")).thenReturn(true);
+        when(response.containsHeader("Content-Encoding")).thenReturn(true);
+        when(response.containsHeader("Content-Type")).thenReturn(true);
+        when(response.containsHeader("Cache-Control")).thenReturn(true);
+        when(response.containsHeader("Etag")).thenReturn(true);
 
         ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+
 
         when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
 
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
@@ -94,4 +118,16 @@ public class TestCdnRouter
             bao.write(b);
         }
     }
+
+    static class DumboInputStream extends ServletInputStream
+    {
+        ByteArrayInputStream bao = new ByteArrayInputStream(new byte[0]);
+
+        @Override
+        public int read() throws IOException
+        {
+            return bao.read();
+        }
+    }
+
 }

@@ -4,6 +4,8 @@ import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.UrlUtilities;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -15,6 +17,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +41,7 @@ public class CdnUrlExecutor extends DefaultExecutor
 {
     private HttpServletRequest request;
     private HttpServletResponse response;
+    private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
 
     public CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)
     {
@@ -59,63 +63,41 @@ public class CdnUrlExecutor extends DefaultExecutor
                 c.expandUrl(url, ctx);
             }
 
-            OutputStream firstOut = null;
-            InputStream firstIn = null;
-
-            OutputStream secondOut = null;
-            InputStream secondIn = null;
+            HttpURLConnection conn = null;
 
             try
             {
-                HttpURLConnection conn = (HttpURLConnection)new URL(url).openConnection();
+                conn = (HttpURLConnection)new URL(url).openConnection();
                 conn.setAllowUserInteraction(false);
 
-                if (request.getMethod() != null)
-                {
-                    conn.setRequestMethod(request.getMethod());
-                }
-                else {
-                    conn.setRequestMethod("GET");
-                }
-
+                conn.setRequestMethod(request.getMethod() != null ? request.getMethod() : "GET");
                 conn.setDoOutput(true); // true
                 conn.setDoInput(true); // true
-                conn.setUseCaches(false);  // false
-                UrlUtilities.setTimeouts(conn, 220000, 45000);
+                conn.setReadTimeout(220000);
+                conn.setConnectTimeout(45000);
 
-                setupRequest(conn);
-                setupResponse(conn);
+                setupRequestHeaders(conn);
+                conn.connect();
+                transferToServer(conn);
 
-                firstIn = request.getInputStream();
-                firstOut = new BufferedOutputStream(conn.getOutputStream(), 32768);
-                IOUtilities.transfer(firstIn, firstOut);
-                firstIn.close();
-                firstOut.close();
+                int resCode = conn.getResponseCode();
 
-                if (conn.getResponseCode() == 200) {
-                    secondIn = new BufferedInputStream(conn.getInputStream(), 32768);
-                    secondOut = response.getOutputStream();
-                    IOUtilities.transfer(secondIn, secondOut);
-                    secondIn.close();
-                    secondOut.close();
-                    return null;
+                if (resCode == 200) {
+                    transferResponseHeaders(conn);
+                    transferFromServer(conn);
                 } else {
-                    response.sendError(conn.getResponseCode());
+                    UrlUtilities.readErrorResponse(conn);
+                    response.sendError(resCode, conn.getResponseMessage());
                 }
-
-
             } catch (Exception e) {
                 try
                 {
-                    response.sendError(404);
+                    LOG.warn(e.getMessage(), e);
+                    UrlUtilities.readErrorResponse(conn);
+                    response.sendError(500, e.getMessage());
                 } catch (IOException ignored) {
                     //  do nothing.
                 }
-            } finally {
-                //IOUtilities.close(firstIn);
-                //IOUtilities.close(firstOut);
-                IOUtilities.close(secondIn);
-                IOUtilities.close(secondOut);
             }
 
         }
@@ -123,7 +105,37 @@ public class CdnUrlExecutor extends DefaultExecutor
         return null;
     }
 
-    public void setupRequest(HttpURLConnection c) {
+    private void transferToServer(HttpURLConnection conn) throws IOException
+    {
+        OutputStream out = null;
+        InputStream in = null;
+
+        try
+        {
+            in = request.getInputStream();
+            out = new BufferedOutputStream(conn.getOutputStream(), 32768);
+            IOUtilities.transfer(in, out);
+        } finally {
+            IOUtilities.close(in);
+            IOUtilities.close(out);
+        }
+    }
+
+    private void transferFromServer(HttpURLConnection conn) throws IOException
+    {
+        InputStream in = null;
+        OutputStream out = null;
+        try {
+            in = new BufferedInputStream(conn.getInputStream(), 32768);
+            out = response.getOutputStream();
+            IOUtilities.transfer(in, out);
+        } finally {
+            IOUtilities.close(in);
+            IOUtilities.close(out);
+        }
+    }
+
+    private void setupRequestHeaders(HttpURLConnection c) {
 
         Enumeration headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements())
@@ -134,30 +146,29 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    public void setupResponse(HttpURLConnection c) {
+    private void transferResponseHeaders(HttpURLConnection c) {
 
-        if (response.containsHeader("Content-Length")) {
-            response.addIntHeader("Content-Length", c.getContentLength());
+        Map<String, List<String>> headerFields = c.getHeaderFields();
+
+        addHeaders("Content-Length", headerFields);
+        addHeaders("Last-Modified", headerFields);
+        addHeaders("Expires", headerFields);
+        addHeaders("Content-Encoding", headerFields);
+        addHeaders("Content-Type", headerFields);
+        addHeaders("Cache-Control", headerFields);
+        addHeaders("Etag", headerFields);
+        addHeaders("Accept", headerFields);
+    }
+
+    private void addHeaders(String field, Map<String, List<String>> fields) {
+        List<String> items = fields.get(field);
+
+        if (items != null) {
+            for (String s: items)
+            {
+                response.addHeader(field, s);
+            }
         }
-
-        if (response.containsHeader("Last-Modified")) {
-            response.addDateHeader("Last-Modified", c.getLastModified());
-        }
-
-        if (response.containsHeader("Content-Encoding")) {
-            response.addHeader("Content-Encoding", c.getContentEncoding());
-        }
-
-        if (response.containsHeader("Content-Type"))
-        {
-            response.addHeader("Content-Type", c.getContentType());
-        }
-
-        if (response.containsHeader("Cache-Control")) {
-            response.addHeader("Cache-Control", c.getHeaderField("Cache-Control"));
-        }
-
-
     }
 
 }

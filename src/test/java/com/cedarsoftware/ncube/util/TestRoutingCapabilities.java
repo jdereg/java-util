@@ -63,20 +63,6 @@ public class TestRoutingCapabilities
 
         }
 
-    /*
-    public void setupRequestHeaders(HttpURLConnection c) {
-
-        Enumeration headerNames = request.getHeaderNames();
-        while (headerNames.hasMoreElements())
-        {
-            String key = (String) headerNames.nextElement();
-            String value = request.getHeader(key);
-            c.setRequestProperty(key, value);
-        }
-    }
-*/
-
-
     public void setupRequest(HttpURLConnection c) {
         c.addRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
         c.addRequestProperty("Accept-Encoding", "gzip,deflate");

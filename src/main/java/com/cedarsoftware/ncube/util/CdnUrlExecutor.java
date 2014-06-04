@@ -17,6 +17,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -82,7 +83,7 @@ public class CdnUrlExecutor extends DefaultExecutor
                 int resCode = conn.getResponseCode();
 
                 if (resCode == 200) {
-                    setupResponseHeaders(conn);
+                    transferResponseHeaders(conn);
                     transferFromServer(conn);
                 } else {
                     UrlUtilities.readErrorResponse(conn);
@@ -134,7 +135,7 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    public void setupRequestHeaders(HttpURLConnection c) {
+    private void setupRequestHeaders(HttpURLConnection c) {
 
         Enumeration headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements())
@@ -145,30 +146,29 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    public void setupResponseHeaders(HttpURLConnection c) {
+    private void transferResponseHeaders(HttpURLConnection c) {
 
-        if (response.containsHeader("Content-Length")) {
-            response.addIntHeader("Content-Length", c.getContentLength());
+        Map<String, List<String>> headerFields = c.getHeaderFields();
+
+        addHeaders("Content-Length", headerFields);
+        addHeaders("Last-Modified", headerFields);
+        addHeaders("Expires", headerFields);
+        addHeaders("Content-Encoding", headerFields);
+        addHeaders("Content-Type", headerFields);
+        addHeaders("Cache-Control", headerFields);
+        addHeaders("Etag", headerFields);
+        addHeaders("Accept", headerFields);
+    }
+
+    private void addHeaders(String field, Map<String, List<String>> fields) {
+        List<String> items = fields.get(field);
+
+        if (items != null) {
+            for (String s: items)
+            {
+                response.addHeader(field, s);
+            }
         }
-
-        if (response.containsHeader("Last-Modified")) {
-            response.addDateHeader("Last-Modified", c.getLastModified());
-        }
-
-        if (response.containsHeader("Content-Encoding")) {
-            response.addHeader("Content-Encoding", c.getContentEncoding());
-        }
-
-        if (response.containsHeader("Content-Type"))
-        {
-            response.addHeader("Content-Type", c.getContentType());
-        }
-
-        if (response.containsHeader("Cache-Control")) {
-            response.addHeader("Cache-Control", c.getHeaderField("Cache-Control"));
-        }
-
-
     }
 
 }

@@ -52,8 +52,19 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
 
+
+        when(response.containsHeader("Content-Length")).thenReturn(true);
+        when(response.containsHeader("Last-Modified")).thenReturn(true);
+        when(response.containsHeader("Expires")).thenReturn(true);
+        when(response.containsHeader("Content-Encoding")).thenReturn(true);
+        when(response.containsHeader("Content-Type")).thenReturn(true);
+        when(response.containsHeader("Cache-Control")).thenReturn(true);
+        when(response.containsHeader("Etag")).thenReturn(true);
+
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();
+
+
 
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);

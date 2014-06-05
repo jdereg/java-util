@@ -34,7 +34,7 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
-* 1.12.0
+* 1.11.2
  * Updated so headers can be set individually by the strategy (UrlInvocationHandler)
  * InvocationHandler set to always uses POST method to allow additional HTTP headers.
 * 1.11.1

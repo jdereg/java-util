@@ -39,9 +39,10 @@ public abstract class UrlCommandCell implements CommandCell
     private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
 
     private String url = null;
-    private final boolean cache;
-    private boolean urlExpanded = false;
-    private boolean urlFetched = false;
+    private final boolean cachable;
+    private Object cache = null;
+    private boolean isUrlExpanded;
+    //private volatile AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
 
     static
     {
@@ -71,10 +72,10 @@ public abstract class UrlCommandCell implements CommandCell
 
 
 
-    public UrlCommandCell(String cmd, boolean cache)
+    public UrlCommandCell(String cmd, boolean cachable)
     {
         this.cmd = cmd;
-        this.cache = cache;
+        this.cachable = cachable;
     }
 
     public void setUrl(String url)
@@ -108,19 +109,19 @@ public abstract class UrlCommandCell implements CommandCell
     }
 
     public synchronized void cache(Object o) {
-        if (cmd != null) {
-            return;
+        if (cachable) {
+            cache = o;
         }
-
-        if (cache && o instanceof String) {
-            cmd = (String)o;
-        }
-
-        setFetched();
     }
 
     public void expandUrl(String url, Map args)
     {
+        synchronized(this) {
+            if (this.isUrlExpanded) {
+                return;
+            }
+        }
+
         NCube ncube = (NCube) args.get("ncube");
         Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
         StringBuilder expandedUrl = new StringBuilder();
@@ -149,21 +150,13 @@ public abstract class UrlCommandCell implements CommandCell
         expandedUrl.append(url.substring(last));
 
         synchronized(this) {
-            if (!this.urlExpanded)
-            {
-                this.url = expandedUrl.toString();
-                this.urlExpanded = true;
-            }
+            this.url = expandedUrl.toString();
+            this.isUrlExpanded = true;
         }
     }
 
-    public synchronized boolean isExpanded() {
-        return this.urlExpanded;
-    }
-
-
-    public boolean isCacheable() {
-        return cache;
+    public boolean isCachable() {
+        return cachable;
     }
 
 
@@ -206,18 +199,22 @@ public abstract class UrlCommandCell implements CommandCell
         }
 
         CommandCell that = (CommandCell) other;
-        return getCmd().equals(that.getCmd());
+
+        if (cmd != null) {
+            return cmd.equals(that.getCmd());
+        }
+
+        return url.equals(that.getUrl());
     }
 
     public int hashCode()
     {
-        return cmd == null ? 0 : cmd.hashCode();
+        return cmd == null ? url == null ? 0 : url.hashCode() : cmd.hashCode();
     }
 
-    public synchronized boolean hasBeenFetched() {
-        return this.urlFetched;
+    public synchronized boolean isCached() {
+        return this.cache != null;
     }
-    public synchronized void setFetched() { this.urlFetched = this.cache; }
 
     public void prepare(Object cmd, Map ctx) {
     }
@@ -232,9 +229,15 @@ public abstract class UrlCommandCell implements CommandCell
         this.runnableCode = runnableCode;
     }
 
+
     public String getCmd()
     {
         return cmd;
+    }
+
+    public synchronized Object getOperableCmd() {
+
+        return cache == null ? (cmd == null || cmd.isEmpty()) ? null : cmd : cache;
     }
 
 
@@ -260,32 +263,35 @@ public abstract class UrlCommandCell implements CommandCell
     }
 
 
-    public void setCmd(String cmd)
+    //public void setCmd(String cmd)
     {
         this.cmd = cmd;
     }
 
     public String toString()
     {
-        return cmd;
+        return url == null ? cmd : url;
     }
 
-    public boolean hasErrors() {
-        return errorMsg != null;
-    }
-    public String getErrorMessage()
-    {
-        return errorMsg;
+    public void failOnErrors() {
+        if (errorMsg != null) {
+            throw new IllegalStateException(errorMsg);
+        }
     }
 
     public void setErrorMessage(String errorMsg)
     {
         this.errorMsg = errorMsg;
     }
+    public String getErrorMessage() { return this.errorMsg; }
 
     public int compareTo(CommandCell cmdCell)
     {
-        return cmd.compareToIgnoreCase(cmdCell.getCmd());
+        if (cmd != null) {
+            return cmd.compareToIgnoreCase(cmdCell.getCmd());
+        }
+
+        return url.compareToIgnoreCase(cmdCell.getUrl());
     }
 
     public void getCubeNamesFromCommandText(Set<String> cubeNames) {}

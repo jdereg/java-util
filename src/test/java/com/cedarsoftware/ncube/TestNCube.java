@@ -5902,6 +5902,14 @@ DELIMITER ;
         coord.put("content", "vend");
         String html2 = (String) ncube.getCell(coord);
         assertNotEquals(html, html2);
+
+        //coord.put("protocol", "http");
+        //coord.put("content", "vend");
+        //coord.put("env_level", "changeable");
+        //coord.put("base.url", "foo");
+        //String html3 = (String) ncube.getCell(coord);
+        //assertEquals(html2, html3);
+
     }
 
     @Test

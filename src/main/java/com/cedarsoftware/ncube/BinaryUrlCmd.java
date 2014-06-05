@@ -25,11 +25,9 @@ import java.util.Map;
  */
 public class BinaryUrlCmd extends UrlCommandCell
 {
-    private byte[] content;
-
     public BinaryUrlCmd(boolean cache)
     {
-        super("", cache);
+        super(null, cache);
     }
 
     protected Object fetchContentFromUrl()
@@ -37,25 +35,9 @@ public class BinaryUrlCmd extends UrlCommandCell
         return UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
     }
 
-    public synchronized void setContent(byte[] content) { this.content = content; }
-
-    public synchronized byte[] getContent() {return content; }
-
     public Object execute(Object data, Map ctx)
     {
         return data;
-    }
-
-    public synchronized void cache(Object o) {
-        if (content != null) {
-            return;
-        }
-
-        if (isCacheable()) {
-            content = (byte[])o;
-        }
-
-        setFetched();
     }
 
 }

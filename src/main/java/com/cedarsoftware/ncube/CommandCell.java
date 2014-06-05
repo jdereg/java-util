@@ -40,24 +40,26 @@ import java.util.Set;
  */
 public interface CommandCell extends Comparable<CommandCell>
 {
+    //  Items set during construction.
     String getCmd();
-    void setCmd(String cmd);
-
     String getUrl();
 
-    String getErrorMessage();
+    //  Return the cached command or the cmd, whichever is available.
+    Object getOperableCmd();
 
-    boolean hasErrors();
-    boolean hasBeenFetched();
+    void failOnErrors();
 
-    boolean isExpanded();
-
+    //  Expands a url and sets it back on the url set during construction?
     void expandUrl(String url, Map ctx);
 
+    // compile etc.
     void prepare(Object data, Map ctx);
+
+    // execute and return
     Object execute(Object data, Map ctx);
 
     Object fetch(Map ctx);
+
     void cache(Object data);
 
     void getCubeNamesFromCommandText(Set<String> cubeNames);

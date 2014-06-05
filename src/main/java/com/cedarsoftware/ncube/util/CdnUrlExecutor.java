@@ -49,19 +49,16 @@ public class CdnUrlExecutor extends DefaultExecutor
         this.response = response;
     }
 
-    // TODO: Copy HTTP Response headers from Apache
-    public Object executeCommand(CommandCell c, Map<String, Object> ctx)
+    public Object executeCommand(CommandCell command, Map<String, Object> ctx)
     {
-        String url = c.getUrl();
-        Object cmd = c.getCmd();
+        command.failOnErrors();
+
+        String url = command.getUrl();
 
         // ignore local caching
         if (url != null)
         {
-            if (!c.isExpanded())
-            {
-                c.expandUrl(url, ctx);
-            }
+            command.expandUrl(url, ctx);
 
             HttpURLConnection conn = null;
 
@@ -82,7 +79,7 @@ public class CdnUrlExecutor extends DefaultExecutor
 
                 int resCode = conn.getResponseCode();
 
-                if (resCode == 200) {
+                if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT) {
                     transferResponseHeaders(conn);
                     transferFromServer(conn);
                 } else {
@@ -94,9 +91,10 @@ public class CdnUrlExecutor extends DefaultExecutor
                 {
                     LOG.warn(e.getMessage(), e);
                     UrlUtilities.readErrorResponse(conn);
-                    response.sendError(500, e.getMessage());
+                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 } catch (IOException ignored) {
                     //  do nothing.
+                    LOG.warn(ignored.getMessage());
                 }
             }
 

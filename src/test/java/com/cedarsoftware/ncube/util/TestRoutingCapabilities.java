@@ -5,11 +5,9 @@ import org.junit.Test;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Date;
 
 /**
  * Created by kpartlow on 6/3/2014.
@@ -22,46 +20,35 @@ public class TestRoutingCapabilities
         String url = "http://www.cedarsoftware.com/tests/ncube/CS415P6.TXT";
 
         // ignore local caching
-        try
-        {
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setAllowUserInteraction(false);
-            conn.setRequestMethod("GET");
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        conn.setAllowUserInteraction(false);
+        conn.setRequestMethod("GET");
 
-            //conn.setDoOutput(true); // true
-            conn.setDoInput(true); // true
-            conn.setUseCaches(false);  // false
-            conn.setReadTimeout(220000);
-            conn.setConnectTimeout(45000);
+        //conn.setDoOutput(true); // true
+        conn.setDoInput(true); // true
+        conn.setUseCaches(false);  // false
+        conn.setReadTimeout(220000);
+        conn.setConnectTimeout(45000);
 
-            //conn.setIfModifiedSince(long);
+        //conn.setIfModifiedSince(long);
 
-            setupRequest(conn);
-            conn.connect();
-            System.out.println(conn.getResponseCode());
+        setupRequest(conn);
+        conn.connect();
 
-            InputStream in = new BufferedInputStream(conn.getInputStream(), 32768);
+        InputStream in = new BufferedInputStream(conn.getInputStream(), 32768);
 
 
-            //secondOut = response.getOutputStream();
-            ByteArrayOutputStream bout = new ByteArrayOutputStream(8192);
-            setupResponse(conn);
-            IOUtilities.transfer(in, bout);
-            in.close();
-            bout.close();
+        //secondOut = response.getOutputStream();
+        ByteArrayOutputStream bout = new ByteArrayOutputStream(8192);
+        setupResponse(conn);
+        IOUtilities.transfer(in, bout);
+        in.close();
+        bout.close();
 
-            System.out.println(conn.getResponseCode());
+        System.out.println(conn.getResponseCode());
 
-            conn.disconnect();
-
-        }catch (FileNotFoundException fnfe) {
-            // 404
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-
-
-        }
+        conn.disconnect();
+    }
 
     public void setupRequest(HttpURLConnection c) {
         c.addRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
@@ -75,17 +62,17 @@ public class TestRoutingCapabilities
     }
 
     public void setupResponse(HttpURLConnection c) {
-        System.out.println("Content-Length:  " + c.getContentLength());
-        System.out.println("Last-Modified:  " + c.getLastModified());
-        System.out.println("Content-Encoding:  " + c.getContentEncoding());
-        System.out.println("Content-Type:  " + c.getContentType());
-        System.out.println("Cache-Control:  " + c.getHeaderField("Cache-Control"));
-        System.out.println("Etag:  " + c.getHeaderField("ETag"));
-        System.out.println("Expires:  " + c.getExpiration());
-        System.out.println("Accept-Ranges: " + c.getHeaderField("Accept-Ranges"));
-        System.out.println("Age: " + c.getHeaderField("Age"));
-        System.out.println("Date:  " + new Date(c.getHeaderFieldDate("Date", 0)));
-        System.out.println("Server:  " + c.getHeaderField("Server"));
+        //System.out.println("Content-Length:  " + c.getContentLength());
+        //System.out.println("Last-Modified:  " + c.getLastModified());
+        //System.out.println("Content-Encoding:  " + c.getContentEncoding());
+        //System.out.println("Content-Type:  " + c.getContentType());
+        //System.out.println("Cache-Control:  " + c.getHeaderField("Cache-Control"));
+        //System.out.println("Etag:  " + c.getHeaderField("ETag"));
+        //System.out.println("Expires:  " + c.getExpiration());
+        //System.out.println("Accept-Ranges: " + c.getHeaderField("Accept-Ranges"));
+        //System.out.println("Age: " + c.getHeaderField("Age"));
+        //System.out.println("Date:  " + new Date(c.getHeaderFieldDate("Date", 0)));
+        //System.out.println("Server:  " + c.getHeaderField("Server"));
     }
 
 

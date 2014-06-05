@@ -128,11 +128,6 @@ public class CdnRouter
         }
     }
 
-    private void setResponseHeaders(HttpServletResponse response)
-    {
-        response.setHeader("Cache-Control", "max-age=43200, proxy-revalidate");
-    }
-
     /**
      * Send an HTTP error response
      */

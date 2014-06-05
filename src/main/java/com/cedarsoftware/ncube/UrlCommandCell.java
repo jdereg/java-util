@@ -101,6 +101,10 @@ public abstract class UrlCommandCell implements CommandCell
 
     public Object fetch(Map args)
     {
+        if (!cacheable) {
+            return fetchContentFromUrl(args);
+        }
+
         if (hasBeenFetched.get()) {
             return cache;
         }
@@ -110,29 +114,24 @@ public abstract class UrlCommandCell implements CommandCell
                 return cache;
             }
 
-            try
-            {
-                Object ret = fetchContentFromUrl();
-
-                if (cacheable) {
-                    cache = ret;
-                    hasBeenFetched.set(cacheable);
-                }
-                return ret;
-            }
-            catch (Exception e)
-            {
-                NCube ncube = (NCube) args.get("ncube");
-                setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-                throw new IllegalStateException(getErrorMessage(), e);
-            }
-
+            cache = fetchContentFromUrl(args);
+            hasBeenFetched.set(true);
+            return cache;
         }
     }
 
-    protected Object fetchContentFromUrl()
+    protected Object fetchContentFromUrl(Map args)
     {
-        return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
+        try
+        {
+            return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
+        }
+        catch (Exception e)
+        {
+            NCube ncube = (NCube) args.get("ncube");
+            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            throw new IllegalStateException(getErrorMessage(), e);
+        }
     }
 
     public void expandUrl(String url, Map args)

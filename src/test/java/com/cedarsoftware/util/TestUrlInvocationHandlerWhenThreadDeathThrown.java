@@ -80,6 +80,12 @@ public class TestUrlInvocationHandlerWhenThreadDeathThrown
         }
 
         @Override
+        public void setRequestHeaders(URLConnection c)
+        {
+
+        }
+
+        @Override
         public void setCookies(URLConnection c)
         {
             try

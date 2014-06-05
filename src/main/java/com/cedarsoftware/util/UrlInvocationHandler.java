@@ -81,8 +81,9 @@ public class UrlInvocationHandler implements InvocationHandler
 
                 // Formulate the POST data for the output stream.
                 byte[] bytes = _strategy.generatePostData(proxy, m, args);
-
                 c.setRequestProperty("Content-Length", String.valueOf(bytes.length));
+
+                _strategy.setRequestHeaders(c);
 
                 // send the post data
                 IOUtilities.transfer(c, bytes);

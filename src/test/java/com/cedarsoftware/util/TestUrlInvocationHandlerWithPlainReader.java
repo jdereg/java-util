@@ -93,6 +93,12 @@ public class TestUrlInvocationHandlerWithPlainReader
         }
 
         @Override
+        public void setRequestHeaders(URLConnection c)
+        {
+
+        }
+
+        @Override
         public void setCookies(URLConnection c)
         {
             c.setRequestProperty("Cookie", "JSESSIONID=" + _sessionId);

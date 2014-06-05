@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
@@ -45,9 +46,7 @@ public class TestNCubeConcurrencyIssue
 
         final Map<String, String> items = Collections.synchronizedMap(new IdentityHashMap<String, String>());
 
-        final int[] passed = new int[1];
-        passed[0] = 0;
-        final int[] count = new int[1];
+        final AtomicInteger count = new AtomicInteger(0);
 
         for (int i=0; i < 16; i++)
         {
@@ -67,7 +66,8 @@ public class TestNCubeConcurrencyIssue
                             String item = (String)n1.getCell(coord);
 
                             items.put(item, item);
-                            count[0] = count[0]+1;
+
+                            count.incrementAndGet();
                             assertEquals(expected, item);
                             assertNotSame(expected, item);
                         }
@@ -92,7 +92,7 @@ public class TestNCubeConcurrencyIssue
             }
         }
 
-        assertTrue(String.format("Expected %d unique items, but only received %d", count[0], items.size()), items.size() == count[0]);
+        assertTrue(String.format("Expected %d unique items, but only received %d", count.get(), items.size()), items.size() == count.get());
     }
 
 }

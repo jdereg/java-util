@@ -61,9 +61,9 @@ public abstract class GroovyBase extends UrlCommandCell
         }
     };
 
-    public GroovyBase(String cmd, boolean cache)
+    public GroovyBase(String cmd, String url, boolean cache)
     {
-        super(cmd, cache);
+        super(cmd, url, cache);
     }
 
     protected abstract String buildGroovy(String theirGroovy, String cubeName, String cmdHash);

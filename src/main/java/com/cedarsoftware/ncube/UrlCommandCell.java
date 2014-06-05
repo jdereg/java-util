@@ -9,6 +9,7 @@ import groovy.lang.GroovyShell;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 
 /**
@@ -39,9 +40,11 @@ public abstract class UrlCommandCell implements CommandCell
     private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
 
     private String url = null;
-    private final boolean cachable;
-    private Object cache = null;
-    private boolean isUrlExpanded;
+    private final boolean cacheable;
+    private AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
+    private AtomicBoolean hasBeenFetched = new AtomicBoolean(false);
+    private Object cache;
+    private int hash;
     //private volatile AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
 
     static
@@ -70,18 +73,26 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-
-
-    public UrlCommandCell(String cmd, boolean cachable)
+    public UrlCommandCell(String cmd, String url, boolean cacheable)
     {
+        if (cmd == null && url == null) {
+            throw new IllegalArgumentException("Both 'cmd' and 'url' cannot be null");
+        }
+
+        if (cmd != null && cmd.isEmpty()) {
+            throw new IllegalArgumentException("'cmd' cannot be empty");
+        }
+
         this.cmd = cmd;
-        this.cachable = cachable;
+        this.url = url;
+        this.cacheable = cacheable;
+        this.hash = cmd == null ? url.hashCode() : cmd.hashCode();
     }
 
-    public void setUrl(String url)
-    {
-        this.url = url;
-    }
+    //public void setUrl(String url)
+    //{
+    //    this.url = url;
+    //}
 
     public String getUrl()
     {
@@ -90,16 +101,32 @@ public abstract class UrlCommandCell implements CommandCell
 
     public Object fetch(Map args)
     {
-
-        try
-        {
-            return fetchContentFromUrl();
+        if (hasBeenFetched.get()) {
+            return cache;
         }
-        catch (Exception e)
-        {
-            NCube ncube = (NCube) args.get("ncube");
-            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
-            throw new IllegalStateException(getErrorMessage(), e);
+
+        synchronized (this) {
+            if (hasBeenFetched.get()) {
+                return cache;
+            }
+
+            try
+            {
+                Object ret = fetchContentFromUrl();
+
+                if (cacheable) {
+                    cache = ret;
+                    hasBeenFetched.set(cacheable);
+                }
+                return ret;
+            }
+            catch (Exception e)
+            {
+                NCube ncube = (NCube) args.get("ncube");
+                setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+                throw new IllegalStateException(getErrorMessage(), e);
+            }
+
         }
     }
 
@@ -108,55 +135,52 @@ public abstract class UrlCommandCell implements CommandCell
         return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
     }
 
-    public synchronized void cache(Object o) {
-        if (cachable) {
-            cache = o;
-        }
-    }
-
     public void expandUrl(String url, Map args)
     {
-        synchronized(this) {
-            if (this.isUrlExpanded) {
+        if (isUrlExpanded.get()) {
+            return;
+        }
+
+        synchronized(this)
+        {
+            if (isUrlExpanded.get()) {
                 return;
             }
-        }
+            NCube ncube = (NCube) args.get("ncube");
+            Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
+            StringBuilder expandedUrl = new StringBuilder();
+            int last = 0;
+            Map input = (Map) args.get("input");
+            GroovyShell shell = new GroovyShell();
 
-        NCube ncube = (NCube) args.get("ncube");
-        Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
-        StringBuilder expandedUrl = new StringBuilder();
-        int last = 0;
-        Map input = (Map) args.get("input");
-        GroovyShell shell = new GroovyShell();
-
-        while (m.find())
-        {
-            expandedUrl.append(url.substring(last, m.start()));
-            String cubeName = m.group(2);
-            NCube refCube = NCubeManager.getCube(cubeName, ncube.getVersion());
-            if (refCube == null)
+            while (m.find())
             {
-                throw new IllegalStateException("Reference to not-loaded NCube '" + cubeName + "', from NCube '" + ncube.getName() + "', url: " + url);
+                expandedUrl.append(url.substring(last, m.start()));
+                String cubeName = m.group(2);
+                NCube refCube = NCubeManager.getCube(cubeName, ncube.getVersion());
+                if (refCube == null)
+                {
+                    throw new IllegalStateException("Reference to not-loaded NCube '" + cubeName + "', from NCube '" + ncube.getName() + "', url: " + url);
+                }
+
+                Map coord = (Map) shell.evaluate(m.group(3));
+                input.putAll(coord);
+                Object val = refCube.getCell(input);
+                val = (val == null) ? "" : val.toString();
+                expandedUrl.append(val);
+                last = m.end();
             }
 
-            Map coord = (Map) shell.evaluate(m.group(3));
-            input.putAll(coord);
-            Object val = refCube.getCell(input);
-            val = (val == null) ? "" : val.toString();
-            expandedUrl.append(val);
-            last = m.end();
-        }
-
-        expandedUrl.append(url.substring(last));
-
-        synchronized(this) {
+            expandedUrl.append(url.substring(last));
             this.url = expandedUrl.toString();
-            this.isUrlExpanded = true;
+            this.isUrlExpanded.set(true);
+
         }
+
     }
 
-    public boolean isCachable() {
-        return cachable;
+    public boolean isCacheable() {
+        return cacheable;
     }
 
 
@@ -193,15 +217,15 @@ public abstract class UrlCommandCell implements CommandCell
 
     public boolean equals(Object other)
     {
-        if (!(other instanceof CommandCell))
+        if (!(other instanceof UrlCommandCell))
         {
             return false;
         }
 
-        CommandCell that = (CommandCell) other;
+        UrlCommandCell that = (UrlCommandCell) other;
 
         if (cmd != null) {
-            return cmd.equals(that.getCmd());
+            return cmd.equals(that.cmd);
         }
 
         return url.equals(that.getUrl());
@@ -209,7 +233,7 @@ public abstract class UrlCommandCell implements CommandCell
 
     public int hashCode()
     {
-        return cmd == null ? url == null ? 0 : url.hashCode() : cmd.hashCode();
+        return this.hash;
     }
 
     public synchronized boolean isCached() {
@@ -235,12 +259,6 @@ public abstract class UrlCommandCell implements CommandCell
         return cmd;
     }
 
-    public synchronized Object getOperableCmd() {
-
-        return cache == null ? (cmd == null || cmd.isEmpty()) ? null : cmd : cache;
-    }
-
-
     public String getCmdHash(String cmd)
     {
         if (StringUtilities.isEmpty(cmd))
@@ -263,11 +281,6 @@ public abstract class UrlCommandCell implements CommandCell
     }
 
 
-    //public void setCmd(String cmd)
-    {
-        this.cmd = cmd;
-    }
-
     public String toString()
     {
         return url == null ? cmd : url;
@@ -288,10 +301,12 @@ public abstract class UrlCommandCell implements CommandCell
     public int compareTo(CommandCell cmdCell)
     {
         if (cmd != null) {
-            return cmd.compareToIgnoreCase(cmdCell.getCmd());
+            String safeCmd = cmdCell.getCmd();
+            return cmd.compareTo(safeCmd == null ? "" : safeCmd);
         }
 
-        return url.compareToIgnoreCase(cmdCell.getUrl());
+        String safeUrl = cmdCell.getUrl();
+        return url.compareTo(safeUrl == null ? "" : safeUrl);
     }
 
     public void getCubeNamesFromCommandText(Set<String> cubeNames) {}

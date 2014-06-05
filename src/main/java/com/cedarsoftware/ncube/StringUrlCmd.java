@@ -23,9 +23,9 @@ import java.util.Map;
  */
 public class StringUrlCmd extends UrlCommandCell
 {
-    public StringUrlCmd(boolean cache)
+    public StringUrlCmd(String url, boolean cache)
     {
-        super(null, cache);
+        super(null, url, cache);
     }
 
     public Object execute(Object data, Map ctx)

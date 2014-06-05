@@ -25,9 +25,9 @@ import java.util.Map;
  */
 public class BinaryUrlCmd extends UrlCommandCell
 {
-    public BinaryUrlCmd(boolean cache)
+    public BinaryUrlCmd(String url, boolean cache)
     {
-        super(null, cache);
+        super(null, url, cache);
     }
 
     protected Object fetchContentFromUrl()

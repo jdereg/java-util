@@ -42,14 +42,14 @@ import java.util.Set;
  */
 public class GroovyExpression extends GroovyBase
 {
-    public GroovyExpression(String cmd)
+    public GroovyExpression(String cmd, String url)
     {
-        super(cmd, true);
+        super(cmd, url, true);
     }
 
-    public GroovyExpression(String cmd, boolean cache)
+    public GroovyExpression(String cmd, String url, boolean cache)
     {
-        super(cmd, cache);
+        super(cmd, url, cache);
     }
 
     public String buildGroovy(String theirGroovy, String cubeName, String cmdHash)

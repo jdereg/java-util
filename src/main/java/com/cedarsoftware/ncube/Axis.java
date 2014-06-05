@@ -641,7 +641,7 @@ public class Axis
                 }
 
             case EXPRESSION:
-                return new GroovyExpression(input, true);
+                return new GroovyExpression(input, null, true);
 
             case COMPARABLE:
                 try

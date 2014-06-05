@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
-import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
@@ -21,7 +20,6 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -237,13 +235,13 @@ DELIMITER ;
         Map<String, Object> coord = new HashMap<String, Object>();
         coord.put("BU", null);    // default column
         coord.put("PROD_LINE", "CommAuto");
-        ncube.setCell(new GroovyExpression("@CommAuto([:])"), coord);
+        ncube.setCell(new GroovyExpression("@CommAuto([:])", null), coord);
         coord.put("PROD_LINE", "CommGL");
-        ncube.setCell(new GroovyExpression("@CommGL(input)"), coord);
+        ncube.setCell(new GroovyExpression("@CommGL(input)", null), coord);
         coord.put("PROD_LINE", "CommIM");
-        ncube.setCell(new GroovyExpression("$CommIM(input)"), coord);
+        ncube.setCell(new GroovyExpression("$CommIM(input)", null), coord);
         coord.put("PROD_LINE", "SBPProperty");
-        ncube.setCell(new GroovyExpression("$SBPProperty(input)"), coord);
+        ncube.setCell(new GroovyExpression("$SBPProperty(input)", null), coord);
 
         coord.clear();
         coord.put("Attribute", "busType");
@@ -1554,8 +1552,8 @@ DELIMITER ;
         coord2.put("Country", "Canada");
         coord2.put("Province", "Quebec");
 
-        continentCounty.setCell(new GroovyExpression("$States(input)"), coord1);
-        continentCounty.setCell(new GroovyExpression("$Provinces(input)"), coord2);
+        continentCounty.setCell(new GroovyExpression("$States(input)", null), coord1);
+        continentCounty.setCell(new GroovyExpression("$Provinces(input)", null), coord2);
 
         usa.setCell(1.0, coord1);
         canada.setCell(0.78, coord2);
@@ -1594,8 +1592,8 @@ DELIMITER ;
         coord2.put("Country", "Canada");
         coord2.put("Province", "Quebec");
 
-        continentCounty.setCell(new GroovyExpression("$StatesX(input)"), coord1);
-        continentCounty.setCell(new GroovyExpression("$Provinces(input)"), coord2);
+        continentCounty.setCell(new GroovyExpression("$StatesX(input)", null), coord1);
+        continentCounty.setCell(new GroovyExpression("$Provinces(input)", null), coord2);
 
         usa.setCell(1.0, coord1);
         canada.setCell(0.78, coord2);
@@ -1642,8 +1640,8 @@ DELIMITER ;
         coord2.put("Country", "Canada");
         coord2.put("Province", "Quebec");
 
-        continentCounty.setCell(new GroovyExpression("@test.States([:])"), coord1);
-        continentCounty.setCell(new GroovyExpression("$test.Provinces(crunch)"), coord2);
+        continentCounty.setCell(new GroovyExpression("@test.States([:])", null), coord1);
+        continentCounty.setCell(new GroovyExpression("$test.Provinces(crunch)", null), coord2);
 
         usa.setCell(1.0, coord1);
         canada.setCell(0.78, coord2);
@@ -3132,19 +3130,19 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("Continent", "Africa");
-        continents.setCell(new GroovyExpression("$AfricaCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$AfricaCountries(input)", null), coord);
         coord.put("Continent", "Antarctica");
-        continents.setCell(new GroovyExpression("$AntarticaCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$AntarticaCountries(input)", null), coord);
         coord.put("Continent", "Asia");
-        continents.setCell(new GroovyExpression("$AsiaCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$AsiaCountries(input)", null), coord);
         coord.put("Continent", "Australia");
-        continents.setCell(new GroovyExpression("$AustraliaCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$AustraliaCountries(input)", null), coord);
         coord.put("Continent", "Europe");
-        continents.setCell(new GroovyExpression("$EuropeanCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$EuropeanCountries(input)", null), coord);
         coord.put("Continent", "North America");
-        continents.setCell(new GroovyExpression("$NorthAmericaCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$NorthAmericaCountries(input)", null), coord);
         coord.put("Continent", "South America");
-        continents.setCell(new GroovyExpression("$SouthAmericaCountries(input)"), coord);
+        continents.setCell(new GroovyExpression("$SouthAmericaCountries(input)", null), coord);
 
         coord.put("Continent", "North America");
         coord.put("Country", "USA");
@@ -3157,7 +3155,7 @@ DELIMITER ;
         country.addColumn("Mexico");
         naCountries.addAxis(country);
 
-        naCountries.setCell(new GroovyExpression("$UsaStates(input)"), coord);
+        naCountries.setCell(new GroovyExpression("$UsaStates(input)", null), coord);
         NCubeManager.addCube(continents, "test");
         NCubeManager.addCube(naCountries, "test");
 
@@ -3712,9 +3710,9 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("type", "good");
-        ncube.setCell(new GroovyExpression("output.out='dog'; output['ncube']=ncube; return 'great'"), coord);
+        ncube.setCell(new GroovyExpression("output.out='dog'; output['ncube']=ncube; return 'great'", null), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("input.type='scalar'; return $(input)"), coord);
+        ncube.setCell(new GroovyExpression("input.type='scalar'; return $(input)", null), coord);
         coord.put("type", "scalar");
         ncube.setCell(16, coord);
 
@@ -3744,7 +3742,7 @@ DELIMITER ;
 
         Map input = new HashMap();
         input.put("type", "bad");
-        ncube.setCell(new GroovyExpression("input['type']='scalar'; output.funny = 'bone'; return 5"), input);
+        ncube.setCell(new GroovyExpression("input['type']='scalar'; output.funny = 'bone'; return 5", null), input);
 
         Map output = new HashMap();
         input.put("type", "bad");
@@ -3766,11 +3764,11 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("type", "good");
-        ncube.setCell(new GroovyExpression("$GroovyCube([type:'property'])"), coord);
+        ncube.setCell(new GroovyExpression("$GroovyCube([type:'property'])", null), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("def total = 0; (1..10).each { i -> total += i}; return total"), coord);
+        ncube.setCell(new GroovyExpression("def total = 0; (1..10).each { i -> total += i}; return total", null), coord);
         coord.put("type", "property");
-        ncube.setCell(new GroovyExpression("9"), coord);
+        ncube.setCell(new GroovyExpression("9", null), coord);
 
         Map output = new HashMap();
         coord.put("type", "good");
@@ -3798,7 +3796,7 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("age", 25);
-        ncube.setCell(new GroovyExpression("def age=input['age']; return Math.abs(age - 100)"), coord);
+        ncube.setCell(new GroovyExpression("def age=input['age']; return Math.abs(age - 100)", null), coord);
 
         Map output = new HashMap();
         coord.put("age", 25);
@@ -3828,7 +3826,7 @@ DELIMITER ;
                         " jump(x)" +
                         "}\n" +
                         "int jump(int x) { x * 2; }" +
-                        "}"), coord);
+                        "}", null), coord);
 
         Map output = new HashMap();
         coord.put("method", "doIt");
@@ -3870,7 +3868,7 @@ DELIMITER ;
                         "static class Fargo {" +
                         "static int freeze(int d) {" +
                         "  -d" +
-                        "}}}"), coord);
+                        "}}}", null), coord);
 
         Map output = new HashMap();
         coord.put("age", 25);
@@ -3907,7 +3905,7 @@ DELIMITER ;
         {
             ncube.setCell(new GroovyMethod(
                     "Object run(Map args whoops) " +
-                            "{ 1 }"), coord);
+                            "{ 1 }", null), coord);
 
             ncube.getCell(coord, new HashMap());
             fail("Should not make it here");
@@ -3922,7 +3920,7 @@ DELIMITER ;
         {
             ncube.setCell(new GroovyMethod(
                     "def run(Map args whoops) " +
-                            "{ 1 }"), coord);
+                            "{ 1 }", null), coord);
 
             ncube.getCell(coord, new HashMap());
             fail("Should not make it here");
@@ -3953,7 +3951,7 @@ DELIMITER ;
                         "def oldify() " +
                         "{" +
                         " input['age'] * 10;" +
-                        "}}"), coord);
+                        "}}", null), coord);
 
         Map output = new HashMap();
         coord.put("age", 25);
@@ -4001,9 +3999,9 @@ DELIMITER ;
         Map coord = new HashMap();
         coord.put("type", "good");
         String className = TestNCube.class.getName();
-        ncube.setCell(new GroovyExpression(className + "$CallJavaTest.testInput(input, output, input.type)"), coord);
+        ncube.setCell(new GroovyExpression(className + "$CallJavaTest.testInput(input, output, input.type)", null), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("return " + className + "$CallJavaTest.testInput(input, output, input.type)"), coord);
+        ncube.setCell(new GroovyExpression("return " + className + "$CallJavaTest.testInput(input, output, input.type)", null), coord);
 
         Map output = new HashMap();
         coord.put("type", "good");
@@ -4031,9 +4029,9 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("type", "good");
-        ncube.setCell(new GroovyExpression("$GroovyCube([type:'alpha'])"), coord);
+        ncube.setCell(new GroovyExpression("$GroovyCube([type:'alpha'])", null), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("$([type:'beta'])"), coord);
+        ncube.setCell(new GroovyExpression("$([type:'beta'])", null), coord);
         coord.put("type", "alpha");
         ncube.setCell(16, coord);
         coord.put("type", "beta");
@@ -4062,13 +4060,13 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("type", "good");
-        ncube.setCell(new GroovyExpression("$GroovyCube([type:'alpha'])"), coord);
+        ncube.setCell(new GroovyExpression("$GroovyCube([type:'alpha'])", null), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("$([type:'beta'])"), coord);
+        ncube.setCell(new GroovyExpression("$([type:'beta'])", null), coord);
         coord.put("type", "alpha");
-        ncube.setCell(new GroovyExpression("output['stack'] = 'foo'; output.good=16"), coord);
+        ncube.setCell(new GroovyExpression("output['stack'] = 'foo'; output.good=16", null), coord);
         coord.put("type", "beta");
-        ncube.setCell(new GroovyExpression("output.stack = 'foo'; output.bad=26"), coord);
+        ncube.setCell(new GroovyExpression("output.stack = 'foo'; output.bad=26", null), coord);
 
         coord.put("type", "good");
         Map output = new HashMap();
@@ -4098,9 +4096,9 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("type", "good");
-        ncube.setCell(new GroovyExpression("@JoinedCube([:])"), coord);
+        ncube.setCell(new GroovyExpression("@JoinedCube([:])", null), coord);
         coord.put("type", "bad");
-        ncube.setCell(new GroovyExpression("@JoinedCube([])"), coord);      // Can't pass an array
+        ncube.setCell(new GroovyExpression("@JoinedCube([])", null), coord);      // Can't pass an array
 
         NCube cube2 = new NCube("JoinedCube");
         axis = new Axis("state", AxisType.DISCRETE, AxisValueType.LONG.STRING, false);
@@ -4142,6 +4140,7 @@ DELIMITER ;
         assertTrue(names.contains("type"));
     }
 
+    /*
     @Test
     public void testNullCommand() throws Exception
     {
@@ -4154,7 +4153,7 @@ DELIMITER ;
 
         Map coord = new HashMap();
         coord.put("type", "good");
-        ncube.setCell(new GroovyMethod(null), coord);
+        ncube.setCell(new GroovyMethod(null, null), coord);
 
         try
         {
@@ -4166,6 +4165,7 @@ DELIMITER ;
             assertTrue(e instanceof RuntimeException);
         }
     }
+    */
 
     @Test
     public void testNCubeManagerLoadCube() throws Exception
@@ -5743,7 +5743,7 @@ DELIMITER ;
 
         // Expression
         Axis exp = new Axis("Condition", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
-        assertEquals(new GroovyExpression("println 'Hello'"), exp.convertStringToColumnValue("println 'Hello'"));
+        assertEquals(new GroovyExpression("println 'Hello'", null), exp.convertStringToColumnValue("println 'Hello'"));
 
         // Comparable (this allows user to create Java Comparable object instances as Column values!
         Axis comp = new Axis("Comparable", AxisType.DISCRETE, AxisValueType.COMPARABLE, false);
@@ -5902,14 +5902,6 @@ DELIMITER ;
         coord.put("content", "vend");
         String html2 = (String) ncube.getCell(coord);
         assertNotEquals(html, html2);
-
-        //coord.put("protocol", "http");
-        //coord.put("content", "vend");
-        //coord.put("env_level", "changeable");
-        //coord.put("base.url", "foo");
-        //String html3 = (String) ncube.getCell(coord);
-        //assertEquals(html2, html3);
-
     }
 
     @Test
@@ -6426,26 +6418,19 @@ DELIMITER ;
     }
 
 
-    @Test(expected = IllegalStateException.class)
-    public void testInvalidUrlCommand() throws Exception
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidArgumentsToConstructor() throws Exception
     {
-        NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");
-        Map<Set<Column>, Object> cells = new HashMap<Set<Column>, Object>();
-        Set<Column> cols = new HashSet<Column>();
-
-        GroovyTemplate t = new GroovyTemplate(null, false);
-
-
-        Column c = new Column(0, false);
-        c.setValue("String");
-
-        cols.add(c);
-        cells.put(cols, t);
-
-        JsonFormatter formatter = new JsonFormatter();
-        formatter.writeCells(cells);
+        new GroovyTemplate(null, null, false);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidArgumentsToConstructor2() throws Exception
+    {
+        new GroovyMethod(null, null, false);
+    }
+
+    /*
     @Test(expected = IllegalStateException.class)
     public void testInvalidColumn() throws Exception
     {
@@ -6454,13 +6439,14 @@ DELIMITER ;
         List<Column> cols = new ArrayList<Column>();
 
         Column c = new Column(0, false);
-        c.setValue(new GroovyTemplate(null, false));
+        c.setValue(new GroovyTemplate(null, null, false));
 
         cols.add(c);
 
         JsonFormatter formatter = new JsonFormatter();
         formatter.writeColumns(cols);
     }
+*/
 
     @Test
     public void testDefaultColumnOnRuleAxis() throws Exception

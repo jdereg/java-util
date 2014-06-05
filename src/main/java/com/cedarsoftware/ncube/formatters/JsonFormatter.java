@@ -233,18 +233,14 @@ public class JsonFormatter implements NCubeFormatter
 
     public void writeCommandCell(UrlCommandCell cmd) throws IOException
     {
-        if (!cmd.isCachable()) {
-            writeAttribute("cache", cmd.isCachable(), true);
+        if (!cmd.isCacheable()) {
+            writeAttribute("cache", cmd.isCacheable(), true);
         }
         if (cmd.getUrl() != null) {
             writeAttribute("url", cmd.getUrl(), false);
         }
         else
         {
-            if (cmd.getCmd() == null)
-            {
-                throw new IllegalStateException("Value and URL cannot both be null on command cell, n-cube: " + name);
-            }
             writeAttribute("value", cmd.getCmd(), false);
         }
     }

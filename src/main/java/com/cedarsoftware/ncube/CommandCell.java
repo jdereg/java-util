@@ -52,6 +52,8 @@ public interface CommandCell extends Comparable<CommandCell>
     // execute and return
     void prepare(Object data, Map ctx);
     Object execute(Object data, Map ctx);
+
+    // Fetch and item from the cache or remotely.
     Object fetch(Map ctx);
 
     void getCubeNamesFromCommandText(Set<String> cubeNames);

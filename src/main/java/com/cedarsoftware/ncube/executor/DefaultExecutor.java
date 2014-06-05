@@ -21,7 +21,7 @@ public class DefaultExecutor implements Executor
         String url = command.getUrl();
         Object cmd = command.getCmd();
 
-        if (url != null && cmd == null)
+        if (url != null)
         {
             command.expandUrl(url, ctx);
             cmd = command.fetch(ctx);

@@ -77,6 +77,23 @@ public class NCubeGroovyExpression
         return cube.getCell(input, output);
     }
 
+    public Object runRule(Map coord)
+    {
+        input.putAll(coord);
+        return ncube.getCells(input, output);
+    }
+
+    public Object runRule(String name, Map coord)
+    {
+        input.putAll(coord);
+        NCube cube = NCubeManager.getCube(name, ncube.getVersion());
+        if (cube == null)
+        {
+            throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting relative (@) reference to cell: " + coord.toString());
+        }
+        return cube.getCells(input, output);
+    }
+
     public void ruleStop()
     {
         throw new RuleStop();

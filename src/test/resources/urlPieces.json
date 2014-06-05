@@ -19,11 +19,13 @@
             "preferredOrder":0,
             "columns":[
                 { "id":"local"},
-                { "id":"dev"}
+                { "id":"dev"},
+                { "id":"changeable"}
         ]}
     ],
     "cells":[
         { "id":["http","local"], "type":"string", "value":"http://tests.codetested.com"},
-        { "id":["http","dev"], "type":"string", "value":"res://files"}
+        { "id":["http","dev"], "type":"string", "value":"res://files"},
+        { "id":["http","changeable"], "type":"exp", "url":"res://input['base.url']"}
     ]
 }

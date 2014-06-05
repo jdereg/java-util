@@ -17,10 +17,12 @@
             "hasDefault":false,
             "preferredOrder":0,
             "columns":[
-                { "id":"index"}
+                { "id":"index"},
+                { "id":"404"}
             ]}
     ],
     "cells":[
-        { "id":["view","index"], "type":"string", "url":"http://www.cedarsoftware.com/tests/ncube/some.txt"}
+        { "id":["view","index"], "type":"string", "url":"http://www.cedarsoftware.com/tests/ncube/some.txt"},
+        { "id":["view","404"], "type":"string", "url":"http://www.cedarsoftware.com/tests/does/not/exist/index.html"}
     ]
 }

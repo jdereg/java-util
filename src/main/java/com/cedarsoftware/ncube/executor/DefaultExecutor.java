@@ -14,29 +14,22 @@ public class DefaultExecutor implements Executor
         return c;
     }
 
-    public Object executeCommand(CommandCell c, Map<String, Object> ctx)
+    public Object executeCommand(CommandCell command, Map<String, Object> ctx)
     {
-        if (c.hasErrors()) {
-            // If the cell failed to compile earlier, do not keep trying to recompile or run it.
-            throw new IllegalStateException(c.getErrorMessage());
-        }
+        command.failOnErrors();
 
-        String url = c.getUrl();
-        Object cmd = c.getCmd();
+        String url = command.getUrl();
+        Object res = command.getOperableCmd();
 
-        if (url != null && !c.hasBeenFetched())
+        if (url != null && res == null)
         {
-            if (!c.isExpanded())
-            {
-                c.expandUrl(url, ctx);
-            }
-
-            cmd = c.fetch(ctx);
-            c.cache(cmd);
+            command.expandUrl(url, ctx);
+            res = command.fetch(ctx);
+            command.cache(res);
         }
 
-        c.prepare(cmd, ctx);
-        return c.execute(cmd, ctx);
+        command.prepare(res, ctx);
+        return command.execute(res, ctx);
     }
 
 }

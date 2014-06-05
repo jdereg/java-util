@@ -5,12 +5,15 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -19,10 +22,16 @@ import static org.junit.Assert.assertTrue;
 public class TestNCubeConcurrencyIssue
 {
     @Test
-    public void testConcurrencyWillFail() throws Exception
+    public void testConcurrencyWithDifferentFiles() throws Exception
+    {
+        concurrencyTest("StringFromRemoteUrlBig", "/files/ncube/FUNCDESC.txt");
+        concurrencyTest("StringFromLocalUrl", "/files/some.txt");
+    }
+
+    private void concurrencyTest(final String site, String expectedFile) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-        URL url = NCubeManager.class.getResource("/files/ncube/FUNCDESC.txt");
+        URL url = NCubeManager.class.getResource(expectedFile);
         IOUtilities.transfer(new File(url.getFile()), out);
         final String expected = new String(out.toByteArray());
 
@@ -30,6 +39,7 @@ public class TestNCubeConcurrencyIssue
         //cell.setUrl("http://www.cedarsoftware.com/tests/ncube/some.txt");
         Thread[] threads = new Thread[16];
         final long[]iter = new long[16];
+
 
         final NCube n1 = NCubeManager.getNCubeFromResource("urlContent.json");
 
@@ -53,12 +63,13 @@ public class TestNCubeConcurrencyIssue
                         for (int j=0; j < 100; j++)
                         {
                             final Map coord = new HashMap();
-                            coord.put("sites", "StringFromRemoteUrlBig");
+                            coord.put("sites", site);
                             String item = (String)n1.getCell(coord);
 
                             items.put(item, item);
                             count[0] = count[0]+1;
-                            //assertEquals(expected, item);
+                            assertEquals(expected, item);
+                            assertNotSame(expected, item);
                         }
                         iter[index]++;
                     }

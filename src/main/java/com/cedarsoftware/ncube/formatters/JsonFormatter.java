@@ -233,8 +233,8 @@ public class JsonFormatter implements NCubeFormatter
 
     public void writeCommandCell(UrlCommandCell cmd) throws IOException
     {
-        if (!cmd.isCacheable()) {
-            writeAttribute("cache", cmd.isCacheable(), true);
+        if (!cmd.isCachable()) {
+            writeAttribute("cache", cmd.isCachable(), true);
         }
         if (cmd.getUrl() != null) {
             writeAttribute("url", cmd.getUrl(), false);

@@ -25,7 +25,7 @@ public class StringUrlCmd extends UrlCommandCell
 {
     public StringUrlCmd(boolean cache)
     {
-        super("", cache);
+        super(null, cache);
     }
 
     public Object execute(Object data, Map ctx)

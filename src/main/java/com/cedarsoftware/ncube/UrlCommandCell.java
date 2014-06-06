@@ -44,6 +44,7 @@ public abstract class UrlCommandCell implements CommandCell
     private AtomicBoolean hasBeenFetched = new AtomicBoolean(false);
     private Object cache;
     private int hash;
+    private final GroovyShell shell = new GroovyShell();
 
     static
     {
@@ -146,7 +147,6 @@ public abstract class UrlCommandCell implements CommandCell
             StringBuilder expandedUrl = new StringBuilder();
             int last = 0;
             Map input = (Map) args.get("input");
-            GroovyShell shell = new GroovyShell();
 
             while (m.find())
             {
@@ -309,4 +309,25 @@ public abstract class UrlCommandCell implements CommandCell
 
     public void getScopeKeys(Set<String> scopeKeys) {}
 
+    public Object execute(Map<String, Object> ctx)
+    {
+        failOnErrors();
+
+        Object data;
+
+        if (getUrl() == null)
+        {
+            data = getCmd();
+        }
+        else
+        {
+            expandUrl(ctx);
+            data = fetch(ctx);
+        }
+
+        prepare(data, ctx);
+        return executeInternal(data, ctx);
+    }
+
+    protected abstract Object executeInternal(Object data, Map<String, Object> ctx);
 }

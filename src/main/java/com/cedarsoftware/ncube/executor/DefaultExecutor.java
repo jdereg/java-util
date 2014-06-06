@@ -35,21 +35,6 @@ public class DefaultExecutor implements Executor
 
     public Object executeCommand(CommandCell command, Map<String, Object> ctx)
     {
-        command.failOnErrors();
-
-        Object cmd;
-
-        if (command.getUrl() == null)
-        {
-            cmd = command.getCmd();
-        }
-        else
-        {
-            command.expandUrl(ctx);
-            cmd = command.fetch(ctx);
-        }
-
-        command.prepare(cmd, ctx);
-        return command.execute(cmd, ctx);
+        return command.execute(ctx);
     }
 }

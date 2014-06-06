@@ -44,17 +44,7 @@ public interface CommandCell extends Comparable<CommandCell>
     String getCmd();
     String getUrl();
 
-    void failOnErrors();
-
-    //  Expands a url and sets it back on the url set during construction?
-    void expandUrl(Map ctx);
-
-    // execute and return
-    void prepare(Object data, Map ctx);
-    Object execute(Object data, Map ctx);
-
-    // Fetch and item from the cache or remotely.
-    Object fetch(Map ctx);
+    Object execute(Map<String, Object> ctx);
 
     void getCubeNamesFromCommandText(Set<String> cubeNames);
     void getScopeKeys(Set<String> scopeKeys);

@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube.util;
 
 import com.cedarsoftware.ncube.CommandCell;
+import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.UrlUtilities;
@@ -51,17 +52,18 @@ public class CdnUrlExecutor extends DefaultExecutor
 
     public Object executeCommand(CommandCell command, Map<String, Object> ctx)
     {
-        command.failOnErrors();
+        UrlCommandCell urlCommandCell = (UrlCommandCell) command;
+        urlCommandCell.failOnErrors();
         // ignore local caching
-        if (command.getUrl() != null)
+        if (urlCommandCell.getUrl() != null)
         {
-            command.expandUrl(ctx);
+            urlCommandCell.expandUrl(ctx);
 
             HttpURLConnection conn = null;
 
             try
             {
-                conn = (HttpURLConnection)new URL(command.getUrl()).openConnection();
+                conn = (HttpURLConnection)new URL(urlCommandCell.getUrl()).openConnection();
                 conn.setAllowUserInteraction(false);
                 conn.setRequestMethod(request.getMethod() != null ? request.getMethod() : "GET");
                 conn.setDoOutput(true); // true

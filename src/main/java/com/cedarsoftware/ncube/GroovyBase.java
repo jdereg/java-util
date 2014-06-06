@@ -70,7 +70,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract String getMethodToExecute(Map args);
 
-    public Object execute(Object data, Map args)
+    protected Object executeInternal(Object data, Map args)
     {
         String cubeName = getNCube(args).getName();
         try
@@ -258,6 +258,11 @@ public abstract class GroovyBase extends UrlCommandCell
     // TODO: Need to check for cubeName reference in runRuleCube(cubeName, input)
     static void getCubeNamesFromText(final Set<String> cubeNames, final String text)
     {
+        if (StringUtilities.isEmpty(text))
+        {
+            return;
+        }
+
         Matcher m = Regexes.groovyAbsRefCubeCellPattern.matcher(text);
         while (m.find())
         {

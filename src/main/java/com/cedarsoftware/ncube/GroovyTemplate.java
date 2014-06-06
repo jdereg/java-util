@@ -90,7 +90,7 @@ public class GroovyTemplate extends UrlCommandCell
         }
     }
 
-    public Object execute(final Object data, final Map args)
+    protected Object executeInternal(final Object data, final Map args)
     {
         // args.input, args.output, args.ncube, and args.stack,
         // are ALWAYS set by NCube before the execution gets here.

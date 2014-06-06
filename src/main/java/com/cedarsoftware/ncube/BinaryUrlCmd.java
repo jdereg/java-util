@@ -44,9 +44,8 @@ public class BinaryUrlCmd extends UrlCommandCell
         }
     }
 
-    public Object execute(Object data, Map ctx)
+    protected Object executeInternal(Object data, Map<String, Object> ctx)
     {
         return data;
     }
-
 }

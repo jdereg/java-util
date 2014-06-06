@@ -28,7 +28,7 @@ public class StringUrlCmd extends UrlCommandCell
         super(null, url, cache);
     }
 
-    public Object execute(Object data, Map ctx)
+    protected Object executeInternal(Object data, Map ctx)
     {
         return data;
     }

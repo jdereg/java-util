@@ -1,41 +1,34 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.IOUtilities;
 import org.junit.Test;
+import org.powermock.core.IdentityHashSet;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 /**
  * Created by kpartlow on 5/30/2014.
  */
-public class TestNCubeConcurrencyIssue
+public class TestNCubeConcurrency
 {
     @Test
     public void testConcurrencyWithDifferentFiles() throws Exception
     {
-        concurrencyTest("StringFromRemoteUrlBig", "/files/ncube/FUNCDESC.txt");
-        concurrencyTest("StringFromLocalUrl", "/files/some.txt");
+        concurrencyTest("StringFromRemoteUrlBig", true);
+        concurrencyTest("StringFromLocalUrl", false);
+        concurrencyTest("BinaryFromRemoteUrl", true);
+        concurrencyTest("BinaryFromLocalUrl", false);
     }
 
-    private void concurrencyTest(final String site, String expectedFile) throws IOException
-    {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-        URL url = NCubeManager.class.getResource(expectedFile);
-        IOUtilities.transfer(new File(url.getFile()), out);
-        final String expected = new String(out.toByteArray());
 
+    private void concurrencyTest(final String site, boolean cached) throws IOException
+    {
         //UrlCommandCell cell = new StringUrlCmd(false);
         //cell.setUrl("http://www.cedarsoftware.com/tests/ncube/some.txt");
         Thread[] threads = new Thread[16];
@@ -44,7 +37,7 @@ public class TestNCubeConcurrencyIssue
 
         final NCube n1 = NCubeManager.getNCubeFromResource("urlContent.json");
 
-        final Map<String, String> items = Collections.synchronizedMap(new IdentityHashMap<String, String>());
+        final Set<Object> items = Collections.synchronizedSet(new IdentityHashSet<Object>());
 
         final AtomicInteger count = new AtomicInteger(0);
 
@@ -63,13 +56,11 @@ public class TestNCubeConcurrencyIssue
                         {
                             final Map coord = new HashMap();
                             coord.put("sites", site);
-                            String item = (String)n1.getCell(coord);
+                            Object item = n1.getCell(coord);
 
-                            items.put(item, item);
+                            items.add(item);
 
                             count.incrementAndGet();
-                            assertEquals(expected, item);
-                            assertNotSame(expected, item);
                         }
                         iter[index]++;
                     }
@@ -92,7 +83,12 @@ public class TestNCubeConcurrencyIssue
             }
         }
 
-        assertTrue(String.format("Expected %d unique items, but only received %d", count.get(), items.size()), items.size() == count.get());
+        if (cached)
+        {
+            assertTrue(String.format("Expected 1 unique item since cached, but received %d", items.size()), 1 == items.size());
+        } else {
+            assertTrue(String.format("Expected %d unique items, but only received %d", count.get(), items.size()), items.size() == count.get());
+        }
     }
 
 }

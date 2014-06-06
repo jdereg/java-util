@@ -19,17 +19,16 @@ public class DefaultExecutor implements Executor
         command.failOnErrors();
 
         String url = command.getUrl();
-        Object res = command.getOperableCmd();
+        Object cmd = command.getCmd();
 
-        if (url != null && res == null)
+        if (url != null)
         {
             command.expandUrl(url, ctx);
-            res = command.fetch(ctx);
-            command.cache(res);
+            cmd = command.fetch(ctx);
         }
 
-        command.prepare(res, ctx);
-        return command.execute(res, ctx);
+        command.prepare(cmd, ctx);
+        return command.execute(cmd, ctx);
     }
 
 }

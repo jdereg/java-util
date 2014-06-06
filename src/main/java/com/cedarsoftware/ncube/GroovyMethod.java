@@ -54,14 +54,14 @@ import java.util.Map;
  */
 public class GroovyMethod extends GroovyBase
 {
-    public GroovyMethod(String cmd)
+    public GroovyMethod(String cmd, String url)
     {
-        super(cmd, true);
+        super(cmd, url, true);
     }
 
-    public GroovyMethod(String cmd, boolean cache)
+    public GroovyMethod(String cmd, String url, boolean cache)
     {
-        super(cmd, cache);
+        super(cmd, url, cache);
     }
 
     public String buildGroovy(String theirGroovy, String cubeName, String cmdHash)

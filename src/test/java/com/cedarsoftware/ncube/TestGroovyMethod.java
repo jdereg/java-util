@@ -14,7 +14,7 @@ public class TestGroovyMethod
 {
     @Test
     public void testGroovyMethod() {
-        GroovyMethod m = new GroovyMethod("cmd");
+        GroovyMethod m = new GroovyMethod("cmd", null);
         Map input = new HashMap();
         input.put("method", "foo");
         Map coord = new HashMap();

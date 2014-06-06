@@ -37,9 +37,9 @@ public class GroovyTemplate extends UrlCommandCell
 {
     private Template resolvedTemplate;
 
-    public GroovyTemplate(String cmd, boolean cache)
+    public GroovyTemplate(String cmd, String url, boolean cache)
     {
-        super(cmd, cache);
+        super(cmd, url, cache);
     }
 
     public void getCubeNamesFromCommandText(final Set<String> cubeNames)

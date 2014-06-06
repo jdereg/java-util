@@ -30,7 +30,6 @@ public class NCubeGroovyExpression
 {
     protected Map input;
     protected Map output;
-    protected Object stack;
     protected NCube ncube;
 
     /**
@@ -41,7 +40,6 @@ public class NCubeGroovyExpression
     {
         input = (Map) args.get("input");
         output = (Map) args.get("output");
-        stack = args.get("stack");
         ncube = (NCube) args.get("ncube");
     }
 
@@ -77,19 +75,20 @@ public class NCubeGroovyExpression
         return cube.getCell(input, output);
     }
 
+    // TODO: Need to make this work like GOTO (ruleStop() - runRule() starts again not returning to where it was called from)
     public Object runRule(Map coord)
     {
         input.putAll(coord);
         return ncube.getCells(input, output);
     }
 
-    public Object runRule(String name, Map coord)
+    public Object runRuleCube(String name, Map coord)
     {
         input.putAll(coord);
         NCube cube = NCubeManager.getCube(name, ncube.getVersion());
         if (cube == null)
         {
-            throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting relative (@) reference to cell: " + coord.toString());
+            throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting runRuleCube() to cell: " + coord.toString());
         }
         return cube.getCells(input, output);
     }

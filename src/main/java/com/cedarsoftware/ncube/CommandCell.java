@@ -47,7 +47,7 @@ public interface CommandCell extends Comparable<CommandCell>
     void failOnErrors();
 
     //  Expands a url and sets it back on the url set during construction?
-    void expandUrl(String url, Map ctx);
+    void expandUrl(Map ctx);
 
     // execute and return
     void prepare(Object data, Map ctx);

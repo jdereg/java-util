@@ -31,29 +31,22 @@ import java.util.regex.Matcher;
  */
 public abstract class UrlCommandCell implements CommandCell
 {
+    static final String proxyServer;
+    static final int proxyPort;
     private String cmd;
     private transient String cmdHash;
     private volatile transient Class runnableCode = null;
     private volatile transient String errorMsg = null;
-    static final String proxyServer;
-    static final int proxyPort;
     private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
-
     private String url = null;
     private final boolean cacheable;
     private AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
     private AtomicBoolean hasBeenFetched = new AtomicBoolean(false);
     private Object cache;
     private int hash;
-    //private volatile AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
 
     static
     {
-        /**
-         * These shouldn't be set this way.  If they are going to be environment variables
-         * they should set it at Tomcat or application startup.  Then all proxying will
-         * be done automatically.
-         */
         proxyServer = SystemUtilities.getExternalVariable("http.proxy.host");
         String port = SystemUtilities.getExternalVariable("http.proxy.port");
         if (proxyServer != null)
@@ -75,11 +68,13 @@ public abstract class UrlCommandCell implements CommandCell
 
     public UrlCommandCell(String cmd, String url, boolean cacheable)
     {
-        if (cmd == null && url == null) {
+        if (cmd == null && url == null)
+        {
             throw new IllegalArgumentException("Both 'cmd' and 'url' cannot be null");
         }
 
-        if (cmd != null && cmd.isEmpty()) {
+        if (cmd != null && cmd.isEmpty())
+        {
             throw new IllegalArgumentException("'cmd' cannot be empty");
         }
 
@@ -89,11 +84,6 @@ public abstract class UrlCommandCell implements CommandCell
         this.hash = cmd == null ? url.hashCode() : cmd.hashCode();
     }
 
-    //public void setUrl(String url)
-    //{
-    //    this.url = url;
-    //}
-
     public String getUrl()
     {
         return url;
@@ -101,16 +91,20 @@ public abstract class UrlCommandCell implements CommandCell
 
     public Object fetch(Map args)
     {
-        if (!cacheable) {
+        if (!cacheable)
+        {
             return fetchContentFromUrl(args);
         }
 
-        if (hasBeenFetched.get()) {
+        if (hasBeenFetched.get())
+        {
             return cache;
         }
 
-        synchronized (this) {
-            if (hasBeenFetched.get()) {
+        synchronized (this)
+        {
+            if (hasBeenFetched.get())
+            {
                 return cache;
             }
 
@@ -134,15 +128,17 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    public void expandUrl(String url, Map args)
+    public void expandUrl(Map args)
     {
-        if (isUrlExpanded.get()) {
+        if (isUrlExpanded.get())
+        {
             return;
         }
 
         synchronized(this)
         {
-            if (isUrlExpanded.get()) {
+            if (isUrlExpanded.get())
+            {
                 return;
             }
             NCube ncube = (NCube) args.get("ncube");
@@ -171,17 +167,15 @@ public abstract class UrlCommandCell implements CommandCell
             }
 
             expandedUrl.append(url.substring(last));
-            this.url = expandedUrl.toString();
-            this.isUrlExpanded.set(true);
-
+            url = expandedUrl.toString();
+            isUrlExpanded.set(true);
         }
-
     }
 
-    public boolean isCacheable() {
+    public boolean isCacheable()
+    {
         return cacheable;
     }
-
 
     public static NCube getNCube(Map args)
     {
@@ -223,7 +217,8 @@ public abstract class UrlCommandCell implements CommandCell
 
         UrlCommandCell that = (UrlCommandCell) other;
 
-        if (cmd != null) {
+        if (cmd != null)
+        {
             return cmd.equals(that.cmd);
         }
 
@@ -235,11 +230,8 @@ public abstract class UrlCommandCell implements CommandCell
         return this.hash;
     }
 
-    public synchronized boolean isCached() {
-        return this.cache != null;
-    }
-
-    public void prepare(Object cmd, Map ctx) {
+    public void prepare(Object cmd, Map ctx)
+    {
     }
 
     public Class getRunnableCode()
@@ -251,7 +243,6 @@ public abstract class UrlCommandCell implements CommandCell
     {
         this.runnableCode = runnableCode;
     }
-
 
     public String getCmd()
     {
@@ -279,14 +270,15 @@ public abstract class UrlCommandCell implements CommandCell
         return cmdHash;
     }
 
-
     public String toString()
     {
         return url == null ? cmd : url;
     }
 
-    public void failOnErrors() {
-        if (errorMsg != null) {
+    public void failOnErrors()
+    {
+        if (errorMsg != null)
+        {
             throw new IllegalStateException(errorMsg);
         }
     }
@@ -295,11 +287,16 @@ public abstract class UrlCommandCell implements CommandCell
     {
         this.errorMsg = errorMsg;
     }
-    public String getErrorMessage() { return this.errorMsg; }
+
+    public String getErrorMessage()
+    {
+        return this.errorMsg;
+    }
 
     public int compareTo(CommandCell cmdCell)
     {
-        if (cmd != null) {
+        if (cmd != null)
+        {
             String safeCmd = cmdCell.getCmd();
             return cmd.compareTo(safeCmd == null ? "" : safeCmd);
         }

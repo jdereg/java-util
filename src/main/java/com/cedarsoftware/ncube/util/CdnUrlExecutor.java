@@ -52,21 +52,17 @@ public class CdnUrlExecutor extends DefaultExecutor
     public Object executeCommand(CommandCell command, Map<String, Object> ctx)
     {
         command.failOnErrors();
-
-        String url = command.getUrl();
-
         // ignore local caching
-        if (url != null)
+        if (command.getUrl() != null)
         {
-            command.expandUrl(url, ctx);
+            command.expandUrl(ctx);
 
             HttpURLConnection conn = null;
 
             try
             {
-                conn = (HttpURLConnection)new URL(url).openConnection();
+                conn = (HttpURLConnection)new URL(command.getUrl()).openConnection();
                 conn.setAllowUserInteraction(false);
-
                 conn.setRequestMethod(request.getMethod() != null ? request.getMethod() : "GET");
                 conn.setDoOutput(true); // true
                 conn.setDoInput(true); // true
@@ -79,25 +75,30 @@ public class CdnUrlExecutor extends DefaultExecutor
 
                 int resCode = conn.getResponseCode();
 
-                if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT) {
+                if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT)
+                {
                     transferResponseHeaders(conn);
                     transferFromServer(conn);
-                } else {
+                }
+                else
+                {
                     UrlUtilities.readErrorResponse(conn);
                     response.sendError(resCode, conn.getResponseMessage());
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 try
                 {
                     LOG.warn(e.getMessage(), e);
                     UrlUtilities.readErrorResponse(conn);
                     response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
-                } catch (IOException ignored) {
-                    //  do nothing.
-                    LOG.warn(ignored.getMessage());
+                }
+                catch (IOException e1)
+                {
+                    LOG.warn(e1.getMessage());
                 }
             }
-
         }
 
         return null;
@@ -113,7 +114,9 @@ public class CdnUrlExecutor extends DefaultExecutor
             in = request.getInputStream();
             out = new BufferedOutputStream(conn.getOutputStream(), 32768);
             IOUtilities.transfer(in, out);
-        } finally {
+        }
+        finally
+        {
             IOUtilities.close(in);
             IOUtilities.close(out);
         }
@@ -123,18 +126,21 @@ public class CdnUrlExecutor extends DefaultExecutor
     {
         InputStream in = null;
         OutputStream out = null;
-        try {
+        try
+        {
             in = new BufferedInputStream(conn.getInputStream(), 32768);
             out = response.getOutputStream();
             IOUtilities.transfer(in, out);
-        } finally {
+        }
+        finally
+        {
             IOUtilities.close(in);
             IOUtilities.close(out);
         }
     }
 
-    private void setupRequestHeaders(HttpURLConnection c) {
-
+    private void setupRequestHeaders(HttpURLConnection c)
+    {
         Enumeration headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements())
         {
@@ -144,8 +150,8 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    private void transferResponseHeaders(HttpURLConnection c) {
-
+    private void transferResponseHeaders(HttpURLConnection c)
+    {
         Map<String, List<String>> headerFields = c.getHeaderFields();
 
         addHeaders("Content-Length", headerFields);
@@ -158,16 +164,17 @@ public class CdnUrlExecutor extends DefaultExecutor
         addHeaders("Accept", headerFields);
     }
 
-    private void addHeaders(String field, Map<String, List<String>> fields) {
+    private void addHeaders(String field, Map<String, List<String>> fields)
+    {
         List<String> items = fields.get(field);
 
-        if (items != null) {
+        if (items != null)
+        {
             for (String s: items)
             {
                 response.addHeader(field, s);
             }
         }
     }
-
 }
 

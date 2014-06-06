@@ -255,6 +255,7 @@ public abstract class GroovyBase extends UrlCommandCell
         getCubeNamesFromText(cubeNames, getCmd());
     }
 
+    // TODO: Need to check for cubeName reference in runRuleCube(cubeName, input)
     static void getCubeNamesFromText(final Set<String> cubeNames, final String text)
     {
         Matcher m = Regexes.groovyAbsRefCubeCellPattern.matcher(text);

@@ -4140,24 +4140,12 @@ DELIMITER ;
         assertTrue(names.contains("type"));
     }
 
-    /*
     @Test
     public void testNullCommand() throws Exception
     {
-        NCube ncube = new NCube("CallCube");
-        Axis axis = new Axis("type", AxisType.DISCRETE, AxisValueType.STRING, false);
-        axis.addColumn("good");
-        axis.addColumn("bad");
-        ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
-
-        Map coord = new HashMap();
-        coord.put("type", "good");
-        ncube.setCell(new GroovyMethod(null, null), coord);
-
         try
         {
-            ncube.getCell(coord);
+            new GroovyMethod(null, null);
             fail("Should not make it here.");
         }
         catch (Exception e)
@@ -4165,7 +4153,6 @@ DELIMITER ;
             assertTrue(e instanceof RuntimeException);
         }
     }
-    */
 
     @Test
     public void testNCubeManagerLoadCube() throws Exception
@@ -6430,23 +6417,11 @@ DELIMITER ;
         new GroovyMethod(null, null, false);
     }
 
-    /*
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidColumn() throws Exception
     {
-        NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");
-        Map<Set<Column>, Object> cells = new HashMap<Set<Column>, Object>();
-        List<Column> cols = new ArrayList<Column>();
-
-        Column c = new Column(0, false);
-        c.setValue(new GroovyTemplate(null, null, false));
-
-        cols.add(c);
-
-        JsonFormatter formatter = new JsonFormatter();
-        formatter.writeColumns(cols);
+        new GroovyTemplate(null, null, false);
     }
-*/
 
     @Test
     public void testDefaultColumnOnRuleAxis() throws Exception

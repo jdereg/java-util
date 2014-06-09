@@ -199,6 +199,7 @@ public abstract class GroovyBase extends UrlCommandCell
     protected void compile(String cubeName, String cmdHash) throws Exception
     {
         String url = getUrl();
+
         if (StringUtilities.hasContent(url))
         {
             url = url.trim();

@@ -40,7 +40,6 @@ import java.util.Set;
  */
 public interface CommandCell extends Comparable<CommandCell>
 {
-    //  Items set during construction.
     String getCmd();
     String getUrl();
 

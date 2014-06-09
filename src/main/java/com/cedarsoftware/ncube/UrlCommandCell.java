@@ -44,7 +44,7 @@ public abstract class UrlCommandCell implements CommandCell
     private AtomicBoolean hasBeenFetched = new AtomicBoolean(false);
     private Object cache;
     private int hash;
-    private final GroovyShell shell = new GroovyShell();
+    private static final GroovyShell shell = new GroovyShell();
 
     static
     {
@@ -249,9 +249,9 @@ public abstract class UrlCommandCell implements CommandCell
         return cmd;
     }
 
-    public String getCmdHash(String cmd)
+    public String getCmdHash(String command)
     {
-        if (StringUtilities.isEmpty(cmd))
+        if (StringUtilities.isEmpty(command))
         {
             return nullSHA1;
         }
@@ -260,11 +260,11 @@ public abstract class UrlCommandCell implements CommandCell
         {
             try
             {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes("UTF-8"));
+                cmdHash = EncryptionUtilities.calculateSHA1Hash(command.getBytes("UTF-8"));
             }
             catch (UnsupportedEncodingException e)
             {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(cmd.getBytes());
+                cmdHash = EncryptionUtilities.calculateSHA1Hash(command.getBytes());
             }
         }
         return cmdHash;

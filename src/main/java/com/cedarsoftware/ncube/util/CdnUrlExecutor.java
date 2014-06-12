@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -20,6 +21,8 @@ import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -43,6 +46,7 @@ public class CdnUrlExecutor extends DefaultExecutor
     private HttpServletRequest request;
     private HttpServletResponse response;
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
+    private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
 
     public CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)
     {
@@ -63,9 +67,16 @@ public class CdnUrlExecutor extends DefaultExecutor
 
             try
             {
-                conn = (HttpURLConnection)new URL(urlCommandCell.getUrl()).openConnection();
+
+                //  TODO:  Replace next two lines with the commented-out line below when next java-util version is published.
+                Matcher m = resPattern.matcher(urlCommandCell.getUrl());
+                URL url = m.find() ? UrlUtilities.class.getClassLoader().getResource(urlCommandCell.getUrl().substring(m.end())) : new URL(urlCommandCell.getUrl());
+
+                //  URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
+
+                conn = (HttpURLConnection)url.openConnection();
                 conn.setAllowUserInteraction(false);
-                conn.setRequestMethod(request.getMethod() != null ? request.getMethod() : "GET");
+                conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
                 conn.setDoOutput(true); // true
                 conn.setDoInput(true); // true
                 conn.setReadTimeout(220000);

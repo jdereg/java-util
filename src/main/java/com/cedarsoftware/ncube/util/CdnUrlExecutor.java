@@ -21,8 +21,6 @@ import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -46,8 +44,6 @@ public class CdnUrlExecutor extends DefaultExecutor
     private HttpServletRequest request;
     private HttpServletResponse response;
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
-    //  TODO:  Remove next line when next java-util version is published.
-    private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
 
     public CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)
     {
@@ -69,11 +65,7 @@ public class CdnUrlExecutor extends DefaultExecutor
             try
             {
 
-                //  TODO:  Replace next two lines with the commented-out line below when next java-util version is published.
-                Matcher m = resPattern.matcher(urlCommandCell.getUrl());
-                URL url = m.find() ? UrlUtilities.class.getClassLoader().getResource(urlCommandCell.getUrl().substring(m.end())) : new URL(urlCommandCell.getUrl());
-
-                //  URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
+                URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
 
                 conn = (HttpURLConnection)url.openConnection();
                 conn.setAllowUserInteraction(false);

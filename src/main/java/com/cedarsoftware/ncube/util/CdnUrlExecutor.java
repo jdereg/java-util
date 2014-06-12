@@ -46,6 +46,7 @@ public class CdnUrlExecutor extends DefaultExecutor
     private HttpServletRequest request;
     private HttpServletResponse response;
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
+    //  TODO:  Remove next line when next java-util version is published.
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
 
     public CdnUrlExecutor(HttpServletRequest request, HttpServletResponse response)

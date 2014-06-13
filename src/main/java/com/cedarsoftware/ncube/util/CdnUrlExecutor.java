@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,9 +64,12 @@ public class CdnUrlExecutor extends DefaultExecutor
 
             try
             {
-                conn = (HttpURLConnection)new URL(urlCommandCell.getUrl()).openConnection();
+
+                URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
+
+                conn = (HttpURLConnection)url.openConnection();
                 conn.setAllowUserInteraction(false);
-                conn.setRequestMethod(request.getMethod() != null ? request.getMethod() : "GET");
+                conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
                 conn.setDoOutput(true); // true
                 conn.setDoInput(true); // true
                 conn.setReadTimeout(220000);

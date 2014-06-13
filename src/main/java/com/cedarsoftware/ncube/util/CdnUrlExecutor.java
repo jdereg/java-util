@@ -66,12 +66,11 @@ public class CdnUrlExecutor extends DefaultExecutor
             {
 
                 URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
-
                 conn = (HttpURLConnection)url.openConnection();
                 conn.setAllowUserInteraction(false);
                 conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
-                conn.setDoOutput(true); // true
-                conn.setDoInput(true); // true
+                conn.setDoOutput(true);
+                conn.setDoInput(true);
                 conn.setReadTimeout(220000);
                 conn.setConnectTimeout(45000);
 

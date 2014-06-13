@@ -18,6 +18,7 @@ import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
@@ -478,9 +479,7 @@ public final class UrlUtilities
         URLConnection c = null;
         try
         {
-            Matcher m = resPattern.matcher(url);
-            URL u = m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
-
+            URL u = getActualUrl(url);
             c = getConnection(u, null, true, false, false, proxy, factory, verifier);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
@@ -529,9 +528,7 @@ public final class UrlUtilities
         URLConnection c = null;
         try
         {
-            Matcher m = resPattern.matcher(url);
-            URL u = m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
-
+            URL u = getActualUrl(url);
             c = getConnection(u, inCookies, true, false, false, proxy, factory, verifier);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
@@ -680,5 +677,10 @@ public final class UrlUtilities
             LOG.warn("Unable to fetch 'hostname'", e);
             return "localhost";
         }
+    }
+
+    public static URL getActualUrl(String url) throws MalformedURLException {
+        Matcher m = resPattern.matcher(url);
+        return m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
     }
 }

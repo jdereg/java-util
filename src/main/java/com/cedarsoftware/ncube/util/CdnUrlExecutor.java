@@ -8,6 +8,7 @@ import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import sun.net.www.protocol.file.FileURLConnection;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +68,15 @@ public class CdnUrlExecutor extends DefaultExecutor
             {
 
                 URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
-                conn = (HttpURLConnection)url.openConnection();
+                URLConnection connection = url.openConnection();
+                if (connection instanceof FileURLConnection)
+                {   // Handle a "file://" URL
+                    connection.connect();
+                    transferResponseHeaders(connection);
+                    transferFromServer(connection);
+                    return null;
+                }
+                conn = (HttpURLConnection) connection;
                 conn.setAllowUserInteraction(false);
                 conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
                 conn.setDoOutput(true);
@@ -109,7 +119,7 @@ public class CdnUrlExecutor extends DefaultExecutor
         return null;
     }
 
-    private void transferToServer(HttpURLConnection conn) throws IOException
+    private void transferToServer(URLConnection conn) throws IOException
     {
         OutputStream out = null;
         InputStream in = null;
@@ -127,7 +137,7 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    private void transferFromServer(HttpURLConnection conn) throws IOException
+    private void transferFromServer(URLConnection conn) throws IOException
     {
         InputStream in = null;
         OutputStream out = null;
@@ -144,7 +154,7 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    private void setupRequestHeaders(HttpURLConnection c)
+    private void setupRequestHeaders(URLConnection c)
     {
         Enumeration headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements())
@@ -155,7 +165,7 @@ public class CdnUrlExecutor extends DefaultExecutor
         }
     }
 
-    private void transferResponseHeaders(HttpURLConnection c)
+    private void transferResponseHeaders(URLConnection c)
     {
         Map<String, List<String>> headerFields = c.getHeaderFields();
 

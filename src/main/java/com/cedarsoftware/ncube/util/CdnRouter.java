@@ -85,7 +85,12 @@ public class CdnRouter
                 return;
             }
 
-            NCube routingCube = NCubeManager.getCube(cubeName, version);
+            coord.put(CONTENT_NAME, logicalName);
+            coord.put(CONTENT_TYPE, type);
+            Map output = new HashMap();
+            String resourceType = info[0];
+            String name = "cdn" + (resourceType.substring(0,1).toUpperCase() + resourceType.substring(1)) + "Router";
+            NCube routingCube = NCubeManager.getCube(name, version);
             if (routingCube == null)
             {
                 Connection connection = (Connection) coord.get(CONNECTION);
@@ -115,10 +120,6 @@ public class CdnRouter
                 }
                 routingCube = NCubeManager.loadCube(connection, app, cubeName, version, status, date);
             }
-
-            coord.put(CONTENT_NAME, logicalName);
-            coord.put(CONTENT_TYPE, type);
-            Map output = new HashMap();
             routingCube.getCell(coord, output, new CdnUrlExecutor(request, response));
         }
         catch (Exception e)

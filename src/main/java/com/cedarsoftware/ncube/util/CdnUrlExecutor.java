@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube.util;
 
 import com.cedarsoftware.ncube.CommandCell;
+import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.executor.DefaultExecutor;
 import com.cedarsoftware.util.IOUtilities;
@@ -8,7 +9,6 @@ import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import sun.net.www.protocol.file.FileURLConnection;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -57,6 +57,12 @@ public class CdnUrlExecutor extends DefaultExecutor
     {
         UrlCommandCell urlCommandCell = (UrlCommandCell) command;
         urlCommandCell.failOnErrors();
+
+        if (urlCommandCell instanceof GroovyTemplate)
+        {
+            return super.executeCommand(command, ctx);
+        }
+
         // ignore local caching
         if (urlCommandCell.getUrl() != null)
         {
@@ -66,10 +72,9 @@ public class CdnUrlExecutor extends DefaultExecutor
 
             try
             {
-
                 URL url = UrlUtilities.getActualUrl(urlCommandCell.getUrl());
                 URLConnection connection = url.openConnection();
-                if (connection instanceof FileURLConnection)
+                if (!(connection instanceof HttpURLConnection))
                 {   // Handle a "file://" URL
                     connection.connect();
                     transferResponseHeaders(connection);
@@ -185,11 +190,11 @@ public class CdnUrlExecutor extends DefaultExecutor
 
         if (items != null)
         {
-            for (String s: items)
+            for (String s : items)
             {
                 response.addHeader(field, s);
             }
         }
     }
 }
-
+ 

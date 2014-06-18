@@ -17,6 +17,7 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -100,9 +101,8 @@ public class TestNCube
     public static void setClassPath(String version) throws Exception
     {
         List<String> urls = new ArrayList<String>();
-        String prefix = new File(TestNCube.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getCanonicalPath();
-        prefix = "file://" + prefix + "/";
-        urls.add(prefix);
+        URL url = NCubeManager.class.getResource("/");
+        urls.add(url.toString());
         urls.add("http://www.cedarsoftware.com");
         NCubeManager.setUrlClassLoader(urls, version);
     }

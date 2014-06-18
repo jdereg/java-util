@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube.util;
 
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -16,6 +17,10 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URL;
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
@@ -29,6 +34,25 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({NCubeManager.class})
 public class TestCdnRouter
 {
+
+    @Before
+    public void setup() throws Exception{
+        NCubeManager.clearCubeList();
+        setClassPath("1.0.0");
+    }
+
+    public void tearDown() throws Exception {
+        NCubeManager.clearCubeList();
+    }
+
+    public static void setClassPath(String version) throws Exception {
+        List<String> urls = new ArrayList<String>();
+        URL url = NCubeManager.class.getResource("/");
+        urls.add(url.toString());
+        urls.add("http://www.cedarsoftware.com");
+        NCubeManager.setUrlClassLoader(urls, version);
+    }
+
 //    @Test
     public void testRoute() throws Exception
     {
@@ -129,16 +153,19 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
+        final Connection conn = Mockito.mock(Connection.class);
+
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CONNECTION, "dummy");
+                coord.put(CdnRouter.CONNECTION, conn);
                 coord.put(CdnRouter.APP, "ncube.test");
                 coord.put(CdnRouter.STATUS, "release");
                 coord.put(CdnRouter.CUBE_NAME, "test");
                 coord.put(CdnRouter.CUBE_VERSION, "1.0.0");
                 coord.put(CdnRouter.DATE, null);
+
             }
 
             public boolean isAuthorized(String type)
@@ -147,9 +174,12 @@ public class TestCdnRouter
             }
         });
 
+
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+
         PowerMockito.mockStatic(NCubeManager.class);
         when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
+
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);

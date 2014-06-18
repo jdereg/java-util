@@ -22,7 +22,7 @@
             ]}
     ],
     "cells":[
-        { "id":["view","index"], "type":"string", "url":"http://www.cedarsoftware.com/tests/ncube/some.txt"},
-        { "id":["view","404"], "type":"string", "url":"http://www.cedarsoftware.com/tests/does/not/exist/index.html"}
+        { "id":["view","index"], "type":"string", "url":"tests/ncube/some.txt"},
+        { "id":["view","404"], "type":"string", "url":"tests/does/not/exist/index.html"}
     ]
 }

@@ -18,6 +18,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -63,7 +64,7 @@ public class NCubeManager
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
-    private static Map<String, GroovyClassLoader> groovyClassLoaders = new ConcurrentHashMap<String, GroovyClassLoader>();
+    private static Map<String, URLClassLoader> urlClassLoaders = new ConcurrentHashMap<String, URLClassLoader>();
 
     /**
      * @param name String name of an NCube.
@@ -80,14 +81,14 @@ public class NCubeManager
         return name + '.' + version;
     }
 
-    public static void setGroovyClassLoaderUrls(List<String> urls, String version)
+    public static void setUrlClassLoader(List<String> urls, String version)
     {
-        if (groovyClassLoaders.containsKey(version))
+        if (urlClassLoaders.containsKey(version))
         {
             throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
         }
         GroovyClassLoader groovyClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
-        groovyClassLoaders.put(version, groovyClassLoader);
+        urlClassLoaders.put(version, groovyClassLoader);
 
         for (String url : urls)
         {
@@ -105,9 +106,9 @@ public class NCubeManager
         }
     }
 
-    public static GroovyClassLoader getGroovyClassLoader(String version)
+    public static URLClassLoader getUrlClassLoader(String version)
     {
-        return groovyClassLoaders.get(version);
+        return urlClassLoaders.get(version);
     }
 
     /**
@@ -177,11 +178,11 @@ public class NCubeManager
         synchronized (cubeList)
         {
             cubeList.clear();
-            for (Map.Entry<String, GroovyClassLoader> entry : groovyClassLoaders.entrySet())
+            for (Map.Entry<String, URLClassLoader> entry : urlClassLoaders.entrySet())
             {
-                entry.getValue().clearCache();
+                ((GroovyClassLoader)entry.getValue()).clearCache();
             }
-            groovyClassLoaders.clear();
+            urlClassLoaders.clear();
             GroovyBase.compiledClasses.clear();
             advices.clear();
         }

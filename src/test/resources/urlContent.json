@@ -22,13 +22,13 @@
             ]
     }],
     "cells":[
-        { "id":["StringFromLocalUrl"], "type":"string", "cache":false, "url":"res://files/some.txt"},
+        { "id":["StringFromLocalUrl"], "type":"string", "cache":false, "url":"files/some.txt"},
         { "id":["StringFromRemoteUrl"], "type":"string", "cache":false, "url":"http://www.cedarsoftware.com/tests/ncube/some.txt"},
         { "id":["StringFromValue"], "type":"string", "value":"return \"Local Hello, world.\""},
-        { "id":["BinaryFromLocalUrl"], "type":"binary", "cache":false, "url":"res://files/message.wav"},
+        { "id":["BinaryFromLocalUrl"], "type":"binary", "cache":false, "url":"files/message.wav"},
         { "id":["BinaryFromRemoteUrl"], "type":"binary", "cache":true, "url":"http://www.cedarsoftware.com/tests/ncube/message.wav"},
         { "id":["BinaryFromValue"], "type":"binary", "value":"BEAC1099"},
-        { "id":["TemplateFromLocalUrl"], "type":"template", "url":"res://files/hello.template"},
+        { "id":["TemplateFromLocalUrl"], "type":"template", "url":"files/hello.template"},
         { "id":["TemplateFromRemoteUrl"], "type":"template", "url":"http://www.cedarsoftware.com/tests/ncube/hello.template"},
         { "id":["MyOtherDriveUrlSSL"], "type":"exp", "url":"tests/ncube/hello.groovy"},
         { "id":["GroovyExpression"], "type":"string", "value":"return \"Hello, world.\""},

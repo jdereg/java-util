@@ -203,7 +203,7 @@ public abstract class GroovyBase extends UrlCommandCell
     protected void compile(NCube cube, String cmdHash) throws Exception
     {
         String url = getUrl();
-        GroovyClassLoader loader = NCubeManager.getGroovyClassLoader(cube.getVersion());
+        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
         if (loader == null)
         {
             throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + cube.getVersion());
@@ -214,7 +214,7 @@ public abstract class GroovyBase extends UrlCommandCell
             URL groovySourceUrl = loader.getResource(url);
             if (groovySourceUrl == null)
             {
-                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setGroovyClassLoaderUrls(): " + url);
+                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setUrlClassLoader(): " + url);
             }
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);

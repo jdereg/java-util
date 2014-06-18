@@ -104,7 +104,7 @@ public class TestNCube
         prefix = "file://" + prefix + "/";
         urls.add(prefix);
         urls.add("http://www.cedarsoftware.com");
-        NCubeManager.setGroovyClassLoaderUrls(urls, version);
+        NCubeManager.setUrlClassLoader(urls, version);
     }
 
     @Before

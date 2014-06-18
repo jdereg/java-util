@@ -6,6 +6,7 @@ import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
+import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyShell;
 
 import javax.servlet.http.HttpServletRequest;
@@ -17,6 +18,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Enumeration;
@@ -145,6 +147,7 @@ public abstract class UrlCommandCell implements CommandCell
 
     private void proxyFetch(Map input)
     {
+        NCube cube = getNCube(input);
         if (cacheable)
         {
             throw new IllegalStateException("Cache must be 'false' if content is being fetched from CDN via CdnRouter, input: " + input);
@@ -154,7 +157,7 @@ public abstract class UrlCommandCell implements CommandCell
         HttpURLConnection conn = null;
         try
         {
-            URL actualUrl = UrlUtilities.getActualUrl(getUrl());
+            URL actualUrl = getActualUrl(cube.getVersion());
             URLConnection connection = actualUrl.openConnection();
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
@@ -203,16 +206,36 @@ public abstract class UrlCommandCell implements CommandCell
 
     protected Object simpleFetch(Map args)
     {
+        NCube cube = getNCube(args);
+
         try
         {
-            return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
+            URL u = getActualUrl(cube.getVersion());
+            //TODO:  java-util change remove u.toString() when we have a URL version of this call
+            return UrlUtilities.getContentFromUrlAsString(u.toString(), proxyServer, proxyPort, null, null, true);
         }
         catch (Exception e)
         {
-            NCube ncube = (NCube) args.get("ncube");
-            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + cube.getName() + "'");
             throw new IllegalStateException(getErrorMessage(), e);
         }
+    }
+
+    protected URL getActualUrl(String version) throws MalformedURLException
+    {
+        String url = getUrl();
+        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
+        if (loader == null)
+        {
+            throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);
+        }
+
+        URL actualUrl = loader.getResource(url);
+        if (actualUrl == null)
+        {
+            actualUrl = new URL(url);
+        }
+        return actualUrl;
     }
 
     public void expandUrl(Map args)

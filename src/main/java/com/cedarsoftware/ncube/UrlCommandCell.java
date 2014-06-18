@@ -13,6 +13,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -145,7 +147,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private Object proxyFetch(Map args)
+    protected Object proxyFetch(Map args)
     {
         NCube cube = getNCube(args);
         Map input = getInput(args);
@@ -186,14 +188,14 @@ public abstract class UrlCommandCell implements CommandCell
             if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT)
             {
                 transferResponseHeaders(conn, response);
-                transferFromServer(conn, response);
+                return transferFromServer(conn, response);
             }
             else
             {
                 UrlUtilities.readErrorResponse(conn);
                 response.sendError(resCode, conn.getResponseMessage());
+                return null;
             }
-            return null;
         }
         catch (SocketTimeoutException ignored) {
             try
@@ -488,15 +490,21 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
+    private Object transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
     {
         InputStream in = null;
         OutputStream out = null;
         try
         {
-            in = new BufferedInputStream(conn.getInputStream(), 32768);
+            if (cacheable) {
+                in = new CachingInputStream(new BufferedInputStream(conn.getInputStream(), 32768));
+            } else {
+                in = new BufferedInputStream(conn.getInputStream(), 32768);
+            }
             out = response.getOutputStream();
             IOUtilities.transfer(in, out);
+
+            return cacheable ? ((CachingInputStream) in).getCache() : null;
         }
         finally
         {
@@ -540,6 +548,43 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 response.addHeader(field, s);
             }
+        }
+    }
+
+    private class CachingInputStream extends FilterInputStream
+    {
+        ByteArrayOutputStream _out = new ByteArrayOutputStream();
+
+        /**
+         * Creates a <code>FilterInputStream</code>
+         * by assigning the  argument <code>in</code>
+         * to the field <code>this.in</code> so as
+         * to remember it for later use.
+         * @param in the underlying input stream, or <code>null</code> if
+         *           this instance is to be created without an underlying stream.
+         */
+        protected CachingInputStream(InputStream in)
+        {
+            super(in);
+        }
+
+        public int read(byte[] b, int off, int len) throws IOException
+        {
+            int count = super.read(b, off, len);
+            _out.write(b, off, count);
+            return count;
+        }
+
+        public int read() throws IOException
+        {
+            int result = super.read();
+            _out.write(result);
+            return result;
+        }
+
+        public byte[] getCache()
+        {
+            return _out.toByteArray();
         }
     }
 }

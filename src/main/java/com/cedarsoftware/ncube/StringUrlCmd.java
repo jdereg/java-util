@@ -28,6 +28,18 @@ public class StringUrlCmd extends UrlCommandCell
         super(null, url, false);
     }
 
+    public StringUrlCmd(String url, boolean cache)
+    {
+        super(null, url, cache);
+    }
+
+    @Override
+    protected Object proxyFetch(Map args)
+    {
+        byte[] bytes = (byte[])super.proxyFetch(args);
+        return bytes == null ? null : new String(bytes);
+    }
+
     protected Object executeInternal(Object data, Map ctx)
     {
         return data;

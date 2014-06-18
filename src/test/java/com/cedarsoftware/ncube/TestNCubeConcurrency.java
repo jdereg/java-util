@@ -52,8 +52,7 @@ public class TestNCubeConcurrency
 
                     while (System.currentTimeMillis() - start < 2000)
                     {
-                        // TODO: put back to 100
-                        for (int j=0; j < 10; j++)
+                        for (int j=0; j < 100; j++)
                         {
                             final Map coord = new HashMap();
                             coord.put("sites", site);
@@ -84,12 +83,11 @@ public class TestNCubeConcurrency
             }
         }
 
-        //TODO:  When Caching is back then readd this test
-        //if (cached)
-        //{
-        //    assertTrue(String.format("Expected 1 unique item since cached, but received %d", items.size()), 1 == items.size());
-        //}
-        //else
+        if (cached)
+        {
+            assertTrue(String.format("Expected 1 unique item since cached, but received %d", items.size()), 1 == items.size());
+        }
+        else
         {
             assertTrue(String.format("Expected %d unique items, but only received %d", count.get(), items.size()), items.size() == count.get());
         }

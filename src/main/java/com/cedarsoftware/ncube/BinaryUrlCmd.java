@@ -31,6 +31,11 @@ public class BinaryUrlCmd extends UrlCommandCell
         super(null, url, false);
     }
 
+    public BinaryUrlCmd(String url, boolean cache)
+    {
+        super(null, url, cache);
+    }
+
     protected Object simpleFetch(Map args)
     {
         NCube ncube = (NCube) args.get("ncube");

@@ -19,6 +19,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Enumeration;
@@ -136,8 +137,7 @@ public abstract class UrlCommandCell implements CommandCell
         Map input = (Map) args.get("input");
         if (input.containsKey(CdnRouter.HTTP_REQUEST) && input.containsKey(CdnRouter.HTTP_RESPONSE))
         {
-            proxyFetch(args);
-            return null;
+            return proxyFetch(args);
         }
         else
         {
@@ -145,7 +145,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void proxyFetch(Map args)
+    private Object proxyFetch(Map args)
     {
         NCube cube = getNCube(args);
         Map input = getInput(args);
@@ -157,28 +157,29 @@ public abstract class UrlCommandCell implements CommandCell
         HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
         HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
         HttpURLConnection conn = null;
+        URL actualUrl = null;
         try
         {
-            URL actualUrl = getActualUrl(cube.getVersion());
+            actualUrl = getActualUrl(cube.getVersion());
             URLConnection connection = actualUrl.openConnection();
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
                 connection.connect();
                 transferResponseHeaders(connection, response);
                 transferFromServer(connection, response);
-                return;
+                return null;
             }
             conn = (HttpURLConnection) connection;
             conn.setAllowUserInteraction(false);
-            conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
-            conn.setDoOutput(true);
+            conn.setRequestMethod("GET");
+            //conn.setDoOutput(true);
             conn.setDoInput(true);
-            conn.setReadTimeout(220000);
-            conn.setConnectTimeout(45000);
+            conn.setReadTimeout(20000);
+            conn.setConnectTimeout(10000);
 
             setupRequestHeaders(conn, request);
             conn.connect();
-            transferToServer(conn, request);
+            //transferToServer(conn, request);
 
             int resCode = conn.getResponseCode();
 
@@ -192,18 +193,30 @@ public abstract class UrlCommandCell implements CommandCell
                 UrlUtilities.readErrorResponse(conn);
                 response.sendError(resCode, conn.getResponseMessage());
             }
+            return null;
+        }
+        catch (SocketTimeoutException ignored) {
+            try
+            {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found:  " + actualUrl.toString());
+
+            }
+            catch (IOException ignore)
+            {
+            }
         }
         catch (Exception e)
         {
             try
             {
                 UrlUtilities.readErrorResponse(conn);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided:  " + actualUrl.toString());
             }
             catch (IOException ignored)
             {
             }
         }
+        return null;
     }
 
     protected Object simpleFetch(Map args)

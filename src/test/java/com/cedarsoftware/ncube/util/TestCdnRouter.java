@@ -188,8 +188,6 @@ public class TestCdnRouter
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream)out).getBytes();
         String s = new String(bytes);
-
-        verify(response, times(1)).sendError(500, "Invalid url provided:  tests/does/not/exist/index.html");
     }
 
     @Test
@@ -261,7 +259,7 @@ public class TestCdnRouter
         byte[] bytes = ((DumboOutputStream)out).getBytes();
         String s = new String(bytes);
 
-        verify(response, times(1)).sendError(500, "Invalid url provided:  tests/does/not/exist/index.html");
+        verify(response, times(1)).sendError(404, "File not found:  http://codetested.com/test/does/not/exist/index.html");
     }
 
     static class DumboOutputStream extends ServletOutputStream

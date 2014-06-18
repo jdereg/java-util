@@ -93,16 +93,10 @@ public class NCubeManager
         {
             try
             {
-                if (url.toLowerCase().startsWith("res://"))
-                {
-                    String prefix = new File(GroovyBase.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getCanonicalPath();
-                    prefix = "file://" + prefix + "/";
-                    groovyClassLoader.addURL(new URL(prefix));
+                if (!url.endsWith("/")) {
+                    url += "/";
                 }
-                else
-                {
-                    groovyClassLoader.addURL(new URL(url));
-                }
+               groovyClassLoader.addURL(new URL(url));
             }
             catch (Exception e)
             {

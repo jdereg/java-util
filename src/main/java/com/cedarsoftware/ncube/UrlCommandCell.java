@@ -232,14 +232,15 @@ public abstract class UrlCommandCell implements CommandCell
             throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);
         }
 
-        URL actualUrl = loader.getResource(url);
-        if (actualUrl == null)
-        {
-            try {
+        URL actualUrl = null;
+        try {
+            if (url != null && url.startsWith("http") || url.startsWith("http")) {
                 actualUrl = new URL(url);
-            } catch (MalformedURLException iae) {
-                throw new IllegalArgumentException("Invalid url provided:  " + url);
+            } else {
+                actualUrl = loader.getResource(url);
             }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid URL:  " + url);
         }
         return actualUrl;
     }

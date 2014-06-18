@@ -214,7 +214,7 @@ public abstract class GroovyBase extends UrlCommandCell
             URL groovySourceUrl = loader.getResource(url);
             if (groovySourceUrl == null)
             {
-                throw new IllegalStateException("groovy code source URL is null, created from url: " + url);
+                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setGroovyClassLoaderUrls(): " + url);
             }
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);

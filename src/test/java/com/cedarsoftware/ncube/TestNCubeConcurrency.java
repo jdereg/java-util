@@ -84,11 +84,12 @@ public class TestNCubeConcurrency
             }
         }
 
-        if (cached)
-        {
-            assertTrue(String.format("Expected 1 unique item since cached, but received %d", items.size()), 1 == items.size());
-        }
-        else
+        //TODO:  When Caching is back then readd this test
+        //if (cached)
+        //{
+        //    assertTrue(String.format("Expected 1 unique item since cached, but received %d", items.size()), 1 == items.size());
+        //}
+        //else
         {
             assertTrue(String.format("Expected %d unique items, but only received %d", count.get(), items.size()), items.size() == count.get());
         }

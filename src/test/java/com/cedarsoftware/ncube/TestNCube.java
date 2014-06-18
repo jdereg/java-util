@@ -94,18 +94,17 @@ public class TestNCube
     public static void initManager() throws Exception
     {
         NCubeManager.clearCubeList();
-        setClassPath();
+        setClassPath("file");
     }
 
-    public static void setClassPath() throws Exception
+    public static void setClassPath(String version) throws Exception
     {
         List<String> urls = new ArrayList<String>();
-        urls.add("http://www.cedarsoftware.com");
-        urls.add("http://tests.codetested.com");
         String prefix = new File(TestNCube.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getCanonicalPath();
         prefix = "file://" + prefix + "/";
         urls.add(prefix);
-        NCubeManager.setGroovyClassLoaderUrls(urls, "file");
+        urls.add("http://www.cedarsoftware.com");
+        NCubeManager.setGroovyClassLoaderUrls(urls, version);
     }
 
     @Before
@@ -1635,8 +1634,9 @@ DELIMITER ;
     @Test
     public void testBadCommandCellCommand() throws Exception
     {
+        setClassPath("1.0.0");
         NCube<Object> continentCounty = new NCube<Object>("test.ContinentCountries");
-        NCubeManager.addCube(continentCounty, "0.1.0");
+        NCubeManager.addCube(continentCounty, "1.0.0");
         continentCounty.addAxis(getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1645,11 +1645,11 @@ DELIMITER ;
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<Object>("test.Provinces");
-        NCubeManager.addCube(canada, "0.1.0");
+        NCubeManager.addCube(canada, "1.0.0");
         canada.addAxis(getProvincesAxis());
 
         NCube<Object> usa = new NCube<Object>("test.States");
-        NCubeManager.addCube(usa, "0.1.0");
+        NCubeManager.addCube(usa, "1.0.0");
         usa.addAxis(getStatesAxis());
 
         Map coord1 = new HashMap();
@@ -1682,9 +1682,9 @@ DELIMITER ;
         Connection conn = getConnection();
         try
         {
-            NCubeManager.createCube(conn, APP_ID, continentCounty, "0.1.0");
-            NCubeManager.createCube(conn, APP_ID, usa, "0.1.0");
-            NCubeManager.createCube(conn, APP_ID, canada, "0.1.0");
+            NCubeManager.createCube(conn, APP_ID, continentCounty, "1.0.0");
+            NCubeManager.createCube(conn, APP_ID, usa, "1.0.0");
+            NCubeManager.createCube(conn, APP_ID, canada, "1.0.0");
         }
         catch (Exception e)
         {
@@ -1693,12 +1693,13 @@ DELIMITER ;
 
         assertTrue(NCubeManager.getCachedNCubes().size() == 3);
         initManager();
-        NCube test = NCubeManager.loadCube(conn, APP_ID, "test.ContinentCountries", "0.1.0", "SNAPSHOT", new Date());
+        setClassPath("1.0.0");
+        NCube test = NCubeManager.loadCube(conn, APP_ID, "test.ContinentCountries", "1.0.0", "SNAPSHOT", new Date());
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
-        NCubeManager.deleteCube(conn, APP_ID, "test.ContinentCountries", "0.1.0", false);
-        NCubeManager.deleteCube(conn, APP_ID, "test.States", "0.1.0", false);
-        NCubeManager.deleteCube(conn, APP_ID, "test.Provinces", "0.1.0", false);
+        NCubeManager.deleteCube(conn, APP_ID, "test.ContinentCountries", "1.0.0", false);
+        NCubeManager.deleteCube(conn, APP_ID, "test.States", "1.0.0", false);
+        NCubeManager.deleteCube(conn, APP_ID, "test.Provinces", "1.0.0", false);
         assertTrue(NCubeManager.getCachedNCubes().size() == 0);
         conn.close();
     }

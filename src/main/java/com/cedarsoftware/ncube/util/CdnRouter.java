@@ -32,6 +32,8 @@ public class CdnRouter
     public static final String DATE = "router.date";
     public static final String CONTENT_TYPE = "content.type";
     public static final String CONTENT_NAME = "content.name";
+    public static final String HTTP_REQUEST = "http.request";
+    public static final String HTTP_RESPONSE = "http.response";
 
     public static void setCdnRoutingProvider(CdnRoutingProvider p)
     {
@@ -87,10 +89,10 @@ public class CdnRouter
 
             coord.put(CONTENT_NAME, logicalName);
             coord.put(CONTENT_TYPE, type);
+            coord.put(HTTP_REQUEST, request);
+            coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
-            String resourceType = info[0];
-            String name = "cdn" + (resourceType.substring(0,1).toUpperCase() + resourceType.substring(1)) + "Router";
-            NCube routingCube = NCubeManager.getCube(name, version);
+            NCube routingCube = NCubeManager.getCube("cdnRouter", version);
             if (routingCube == null)
             {
                 Connection connection = (Connection) coord.get(CONNECTION);
@@ -120,7 +122,7 @@ public class CdnRouter
                 }
                 routingCube = NCubeManager.loadCube(connection, app, cubeName, version, status, date);
             }
-            routingCube.getCell(coord, output, new CdnUrlExecutor(request, response));
+            routingCube.getCell(coord, output);
         }
         catch (Exception e)
         {

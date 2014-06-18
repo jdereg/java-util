@@ -25,12 +25,12 @@ import java.util.Map;
  */
 public class BinaryUrlCmd extends UrlCommandCell
 {
-    public BinaryUrlCmd(String url, boolean cache)
+    public BinaryUrlCmd(String url)
     {
-        super(null, url, cache);
+        super(null, url, false);
     }
 
-    protected Object fetchContentFromUrl(Map args)
+    protected Object simpleFetch(Map args)
     {
         try
         {

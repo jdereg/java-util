@@ -37,7 +37,6 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    static final GroovyClassLoader groovyClassLoader = new GroovyClassLoader(GroovyBase.class.getClassLoader());
     static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
     static final Map<String, Constructor> constructorMap = new LinkedHashMap<String, Constructor>()
     {
@@ -61,9 +60,9 @@ public abstract class GroovyBase extends UrlCommandCell
         }
     };
 
-    public GroovyBase(String cmd, String url, boolean cache)
+    public GroovyBase(String cmd, String url)
     {
-        super(cmd, url, cache);
+        super(cmd, url, true);
     }
 
     protected abstract String buildGroovy(String theirGroovy, String cubeName, String cmdHash);
@@ -75,7 +74,7 @@ public abstract class GroovyBase extends UrlCommandCell
         String cubeName = getNCube(args).getName();
         try
         {
-            return executeGroovy(args, getCmdHash(data.toString()));
+            return executeGroovy(args, getCmdHash(data == null ? getUrl() : data.toString()));
         }
         catch(InvocationTargetException e)
         {
@@ -160,13 +159,17 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args, String cmdHash) throws Exception;
 
+    public Object fetch(Map args)
+    {
+        return null;
+    }
+
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method
      * immediately returns.  Insta-check because it is just a ref == null check.
      */
     public void prepare(Object data, Map ctx)
     {
-        String cmdHash = getCmdHash(data.toString());
         if (getRunnableCode() == null)
         {   // Not yet compiled, compile the cell (Lazy compilation)
             synchronized(GroovyBase.class)
@@ -177,50 +180,52 @@ public abstract class GroovyBase extends UrlCommandCell
                     return;
                 }
 
+                String cmdHash = getCmdHash((data == null) ? getUrl() : data.toString());
                 if (compiledClasses.containsKey(cmdHash))
                 {   // Already been compiled, re-use class
                     setRunnableCode(compiledClasses.get(cmdHash));
                     return;
                 }
-                String cubeName = getNCube(ctx).getName();
+                NCube cube = getNCube(ctx);
                 try
                 {
-                    compile(cubeName, cmdHash);
+                    compile(cube, cmdHash);
                 }
                 catch (Exception e)
                 {
-                    setErrorMessage("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cubeName + "'");
+                    setErrorMessage("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cube.getName() + "'");
                     throw new IllegalArgumentException(getErrorMessage(), e);
                 }
             }
         }
     }
 
-    protected void compile(String cubeName, String cmdHash) throws Exception
+    protected void compile(NCube cube, String cmdHash) throws Exception
     {
         String url = getUrl();
+        GroovyClassLoader loader = NCubeManager.getGroovyClassLoader(cube.getVersion());
+        if (loader == null)
+        {
+            throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + cube.getVersion());
+        }
 
         if (StringUtilities.hasContent(url))
         {
-            url = url.trim();
-            GroovyCodeSource gcs;
-            if (url.toLowerCase().startsWith("res://"))
-            {   // URL to file within classpath
-                gcs = new GroovyCodeSource(GroovyBase.class.getClassLoader().getResource(url.substring(6)));
+            URL groovySourceUrl = loader.getResource(url);
+            if (groovySourceUrl == null)
+            {
+                throw new IllegalStateException("groovy code source URL is null, created from url: " + url);
             }
-            else
-            {   // URL to non-classpath file
-                gcs = new GroovyCodeSource(new URL(url));
-            }
+            GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-            setRunnableCode(groovyClassLoader.parseClass(gcs));
+            setRunnableCode(loader.parseClass(gcs));
         }
         else
         {
-            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cubeName, cmdHash));
-            setRunnableCode(groovyClassLoader.parseClass(groovySource));
+            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
+            setRunnableCode(loader.parseClass(groovySource));
         }
-        compiledClasses.put( cmdHash, getRunnableCode());
+        compiledClasses.put(cmdHash, getRunnableCode());
     }
 
     static String expandNCubeShortCuts(String groovy)

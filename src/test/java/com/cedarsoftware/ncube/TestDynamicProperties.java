@@ -1,12 +1,19 @@
 package com.cedarsoftware.ncube;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Created by kpartlow on 1/20/14.
  */
-public class TestDynamicProperties extends NCubeTester {
+public class TestDynamicProperties extends NCubeTester
+{
+    @Before
+    public void setUp() throws Exception
+    {
+        TestNCube.initManager();
+    }
 
     @Test
     public void testCprStyleProperties() {

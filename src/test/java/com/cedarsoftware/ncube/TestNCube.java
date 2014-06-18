@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -90,10 +91,32 @@ public class TestNCube
         return conn;
     }
 
+    public static void initManager() throws Exception
+    {
+        NCubeManager.clearCubeList();
+        setClassPath();
+    }
+
+    public static void setClassPath() throws Exception
+    {
+        List<String> urls = new ArrayList<String>();
+        urls.add("http://www.cedarsoftware.com");
+        urls.add("http://tests.codetested.com");
+        String prefix = new File(TestNCube.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getCanonicalPath();
+        prefix = "file://" + prefix + "/";
+        urls.add(prefix);
+        NCubeManager.setGroovyClassLoaderUrls(urls, "file");
+    }
+
     @Before
     public void setUp() throws Exception
     {
-        NCubeManager.clearCubeList();
+        initManager();
+        prepareSchema();
+    }
+
+    private void prepareSchema() throws Exception
+    {
         if (test_db == HSQLDB)
         {
             Connection conn = getConnection();
@@ -166,7 +189,7 @@ DELIMITER ;
     @After
     public void tearDown() throws Exception
     {
-        NCubeManager.clearCubeList();
+        initManager();
         if (test_db == HSQLDB)
         {
             Connection conn = getConnection();
@@ -181,7 +204,7 @@ DELIMITER ;
     public void testPopulateProductLineCube() throws Exception
     {
         NCube<Object> ncube = new NCube<Object>("ProductLine");
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Axis prodLine = new Axis("PROD_LINE", AxisType.DISCRETE, AxisValueType.STRING, false);
         prodLine.addColumn("CommAuto");
@@ -194,7 +217,7 @@ DELIMITER ;
         ncube.addAxis(bu);
 
         NCube<String> commAuto = new NCube<String>("CommAuto");
-        NCubeManager.addCube(commAuto, "test");
+        NCubeManager.addCube(commAuto, "file");
         Axis caAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         caAttr.addColumn("busType");
         caAttr.addColumn("riskType");
@@ -203,7 +226,7 @@ DELIMITER ;
         commAuto.addAxis(caAttr);
 
         NCube<String> commGL = new NCube<String>("CommGL");
-        NCubeManager.addCube(commGL, "test");
+        NCubeManager.addCube(commGL, "file");
         Axis glAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         glAttr.addColumn("busType");
         glAttr.addColumn("riskType");
@@ -212,7 +235,7 @@ DELIMITER ;
         commGL.addAxis(glAttr);
 
         NCube<String> commIM = new NCube<String>("CommIM");
-        NCubeManager.addCube(commIM, "test");
+        NCubeManager.addCube(commIM, "file");
         Axis imAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         imAttr.addColumn("busType");
         imAttr.addColumn("riskType");
@@ -222,7 +245,7 @@ DELIMITER ;
         commIM.addAxis(imAttr);
 
         NCube<String> commSBP = new NCube<String>("SBPProperty");
-        NCubeManager.addCube(commSBP, "test");
+        NCubeManager.addCube(commSBP, "file");
         Axis sbpAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         sbpAttr.addColumn("busType");
         sbpAttr.addColumn("riskType");
@@ -1527,7 +1550,7 @@ DELIMITER ;
     public void testCommandCellLookup()
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries");
-        NCubeManager.addCube(continentCounty, "test");
+        NCubeManager.addCube(continentCounty, "file");
         continentCounty.addAxis(getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1535,11 +1558,11 @@ DELIMITER ;
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<Object>("Provinces");
-        NCubeManager.addCube(canada, "test");
+        NCubeManager.addCube(canada, "file");
         canada.addAxis(getProvincesAxis());
 
         NCube<Object> usa = new NCube<Object>("States");
-        NCubeManager.addCube(usa, "test");
+        NCubeManager.addCube(usa, "file");
         usa.addAxis(getStatesAxis());
 
         Map<String, Object> coord1 = new HashMap<String, Object>();
@@ -1567,7 +1590,7 @@ DELIMITER ;
     public void testBadCommandCellLookup()
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries");
-        NCubeManager.addCube(continentCounty, "test");
+        NCubeManager.addCube(continentCounty, "file");
         continentCounty.addAxis(getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1575,11 +1598,11 @@ DELIMITER ;
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<Object>("Provinces");
-        NCubeManager.addCube(canada, "test");
+        NCubeManager.addCube(canada, "file");
         canada.addAxis(getProvincesAxis());
 
         NCube<Object> usa = new NCube<Object>("States");
-        NCubeManager.addCube(usa, "test");
+        NCubeManager.addCube(usa, "file");
         usa.addAxis(getStatesAxis());
 
         Map<String, Object> coord1 = new HashMap<String, Object>();
@@ -1612,7 +1635,6 @@ DELIMITER ;
     @Test
     public void testBadCommandCellCommand() throws Exception
     {
-        NCubeManager.clearCubeList();
         NCube<Object> continentCounty = new NCube<Object>("test.ContinentCountries");
         NCubeManager.addCube(continentCounty, "0.1.0");
         continentCounty.addAxis(getContinentAxis());
@@ -1670,7 +1692,7 @@ DELIMITER ;
         }
 
         assertTrue(NCubeManager.getCachedNCubes().size() == 3);
-        NCubeManager.clearCubeList();
+        initManager();
         NCube test = NCubeManager.loadCube(conn, APP_ID, "test.ContinentCountries", "0.1.0", "SNAPSHOT", new Date());
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
@@ -3156,8 +3178,8 @@ DELIMITER ;
         naCountries.addAxis(country);
 
         naCountries.setCell(new GroovyExpression("$UsaStates(input)", null), coord);
-        NCubeManager.addCube(continents, "test");
-        NCubeManager.addCube(naCountries, "test");
+        NCubeManager.addCube(continents, "file");
+        NCubeManager.addCube(naCountries, "file");
 
         try
         {
@@ -3706,7 +3728,7 @@ DELIMITER ;
         axis.addColumn("bad");
         axis.addColumn("scalar");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3738,7 +3760,7 @@ DELIMITER ;
         axis.addColumn("bad");
         axis.addColumn("scalar");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map input = new HashMap();
         input.put("type", "bad");
@@ -3760,7 +3782,7 @@ DELIMITER ;
         axis.addColumn("bad");
         axis.addColumn("property");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3792,7 +3814,7 @@ DELIMITER ;
         axis.addColumn(35);
         axis.addColumn(45);
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("age", 25);
@@ -3813,7 +3835,7 @@ DELIMITER ;
         axis.addColumn("bar");
         axis.addColumn("baz");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("method", "doIt");
@@ -3851,7 +3873,7 @@ DELIMITER ;
         axis.addColumn(35);
         axis.addColumn(45);
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("age", 25);
@@ -3894,7 +3916,7 @@ DELIMITER ;
         axis.addColumn(35);
         axis.addColumn(45);
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         // Bad command (CommandCell not GroovyProg used)
         Map coord = new HashMap();
@@ -3993,7 +4015,7 @@ DELIMITER ;
         axis.addColumn("good");
         axis.addColumn("bad");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         // Illustrates that return is optional in expressions
         Map coord = new HashMap();
@@ -4025,7 +4047,7 @@ DELIMITER ;
         axis.addColumn("alpha");
         axis.addColumn("beta");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -4056,7 +4078,7 @@ DELIMITER ;
         axis.addColumn("alpha");
         axis.addColumn("beta");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -4092,7 +4114,7 @@ DELIMITER ;
         axis.addColumn("good");
         axis.addColumn("bad");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -4105,7 +4127,7 @@ DELIMITER ;
         axis.addColumn("OH");
         axis.addColumn("TX");
         cube2.addAxis(axis);
-        NCubeManager.addCube(cube2, "test");
+        NCubeManager.addCube(cube2, "file");
 
         coord.clear();
         coord.put("type", "good");
@@ -4603,7 +4625,7 @@ DELIMITER ;
     public void testAtCommand() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testAtCommand.json");
-        NCubeManager.addCube(ncube, "test");
+        NCubeManager.addCube(ncube, "file");
         Map coord = new CaseInsensitiveMap();
         coord.put("Bu", "PIM");
         coord.put("State", "GA");
@@ -5741,9 +5763,8 @@ DELIMITER ;
     }
 
     @Test
-    public void testShortHandReferences()
+    public void testShortHandReferences() throws Exception
     {
-        NCubeManager.clearCubeList();
         NCubeManager.getNCubeFromResource("stringIds.json");
         NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
         Map coord = new HashMap();
@@ -5808,7 +5829,6 @@ DELIMITER ;
     @Test
     public void testExpression()
     {
-        NCubeManager.clearCubeList();
         NCubeManager.getNCubeFromResource("urlPieces.json");
         NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
 
@@ -6006,9 +6026,8 @@ DELIMITER ;
     }
 
     @Test
-    public void testAdvice()
+    public void testAdvice() throws Exception
     {
-        NCubeManager.clearCubeList();
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
 
         // These methods are called more than you think.  Internally, these cube call
@@ -6088,9 +6107,8 @@ DELIMITER ;
     }
 
     @Test
-    public void testAdviceSubsetMatching()
+    public void testAdviceSubsetMatching() throws Exception
     {
-        NCubeManager.clearCubeList();
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
 
         // These methods are called more than you think.  Internally, these cube call
@@ -6195,8 +6213,6 @@ DELIMITER ;
     @Test
     public void testAdviceSubsetMatchingLateLoad()
     {
-        NCubeManager.clearCubeList();
-
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
         NCubeManager.addAdvice("*.ba*()", new Advice()
@@ -6414,7 +6430,7 @@ DELIMITER ;
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidArgumentsToConstructor2() throws Exception
     {
-        new GroovyMethod(null, null, false);
+        new GroovyMethod(null, null);
     }
 
     @Test(expected = IllegalArgumentException.class)

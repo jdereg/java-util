@@ -7,6 +7,7 @@ import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
+import groovy.lang.GroovyClassLoader;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -62,6 +63,7 @@ public class NCubeManager
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
+    private static Map<String, GroovyClassLoader> groovyClassLoaders = new ConcurrentHashMap<String, GroovyClassLoader>();
 
     /**
      * @param name String name of an NCube.
@@ -76,6 +78,42 @@ public class NCubeManager
     static String makeCacheKey(String name, String version)
     {
         return name + '.' + version;
+    }
+
+    public static void setGroovyClassLoaderUrls(List<String> urls, String version)
+    {
+        if (groovyClassLoaders.containsKey(version))
+        {
+            throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
+        }
+        GroovyClassLoader groovyClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+        groovyClassLoaders.put(version, groovyClassLoader);
+
+        for (String url : urls)
+        {
+            try
+            {
+                if (url.toLowerCase().startsWith("res://"))
+                {
+                    String prefix = new File(GroovyBase.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getCanonicalPath();
+                    prefix = "file://" + prefix + "/";
+                    groovyClassLoader.addURL(new URL(prefix));
+                }
+                else
+                {
+                    groovyClassLoader.addURL(new URL(url));
+                }
+            }
+            catch (Exception e)
+            {
+                throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url);
+            }
+        }
+    }
+
+    public static GroovyClassLoader getGroovyClassLoader(String version)
+    {
+        return groovyClassLoaders.get(version);
     }
 
     /**
@@ -145,8 +183,12 @@ public class NCubeManager
         synchronized (cubeList)
         {
             cubeList.clear();
+            for (Map.Entry<String, GroovyClassLoader> entry : groovyClassLoaders.entrySet())
+            {
+                entry.getValue().clearCache();
+            }
+            groovyClassLoaders.clear();
             GroovyBase.compiledClasses.clear();
-            GroovyBase.groovyClassLoader.clearCache();
             advices.clear();
         }
     }

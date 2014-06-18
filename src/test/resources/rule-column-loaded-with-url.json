@@ -9,8 +9,8 @@
             "hasDefault":false,
             "preferredOrder":1,
             "columns":[
-                { "id":1, "type":"exp", "url":"res://files/rules/ageBracket1.groovy" },
-                { "id":2, "type":"exp", "url":"res://files/rules/ageBracket2.groovy" },
+                { "id":1, "type":"exp", "url":"files/rules/ageBracket1.groovy" },
+                { "id":2, "type":"exp", "url":"files/rules/ageBracket2.groovy" },
                 { "id":3, "type":"exp", "value":"input.age >= 40" }
             ]
         },

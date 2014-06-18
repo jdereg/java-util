@@ -46,42 +46,42 @@
         {
             "id": ["foo", "OH"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["bar", "OH"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["baz", "OH"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["qux", "OH"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController.groovy"
         },
         {
             "id": ["foo", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController_tx.groovy"
         },
         {
             "id": ["bar", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController_tx.groovy"
         },
         {
             "id": ["baz", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController_tx.groovy"
         },
         {
             "id": ["qux", "TX"],
             "type": "method",
-            "url": "res://com/acme/controllers/FooBarBazQuxController_tx.groovy"
+            "url": "com/acme/controllers/FooBarBazQuxController_tx.groovy"
         }
     ]
 }

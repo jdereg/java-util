@@ -1,33 +1,47 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.util.CdnRouter;
 import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 
 /**
- *  * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
- *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
- *         Licensed under the Apache License, Version 2.0 (the "License");
- *         you may not use this file except in compliance with the License.
- *         You may obtain a copy of the License at
- *         <br/><br/>
- *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
- *         Unless required by applicable law or agreed to in writing, software
- *         distributed under the License is distributed on an "AS IS" BASIS,
- *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *         See the License for the specific language governing permissions and
- *         limitations under the License.
+ * * @author John DeRegnaucourt (jdereg@gmail.com)
+ * <br/>
+ * Copyright (c) Cedar Software LLC
+ * <br/><br/>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <br/><br/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <br/><br/>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 public abstract class UrlCommandCell implements CommandCell
 {
@@ -117,6 +131,78 @@ public abstract class UrlCommandCell implements CommandCell
 
     protected Object fetchContentFromUrl(Map args)
     {
+        Map input = (Map) args.get("input");
+        if (input.containsKey(CdnRouter.HTTP_REQUEST) && input.containsKey(CdnRouter.HTTP_RESPONSE))
+        {
+            proxyFetch(input);
+            return null;
+        }
+        else
+        {
+            return simpleFetch(args);
+        }
+    }
+
+    private void proxyFetch(Map input)
+    {
+        if (cacheable)
+        {
+            throw new IllegalStateException("Cache must be 'false' if content is being fetched from CDN via CdnRouter, input: " + input);
+        }
+        HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
+        HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
+        HttpURLConnection conn = null;
+        try
+        {
+            URL actualUrl = UrlUtilities.getActualUrl(getUrl());
+            URLConnection connection = actualUrl.openConnection();
+            if (!(connection instanceof HttpURLConnection))
+            {   // Handle a "file://" URL
+                connection.connect();
+                transferResponseHeaders(connection, response);
+                transferFromServer(connection, response);
+                return;
+            }
+            conn = (HttpURLConnection) connection;
+            conn.setAllowUserInteraction(false);
+            conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            conn.setReadTimeout(220000);
+            conn.setConnectTimeout(45000);
+
+            setupRequestHeaders(conn, request);
+            conn.connect();
+            transferToServer(conn, request);
+
+            int resCode = conn.getResponseCode();
+
+            if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT)
+            {
+                transferResponseHeaders(conn, response);
+                transferFromServer(conn, response);
+            }
+            else
+            {
+                UrlUtilities.readErrorResponse(conn);
+                response.sendError(resCode, conn.getResponseMessage());
+            }
+        }
+        catch (Exception e)
+        {
+            try
+            {
+                UrlUtilities.readErrorResponse(conn);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+            catch (IOException ignored)
+            {
+            }
+        }
+    }
+
+    protected Object simpleFetch(Map args)
+    {
         try
         {
             return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
@@ -136,7 +222,7 @@ public abstract class UrlCommandCell implements CommandCell
             return;
         }
 
-        synchronized(this)
+        synchronized (this)
         {
             if (isUrlExpanded.get())
             {
@@ -305,9 +391,13 @@ public abstract class UrlCommandCell implements CommandCell
         return url.compareTo(safeUrl == null ? "" : safeUrl);
     }
 
-    public void getCubeNamesFromCommandText(Set<String> cubeNames) {}
+    public void getCubeNamesFromCommandText(Set<String> cubeNames)
+    {
+    }
 
-    public void getScopeKeys(Set<String> scopeKeys) {}
+    public void getScopeKeys(Set<String> scopeKeys)
+    {
+    }
 
     public Object execute(Map<String, Object> ctx)
     {
@@ -330,4 +420,77 @@ public abstract class UrlCommandCell implements CommandCell
     }
 
     protected abstract Object executeInternal(Object data, Map<String, Object> ctx);
+
+    private void transferToServer(URLConnection conn, HttpServletRequest request) throws IOException
+    {
+        OutputStream out = null;
+        InputStream in = null;
+
+        try
+        {
+            in = request.getInputStream();
+            out = new BufferedOutputStream(conn.getOutputStream(), 32768);
+            IOUtilities.transfer(in, out);
+        }
+        finally
+        {
+            IOUtilities.close(in);
+            IOUtilities.close(out);
+        }
+    }
+
+    private void transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
+    {
+        InputStream in = null;
+        OutputStream out = null;
+        try
+        {
+            in = new BufferedInputStream(conn.getInputStream(), 32768);
+            out = response.getOutputStream();
+            IOUtilities.transfer(in, out);
+        }
+        finally
+        {
+            IOUtilities.close(in);
+            IOUtilities.close(out);
+        }
+    }
+
+    private void setupRequestHeaders(URLConnection c, HttpServletRequest request)
+    {
+        Enumeration headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements())
+        {
+            String key = (String) headerNames.nextElement();
+            String value = request.getHeader(key);
+            c.setRequestProperty(key, value);
+        }
+    }
+
+    private void transferResponseHeaders(URLConnection c, HttpServletResponse response)
+    {
+        Map<String, List<String>> headerFields = c.getHeaderFields();
+
+        addHeaders("Content-Length", headerFields, response);
+        addHeaders("Last-Modified", headerFields, response);
+        addHeaders("Expires", headerFields, response);
+        addHeaders("Content-Encoding", headerFields, response);
+        addHeaders("Content-Type", headerFields, response);
+        addHeaders("Cache-Control", headerFields, response);
+        addHeaders("Etag", headerFields, response);
+        addHeaders("Accept", headerFields, response);
+    }
+
+    private void addHeaders(String field, Map<String, List<String>> fields, HttpServletResponse response)
+    {
+        List<String> items = fields.get(field);
+
+        if (items != null)
+        {
+            for (String s : items)
+            {
+                response.addHeader(field, s);
+            }
+        }
+    }
 }

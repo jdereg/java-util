@@ -44,12 +44,7 @@ public class GroovyExpression extends GroovyBase
 {
     public GroovyExpression(String cmd, String url)
     {
-        super(cmd, url, true);
-    }
-
-    public GroovyExpression(String cmd, String url, boolean cache)
-    {
-        super(cmd, url, cache);
+        super(cmd, url);
     }
 
     public String buildGroovy(String theirGroovy, String cubeName, String cmdHash)

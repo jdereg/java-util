@@ -18,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,7 @@ public class TestCdnRouter
     @Before
     public void setup() throws Exception{
         NCubeManager.clearCubeList();
-        setClassPath("1.0.0");
+        setClassPath("file");
     }
 
     public void tearDown() throws Exception {
@@ -97,7 +98,7 @@ public class TestCdnRouter
                 coord.put(CdnRouter.APP, "ncube.test");
                 coord.put(CdnRouter.STATUS, "release");
                 coord.put(CdnRouter.CUBE_NAME, "test");
-                coord.put(CdnRouter.CUBE_VERSION, "1.0.0");
+                coord.put(CdnRouter.CUBE_VERSION, "file");
                 coord.put(CdnRouter.DATE, null);
             }
 
@@ -107,10 +108,11 @@ public class TestCdnRouter
             }
         });
 
+        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         PowerMockito.mockStatic(NCubeManager.class);
         when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-
+        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream)out).getBytes();
@@ -163,7 +165,7 @@ public class TestCdnRouter
                 coord.put(CdnRouter.APP, "ncube.test");
                 coord.put(CdnRouter.STATUS, "release");
                 coord.put(CdnRouter.CUBE_NAME, "test");
-                coord.put(CdnRouter.CUBE_VERSION, "1.0.0");
+                coord.put(CdnRouter.CUBE_VERSION, "file");
                 coord.put(CdnRouter.DATE, null);
 
             }
@@ -175,18 +177,19 @@ public class TestCdnRouter
         });
 
 
+        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         PowerMockito.mockStatic(NCubeManager.class);
         when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-
+        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream)out).getBytes();
         String s = new String(bytes);
 
-        verify(response, times(1)).sendError(404, "Not Found");
+        verify(response, times(1)).sendError(500, "Invalid url provided:  tests/does/not/exist/index.html");
     }
 
     static class DumboOutputStream extends ServletOutputStream

@@ -136,7 +136,7 @@ public abstract class UrlCommandCell implements CommandCell
         Map input = (Map) args.get("input");
         if (input.containsKey(CdnRouter.HTTP_REQUEST) && input.containsKey(CdnRouter.HTTP_RESPONSE))
         {
-            proxyFetch(input);
+            proxyFetch(args);
             return null;
         }
         else
@@ -145,13 +145,15 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void proxyFetch(Map input)
+    private void proxyFetch(Map args)
     {
-        NCube cube = getNCube(input);
+        NCube cube = getNCube(args);
+        Map input = getInput(args);
         if (cacheable)
         {
             throw new IllegalStateException("Cache must be 'false' if content is being fetched from CDN via CdnRouter, input: " + input);
         }
+
         HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
         HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
         HttpURLConnection conn = null;
@@ -233,7 +235,11 @@ public abstract class UrlCommandCell implements CommandCell
         URL actualUrl = loader.getResource(url);
         if (actualUrl == null)
         {
-            actualUrl = new URL(url);
+            try {
+                actualUrl = new URL(url);
+            } catch (MalformedURLException iae) {
+                throw new IllegalArgumentException("Invalid url provided:  " + url);
+            }
         }
         return actualUrl;
     }

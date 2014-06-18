@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UrlUtilities;
 
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -30,15 +31,22 @@ public class BinaryUrlCmd extends UrlCommandCell
         super(null, url, false);
     }
 
+    public BinaryUrlCmd(String url, boolean cache)
+    {
+        super(null, url, cache);
+    }
+
     protected Object simpleFetch(Map args)
     {
+        NCube ncube = (NCube) args.get("ncube");
         try
         {
-            return UrlUtilities.getContentFromUrl(getUrl(), proxyServer, proxyPort, null, null, true);
+            URL u = getActualUrl(ncube.getVersion());
+            //TODO:  java-util change remove u.toString() when we have a URL version of this call
+            return UrlUtilities.getContentFromUrl(u.toString(), proxyServer, proxyPort, null, null, true);
         }
         catch (Exception e)
         {
-            NCube ncube = (NCube) args.get("ncube");
             setErrorMessage("Failed to load binary content from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
             throw new IllegalStateException(getErrorMessage(), e);
         }

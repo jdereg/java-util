@@ -6,17 +6,22 @@ import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
+import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyShell;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Enumeration;
@@ -134,8 +139,7 @@ public abstract class UrlCommandCell implements CommandCell
         Map input = (Map) args.get("input");
         if (input.containsKey(CdnRouter.HTTP_REQUEST) && input.containsKey(CdnRouter.HTTP_RESPONSE))
         {
-            proxyFetch(input);
-            return null;
+            return proxyFetch(args);
         }
         else
         {
@@ -143,49 +147,64 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void proxyFetch(Map input)
+    protected Object proxyFetch(Map args)
     {
+        NCube cube = getNCube(args);
+        Map input = getInput(args);
         if (cacheable)
         {
             throw new IllegalStateException("Cache must be 'false' if content is being fetched from CDN via CdnRouter, input: " + input);
         }
+
         HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
         HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
         HttpURLConnection conn = null;
+        URL actualUrl = null;
         try
         {
-            URL actualUrl = UrlUtilities.getActualUrl(getUrl());
+            actualUrl = getActualUrl(cube.getVersion());
             URLConnection connection = actualUrl.openConnection();
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
                 connection.connect();
                 transferResponseHeaders(connection, response);
                 transferFromServer(connection, response);
-                return;
+                return null;
             }
             conn = (HttpURLConnection) connection;
             conn.setAllowUserInteraction(false);
-            conn.setRequestMethod(StringUtilities.hasContent(request.getMethod()) ? request.getMethod() : "GET");
-            conn.setDoOutput(true);
+            conn.setRequestMethod("GET");
+            //conn.setDoOutput(true);
             conn.setDoInput(true);
-            conn.setReadTimeout(220000);
-            conn.setConnectTimeout(45000);
+            conn.setReadTimeout(20000);
+            conn.setConnectTimeout(10000);
 
             setupRequestHeaders(conn, request);
             conn.connect();
-            transferToServer(conn, request);
+            //transferToServer(conn, request);
 
             int resCode = conn.getResponseCode();
 
             if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT)
             {
                 transferResponseHeaders(conn, response);
-                transferFromServer(conn, response);
+                return transferFromServer(conn, response);
             }
             else
             {
                 UrlUtilities.readErrorResponse(conn);
                 response.sendError(resCode, conn.getResponseMessage());
+                return null;
+            }
+        }
+        catch (SocketTimeoutException ignored) {
+            try
+            {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found:  " + actualUrl.toString());
+
+            }
+            catch (IOException ignore)
+            {
             }
         }
         catch (Exception e)
@@ -193,26 +212,58 @@ public abstract class UrlCommandCell implements CommandCell
             try
             {
                 UrlUtilities.readErrorResponse(conn);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided:  " + actualUrl.toString());
             }
             catch (IOException ignored)
             {
             }
         }
+        return null;
     }
 
     protected Object simpleFetch(Map args)
     {
+        NCube cube = getNCube(args);
+
         try
         {
-            return UrlUtilities.getContentFromUrlAsString(getUrl(), proxyServer, proxyPort, null, null, true);
+            URL u = getActualUrl(cube.getVersion());
+            //TODO:  java-util change remove u.toString() when we have a URL version of this call
+            return UrlUtilities.getContentFromUrlAsString(u.toString(), proxyServer, proxyPort, null, null, true);
         }
         catch (Exception e)
         {
-            NCube ncube = (NCube) args.get("ncube");
-            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + cube.getName() + "'");
             throw new IllegalStateException(getErrorMessage(), e);
         }
+    }
+
+    protected URL getActualUrl(String version) throws MalformedURLException
+    {
+        String url = getUrl();
+        URL actualUrl;
+
+        try
+        {
+            String localUrl = (url != null) ? url.toLowerCase() : null;
+
+            if (localUrl != null && localUrl.startsWith("http") || localUrl.startsWith("https"))
+            {
+                actualUrl = new URL(url);
+            }
+            else
+            {
+                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
+                if (loader == null)
+                {
+                    throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);
+                }
+                actualUrl = loader.getResource(url);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid URL:  " + url);
+        }
+        return actualUrl;
     }
 
     public void expandUrl(Map args)
@@ -439,15 +490,21 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
+    private Object transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
     {
         InputStream in = null;
         OutputStream out = null;
         try
         {
-            in = new BufferedInputStream(conn.getInputStream(), 32768);
+            if (cacheable) {
+                in = new CachingInputStream(new BufferedInputStream(conn.getInputStream(), 32768));
+            } else {
+                in = new BufferedInputStream(conn.getInputStream(), 32768);
+            }
             out = response.getOutputStream();
             IOUtilities.transfer(in, out);
+
+            return cacheable ? ((CachingInputStream) in).getCache() : null;
         }
         finally
         {
@@ -491,6 +548,43 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 response.addHeader(field, s);
             }
+        }
+    }
+
+    private class CachingInputStream extends FilterInputStream
+    {
+        ByteArrayOutputStream _out = new ByteArrayOutputStream();
+
+        /**
+         * Creates a <code>FilterInputStream</code>
+         * by assigning the  argument <code>in</code>
+         * to the field <code>this.in</code> so as
+         * to remember it for later use.
+         * @param in the underlying input stream, or <code>null</code> if
+         *           this instance is to be created without an underlying stream.
+         */
+        protected CachingInputStream(InputStream in)
+        {
+            super(in);
+        }
+
+        public int read(byte[] b, int off, int len) throws IOException
+        {
+            int count = super.read(b, off, len);
+            _out.write(b, off, count);
+            return count;
+        }
+
+        public int read() throws IOException
+        {
+            int result = super.read();
+            _out.write(result);
+            return result;
+        }
+
+        public byte[] getCache()
+        {
+            return _out.toByteArray();
         }
     }
 }

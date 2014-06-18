@@ -239,17 +239,23 @@ public abstract class UrlCommandCell implements CommandCell
     protected URL getActualUrl(String version) throws MalformedURLException
     {
         String url = getUrl();
-        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
-        if (loader == null)
-        {
-            throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);
-        }
+        URL actualUrl;
 
-        URL actualUrl = null;
-        try {
-            if (url != null && url.startsWith("http") || url.startsWith("http")) {
+        try
+        {
+            String localUrl = (url != null) ? url.toLowerCase() : null;
+
+            if (localUrl != null && localUrl.startsWith("http") || localUrl.startsWith("https"))
+            {
                 actualUrl = new URL(url);
-            } else {
+            }
+            else
+            {
+                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
+                if (loader == null)
+                {
+                    throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);
+                }
                 actualUrl = loader.getResource(url);
             }
         } catch (Exception e) {

@@ -174,14 +174,14 @@ public abstract class UrlCommandCell implements CommandCell
             conn = (HttpURLConnection) connection;
             conn.setAllowUserInteraction(false);
             conn.setRequestMethod("GET");
-            //conn.setDoOutput(true);
+            conn.setDoOutput(true);
             conn.setDoInput(true);
             conn.setReadTimeout(20000);
             conn.setConnectTimeout(10000);
 
             setupRequestHeaders(conn, request);
             conn.connect();
-            //transferToServer(conn, request);
+            transferToServer(conn, request);
 
             int resCode = conn.getResponseCode();
 

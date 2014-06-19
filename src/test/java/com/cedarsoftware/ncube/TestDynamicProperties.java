@@ -1,7 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -9,7 +9,7 @@ import org.junit.Test;
  */
 public class TestDynamicProperties extends NCubeTester
 {
-    @Before
+    @BeforeClass
     public void setUp() throws Exception
     {
         TestNCube.initManager();

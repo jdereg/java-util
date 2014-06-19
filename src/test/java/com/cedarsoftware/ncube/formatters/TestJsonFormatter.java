@@ -3,7 +3,7 @@ package com.cedarsoftware.ncube.formatters;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.TestNCube;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -22,10 +22,10 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestJsonFormatter
 {
-    @Before
-    public void setUp() throws Exception
+    @BeforeClass
+    public static void setUp() throws Exception
     {
-        TestNCube.initManager();
+        TestNCube.initialize();
     }
 
     @Test

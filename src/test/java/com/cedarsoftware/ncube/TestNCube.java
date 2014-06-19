@@ -11,6 +11,7 @@ import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -72,6 +73,7 @@ public class TestNCube
     private static final String APP_ID = "ncube.test";
     private static final boolean _debug = false;
     private int test_db = HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private static volatile boolean _classLoaderInitialize = true;
 
     private Connection getConnection() throws Exception
     {
@@ -95,22 +97,25 @@ public class TestNCube
     public static void initManager() throws Exception
     {
         NCubeManager.clearCubeList();
-        setClassPath("file");
     }
 
-    public static void setClassPath(String version) throws Exception
-    {
-        List<String> urls = new ArrayList<String>();
-        URL url = NCubeManager.class.getResource("/");
-        urls.add(url.toString());
-        urls.add("http://www.cedarsoftware.com");
-        NCubeManager.setUrlClassLoader(urls, version);
+    @BeforeClass
+    public static void initialize() {
+        if (_classLoaderInitialize) {
+            List<String> urls = new ArrayList<String>();
+            URL url = NCubeManager.class.getResource("/");
+            urls.add(url.toString());
+            urls.add("http://www.cedarsoftware.com");
+
+            NCubeManager.setUrlClassLoader(urls, "file");
+            NCubeManager.setUrlClassLoader(urls, "1.0.0");
+            _classLoaderInitialize = false;
+        }
     }
 
     @Before
     public void setUp() throws Exception
     {
-        initManager();
         prepareSchema();
     }
 
@@ -1634,7 +1639,6 @@ DELIMITER ;
     @Test
     public void testBadCommandCellCommand() throws Exception
     {
-        setClassPath("1.0.0");
         NCube<Object> continentCounty = new NCube<Object>("test.ContinentCountries");
         NCubeManager.addCube(continentCounty, "1.0.0");
         continentCounty.addAxis(getContinentAxis());
@@ -1693,7 +1697,6 @@ DELIMITER ;
 
         assertTrue(NCubeManager.getCachedNCubes().size() == 3);
         initManager();
-        setClassPath("1.0.0");
         NCube test = NCubeManager.loadCube(conn, APP_ID, "test.ContinentCountries", "1.0.0", "SNAPSHOT", new Date());
         assertTrue((Double) test.getCell(coord1) == 1.0);
 

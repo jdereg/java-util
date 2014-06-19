@@ -2,7 +2,7 @@ package com.cedarsoftware.ncube.util;
 
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -36,8 +36,8 @@ import static org.mockito.Mockito.when;
 public class TestCdnRouter
 {
 
-    @Before
-    public void setup() throws Exception{
+    @BeforeClass
+    public static void setup() throws Exception{
         NCubeManager.clearCubeList();
         setClassPath("file");
     }

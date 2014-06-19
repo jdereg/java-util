@@ -181,7 +181,6 @@ public class NCubeManager
         {
             ((GroovyClassLoader)entry.getValue()).clearCache();
         }
-        //urlClassLoaders.clear();
         GroovyBase.compiledClasses.clear();
         advices.clear();
     }

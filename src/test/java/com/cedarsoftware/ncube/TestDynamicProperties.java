@@ -12,7 +12,7 @@ public class TestDynamicProperties extends NCubeTester
     @BeforeClass
     public static void setUp() throws Exception
     {
-        TestNCube.initManager();
+        TestNCube.initialize();
     }
 
     @Test

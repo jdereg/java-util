@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 public class TestJsonFormatter
 {
     @BeforeClass
-    public void setUp() throws Exception
+    public static void setUp() throws Exception
     {
         TestNCube.initialize();
     }

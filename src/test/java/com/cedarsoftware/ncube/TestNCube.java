@@ -73,6 +73,7 @@ public class TestNCube
     private static final String APP_ID = "ncube.test";
     private static final boolean _debug = false;
     private int test_db = HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private static volatile boolean _classLoaderInitialize = true;
 
     private Connection getConnection() throws Exception
     {
@@ -100,13 +101,16 @@ public class TestNCube
 
     @BeforeClass
     public static void initialize() {
-        List<String> urls = new ArrayList<String>();
-        URL url = NCubeManager.class.getResource("/");
-        urls.add(url.toString());
-        urls.add("http://www.cedarsoftware.com");
+        if (_classLoaderInitialize) {
+            List<String> urls = new ArrayList<String>();
+            URL url = NCubeManager.class.getResource("/");
+            urls.add(url.toString());
+            urls.add("http://www.cedarsoftware.com");
 
-        NCubeManager.setUrlClassLoader(urls, "file");
-        NCubeManager.setUrlClassLoader(urls, "1.0.0");
+            NCubeManager.setUrlClassLoader(urls, "file");
+            NCubeManager.setUrlClassLoader(urls, "1.0.0");
+            _classLoaderInitialize = false;
+        }
     }
 
     @Before

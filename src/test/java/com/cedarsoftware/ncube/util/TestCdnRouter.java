@@ -37,7 +37,7 @@ public class TestCdnRouter
 {
 
     @BeforeClass
-    public void setup() throws Exception{
+    public static void setup() throws Exception{
         NCubeManager.clearCubeList();
         setClassPath("file");
     }

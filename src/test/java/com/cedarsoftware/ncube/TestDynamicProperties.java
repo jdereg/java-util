@@ -10,7 +10,7 @@ import org.junit.Test;
 public class TestDynamicProperties extends NCubeTester
 {
     @BeforeClass
-    public void setUp() throws Exception
+    public static void setUp() throws Exception
     {
         TestNCube.initManager();
     }

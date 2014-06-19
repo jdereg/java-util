@@ -25,7 +25,7 @@ public class TestJsonFormatter
     @BeforeClass
     public void setUp() throws Exception
     {
-        TestNCube.initManager();
+        TestNCube.initialize();
     }
 
     @Test

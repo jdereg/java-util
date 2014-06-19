@@ -99,7 +99,7 @@ public class TestNCube
     }
 
     @BeforeClass
-    public void initialize() {
+    public static void initialize() {
         List<String> urls = new ArrayList<String>();
         URL url = NCubeManager.class.getResource("/");
         urls.add(url.toString());

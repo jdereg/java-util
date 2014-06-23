@@ -180,7 +180,7 @@ public abstract class GroovyBase extends UrlCommandCell
                     return;
                 }
 
-                String cmdHash = getCmdHash((data == null) ? getUrl() : data.toString());
+                String cmdHash = getCmdHash(getUrl() == null ? data.toString() : getUrl());
                 if (compiledClasses.containsKey(cmdHash))
                 {   // Already been compiled, re-use class
                     setRunnableCode(compiledClasses.get(cmdHash));

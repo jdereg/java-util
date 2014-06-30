@@ -1,6 +1,7 @@
 {
     "ncube":"containsCell",
     "defaultCellValue":"foo",
+    "x":"y",
     "axes":[
         {
             "name":"Gender",
@@ -10,12 +11,15 @@
             "preferredOrder":0,
             "columns":[
                 {
-                    "id":"Female"
+                    "id":"Female",
+                    "name":"Jane",
+                    "age":36
                 },
                 {
                     "id":"Male"
                 }
-            ]
+            ],
+            "feet":2
         }
     ],
     "cells":[{"id":["Female"],"value":"bar"}]

@@ -203,13 +203,14 @@ public abstract class GroovyBase extends UrlCommandCell
     protected void compile(NCube cube, String cmdHash) throws Exception
     {
         String url = getUrl();
-        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
+        boolean isUrlUsed = StringUtilities.hasContent(url);
+        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
         if (loader == null)
         {
             throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + cube.getVersion());
         }
 
-        if (StringUtilities.hasContent(url))
+        if (isUrlUsed)
         {
             URL groovySourceUrl = loader.getResource(url);
             if (groovySourceUrl == null)

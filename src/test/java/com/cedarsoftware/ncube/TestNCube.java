@@ -100,8 +100,10 @@ public class TestNCube
     }
 
     @BeforeClass
-    public static void initialize() {
-        if (_classLoaderInitialize) {
+    public static void initialize()
+    {
+        if (_classLoaderInitialize)
+        {
             List<String> urls = new ArrayList<String>();
             URL url = NCubeManager.class.getResource("/");
             urls.add(url.toString());
@@ -6709,6 +6711,117 @@ DELIMITER ;
 
         assertFalse(ncube.containsCellValue(coord, false));
     }
+
+    @Test
+    public void testEmptyNCubeMetaProps() throws Exception
+    {
+        NCube ncube = createCube();
+        String json = ncube.toFormattedJson();
+        ncube = NCube.fromSimpleJson(json);
+        System.out.println("ncube.getMetaProperties() = " + ncube.getMetaProperties());
+        assertTrue(ncube.getMetaProperties().size() == 0);
+
+        List<Axis> axes = ncube.getAxes();
+        for (Axis axis : axes)
+        {
+            assertTrue(axis.getMetaProperties().size() == 0);
+
+            for (Column column : axis.getColumns())
+            {
+                assertTrue(column.getMetaProperties().size() == 0);
+            }
+        }
+    }
+
+    @Test
+    public void testMetaPropsRead() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCell.json");
+        assertTrue(ncube.getMetaProperties().size() > 0);
+        assertEquals("y", ncube.getMetaProperties().get("x"));
+
+        Axis axis = ncube.getAxis("gender");
+        assertTrue(axis.getMetaProperties().size() > 0);
+        assertEquals(2L, axis.getMetaProperties().get("feet"));
+
+        Column col = axis.findColumn("Female");
+        assertNotNull(col);
+        assertTrue(col.getMetaProperties().size() > 0);
+        assertEquals("Jane", col.getMetaProperties().get("Name"));  // intentional mismatch on case
+        assertEquals(36L, col.getMetaProperties().get("age"));
+
+        String json = ncube.toFormattedJson();
+        ncube = NCube.fromSimpleJson(json);
+        assertTrue(ncube.getMetaProperties().size() > 0);
+        assertEquals("y", ncube.getMetaProperties().get("x"));
+
+        axis = ncube.getAxis("gender");
+        assertTrue(axis.getMetaProperties().size() > 0);
+        assertEquals(2L, axis.getMetaProperties().get("feet"));
+
+        col = axis.findColumn("Female");
+        assertNotNull(col);
+        assertTrue(col.getMetaProperties().size() > 0);
+        assertEquals("Jane", col.getMetaProperties().get("Name"));  // intentional mismatch on case
+        assertEquals(36L, col.getMetaProperties().get("age"));
+    }
+
+    @Test
+    public void testMetaPropAPIs() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCell.json");
+
+        Axis axis = ncube.getAxis("gender");
+        assertTrue(axis.getMetaProperties().size() > 0);
+        assertEquals(2L, axis.getMetaProperties().get("feet"));
+
+        Column col = axis.findColumn("Female");
+        assertNotNull(col);
+
+        ncube.setMetaProperty("language", "groovy");
+        axis.setMetaProperty("car", "cruze");
+        col.setMetaProperty("one", 1);
+
+        assertTrue(ncube.getMetaProperties().size() == 2);
+        assertTrue(axis.getMetaProperties().size() == 2);
+        assertTrue(col.getMetaProperties().size() == 3);
+
+        Map metaProps = new HashMap();
+        metaProps.put("sport", "football");
+        metaProps.put("currency", "Bitcoin");
+
+        ncube.addMetaProperties(metaProps);
+        axis.addMetaProperties(metaProps);
+        col.addMetaProperties(metaProps);
+
+        String json = ncube.toFormattedJson();
+        ncube = NCube.fromSimpleJson(json);
+        axis = ncube.getAxis("gender");
+        col = axis.findColumn("Female");
+
+        assertTrue(ncube.getMetaProperties().size() == 4);
+        assertTrue(axis.getMetaProperties().size() == 4);
+        assertTrue(col.getMetaProperties().size() == 5);
+
+        ncube.clearMetaProperties();
+        axis.clearMetaProperties();
+        col.clearMetaProperties();
+
+        assertTrue(ncube.getMetaProperties().size() == 0);
+        assertTrue(axis.getMetaProperties().size() == 0);
+        assertTrue(col.getMetaProperties().size() == 0);
+
+        json = ncube.toFormattedJson();
+        ncube = NCube.fromSimpleJson(json);
+        axis = ncube.getAxis("gender");
+        col = axis.findColumn("Female");
+
+        assertTrue(ncube.getMetaProperties().size() == 0);
+        assertTrue(axis.getMetaProperties().size() == 0);
+        assertTrue(col.getMetaProperties().size() == 0);
+    }
+
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

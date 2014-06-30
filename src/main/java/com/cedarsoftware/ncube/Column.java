@@ -1,12 +1,15 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.proximity.Distance;
+import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.UniqueIdGenerator;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * Holds the value of a 'column' on an axis.
@@ -41,6 +44,7 @@ public class Column implements Comparable<Comparable>
 	long id;
 	private int displayOrder;
 	private Comparable value;
+    Map<String, Object> metaProps = null;
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -57,6 +61,55 @@ public class Column implements Comparable<Comparable>
 		this.value = value;
 		id = UniqueIdGenerator.getUniqueId();
 	}
+
+    /**
+     * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
+     */
+    public Map<String, Object> getMetaProperties()
+    {
+        Map ret = metaProps == null ? new CaseInsensitiveMap() : metaProps;
+        return Collections.unmodifiableMap(ret);
+    }
+
+    /**
+     * Set (add / overwrite) a Meta Property associated to this Column.
+     * @param key String key name of meta property
+     * @param value Object value to associate to key
+     * @return prior value associated to key or null if none was associated prior
+     */
+    public Object setMetaProperty(String key, Object value)
+    {
+        if (metaProps == null)
+        {
+            metaProps = new CaseInsensitiveMap();
+        }
+        return metaProps.put(key, value);
+    }
+
+    /**
+     * Add a Map of meta properties all at once.
+     * @param allAtOnce Map of meta properties to add
+     */
+    public void addMetaProperties(Map allAtOnce)
+    {
+        if (metaProps == null)
+        {
+            metaProps = new CaseInsensitiveMap();
+        }
+        metaProps.putAll(allAtOnce);
+    }
+
+    /**
+     * Remove all meta properties associated to this Column.
+     */
+    public void clearMetaProperties()
+    {
+        if (metaProps != null)
+        {
+            metaProps.clear();
+            metaProps = null;
+        }
+    }
 
     public long getId()
     {

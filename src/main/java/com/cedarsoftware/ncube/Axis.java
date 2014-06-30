@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
+import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonReader;
@@ -57,6 +58,7 @@ public class Axis
 	private int preferredOrder = SORTED;
     private boolean multiMatch = false;
     private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
+    Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
     private transient Map<Comparable, Column> discreteToCol = new TreeMap<Comparable, Column>();
@@ -110,6 +112,55 @@ public class Axis
         }
         id = UniqueIdGenerator.getUniqueId();
 	}
+
+    /**
+     * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
+     */
+    public Map<String, Object> getMetaProperties()
+    {
+        Map ret = metaProps == null ? new CaseInsensitiveMap() : metaProps;
+        return Collections.unmodifiableMap(ret);
+    }
+
+    /**
+     * Set (add / overwrite) a Meta Property associated to this axis.
+     * @param key String key name of meta property
+     * @param value Object value to associate to key
+     * @return prior value associated to key or null if none was associated prior
+     */
+    public Object setMetaProperty(String key, Object value)
+    {
+        if (metaProps == null)
+        {
+            metaProps = new CaseInsensitiveMap();
+        }
+        return metaProps.put(key, value);
+    }
+
+    /**
+     * Add a Map of meta properties all at once.
+     * @param allAtOnce Map of meta properties to add
+     */
+    public void addMetaProperties(Map allAtOnce)
+    {
+        if (metaProps == null)
+        {
+            metaProps = new CaseInsensitiveMap();
+        }
+        metaProps.putAll(allAtOnce);
+    }
+
+    /**
+     * Remove all meta properties associated to this Axis.
+     */
+    public void clearMetaProperties()
+    {
+        if (metaProps != null)
+        {
+            metaProps.clear();
+            metaProps = null;
+        }
+    }
 
     /**
      * Scaffolding is extra, indexing structures (transient members) that are not part of

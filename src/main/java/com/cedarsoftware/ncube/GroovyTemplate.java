@@ -106,6 +106,7 @@ public class GroovyTemplate extends UrlCommandCell
 
                 InputStream in = GroovyBase.class.getClassLoader().getResourceAsStream("ncube/grv/closure/NCubeTemplateClosures.groovy");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
+                IOUtilities.close(in);
 
                 cmd = "<% " + groovyClosures + " %>" + cmd;
 

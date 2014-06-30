@@ -64,7 +64,13 @@ public class NCubeManager
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
-    private static Map<String, URLClassLoader> urlClassLoaders = new ConcurrentHashMap<String, URLClassLoader>();
+    private static Map<String, LoaderPair> urlClassLoaders = new ConcurrentHashMap<String, LoaderPair>();
+
+    private static class LoaderPair
+    {
+        GroovyClassLoader urlAwareLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+        GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+    }
 
     /**
      * @param name String name of an NCube.
@@ -87,8 +93,10 @@ public class NCubeManager
         {
             throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
         }
-        GroovyClassLoader groovyClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
-        urlClassLoaders.put(version, groovyClassLoader);
+
+        LoaderPair pair = new LoaderPair();
+        GroovyClassLoader urlClassLoader = pair.urlAwareLoader;
+        urlClassLoaders.put(version, pair);
 
         for (String url : urls)
         {
@@ -98,7 +106,7 @@ public class NCubeManager
                 {
                     url += "/";
                 }
-                groovyClassLoader.addURL(new URL(url));
+                urlClassLoader.addURL(new URL(url));
             }
             catch (Exception e)
             {
@@ -107,9 +115,10 @@ public class NCubeManager
         }
     }
 
-    public static URLClassLoader getUrlClassLoader(String version)
+    public static URLClassLoader getUrlClassLoader(String version, boolean url)
     {
-        return urlClassLoaders.get(version);
+        LoaderPair loaderPair = urlClassLoaders.get(version);
+        return url ? loaderPair.urlAwareLoader : loaderPair.simpleLoader;
     }
 
     /**
@@ -176,13 +185,18 @@ public class NCubeManager
      */
     public static void clearCubeList()
     {
-        cubeList.clear();
-        for (Map.Entry<String, URLClassLoader> entry : urlClassLoaders.entrySet())
+        synchronized (cubeList)
         {
-            ((GroovyClassLoader)entry.getValue()).clearCache();
+            cubeList.clear();
+            for (Map.Entry<String, LoaderPair> entry : urlClassLoaders.entrySet())
+            {
+                LoaderPair loaderPair = entry.getValue();
+                loaderPair.simpleLoader.clearCache();
+                loaderPair.urlAwareLoader.clearCache();
+            }
+            GroovyBase.compiledClasses.clear();
+            advices.clear();
         }
-        GroovyBase.compiledClasses.clear();
-        advices.clear();
     }
 
     /**

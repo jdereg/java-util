@@ -96,6 +96,15 @@ public class JsonFormatter implements NCubeFormatter
                 writeValue("defaultCellValue", ncube.getDefaultCellValue());
                 comma();
             }
+            if (ncube.getMetaProperties().size() > 0)
+            {
+                Map<String, Object> metaProps = ncube.getMetaProperties();
+                for (Map.Entry<String, Object> entry : metaProps.entrySet())
+                {
+                    writeValue(entry.getKey(), entry.getValue());
+                    comma();
+                }
+            }
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
 
@@ -178,6 +187,17 @@ public class JsonFormatter implements NCubeFormatter
         writeAttribute("hasDefault", axis.hasDefaultColumn(), true);
         writeAttribute("multiMatch", axis.isMultiMatch(), true);
 
+        if (axis.getMetaProperties().size() > 0)
+        {
+            Map<String, Object> metaProps = axis.getMetaProperties();
+            for (Map.Entry<String, Object> entry : metaProps.entrySet())
+            {
+                writeValue(entry.getKey(), entry.getValue());
+                comma();
+            }
+        }
+
+
         writeColumns(axis.getColumns());
         endObject();
     }
@@ -206,28 +226,40 @@ public class JsonFormatter implements NCubeFormatter
         endArray();
     }
 
-    public void writeColumn(Column c) throws IOException
+    public void writeColumn(Column column) throws IOException
     {
         startObject();
 
         //  Check to see if id exists anywhere. then optimize
-        Object o = userIds.get(c.getId());
-        String columnType = getColumnType(c.getValue());
-        if (o != null && o.equals(c.getValue()))
+        Object o = userIds.get(column.getId());
+        String columnType = getColumnType(column.getValue());
+        if (o != null && o.equals(column.getValue()))
         {
             writeType(columnType);
-            writeId(c.getId(), false);
+            writeId(column.getId(), false);
         }
         else
         {
-            writeId(c.getId(), true);
+            writeId(column.getId(), true);
             writeType(columnType);
-            if (c.getValue() instanceof UrlCommandCell) {
-                writeCommandCell((UrlCommandCell)c.getValue());
+            if (column.getValue() instanceof UrlCommandCell) {
+                writeCommandCell((UrlCommandCell)column.getValue());
             } else {
-                writeValue("value", c.getValue());
+                writeValue("value", column.getValue());
             }
         }
+        if (column.getMetaProperties().size() > 0)
+        {
+            comma();
+            Map<String, Object> metaProps = column.getMetaProperties();
+            for (Map.Entry<String, Object> entry : metaProps.entrySet())
+            {
+                writeValue(entry.getKey(), entry.getValue());
+                comma();
+            }
+            uncomma();
+        }
+
         endObject();
     }
 

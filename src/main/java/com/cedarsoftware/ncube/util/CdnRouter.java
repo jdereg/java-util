@@ -92,7 +92,11 @@ public class CdnRouter
             coord.put(HTTP_REQUEST, request);
             coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
-            NCube routingCube = NCubeManager.getCube("cdnRouter", version);
+            NCube routingCube = NCubeManager.getCube(cubeName, version);
+            if (routingCube == null)
+            {
+                routingCube = NCubeManager.getCube("cdnRouter", version);
+            }
             if (routingCube == null)
             {
                 Connection connection = (Connection) coord.get(CONNECTION);

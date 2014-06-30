@@ -247,13 +247,13 @@ public abstract class UrlCommandCell implements CommandCell
         {
             String localUrl = (url != null) ? url.toLowerCase() : null;
 
-            if (localUrl != null && localUrl.startsWith("http") || localUrl.startsWith("https"))
+            if (localUrl != null && localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:"))
             {
                 actualUrl = new URL(url);
             }
             else
             {
-                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
+                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version, false);
                 if (loader == null)
                 {
                     throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);

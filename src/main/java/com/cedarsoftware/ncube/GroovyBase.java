@@ -180,6 +180,8 @@ public abstract class GroovyBase extends UrlCommandCell
                     return;
                 }
 
+                //  This order is important because data can be null before the url is loaded
+                //  and then be present afterwards.  we'd have two different hashes for the same object.
                 String cmdHash = getCmdHash(getUrl() == null ? data.toString() : getUrl());
                 if (compiledClasses.containsKey(cmdHash))
                 {   // Already been compiled, re-use class

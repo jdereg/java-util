@@ -104,9 +104,6 @@ public class TestNCube
         if (_classLoaderInitialize)
         {
             List<String> urls = new ArrayList<String>();
-            //URL url = NCubeManager.class.getResource("/");
-            //urls.add(url.toString());
-
             urls.add("http://www.cedarsoftware.com");
 
             NCubeManager.setUrlClassLoader(urls, "file");

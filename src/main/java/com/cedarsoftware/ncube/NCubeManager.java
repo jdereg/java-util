@@ -68,12 +68,6 @@ public class NCubeManager
 
     private static GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
 
-    //private static class LoaderPair
-    //{
-        //GroovyClassLoader urlAwareLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
-        //GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
-    //}
-
     /**
      * @param name String name of an NCube.
      * @return NCube instance with the given name.  Please note
@@ -97,9 +91,6 @@ public class NCubeManager
             throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
         }
 
-//        LoaderPair pair = new LoaderPair();
-        // should be new instance per version?
-//        GroovyClassLoader urlClassLoader = pair.urlAwareLoader;
         GroovyClassLoader urlClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
         urlClassLoaders.put(version, urlClassLoader);
 

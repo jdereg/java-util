@@ -18,7 +18,6 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -105,8 +104,6 @@ public class TestNCube
         if (_classLoaderInitialize)
         {
             List<String> urls = new ArrayList<String>();
-            URL url = NCubeManager.class.getResource("/");
-            urls.add(url.toString());
             urls.add("http://www.cedarsoftware.com");
 
             NCubeManager.setUrlClassLoader(urls, "file");
@@ -5169,6 +5166,18 @@ DELIMITER ;
         coord.put("code", 1);
         str = (String) ncube.getCell(coord);
         assertEquals("Dear Bitcoin, please continue your upward growth trajectory.", str);
+    }
+
+    @Test
+    public void testClassLoader() {
+        NCube<Object> ncube = NCubeManager.getNCubeFromResource("ncube-class-loader-test.json");
+        Map coord = new HashMap();
+
+        coord.put("code", "local");
+        assertEquals("Successful test run of local url classloader.", ncube.getCell(coord));
+
+        coord.put("code", "remote");
+        assertEquals("Successful test run of remote url classloader.", ncube.getCell(coord));
     }
 
     @Test

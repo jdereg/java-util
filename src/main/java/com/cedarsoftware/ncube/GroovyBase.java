@@ -180,7 +180,9 @@ public abstract class GroovyBase extends UrlCommandCell
                     return;
                 }
 
-                String cmdHash = getCmdHash((data == null) ? getUrl() : data.toString());
+                //  This order is important because data can be null before the url is loaded
+                //  and then be present afterwards.  we'd have two different hashes for the same object.
+                String cmdHash = getCmdHash(getUrl() == null ? data.toString() : getUrl());
                 if (compiledClasses.containsKey(cmdHash))
                 {   // Already been compiled, re-use class
                     setRunnableCode(compiledClasses.get(cmdHash));
@@ -204,26 +206,32 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
-        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
-        if (loader == null)
-        {
-            throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + cube.getVersion());
-        }
 
         if (isUrlUsed)
         {
-            URL groovySourceUrl = loader.getResource(url);
+            GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
+            URL groovySourceUrl = urlLoader.getResource(url);
+
             if (groovySourceUrl == null)
             {
                 throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setUrlClassLoader(): " + url);
             }
+
+
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-            setRunnableCode(loader.parseClass(gcs));
+
+            //  Can cut total test time in half if we use loader at this point instead of urlLoader
+            //  This would keep us from being able to subclass another external (urlized) class.
+            //  I think Groovy will load that correctly, but I'm not sure.  We need to come up with
+            //  a test for that and verify it works.
+            //GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
+            setRunnableCode(urlLoader.parseClass(gcs));
         }
         else
         {
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
+            GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
             setRunnableCode(loader.parseClass(groovySource));
         }
         compiledClasses.put(cmdHash, getRunnableCode());

@@ -1,0 +1,30 @@
+{
+    "ncube":"ClassLoaderTest",
+    "defaultCellValue":"ZZZ",
+    "axes":[ {
+        "name":"Code",
+        "type":"DISCRETE",
+        "valueType":"STRING",
+        "hasDefault":false,
+        "preferredOrder":0,
+        "columns":[
+            { "id":"exp" },
+            { "id":"expWithImport" },
+            { "id":"local" },
+            { "id":"local-with-classes" },
+            { "id":"remote" },
+            { "id":"remote-with-classes" },
+            { "id":"intVal"},
+            { "id":"doubleVal"}
+        ]}],
+    "cells":[
+        { "id":["exp"], "type":"exp", "value": "input.code = 'intVal'; def x=$(input); input.code = 'doubleVal'; def y = $(input); x * y" },
+        { "id":["expWithImport"], "type":"exp", "value": "import java.text.*; MessageFormat.format('I love {0}', 'Bitcoin'); " },
+        { "id":["local"], "type":"exp", "url":"files/ncube/local-url-classloader-test.groovy"},
+        { "id":["remote"], "type":"exp", "url":"tests/ncube/remote-url-classloader-test.groovy"},
+        { "id":["intVal"], "value":2 },
+        { "id":["doubleVal"], "value": 3.14 }
+
+
+   ]
+}

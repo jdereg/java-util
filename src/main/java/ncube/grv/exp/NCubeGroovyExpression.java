@@ -43,6 +43,18 @@ public class NCubeGroovyExpression
         ncube = (NCube) args.get("ncube");
     }
 
+    protected Map getInput() {
+        return input;
+    }
+
+    protected Map getOutput() {
+        return output;
+    }
+
+    protected NCube getNCube() {
+        return ncube;
+    }
+
     public Object getFixedCell(Map coord)
     {
         return ncube.getCell(coord, output);

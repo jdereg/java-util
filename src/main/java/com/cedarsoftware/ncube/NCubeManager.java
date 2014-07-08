@@ -89,6 +89,7 @@ public class NCubeManager
 
     public static void setUrlClassLoader(List<String> urls, String version)
     {
+
         if (urlClassLoaders.containsKey(version))
         {
             throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
@@ -113,12 +114,20 @@ public class NCubeManager
                 throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url);
             }
         }
+
+        urlClassLoaders.put(version, pair);
+    }
+
+    public static URLClassLoader getSimpleLoader(String version)
+    {
+        LoaderPair loaderPair = urlClassLoaders.get(version);
+        return loaderPair.simpleLoader;
     }
 
     public static URLClassLoader getUrlClassLoader(String version, boolean url)
     {
         LoaderPair loaderPair = urlClassLoaders.get(version);
-        return url ? loaderPair.urlAwareLoader : loaderPair.simpleLoader;
+        return url ?  loaderPair.urlAwareLoader : loaderPair.simpleLoader;
     }
 
     /**

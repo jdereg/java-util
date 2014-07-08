@@ -206,7 +206,8 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
-        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
+        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
+//        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
         if (loader == null)
         {
             throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + cube.getVersion());
@@ -214,17 +215,23 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (isUrlUsed)
         {
+            //GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
+            //URL groovySourceUrl = urlLoader.getResource(url);
+
             URL groovySourceUrl = loader.getResource(url);
             if (groovySourceUrl == null)
             {
                 throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setUrlClassLoader(): " + url);
             }
+
+
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
             setRunnableCode(loader.parseClass(gcs));
         }
         else
         {
+            //  Always Local - use simple loader?
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
             setRunnableCode(loader.parseClass(groovySource));
         }

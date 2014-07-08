@@ -108,11 +108,11 @@ public class TestCdnRouter
             }
         });
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file", true);
+        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         PowerMockito.mockStatic(NCubeManager.class);
         when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file", true)).thenReturn(loader);
+        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream)out).getBytes();
@@ -177,12 +177,12 @@ public class TestCdnRouter
         });
 
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file", true);
+        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         PowerMockito.mockStatic(NCubeManager.class);
         when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file", true)).thenReturn(loader);
+        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
@@ -247,12 +247,12 @@ public class TestCdnRouter
         });
 
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file", true);
+        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         PowerMockito.mockStatic(NCubeManager.class);
         when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file", true)).thenReturn(loader);
+        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);

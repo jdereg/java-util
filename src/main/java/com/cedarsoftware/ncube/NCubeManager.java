@@ -64,13 +64,15 @@ public class NCubeManager
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
-    private static Map<String, LoaderPair> urlClassLoaders = new ConcurrentHashMap<String, LoaderPair>();
+    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<String, GroovyClassLoader>();
 
-    private static class LoaderPair
-    {
-        GroovyClassLoader urlAwareLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
-        GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
-    }
+    private static GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+
+    //private static class LoaderPair
+    //{
+        //GroovyClassLoader urlAwareLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+        //GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+    //}
 
     /**
      * @param name String name of an NCube.
@@ -95,9 +97,11 @@ public class NCubeManager
             throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
         }
 
-        LoaderPair pair = new LoaderPair();
-        GroovyClassLoader urlClassLoader = pair.urlAwareLoader;
-        urlClassLoaders.put(version, pair);
+//        LoaderPair pair = new LoaderPair();
+        // should be new instance per version?
+//        GroovyClassLoader urlClassLoader = pair.urlAwareLoader;
+        GroovyClassLoader urlClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+        urlClassLoaders.put(version, urlClassLoader);
 
         for (String url : urls)
         {
@@ -114,20 +118,16 @@ public class NCubeManager
                 throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url);
             }
         }
-
-        urlClassLoaders.put(version, pair);
     }
 
     public static URLClassLoader getSimpleLoader(String version)
     {
-        LoaderPair loaderPair = urlClassLoaders.get(version);
-        return loaderPair.simpleLoader;
+        return simpleLoader;
     }
 
-    public static URLClassLoader getUrlClassLoader(String version, boolean url)
+    public static URLClassLoader getUrlClassLoader(String version)
     {
-        LoaderPair loaderPair = urlClassLoaders.get(version);
-        return url ?  loaderPair.urlAwareLoader : loaderPair.simpleLoader;
+        return urlClassLoaders.get(version);
     }
 
     /**
@@ -197,11 +197,11 @@ public class NCubeManager
         synchronized (cubeList)
         {
             cubeList.clear();
-            for (Map.Entry<String, LoaderPair> entry : urlClassLoaders.entrySet())
+            simpleLoader.clearCache();
+            for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
             {
-                LoaderPair loaderPair = entry.getValue();
-                loaderPair.simpleLoader.clearCache();
-                loaderPair.urlAwareLoader.clearCache();
+                GroovyClassLoader classLoader = entry.getValue();
+                classLoader.clearCache();
             }
             GroovyBase.compiledClasses.clear();
             advices.clear();

@@ -206,19 +206,12 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
-        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
-//        GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
-        if (loader == null)
-        {
-            throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + cube.getVersion());
-        }
 
         if (isUrlUsed)
         {
-            //GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion(), isUrlUsed);
-            //URL groovySourceUrl = urlLoader.getResource(url);
+            GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
+            URL groovySourceUrl = urlLoader.getResource(url);
 
-            URL groovySourceUrl = loader.getResource(url);
             if (groovySourceUrl == null)
             {
                 throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setUrlClassLoader(): " + url);
@@ -227,12 +220,18 @@ public abstract class GroovyBase extends UrlCommandCell
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-            setRunnableCode(loader.parseClass(gcs));
+
+            //  Can cut total test time in half if we use loader at this point instead of urlLoader
+            //  This would keep us from being able to subclass another external (urlized) class.
+            //  I think Groovy will load that correctly, but I'm not sure.  We need to come up with
+            //  a test for that and verify it works.
+            //GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
+            setRunnableCode(urlLoader.parseClass(gcs));
         }
         else
         {
-            //  Always Local - use simple loader?
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
+            GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
             setRunnableCode(loader.parseClass(groovySource));
         }
         compiledClasses.put(cmdHash, getRunnableCode());

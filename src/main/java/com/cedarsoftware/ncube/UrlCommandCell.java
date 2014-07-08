@@ -253,7 +253,7 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {
-                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version, false);
+                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
                 if (loader == null)
                 {
                     throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);

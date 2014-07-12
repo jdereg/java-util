@@ -2,8 +2,10 @@ package com.cedarsoftware.ncube.util;
 
 import groovy.lang.GroovyClassLoader;
 
+import java.io.IOException;
 import java.net.URL;
-import java.util.regex.Pattern;
+import java.util.Enumeration;
+import java.util.NoSuchElementException;
 
 /**
  * Created by Kenny on 7/12/2014.
@@ -38,62 +40,82 @@ public class CdnClassLoader extends GroovyClassLoader
     protected Class<?> findClass(final String name)
             throws ClassNotFoundException
     {
-        if (_preventRemoteBeanInfo)
-        {
-           if (name.endsWith("BeanInfo"))
-            {
-                return super.getParent().loadClass(name);
-            }
-        }
-
-        if (_preventRemoteCusomizer)
-        {
-            if (name.endsWith("Customizer"))
-            {
-                return super.getParent().loadClass(name);
-            }
-        }
-
-        if (name.startsWith("java.lang") ||
-            name.startsWith("java.io") ||
-            name.startsWith("java.net") ||
-            name.startsWith("java.util") ||
-            name.startsWith("groovy.util") ||
-            name.startsWith("groovy.lang")) {
-
-            return super.getParent().loadClass(name);
-        }
-
-        if (name.endsWith("NCubeGroovyExpression") ||
-            name.endsWith("NCubeGroovyController")) {
+        if (isLocalOnlyResource(name)) {
             return super.getParent().loadClass(name);
         }
         return super.findClass(name);
     }
 
-    public URL getResource(String name) {
-        if (name.endsWith("NCubeGroovyExpression.groovy") ||
-            name.endsWith("NCubeGroovyController.groovy"))
-        {
-            return null;
-        }
-
+    /**
+     * Thse need to be changed to some sort of pattern recognition
+     * @param name Name of resource
+     * @return true if we should only look locally.
+     */
+    protected boolean isLocalOnlyResource(String name) {
         if (_preventRemoteBeanInfo)
         {
-            if (name.endsWith("BeanInfo.groovy"))
+            if (name.endsWith("BeanInfo") ||
+                name.endsWith("BeanInfo.groovy"))
             {
-                return null;
+                return true;
             }
         }
 
         if (_preventRemoteCusomizer)
         {
-            if (name.endsWith("Customizer.groovy"))
+            if (name.endsWith("Customizer") ||
+                name.endsWith("Customizer.groovy"))
             {
-                return null;
+                return true;
             }
         }
 
+        if (name.startsWith("java.lang") ||
+                name.startsWith("java.io") ||
+                name.startsWith("java.net") ||
+                name.startsWith("java.util") ||
+                name.startsWith("groovy.util") ||
+                name.startsWith("groovy.lang")) {
+
+            return true;
+        }
+
+        if (name.endsWith("NCubeGroovyExpression") ||
+                name.endsWith("NCubeGroovyController") ||
+                name.endsWith("NCubeGroovyExpression.groovy") ||
+                name.endsWith("NCubeGroovyController.groovy"))
+        {
+            return true;
+        }
+
+        return name.endsWith("org.codehaus.groovy.transform.ASTTransformation");
+    }
+
+    public Enumeration<URL> getResources(String name) throws IOException
+    {
+        if (isLocalOnlyResource(name)) {
+            return new Enumeration<URL>() {
+
+                @Override
+                public boolean hasMoreElements()
+                {
+                    return false;
+                }
+
+                @Override
+                public URL nextElement()
+                {
+                    throw new NoSuchElementException();
+                }
+            };
+        }
+        return super.getResources(name);
+    }
+
+    public URL getResource(String name) {
+        if (isLocalOnlyResource(name)) {
+            return null;
+        }
         return super.getResource(name);
     }
 

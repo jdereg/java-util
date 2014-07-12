@@ -62,7 +62,7 @@ public class GroovyExpression extends GroovyBase
         String className = "N_" + cmdHash;
         groovy.append("class ");
         groovy.append(className);
-        groovy.append(" extends NCubeGroovyExpression\n{\n\tdef run()\n\t{\n\t");
+        groovy.append(" extends ncube.grv.exp.NCubeGroovyExpression\n{\n\tdef run()\n\t{\n\t");
         groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("\n}\n}");
         return groovy.toString();

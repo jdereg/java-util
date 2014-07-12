@@ -45,7 +45,7 @@ public class TestRoutingCapabilities
         in.close();
         bout.close();
 
-        System.out.println(conn.getResponseCode());
+//        System.out.println(conn.getResponseCode());
 
         conn.disconnect();
     }

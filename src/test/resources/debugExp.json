@@ -1,0 +1,25 @@
+{
+    "ncube":"debugExp",
+    "ruleMode":false,
+    "axes":
+        [
+            {
+                "name":"Age",
+                "type":"RANGE",
+                "valueType":"LONG",
+                "hasDefault":true,
+                "preferredOrder":1,
+                "multiMatch":true,
+                "columns":
+                    [
+                    ]
+            }
+        ],
+    "cells":
+        [
+            {"id":[],
+             "type":"exp",
+             "url":"com/acme/exp/UrlToExpressionDebugTest.groovy"
+            }
+        ]
+}

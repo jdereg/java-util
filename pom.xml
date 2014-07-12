@@ -38,7 +38,7 @@
         <version.java-util>1.11.3</version.java-util>
         <version.commons.logging>1.1.3</version.commons.logging>
         <version.junit>4.11</version.junit>
-        <version.groovy>2.2.1</version.groovy>
+        <version.groovy>2.3.4</version.groovy>
         <version.powermock>1.5.4</version.powermock>
         <version.mockito>1.9.5</version.mockito>
     </properties>

@@ -85,10 +85,9 @@ public class NCubeManager
 
     public static void setUrlClassLoader(List<String> urls, String version)
     {
-
         if (urlClassLoaders.containsKey(version))
         {
-            throw new IllegalArgumentException("GroovyClassLoader URLs already set for version: " + version);
+            LOG.warn("RESETTING URLs for n-cube version: " + version + ", urls: " + urls);
         }
 
         GroovyClassLoader urlClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());

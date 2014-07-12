@@ -12,6 +12,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -6830,6 +6831,27 @@ DELIMITER ;
         assertTrue(col.getMetaProperties().size() == 0);
     }
 
+    /**
+     * Must set the URL to the path containing the test groovy code.  Do not include
+     * the com/... in the path.  This is a RESOURCE URL location, which points to the
+     * root of a resource hierarchy, in this case, the resources are groovy source code.
+     *
+     * This test is a 'spot' test, and should not be run with all the other tests. It should
+     * be ignored by default, unless you are testing the single-step debugging
+     * capabilities of n-cube Groovy.
+     */
+    @Ignore
+    public void testDebugExpression() throws Exception
+    {
+        List urls = new ArrayList();
+        urls.add("file:///Users/jderegnaucourt/Development/n-cube/src/test/resources/");
+        NCubeManager.setUrlClassLoader(urls, "file");
+
+        NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
+        Map coord = new HashMap();
+        coord.put("age", 90);
+        assertEquals(8100.0, ncube.getCell(coord));
+    }
 
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------

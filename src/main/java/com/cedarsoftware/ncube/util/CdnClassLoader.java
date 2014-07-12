@@ -64,14 +64,17 @@ public class CdnClassLoader extends GroovyClassLoader
             return super.getParent().loadClass(name);
         }
 
-        if (name.endsWith("NCubeGroovyExpression")) {
+        if (name.endsWith("NCubeGroovyExpression") ||
+            name.endsWith("NCubeGroovyController")) {
             return super.getParent().loadClass(name);
         }
         return super.findClass(name);
     }
 
     public URL getResource(String name) {
-        if (name.endsWith("NCubeGroovyExpression.groovy")) {
+        if (name.endsWith("NCubeGroovyExpression.groovy") ||
+            name.endsWith("NCubeGroovyController.groovy"))
+        {
             return null;
         }
 

@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
  */
 public class CdnClassLoader extends GroovyClassLoader
 {
-    Pattern GroovyExpression = Pattern.compile("^\\/dyn\\/([^\\/]+)\\/(.*)$");
+//    Pattern GroovyExpression = Pattern.compile("patternize this later");
 
 
 

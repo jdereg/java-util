@@ -231,7 +231,7 @@ public abstract class GroovyBase extends UrlCommandCell
         else
         {
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
-            GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
+            GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
             setRunnableCode(loader.parseClass(groovySource));
         }
         compiledClasses.put(cmdHash, getRunnableCode());

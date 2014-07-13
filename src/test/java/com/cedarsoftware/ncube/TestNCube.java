@@ -6849,8 +6849,9 @@ DELIMITER ;
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
-        coord.put("age", 90);
-        assertEquals(8100.0, ncube.getCell(coord));
+        int age = 9;
+        coord.put("age", age);
+        assertEquals(Math.pow(age, 2), ncube.getCell(coord));
     }
 
     // ---------------------------------------------------------------------------------

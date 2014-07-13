@@ -59,8 +59,8 @@ public class CdnClassLoader extends GroovyClassLoader
             return true;
         }
 
-        if (name.endsWith("NCubeGroovyExpression.groovy") ||
-            name.endsWith("NCubeGroovyController.groovy"))
+        if (name.startsWith("ncube/grv/exp/") ||
+            name.startsWith("ncube/grv/method/"))
         {
             return true;
         }
@@ -82,7 +82,6 @@ public class CdnClassLoader extends GroovyClassLoader
             }
         }
 
-        System.out.println("name:  " + name);
         return name.endsWith(".class");
     }
 

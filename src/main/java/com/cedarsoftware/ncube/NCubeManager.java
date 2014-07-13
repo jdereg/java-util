@@ -67,7 +67,7 @@ public class NCubeManager
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
     private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<String, GroovyClassLoader>();
 
-    private static GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+    //private static GroovyClassLoader simpleLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
 
     /**
      * @param name String name of an NCube.
@@ -111,10 +111,10 @@ public class NCubeManager
         }
     }
 
-    public static URLClassLoader getSimpleLoader(String version)
-    {
-        return simpleLoader;
-    }
+//    public static URLClassLoader getSimpleLoader(String version)
+//    {
+//        return simpleLoader;
+//    }
 
     public static URLClassLoader getUrlClassLoader(String version)
     {
@@ -188,7 +188,7 @@ public class NCubeManager
         synchronized (cubeList)
         {
             cubeList.clear();
-            simpleLoader.clearCache();
+            //simpleLoader.clearCache();
             for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
             {
                 GroovyClassLoader classLoader = entry.getValue();

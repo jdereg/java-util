@@ -207,9 +207,10 @@ public abstract class GroovyBase extends UrlCommandCell
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
 
+        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
+
         if (isUrlUsed)
         {
-            GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
             URL groovySourceUrl = urlLoader.getResource(url);
 
             if (groovySourceUrl == null)
@@ -231,8 +232,8 @@ public abstract class GroovyBase extends UrlCommandCell
         else
         {
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
-            GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
-            setRunnableCode(loader.parseClass(groovySource));
+            //GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
+            setRunnableCode(urlLoader.parseClass(groovySource));
         }
         compiledClasses.put(cmdHash, getRunnableCode());
     }

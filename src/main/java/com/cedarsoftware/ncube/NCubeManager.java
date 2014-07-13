@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
@@ -90,7 +91,7 @@ public class NCubeManager
             LOG.warn("RESETTING URLs for n-cube version: " + version + ", urls: " + urls);
         }
 
-        GroovyClassLoader urlClassLoader = new GroovyClassLoader(NCubeManager.class.getClassLoader());
+        GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
         urlClassLoaders.put(version, urlClassLoader);
 
         for (String url : urls)

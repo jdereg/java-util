@@ -12,16 +12,14 @@ import java.util.NoSuchElementException;
  */
 public class CdnClassLoader extends GroovyClassLoader
 {
-//    Pattern GroovyExpression = Pattern.compile("patternize this later");
-
-
-
     private boolean _preventRemoteBeanInfo;
     private boolean _preventRemoteCusomizer;
+
     /**
      * creates a GroovyClassLoader using the given ClassLoader as parent
      */
-    public CdnClassLoader(ClassLoader loader, boolean preventRemoteBeanInfo, boolean preventRemoteCusomizer) {
+    public CdnClassLoader(ClassLoader loader, boolean preventRemoteBeanInfo, boolean preventRemoteCusomizer)
+    {
         super(loader, null);
         _preventRemoteBeanInfo = preventRemoteBeanInfo;
         _preventRemoteCusomizer = preventRemoteCusomizer;
@@ -34,11 +32,10 @@ public class CdnClassLoader extends GroovyClassLoader
      *
      * @param name the name of the class
      * @return the resulting class
-     * @exception ClassNotFoundException if the class could not be found,
-     *            or if the loader is closed.
+     * @throws ClassNotFoundException if the class could not be found,
+     *                                or if the loader is closed.
      */
-    protected Class<?> findClass(final String name)
-            throws ClassNotFoundException
+    protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
         // We only allow loading classes off of the local classpath.
         // no true url classpath loading when dealing with classes.
@@ -49,13 +46,15 @@ public class CdnClassLoader extends GroovyClassLoader
 
     /**
      * Thse need to be changed to some sort of pattern recognition
+     *
      * @param name Name of resource
      * @return true if we should only look locally.
      */
-    protected boolean isLocalOnlyResource(String name) {
-
+    protected boolean isLocalOnlyResource(String name)
+    {
         //  Groovy ASTTransform Service
-        if (name.endsWith("org.codehaus.groovy.transform.ASTTransformation")) {
+        if (name.endsWith("org.codehaus.groovy.transform.ASTTransformation"))
+        {
             return true;
         }
 
@@ -64,7 +63,6 @@ public class CdnClassLoader extends GroovyClassLoader
         {
             return true;
         }
-
 
         if (_preventRemoteBeanInfo)
         {
@@ -87,16 +85,15 @@ public class CdnClassLoader extends GroovyClassLoader
 
     public Enumeration<URL> getResources(String name) throws IOException
     {
-        if (isLocalOnlyResource(name)) {
-            return new Enumeration<URL>() {
-
-                @Override
+        if (isLocalOnlyResource(name))
+        {
+            return new Enumeration<URL>()
+            {
                 public boolean hasMoreElements()
                 {
                     return false;
                 }
 
-                @Override
                 public URL nextElement()
                 {
                     throw new NoSuchElementException();
@@ -106,13 +103,12 @@ public class CdnClassLoader extends GroovyClassLoader
         return super.getResources(name);
     }
 
-    public URL getResource(String name) {
-        if (isLocalOnlyResource(name)) {
+    public URL getResource(String name)
+    {
+        if (isLocalOnlyResource(name))
+        {
             return null;
         }
         return super.getResource(name);
     }
-
-
-
 }

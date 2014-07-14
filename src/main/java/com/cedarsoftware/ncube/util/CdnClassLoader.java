@@ -40,10 +40,11 @@ public class CdnClassLoader extends GroovyClassLoader
     protected Class<?> findClass(final String name)
             throws ClassNotFoundException
     {
-        if (isLocalOnlyResource(name)) {
-            return super.getParent().loadClass(name);
-        }
-        return super.findClass(name);
+        // We only allow loading classes off of the local classpath.
+        // no true url classpath loading when dealing with classes.
+        // this is for security reasons to keep injected code from loading
+        // remotely.
+        return super.getParent().loadClass(name);
     }
 
     /**
@@ -52,10 +53,22 @@ public class CdnClassLoader extends GroovyClassLoader
      * @return true if we should only look locally.
      */
     protected boolean isLocalOnlyResource(String name) {
+
+        //  Groovy ASTTransform Service
+        if (name.endsWith("org.codehaus.groovy.transform.ASTTransformation")) {
+            return true;
+        }
+
+        if (name.startsWith("ncube/grv/exp/") ||
+            name.startsWith("ncube/grv/method/"))
+        {
+            return true;
+        }
+
+
         if (_preventRemoteBeanInfo)
         {
-            if (name.endsWith("BeanInfo") ||
-                name.endsWith("BeanInfo.groovy"))
+            if (name.endsWith("BeanInfo.groovy"))
             {
                 return true;
             }
@@ -63,32 +76,13 @@ public class CdnClassLoader extends GroovyClassLoader
 
         if (_preventRemoteCusomizer)
         {
-            if (name.endsWith("Customizer") ||
-                name.endsWith("Customizer.groovy"))
+            if (name.endsWith("Customizer.groovy"))
             {
                 return true;
             }
         }
 
-        if (name.startsWith("java.lang") ||
-                name.startsWith("java.io") ||
-                name.startsWith("java.net") ||
-                name.startsWith("java.util") ||
-                name.startsWith("groovy.util") ||
-                name.startsWith("groovy.lang")) {
-
-            return true;
-        }
-
-        if (name.endsWith("NCubeGroovyExpression") ||
-                name.endsWith("NCubeGroovyController") ||
-                name.endsWith("NCubeGroovyExpression.groovy") ||
-                name.endsWith("NCubeGroovyController.groovy"))
-        {
-            return true;
-        }
-
-        return name.endsWith("org.codehaus.groovy.transform.ASTTransformation");
+        return name.endsWith(".class");
     }
 
     public Enumeration<URL> getResources(String name) throws IOException

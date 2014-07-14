@@ -206,10 +206,10 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
+        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
 
         if (isUrlUsed)
         {
-            GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
             URL groovySourceUrl = urlLoader.getResource(url);
 
             if (groovySourceUrl == null)
@@ -217,22 +217,15 @@ public abstract class GroovyBase extends UrlCommandCell
                 throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setUrlClassLoader(): " + url);
             }
 
-
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
 
-            //  Can cut total test time in half if we use loader at this point instead of urlLoader
-            //  This would keep us from being able to subclass another external (urlized) class.
-            //  I think Groovy will load that correctly, but I'm not sure.  We need to come up with
-            //  a test for that and verify it works.
-            //GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getSimpleLoader(cube.getVersion());
             setRunnableCode(urlLoader.parseClass(gcs));
         }
         else
         {
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
-            GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
-            setRunnableCode(loader.parseClass(groovySource));
+            setRunnableCode(urlLoader.parseClass(groovySource));
         }
         compiledClasses.put(cmdHash, getRunnableCode());
     }

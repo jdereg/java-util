@@ -25,6 +25,6 @@
     "cells":[
         { "id":["view","index"], "type":"string", "url":"tests/ncube/some.txt"},
         { "id":["view","500"], "type":"string", "url":"tests/does/not/exist/index.html"},
-        { "id":["view","404"], "type":"string", "url":"http://codetested.com/test/does/not/exist/index.html"}
+        { "id":["view","404"], "type":"string", "url":"htTp://www.cedarsoftware.com/tests/does/not/exist/index.html"}
     ]
 }

@@ -28,7 +28,6 @@ import java.net.InetAddress;
  */
 public class TestInetAddressUtilities
 {
-
     @Test
     public void testMapUtilitiesConstructor() throws Exception
     {

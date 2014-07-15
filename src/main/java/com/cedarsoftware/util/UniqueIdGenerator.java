@@ -1,8 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -43,7 +40,6 @@ public class UniqueIdGenerator
             return size() > 1000;
         }
     };
-    private static final Log LOG = LogFactory.getLog(UniqueIdGenerator.class);
 
     /**
      * Static initializer
@@ -53,8 +49,7 @@ public class UniqueIdGenerator
         String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
         if (StringUtilities.isEmpty(id))
         {
-            byte[] ip = InetAddressUtilities.getIpAddress();
-            lastIp = ((int)ip[ip.length-1] & 0xff) % 100;
+            lastIp = 99;
         }
         else
         {

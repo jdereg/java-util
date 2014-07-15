@@ -42,9 +42,9 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestUrlUtilities
 {
-    private static final String httpsUrl = "https://www.myotherdrive.com";
+    private static final String httpsUrl = "https://www.ssllabs.com/ssltest/";
     //private static final String httpsGoogleUrl = "https://www.google.com";
-    private static final String domain  = "myotherdrive.com";
+    private static final String domain  = "ssllabs";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
 
     private static final String _expected = "<html>\n" +
@@ -95,30 +95,30 @@ public class TestUrlUtilities
         SSLSocketFactory f = UrlUtilities.buildNaiveSSLSocketFactory();
         HostnameVerifier v = UrlUtilities.NAIVE_VERIFIER;
 
-        byte[] content1 = UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY);
-        byte[] content2 = UrlUtilities.getContentFromUrl(httpsUrl);
-        byte[] content3 = UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY, f, v);
-        byte[] content4 = UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true);
-        byte[] content5 = UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v);
+        String content1 = new String(UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY));
+        String content2 = new String(UrlUtilities.getContentFromUrl(httpsUrl));
+        String content3 = new String(UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY, f, v));
+        String content4 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true));
+        String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
 
-        //  Allow for 3% difference between pages between requests to handle time and hash value changes.
-        assertEquals(new String(content1), new String(content2));
-        assertEquals(new String(content2), new String(content3));
-        assertEquals(new String(content3), new String(content4));
-        assertEquals(new String(content4), new String(content5));
-        assertEquals(new String(content5), new String(content1));
+        //  Allow for small difference between pages between requests to handle time and hash value changes.
+        assertTrue(StringUtilities.levenshteinDistance(content1, content2) < 10);
+        assertTrue(StringUtilities.levenshteinDistance(content2, content3) < 10);
+        assertTrue(StringUtilities.levenshteinDistance(content3, content4) < 10);
+        assertTrue(StringUtilities.levenshteinDistance(content4, content5) < 10);
+        assertTrue(StringUtilities.levenshteinDistance(content5, content1) < 10);
 
             //TODO - add in when we find self-signing site.
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
 
-        byte[] content6 = UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null);
-        byte[] content7 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false);
-        byte[] content8 = UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null);
+        String content6 = new String(UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null));
+        String content7 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false));
+        String content8 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null));
 
-        assertEquals(new String(content6), new String(content7));
-        assertEquals(new String(content7), new String(content8));
+        assertTrue(StringUtilities.levenshteinDistance(content6, content7) < 10);
+        assertTrue(StringUtilities.levenshteinDistance(content7, content8) < 10);
 
         // 404
         assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-bucks.html", null, null, Proxy.NO_PROXY, null, null));
@@ -133,7 +133,7 @@ public class TestUrlUtilities
         assertTrue(content1.contains(domain));
         assertTrue(content2.contains(domain));
 
-        assertEquals(content1, content2);
+        assertTrue(StringUtilities.levenshteinDistance(content1, content2) < 10);
 
     }
 
@@ -147,14 +147,6 @@ public class TestUrlUtilities
         assertEquals(1, cookies.size());
         assertTrue(cookies.containsKey("codetested.com"));
         assertEquals(_expected, new String(bytes1));
-
-        byte[] bytes2 = UrlUtilities.getContentFromUrl(httpsUrl, null, 0, cookies, cookies, false);
-
-        assertEquals(2, cookies.size());
-        assertTrue(cookies.containsKey("codetested.com"));
-        assertTrue(cookies.containsKey(domain));
-
-        assertTrue(new String(bytes2).contains("myotherdrive.com"));
     }
 
     @Test

@@ -4,8 +4,10 @@ import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.AxisType;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.CommandCell;
+import com.cedarsoftware.ncube.GroovyBase;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 
@@ -47,13 +49,14 @@ public class HtmlFormatter implements NCubeFormatter
 {
     String[] _headers;
 
-    public HtmlFormatter(String ... headers)
+    public HtmlFormatter(String... headers)
     {
         _headers = headers;
     }
 
     /**
      * Calculate import values needed to display an NCube.
+     *
      * @return Object[], where element 0 is a List containing the axes
      * where the first axis (element 0) is the axis to be displayed at the
      * top and the rest are the axes sorted smallest to larges.  Element 1
@@ -124,17 +127,18 @@ public class HtmlFormatter implements NCubeFormatter
         long height = 1;
         final int len = axes.size();
 
-        for (int i=1; i < len; i++)
+        for (int i = 1; i < len; i++)
         {
             height = axes.get(i).size() * height;
         }
 
-        return new Object[] {axes, height, width};
+        return new Object[]{axes, height, width};
     }
 
     /**
      * Use this API to generate an HTML view of this NCube.
      * matches one of the passed in headers, will be the axis chosen to be displayed at the top.
+     *
      * @return String containing an HTML view of this NCube.
      */
     public String format(NCube ncube)
@@ -188,14 +192,28 @@ public class HtmlFormatter implements NCubeFormatter
                 ".ncube-dead\n" +
                 "{\n" +
                 "background: #6495ED;\n" +
-                "} \n" +
+                "}\n" +
                 ".ncube-head\n" +
                 "{\n" +
                 "background: #4D4D4D;\n" +
-                "}  \n" +
+                "}\n" +
                 ".ncube-col\n" +
                 "{\n" +
                 "background: #929292;\n" +
+                "}\n" +
+                ".cell\n" +
+                "{\n" +
+                "background: white;\n" +
+                "}\n" +
+                ".cell-url\n" +
+                "{\n" +
+                "color: white;" +
+                "background: #8AA5FF;\n" +
+                "}\n" +
+                ".cell-code\n" +
+                "{\n" +
+                "color: #0F0;" +
+                "background: black;\n" +
                 "}\n" +
                 " </style>\n" +
                 "</head>\n" +
@@ -225,11 +243,13 @@ public class HtmlFormatter implements NCubeFormatter
             s.append("    <span>").append(topAxisName).append("</span><span class=\"caret\"></span>");
             s.append("   </button></th>\n");
             s.append("  </div>\n");
-            s.append(" <th class=\"ncube-dead\"></th>\n");
+            s.append(" <th class=\"ncube-dead\">");
+            s.append(ncube.getName());
+            s.append("</th>\n");
             s.append("</tr>\n");
             Set<Long> coord = new LinkedHashSet<Long>();
 
-            for (int i=0; i < width; i++)
+            for (int i = 0; i < width; i++)
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
@@ -247,7 +267,9 @@ public class HtmlFormatter implements NCubeFormatter
             int deadCols = axes.size() - 1;
             if (deadCols > 0)
             {
-                s.append(" <th class=\"ncube-dead\" colspan=\"").append(deadCols).append("\"></th>\n");
+                s.append(" <th class=\"ncube-dead\" colspan=\"").append(deadCols).append("\">");
+                s.append(ncube.getName());
+                s.append("</th>\n");
             }
             s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"ncube-head\" colspan=\"");
             s.append(topAxis.size());
@@ -269,7 +291,7 @@ public class HtmlFormatter implements NCubeFormatter
 
             final int axisCount = axes.size();
 
-            for (int i=1; i < axisCount; i++)
+            for (int i = 1; i < axisCount; i++)
             {
                 Axis axis = axes.get(i);
                 String axisName = axis.getName();
@@ -282,7 +304,7 @@ public class HtmlFormatter implements NCubeFormatter
                 s.append(" </th>\n");
                 long colspan = 1;
 
-                for (int j=i + 1; j < axisCount; j++)
+                for (int j = i + 1; j < axisCount; j++)
                 {
                     colspan *= axes.get(j).size();
                 }
@@ -308,11 +330,11 @@ public class HtmlFormatter implements NCubeFormatter
             s.append("</tr>\n");
 
             // The left column headers and cells
-            for (long h=0; h < height; h++)
+            for (long h = 0; h < height; h++)
             {
                 s.append("<tr>\n");
                 // Column headers for the row
-                for (int i=1; i < axisCount; i++)
+                for (int i = 1; i < axisCount; i++)
                 {
                     Axis axis = axes.get(i);
                     String axisName = axis.getName();
@@ -358,7 +380,7 @@ public class HtmlFormatter implements NCubeFormatter
                 }
 
                 // Cells for the row
-                for (int i=0; i < width; i++)
+                for (int i = 0; i < width; i++)
                 {
                     coord.put(topAxisName, topColumns.get(i).getId());
                     // Other coordinate values are set above this for-loop
@@ -375,13 +397,42 @@ public class HtmlFormatter implements NCubeFormatter
         return s.toString();
     }
 
-    private void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
+    private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
     {
         String id = "k" + setToString(coord);
-        s.append(" <td data-id=\"").append(id).append("\" class=\"cell\">");
+        s.append(" <td data-id=\"").append(id).append("\" class=\"");
+
         if (ncube.containsCellById(coord))
         {
-            s.append(getCellValueAsString(ncube.getCellByIdNoExecute(coord)));
+            Object cell = ncube.getCellByIdNoExecute(coord);
+            if (cell instanceof CommandCell)
+            {
+                CommandCell cmd = (CommandCell) cell;
+                if (StringUtilities.hasContent(cmd.getUrl()))
+                {
+                    s.append("cell-url\">");
+                    s.append("url: " + cmd.getUrl());
+                }
+                else if (cmd instanceof GroovyBase)
+                {
+                    s.append("cell-code\">");
+                    s.append(getCellValueAsString(cell));
+                }
+                else
+                {
+                    s.append("cell\">");
+                    s.append(getCellValueAsString(cell));
+                }
+            }
+            else
+            {
+                s.append("cell\">");
+                s.append(getCellValueAsString(cell));
+            }
+        }
+        else
+        {
+            s.append("\">");
         }
         s.append("</td>\n");
     }
@@ -409,7 +460,7 @@ public class HtmlFormatter implements NCubeFormatter
             final int len = Array.getLength(cellValue);
             final int len1 = len - 1;
 
-            for (int i=0; i < len; i++)
+            for (int i = 0; i < len; i++)
             {
                 Object elem = Array.get(cellValue, i);
                 str.append(elem.toString());
@@ -428,7 +479,7 @@ public class HtmlFormatter implements NCubeFormatter
             final int len = Array.getLength(cellValue);
             final int len1 = len - 1;
 
-            for (int i=0; i < len; i++)
+            for (int i = 0; i < len; i++)
             {
                 Object elem = Array.get(cellValue, i);
                 str.append(getCellValueAsString(elem));

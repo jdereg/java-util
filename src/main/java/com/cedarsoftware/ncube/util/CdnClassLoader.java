@@ -13,16 +13,16 @@ import java.util.NoSuchElementException;
 public class CdnClassLoader extends GroovyClassLoader
 {
     private boolean _preventRemoteBeanInfo;
-    private boolean _preventRemoteCusomizer;
+    private boolean _preventRemoteCustomizer;
 
     /**
      * creates a GroovyClassLoader using the given ClassLoader as parent
      */
-    public CdnClassLoader(ClassLoader loader, boolean preventRemoteBeanInfo, boolean preventRemoteCusomizer)
+    public CdnClassLoader(ClassLoader loader, boolean preventRemoteBeanInfo, boolean preventRemoteCustomizer)
     {
         super(loader, null);
         _preventRemoteBeanInfo = preventRemoteBeanInfo;
-        _preventRemoteCusomizer = preventRemoteCusomizer;
+        _preventRemoteCustomizer = preventRemoteCustomizer;
     }
 
     /**
@@ -45,8 +45,6 @@ public class CdnClassLoader extends GroovyClassLoader
     }
 
     /**
-     * Thse need to be changed to some sort of pattern recognition
-     *
      * @param name Name of resource
      * @return true if we should only look locally.
      */
@@ -72,7 +70,7 @@ public class CdnClassLoader extends GroovyClassLoader
             }
         }
 
-        if (_preventRemoteCusomizer)
+        if (_preventRemoteCustomizer)
         {
             if (name.endsWith("Customizer.groovy"))
             {

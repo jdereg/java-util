@@ -6831,6 +6831,22 @@ DELIMITER ;
         assertTrue(col.getMetaProperties().size() == 0);
     }
 
+    @Test
+    public void testHtmlCubeTitle() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
+        String html = ncube.toHtml();
+        System.out.println("html = " + html);
+    }
+
+    @Test
+    public void testHtml2DCubeTitle() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("debugExp2D.json");
+        String html = ncube.toHtml();
+        System.out.println("html = " + html);
+    }
+
     /**
      * Must set the URL to the path containing the test groovy code.  Do not include
      * the com/... in the path.  This is a RESOURCE URL location, which points to the

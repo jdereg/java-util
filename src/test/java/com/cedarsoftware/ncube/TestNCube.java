@@ -6836,7 +6836,8 @@ DELIMITER ;
     {
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         String html = ncube.toHtml();
-        System.out.println("html = " + html);
+        assertNotNull(html);
+//        System.out.println("html = " + html);
     }
 
     @Test
@@ -6844,7 +6845,8 @@ DELIMITER ;
     {
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp2D.json");
         String html = ncube.toHtml();
-        System.out.println("html = " + html);
+        assertNotNull(html);
+//        System.out.println("html = " + html);
     }
 
     /**

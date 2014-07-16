@@ -1,0 +1,50 @@
+{
+    "ncube": "debugExp",
+    "ruleMode": false,
+    "axes": [
+        {
+            "name": "Age",
+            "type": "NEAREST",
+            "valueType": "LONG",
+            "hasDefault": false,
+            "preferredOrder": 1,
+            "multiMatch": false,
+            "columns": [
+                {
+                    "id":10
+                },
+                {
+                    "id":100
+                }
+            ]
+        },
+        {
+            "name": "Gender",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": false,
+            "preferredOrder": 1,
+            "multiMatch": false,
+            "columns": [
+                {
+                    "id":"female"
+                },
+                {
+                    "id":"male"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": [10, "female"],
+            "type": "exp",
+            "url": "com/acme/exp/UrlToExpressionDebugTest.groovy"
+        },
+        {
+            "id": [100, "female"],
+            "type": "exp",
+            "value": "import com.acme.exp.LibCode; if (getInput().get('age') == null)\n{ return -1 }\nLibCode libCode = new LibCode();\nlibCode.pow(input.age, 2);"
+        }
+    ]
+}

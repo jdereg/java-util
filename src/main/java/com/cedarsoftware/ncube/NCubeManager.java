@@ -389,6 +389,53 @@ public class NCubeManager
     }
 
     /**
+     * Load an NCube from the database (any joined sub-cubes will also be loaded).
+     *
+     * @return NCube that matches, or null if not found.
+     */
+    public static boolean doesCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
+    {
+        validateConnection(connection);
+        validateApp(app);
+        validateCubeName(name);
+        validateStatus(status);
+        if (sysDate == null)
+        {
+            sysDate = new Date();
+        }
+
+        synchronized (cubeList)
+        {
+            PreparedStatement stmt = null;
+            try
+            {
+                java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+                stmt = connection.prepareStatement("SELECT n_cube_nm FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?");
+
+                stmt.setString(1, name);
+                stmt.setString(2, app);
+                stmt.setDate(3, systemDate);
+                stmt.setDate(4, systemDate);
+                stmt.setString(5, version);
+                stmt.setString(6, status);
+                ResultSet rs = stmt.executeQuery();
+
+                return rs.next();
+            }
+            catch (Exception e)
+            {
+                String s = "Error finding cube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
+            finally
+            {
+                jdbcCleanup(stmt);
+            }
+        }
+    }
+
+    /**
      * Retrieve all cube names that are deeply referenced by the named app, cube (name), version, and status.
      */
     public static void getReferencedCubeNames(Connection connection, String app, String name, String version, String status, Date sysDate, Set<String> refs)

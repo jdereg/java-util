@@ -1727,7 +1727,12 @@ DELIMITER ;
         ncube.setCell("Alexa", coord);
 
         String version = "0.1.0";
+
+        assertFalse(NCubeManager.doesCubeExist(conn, APP_ID, name, version, "SNAPSHOT", new Date()));
+
         NCubeManager.createCube(conn, APP_ID, ncube, version);
+
+        assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, "SNAPSHOT", new Date()));
 
         NCube<String> cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, "SNAPSHOT", new Date());
         assertTrue(DeepEquals.deepEquals(ncube, cube));

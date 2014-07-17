@@ -320,10 +320,8 @@ public class NCubeManager
      */
     public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateStatus(status);
         if (sysDate == null)
         {
             sysDate = new Date();
@@ -395,10 +393,10 @@ public class NCubeManager
      */
     public static boolean doesCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
         validateStatus(status);
+
         if (sysDate == null)
         {
             sysDate = new Date();
@@ -440,11 +438,10 @@ public class NCubeManager
      */
     public static void getReferencedCubeNames(Connection connection, String app, String name, String version, String status, Date sysDate, Set<String> refs)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateVersion(version);
         validateStatus(status);
+
         if (sysDate == null)
         {
             sysDate = new Date();
@@ -513,9 +510,7 @@ public class NCubeManager
      */
     public static Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(version);
+        validate(connection, app, version);
         validateStatus(status);
 
         if (sqlLike == null)
@@ -686,9 +681,7 @@ public class NCubeManager
      */
     public static boolean updateCube(Connection connection, String app, NCube ncube, String version)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(version);
+        validate(connection, app, version);
         if (ncube == null)
         {
             throw new IllegalArgumentException("NCube cannot be null for updating");
@@ -738,9 +731,7 @@ public class NCubeManager
      */
     public static void createCube(Connection connection, String app, NCube ncube, String version)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(version);
+        validate(connection, app, version);
         if (ncube == null)
         {
             throw new IllegalArgumentException("NCube cannot be null when creating a new n-cube");
@@ -814,9 +805,7 @@ public class NCubeManager
      */
     public static int releaseCubes(Connection connection, String app, String version)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(version);
+        validate(connection, app, version);
 
         synchronized (cubeList)
         {
@@ -867,9 +856,7 @@ public class NCubeManager
      */
     public static int createSnapshotCubes(Connection connection, String app, String relVersion, String newSnapVer)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(relVersion);
+        validate(connection, app, relVersion);
         validateVersion(newSnapVer);
 
         if (relVersion.equals(newSnapVer))
@@ -953,14 +940,19 @@ public class NCubeManager
         }
     }
 
+    private static void validate(Connection connection, String app, String relVersion)
+    {
+        validateConnection(connection);
+        validateApp(app);
+        validateVersion(relVersion);
+    }
+
     /**
      * Change the SNAPSHOT version value.
      */
     public static void changeVersionValue(Connection connection, String app, String currVersion, String newSnapVer)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(currVersion);
+        validate(connection, app, currVersion);
         validateVersion(newSnapVer);
 
         synchronized (cubeList)
@@ -1010,9 +1002,7 @@ public class NCubeManager
 
     public static boolean renameCube(Connection connection, String oldName, String newName, String app, String version)
     {
-        validateConnection(connection);
-        validateApp(app);
-        validateVersion(version);
+        validate(connection, app, version);
         validateCubeName(oldName);
         validateCubeName(newName);
 
@@ -1066,10 +1056,8 @@ public class NCubeManager
      */
     public static boolean deleteCube(Connection connection, String app, String name, String version, boolean allowDelete)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateVersion(version);
 
         synchronized (cubeList)
         {
@@ -1115,10 +1103,8 @@ public class NCubeManager
      */
     public static boolean updateNotes(Connection connection, String app, String name, String version, String notes)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateVersion(version);
 
         synchronized (cubeList)
         {
@@ -1164,10 +1150,9 @@ public class NCubeManager
      */
     public static String getNotes(Connection connection, String app, String name, String version, Date sysDate)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateVersion(version);
+
         if (sysDate == null)
         {
             sysDate = new Date();
@@ -1215,10 +1200,8 @@ public class NCubeManager
      */
     public static boolean updateTestData(Connection connection, String app, String name, String version, String testData)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateVersion(version);
 
         synchronized (cubeList)
         {
@@ -1267,10 +1250,9 @@ public class NCubeManager
      */
     public static String getTestData(Connection connection, String app, String name, String version, Date sysDate)
     {
-        validateConnection(connection);
-        validateApp(app);
+        validate(connection, app, version);
         validateCubeName(name);
-        validateVersion(version);
+
         if (sysDate == null)
         {
             sysDate = new Date();

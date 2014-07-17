@@ -153,10 +153,10 @@ public class TestNCube
         }
         else if (test_db == MYSQL)
         {
-        /*
-        Schema for MYSQL:
-drop table n_cube;
-CREATE TABLE n_cube (
+        /*  Schema for MYSQL
+
+        drop table if exists `ncube`.n_cube;
+CREATE TABLE `ncube`.n_cube (
 n_cube_id bigint NOT NULL,
 n_cube_nm varchar(100) NOT NULL,
 n_tenant_id char(64),
@@ -179,9 +179,9 @@ PRIMARY KEY (n_cube_id),
 UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd)
 );
 
-drop trigger sysEffDateTrigger;
+drop trigger if exists `ncube`.sysEffDateTrigger;
 DELIMITER ;;
-CREATE trigger sysEffDateTrigger BEFORE INSERT ON n_cube
+CREATE trigger `ncube`.sysEffDateTrigger BEFORE INSERT ON `ncube`.n_cube
 FOR EACH ROW
 BEGIN
     SET NEW.sys_effective_dt = NOW();
@@ -1727,7 +1727,12 @@ DELIMITER ;
         ncube.setCell("Alexa", coord);
 
         String version = "0.1.0";
+
+        assertFalse(NCubeManager.doesCubeExist(conn, APP_ID, name, version, "SNAPSHOT", new Date()));
+
         NCubeManager.createCube(conn, APP_ID, ncube, version);
+
+        assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, "SNAPSHOT", new Date()));
 
         NCube<String> cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, "SNAPSHOT", new Date());
         assertTrue(DeepEquals.deepEquals(ncube, cube));
@@ -6741,6 +6746,7 @@ DELIMITER ;
                 assertTrue(column.getMetaProperties().size() == 0);
             }
         }
+        NCubeManager.deleteCube(getConnection(), APP_ID, ncube.getName(), "0.1.0", true);
     }
 
     @Test

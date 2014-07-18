@@ -201,19 +201,39 @@ public class HtmlFormatter implements NCubeFormatter
                 "{\n" +
                 "background: #929292;\n" +
                 "}\n" +
+                ".col-code\n" +
+                "{\n" +
+                "color: white;\n" +
+                "background: #929292;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top;\n" +
+                "font-family: \"Courier New\", Courier, monospace\n" +
+                "}\n" +
+                ".col-url\n" +
+                "{\n" +
+                "color: blue;\n" +
+                "background: #929292;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top;\n" +
+                "}\n" +
                 ".cell\n" +
                 "{\n" +
                 "background: white;\n" +
                 "}\n" +
                 ".cell-url\n" +
                 "{\n" +
-                "color: white;" +
-                "background: #8AA5FF;\n" +
+                "color: white;\n" +
+                "background: slategray;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top\n" +
                 "}\n" +
                 ".cell-code\n" +
                 "{\n" +
-                "color: #0F0;" +
-                "background: black;\n" +
+                "color: Lime;\n" +
+                "background: slategray;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top;\n" +
+                "font-family: \"Courier New\", Courier, monospace\n" +
                 "}\n" +
                 " </style>\n" +
                 "</head>\n" +
@@ -253,7 +273,11 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
-                s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\">");
+                s.append(" <th data-id=\"c").append(column.getId());
+                s.append("\" class=\"");
+                s.append(getColumnCssClass(topAxis, column));
+                s.append("\">");
+                addColumnPrefixText(s, column);
                 s.append(column.isDefault() ? "Default" : column.toString());
                 coord.clear();
                 coord.add(topColumns.get(i).getId());
@@ -283,11 +307,11 @@ public class HtmlFormatter implements NCubeFormatter
 
             // Second row (special case)
             s.append("<tr>\n");
-            Map<String, Long> rowspanCounter = new HashMap<String, Long>();
-            Map<String, Long> rowspan = new HashMap<String, Long>();
-            Map<String, Long> columnCounter = new HashMap<String, Long>();
-            Map<String, List<Column>> columns = new HashMap<String, List<Column>>();
-            Map<String, Long> coord = new HashMap<String, Long>();
+            Map<String, Long> rowspanCounter = new HashMap();
+            Map<String, Long> rowspan = new HashMap();
+            Map<String, Long> columnCounter = new HashMap();
+            Map<String, List<Column>> columns = new HashMap();
+            Map<String, Long> coord = new HashMap();
 
             final int axisCount = axes.size();
 
@@ -317,14 +341,19 @@ public class HtmlFormatter implements NCubeFormatter
 
             for (Column column : topColumns)
             {
-                s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\">");
+                s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"");
+                s.append(getColumnCssClass(topAxis, column));
+                s.append("\">");
+                addColumnPrefixText(s, column);
                 s.append(column.toString());
                 s.append("</th>\n");
             }
 
             if (topAxis.size() != topColumnSize)
             {
-                s.append(" <th class=\"ncube-col\">Default</th>");
+                s.append(" <th class=\"");
+                s.append(getColumnCssClass(topAxis, topAxis.getDefaultColumn()));
+                s.append("\">Default</th>");
             }
 
             s.append("</tr>\n");
@@ -347,18 +376,24 @@ public class HtmlFormatter implements NCubeFormatter
                         coord.put(axisName, column.getId());
                         long span = rowspan.get(axisName);
 
+                        String colCssClass = getColumnCssClass(axis, column);
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\">");
+                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"");
+                            s.append(colCssClass);
+                            s.append("\">");
                         }
                         else
                         {   // Need to show rowspan attribute
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"ncube-col\" rowspan=\"");
+                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"");
+                            s.append(colCssClass);
+                            s.append("\" rowspan=\"");
                             s.append(span);
                             s.append("\">");
                         }
+                        addColumnPrefixText(s, column);
                         s.append(column.toString());
                         s.append("</th>\n");
 
@@ -397,10 +432,43 @@ public class HtmlFormatter implements NCubeFormatter
         return s.toString();
     }
 
+    private void addColumnPrefixText(StringBuilder s, Column column)
+    {
+        if (column.getValue() instanceof CommandCell)
+        {
+            CommandCell cmd = (CommandCell) column.getValue();
+            if (StringUtilities.hasContent(cmd.getUrl()))
+            {
+                s.append("url: ");
+            }
+        }
+    }
+
+    private String getColumnCssClass(Axis axis, Column col)
+    {
+        if (axis.getType() == AxisType.RULE)
+        {
+            return "col-code";
+        }
+        if (col.getValue() instanceof CommandCell)
+        {
+            CommandCell cmd = (CommandCell) col.getValue();
+            if (StringUtilities.hasContent(cmd.getUrl()))
+            {
+                return "col-url";
+            }
+            else if (cmd instanceof GroovyBase)
+            {
+                return "col-code";
+            }
+        }
+        return "ncube-col";
+    }
+
     private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
     {
-        String id = "k" + setToString(coord);
-        s.append(" <td data-id=\"").append(id).append("\" class=\"");
+        String id = setToString(coord);
+        s.append(" <td data-id=\"k").append(id).append("\" class=\"");
 
         if (ncube.containsCellById(coord))
         {
@@ -410,8 +478,8 @@ public class HtmlFormatter implements NCubeFormatter
                 CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.getUrl()))
                 {
-                    s.append("cell-url\">");
-                    s.append("url: " + cmd.getUrl());
+                    s.append("cell-url\">url: ");
+                    s.append(cmd.getUrl());
                 }
                 else if (cmd instanceof GroovyBase)
                 {

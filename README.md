@@ -6,11 +6,10 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.7.1</version>
+  <version>2.7.2</version>
 </dependency>
 ```
-
-<a class="coinbase-button" data-code="ea75c2592d599361328895696e420338" data-button-style="custom_large" data-custom="n-cube" href="https://coinbase.com/checkouts/ea75c2592d599361328895696e420338">Feed hungry developers...</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
+<a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
 
 What are the components of an n-cube?
 An n-cube has a set of axes (plural of axis), each of which adds a dimension.  Each axis can contain a different number of elements.  These elements are called columns.
@@ -66,6 +65,9 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.7.2
+ * New API added to NCubeManager, doesCubeExist(), which returns true if the given n-cube is stored within the persistent storage.
+ * HTML-syntax highlighting further improved
 * 2.7.1
  * Dynamically loaded Groovy classes (loaded from URL), load much faster.
  * The HTML representation of n-cube updated to differentiate URL specified cells and expression cells, from all other cells.  Very basic syntax highlighting if you can call it that.

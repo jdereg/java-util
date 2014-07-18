@@ -67,6 +67,10 @@ public class NCubeManager
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
     private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<String, GroovyClassLoader>();
 
+    static
+    {
+          urlClassLoaders.put("file", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+    }
     /**
      * @param name String name of an NCube.
      * @return NCube instance with the given name.  Please note

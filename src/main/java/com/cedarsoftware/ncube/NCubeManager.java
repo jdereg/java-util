@@ -256,9 +256,16 @@ public class NCubeManager
 
     private static void validateConnection(Connection c)
     {
-        if (c == null)
+        try
         {
-            throw new IllegalArgumentException("Connection cannot be null");
+            if (c == null || c.isClosed())
+            {
+                throw new IllegalArgumentException("Connection cannot be null");
+            }
+        }
+        catch (SQLException ce)
+        {
+            throw new IllegalArgumentException("Connection is closed or errored", ce);
         }
     }
 
@@ -333,11 +340,12 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            PreparedStatement stmt = null;
-            try
+            //  This is Java 7 specific, but will autoclose the statement
+            //  when it leaves the try statement.  If you want to change to this
+            //  let me know and I'll change the other instances.
+            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
-                stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?");
 
                 stmt.setString(1, name);
                 stmt.setString(2, app);
@@ -382,10 +390,6 @@ public class NCubeManager
                 String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
                 LOG.error(s, e);
                 throw new RuntimeException(s, e);
-            }
-            finally
-            {
-                jdbcCleanup(stmt);
             }
         }
     }

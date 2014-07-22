@@ -316,12 +316,7 @@ public class NCubeManager
 
     public static void validateStatus(String status)
     {
-        if (StringUtilities.isEmpty(status))
-        {
-            throw new IllegalArgumentException("n-cube status cannot be null or empty");
-        }
-
-        if (status.equals("RELEASE") || status.equals("SNAPSHOT"))
+        if ("RELEASE".equals(status) || "SNAPSHOT".equals(status))
         {
             return;
         }

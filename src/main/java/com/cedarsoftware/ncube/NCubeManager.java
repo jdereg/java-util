@@ -269,7 +269,7 @@ public class NCubeManager
         }
         catch (SQLException e)
         {
-            throw new IllegalArgumentException("Error closing connection.", e);
+            throw new IllegalArgumentException("Invalid connection.", e);
         }
     }
 

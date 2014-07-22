@@ -352,33 +352,35 @@ public class NCubeManager
                 stmt.setDate(4, systemDate);
                 stmt.setString(5, version);
                 stmt.setString(6, status);
-                ResultSet rs = stmt.executeQuery();
 
-                if (rs.next())
+                try (ResultSet rs = stmt.executeQuery())
                 {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String json = new String(jsonBytes, "UTF-8");
-                    NCube ncube = ncubeFromJson(json);
-
                     if (rs.next())
                     {
-                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
-                    }
+                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                        String json = new String(jsonBytes, "UTF-8");
+                        NCube ncube = ncubeFromJson(json);
 
-                    addCube(ncube, version);
-                    Set<String> subCubeList = ncube.getReferencedCubeNames();
-
-                    for (String cubeName : subCubeList)
-                    {
-                        final String cacheKey = makeCacheKey(cubeName, version);
-                        if (!cubeList.containsKey(cacheKey))
+                        if (rs.next())
                         {
-                            loadCube(connection, app, cubeName, version, status, sysDate);
+                            throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
                         }
+
+                        addCube(ncube, version);
+                        Set<String> subCubeList = ncube.getReferencedCubeNames();
+
+                        for (String cubeName : subCubeList)
+                        {
+                            final String cacheKey = makeCacheKey(cubeName, version);
+                            if (!cubeList.containsKey(cacheKey))
+                            {
+                                loadCube(connection, app, cubeName, version, status, sysDate);
+                            }
+                        }
+                        return ncube;
                     }
-                    return ncube;
+                    return null; // Indicates not found
                 }
-                return null; // Indicates not found
             }
             catch (IllegalStateException e)
             {

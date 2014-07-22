@@ -258,14 +258,18 @@ public class NCubeManager
     {
         try
         {
-            if (c == null || c.isClosed())
+            if (c == null)
             {
                 throw new IllegalArgumentException("Connection cannot be null");
             }
+            else if (c.isClosed())
+            {
+                throw new IllegalArgumentException("Connection already closed.");
+            }
         }
-        catch (SQLException ce)
+        catch (SQLException e)
         {
-            throw new IllegalArgumentException("Connection is closed or errored", ce);
+            throw new IllegalArgumentException("Error closing connection.", e);
         }
     }
 

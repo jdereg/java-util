@@ -1,0 +1,24 @@
+{
+    "ncube": "testReloadGroovy",
+    "axes": [
+        {
+            "name": "state",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": false,
+            "preferredOrder": 0,
+            "columns": [
+                {
+                    "id": "OH"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": ["OH"],
+            "type": "exp",
+            "url":"Abc.groovy"
+        }
+    ]
+}

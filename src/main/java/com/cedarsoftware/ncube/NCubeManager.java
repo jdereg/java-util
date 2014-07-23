@@ -9,6 +9,7 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -62,10 +63,11 @@ import java.util.regex.Matcher;
  */
 public class NCubeManager
 {
-    private static final Map<String, NCube> cubeList = new ConcurrentHashMap<String, NCube>();
+    private static final Map<String, NCube> cubeList = new ConcurrentHashMap();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<String, Map<String, Advice>>();
-    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<String, GroovyClassLoader>();
+    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap();
+    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap();
+    private static List<String> urlList = new ArrayList();
 
     static
     {
@@ -86,16 +88,29 @@ public class NCubeManager
         return name + '.' + version;
     }
 
-    public static void setUrlClassLoader(List<String> urls, String version)
+    public static void setBaseResourceUrls(List<String> urls, String version)
     {
         if (urlClassLoaders.containsKey(version))
         {
             LOG.warn("RESETTING URLs for n-cube version: " + version + ", urls: " + urls);
         }
 
-        GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-        urlClassLoaders.put(version, urlClassLoader);
+        urlList.clear();
+        urlList.addAll(urls);
 
+        GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+        addUrlsToClassLoader(urls, urlClassLoader);
+        urlClassLoaders.put(version, urlClassLoader);
+    }
+
+    @Deprecated
+    public static void setUrlClassLoader(List<String> urls, String version)
+    {
+        setBaseResourceUrls(urls, version);
+    }
+
+    private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
+    {
         for (String url : urls)
         {
             try
@@ -108,7 +123,7 @@ public class NCubeManager
             }
             catch (Exception e)
             {
-                throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url);
+                throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url, e);
             }
         }
     }
@@ -185,12 +200,13 @@ public class NCubeManager
         synchronized (cubeList)
         {
             cubeList.clear();
-            for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
+            GroovyBase.clearCache();
+            NCubeGroovyController.clearCache();
+            for (String version : urlClassLoaders.keySet())
             {
-                GroovyClassLoader classLoader = entry.getValue();
-                classLoader.clearCache();
+                GroovyClassLoader classLoader = urlClassLoaders.get(version);
+                classLoader.clearCache(); // free up Class cache
             }
-            GroovyBase.compiledClasses.clear();
             advices.clear();
         }
     }
@@ -205,7 +221,7 @@ public class NCubeManager
             Map<String, Advice> current = advices.get(wildcard);
             if (current == null)
             {
-                current = new LinkedHashMap<String, Advice>();
+                current = new LinkedHashMap();
                 advices.put(wildcard, current);
             }
 
@@ -264,12 +280,12 @@ public class NCubeManager
             }
             else if (c.isClosed())
             {
-                throw new IllegalArgumentException("Connection already closed.");
+                throw new IllegalStateException("Connection already closed.");
             }
         }
         catch (SQLException e)
         {
-            throw new IllegalArgumentException("Invalid connection.", e);
+            throw new IllegalStateException("Error closing connection.", e);
         }
     }
 
@@ -352,35 +368,33 @@ public class NCubeManager
                 stmt.setDate(4, systemDate);
                 stmt.setString(5, version);
                 stmt.setString(6, status);
+                ResultSet rs = stmt.executeQuery();
 
-                try (ResultSet rs = stmt.executeQuery())
+                if (rs.next())
                 {
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    NCube ncube = ncubeFromJson(json);
+
                     if (rs.next())
                     {
-                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                        String json = new String(jsonBytes, "UTF-8");
-                        NCube ncube = ncubeFromJson(json);
-
-                        if (rs.next())
-                        {
-                            throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
-                        }
-
-                        addCube(ncube, version);
-                        Set<String> subCubeList = ncube.getReferencedCubeNames();
-
-                        for (String cubeName : subCubeList)
-                        {
-                            final String cacheKey = makeCacheKey(cubeName, version);
-                            if (!cubeList.containsKey(cacheKey))
-                            {
-                                loadCube(connection, app, cubeName, version, status, sysDate);
-                            }
-                        }
-                        return ncube;
+                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
                     }
-                    return null; // Indicates not found
+
+                    addCube(ncube, version);
+                    Set<String> subCubeList = ncube.getReferencedCubeNames();
+
+                    for (String cubeName : subCubeList)
+                    {
+                        final String cacheKey = makeCacheKey(cubeName, version);
+                        if (!cubeList.containsKey(cacheKey))
+                        {
+                            loadCube(connection, app, cubeName, version, status, sysDate);
+                        }
+                    }
+                    return ncube;
                 }
+                return null; // Indicates not found
             }
             catch (IllegalStateException e)
             {

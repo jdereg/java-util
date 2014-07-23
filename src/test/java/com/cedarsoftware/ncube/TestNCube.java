@@ -6867,6 +6867,24 @@ DELIMITER ;
         assertEquals(20, out.values().iterator().next());
     }
 
+    @Test
+    public void testCoordinateGetter()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
+        Iterator<Set<Column>> i = ncube.getCellMap().keySet().iterator();
+        while (i.hasNext())
+        {
+            Set<Column> cols = i.next();
+            Column col = cols.iterator().next();
+            Set<Long> coord =  new HashSet<>();
+            coord.add(col.getId());
+            Map<String, Object> coordinate = new CaseInsensitiveMap<>();
+            ncube.getColumnsAndCoordinateFromIds(coord, null, coordinate);
+            assertTrue(coordinate.containsKey("code"));
+            assertTrue(ncube.getCell(coordinate) instanceof Object[]);
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

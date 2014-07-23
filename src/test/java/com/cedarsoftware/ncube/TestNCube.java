@@ -16,6 +16,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -106,9 +107,8 @@ public class TestNCube
         {
             List<String> urls = new ArrayList<String>();
             urls.add("http://www.cedarsoftware.com");
-
-            NCubeManager.setUrlClassLoader(urls, "file");
-            NCubeManager.setUrlClassLoader(urls, "1.0.0");
+            NCubeManager.setBaseResourceUrls(urls, "file");
+            NCubeManager.setBaseResourceUrls(urls, "1.0.0");
             _classLoaderInitialize = false;
         }
     }
@@ -5243,56 +5243,6 @@ DELIMITER ;
 //    }
 
     @Test
-    public void testUrlCube() throws Exception
-    {
-        // required test from machine serving up pages (OS X - built-in Apache, for example)
-//        NCube ncube = NCubeManager.getNCubeFromResource("urlContent.json");
-//
-//        Properties props = System.getProperties();
-//        props.setProperty("NCUBE_BASE_URL", "http://www.myotherdrive.com/");
-//
-//        Map coord = new HashMap();
-//        coord.put("Sites", "Google");
-//        ncube.getCell(coord);
-//        String html = (String) ncube.getCell(coord);
-//
-//        assertNotNull(html);
-//        assertTrue(html.length() > 50);
-//        assertTrue(html.toLowerCase().contains("google"));
-//
-//        coord.put("Sites", "MyOtherDriveUrl");
-//        html = (String) ncube.getCell(coord);
-//        System.out.println("html = " + html);
-//        assertNotNull(html);
-//        assertTrue(html.length() > 50);
-//        assertTrue(html.toLowerCase().contains("myotherdrive"));
-//
-//        // Can't set System properties anymore progammatically unless signed
-//        coord.put("Sites", "MyOtherDriveUri");
-//        html = (String) ncube.getCell(coord);
-//
-//        assertNotNull(html);
-//        assertTrue(html.length() > 50);
-//        assertTrue(html.toLowerCase().contains("myotherdrive"));
-//
-//        coord.put("Sites", "MyOtherDriveUrlSSL");
-//        Object x = ncube.getCell(coord);
-//        System.out.println("x = " + x);
-//
-//        assertNotNull(html);
-//        assertTrue(html.length() > 50);
-//        assertTrue(html.toLowerCase().contains("myotherdrive"));
-//
-//        // Can't set System properties anymore progammatically unless signed
-//        coord.put("Sites", "MyOtherDriveUriSSL");
-//        html = (String) ncube.getCell(coord);
-//
-//        assertNotNull(html);
-//        assertTrue(html.length() > 50);
-//        assertTrue(html.toLowerCase().contains("myotherdrive"));
-    }
-
-    @Test
     public void testStringIds() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("stringIds.json");
@@ -6573,7 +6523,6 @@ DELIMITER ;
 
         coord.put("age", 16);
         Map multi = ncube.getCells(coord, output);
-        System.out.println("multi = " + multi);
         assertEquals(2, multi.size());
     }
 
@@ -6733,7 +6682,6 @@ DELIMITER ;
         NCube ncube = createCube();
         String json = ncube.toFormattedJson();
         ncube = NCube.fromSimpleJson(json);
-        System.out.println("ncube.getMetaProperties() = " + ncube.getMetaProperties());
         assertTrue(ncube.getMetaProperties().size() == 0);
 
         List<Axis> axes = ncube.getAxes();
@@ -6869,6 +6817,7 @@ DELIMITER ;
     {
         List urls = new ArrayList();
         urls.add("file:///Users/jderegnaucourt/Development/n-cube/src/test/resources/");
+        urls.add("http://www.cedarsoftware.com");
         NCubeManager.setUrlClassLoader(urls, "file");
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
@@ -6876,6 +6825,46 @@ DELIMITER ;
         int age = 9;
         coord.put("age", age);
         assertEquals(Math.pow(age, 2), ncube.getCell(coord));
+    }
+
+    @Test
+    public void testReloadGroovyClass() throws Exception
+    {
+        String base = System.getProperty("java.io.tmpdir");
+        if (!base.endsWith("/"))
+        {
+            base += "/";
+        }
+
+        String url = "file://" + base;
+
+        List urls = new ArrayList();
+        urls.add(url);
+        urls.add("http://www.cedarsoftware.com");
+        NCubeManager.setBaseResourceUrls(urls, "file");
+
+        FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
+        String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
+        fo.write(code.getBytes());
+        fo.close();
+
+        NCube ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
+        Map coord = new HashMap();
+        coord.put("state", "OH");
+        Map output = new LinkedHashMap();
+        Map out = ncube.getCells(coord, output);
+        assertEquals(10, out.values().iterator().next());
+
+        NCubeManager.clearCubeList();
+        fo = new FileOutputStream(base + "Abc.groovy");
+        code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 20 } }";
+        fo.write(code.getBytes());
+        fo.close();
+        fo.flush();
+
+        ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
+        out = ncube.getCells(coord, output);
+        assertEquals(20, out.values().iterator().next());
     }
 
     // ---------------------------------------------------------------------------------

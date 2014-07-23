@@ -69,6 +69,14 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract String getMethodToExecute(Map args);
 
+    public static void clearCache()
+    {
+        compiledClasses.clear(); // Free up stored references to Compiled Classes
+        constructorMap.clear();  // free up stored references to Compiled Constructors
+        methodMap.clear(); // free up stored references to Compiled Methods
+        initMethodMap.clear();  // free up stored references to NCubeGroovyExpression.init() methods
+    }
+
     protected Object executeInternal(Object data, Map args)
     {
         String cubeName = getNCube(args).getName();
@@ -316,10 +324,10 @@ public abstract class GroovyBase extends UrlCommandCell
         }
     }
 
-    public Set<String> getImports(String text, StringBuilder newGroovy)
+    public static Set<String> getImports(String text, StringBuilder newGroovy)
     {
         Matcher m = Regexes.importPattern.matcher(text);
-        Set<String> importNames = new LinkedHashSet<String>();
+        Set<String> importNames = new LinkedHashSet();
         while (m.find())
         {
             importNames.add(m.group(0));  // based on Regex pattern - if pattern changes, this could change

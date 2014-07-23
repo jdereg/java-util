@@ -39,6 +39,10 @@ public class NCubeGroovyController extends NCubeGroovyExpression
         }
     };
 
+    public static void clearCache()
+    {
+        methodCache.clear();
+    }
     /**
      * Run the groovy method named by the column on the 'method' axis.
      * @param signature String SHA1 of the source file.  This is used to

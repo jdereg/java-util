@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.7.3</version>
+  <version>2.7.4</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -65,6 +65,10 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.7.4
+ * Bug fix: reloading n-cubes now clears all of its internal caches, thereby allowing reloading Groovy code without server restarts.
+ * Bug fix: NCubeManager was not rethrowing the exception when a bad URL was passed to setBaseResourceUrls().
+ * Bug fix: If a URL failed to resolve (valid URL, but nothing valid at the other end of the URL), an NPE occurred.  Now an exception is thrown indicating the URL that failed to resolve, the n-cube it resided within, and the version of the n-cube.
 * 2.7.3
  * Added GroovyClassLoader 'file' version so that the .json loaded files do not need to call NCubeManager.setUrlClassLoader()
 * 2.7.2

@@ -162,7 +162,7 @@ public abstract class UrlCommandCell implements CommandCell
         URL actualUrl = null;
         try
         {
-            actualUrl = getActualUrl(cube.getVersion());
+            actualUrl = getActualUrl(cube.getVersion(), cube.getName());
             URLConnection connection = actualUrl.openConnection();
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
@@ -227,7 +227,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         try
         {
-            URL u = getActualUrl(cube.getVersion());
+            URL u = getActualUrl(cube.getVersion(), cube.getName());
             //TODO:  java-util change remove u.toString() when we have a URL version of this call
             return UrlUtilities.getContentFromUrlAsString(u.toString(), proxyServer, proxyPort, null, null, true);
         }
@@ -238,16 +238,15 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    protected URL getActualUrl(String version) throws MalformedURLException
+    protected URL getActualUrl(String version, String ncubeName) throws MalformedURLException
     {
-        String url = getUrl();
         URL actualUrl;
 
         try
         {
             String localUrl = (url != null) ? url.toLowerCase() : null;
 
-            if (localUrl != null && localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:"))
+            if (localUrl != null && (localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:")))
             {
                 actualUrl = new URL(url);
             }
@@ -256,12 +255,19 @@ public abstract class UrlCommandCell implements CommandCell
                 GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
                 if (loader == null)
                 {
-                    throw new IllegalStateException("n-cube version not set or no URLs are set for this version, version: " + version);
+                    throw new IllegalStateException("No root URLs are set for relative path resources to be loaded, ncube: " + ncubeName + ", version: " + version);
                 }
                 actualUrl = loader.getResource(url);
             }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid URL:  " + url);
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncubeName + ", version: " + version, e);
+        }
+
+        if (actualUrl == null)
+        {
+            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + getUrl() + ", ncube: " + ncubeName + ", version: " + version);
         }
         return actualUrl;
     }

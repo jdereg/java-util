@@ -87,13 +87,19 @@ public class NCubeGroovyExpression
         return cube.getCell(input, output);
     }
 
-    // TODO: Need to make this work like GOTO (ruleStop() - runRule() starts again not returning to where it was called from)
-    public Object runRule(Map coord)
-    {
-        input.putAll(coord);
-        return ncube.getCells(input, output);
-    }
+    // TODO: Need to make GOTO or Restart (restarts rule execution again not returning to where it was called from)
+//    public Object runRule(Map coord)
+//    {
+//        input.putAll(coord);
+//        return ncube.getCells(input, output);
+//    }
 
+    /**
+     * Run another rule cube
+     * @param name String name of the other rule cube
+     * @param coord Map input coordinate
+     * @return is the return Map from the other rule cube
+     */
     public Object runRuleCube(String name, Map coord)
     {
         input.putAll(coord);

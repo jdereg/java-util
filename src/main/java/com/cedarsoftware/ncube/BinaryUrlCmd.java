@@ -41,7 +41,7 @@ public class BinaryUrlCmd extends UrlCommandCell
         NCube ncube = (NCube) args.get("ncube");
         try
         {
-            URL u = getActualUrl(ncube.getVersion());
+            URL u = getActualUrl(ncube.getVersion(), ncube.getName());
             //TODO:  java-util change remove u.toString() when we have a URL version of this call
             return UrlUtilities.getContentFromUrl(u.toString(), proxyServer, proxyPort, null, null, true);
         }

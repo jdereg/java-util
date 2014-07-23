@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.Vector;
 import java.util.regex.Matcher;
 
 import static org.junit.Assert.assertEquals;
@@ -6871,18 +6872,73 @@ DELIMITER ;
     public void testCoordinateGetter()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
-        Iterator<Set<Column>> i = ncube.getCellMap().keySet().iterator();
-        while (i.hasNext())
+        for (Set<Column> cols : (Iterable<Set<Column>>) ncube.getCellMap().keySet())
         {
-            Set<Column> cols = i.next();
             Column col = cols.iterator().next();
-            Set<Long> coord =  new HashSet<>();
+            Set<Long> coord = new HashSet<>();
             coord.add(col.getId());
             Map<String, Object> coordinate = new CaseInsensitiveMap<>();
             ncube.getColumnsAndCoordinateFromIds(coord, null, coordinate);
             assertTrue(coordinate.containsKey("code"));
             assertTrue(ncube.getCell(coordinate) instanceof Object[]);
         }
+    }
+
+    @Test
+    public void testRuleFalseValues() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleFalseValues.json");
+        Map input = new HashMap();
+        input.put("state", "OH");
+        Map output = new HashMap();
+        ncube.getCells(input, output);
+        System.out.println("output = " + output);
+
+        // Groovy style false
+        assertFalse(NCube.didRuleFire(null));
+        assertFalse(NCube.didRuleFire(false));
+        assertFalse(NCube.didRuleFire(Boolean.FALSE));
+        assertFalse(NCube.didRuleFire(new Boolean(false)));
+        assertFalse(NCube.didRuleFire((byte) 0));
+        assertFalse(NCube.didRuleFire((short) 0));
+        assertFalse(NCube.didRuleFire((int) 0));
+        assertFalse(NCube.didRuleFire((long) 0));
+        assertFalse(NCube.didRuleFire(0f));
+        assertFalse(NCube.didRuleFire(0d));
+        assertFalse(NCube.didRuleFire(BigInteger.ZERO));
+        assertFalse(NCube.didRuleFire(BigDecimal.ZERO));
+        assertFalse(NCube.didRuleFire(""));
+        assertFalse(NCube.didRuleFire(new HashMap()));
+        assertFalse(NCube.didRuleFire(new HashMap().keySet().iterator()));
+        assertFalse(NCube.didRuleFire(new ArrayList()));
+        assertFalse(NCube.didRuleFire(new ArrayList().iterator()));
+        assertFalse(NCube.didRuleFire(new Vector().elements()));
+
+        // Groovy style true
+        assertTrue(NCube.didRuleFire(new Date()));
+        assertTrue(NCube.didRuleFire(true));
+        assertTrue(NCube.didRuleFire(Boolean.TRUE));
+        assertTrue(NCube.didRuleFire(new Boolean(true)));
+        assertTrue(NCube.didRuleFire((byte) 1));
+        assertTrue(NCube.didRuleFire((short) 1));
+        assertTrue(NCube.didRuleFire((int) 1));
+        assertTrue(NCube.didRuleFire((long) 1));
+        assertTrue(NCube.didRuleFire(1f));
+        assertTrue(NCube.didRuleFire(1d));
+        assertTrue(NCube.didRuleFire(BigInteger.ONE));
+        assertTrue(NCube.didRuleFire(BigDecimal.ONE));
+        assertTrue(NCube.didRuleFire("Yo"));
+        Map map = new HashMap();
+        map.put("foo","bar");
+        assertTrue(NCube.didRuleFire(map));
+        assertTrue(NCube.didRuleFire(map.keySet().iterator()));
+        List list = new ArrayList();
+        list.add(new Date());
+        assertTrue(NCube.didRuleFire(list));
+        assertTrue(NCube.didRuleFire(list.iterator()));
+        Vector v = new Vector();
+        v.add(9);
+        assertTrue(NCube.didRuleFire(v.elements()));
     }
 
     // ---------------------------------------------------------------------------------

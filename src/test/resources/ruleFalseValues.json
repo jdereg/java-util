@@ -1,0 +1,41 @@
+{
+    "ncube":"ruleFalseValues",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"conditions",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":0, "type":"exp", "value":"true" },
+                { "id":1, "type":"exp", "value":"false" },
+                { "id":2, "type":"exp", "value":"0" },
+                { "id":3, "type":"exp", "value":"Boolean.FALSE" },
+                { "id":4, "type":"exp", "value": "0 == 1"},
+                { "id":5, "type":"exp", "value": "def x = [a:false]; x.a"},
+                { "id":6, "type":"exp", "value": "def x = [a:Boolean.FALSE]; x.a"},
+                { "id":7, "type":"exp", "value": "[:]"},
+                { "id":8, "type":"exp", "value": "[:].keySet().iterator()"},
+                { "id":9, "type":"exp", "value": "[]"},
+                { "id":10, "type":"exp", "value": "[].iterator()"},
+                { "id":11, "type":"exp", "value": "''"}
+            ]
+        }
+    ],
+    "cells":[
+        {"id":[0],"type":"exp","value":"output.count = 0"},
+        {"id":[1],"type":"exp","value":"output.count++"},
+        {"id":[2],"type":"exp","value":"output.count++"},
+        {"id":[3],"type":"exp","value":"output.count++"},
+        {"id":[4],"type":"exp","value":"output.count++"},
+        {"id":[5],"type":"exp","value":"output.count++"},
+        {"id":[6],"type":"exp","value":"output.count++"},
+        {"id":[7],"type":"exp","value":"output.count++"},
+        {"id":[8],"type":"exp","value":"output.count++"},
+        {"id":[9],"type":"exp","value":"output.count++"},
+        {"id":[10],"type":"exp","value":"output.count++"},
+        {"id":[11],"type":"exp","value":"output.count++"}
+    ]
+}

@@ -6898,7 +6898,8 @@ DELIMITER ;
         input.put("state", "OH");
         Map output = new HashMap();
         ncube.getCells(input, output);
-        System.out.println("output = " + output);
+        Map stats = (Map) output.get("_rule");
+        assertEquals(1, ((Map) stats.get(RuleMetaKeys.RULES_EXECUTED)).size());
 
         // Groovy style false
         assertFalse(NCube.didRuleFire(null));

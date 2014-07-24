@@ -9,7 +9,7 @@
             "hasDefault":false,
             "preferredOrder":1,
             "columns":[
-                { "id":0, "type":"exp", "value":"true" },
+                { "id":0, "name":"step1", "type":"exp", "value":"true" },
                 { "id":1, "type":"exp", "value":"false" },
                 { "id":2, "type":"exp", "value":"0" },
                 { "id":3, "type":"exp", "value":"Boolean.FALSE" },

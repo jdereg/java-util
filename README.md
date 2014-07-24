@@ -65,6 +65,10 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.8.0
+ * Rule Execution: After execution of cube that had one or more rule axes (call to getCells()), the output Map has a new entry added under the "_rule" section, named "RULES_EXECUTED".  This entry contains the names (or ID if no name given) of the condition(s) and the return value of the associated statement. More than one condition could be associated to a statement in the case of a cube with 2 or more rule axes.  Therefore the keys of the Map are List, and the value is the associated statement return value.
+ * Rule Execution: A condition's truth (true or false) value follows the same as the Groovy language.  For details, see http://groovy.codehaus.org/Groovy+Truth
+ * Java 1.7: Template declarations updated to Java 1.7 syntax (no need to repeat collection template parameters a 2nd time on the RHS).
 * 2.7.5
  * Added ability to turn Set<Long> into Map<String, Object> coordinate that will retrieve cell described by Set<Long>.  Useful for n-cube editor.
 * 2.7.4

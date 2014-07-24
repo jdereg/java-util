@@ -63,11 +63,10 @@ import java.util.regex.Matcher;
  */
 public class NCubeManager
 {
-    private static final Map<String, NCube> cubeList = new ConcurrentHashMap();
+    private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap();
-    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap();
-    private static List<String> urlList = new ArrayList();
+    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
+    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
     static
     {
@@ -92,11 +91,8 @@ public class NCubeManager
     {
         if (urlClassLoaders.containsKey(version))
         {
-            LOG.warn("RESETTING URLs for n-cube version: " + version + ", urls: " + urls);
+            LOG.warn("Adding additional resource URLs, n-cube version: " + version + ", urls: " + urls);
         }
-
-        urlList.clear();
-        urlList.addAll(urls);
 
         GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
         addUrlsToClassLoader(urls, urlClassLoader);
@@ -145,9 +141,9 @@ public class NCubeManager
             ncube.setVersion(version);
             cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
 
-            for (String wildcard : advices.keySet())
+            for (Map.Entry<String, Map<String, Advice>> entry : advices.entrySet())
             {
-                String regex = StringUtilities.wildcardToRegexString(wildcard);
+                String regex = StringUtilities.wildcardToRegexString(entry.getKey());
                 Axis axis = ncube.getAxis("method");
                 if (axis != null)
                 {   // Controller methods
@@ -157,7 +153,7 @@ public class NCubeManager
                         String classMethod = ncube.getName() + '.' + method + "()";
                         if (classMethod.matches(regex))
                         {
-                            for (Advice advice : advices.get(wildcard).values())
+                            for (Advice advice : entry.getValue().values())
                             {
                                 ncube.addAdvice(advice, method);
                             }
@@ -169,7 +165,7 @@ public class NCubeManager
                     String classMethod = ncube.getName() + ".run()";
                     if (classMethod.matches(regex))
                     {
-                        for (Advice advice : advices.get(wildcard).values())
+                        for (Advice advice : entry.getValue().values())
                         {
                             ncube.addAdvice(advice, "run");
                         }
@@ -188,7 +184,7 @@ public class NCubeManager
     {
         synchronized (cubeList)
         {
-            return new TreeMap<String, NCube>(cubeList);
+            return new TreeMap<>(cubeList);
         }
     }
 
@@ -202,9 +198,9 @@ public class NCubeManager
             cubeList.clear();
             GroovyBase.clearCache();
             NCubeGroovyController.clearCache();
-            for (String version : urlClassLoaders.keySet())
+            for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
             {
-                GroovyClassLoader classLoader = urlClassLoaders.get(version);
+                GroovyClassLoader classLoader = entry.getValue();
                 classLoader.clearCache(); // free up Class cache
             }
             advices.clear();
@@ -221,7 +217,7 @@ public class NCubeManager
             Map<String, Advice> current = advices.get(wildcard);
             if (current == null)
             {
-                current = new LinkedHashMap();
+                current = new LinkedHashMap<>();
                 advices.put(wildcard, current);
             }
 
@@ -1368,7 +1364,7 @@ public class NCubeManager
         {
             JsonObject ncubes = getJsonObjectFromResource(name);
             Object[] cubes = ncubes.getArray();
-            List<NCube> cubeList = new ArrayList<NCube>(cubes.length);
+            List<NCube> cubeList = new ArrayList<>(cubes.length);
 
             for (Object cube : cubes)
             {

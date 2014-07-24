@@ -37,7 +37,7 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    static final Map<String, Class> compiledClasses = new LinkedHashMap<String, Class>();
+    static final Map<String, Class> compiledClasses = new LinkedHashMap<>();
     static final Map<String, Constructor> constructorMap = new LinkedHashMap<String, Constructor>()
     {
         protected boolean removeEldestEntry(Map.Entry eldest)
@@ -69,7 +69,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract String getMethodToExecute(Map args);
 
-    public static void clearCache()
+    static void clearCache()
     {
         compiledClasses.clear(); // Free up stored references to Compiled Classes
         constructorMap.clear();  // free up stored references to Compiled Constructors
@@ -106,20 +106,19 @@ public abstract class GroovyBase extends UrlCommandCell
     /**
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
-    protected Object executeGroovy(final Map args, String cmdHash) throws Exception
+    protected Object executeGroovy(final Map args, final String cmdHash) throws Exception
     {
         // Step 1: Construct the object (use default constructor)
-        final String cacheKey = cmdHash;
-        Constructor c = constructorMap.get(cacheKey);
+        Constructor c = constructorMap.get(cmdHash);
         if (c == null)
         {
             synchronized (GroovyBase.class)
             {
-                c = constructorMap.get(cacheKey);
+                c = constructorMap.get(cmdHash);
                 if (c == null)
                 {
                     c = getRunnableCode().getConstructor();
-                    constructorMap.put(cacheKey, c);
+                    constructorMap.put(cmdHash, c);
                 }
             }
         }
@@ -128,16 +127,16 @@ public abstract class GroovyBase extends UrlCommandCell
 
         // Step 2: Call the inherited 'init(Map args)' method.  This technique saves the subclasses from having
         // to implement a duplicate constructor that routes the Map up (Constructors are not inherited).
-        Method initMethod = initMethodMap.get(cacheKey);
+        Method initMethod = initMethodMap.get(cmdHash);
         if (initMethod == null)
         {
             synchronized (GroovyBase.class)
             {
-                initMethod = initMethodMap.get(cacheKey);
+                initMethod = initMethodMap.get(cmdHash);
                 if (initMethod == null)
                 {
                     initMethod = getRunnableCode().getMethod("init", Map.class);
-                    initMethodMap.put(cacheKey, initMethod);
+                    initMethodMap.put(cmdHash, initMethod);
                 }
             }
         }
@@ -145,17 +144,17 @@ public abstract class GroovyBase extends UrlCommandCell
         initMethod.invoke(instance, args);
 
         // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method
-        Method runMethod = methodMap.get(cacheKey);
+        Method runMethod = methodMap.get(cmdHash);
 
         if (runMethod == null)
         {
             synchronized (GroovyBase.class)
             {
-                runMethod = methodMap.get(cacheKey);
+                runMethod = methodMap.get(cmdHash);
                 if (runMethod == null)
                 {
                     runMethod = getRunMethod();
-                    methodMap.put(cacheKey, runMethod);
+                    methodMap.put(cmdHash, runMethod);
                 }
             }
         }
@@ -222,7 +221,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
             if (groovySourceUrl == null)
             {
-                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setUrlClassLoader(): " + url);
+                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setBaseResourceUrls(): " + url);
             }
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
@@ -327,7 +326,7 @@ public abstract class GroovyBase extends UrlCommandCell
     public static Set<String> getImports(String text, StringBuilder newGroovy)
     {
         Matcher m = Regexes.importPattern.matcher(text);
-        Set<String> importNames = new LinkedHashSet();
+        Set<String> importNames = new LinkedHashSet<>();
         while (m.find())
         {
             importNames.add(m.group(0));  // based on Regex pattern - if pattern changes, this could change

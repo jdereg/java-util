@@ -26,11 +26,6 @@ import java.util.Map;
  */
 public class BinaryUrlCmd extends UrlCommandCell
 {
-    public BinaryUrlCmd(String url)
-    {
-        super(null, url, false);
-    }
-
     public BinaryUrlCmd(String url, boolean cache)
     {
         super(null, url, cache);

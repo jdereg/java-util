@@ -23,17 +23,11 @@ import java.util.Map;
  */
 public class StringUrlCmd extends UrlCommandCell
 {
-    public StringUrlCmd(String url)
-    {
-        super(null, url, false);
-    }
-
     public StringUrlCmd(String url, boolean cache)
     {
         super(null, url, cache);
     }
 
-    @Override
     protected Object proxyFetch(Map args)
     {
         byte[] bytes = (byte[])super.proxyFetch(args);

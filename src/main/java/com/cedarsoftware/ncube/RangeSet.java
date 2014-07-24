@@ -28,7 +28,7 @@ import java.util.List;
  */
 public class RangeSet implements Comparable<RangeSet>
 {    
-	private final List<Comparable> items = new ArrayList<Comparable>();
+	private final List<Comparable> items = new ArrayList<>();
 	public RangeSet() { }
     public RangeSet(Comparable c)
     {

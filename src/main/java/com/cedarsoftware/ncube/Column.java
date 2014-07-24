@@ -74,27 +74,27 @@ public class Column implements Comparable<Comparable>
     /**
      * Set (add / overwrite) a Meta Property associated to this Column.
      * @param key String key name of meta property
-     * @param value Object value to associate to key
+     * @param metaPropValue Object value to associate to key
      * @return prior value associated to key or null if none was associated prior
      */
-    public Object setMetaProperty(String key, Object value)
+    public Object setMetaProperty(String key, Object metaPropValue)
     {
         if (metaProps == null)
         {
-            metaProps = new CaseInsensitiveMap();
+            metaProps = new CaseInsensitiveMap<>();
         }
-        return metaProps.put(key, value);
+        return metaProps.put(key, metaPropValue);
     }
 
     /**
      * Add a Map of meta properties all at once.
      * @param allAtOnce Map of meta properties to add
      */
-    public void addMetaProperties(Map allAtOnce)
+    public void addMetaProperties(Map<String, Object> allAtOnce)
     {
         if (metaProps == null)
         {
-            metaProps = new CaseInsensitiveMap();
+            metaProps = new CaseInsensitiveMap<>();
         }
         metaProps.putAll(allAtOnce);
     }

@@ -46,6 +46,4 @@ public interface Regexes
     Pattern groovyExplicitCubeRefPattern = Pattern.compile("NCubeManager[.]getCube[(]['\"]" + NCube.validCubeNameChars + "['\"][)]");
 
     Pattern cdnUrlPattern = Pattern.compile("^\\/dyn\\/([^\\/]+)\\/(.*)$");
-
-    Pattern cdnUrlPrefix = Pattern.compile("(^.*\\/)((com|org|net)\\/.*)$");
 }

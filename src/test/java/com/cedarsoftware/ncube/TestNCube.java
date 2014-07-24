@@ -6819,7 +6819,8 @@ DELIMITER ;
         List urls = new ArrayList();
         urls.add("file:///Users/jderegnaucourt/Development/n-cube/src/test/resources/");
         urls.add("http://www.cedarsoftware.com");
-        NCubeManager.setUrlClassLoader(urls, "file");
+        NCubeManager.setBaseResourceUrls(urls, "file");
+        NCubeManager.setBaseResourceUrls(urls, "1.0.0");
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -6843,6 +6844,7 @@ DELIMITER ;
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
         NCubeManager.setBaseResourceUrls(urls, "file");
+        NCubeManager.setBaseResourceUrls(urls, "1.0.0");
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
@@ -6866,6 +6868,10 @@ DELIMITER ;
         ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
         out = ncube.getCells(coord, output);
         assertEquals(20, out.values().iterator().next());
+
+        coord.put("state", "IN");
+        String gcode = (String) ncube.getCell(coord, output);
+        assertEquals(code, gcode);
     }
 
     @Test

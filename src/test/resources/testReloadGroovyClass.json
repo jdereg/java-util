@@ -10,6 +10,9 @@
             "columns": [
                 {
                     "id": "OH"
+                },
+                {
+                    "id":"IN"
                 }
             ]
         }
@@ -18,6 +21,11 @@
         {
             "id": ["OH"],
             "type": "exp",
+            "url":"Abc.groovy"
+        },
+        {
+            "id": ["IN"],
+            "type": "string",
             "url":"Abc.groovy"
         }
     ]

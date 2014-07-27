@@ -53,7 +53,7 @@ public class Axis
 	private String name;
 	private final AxisType type;
 	private final AxisValueType valueType;
-	private final List<Column> columns = new ArrayList<Column>();
+	private final List<Column> columns = new ArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
     private boolean multiMatch = false;
@@ -61,13 +61,13 @@ public class Axis
     Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
-    private transient Map<Comparable, Column> discreteToCol = new TreeMap<Comparable, Column>();
+    private transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
 
     // used to get O(1) on Ranges for SET access
-    private transient List<RangeToColumn> rangeToCol = new ArrayList<RangeToColumn>();
+    private transient List<RangeToColumn> rangeToCol = new ArrayList<>();
 
     // used to get O(1) access to columns by ID
-    transient Map<Long, Column> idToCol = new HashMap<Long, Column>();
+    transient Map<Long, Column> idToCol = new HashMap<>();
 
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
@@ -132,7 +132,7 @@ public class Axis
     {
         if (metaProps == null)
         {
-            metaProps = new CaseInsensitiveMap();
+            metaProps = new CaseInsensitiveMap<>();
         }
         return metaProps.put(key, value);
     }
@@ -141,11 +141,11 @@ public class Axis
      * Add a Map of meta properties all at once.
      * @param allAtOnce Map of meta properties to add
      */
-    public void addMetaProperties(Map allAtOnce)
+    public void addMetaProperties(Map<String, Object> allAtOnce)
     {
         if (metaProps == null)
         {
-            metaProps = new CaseInsensitiveMap();
+            metaProps = new CaseInsensitiveMap<>();
         }
         metaProps.putAll(allAtOnce);
     }
@@ -187,9 +187,9 @@ public class Axis
     /**
      * Use Column id to retrieve column (hash map lookup), O(1)
      */
-    public Column getColumnById(long id)
+    public Column getColumnById(long colId)
     {
-        return idToCol.get(id);
+        return idToCol.get(colId);
     }
 
     /**
@@ -310,7 +310,7 @@ public class Axis
 	
 	public List<Column> getColumns()
 	{
-        List<Column> cols = new ArrayList<Column>(columns);
+        List<Column> cols = new ArrayList<>(columns);
 		if (preferredOrder == SORTED)
 		{
 			return cols;	// Return a copy of the columns, not our internal values list.
@@ -427,9 +427,9 @@ public class Axis
         return deleteColumnById(col.id);
 	}
 
-    Column deleteColumnById(long id)
+    Column deleteColumnById(long colId)
     {
-        Column col = idToCol.get(id);
+        Column col = idToCol.get(colId);
         if (col == null)
         {
             return null;
@@ -506,7 +506,7 @@ public class Axis
             throw new IllegalArgumentException("Cannot move 'Default' column, axis '" + name + "'");
         }
 
-        List<Column> cols = new ArrayList<Column>(columns);
+        List<Column> cols = new ArrayList<>(columns);
         sortColumnsByDisplayOrder(cols);
         cols.add(newPos, cols.remove(curPos));
         assignDisplayOrder(cols);
@@ -519,15 +519,15 @@ public class Axis
      * sorted order for quick retrieval).  The display order of the columns is not
      * rebuilt, because the column is changed in-place (e.g., changing Mon to Monday
      * does not change it's display order.)
-     * @param id long Column ID to update
+     * @param colId long Column ID to update
      * @param value 'raw' value to set into the new column (will be up-promoted).
      */
-    public void updateColumn(long id, Comparable value)
+    public void updateColumn(long colId, Comparable value)
     {
-        Column col = idToCol.get(id);
-        deleteColumnById(id);
+        Column col = idToCol.get(colId);
+        deleteColumnById(colId);
         Column newCol = createColumnFromValue(value);
-        newCol.setId(id);
+        newCol.setId(colId);
         newCol.setDisplayOrder(col.getDisplayOrder());
 
         // Updated column is added in the same 'displayOrder' location.  For example, the months are a
@@ -558,7 +558,7 @@ public class Axis
      */
     public Set<Long> updateColumns(final Axis newCols)
     {
-        Set<Long> colsToDelete = new HashSet<Long>();
+        Set<Long> colsToDelete = new HashSet<>();
         newCols.buildScaffolding();
 
         for (Column col : columns)
@@ -854,9 +854,9 @@ public class Axis
      * and so on.
      * @return promoted value, or the same value if no promotion occurs.
      */
-    public static Comparable promoteValue(AxisValueType valueType, Comparable value)
+    public static Comparable promoteValue(AxisValueType srcValueType, Comparable value)
     {
-        switch(valueType)
+        switch(srcValueType)
         {
             case STRING:
                 return getString(value);
@@ -872,7 +872,7 @@ public class Axis
             case EXPRESSION:
                 return value;
             default:
-                throw new IllegalArgumentException("AxisValueType '" + valueType + "' added but not code to support it.");
+                throw new IllegalArgumentException("AxisValueType '" + srcValueType + "' added but not code to support it.");
         }
     }
 
@@ -1023,12 +1023,7 @@ public class Axis
 		}
         throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Date'");
 	}
-	
-	private IllegalArgumentException getConversionException(Comparable value, Exception e)
-	{
-		return new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a Long for axis '" + name + "'", e);						
-	}
-	
+
 	public boolean hasDefaultColumn()
 	{
 		return defaultCol != null;
@@ -1105,7 +1100,7 @@ public class Axis
      */
     List<Column> findColumns(Comparable value)
     {
-        List<Column> cols = new ArrayList<Column>();
+        List<Column> cols = new ArrayList<>();
         if (value == null)
         {
             if (defaultCol != null)
@@ -1319,7 +1314,7 @@ public class Axis
         {
             if (columns.size() == 1)
             {
-                return new ArrayList<Column>();
+                return new ArrayList<>();
             }
             return columns.subList(0, columns.size() - 1);
         }

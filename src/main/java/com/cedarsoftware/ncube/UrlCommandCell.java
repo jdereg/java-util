@@ -32,7 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 
 /**
- * * @author John DeRegnaucourt (jdereg@gmail.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ * @author Ken Partlow (kpartlow@gmail.com)
  * <br/>
  * Copyright (c) Cedar Software LLC
  * <br/><br/>
@@ -197,26 +198,22 @@ public abstract class UrlCommandCell implements CommandCell
                 return null;
             }
         }
-        catch (SocketTimeoutException ignored) {
+        catch (SocketTimeoutException ignored)
+        {
             try
             {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found:  " + actualUrl.toString());
-
             }
-            catch (IOException ignore)
-            {
-            }
+            catch (IOException ignore) { }
         }
         catch (Exception e)
         {
             try
             {
                 UrlUtilities.readErrorResponse(conn);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided:  " + actualUrl.toString());
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided:  " + actualUrl);
             }
-            catch (IOException ignored)
-            {
-            }
+            catch (IOException ignored) { }
         }
         return null;
     }
@@ -478,7 +475,7 @@ public abstract class UrlCommandCell implements CommandCell
 
     protected abstract Object executeInternal(Object data, Map<String, Object> ctx);
 
-    private void transferToServer(URLConnection conn, HttpServletRequest request) throws IOException
+    private static void transferToServer(URLConnection conn, HttpServletRequest request) throws IOException
     {
         OutputStream out = null;
         InputStream in = null;
@@ -502,9 +499,12 @@ public abstract class UrlCommandCell implements CommandCell
         OutputStream out = null;
         try
         {
-            if (cacheable) {
+            if (cacheable)
+            {
                 in = new CachingInputStream(new BufferedInputStream(conn.getInputStream(), 32768));
-            } else {
+            }
+            else
+            {
                 in = new BufferedInputStream(conn.getInputStream(), 32768);
             }
             out = response.getOutputStream();

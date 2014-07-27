@@ -9,9 +9,9 @@
             "hasDefault":false,
             "preferredOrder":1,
             "columns":[
-                { "id":1, "type":"exp", "value":"input.age < 20" },
-                { "id":2, "type":"exp", "value":"input.age < 40" },
-                { "id":3, "type":"exp", "value":"input.age >= 40" }
+                { "id":1, "type":"exp", "name":"youngster", "value":"input.age < 20" },
+                { "id":2, "type":"exp", "name":"young or middle", "value":"input.age < 40" },
+                { "id":3, "type":"exp", "name":"middle to old", "value":"input.age >= 40" }
             ]
         },
         {

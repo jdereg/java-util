@@ -130,8 +130,13 @@ public class CdnRouter
         }
         catch (Exception e)
         {
-            String msg = "CdnRouter - Error occurred writing HTTP response: " + e.getMessage();
-            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
+            LOG.error("CdnRouter exception occurred", e);
+            try
+            {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - Error occurred: " + e.getMessage());
+            }
+            catch (Exception ignore)
+            { }
         }
     }
 

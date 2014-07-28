@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.util;
 
+import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import org.junit.BeforeClass;
@@ -21,6 +22,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
@@ -37,16 +39,19 @@ public class TestCdnRouter
 {
 
     @BeforeClass
-    public static void setup() throws Exception{
+    public static void setup() throws Exception
+    {
         NCubeManager.clearCubeList();
         setClassPath("file");
     }
 
-    public void tearDown() throws Exception {
+    public void tearDown() throws Exception
+    {
         NCubeManager.clearCubeList();
     }
 
-    public static void setClassPath(String version) throws Exception {
+    public static void setClassPath(String version) throws Exception
+    {
         List<String> urls = new ArrayList<String>();
         URL url = NCubeManager.class.getResource("/");
         urls.add(url.toString());
@@ -54,7 +59,7 @@ public class TestCdnRouter
         NCubeManager.setUrlClassLoader(urls, version);
     }
 
-//    @Test
+    //    @Test
     public void testRoute() throws Exception
     {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
@@ -115,13 +120,14 @@ public class TestCdnRouter
         when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
         CdnRouter router = new CdnRouter();
         router.route(request, response);
-        byte[] bytes = ((DumboOutputStream)out).getBytes();
+        byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);
         assertEquals("CAFEBABE", s);
     }
 
     @Test
-    public void test500() throws Exception {
+    public void test500() throws Exception
+    {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -186,12 +192,13 @@ public class TestCdnRouter
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
-        byte[] bytes = ((DumboOutputStream)out).getBytes();
+        byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);
     }
 
     @Test
-    public void test404() throws Exception {
+    public void test404() throws Exception
+    {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -256,10 +263,40 @@ public class TestCdnRouter
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
-        byte[] bytes = ((DumboOutputStream)out).getBytes();
+        byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);
 
         verify(response, times(1)).sendError(404, "Not Found");
+    }
+
+    @Test
+    public void testDefaultRoute() throws Exception
+    {
+        List<String> urls = new ArrayList<>();
+        urls.add("file:///Users/jderegnaucourt/Development/n-cube/src/test/resources/");
+        NCubeManager.setBaseResourceUrls(urls, "file");
+        NCube router = NCubeManager.getNCubeFromResource("cdnRouter.json");
+
+        Axis axis = router.getAxis("content.name");
+        assertEquals(5, axis.getColumns().size());
+
+        Map coord = new HashMap();
+        coord.put("content.name", "Glock");
+
+        String answer = (String) router.getCell(coord);
+        assertEquals(6, axis.getColumns().size());
+        assertEquals("Glock", answer);
+
+        answer = (String) router.getCell(coord);
+        assertEquals(6, axis.getColumns().size());
+        assertEquals("Glock", answer);
+
+
+        coord.put("content.name", "Smith & Wesson");
+        answer = (String) router.getCell(coord);
+        assertEquals(7, axis.getColumns().size());
+        assertEquals("Smith & Wesson", answer);
+
     }
 
     static class DumboOutputStream extends ServletOutputStream
@@ -273,7 +310,8 @@ public class TestCdnRouter
                 bao.flush();
             }
             catch (IOException ignored)
-            { }
+            {
+            }
             return bao.toByteArray();
         }
 

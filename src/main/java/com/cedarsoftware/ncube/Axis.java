@@ -9,6 +9,7 @@ import com.cedarsoftware.util.io.JsonReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,7 +55,7 @@ public class Axis
 	private String name;
 	private final AxisType type;
 	private final AxisValueType valueType;
-	private final List<Column> columns = new ArrayList<>();
+    private final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
     private boolean multiMatch = false;
@@ -588,7 +590,7 @@ public class Axis
         // Columns must be stored sorted for fast retrieval, regardless of whether the
         // preferred order is SORTED or DISPLAY.  Display order was already marked above,
         // from newCols.
-        Collections.sort(columns, new Comparator<Column>()
+        sortColumns(columns, new Comparator<Column>()
         {
             public int compare(Column c1, Column c2)
             {
@@ -604,6 +606,24 @@ public class Axis
 
         buildScaffolding();
         return colsToDelete;
+    }
+
+    /**
+     * Sorted this way to allow for CopyOnWriteArrayList or regular ArrayLists to be sorted.
+     * CopyOnWriteArrayList does not support iterator operations .set() for example, which
+     * would be called by Collections.sort();
+     * @param cols List of Columns to sort
+     */
+    private static void sortColumns(List cols, Comparator comparator)
+    {
+        Object[] colArray = cols.toArray();
+        Arrays.sort(colArray, comparator);
+
+        final int len = colArray.length;
+        for (int i=0; i < len; i++)
+        {
+            cols.set(i, colArray[i]);
+        }
     }
 
     // Take the passed in value, and prepare it to be allowed on a given axis type.
@@ -725,17 +745,20 @@ public class Axis
 	public void setColumnOrder(int order)
 	{
 		preferredOrder = order;
-	}	
-	
+	}
+
+    /**
+     * @param cols List of Column instances to be sorted.
+     */
 	private static void sortColumnsByDisplayOrder(List<Column> cols)
 	{
-		Collections.sort(cols, new Comparator<Column>()
-		{
-			public int compare(Column c1, Column c2) 
-			{
-				return c1.getDisplayOrder() - c2.getDisplayOrder();
-			}
-		});
+        sortColumns(cols, new Comparator<Column>()
+        {
+            public int compare(Column c1, Column c2)
+            {
+                return c1.getDisplayOrder() - c2.getDisplayOrder();
+            }
+        });
 	}
 	
 	public int size()

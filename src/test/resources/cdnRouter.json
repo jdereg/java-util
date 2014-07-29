@@ -1,0 +1,48 @@
+{
+    "ncube": "cdnHtmlRouter",
+    "axes":
+    [
+        {
+            "name": "content.name",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": true,
+            "preferredOrder": 0,
+            "columns":
+            [
+                {"id": "foo"},
+                {"id": "bar"},
+                {"id": "baz"},
+                {"id": "qux"}
+            ]
+        }
+    ],
+    "cells":
+    [
+        {
+            "id": ["foo"],
+            "type": "string",
+            "url": "html/foo.html"
+        },
+        {
+            "id": ["bar"],
+            "type": "string",
+            "url": "html/bar.html"
+        },
+        {
+            "id": ["baz"],
+            "type": "string",
+            "url": "html/baz.html"
+        },
+        {
+            "id": ["qux"],
+            "type": "string",
+            "url": "html/qux.html"
+        },
+        {
+            "id":[],
+            "type":"exp",
+            "url":"com/acme/controllers/cdnDefaultRouter.groovy"
+        }
+    ]
+}

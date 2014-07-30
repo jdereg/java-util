@@ -42,7 +42,7 @@
         {
             "id":[],
             "type":"exp",
-            "url":"com/acme/controllers/cdnDefaultRouter.groovy"
+            "url":"com/acme/controllers/cdnHtmlRouter.groovy"
         }
     ]
 }

@@ -1,4 +1,4 @@
-import ncube.grv.exp.NCubeGroovyExpression
+import ncube.grv.exp.cdn.CdnDefaultHandler
 
 /**
  * This class acts like a dynamic cache.  If the item is found, then the value is returned.
@@ -7,16 +7,10 @@ import ncube.grv.exp.NCubeGroovyExpression
  *
  * As a result, the Axis Columns grow each time an item is not found.
  */
-class CdnDefaultRouter extends NCubeGroovyExpression
+class CdnDefaultRouter extends CdnDefaultHandler
 {
     def run()
     {
-        def axis = 'content.name'
-        synchronized(ncube.getName().intern())
-        {
-            ncube.addColumn(axis, (String) input[axis])
-            ncube.setCell(input[axis], input)
-            ncube.getCell(input)
-        }
+        resolve('html')
     }
 }

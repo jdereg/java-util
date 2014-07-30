@@ -481,16 +481,16 @@ public class TestCdnRouter
 
         String answer = (String) router.getCell(coord);
         assertEquals(6, axis.getColumns().size());
-        assertEquals("Glock", answer);
+        assertEquals("Glock.html", answer);
 
         answer = (String) router.getCell(coord);
         assertEquals(6, axis.getColumns().size());
-        assertEquals("Glock", answer);
+        assertEquals("Glock.html", answer);
 
         coord.put("content.name", "Smith & Wesson");
         answer = (String) router.getCell(coord);
         assertEquals(7, axis.getColumns().size());
-        assertEquals("Smith & Wesson", answer);
+        assertEquals("Smith & Wesson.html", answer);
     }
 
     static class DumboOutputStream extends ServletOutputStream

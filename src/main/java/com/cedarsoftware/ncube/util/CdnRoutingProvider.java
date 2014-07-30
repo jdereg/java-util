@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.util;
 
+import java.sql.Connection;
 import java.util.Map;
 
 /**
@@ -34,4 +35,5 @@ public interface CdnRoutingProvider
 {
     void setupCoordinate(Map coord);
     boolean isAuthorized(String type);
+    void doneWithConnection(Connection connection);
 }

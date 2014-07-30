@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.8.1</version>
+  <version>2.8.2</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -68,6 +68,8 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.8.2
+ * Bug fix: CdnRouter now calls back to the CdnRoutingProvider on new API, doneWithConnection(Connection c) so that the provider knows that it can close or release the connection.
 * 2.8.1
  * Bug fix: Exception handler in CdnRouter was chopping off the stack trace (only error message was getting reported).
  * Test case added for the case where an n-cube modifies itself from within execution of getCell().  The example has an axis where the cell associated to the default Column on an axis adds the sought after column.  It's akin to a Map get() call that does a put() of the item if it is not there.

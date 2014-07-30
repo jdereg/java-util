@@ -97,9 +97,9 @@ public class CdnRouter
             {
                 routingCube = NCubeManager.getCube("cdnRouter", version);
             }
+            Connection connection = (Connection) coord.get(CONNECTION);
             if (routingCube == null)
             {
-                Connection connection = (Connection) coord.get(CONNECTION);
                 String app = (String) coord.get(APP);
                 String status = (String) coord.get(STATUS);
                 Date date = (Date) coord.get(DATE);
@@ -126,6 +126,7 @@ public class CdnRouter
                 }
                 routingCube = NCubeManager.loadCube(connection, app, cubeName, version, status, date);
             }
+            provider.doneWithConnection(connection);
             routingCube.getCell(coord, output);
         }
         catch (Exception e)

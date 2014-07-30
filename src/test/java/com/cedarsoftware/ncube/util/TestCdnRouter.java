@@ -111,6 +111,9 @@ public class TestCdnRouter
             {
                 return true;
             }
+
+            public void doneWithConnection(Connection connection)
+            { }
         });
 
         URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
@@ -180,6 +183,9 @@ public class TestCdnRouter
             {
                 return true;
             }
+
+            public void doneWithConnection(Connection connection)
+            { }
         });
 
 
@@ -251,6 +257,9 @@ public class TestCdnRouter
             {
                 return true;
             }
+
+            public void doneWithConnection(Connection connection)
+            {  }
         });
 
 

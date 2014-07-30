@@ -20,13 +20,15 @@
                 { "id":"index"},
                 { "id":"xml"},
                 { "id":"500"},
-                { "id":"404"}
+                { "id":"404"},
+                { "id":"file"}
             ]}
     ],
     "cells":[
         { "id":["view","index"], "type":"string", "url":"tests/ncube/some.txt"},
         { "id":["view","xml"], "type":"string", "url":"tests/ncube/test.xml"},
         { "id":["view","500"], "type":"string", "url":"tests/does/not/exist/index.html"},
-        { "id":["view","404"], "type":"string", "url":"htTp://www.cedarsoftware.com/tests/does/not/exist/index.html"}
+        { "id":["view","404"], "type":"string", "url":"htTp://www.cedarsoftware.com/tests/does/not/exist/index.html"},
+        { "id":["view","file"], "type":"string", "url":"files/foo.html"}
     ]
 }

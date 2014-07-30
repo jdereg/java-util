@@ -168,7 +168,7 @@ public abstract class UrlCommandCell implements CommandCell
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
                 connection.connect();
-                transferResponseHeaders(connection, response);
+                addFileHeader(actualUrl, response);
                 transferFromServer(connection, response);
                 return null;
             }
@@ -216,6 +216,51 @@ public abstract class UrlCommandCell implements CommandCell
             catch (IOException ignored) { }
         }
         return null;
+    }
+
+    static void addFileHeader(URL actualUrl, HttpServletResponse response)
+    {
+        if (actualUrl == null)
+        {
+            return;
+        }
+        String url = actualUrl.toString().toLowerCase();
+        if (url.endsWith(".css"))
+        {
+            response.addHeader("content-type", "text/css");
+        }
+        else if (url.endsWith(".html"))
+        {
+            response.addHeader("content-type", "text/html");
+        }
+        else if (url.endsWith(".js"))
+        {
+            response.addHeader("content-type", "application/javascript");
+        }
+        else if (url.endsWith(".xml"))
+        {
+            response.addHeader("content-type", "application/xml");
+        }
+        else if (url.endsWith(".json"))
+        {
+            response.addHeader("content-type", "application/json");
+        }
+        else if (url.endsWith(".jpg") || url.endsWith(".jpeg"))
+        {
+            response.addHeader("content-type", "image/jpeg");
+        }
+        else if (url.endsWith(".png"))
+        {
+            response.addHeader("content-type", "image/png");
+        }
+        else if (url.endsWith(".gif"))
+        {
+            response.addHeader("content-type", "image/gif");
+        }
+        else if (url.endsWith(".bmp"))
+        {
+            response.addHeader("content-type", "image/bmp");
+        }
     }
 
     protected Object simpleFetch(Map args)

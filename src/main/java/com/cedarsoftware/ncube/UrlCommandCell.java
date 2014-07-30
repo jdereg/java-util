@@ -537,7 +537,7 @@ public abstract class UrlCommandCell implements CommandCell
         Set<Map.Entry<String, List<String>>> entries = headerFields.entrySet();
 
         for (Map.Entry<String, List<String>> entry : entries) {
-            if (entry.getValue() != null)
+            if (entry.getValue() != null && entry.getKey() != null)
             {
                 for (String s : entry.getValue())
                 {

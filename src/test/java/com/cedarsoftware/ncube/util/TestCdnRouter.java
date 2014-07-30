@@ -393,6 +393,78 @@ public class TestCdnRouter
     }
 
     @Test
+    public void testContentTypeTransfer() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        Vector<String> v = new Vector<String>();
+        v.add("Accept");
+        v.add("Accept-Encoding");
+        v.add("Accept-Language");
+        v.add("User-Agent");
+        v.add("Cache-Control");
+
+        when(request.getServletPath()).thenReturn("/dyn/view/xml");
+        when(request.getHeaderNames()).thenReturn(v.elements());
+        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
+        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
+        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
+        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
+
+
+        when(response.containsHeader("Content-Length")).thenReturn(true);
+        when(response.containsHeader("Last-Modified")).thenReturn(true);
+        when(response.containsHeader("Expires")).thenReturn(true);
+        when(response.containsHeader("Content-Encoding")).thenReturn(true);
+        when(response.containsHeader("Content-Type")).thenReturn(true);
+        when(response.containsHeader("Cache-Control")).thenReturn(true);
+        when(response.containsHeader("Etag")).thenReturn(true);
+
+        ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+        when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
+
+        final Connection conn = Mockito.mock(Connection.class);
+
+        CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
+        {
+            public void setupCoordinate(Map coord)
+            {
+                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_VERSION, "file");
+
+            }
+
+            public boolean isAuthorized(String type)
+            {
+                return true;
+            }
+        });
+
+
+        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
+        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+
+        PowerMockito.mockStatic(NCubeManager.class);
+        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
+        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
+
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+        byte[] bytes = ((DumboOutputStream) out).getBytes();
+        String s = new String(bytes);
+        assertEquals("<cedarsoftware><jdereg name=\"john\"/></cedarsoftware>", s);
+        verify(response, times(1)).addHeader("Content-Type", "application/xml");
+        verify(response, times(1)).addHeader("Content-Length", "52");
+
+    }
+
+
+    @Test
     public void testDefaultRoute() throws Exception
     {
         List<String> urls = new ArrayList<>();

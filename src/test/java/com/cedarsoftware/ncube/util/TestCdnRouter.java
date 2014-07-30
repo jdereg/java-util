@@ -260,7 +260,8 @@ public class TestCdnRouter
     public void testDefaultRoute() throws Exception
     {
         List<String> urls = new ArrayList<>();
-        urls.add("file:///Users/jderegnaucourt/Development/n-cube/src/test/resources/");
+        URL url = NCubeManager.class.getResource("/");
+        urls.add(url.toString());
         NCubeManager.setBaseResourceUrls(urls, "file");
         NCube router = NCubeManager.getNCubeFromResource("cdnRouter.json");
 
@@ -278,12 +279,10 @@ public class TestCdnRouter
         assertEquals(6, axis.getColumns().size());
         assertEquals("Glock", answer);
 
-
         coord.put("content.name", "Smith & Wesson");
         answer = (String) router.getCell(coord);
         assertEquals(7, axis.getColumns().size());
         assertEquals("Smith & Wesson", answer);
-
     }
 
     static class DumboOutputStream extends ServletOutputStream

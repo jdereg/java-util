@@ -12,7 +12,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -20,6 +19,7 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -6813,11 +6813,12 @@ DELIMITER ;
      * be ignored by default, unless you are testing the single-step debugging
      * capabilities of n-cube Groovy.
      */
-    @Ignore
+    @Test
     public void testDebugExpression() throws Exception
     {
         List urls = new ArrayList();
-        urls.add("file:///Users/jderegnaucourt/Development/n-cube/src/test/resources/");
+        URL url = NCubeManager.class.getResource("/");
+        urls.add(url.toString());
         urls.add("http://www.cedarsoftware.com");
         NCubeManager.setBaseResourceUrls(urls, "file");
         NCubeManager.setBaseResourceUrls(urls, "1.0.0");

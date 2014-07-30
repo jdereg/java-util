@@ -99,21 +99,14 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CONNECTION, "dummy");
-                coord.put(CdnRouter.APP, "ncube.test");
-                coord.put(CdnRouter.STATUS, "release");
                 coord.put(CdnRouter.CUBE_NAME, "test");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
-                coord.put(CdnRouter.DATE, null);
             }
 
             public boolean isAuthorized(String type)
             {
                 return true;
             }
-
-            public void doneWithConnection(Connection connection)
-            { }
         });
 
         URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
@@ -170,12 +163,8 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CONNECTION, conn);
-                coord.put(CdnRouter.APP, "ncube.test");
-                coord.put(CdnRouter.STATUS, "release");
                 coord.put(CdnRouter.CUBE_NAME, "test");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
-                coord.put(CdnRouter.DATE, null);
 
             }
 
@@ -183,9 +172,6 @@ public class TestCdnRouter
             {
                 return true;
             }
-
-            public void doneWithConnection(Connection connection)
-            { }
         });
 
 
@@ -244,12 +230,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CONNECTION, conn);
-                coord.put(CdnRouter.APP, "ncube.test");
-                coord.put(CdnRouter.STATUS, "release");
                 coord.put(CdnRouter.CUBE_NAME, "test");
-                coord.put(CdnRouter.CUBE_VERSION, "file");
-                coord.put(CdnRouter.DATE, null);
 
             }
 
@@ -257,9 +238,6 @@ public class TestCdnRouter
             {
                 return true;
             }
-
-            public void doneWithConnection(Connection connection)
-            {  }
         });
 
 

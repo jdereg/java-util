@@ -9,8 +9,6 @@ import org.apache.commons.logging.LogFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.sql.Connection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -26,10 +24,6 @@ public class CdnRouter
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
     public static final String CUBE_NAME = "router.cubeName";
     public static final String CUBE_VERSION = "router.version";
-    public static final String APP = "router.app";
-    public static final String CONNECTION = "router.connection";
-    public static final String STATUS = "router.status";
-    public static final String DATE = "router.date";
     public static final String CONTENT_TYPE = "content.type";
     public static final String CONTENT_NAME = "content.name";
     public static final String HTTP_REQUEST = "http.request";
@@ -95,38 +89,9 @@ public class CdnRouter
             NCube routingCube = NCubeManager.getCube(cubeName, version);
             if (routingCube == null)
             {
-                routingCube = NCubeManager.getCube("cdnRouter", version);
+                throw new IllegalStateException("In order to use the n-cube CDN routing capabilities, " +
+                        "a CdnRouter n-cube must already be loaded, and it's name passed in as CdnRouter.CUBE_NAME");
             }
-            Connection connection = (Connection) coord.get(CONNECTION);
-            if (routingCube == null)
-            {
-                String app = (String) coord.get(APP);
-                String status = (String) coord.get(STATUS);
-                Date date = (Date) coord.get(DATE);
-
-                if (connection == null)
-                {
-                    String msg = "CdnRouter - CdnRoutingProvider did not set up '" + CONNECTION + "' in the Map coordinate.";
-                    sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
-                    return;
-                }
-
-                if (StringUtilities.isEmpty(app))
-                {
-                    String msg = "CdnRouter - CdnRoutingProvider did not set '" + APP + "' in the Map coordinate.";
-                    sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
-                    return;
-                }
-
-                if (StringUtilities.isEmpty(status))
-                {
-                    String msg = "CdnRouter - CdnRoutingProvider did not set '" + STATUS + "' in the Map coordinate.";
-                    sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
-                    return;
-                }
-                routingCube = NCubeManager.loadCube(connection, app, cubeName, version, status, date);
-            }
-            provider.doneWithConnection(connection);
             routingCube.getCell(coord, output);
         }
         catch (Exception e)

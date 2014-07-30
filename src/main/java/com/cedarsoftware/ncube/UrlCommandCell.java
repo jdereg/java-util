@@ -534,25 +534,15 @@ public abstract class UrlCommandCell implements CommandCell
     {
         Map<String, List<String>> headerFields = c.getHeaderFields();
 
-        addHeaders("Content-Length", headerFields, response);
-        addHeaders("Last-Modified", headerFields, response);
-        addHeaders("Expires", headerFields, response);
-        addHeaders("Content-Encoding", headerFields, response);
-        addHeaders("Content-Type", headerFields, response);
-        addHeaders("Cache-Control", headerFields, response);
-        addHeaders("Etag", headerFields, response);
-        addHeaders("Accept", headerFields, response);
-    }
+        Set<Map.Entry<String, List<String>>> entries = headerFields.entrySet();
 
-    private void addHeaders(String field, Map<String, List<String>> fields, HttpServletResponse response)
-    {
-        List<String> items = fields.get(field);
-
-        if (items != null)
-        {
-            for (String s : items)
+        for (Map.Entry<String, List<String>> entry : entries) {
+            if (entry.getValue() != null)
             {
-                response.addHeader(field, s);
+                for (String s : entry.getValue())
+                {
+                    response.addHeader(entry.getKey(), s);
+                }
             }
         }
     }

@@ -6834,12 +6834,7 @@ DELIMITER ;
     public void testReloadGroovyClass() throws Exception
     {
         String base = System.getProperty("java.io.tmpdir");
-        if (!base.endsWith("/"))
-        {
-            base += "/";
-        }
-
-        String url = "file://" + base;
+        String url = new File(base).toURI().toURL().toString();
 
         List urls = new ArrayList();
         urls.add(url);

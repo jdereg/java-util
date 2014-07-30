@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.8.2</version>
+  <version>2.9.0</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -68,6 +68,9 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.0
+ * Bug fix: HTTP response headers are now copied case-insensitively to CdnRouter proxied HTTP response
+ * New CdnDefaultHandler available for CDN content routers which dynamically adds logical file names to the CDN type specific routing cache.
 * 2.8.2
  * Bug fix: CdnRouter now calls back to the CdnRoutingProvider on new API, doneWithConnection(Connection c) so that the provider knows that it can close or release the connection.
 * 2.8.1

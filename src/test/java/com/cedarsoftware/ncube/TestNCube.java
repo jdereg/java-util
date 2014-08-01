@@ -10,19 +10,14 @@ import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -36,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Vector;
 import java.util.regex.Matcher;
 
 import static org.junit.Assert.assertEquals;
@@ -69,37 +63,8 @@ import static org.junit.Assert.fail;
  */
 public class TestNCube
 {
-    private static int MYSQL = 1;
-    private static int HSQLDB = 2;
-    private static int ORACLE = 3;
-    private static final String APP_ID = "ncube.test";
     private static final boolean _debug = false;
-    private int test_db = HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
     private static volatile boolean _classLoaderInitialize = true;
-
-    private Connection getConnection() throws Exception
-    {
-        Connection conn = null;
-        if (test_db == MYSQL)
-        {
-            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
-        }
-        else if (test_db == HSQLDB)
-        {
-            conn = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "sa", "");
-        }
-        else if (test_db == ORACLE)
-        {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            conn = DriverManager.getConnection("jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
-        }
-        return conn;
-    }
-
-    public static void initManager() throws Exception
-    {
-        NCubeManager.clearCubeList();
-    }
 
     @BeforeClass
     public static void initialize()
@@ -114,101 +79,16 @@ public class TestNCube
         }
     }
 
-    @Before
-    public void setUp() throws Exception
-    {
-        prepareSchema();
-    }
-
-    private void prepareSchema() throws Exception
-    {
-        if (test_db == HSQLDB)
-        {
-            Connection conn = getConnection();
-            // Using HSQLDB syntax.
-            Statement stmt = conn.createStatement();
-            stmt.execute("CREATE TABLE n_cube ( " +
-                    "n_cube_id bigint NOT NULL, " +
-                    "n_cube_nm VARCHAR(100) NOT NULL, " +
-                    "tenant_id CHAR(64), " +
-                    "cube_value_bin varbinary(999999), " +
-                    "create_dt DATE NOT NULL, " +
-                    "update_dt DATE DEFAULT NULL, " +
-                    "create_hid VARCHAR(20), " +
-                    "update_hid VARCHAR(20), " +
-                    "version_no_cd VARCHAR(16) DEFAULT '0.1.0' NOT NULL, " +
-                    "status_cd VARCHAR(16) DEFAULT 'SNAPSHOT' NOT NULL, " +
-                    "sys_effective_dt DATE DEFAULT SYSDATE NOT NULL, " +
-                    "sys_expiration_dt DATE, " +
-                    "business_effective_dt DATE DEFAULT SYSDATE, " +
-                    "business_expiration_dt DATE, " +
-                    "app_cd VARCHAR(20), " +
-                    "test_data_bin varbinary(999999), " +
-                    "notes_bin varbinary(999999), " +
-                    "tags varbinary(999999), " +
-                    "PRIMARY KEY (n_cube_id), " +
-                    "UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd) " +
-                    ");");
-            stmt.close();
-            conn.close();
-        }
-        else if (test_db == MYSQL)
-        {
-        /*  Schema for MYSQL
-
-        drop table if exists `ncube`.n_cube;
-CREATE TABLE `ncube`.n_cube (
-n_cube_id bigint NOT NULL,
-n_cube_nm varchar(100) NOT NULL,
-n_tenant_id char(64),
-cube_value_bin longtext,
-create_dt date NOT NULL,
-update_dt date DEFAULT NULL,
-create_hid varchar(20),
-update_hid varchar(20),
-version_no_cd varchar(16) NOT NULL,
-status_cd varchar(16) DEFAULT 'SNAPSHOT' NOT NULL,
-sys_effective_dt date,
-sys_expiration_dt date,
-business_effective_dt date,
-business_expiration_dt date,
-app_cd varchar(20),
-test_data_bin longtext,
-notes_bin longtext,
-tags longtext,
-PRIMARY KEY (n_cube_id),
-UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd)
-);
-
-drop trigger if exists `ncube`.sysEffDateTrigger;
-DELIMITER ;;
-CREATE trigger `ncube`.sysEffDateTrigger BEFORE INSERT ON `ncube`.n_cube
-FOR EACH ROW
-BEGIN
-    SET NEW.sys_effective_dt = NOW();
-END ;;
-DELIMITER ;
-         */}
-    }
-
     @After
     public void tearDown() throws Exception
     {
-        initManager();
-        if (test_db == HSQLDB)
-        {
-            Connection conn = getConnection();
-            Statement stmt = conn.createStatement();
-            stmt.execute("DROP TABLE n_cube;");
-            stmt.close();
-            conn.close();
-        }
+        NCubeManager.clearCubeList();
     }
 
     @Test
     public void testPopulateProductLineCube() throws Exception
     {
-        NCube<Object> ncube = new NCube<Object>("ProductLine");
+        NCube<Object> ncube = new NCube<>("ProductLine");
         NCubeManager.addCube(ncube, "file");
 
         Axis prodLine = new Axis("PROD_LINE", AxisType.DISCRETE, AxisValueType.STRING, false);
@@ -375,14 +255,6 @@ DELIMITER ;
         ncube.toString();    // Force some APIs to be called during toString()
         assertTrue(ncube.toHtml() != null);
         assertTrue(ncube.getNumDimensions() == 2);
-    }
-
-    @Test
-    public void testAxisNameChange()
-    {
-        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
-        axis.setName("bar");
-        assertTrue("bar".equals(axis.getName()));
     }
 
     @Test
@@ -641,101 +513,6 @@ DELIMITER ;
         {
             return false;
         }
-    }
-
-    @Test
-    public void testAxisValueOverlap()
-    {
-        Axis axis = new Axis("test axis", AxisType.DISCRETE, AxisValueType.LONG, true);
-        axis.addColumn(0);
-        axis.addColumn(10);
-        axis.addColumn(100);
-
-        assertTrue(isValidPoint(axis, -1));
-        assertFalse(isValidPoint(axis, 0));
-        assertFalse(isValidPoint(axis, 10));
-        assertTrue(isValidPoint(axis, 11));
-        assertFalse(isValidPoint(axis, 100));
-        assertTrue(isValidPoint(axis, 101));
-
-        try
-        {
-            axis.addColumn(new Range(3, 9));
-        }
-        catch (IllegalArgumentException expected)
-        {
-        }
-
-        axis = new Axis("test axis", AxisType.DISCRETE, AxisValueType.STRING, true);
-        axis.addColumn("echo");
-        axis.addColumn("juliet");
-        axis.addColumn("tango");
-
-        assertTrue(isValidPoint(axis, "alpha"));
-        assertFalse(isValidPoint(axis, "echo"));
-        assertFalse(isValidPoint(axis, "juliet"));
-        assertTrue(isValidPoint(axis, "kilo"));
-        assertFalse(isValidPoint(axis, "tango"));
-        assertTrue(isValidPoint(axis, "uniform"));
-
-        try
-        {
-            axis.addColumn(new Range(3, 9));
-        }
-        catch (IllegalArgumentException expected)
-        {
-        }
-    }
-
-    private boolean isValidPoint(Axis axis, Comparable value)
-    {
-        try
-        {
-            axis.addColumn(value);
-            return true;
-        }
-        catch (AxisOverlapException e)
-        {
-            return false;
-        }
-    }
-
-    @Test
-    public void testAxisType()
-    {
-        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
-        axis.addColumn(1);
-        axis.addColumn(2L);
-        axis.addColumn((byte) 3);
-        axis.addColumn((short) 4);
-        axis.addColumn("5");
-        axis.addColumn(new BigDecimal("6"));
-        axis.addColumn(new BigInteger("7"));
-        assertTrue(AxisType.DISCRETE.equals(axis.getType()));
-        assertTrue(AxisValueType.LONG.equals(axis.getValueType()));
-        assertTrue(axis.size() == 7);
-    }
-
-    @Test
-    public void testAddingNullToAxis()
-    {
-        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
-        axis.addColumn(null);   // Add default column
-        assertTrue(axis.hasDefaultColumn());
-        try
-        {
-            axis.addColumn(null);
-            assertTrue("should throw exception", false);
-        }
-        catch (IllegalArgumentException expected)
-        {
-            assertTrue(expected.getMessage().contains("not"));
-            assertTrue(expected.getMessage().contains("add"));
-            assertTrue(expected.getMessage().contains("default"));
-            assertTrue(expected.getMessage().contains("already"));
-        }
-        axis.deleteColumn(null);
-        assertFalse(axis.hasDefaultColumn());
     }
 
     @Test
@@ -1638,135 +1415,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testBadCommandCellCommand() throws Exception
-    {
-        NCube<Object> continentCounty = new NCube<Object>("test.ContinentCountries");
-        NCubeManager.addCube(continentCounty, "1.0.0");
-        continentCounty.addAxis(getContinentAxis());
-        Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
-        countries.addColumn("Canada");
-        countries.addColumn("USA");
-        countries.addColumn("Mexico");
-        continentCounty.addAxis(countries);
-
-        NCube<Object> canada = new NCube<Object>("test.Provinces");
-        NCubeManager.addCube(canada, "1.0.0");
-        canada.addAxis(getProvincesAxis());
-
-        NCube<Object> usa = new NCube<Object>("test.States");
-        NCubeManager.addCube(usa, "1.0.0");
-        usa.addAxis(getStatesAxis());
-
-        Map coord1 = new HashMap();
-        coord1.put("Continent", "North America");
-        coord1.put("Country", "USA");
-        coord1.put("State", "OH");
-
-        Map coord2 = new HashMap();
-        coord2.put("Continent", "North America");
-        coord2.put("Country", "Canada");
-        coord2.put("Province", "Quebec");
-
-        continentCounty.setCell(new GroovyExpression("@test.States([:])", null), coord1);
-        continentCounty.setCell(new GroovyExpression("$test.Provinces(crunch)", null), coord2);
-
-        usa.setCell(1.0, coord1);
-        canada.setCell(0.78, coord2);
-
-        assertTrue((Double) continentCounty.getCell(coord1) == 1.0);
-
-        try
-        {
-            assertTrue((Double) continentCounty.getCell(coord2) == 0.78);
-            fail("should throw exception");
-        }
-        catch (Exception expected)
-        {
-        }
-
-        Connection conn = getConnection();
-        try
-        {
-            NCubeManager.createCube(conn, APP_ID, continentCounty, "1.0.0");
-            NCubeManager.createCube(conn, APP_ID, usa, "1.0.0");
-            NCubeManager.createCube(conn, APP_ID, canada, "1.0.0");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("save"));
-        }
-
-        assertTrue(NCubeManager.getCachedNCubes().size() == 3);
-        initManager();
-        NCube test = NCubeManager.loadCube(conn, APP_ID, "test.ContinentCountries", "1.0.0", "SNAPSHOT", new Date());
-        assertTrue((Double) test.getCell(coord1) == 1.0);
-
-        NCubeManager.deleteCube(conn, APP_ID, "test.ContinentCountries", "1.0.0", false);
-        NCubeManager.deleteCube(conn, APP_ID, "test.States", "1.0.0", false);
-        NCubeManager.deleteCube(conn, APP_ID, "test.Provinces", "1.0.0", false);
-        assertTrue(NCubeManager.getCachedNCubes().size() == 0);
-        conn.close();
-    }
-
-    @Test
-    public void testDbApis() throws Exception
-    {
-        Connection conn = getConnection();
-        String name = "test.NCube" + System.currentTimeMillis();
-
-        NCube<String> ncube = new NCube<String>(name);
-        ncube.addAxis(getStatesAxis());
-        ncube.addAxis(getFullGenderAxis());
-
-        Map coord = new HashMap();
-        coord.put("State", "OH");
-        coord.put("Gender", "Male");
-        ncube.setCell("John", coord);
-
-        coord.put("State", "OH");
-        coord.put("Gender", "Female");
-        ncube.setCell("Alexa", coord);
-
-        String version = "0.1.0";
-
-        assertFalse(NCubeManager.doesCubeExist(conn, APP_ID, name, version, "SNAPSHOT", new Date()));
-
-        NCubeManager.createCube(conn, APP_ID, ncube, version);
-
-        assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, "SNAPSHOT", new Date()));
-
-        NCube<String> cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, "SNAPSHOT", new Date());
-        assertTrue(DeepEquals.deepEquals(ncube, cube));
-
-        ncube.setCell("Lija", coord);
-        NCubeManager.updateCube(getConnection(), APP_ID, ncube, version);
-        assertTrue(1 == NCubeManager.releaseCubes(conn, APP_ID, version));
-
-        cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, "RELEASE", new Date());
-        assertTrue("Lija".equals(cube.getCell(coord)));
-
-        assertFalse(NCubeManager.deleteCube(conn, APP_ID, name, version, false));
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, name, version, true));
-        cube = NCubeManager.loadCube(conn, APP_ID, name, version, "SNAPSHOT", new Date());
-        assertNull(cube);
-
-        conn.close();
-    }
-
-    @Test
-    public void testAxisGetValues()
-    {
-        NCube ncube = new NCube("foo");
-        ncube.addAxis(getLongDaysOfWeekAxis());
-        ncube.addAxis(getLongMonthsOfYear());
-        ncube.addAxis(getOddAxis(true));
-        Axis axis = (Axis) ncube.getAxes().get(0);
-        List values = axis.getColumns();
-        assertTrue(values.size() == 7);
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 44);
-    }
-
-    @Test
     public void testAddingDeletingColumn1D()
     {
         NCube<Long> ncube = new NCube<Long>("1D.Delete.Test");
@@ -2214,115 +1862,6 @@ DELIMITER ;
         Range range = new Range(10, 50);
         assertTrue(range.isWithin(null) == 1);
         assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
-    }
-
-    @Test
-    public void testAxisCaseInsensitivity()
-    {
-        NCube<String> ncube = new NCube<String>("TestAxisCase");
-        Axis gender = getGenderAxis(true);
-        ncube.addAxis(gender);
-        Axis gender2 = new Axis("gender", AxisType.DISCRETE, AxisValueType.STRING, true);
-
-        try
-        {
-            ncube.addAxis(gender2);
-            assertTrue("should throw exception", false);
-        }
-        catch (IllegalArgumentException expected)
-        {
-            assertTrue(expected.getMessage().contains("axis"));
-            assertTrue(expected.getMessage().contains("already"));
-            assertTrue(expected.getMessage().contains("exists"));
-        }
-
-        Map<String, Object> coord = new HashMap<String, Object>();
-        coord.put("gendeR", null);
-        ncube.setCell("1", coord);
-        assertTrue("1".equals(ncube.getCell(coord)));
-
-        coord.put("GendeR", "Male");
-        ncube.setCell("2", coord);
-        assertTrue("2".equals(ncube.getCell(coord)));
-
-        coord.put("GENdeR", "Female");
-        ncube.setCell("3", coord);
-        assertTrue("3".equals(ncube.getCell(coord)));
-
-        Axis axis = ncube.getAxis("genDER");
-        assertTrue(axis.getName().equals("Gender"));
-        ncube.deleteAxis("GeNdEr");
-        assertTrue(ncube.getNumDimensions() == 0);
-    }
-
-    @Test
-    public void testRangeSetAxisErrors()
-    {
-        Axis age = new Axis("Age", AxisType.SET, AxisValueType.LONG, true);
-        RangeSet set = new RangeSet(1);
-        set.add(3.0);
-        set.add(new Range(10, 20));
-        set.add(25);
-        age.addColumn(set);
-
-        set = new RangeSet(2);
-        set.add(20L);
-        set.add((byte) 35);
-        age.addColumn(set);
-
-        try
-        {
-            set = new RangeSet(12);
-            age.addColumn(set);
-            fail("should throw exception");
-        }
-        catch (AxisOverlapException expected)
-        {
-            assertTrue(expected.getMessage().contains("RangeSet"));
-            assertTrue(expected.getMessage().contains("overlap"));
-            assertTrue(expected.getMessage().contains("exist"));
-        }
-
-        try
-        {
-            set = new RangeSet(15);
-            age.addColumn(set);
-            fail("should throw exception");
-        }
-        catch (AxisOverlapException expected)
-        {
-            assertTrue(expected.getMessage().contains("RangeSet"));
-            assertTrue(expected.getMessage().contains("overlap"));
-            assertTrue(expected.getMessage().contains("exist"));
-        }
-
-        try
-        {
-            set = new RangeSet(new Character('c')); // not a valid type for a LONG axis
-            age.addColumn(set);
-            fail("should throw exception");
-        }
-        catch (Exception expected)
-        {
-            assertTrue(expected instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            Range range = new Range(0, 10);
-            age.addColumn(range);
-            fail("should throw exception");
-        }
-        catch (IllegalArgumentException expected)
-        {
-            assertTrue(expected.getMessage().contains("only"));
-            assertTrue(expected.getMessage().contains("add"));
-            assertTrue(expected.getMessage().contains("RangeSet"));
-        }
-
-        RangeSet a = new RangeSet();
-        RangeSet b = new RangeSet();
-        assertTrue(a.compareTo(b) == 0);
     }
 
     @Test
@@ -3322,97 +2861,6 @@ DELIMITER ;
         }
     }
 
-    @Test
-    public void testGetNCubes() throws Exception
-    {
-        NCube ncube1 = getTestNCube3D_Boolean();
-        NCube ncube2 = getTestNCube2D(true);
-
-        String version = "0.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, ncube1, version);
-        NCubeManager.createCube(getConnection(), APP_ID, ncube2, version);
-
-        Object[] cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, "SNAPSHOT", "test.%", new Date());
-
-        assertTrue(cubeList != null);
-        assertTrue(cubeList.length == 2);
-
-        assertTrue(ncube1.getNumDimensions() == 3);
-        assertTrue(ncube2.getNumDimensions() == 2);
-
-        ncube1.deleteAxis("bu");
-        NCubeManager.updateCube(getConnection(), APP_ID, ncube1, version);
-        NCube cube1 = NCubeManager.loadCube(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", "SNAPSHOT", new Date());
-        assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
-
-        assertTrue(2 == NCubeManager.releaseCubes(getConnection(), APP_ID, version));
-
-        // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
-        NCubeManager.createSnapshotCubes(getConnection(), APP_ID, version, "0.2.0");
-
-        String notes1 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        String notes2 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-
-        NCubeManager.updateNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        notes1 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        assertTrue("".equals(notes1));
-
-        NCubeManager.updateNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", "Trailer Config Notes");
-        notes1 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        assertTrue("Trailer Config Notes".equals(notes1));
-
-        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        assertTrue("".equals(testData));
-
-        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", "This is JSON data");
-        testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        assertTrue("This is JSON data".equals(testData));
-
-        // Verify that you cannot delete a RELEASE ncube
-        assertFalse(NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), version, false));
-        assertFalse(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, false));
-
-        // Delete ncubes using 'true' to allow the test to delete a released ncube.
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), version, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
-
-        // Delete new SNAPSHOT cubes
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), "0.2.0", false));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), "0.2.0", false));
-
-        // Ensure that all test ncubes are deleted
-        cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, "RELEASE", "test.%", new Date());
-        assertTrue(cubeList.length == 0);
-    }
-
-    @Test
-    public void testRenameNCube() throws Exception
-    {
-        NCube ncube1 = getTestNCube3D_Boolean();
-        NCube ncube2 = getTestNCube2D(true);
-
-        String version = "0.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, ncube1, version);
-        NCubeManager.createCube(getConnection(), APP_ID, ncube2, version);
-
-        NCubeManager.renameCube(getConnection(), ncube1.getName(), "test.Floppy", APP_ID, version);
-
-        Object[] cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, "SNAPSHOT", "test.%", new Date());
-
-        assertTrue(cubeList != null);
-        assertTrue(cubeList.length == 2);
-
-        NCubeInfoDto nc1 = (NCubeInfoDto) cubeList[0];
-        NCubeInfoDto nc2 = (NCubeInfoDto) cubeList[1];
-
-        assertTrue(nc1.name.equals("test.Floppy") || nc2.name.equals("test.Floppy"));
-        assertFalse(nc1.name.equals("test.Floppy") && nc2.name.equals("test.Floppy"));
-
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, "test.Floppy", version, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
-    }
-
     @Test(expected=RuntimeException.class)
     public void testInvalidTemplate() throws Exception
     {
@@ -3420,126 +2868,6 @@ DELIMITER ;
         Map map = new HashMap<String, Object>();
         map.put("State", "TX");
         n1.getCell(map);
-    }
-
-    @Test
-    public void testGetReferencedCubeNames() throws Exception
-    {
-        NCube n1 = NCubeManager.getNCubeFromResource("template1.json");
-        NCube n2 = NCubeManager.getNCubeFromResource("template2.json");
-
-        String ver = "1.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, n1, ver);
-        NCubeManager.createCube(getConnection(), APP_ID, n2, ver);
-
-        Set refs = new TreeSet();
-        NCubeManager.getReferencedCubeNames(getConnection(), APP_ID, n1.getName(), ver, "SNAPSHOT", null, refs);
-        assertEquals(1, refs.size());
-        assertTrue(refs.contains("Template2Cube"));
-
-        refs.clear();
-        NCubeManager.getReferencedCubeNames(getConnection(), APP_ID, n2.getName(), ver, "SNAPSHOT", null, refs);
-        assertEquals(1, refs.size());
-        assertTrue(refs.contains("Template1Cube"));
-
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), ver, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n2.getName(), ver, true));
-    }
-
-    @Test
-    public void testDuplicateNCube() throws Exception
-    {
-        NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
-        String ver = "1.1.1";
-        Connection conn = getConnection();
-        NCubeManager.createCube(conn, APP_ID, n1, ver);
-        NCubeManager.duplicate(conn, n1.getName(), n1.getName(), APP_ID, APP_ID, "1.1.2", ver, "SNAPSHOT", null);
-        NCube n2 = NCubeManager.loadCube(conn, APP_ID, n1.getName(), ver, "SNAPSHOT", null);
-
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), ver, true));
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n2.getName(), "1.1.2", true));
-        assertTrue(n1.equals(n2));
-    }
-
-    @Test
-    public void testGetAppNames() throws Exception
-    {
-        NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
-        String version = "1.1.99";
-        NCubeManager.createCube(getConnection(), APP_ID, n1, version);
-
-        Object[] names = NCubeManager.getAppNames(getConnection(), null);
-        boolean foundName = false;
-        for (Object name : names)
-        {
-            if ("ncube.test".equals(name))
-            {
-                foundName = true;
-                break;
-            }
-        }
-
-        Object[] vers = NCubeManager.getAppVersions(getConnection(), APP_ID, "SNAPSHOT", null);
-        boolean foundVer = false;
-        for (Object ver : vers)
-        {
-            if (version.equals(ver))
-            {
-                foundVer = true;
-                break;
-            }
-        }
-
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), version, true));
-        assertTrue(foundName);
-        assertTrue(foundVer);
-    }
-
-    @Test
-    public void testChangeVersionValue() throws Exception
-    {
-        Connection conn = getConnection();
-        NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
-        String version = "1.1.99";
-        NCubeManager.createCube(conn, APP_ID, n1, version);
-
-        NCubeManager.changeVersionValue(conn, APP_ID, version, "1.1.20");
-
-        NCube n2 = NCubeManager.loadCube(conn, APP_ID, n1.getName(), "1.1.20", "SNAPSHOT", new Date());
-
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), "1.1.20", true));
-        assertEquals(n1, n2);
-    }
-
-    @Test
-    public void testLoadRuleFromUrl() throws Exception
-    {
-        NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url.json");
-        n1.setRuleMode(false);
-
-        Map coord = new HashMap();
-        coord.put("age", 17);
-        coord.put("weight", 99);
-        Map output = new HashMap();
-
-        n1.getCells(coord, output);
-
-        assertEquals("light-weight", output.get("weight"));
-        assertEquals("young", output.get("age"));
-    }
-
-    @Test
-    public void testContainsCellRuleAxis() throws Exception
-    {
-        NCube n1 = NCubeManager.getNCubeFromResource("multiRule.json");
-        n1.setRuleMode(false);
-        Map coord = new HashMap();
-        coord.put("age", 17);
-        coord.put("weight", 99);
-        boolean b = n1.containsCell(coord, false);
-        assertTrue(b);
-        b = n1.containsCell(coord, true);
-        assertTrue(b);
     }
 
     @Test
@@ -3622,16 +2950,6 @@ DELIMITER ;
         catch (Exception e)
         {
         }
-    }
-
-    @Test
-    public void testAxisMultiMatch()
-    {
-        Axis axis = getContinentAxis();
-        assertFalse(axis.isMultiMatch());
-        axis.setMultiMatch(true);
-        assertTrue(axis.isMultiMatch());
-        assertNotNull(axis.toString());
     }
 
     @Test
@@ -4187,244 +3505,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testNCubeManagerLoadCube() throws Exception
-    {
-        try
-        {
-            NCubeManager.loadCube(getConnection(), null, "Security", "0.1.0", "RELEASE", new Date());
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testNCubeManagerGetCubes() throws Exception
-    {
-        // This proves that null is turned into '%' (no exception thrown)
-        NCubeManager.getNCubes(getConnection(), APP_ID, "0.0.1", "SNAPSHOT", null, new Date());
-    }
-
-    @Test
-    public void testNCubeManagerUpdateCube() throws Exception
-    {
-        try
-        {
-            NCubeManager.updateCube(getConnection(), "DASHBOARD", null, "0.1.0");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        NCube testCube = getTestNCube2D(false);
-        try
-        {
-            NCubeManager.updateCube(getConnection(), "DASHBOARD", testCube, null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testNCubeManagerCreateCubes() throws Exception
-    {
-        try
-        {
-            NCubeManager.createCube(getConnection(), "DASHBOARD", null, "0.1.0");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        NCube testCube = getTestNCube2D(false);
-        try
-        {
-            NCubeManager.createCube(getConnection(), "DASHBOARD", testCube, null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        NCube ncube1 = createCube();
-        try
-        {
-            NCube ncube2 = createCube();
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
-        }
-
-        NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), "0.1.0", true);
-    }
-
-    @Test
-    public void testNCubeManagerReleaseCubes() throws Exception
-    {
-        try
-        {
-            NCubeManager.releaseCubes(getConnection(), null, "0.1.0");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testNCubeManagerCreateSnapshots() throws Exception
-    {
-        try
-        {
-            NCubeManager.createSnapshotCubes(null, "DASHBOARD", "0.1.0", "0.1.0");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            NCubeManager.createSnapshotCubes(getConnection(), "DASHBOARD", "0.1.0", "0.1.0");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testNCubeManagerDelete() throws Exception
-    {
-        try
-        {
-            NCubeManager.deleteCube(null, "DASHBOARD", "DashboardRoles", "0.1.0", true);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testNCubeManagerNotesData() throws Exception
-    {
-        try
-        {
-            NCubeManager.getNotes(null, "DASHBOARD", "DashboardRoles", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        createCube();
-        String notes = NCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", null);
-        assertNotNull(notes);
-        assertTrue(notes.length() > 0);
-
-        try
-        {
-            NCubeManager.updateNotes(getConnection(), APP_ID, "test.funky", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
-        }
-
-        try
-        {
-            NCubeManager.updateNotes(getConnection(), null, "test.funky", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            NCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.1", null);
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        NCubeManager.deleteCube(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", true);
-    }
-
-    @Test
-    public void testNCubeManagerTestData() throws Exception
-    {
-        try
-        {
-            NCubeManager.getTestData(null, "DASHBOARD", "DashboardRoles", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        createCube();
-        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", null);
-        assertNotNull(testData);
-        assertTrue(testData.length() > 0);
-
-        try
-        {
-            NCubeManager.updateTestData(getConnection(), APP_ID, "test.funky", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
-        }
-
-        try
-        {
-            NCubeManager.updateTestData(getConnection(), null, "test.funky", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            NCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.1", null);
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        NCubeManager.deleteCube(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", true);
-    }
-
-    @Test
     public void testSimpleJsonArray() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonArrayTest.json");
@@ -4662,106 +3742,6 @@ DELIMITER ;
         assertTrue(scope.size() == 2);
     }
 
-    // This test also tests ID-based ncube's specified in simple JSON format
-    @Test
-    public void testRuleCube() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
-        ncube.setRuleMode(true);
-        assertTrue(ncube.getRuleMode());
-        Axis cond = ncube.getAxis("condition");
-        assertTrue(cond.getColumns().get(0).getId() != 1);
-        Axis state = ncube.getAxis("state");
-        assertTrue(state.getColumns().get(0).getId() != 10);
-
-        Map coord = new HashMap();
-        coord.put("vehiclePrice", 5000.0);
-        coord.put("driverAge", 22);
-        coord.put("gender", "male");
-        coord.put("vehicleCylinders", 8);
-        coord.put("state", "TX");
-        Map output = new HashMap();
-        Map<Map<String, Column>, ?> steps = ncube.getCells(coord, output);
-        assertEquals(new BigDecimal("119.0"), output.get("premium"));
-        assertTrue(steps.size() == 4);
-    }
-
-    // This test ensures that identical expressions result in a single dynamic Groovy class being generated for them.
-    @Test
-    public void testDuplicateExpression() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("duplicateExpression.json");
-
-        Map coord = new HashMap();
-        coord.put("vehiclePrice", 5000.0);
-        coord.put("driverAge", 22);
-        coord.put("gender", "male");
-        coord.put("vehicleCylinders", 8);
-        Map output = new HashMap();
-        Map<Map<String, Column>, ?> steps = ncube.getCells(coord, output);
-        assertEquals(new BigDecimal("119.0"), output.get("premium"));
-        assertTrue(steps.size() == 4);
-    }
-
-    @Test
-    public void testDeleteColumnFromRangeSetAxis() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("testCube4.json");
-        ncube.deleteColumn("code", "b");
-        Axis axis = ncube.getAxis("code");
-        assertTrue(axis.getId() != 0);
-        assertTrue(axis.getColumns().size() == 2);
-        axis.deleteColumn("o");
-        assertTrue(axis.getColumns().size() == 1);
-        assertTrue(axis.idToCol.size() == 1);
-    }
-
-    @Test
-    public void testCONDITIONnoSort()
-    {
-        try
-        {
-            new Axis("sorted", AxisType.RULE, AxisValueType.EXPRESSION, true, Axis.SORTED);
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            new Axis("sorted", AxisType.RULE, AxisValueType.BIG_DECIMAL, true, Axis.DISPLAY);
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        Axis axis = new Axis("sorted", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
-        try
-        {
-            axis.addColumn(10);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        axis = new Axis("sorted", AxisType.DISCRETE, AxisValueType.LONG, false, Axis.DISPLAY);
-        try
-        {
-            axis.findColumn(null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
     @Test
     public void testOverlappingRangeCube() throws Exception
     {
@@ -4875,20 +3855,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testDupeIdsOnAxis() throws Exception
-    {
-        try
-        {
-            NCubeManager.getNCubeFromResource("idBasedCubeError2.json");
-            fail("should not make it here");
-        }
-        catch(Exception e)
-        {
-            assertTrue(e instanceof RuntimeException);
-        }
-    }
-
-    @Test
     public void testMultiThreadedCellExecution() throws Exception
     {
         final NCube ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
@@ -4916,20 +3882,6 @@ DELIMITER ;
 
         t1.join();
         t2.join();
-    }
-
-    @Test
-    public void testAxisInsertAtFront()
-    {
-        Axis states = new Axis("States", AxisType.SET, AxisValueType.STRING, false, Axis.SORTED, true);
-        RangeSet set = new RangeSet("GA");
-        set.add("OH");
-        set.add("TX");
-        states.addColumn(set);
-        set = new RangeSet("AL");
-        set.add("OH");
-        set.add("WY");
-        states.addColumn(set);
     }
 
     @Test
@@ -4962,21 +3914,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testAddDefaultToNearestAxis()
-    {
-        Axis nearest = new Axis("points", AxisType.NEAREST, AxisValueType.COMPARABLE, false);
-        try
-        {
-            nearest.addColumn(null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
     public void testStandardizeColumnValueErrorHandling()
     {
         Axis states = getStatesAxis();
@@ -4992,30 +3929,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testRangeAxisOverlapInMultiMatchMode()
-    {
-        Axis rangeAxis = new Axis("age", AxisType.RANGE, AxisValueType.LONG, false, Axis.DISPLAY, true);
-        rangeAxis.addColumn(new Range(0, 10));
-        rangeAxis.addColumn(new Range(0, 100));        // overlap
-        rangeAxis.addColumn(new Range(20, 40));        // overlap
-        NCube ncube = new NCube("dohner");
-        ncube.addAxis(rangeAxis);
-        assertEquals(ncube.getNumMultiMatchAxis(), 1);
-
-        Map coord = new HashMap();
-        coord.put("age", 75);
-        try
-        {
-            ncube.setCell("hey", coord);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
-        }
-    }
-
-    @Test
     public void testReadCubeList() throws Exception
     {
         List<NCube> ncubes = NCubeManager.getNCubesFromResource("testCubeList.json");
@@ -5024,61 +3937,6 @@ DELIMITER ;
         assertEquals(ncube1.getName(), "TestCube");
         NCube ncube2 = ncubes.get(1);
         assertEquals(ncube2.getName(), "idTest");
-    }
-
-    @Test
-    public void testRequiredScopeRuleAxis() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
-
-        Set<String> requiredScope = ncube.getRequiredScope();
-        assertTrue(requiredScope.size() == 6);
-        assertTrue(requiredScope.contains("driverAge"));
-        assertTrue(requiredScope.contains("gender"));
-        assertTrue(requiredScope.contains("state"));
-        assertTrue(requiredScope.contains("stop"));
-        assertTrue(requiredScope.contains("vehicleCylinders"));
-        assertTrue(requiredScope.contains("vehiclePrice"));
-        Object x = ncube.getRequiredScope();
-        assertEquals(requiredScope, x);
-        assertTrue(requiredScope != x);
-
-        Set scopeValues = ncube.getRequiredScope();
-        assertTrue(scopeValues.size() == 6);
-    }
-
-    @Test
-    public void testCubeRefFromRuleAxis() throws Exception
-    {
-        NCube ncube1 = NCubeManager.getNCubeFromResource("testCube5.json");
-        Set reqScope = ncube1.getRequiredScope();
-        assertTrue(reqScope.size() == 1);
-        assertTrue(reqScope.contains("Age"));
-
-        NCube ncube2 = NCubeManager.getNCubeFromResource("expressionAxis2.json");
-        reqScope = ncube2.getRequiredScope();
-        assertTrue(reqScope.size() == 2);
-        assertTrue(reqScope.contains("Age"));
-        assertTrue(reqScope.contains("state"));
-
-        Map coord = new HashMap();
-        coord.put("age", 18);
-        coord.put("state", "OH");
-        Map output = new LinkedHashMap();
-        ncube2.getCells(coord, output);
-        assertEquals(new BigDecimal("5.0"), output.get("premium"));
-
-        coord.put("state", "TX");
-        output.clear();
-        ncube2.getCells(coord, output);
-        assertEquals(new BigDecimal("-5.0"), output.get("premium"));
-
-        coord.clear();
-        coord.put("state", "OH");
-        coord.put("Age", 23);
-        output.clear();
-        ncube2.getCells(coord, output);
-        assertEquals(new BigDecimal("1.0"), output.get("premium"));
     }
 
     @Test
@@ -5263,78 +4121,6 @@ DELIMITER ;
         assertEquals("def TX", ncube.getCell(coord));
     }
 
-//    @Test
-//    public void testTruckingImport() throws Exception
-//    {
-//        List<NCube> cubes = NCubeManager.getInstance().getNCubesFromResource("product_selection.json");
-//        Connection connection = getConnection();
-//
-//        String[] apps = new String[] {"UD.REF.APP"};
-//        String[] versions = new String[] {"0.1.0", "1.0.0", "2.0.0", "2.0.1"};
-//        for (int a=0; a < apps.length; a++)
-//        {
-//            for (int v=0; v < versions.length; v++)
-//            {
-//                for (int n=0; n < cubes.size(); n++)
-//                {
-//                    NCube ncube = cubes.get(n);
-//                    System.out.println(ncube.getName() + ": " + apps[a] + ":" + versions[v]);
-//                    NCubeManager.deleteCube(connection, apps[a], ncube.getName(), versions[v], true);
-//                    NCubeManager.createCube(connection, apps[a], ncube, versions[v]);
-//                }
-//            }
-//        }
-//        connection.close();
-//    }
-
-
-//    @Test
-//    public void testCreateBunchOfCubes() throws Exception
-//    {
-//        String[] apps = new String[] {"BILLING", "CLAIMS", "UD.REF.APP", "DASHBOARD"};
-//        String[] versions = new String[] {"0.1.0", "1.0.0", "2.0.0", "2.0.1"};
-//        String[] cubes = new String[] {
-//                "2DSimpleJson.json",
-//                "approvalLimits.json",
-//                "big5D.json",
-//                "expressionAxis.json",
-//                "expressionAxis2.json",
-//                "idBasedCube.json",
-//                "idBasedCubeSet.json",
-//                "simpleJsonArrayTest.json",
-//                "simpleJsonExpression.json",
-//                "stringIds.json",
-//                "template1.json",
-//                "template2.json",
-//                "testAtCommand.json",
-//                "testCube1.json",
-//                "testCube2.json",
-//                "testCube3.json",
-//                "testCube4.json",
-//                "testCube5.json",
-//                "testCube6.json",
-//                "urlContent.json",
-//                "nCubeBUSpecificFieldsScope.json",
-//
-//        };
-//
-//        Connection connection = getConnection();
-//        for (int a=0; a < apps.length; a++)
-//        {
-//            for (int v=0; v < versions.length; v++)
-//            {
-//                for (int n=0; n < cubes.length; n++)
-//                {
-//                    NCube ncube = NCubeManager.getNCubeFromResource(cubes[n]);
-//                    System.out.println(ncube.getName() + ": " + apps[a] + ":" + versions[v]);
-//                    NCubeManager.deleteCube(connection, apps[a], ncube.getName(), versions[v], true);
-//                    NCubeManager.createCube(connection, apps[a], ncube, versions[v]);
-//                }
-//            }
-//        }
-//        connection.close();
-//    }
-
     @Test
     public void testEmptyCube()
     {
@@ -5419,109 +4205,6 @@ DELIMITER ;
         simpleJsonCompare("testCube5.json");
         simpleJsonCompare("testCube6.json");
         simpleJsonCompare("urlContent.json");
-    }
-
-    @Test
-    public void testMultipleRuleAxisBindingsThrowsExceptionInRuleMode() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("multiRule.json");
-        ncube.setRuleMode(true);
-        Map coord = new HashMap();
-        coord.put("age", 10);
-        coord.put("weight", 50);
-        Map output = new HashMap();
-        try
-        {
-            ncube.getCells(coord, output);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("ultiple"));
-        }
-
-        ncube.setRuleMode(false);
-        ncube.getCells(coord, output);
-        assertEquals(output.get("weight"), "medium-weight");
-        assertEquals(output.get("age"), "adult");
-        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(4L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
-
-        ncube.setRuleMode(true);
-        output.clear();
-        coord.put("age", 10);
-        coord.put("weight", 150);
-        ncube.getCells(coord, output);
-        assertEquals(output.get("weight"), "medium-weight");
-        assertEquals(output.get("age"), "adult");
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
-
-        output.clear();
-        coord.put("age", 35);
-        coord.put("weight", 150);
-        ncube.getCells(coord, output);
-        assertEquals(output.get("weight"), "medium-weight");
-        assertEquals(output.get("age"), "adult");
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
-
-        output.clear();
-        coord.put("age", 42);
-        coord.put("weight", 205);
-        ncube.getCells(coord, output);
-        assertEquals(output.get("weight"), "heavy-weight");
-        assertEquals(output.get("age"), "middle-aged");
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
-    }
-
-    @Test
-    public void testMultipleRuleAxisBindingsOKInMultiDim() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("multiRule2.json");
-        Map coord = new HashMap();
-        coord.put("age", 10);
-        coord.put("weight", 60);
-        Map output = new HashMap();
-        ncube.getCells(coord, output);
-        assertEquals(output.get("weight"), "light-weight");
-
-        // The age is 'adult' because two rules are matching on the age axis (intentional rule error)
-        // This test illustrates that I can match 2 or more rules on one rule axis, 1 on a 2nd rule
-        // axis, and it does not violate 'ruleMode'.
-        assertEquals(output.get("age"), "adult");
-    }
-
-    @Test
-    public void testRuleStopCondition() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("multiRuleHalt.json");
-        Map coord = new HashMap();
-        coord.put("age", 10);
-        coord.put("weight", 60);
-        Map output = new HashMap();
-        ncube.getCells(coord, output);
-        assertEquals(output.get("age"), "young");
-        assertEquals(output.get("weight"), "light-weight");
-        Map ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
-
-        coord.put("age", 25);
-        coord.put("weight", 60);
-        output.clear();
-        ncube.getCells(coord, output);
-        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertTrue((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
-
-        coord.put("age", 45);
-        coord.put("weight", 60);
-        output.clear();
-        ncube.getCells(coord, output);
-        assertEquals(output.get("age"), "middle-aged");
-        assertEquals(output.get("weight"), "light-weight");
-        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
     }
 
     @Test
@@ -5799,67 +4482,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testExpression()
-    {
-        NCubeManager.getNCubeFromResource("urlPieces.json");
-        NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice("*", new Advice()
-        {
-            public String getName()
-            {
-                return "alpha";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("_btime1", System.nanoTime());
-                return true;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("_atime1", System.nanoTime());
-            }
-        });
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice("*", new Advice()
-        {
-            public String getName()
-            {
-                return "beta";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("_btime2", System.nanoTime());
-                return true;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("_atime2", System.nanoTime());
-            }
-        });
-
-        Map coord = new HashMap();
-        Map output = new HashMap();
-        coord.put("env_level", "local");
-        coord.put("protocol", "http");
-        coord.put("content", "95");
-        ncube.getCell(coord, output);
-
-        assertTrue((Long) output.get("_atime1") > (Long) output.get("_atime2"));
-        assertTrue((Long) output.get("_btime1") < (Long) output.get("_btime2"));
-        assertTrue((Long) output.get("_btime2") < (Long) output.get("_atime1"));
-        assertTrue((Long) output.get("_btime1") < (Long) output.get("_atime1"));
-    }
-
-    @Test
     public void testTemplateFromUrl()
     {
         NCubeManager.getNCubeFromResource("urlPieces.json");
@@ -5997,392 +4619,6 @@ DELIMITER ;
         assertEquals(16, ncube.getCell(coord));
     }
 
-    @Test
-    public void testAdvice() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + ".*()", new Advice()
-        {
-            public String getName()
-            {
-                return "alpha";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("before", true);
-                assertEquals(2, input.size());
-                boolean ret = true;
-                if ("foo".equals(method.getName()))
-                {
-                    assertEquals("foo", input.get("method"));
-                }
-                else if ("bar".equals(method.getName()))
-                {
-                    assertEquals("bar", input.get("method"));
-                }
-                else if ("qux".equals(method.getName()))
-                {
-                    assertEquals("qux", input.get("method"));
-                }
-                else if ("qaz".equals(method.getName()))
-                {
-                    ret = false;
-                }
-                return ret;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("after", true);
-                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
-                {
-                    assertEquals(2, returnValue);
-                }
-                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
-                {
-                    assertEquals(4, returnValue);
-                }
-                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
-                {
-                    assertEquals(81, returnValue);
-                }
-            }
-        });
-
-        Map output = new HashMap();
-        Map coord = new HashMap();
-        coord.put("method", "foo");
-        coord.put("state", "OH");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "bar");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-
-        output.clear();
-        coord.put("state", "TX");
-        coord.put("method", "qux");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-
-        ncube.clearAdvices();
-    }
-
-    @Test
-    public void testAdviceSubsetMatching() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + ".ba*()", new Advice()
-        {
-            public String getName()
-            {
-                return "alpha";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("before", true);
-                assertEquals(2, input.size());
-                boolean ret = true;
-                if ("foo".equals(method.getName()))
-                {
-                    assertEquals("foo", input.get("method"));
-                }
-                else if ("bar".equals(method.getName()))
-                {
-                    output.put("bar", true);
-                    assertEquals("bar", input.get("method"));
-                }
-                else if ("baz".equals(method.getName()))
-                {
-                    output.put("baz", true);
-                }
-                else if ("qux".equals(method.getName()))
-                {
-                    assertEquals("qux", input.get("method"));
-                }
-                else if ("qaz".equals(method.getName()))
-                {
-                    ret = false;
-                }
-                return ret;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("after", true);
-                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
-                {
-                    assertEquals(2, returnValue);
-                }
-                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
-                {
-                    assertEquals(4, returnValue);
-                }
-                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
-                {
-                    assertEquals(81, returnValue);
-                }
-            }
-        });
-
-        Map output = new HashMap();
-        Map coord = new HashMap();
-        coord.put("method", "foo");
-        coord.put("state", "OH");
-        ncube.getCell(coord, output);
-        assertFalse(output.containsKey("before"));
-        assertFalse(output.containsKey("after"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "bar");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-        assertTrue(output.containsKey("bar"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "baz");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-        assertTrue(output.containsKey("baz"));
-
-        output.clear();
-        coord.put("state", "TX");
-        coord.put("method", "qux");
-        ncube.getCell(coord, output);
-        // Controller method Qux calls baz via getCell() which then is intercepted at sets the output keys before, after.
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "qux");
-        ncube.getCell(coord, output);
-        // Controller method Qux calls baz directly which is NOT intercepted
-        assertFalse(output.containsKey("before"));
-        assertFalse(output.containsKey("after"));
-
-        ncube.clearAdvices();
-    }
-
-    @Test
-    public void testAdviceSubsetMatchingLateLoad()
-    {
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice("*.ba*()", new Advice()
-        {
-            public String getName()
-            {
-                return "alpha";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("before", true);
-                assertEquals(2, input.size());
-                boolean ret = true;
-                if ("foo".equals(method.getName()))
-                {
-                    assertEquals("foo", input.get("method"));
-                }
-                else if ("bar".equals(method.getName()))
-                {
-                    output.put("bar", true);
-                    assertEquals("bar", input.get("method"));
-                }
-                else if ("baz".equals(method.getName()))
-                {
-                    output.put("baz", true);
-                }
-                else if ("qux".equals(method.getName()))
-                {
-                    assertEquals("qux", input.get("method"));
-                }
-                else if ("qaz".equals(method.getName()))
-                {
-                    ret = false;
-                }
-                return ret;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("after", true);
-                if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
-                {
-                    assertEquals(2, returnValue);
-                }
-                else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
-                {
-                    assertEquals(4, returnValue);
-                }
-                else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
-                {
-                    assertEquals(81, returnValue);
-                }
-            }
-        });
-
-        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-
-        Map output = new HashMap();
-        Map coord = new HashMap();
-        coord.put("method", "foo");
-        coord.put("state", "OH");
-        ncube.getCell(coord, output);
-        assertFalse(output.containsKey("before"));
-        assertFalse(output.containsKey("after"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "bar");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-        assertTrue(output.containsKey("bar"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "baz");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-        assertTrue(output.containsKey("baz"));
-
-        output.clear();
-        coord.put("state", "TX");
-        coord.put("method", "qux");
-        ncube.getCell(coord, output);
-        // Controller method Qux calls baz via getCell() which then is intercepted at sets the output keys before, after.
-        assertTrue(output.containsKey("before"));
-        assertTrue(output.containsKey("after"));
-
-        output.clear();
-        coord.put("state", "OH");
-        coord.put("method", "qux");
-        ncube.getCell(coord, output);
-        // Controller method Qux calls baz directly which is NOT intercepted
-        assertFalse(output.containsKey("before"));
-        assertFalse(output.containsKey("after"));
-
-        ncube.clearAdvices();
-    }
-
-    @Test
-    public void testAdviceNoCallForward()
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + "*", new Advice()
-        {
-            public String getName()
-            {
-                return "alpha";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                return false;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                fail("should not make it here");
-            }
-        });
-
-        Map coord = new HashMap();
-        coord.put("method", "foo");
-        coord.put("state", "OH");
-        assertNull(ncube.getCell(coord));
-
-        ncube.clearAdvices();
-    }
-
-    @Test
-    public void testMultiAdvice()
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
-        {
-            public String getName()
-            {
-                return "alpha";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("_btime1", System.nanoTime());
-                return true;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("_atime1", System.nanoTime());
-            }
-        });
-
-        // These methods are called more than you think.  Internally, these cube call
-        // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
-        {
-            public String getName()
-            {
-                return "beta";
-            }
-
-            public boolean before(Method method, NCube ncube, Map input, Map output)
-            {
-                output.put("_btime2", System.nanoTime());
-                return true;
-            }
-
-            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
-            {
-                output.put("_atime2", System.nanoTime());
-            }
-        });
-
-        Map coord = new HashMap();
-        Map output = new HashMap();
-        coord.put("method", "foo");
-        coord.put("state", "OH");
-        ncube.getCell(coord, output);
-        assertTrue(output.containsKey("_atime1"));
-        assertTrue(output.containsKey("_btime1"));
-        assertTrue(output.containsKey("_atime2"));
-        assertTrue(output.containsKey("_btime2"));
-        assertTrue((Long)output.get("_atime1") > (Long)output.get("_atime2"));
-        assertTrue((Long)output.get("_btime1") < (Long)output.get("_btime2"));
-        assertTrue((Long)output.get("_btime2") < (Long)output.get("_atime1"));
-        assertTrue((Long)output.get("_btime1") < (Long)output.get("_atime1"));
-
-        ncube.clearAdvices();
-    }
-
     @Test(expected = RuntimeException.class)
     public void testCommandCellReferencedCubeNotFoundOnExpandUrl() throws Exception
     {
@@ -6412,99 +4648,6 @@ DELIMITER ;
     }
 
     @Test
-    public void testDefaultColumnOnRuleAxis() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("ruleWithDefault.json");
-
-        Map output = new HashMap();
-        Map coord = new HashMap();
-
-        coord.put("state", "OH");
-        coord.put("age", 18);
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "OH 18");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "TX");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "TX 18");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "GA");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "GA 18");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "AZ");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "default 18");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "OH");
-        coord.put("age", 50);
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "OH 50");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "TX");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "TX 50");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "GA");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "GA 50");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "AZ");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "default 50");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "OH");
-        coord.put("age", 85);
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "OH 85");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "TX");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "TX 85");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "GA");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "GA 85");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "AZ");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "default 85");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "OH");
-        coord.put("age", 100);
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "OH default");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "TX");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "TX default");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "GA");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "GA default");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("state", "AZ");
-        ncube.getCell(coord, output);
-        assertEquals(output.get("text"), "default default");
-        assertTrue(ncube.containsCell(coord));
-    }
-
-    @Test
     public void testMultiMatchAxisWithNoMatchAndNoDefault()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("multiMatch.json");
@@ -6525,27 +4668,6 @@ DELIMITER ;
         coord.put("age", 16);
         Map multi = ncube.getCells(coord, output);
         assertEquals(2, multi.size());
-    }
-
-    @Test
-    public void testRuleAxisWithNoMatchAndNoDefault()
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("ruleNoMatch.json");
-
-        Map coord = new HashMap();
-        Map output = new HashMap();
-        coord.put("age", 85);
-        ncube.getCells(coord, output);
-        assertEquals(1, output.size());
-        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(0L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
-
-        coord.put("age", 22);
-        ncube.getCells(coord, output);
-        assertTrue(output.containsKey("adult"));
-        assertTrue(output.containsKey("old"));
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
     }
 
     @Test
@@ -6627,75 +4749,6 @@ DELIMITER ;
         {
             assertTrue(e instanceof CoordinateNotFoundException);
         }
-    }
-
-    @Test
-    public void testContainsCellValueRule()
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("containsCellRule.json");
-
-        Map coord = new HashMap();
-        coord.put("gender", "Male");
-        assertTrue(ncube.containsCell(coord));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, true));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, true));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, false));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, false));
-
-        coord.put("gender", "GI Joe");
-        assertFalse(ncube.containsCell(coord));
-        assertFalse(ncube.containsCellValue(coord, false));
-
-        ncube.setDefaultCellValue(null);
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCell(coord));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCell(coord));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, true));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, true));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, false));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, false));
-
-        coord.put("gender", "GI Joe");
-        assertFalse(ncube.containsCell(coord));
-
-        assertFalse(ncube.containsCellValue(coord, false));
-    }
-
-    @Test
-    public void testEmptyNCubeMetaProps() throws Exception
-    {
-        NCube ncube = createCube();
-        String json = ncube.toFormattedJson();
-        ncube = NCube.fromSimpleJson(json);
-        assertTrue(ncube.getMetaProperties().size() == 0);
-
-        List<Axis> axes = ncube.getAxes();
-        for (Axis axis : axes)
-        {
-            assertTrue(axis.getMetaProperties().size() == 0);
-
-            for (Column column : axis.getColumns())
-            {
-                assertTrue(column.getMetaProperties().size() == 0);
-            }
-        }
-        NCubeManager.deleteCube(getConnection(), APP_ID, ncube.getName(), "0.1.0", true);
     }
 
     @Test
@@ -6886,64 +4939,6 @@ DELIMITER ;
         }
     }
 
-    @Test
-    public void testRuleFalseValues() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("ruleFalseValues.json");
-        Map input = new HashMap();
-        input.put("state", "OH");
-        Map output = new HashMap();
-        ncube.getCells(input, output);
-        Map stats = (Map) output.get("_rule");
-        assertEquals(1, ((Map) stats.get(RuleMetaKeys.RULES_EXECUTED)).size());
-
-        // Groovy style false
-        assertFalse(NCube.didRuleFire(null));
-        assertFalse(NCube.didRuleFire(false));
-        assertFalse(NCube.didRuleFire(Boolean.FALSE));
-        assertFalse(NCube.didRuleFire(new Boolean(false)));
-        assertFalse(NCube.didRuleFire((byte) 0));
-        assertFalse(NCube.didRuleFire((short) 0));
-        assertFalse(NCube.didRuleFire((int) 0));
-        assertFalse(NCube.didRuleFire((long) 0));
-        assertFalse(NCube.didRuleFire(0f));
-        assertFalse(NCube.didRuleFire(0d));
-        assertFalse(NCube.didRuleFire(BigInteger.ZERO));
-        assertFalse(NCube.didRuleFire(BigDecimal.ZERO));
-        assertFalse(NCube.didRuleFire(""));
-        assertFalse(NCube.didRuleFire(new HashMap()));
-        assertFalse(NCube.didRuleFire(new HashMap().keySet().iterator()));
-        assertFalse(NCube.didRuleFire(new ArrayList()));
-        assertFalse(NCube.didRuleFire(new ArrayList().iterator()));
-        assertFalse(NCube.didRuleFire(new Vector().elements()));
-
-        // Groovy style true
-        assertTrue(NCube.didRuleFire(new Date()));
-        assertTrue(NCube.didRuleFire(true));
-        assertTrue(NCube.didRuleFire(Boolean.TRUE));
-        assertTrue(NCube.didRuleFire(new Boolean(true)));
-        assertTrue(NCube.didRuleFire((byte) 1));
-        assertTrue(NCube.didRuleFire((short) 1));
-        assertTrue(NCube.didRuleFire((int) 1));
-        assertTrue(NCube.didRuleFire((long) 1));
-        assertTrue(NCube.didRuleFire(1f));
-        assertTrue(NCube.didRuleFire(1d));
-        assertTrue(NCube.didRuleFire(BigInteger.ONE));
-        assertTrue(NCube.didRuleFire(BigDecimal.ONE));
-        assertTrue(NCube.didRuleFire("Yo"));
-        Map map = new HashMap();
-        map.put("foo","bar");
-        assertTrue(NCube.didRuleFire(map));
-        assertTrue(NCube.didRuleFire(map.keySet().iterator()));
-        List list = new ArrayList();
-        list.add(new Date());
-        assertTrue(NCube.didRuleFire(list));
-        assertTrue(NCube.didRuleFire(list.iterator()));
-        Vector v = new Vector();
-        v.add(9);
-        assertTrue(NCube.didRuleFire(v.elements()));
-    }
-
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 
@@ -6973,31 +4968,7 @@ DELIMITER ;
         }
     }
 
-    private NCube createCube() throws Exception
-    {
-        NCube<Double> ncube = getTestNCube2D(true);
-
-        Map coord = new HashMap();
-        coord.put("gender", "male");
-        coord.put("age", "47");
-        ncube.setCell(1.0, coord);
-
-        coord.put("gender", "female");
-        ncube.setCell(1.1, coord);
-
-        coord.put("age", 16);
-        ncube.setCell(1.5, coord);
-
-        coord.put("gender", "male");
-        ncube.setCell(1.8, coord);
-
-        NCubeManager.createCube(getConnection(), APP_ID, ncube, "0.1.0");
-        NCubeManager.updateTestData(getConnection(), APP_ID, ncube.getName(), "0.1.0", JsonWriter.objectToJson(coord));
-        NCubeManager.updateNotes(getConnection(), APP_ID, ncube.getName(), "0.1.0", "notes follow");
-        return ncube;
-    }
-
-    private Axis getStatesAxis()
+    static Axis getStatesAxis()
     {
         Axis states = new Axis("State", AxisType.DISCRETE, AxisValueType.STRING, false);
         states.addColumn("AL");
@@ -7053,7 +5024,7 @@ DELIMITER ;
         return states;
     }
 
-    private Axis getProvincesAxis()
+    static Axis getProvincesAxis()
     {
         Axis provinces = new Axis("Province", AxisType.DISCRETE, AxisValueType.STRING, false);
         provinces.addColumn("Quebec");
@@ -7071,7 +5042,7 @@ DELIMITER ;
         return provinces;
     }
 
-    private Axis getContinentAxis()
+    static Axis getContinentAxis()
     {
         Axis continent = new Axis("Continent", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         continent.addColumn("Africa");
@@ -7084,7 +5055,7 @@ DELIMITER ;
         return continent;
     }
 
-    private Axis getDecimalRangeAxis(boolean defCol)
+    static Axis getDecimalRangeAxis(boolean defCol)
     {
         Axis axis = new Axis("bigD", AxisType.RANGE, AxisValueType.BIG_DECIMAL, defCol);
         axis.addColumn(new Range(-10.0, 10.0));
@@ -7095,7 +5066,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getDoubleRangeAxis(boolean defCol)
+    static Axis getDoubleRangeAxis(boolean defCol)
     {
         Axis axis = new Axis("doubleRange", AxisType.RANGE, AxisValueType.DOUBLE, defCol);
         axis.addColumn(new Range(-10.0, 10.0));
@@ -7106,7 +5077,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getLongRangeAxis(boolean defCol)
+    static Axis getLongRangeAxis(boolean defCol)
     {
         Axis axis = new Axis("longRange", AxisType.RANGE, AxisValueType.LONG, defCol);
         axis.addColumn(new Range(-10.0, 10.0));
@@ -7117,7 +5088,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getDateRangeAxis(boolean defCol)
+    static Axis getDateRangeAxis(boolean defCol)
     {
         Axis axis = new Axis("dateRange", AxisType.RANGE, AxisValueType.DATE, defCol);
         Calendar cal = Calendar.getInstance();
@@ -7140,7 +5111,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getLongDaysOfWeekAxis()
+    static Axis getLongDaysOfWeekAxis()
     {
         Axis axis = new Axis("Days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         axis.addColumn("Monday");
@@ -7153,7 +5124,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getShortDaysOfWeekAxis()
+    static Axis getShortDaysOfWeekAxis()
     {
         Axis axis = new Axis("Days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         axis.addColumn("Mon");
@@ -7166,7 +5137,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getLongMonthsOfYear()
+    static Axis getLongMonthsOfYear()
     {
         Axis axis = new Axis("Months", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         axis.addColumn("Janurary");
@@ -7184,7 +5155,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getShortMonthsOfYear()
+    static Axis getShortMonthsOfYear()
     {
         Axis axis = new Axis("Months", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         axis.addColumn("Jan");
@@ -7202,7 +5173,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getGenderAxis(boolean defCol)
+    static Axis getGenderAxis(boolean defCol)
     {
         Axis axis = new Axis("Gender", AxisType.DISCRETE, AxisValueType.STRING, defCol);
         axis.addColumn("Male");
@@ -7210,7 +5181,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getFullGenderAxis()
+    static Axis getFullGenderAxis()
     {
         Axis axis = new Axis("Gender", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         axis.addColumn("Male");
@@ -7221,7 +5192,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getEvenAxis(boolean defCol)
+    static Axis getEvenAxis(boolean defCol)
     {
         Axis axis = new Axis("Even", AxisType.DISCRETE, AxisValueType.LONG, defCol);
         axis.addColumn(0L);
@@ -7233,7 +5204,7 @@ DELIMITER ;
         return axis;
     }
 
-    private Axis getOddAxis(boolean defCol)
+    static Axis getOddAxis(boolean defCol)
     {
         Axis axis = new Axis("Odd", AxisType.DISCRETE, AxisValueType.LONG, defCol);
         axis.addColumn(1L);
@@ -7244,7 +5215,7 @@ DELIMITER ;
         return axis;
     }
 
-    private NCube getTestNCube2D(boolean defCol)
+    static NCube getTestNCube2D(boolean defCol)
     {
         NCube<Double> ncube = new NCube<Double>("test.Age-Gender");
         Axis axis1 = getGenderAxis(defCol);
@@ -7262,7 +5233,7 @@ DELIMITER ;
         return ncube;
     }
 
-    private NCube getTestNCube3D_Boolean()
+    static NCube getTestNCube3D_Boolean()
     {
         NCube<Boolean> ncube = new NCube<Boolean>("test.ValidTrailorConfigs");
         Axis axis1 = new Axis("Trailers", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
@@ -7295,7 +5266,7 @@ DELIMITER ;
         return ncube;
     }
 
-    private int countMatches(String s, String pattern)
+    static int countMatches(String s, String pattern)
     {
         int lastIndex = 0;
         int count = 0;

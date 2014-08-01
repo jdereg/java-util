@@ -87,11 +87,11 @@ public class NCubeManager
         return name + '.' + version;
     }
 
-    public static void setBaseResourceUrls(List<String> urls, String version)
+    public static void addBaseResourceUrls(List<String> urls, String version)
     {
         if (urlClassLoaders.containsKey(version))
         {
-            LOG.warn("Adding additional resource URLs, n-cube version: " + version + ", urls: " + urls);
+            LOG.info("Adding resource URLs, n-cube version: " + version + ", urls: " + urls);
         }
 
         GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
@@ -99,7 +99,17 @@ public class NCubeManager
         urlClassLoaders.put(version, urlClassLoader);
     }
 
-    @Deprecated
+    /**
+     * @Deprecated Call addBaseResourceUrls() instead.
+     */
+    public static void setBaseResourceUrls(List<String> urls, String version)
+    {
+        addBaseResourceUrls(urls, version);
+    }
+
+    /**
+     * @Deprecated Call addBaseResourceUrs() instead.
+     */
     public static void setUrlClassLoader(List<String> urls, String version)
     {
         setBaseResourceUrls(urls, version);
@@ -266,7 +276,7 @@ public class NCubeManager
         }
     }
 
-    private static void validateConnection(Connection c)
+    static void validateConnection(Connection c)
     {
         try
         {
@@ -333,6 +343,61 @@ public class NCubeManager
             return;
         }
         throw new IllegalArgumentException("n-cube status must be RELEASE or SNAPSHOT");
+    }
+
+    /**
+     * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
+     */
+    public static void loadCubes(Connection connection, String app, String version, String status)
+    {
+        loadCubes(connection, app, version, status, null);
+    }
+
+    /**
+     * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
+     */
+    public static void loadCubes(Connection connection, String app, String version, String status, Date sysDate)
+    {
+        validate(connection, app, version);
+        validateStatus(status);
+
+        if (sysDate == null)
+        {
+            sysDate = new Date();
+        }
+
+        synchronized (cubeList)
+        {
+            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
+            {
+                java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+
+                stmt.setString(1, app);
+                stmt.setDate(2, systemDate);
+                stmt.setDate(3, systemDate);
+                stmt.setString(4, version);
+                stmt.setString(5, status);
+                ResultSet rs = stmt.executeQuery();
+
+                while (rs.next())
+                {
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    NCube ncube = ncubeFromJson(json);
+                    addCube(ncube, version);
+                }
+            }
+            catch (IllegalStateException e)
+            {
+                throw e;
+            }
+            catch (Exception e)
+            {
+                String s = "Unable to load n-cubes, app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+                LOG.error(s, e);
+                throw new RuntimeException(s, e);
+            }
+        }
     }
 
     /**

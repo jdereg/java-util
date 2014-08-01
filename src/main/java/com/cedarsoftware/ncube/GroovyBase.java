@@ -215,13 +215,18 @@ public abstract class GroovyBase extends UrlCommandCell
         boolean isUrlUsed = StringUtilities.hasContent(url);
         GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getVersion());
 
+        if (urlLoader == null)
+        {
+            throw new IllegalStateException("No ClassLoader set in NCubeManager for version: " + cube.getVersion() + ".  Use NCubeManager.setBaseResourceUrls() to set it.  Found executing ncube: " + cube.getName());
+        }
+
         if (isUrlUsed)
         {
             URL groovySourceUrl = urlLoader.getResource(url);
 
             if (groovySourceUrl == null)
             {
-                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setBaseResourceUrls(): " + url);
+                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.addBaseResourceUrls(): " + url);
             }
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);

@@ -276,7 +276,7 @@ public class NCubeManager
         }
     }
 
-    static void validateConnection(Connection c)
+    public static void validateConnection(Connection c)
     {
         try
         {
@@ -1405,7 +1405,7 @@ public class NCubeManager
     /**
      * Still used in getNCubesFromResource
      */
-    private static JsonObject getJsonObjectFromResource(String name) throws IOException
+    private static Object[] getJsonObjectFromResource(String name) throws IOException
     {
         JsonReader reader = null;
         try
@@ -1414,7 +1414,7 @@ public class NCubeManager
             File jsonFile = new File(url.getFile());
             InputStream in = new BufferedInputStream(new FileInputStream(jsonFile));
             reader = new JsonReader(in, true);
-            return (JsonObject) reader.readObject();
+            return (Object[]) reader.readObject();
         }
         finally
         {
@@ -1427,8 +1427,7 @@ public class NCubeManager
         String lastSuccessful = "";
         try
         {
-            JsonObject ncubes = getJsonObjectFromResource(name);
-            Object[] cubes = ncubes.getArray();
+            Object[] cubes = getJsonObjectFromResource(name);
             List<NCube> cubeList = new ArrayList<>(cubes.length);
 
             for (Object cube : cubes)

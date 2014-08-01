@@ -10,6 +10,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -796,5 +797,72 @@ DELIMITER ;
             }
         }
         NCubeManager.deleteCube(getConnection(), APP_ID, ncube.getName(), "0.1.0", true);
+    }
+
+    @Test
+    public void testBadUrlsAddedToClassLoader() throws Exception
+    {
+        String url = "htp://this wont work";
+        List urls = new ArrayList();
+        urls.add(url);
+        try
+        {
+            NCubeManager.addBaseResourceUrls(urls, "2");
+            fail("Should not make it here");
+        }
+        catch (Exception expected)
+        { }
+    }
+
+    @Test
+    public void testValidateConnection() throws Exception
+    {
+        Connection c = getConnection();
+        NCubeManager.validateConnection(c);
+        c.close();
+        try
+        {
+            NCubeManager.validateConnection(c);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+    @Test
+    public void testValidateCubeName() throws Exception
+    {
+        NCubeManager.validateCubeName("Joe");
+        NCubeManager.validateCubeName("Joe.Dirt");
+        NCubeManager.validateCubeName(NCube.validCubeNameChars);
+        try
+        {
+            NCubeManager.validateCubeName("");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+
+        try
+        {
+            NCubeManager.validateCubeName(null);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+    @Test
+    public void testValidateStatus() throws Exception
+    {
+        NCubeManager.validateStatus(ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.validateStatus(ReleaseStatus.RELEASE.name());
+        try
+        {
+            NCubeManager.validateStatus("fubar");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
     }
 }

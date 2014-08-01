@@ -276,7 +276,7 @@ public class NCubeManager
         }
     }
 
-    private static void validateConnection(Connection c)
+    static void validateConnection(Connection c)
     {
         try
         {

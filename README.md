@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, and 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.9.0</version>
+  <version>2.9.1</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -68,6 +68,11 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.1
+ * Added header 'content-type' for when CDN files are loaded locally from a developer's machine.  Providing the mime-type will quiet down browser warnings when loading Javascript, CSS, and HTML files.
+ * Added new loadCubes() API to NCubeManager. This permits the caller to load all cubes for a given app, version, and status at start up, so that calls to other n-cubes from Groovy code will not have to worry about the other cubes being loaded.
+ * Deprecated [renamed] NCubeManager.setBaseResourceUrls() to NCubeManager.addBaseResourceUrls().  It is additive, not replacing.
+ * NCubeManager, Advice, Rules, and Axis tests have been separated into their own test classes, further reducing TestNCube class.
 * 2.9.0
  * Bug fix: HTTP response headers are now copied case-insensitively to CdnRouter proxied HTTP response
  * New CdnDefaultHandler available for CDN content routers which dynamically adds logical file names to the CDN type specific routing cache.

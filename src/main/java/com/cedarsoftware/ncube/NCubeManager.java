@@ -368,9 +368,6 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            //  This is Java 7 specific, but will autoclose the statement
-            //  when it leaves the try statement.  If you want to change to this
-            //  let me know and I'll change the other instances.
             try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());

@@ -226,7 +226,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
             if (groovySourceUrl == null)
             {
-                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.setBaseResourceUrls(): " + url);
+                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.addBaseResourceUrls(): " + url);
             }
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);

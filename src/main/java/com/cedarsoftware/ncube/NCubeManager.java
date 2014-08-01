@@ -340,7 +340,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
-    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
+    private static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate, boolean includeTests)
     {
         validate(connection, app, version);
         validateCubeName(name);
@@ -351,10 +351,11 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            //  This is Java 7 specific, but will autoclose the statement
-            //  when it leaves the try statement.  If you want to change to this
-            //  let me know and I'll change the other instances.
-            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
+            String query = includeTests ?
+                    "SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?" :
+                    "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?";
+
+            try (PreparedStatement stmt = connection.prepareStatement(query))
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
@@ -364,31 +365,38 @@ public class NCubeManager
                 stmt.setDate(4, systemDate);
                 stmt.setString(5, version);
                 stmt.setString(6, status);
-                ResultSet rs = stmt.executeQuery();
 
-                if (rs.next())
+                try (ResultSet rs = stmt.executeQuery())
                 {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String json = new String(jsonBytes, "UTF-8");
-                    NCube ncube = ncubeFromJson(json);
-
                     if (rs.next())
                     {
-                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
-                    }
+                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                        String json = new String(jsonBytes, "UTF-8");
+                        NCube ncube = ncubeFromJson(json);
 
-                    addCube(ncube, version);
-                    Set<String> subCubeList = ncube.getReferencedCubeNames();
 
-                    for (String cubeName : subCubeList)
-                    {
-                        final String cacheKey = makeCacheKey(cubeName, version);
-                        if (!cubeList.containsKey(cacheKey))
-                        {
-                            loadCube(connection, app, cubeName, version, status, sysDate);
+                        if (includeTests) {
+                            ncube.setTestData(new String(rs.getBytes("test_data_bin"), "UTF-8"));
                         }
+
+                        if (rs.next())
+                        {
+                            throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
+                        }
+
+                        addCube(ncube, version);
+                        Set<String> subCubeList = ncube.getReferencedCubeNames();
+
+                        for (String cubeName : subCubeList)
+                        {
+                            final String cacheKey = makeCacheKey(cubeName, version);
+                            if (!cubeList.containsKey(cacheKey))
+                            {
+                                loadCube(connection, app, cubeName, version, status, sysDate, includeTests);
+                            }
+                        }
+                        return ncube;
                     }
-                    return ncube;
                 }
                 return null; // Indicates not found
             }
@@ -403,6 +411,27 @@ public class NCubeManager
                 throw new RuntimeException(s, e);
             }
         }
+    }
+
+
+    /**
+     * Load an NCube from the database (any joined sub-cubes will also be loaded).
+     *
+     * @return NCube that matches, or null if not found.
+     */
+    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
+    {
+        return loadCube(connection, app, name, version, status, sysDate, false);
+    }
+
+    /**
+     * Load an NCube from the database (any joined sub-cubes will also be loaded).
+     *
+     * @return NCube that matches, or null if not found.
+     */
+    public static NCube loadCubeWithTests(Connection connection, String app, String name, String version, String status, Date sysDate)
+    {
+        return loadCube(connection, app, name, version, status, sysDate, true);
     }
 
     /**
@@ -1311,6 +1340,12 @@ public class NCubeManager
             jdbcCleanup(stmt);
         }
     }
+
+    public static NCube runTests(Connection connection, String app, String name, String version, String status, Date sysDate) {
+            NCube cube = loadCubeWithTests(connection, app, name, version, status, sysDate);
+            TestParser();
+    }
+
 
     private static String getResourceAsString(String name) throws IOException
     {

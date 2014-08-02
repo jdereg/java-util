@@ -82,7 +82,7 @@ public abstract class GroovyBase extends UrlCommandCell
         String cubeName = getNCube(args).getName();
         try
         {
-            return executeGroovy(args, getCmdHash(data == null ? getUrl() : data.toString()));
+            return executeGroovy(args, getCmdHash(getUrl() == null ? data.toString() : getUrl()));
         }
         catch(InvocationTargetException e)
         {

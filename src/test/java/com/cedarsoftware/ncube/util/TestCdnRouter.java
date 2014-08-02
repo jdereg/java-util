@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.TestNCube;
+import com.cedarsoftware.ncube.UrlCommandCell;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,7 +33,6 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({NCubeManager.class})
 public class TestCdnRouter
 {
-
     @BeforeClass
     public static void initialize()
     {
@@ -417,6 +418,29 @@ public class TestCdnRouter
     @Test
     public void testFileContentTypeTransfer() throws Exception
     {
+        cdnRouteFile("file", false);
+    }
+
+    @Test
+    public void testFileContentTypeCacheTransfer() throws Exception
+    {
+        cdnRouteFile("cachedFile", true);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testBadUrlCommandCell()
+    {
+        new UrlCommandCell("", null, false)
+        {
+            protected Object executeInternal(Object data, Map<String, Object> ctx)
+            {
+                return null;
+            }
+        };
+    }
+
+    private void cdnRouteFile(String logicalFileName, boolean mustMatch) throws IOException
+    {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -427,7 +451,7 @@ public class TestCdnRouter
         v.add("User-Agent");
         v.add("Cache-Control");
 
-        when(request.getServletPath()).thenReturn("/dyn/view/file");
+        when(request.getServletPath()).thenReturn("/dyn/view/" + logicalFileName);
         when(request.getHeaderNames()).thenReturn(v.elements());
         when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
@@ -447,7 +471,6 @@ public class TestCdnRouter
             {
                 coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
-
             }
 
             public boolean isAuthorized(String type)
@@ -456,7 +479,7 @@ public class TestCdnRouter
             }
         });
 
-        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        NCube cube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
@@ -464,6 +487,21 @@ public class TestCdnRouter
         String s = new String(bytes);
         assertEquals("<html></html>", s);
         verify(response, times(1)).addHeader("content-type", "text/html");
+
+        Map coord = new HashMap();
+        coord.put("content.type", "view");
+        coord.put("content.name", logicalFileName);
+        String one = (String) cube.getCell(coord);
+        String two = (String) cube.getCell(coord);
+
+        if (mustMatch)
+        {
+            assertTrue(one == two);
+        }
+        else
+        {
+            assertTrue(one != two);
+        }
     }
 
     @Test
@@ -517,7 +555,6 @@ public class TestCdnRouter
     {
         ByteArrayInputStream bao = new ByteArrayInputStream(new byte[0]);
 
-        @Override
         public int read() throws IOException
         {
             return bao.read();

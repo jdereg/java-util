@@ -21,7 +21,8 @@
                 { "id":"xml"},
                 { "id":"500"},
                 { "id":"404"},
-                { "id":"file"}
+                { "id":"file"},
+                { "id":"cachedFile"}
             ]}
     ],
     "cells":[
@@ -29,6 +30,7 @@
         { "id":["view","xml"], "type":"string", "url":"tests/ncube/test.xml"},
         { "id":["view","500"], "type":"string", "url":"tests/does/not/exist/index.html"},
         { "id":["view","404"], "type":"string", "url":"htTp://www.cedarsoftware.com/tests/does/not/exist/index.html"},
-        { "id":["view","file"], "type":"string", "url":"files/foo.html"}
+        { "id":["view","file"], "type":"string", "url":"files/foo.html"},
+        { "id":["view","cachedFile"], "type":"string", "url":"files/foo.html", "cache":"true"}
     ]
 }

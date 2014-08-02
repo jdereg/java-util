@@ -3,11 +3,11 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnRouter;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
-import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyShell;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -23,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.util.Enumeration;
 import java.util.List;
@@ -57,7 +58,6 @@ public abstract class UrlCommandCell implements CommandCell
     private transient String cmdHash;
     private volatile transient Class runnableCode = null;
     private volatile transient String errorMsg = null;
-    private static final String nullSHA1 = EncryptionUtilities.calculateSHA1Hash("".getBytes());
     private String url = null;
     private final boolean cacheable;
     private AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
@@ -65,6 +65,7 @@ public abstract class UrlCommandCell implements CommandCell
     private Object cache;
     private int hash;
     private static final GroovyShell shell = new GroovyShell();
+    private static final Log LOG = LogFactory.getLog(CdnRouter.class);
 
     static
     {
@@ -95,7 +96,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
 
         if (cmd != null && cmd.isEmpty())
-        {
+        {   // Because of this, cmdHash() never has to worry about an empty ("") command (when url is null)
             throw new IllegalArgumentException("'cmd' cannot be empty");
         }
 
@@ -137,7 +138,7 @@ public abstract class UrlCommandCell implements CommandCell
 
     protected Object fetchContentFromUrl(Map args)
     {
-        Map input = (Map) args.get("input");
+        Map input = getInput(args);
         if (input.containsKey(CdnRouter.HTTP_REQUEST) && input.containsKey(CdnRouter.HTTP_RESPONSE))
         {
             return proxyFetch(args);
@@ -152,15 +153,11 @@ public abstract class UrlCommandCell implements CommandCell
     {
         NCube cube = getNCube(args);
         Map input = getInput(args);
-        if (cacheable)
-        {
-            throw new IllegalStateException("Cache must be 'false' if content is being fetched from CDN via CdnRouter, input: " + input);
-        }
-
         HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
         HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
         HttpURLConnection conn = null;
         URL actualUrl = null;
+
         try
         {
             actualUrl = getActualUrl(cube.getVersion(), cube.getName());
@@ -169,8 +166,7 @@ public abstract class UrlCommandCell implements CommandCell
             {   // Handle a "file://" URL
                 connection.connect();
                 addFileHeader(actualUrl, response);
-                transferFromServer(connection, response);
-                return null;
+                return transferFromServer(connection, response);
             }
             conn = (HttpURLConnection) connection;
             conn.setAllowUserInteraction(false);
@@ -198,11 +194,12 @@ public abstract class UrlCommandCell implements CommandCell
                 return null;
             }
         }
-        catch (SocketTimeoutException ignored)
+        catch (SocketTimeoutException e)
         {
             try
             {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found:  " + actualUrl.toString());
+                LOG.warn("Socket time out occurred fetching: " + actualUrl, e);
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found: " + actualUrl.toString());
             }
             catch (IOException ignore) { }
         }
@@ -210,8 +207,9 @@ public abstract class UrlCommandCell implements CommandCell
         {
             try
             {
+                LOG.error("Error occurred fetching: " + actualUrl, e);
                 UrlUtilities.readErrorResponse(conn);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided:  " + actualUrl);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided: " + actualUrl);
             }
             catch (IOException ignored) { }
         }
@@ -294,7 +292,7 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {
-                GroovyClassLoader loader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(version);
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(version);
                 if (loader == null)
                 {
                     throw new IllegalStateException("No root URLs are set for relative path resources to be loaded, ncube: " + ncubeName + ", version: " + version);
@@ -436,11 +434,6 @@ public abstract class UrlCommandCell implements CommandCell
 
     public String getCmdHash(String command)
     {
-        if (StringUtilities.isEmpty(command))
-        {
-            return nullSHA1;
-        }
-
         if (cmdHash == null)
         {
             try
@@ -592,9 +585,9 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private class CachingInputStream extends FilterInputStream
+    private static class CachingInputStream extends FilterInputStream
     {
-        ByteArrayOutputStream _out = new ByteArrayOutputStream();
+        ByteArrayOutputStream cache = new ByteArrayOutputStream();
 
         /**
          * Creates a <code>FilterInputStream</code>
@@ -612,20 +605,26 @@ public abstract class UrlCommandCell implements CommandCell
         public int read(byte[] b, int off, int len) throws IOException
         {
             int count = super.read(b, off, len);
-            _out.write(b, off, count);
+            if (count != -1)
+            {
+                cache.write(b, off, count);
+            }
             return count;
         }
 
         public int read() throws IOException
         {
             int result = super.read();
-            _out.write(result);
+            if (result != -1)
+            {
+                cache.write(result);
+            }
             return result;
         }
 
         public byte[] getCache()
         {
-            return _out.toByteArray();
+            return cache.toByteArray();
         }
     }
 }

@@ -130,7 +130,7 @@ public class GroovyTemplate extends UrlCommandCell
         }
     }
 
-    private String replaceScriptletNCubeRefs(final String template, final Pattern pattern, final String prefix, final String suffix)
+    private static String replaceScriptletNCubeRefs(final String template, final Pattern pattern, final String prefix, final String suffix)
     {
         Matcher m = pattern.matcher(template);
         StringBuilder newStr = new StringBuilder();

@@ -64,7 +64,7 @@ import static org.junit.Assert.fail;
 public class TestNCube
 {
     private static final boolean _debug = false;
-    private static volatile boolean _classLoaderInitialize = true;
+    public static volatile boolean _classLoaderInitialize = true;
 
     @BeforeClass
     public static void initialize()
@@ -73,8 +73,8 @@ public class TestNCube
         {
             List<String> urls = new ArrayList<String>();
             urls.add("http://www.cedarsoftware.com");
-            NCubeManager.setBaseResourceUrls(urls, "file");
-            NCubeManager.setBaseResourceUrls(urls, "1.0.0");
+            NCubeManager.addBaseResourceUrls(urls, "file");
+            NCubeManager.addBaseResourceUrls(urls, "1.0.0");
             _classLoaderInitialize = false;
         }
     }

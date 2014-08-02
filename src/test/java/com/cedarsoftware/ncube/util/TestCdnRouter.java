@@ -3,13 +3,12 @@ package com.cedarsoftware.ncube.util;
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
+import com.cedarsoftware.ncube.TestNCube;
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import javax.servlet.ServletInputStream;
 import javax.servlet.ServletOutputStream;
@@ -18,45 +17,31 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Connection;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
 @PrepareForTest({NCubeManager.class})
 public class TestCdnRouter
 {
 
     @BeforeClass
-    public static void setup() throws Exception
+    public static void initialize()
     {
-        NCubeManager.clearCubeList();
-        setClassPath("file");
+         TestNCube.initialize();
     }
 
+    @After
     public void tearDown() throws Exception
     {
         NCubeManager.clearCubeList();
-    }
-
-    public static void setClassPath(String version) throws Exception
-    {
-        List<String> urls = new ArrayList<String>();
-        URL url = NCubeManager.class.getResource("/");
-        urls.add(url.toString());
-        urls.add("http://www.cedarsoftware.com");
-        NCubeManager.setUrlClassLoader(urls, version);
     }
 
     @Test
@@ -99,7 +84,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
             }
 
@@ -109,11 +94,7 @@ public class TestCdnRouter
             }
         });
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
@@ -163,7 +144,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
 
             }
@@ -175,13 +156,7 @@ public class TestCdnRouter
         });
 
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
-
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
@@ -230,7 +205,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
 
             }
 
@@ -241,13 +216,7 @@ public class TestCdnRouter
         });
 
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
-
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
@@ -298,6 +267,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
+                coord.put(CdnRouter.CUBE_NAME, "foo");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
             }
 
@@ -308,19 +278,13 @@ public class TestCdnRouter
         });
 
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
-
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);
 
-        verify(response, times(1)).sendError(500, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
+        verify(response, times(1)).sendError(500, "CdnRouter - Error occurred: In order to use the n-cube CDN routing capabilities, a CdnRouter n-cube must already be loaded, and it's name passed in as CdnRouter.CUBE_NAME");
     }
 
     @Test
@@ -365,7 +329,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
 
             }
@@ -379,10 +343,6 @@ public class TestCdnRouter
 
         URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
         NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
@@ -432,7 +392,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
             }
 
@@ -442,12 +402,7 @@ public class TestCdnRouter
             }
         });
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
@@ -490,7 +445,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "test");
+                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
 
             }
@@ -501,12 +456,7 @@ public class TestCdnRouter
             }
         });
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-
-        PowerMockito.mockStatic(NCubeManager.class);
-        when(NCubeManager.getCube(anyString(), anyString())).thenReturn(routerCube);
-        when(NCubeManager.getUrlClassLoader("file")).thenReturn(loader);
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
@@ -519,10 +469,6 @@ public class TestCdnRouter
     @Test
     public void testDefaultRoute() throws Exception
     {
-        List<String> urls = new ArrayList<>();
-        URL url = NCubeManager.class.getResource("/");
-        urls.add(url.toString());
-        NCubeManager.setBaseResourceUrls(urls, "file");
         NCube router = NCubeManager.getNCubeFromResource("cdnRouter.json");
 
         Axis axis = router.getAxis("content.name");

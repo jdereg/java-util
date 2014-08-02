@@ -25,7 +25,8 @@ import java.util.Map;
 import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -486,6 +487,7 @@ public class TestCdnRouter
         byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);
         assertEquals("<html></html>", s);
+
         verify(response, times(1)).addHeader("content-type", "text/html");
 
         Map coord = new HashMap();
@@ -496,11 +498,11 @@ public class TestCdnRouter
 
         if (mustMatch)
         {
-            assertTrue(one == two);
+            assertSame(one, two);
         }
         else
         {
-            assertTrue(one != two);
+            assertNotSame(one, two);
         }
     }
 

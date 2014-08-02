@@ -102,17 +102,19 @@ public class NCubeManager
     /**
      * @Deprecated Call addBaseResourceUrls() instead.
      */
+    @Deprecated
     public static void setBaseResourceUrls(List<String> urls, String version)
     {
         addBaseResourceUrls(urls, version);
     }
 
     /**
-     * @Deprecated Call addBaseResourceUrs() instead.
+     * @Deprecated Call addBaseResourceUrls() instead.
      */
+    @Deprecated
     public static void setUrlClassLoader(List<String> urls, String version)
     {
-        setBaseResourceUrls(urls, version);
+        addBaseResourceUrls(urls, version);
     }
 
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
@@ -405,7 +407,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
-    private static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate, boolean includeTests)
+    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         validate(connection, app, version);
         validateCubeName(name);
@@ -416,11 +418,10 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            String query = includeTests ?
-                    "SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?" :
-                    "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?";
-
-            try (PreparedStatement stmt = connection.prepareStatement(query))
+            //  This is Java 7 specific, but will autoclose the statement
+            //  when it leaves the try statement.  If you want to change to this
+            //  let me know and I'll change the other instances.
+            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
@@ -430,38 +431,31 @@ public class NCubeManager
                 stmt.setDate(4, systemDate);
                 stmt.setString(5, version);
                 stmt.setString(6, status);
+                ResultSet rs = stmt.executeQuery();
 
-                try (ResultSet rs = stmt.executeQuery())
+                if (rs.next())
                 {
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    NCube ncube = ncubeFromJson(json);
+
                     if (rs.next())
                     {
-                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                        String json = new String(jsonBytes, "UTF-8");
-                        NCube ncube = ncubeFromJson(json);
-
-
-                        if (includeTests) {
-                            ncube.setTestData(new String(rs.getBytes("test_data_bin"), "UTF-8"));
-                        }
-
-                        if (rs.next())
-                        {
-                            throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
-                        }
-
-                        addCube(ncube, version);
-                        Set<String> subCubeList = ncube.getReferencedCubeNames();
-
-                        for (String cubeName : subCubeList)
-                        {
-                            final String cacheKey = makeCacheKey(cubeName, version);
-                            if (!cubeList.containsKey(cacheKey))
-                            {
-                                loadCube(connection, app, cubeName, version, status, sysDate, includeTests);
-                            }
-                        }
-                        return ncube;
+                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
                     }
+
+                    addCube(ncube, version);
+                    Set<String> subCubeList = ncube.getReferencedCubeNames();
+
+                    for (String cubeName : subCubeList)
+                    {
+                        final String cacheKey = makeCacheKey(cubeName, version);
+                        if (!cubeList.containsKey(cacheKey))
+                        {
+                            loadCube(connection, app, cubeName, version, status, sysDate);
+                        }
+                    }
+                    return ncube;
                 }
                 return null; // Indicates not found
             }
@@ -478,26 +472,26 @@ public class NCubeManager
         }
     }
 
+    /**
+     * Load an NCube from the database (any joined sub-cubes will also be loaded).
+     *
+     * @return NCube that matches, or null if not found.
+     */
+//    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
+//    {
+//        return loadCube(connection, app, name, version, status, sysDate, false);
+//    }
 
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
      *
      * @return NCube that matches, or null if not found.
      */
-    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
-    {
-        return loadCube(connection, app, name, version, status, sysDate, false);
-    }
+//    public static NCube loadCubeWithTests(Connection connection, String app, String name, String version, String status, Date sysDate)
+//    {
+//        return loadCube(connection, app, name, version, status, sysDate, true);
+//    }
 
-    /**
-     * Load an NCube from the database (any joined sub-cubes will also be loaded).
-     *
-     * @return NCube that matches, or null if not found.
-     */
-    public static NCube loadCubeWithTests(Connection connection, String app, String name, String version, String status, Date sysDate)
-    {
-        return loadCube(connection, app, name, version, status, sysDate, true);
-    }
 
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
@@ -1406,12 +1400,6 @@ public class NCubeManager
         }
     }
 
-    public static NCube runTests(Connection connection, String app, String name, String version, String status, Date sysDate) {
-            NCube cube = loadCubeWithTests(connection, app, name, version, status, sysDate);
-            TestParser();
-    }
-
-
     private static String getResourceAsString(String name) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
@@ -1440,7 +1428,7 @@ public class NCubeManager
     /**
      * Still used in getNCubesFromResource
      */
-    private static JsonObject getJsonObjectFromResource(String name) throws IOException
+    private static Object[] getJsonObjectFromResource(String name) throws IOException
     {
         JsonReader reader = null;
         try
@@ -1449,7 +1437,7 @@ public class NCubeManager
             File jsonFile = new File(url.getFile());
             InputStream in = new BufferedInputStream(new FileInputStream(jsonFile));
             reader = new JsonReader(in, true);
-            return (JsonObject) reader.readObject();
+            return (Object[]) reader.readObject();
         }
         finally
         {
@@ -1462,8 +1450,7 @@ public class NCubeManager
         String lastSuccessful = "";
         try
         {
-            JsonObject ncubes = getJsonObjectFromResource(name);
-            Object[] cubes = ncubes.getArray();
+            Object[] cubes = getJsonObjectFromResource(name);
             List<NCube> cubeList = new ArrayList<>(cubes.length);
 
             for (Object cube : cubes)

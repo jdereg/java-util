@@ -61,6 +61,24 @@ public class TestRuleEngine
 
         assertEquals("light-weight", output.get("weight"));
         assertEquals("young", output.get("age"));
+
+        List<Map<String, Object>> list = n1.getCoordinatesForCells();
+        int weight = 0;
+        int age = 0;
+        for (Map<String, Object> pt : list)
+        {
+            if (pt.containsKey("age"))
+            {
+                age++;
+            }
+            if (pt.containsKey("weight"))
+            {
+                weight++;
+            }
+        }
+
+        assertEquals(3, age);
+        assertEquals(9, weight);
     }
 
     @Test
@@ -75,6 +93,24 @@ public class TestRuleEngine
         assertTrue(b);
         b = n1.containsCell(coord, true);
         assertTrue(b);
+
+        List<Map<String, Object>> list = n1.getCoordinatesForCells();
+        int weight = 0;
+        int age = 0;
+        for (Map<String, Object> pt : list)
+        {
+            if (pt.containsKey("age"))
+            {
+                age++;
+            }
+            if (pt.containsKey("weight"))
+            {
+                weight++;
+            }
+        }
+
+        assertEquals(9, age);
+        assertEquals(9, weight);
     }
 
     // This test also tests ID-based ncube's specified in simple JSON format

@@ -592,8 +592,15 @@ public class TestNCube
     public void testBig5D() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("big5D.json");
-        // Used for looking at BIG 4D ncube
-//        System.out.println(ncube.toHtml());
+        List<Map<String, Object>> coords = ncube.getCoordinatesForCells();
+        assertTrue(coords.size() > 0);
+        Map<String, Object> coord = coords.get(0);
+        assertEquals(5, coord.size());
+
+        for (Map<String, Object> pt : coords)
+        {
+            assertEquals(coord.keySet(), pt.keySet());
+        }
     }
 
     @Test

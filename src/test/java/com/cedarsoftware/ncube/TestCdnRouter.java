@@ -127,13 +127,6 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<String>();
-        v.add("Accept");
-        v.add("Accept-Encoding");
-        v.add("Accept-Language");
-        v.add("User-Agent");
-        v.add("Cache-Control");
-
         when(request.getServletPath()).thenReturn("/dyn/view/404");
         setupMockRequestHeaders(request);
         setupMockResponseHeaders(response);

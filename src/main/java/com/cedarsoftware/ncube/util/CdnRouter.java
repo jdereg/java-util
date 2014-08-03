@@ -92,7 +92,7 @@ public class CdnRouter
                 throw new IllegalStateException("In order to use the n-cube CDN routing capabilities, " +
                         "a CdnRouter n-cube must already be loaded, and it's name passed in as CdnRouter.CUBE_NAME");
             }
-            routingCube.getCell(coord, output);
+            routingCube.getCells(coord, output);
         }
         catch (Exception e)
         {

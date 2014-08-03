@@ -270,19 +270,20 @@ public abstract class UrlCommandCell implements CommandCell
 
         try
         {
-            String localUrl = (url != null) ? url.toLowerCase() : null;
+            String localUrl = url.toLowerCase();
 
-            if (localUrl != null && (localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:")))
-            {
+            if (localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:"))
+            {   // Absolute URL
                 actualUrl = new URL(url);
             }
             else
-            {
+            {   // Relative URL
                 URLClassLoader loader = NCubeManager.getUrlClassLoader(version);
                 if (loader == null)
                 {
                     throw new IllegalStateException("No root URLs are set for relative path resources to be loaded, ncube: " + ncubeName + ", version: " + version);
                 }
+                // Make URL absolute (uses URL roots added to NCubeManager)
                 actualUrl = loader.getResource(url);
             }
         }
@@ -293,7 +294,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         if (actualUrl == null)
         {
-            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + getUrl() + ", ncube: " + ncubeName + ", version: " + version);
+            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + url + ", ncube: " + ncubeName + ", version: " + version);
         }
         return actualUrl;
     }

@@ -18,14 +18,14 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URLClassLoader;
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,7 +65,6 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
-
 
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
@@ -124,7 +123,6 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
 
-
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
         when(response.containsHeader("Expires")).thenReturn(true);
@@ -139,15 +137,12 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        final Connection conn = Mockito.mock(Connection.class);
-
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
             {
                 coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
-
             }
 
             public boolean isAuthorized(String type)
@@ -157,11 +152,11 @@ public class TestCdnRouter
         });
 
 
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
-        String s = new String(bytes);
+        new String(bytes);
     }
 
     @Test
@@ -185,7 +180,6 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
 
-
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
         when(response.containsHeader("Expires")).thenReturn(true);
@@ -200,14 +194,11 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        final Connection conn = Mockito.mock(Connection.class);
-
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
             {
                 coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
-
             }
 
             public boolean isAuthorized(String type)
@@ -216,12 +207,11 @@ public class TestCdnRouter
             }
         });
 
-
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
-        String s = new String(bytes);
+        new String(bytes);
 
         verify(response, times(1)).sendError(500, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
     }
@@ -247,7 +237,6 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
 
-
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
         when(response.containsHeader("Expires")).thenReturn(true);
@@ -261,8 +250,6 @@ public class TestCdnRouter
 
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
-
-        final Connection conn = Mockito.mock(Connection.class);
 
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
@@ -278,12 +265,11 @@ public class TestCdnRouter
             }
         });
 
-
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
-        String s = new String(bytes);
+        new String(bytes);
 
         verify(response, times(1)).sendError(500, "CdnRouter - Error occurred: In order to use the n-cube CDN routing capabilities, a CdnRouter n-cube must already be loaded, and it's name passed in as CdnRouter.CUBE_NAME");
     }
@@ -309,7 +295,6 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
 
-
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
         when(response.containsHeader("Expires")).thenReturn(true);
@@ -324,15 +309,12 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        final Connection conn = Mockito.mock(Connection.class);
-
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
             {
                 coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
                 coord.put(CdnRouter.CUBE_VERSION, "file");
-
             }
 
             public boolean isAuthorized(String type)
@@ -342,13 +324,13 @@ public class TestCdnRouter
         });
 
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        NCubeManager.getUrlClassLoader("file");
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
-        String s = new String(bytes);
+        new String(bytes);
 
         verify(response, times(1)).sendError(404, "Not Found");
     }
@@ -373,7 +355,6 @@ public class TestCdnRouter
         when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
         when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
         when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
-
 
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
@@ -412,7 +393,6 @@ public class TestCdnRouter
         assertEquals("<cedarsoftware><jdereg name=\"john\"/></cedarsoftware>", s);
         verify(response, times(1)).addHeader("Content-Type", "application/xml");
         verify(response, times(1)).addHeader("Content-Length", "52");
-
     }
 
     @Test
@@ -427,16 +407,61 @@ public class TestCdnRouter
         cdnRouteFile("cachedFile", true);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testBadUrlCommandCell()
     {
-        new UrlCommandCell("", null, false)
+        try
+        {
+            new UrlCommandCell("", null, false)
+            {
+                protected Object executeInternal(Object data, Map<String, Object> ctx)
+                {
+                    return null;
+                }
+            };
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+
+        UrlCommandCell cell = new UrlCommandCell("println 'hello'", null, false)
         {
             protected Object executeInternal(Object data, Map<String, Object> ctx)
             {
                 return null;
             }
         };
+
+        // Nothing more than covering method calls and lines.  These methods
+        // do nothing, therefore there is nothing to assert.
+        cell.getCubeNamesFromCommandText(null);
+        cell.getScopeKeys(null);
+
+        assertFalse(cell.equals("String"));
+
+        Map coord = new HashMap();
+        coord.put("content.type", "view");
+        coord.put("content.name", "badProtocol");
+        NCube cube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        try
+        {
+            cube.getCell(coord);
+            fail("Should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
+
+        coord.put("content.name", "badRelative");
+        try
+        {
+            cube.getCell(coord);
+            fail("Should not make it here");
+        }
+        catch (Exception e)
+        {
+        }
     }
 
     private void cdnRouteFile(String logicalFileName, boolean mustMatch) throws IOException
@@ -465,6 +490,29 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
+        CdnRouter.setCdnRoutingProvider(null);
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+
+        CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
+        {
+            public void setupCoordinate(Map coord)
+            {
+            }
+
+            public boolean isAuthorized(String type)
+            {
+                return false;
+            }
+        });
+        when(request.getServletPath()).thenReturn("/dyn/view/" + logicalFileName);
+        router.route(request, response);
+        when(request.getServletPath()).thenReturn(null);
+        router.route(request, response);
+        when(request.getServletPath()).thenReturn("/dine/view/" + logicalFileName);
+        router.route(request, response);
+
+        when(request.getServletPath()).thenReturn("/dyn/view/" + logicalFileName);
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
@@ -481,7 +529,7 @@ public class TestCdnRouter
 
         NCube cube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
-        CdnRouter router = new CdnRouter();
+        router = new CdnRouter();
         router.route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);

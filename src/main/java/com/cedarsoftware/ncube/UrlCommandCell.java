@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnRouter;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
@@ -18,7 +19,6 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
@@ -29,6 +29,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 
@@ -65,6 +66,7 @@ public abstract class UrlCommandCell implements CommandCell
     private Object cache;
     private int hash;
     private static final GroovyShell shell = new GroovyShell();
+    private static Map<String, String> extToMimeType = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
 
     static
@@ -86,6 +88,16 @@ public abstract class UrlCommandCell implements CommandCell
         {
             proxyPort = 0;
         }
+
+        extToMimeType.put(".css", "text/css");
+        extToMimeType.put(".html", "text/html");
+        extToMimeType.put(".js", "application/javascript");
+        extToMimeType.put(".xml", "application/xml");
+        extToMimeType.put(".json", "application/json");
+        extToMimeType.put(".jpg", "image/jpeg");
+        extToMimeType.put(".png", "image/png");
+        extToMimeType.put(".gif", "image/gif");
+        extToMimeType.put(".bmp", "image/bmp");
     }
 
     public UrlCommandCell(String cmd, String url, boolean cacheable)
@@ -222,42 +234,16 @@ public abstract class UrlCommandCell implements CommandCell
         {
             return;
         }
+
         String url = actualUrl.toString().toLowerCase();
-        if (url.endsWith(".css"))
+
+        for (Map.Entry<String, String> entry : extToMimeType.entrySet())
         {
-            response.addHeader("content-type", "text/css");
-        }
-        else if (url.endsWith(".html"))
-        {
-            response.addHeader("content-type", "text/html");
-        }
-        else if (url.endsWith(".js"))
-        {
-            response.addHeader("content-type", "application/javascript");
-        }
-        else if (url.endsWith(".xml"))
-        {
-            response.addHeader("content-type", "application/xml");
-        }
-        else if (url.endsWith(".json"))
-        {
-            response.addHeader("content-type", "application/json");
-        }
-        else if (url.endsWith(".jpg") || url.endsWith(".jpeg"))
-        {
-            response.addHeader("content-type", "image/jpeg");
-        }
-        else if (url.endsWith(".png"))
-        {
-            response.addHeader("content-type", "image/png");
-        }
-        else if (url.endsWith(".gif"))
-        {
-            response.addHeader("content-type", "image/gif");
-        }
-        else if (url.endsWith(".bmp"))
-        {
-            response.addHeader("content-type", "image/bmp");
+            if (url.endsWith(entry.getKey()))
+            {
+                response.addHeader("content-type", entry.getValue());
+                break;
+            }
         }
     }
 
@@ -436,14 +422,7 @@ public abstract class UrlCommandCell implements CommandCell
     {
         if (cmdHash == null)
         {
-            try
-            {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(command.getBytes("UTF-8"));
-            }
-            catch (UnsupportedEncodingException e)
-            {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(command.getBytes());
-            }
+            cmdHash = EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(command, "UTF-8"));
         }
         return cmdHash;
     }

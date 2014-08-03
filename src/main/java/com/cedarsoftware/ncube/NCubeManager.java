@@ -66,7 +66,7 @@ public class NCubeManager
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
-    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static Map<String, URLClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
     static
     {
@@ -210,10 +210,10 @@ public class NCubeManager
             cubeList.clear();
             GroovyBase.clearCache();
             NCubeGroovyController.clearCache();
-            for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
+            for (Map.Entry<String, URLClassLoader> entry : urlClassLoaders.entrySet())
             {
-                GroovyClassLoader classLoader = entry.getValue();
-                classLoader.clearCache(); // free up Class cache
+                URLClassLoader classLoader = entry.getValue();
+                ((GroovyClassLoader)classLoader).clearCache(); // free up Class cache
             }
             advices.clear();
         }

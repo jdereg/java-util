@@ -97,7 +97,13 @@ public class CdnRouter
         catch (Exception e)
         {
             LOG.error("CdnRouter exception occurred", e);
-            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - Error occurred: " + e.getMessage());
+            // Required, so that error message is not double logged.
+            try
+            {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - Error occurred: " + e.getMessage());
+            }
+            catch (Exception ignore)
+            { }
         }
     }
 
@@ -112,8 +118,7 @@ public class CdnRouter
             response.sendError(error, msg);
         }
         catch (Exception ignore)
-        {
-        }
+        { }
     }
 
     private static String[] getPathComponents(String pathInfo)

@@ -1,10 +1,7 @@
-package com.cedarsoftware.ncube.util;
+package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.Axis;
-import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.ncube.NCubeManager;
-import com.cedarsoftware.ncube.TestNCube;
-import com.cedarsoftware.ncube.UrlCommandCell;
+import com.cedarsoftware.ncube.util.CdnRouter;
+import com.cedarsoftware.ncube.util.CdnRoutingProvider;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,14 +15,14 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URLClassLoader;
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,8 +86,7 @@ public class TestCdnRouter
 
         setDefaultCdnRoutingProvider();
 
-
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
 
@@ -123,21 +119,6 @@ public class TestCdnRouter
 
         new CdnRouter().route(request, response);
         verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath (must start with /dyn/) request: null");
-    }
-
-
-    @Test
-    public void testInvalidVersion() throws Exception
-    {
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
-
-        when(request.getServletPath()).thenReturn("/dyn/view/404");
-
-        setCdnRoutingProvider("CdnRouterTest", null, true);
-
-        new CdnRouter().route(request, response);
-        verify(response, times(1)).sendError(500, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
     }
 
     @Test
@@ -188,8 +169,8 @@ public class TestCdnRouter
 
         setDefaultCdnRoutingProvider();
 
-        URLClassLoader loader = NCubeManager.getUrlClassLoader("file");
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        NCubeManager.getUrlClassLoader("file");
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
         router.route(request, response);
@@ -197,7 +178,7 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(404, "Not Found");
     }
 
-    private void setCdnRoutingProvider(final String cubeName, final String version, final boolean isAuthorized)
+    private static void setCdnRoutingProvider(final String cubeName, final String version, final boolean isAuthorized)
     {
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
@@ -205,7 +186,6 @@ public class TestCdnRouter
             {
                 coord.put(CdnRouter.CUBE_NAME, cubeName);
                 coord.put(CdnRouter.CUBE_VERSION, version);
-
             }
 
             public boolean isAuthorized(String type)
@@ -215,7 +195,7 @@ public class TestCdnRouter
         });
     }
 
-    private void setDefaultCdnRoutingProvider()
+    private static void setDefaultCdnRoutingProvider()
     {
         setCdnRoutingProvider("CdnRouterTest", "file", true);
     }
@@ -265,7 +245,7 @@ public class TestCdnRouter
         verify(response, times(1)).addHeader("Content-Length", "52");
     }
 
-    private void setupMockResponseHeaders(HttpServletResponse response)
+    private static void setupMockResponseHeaders(HttpServletResponse response)
     {
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
@@ -276,7 +256,7 @@ public class TestCdnRouter
         when(response.containsHeader("Etag")).thenReturn(true);
     }
 
-    private void setupMockRequestHeaders(HttpServletRequest request)
+    private static void setupMockRequestHeaders(HttpServletRequest request)
     {
         Vector<String> v = new Vector<String>();
         v.add("Accept");
@@ -304,7 +284,6 @@ public class TestCdnRouter
 
         setDefaultCdnRoutingProvider();
         new CdnRouter().route(request, response);
-
     }
 
     @Test
@@ -319,76 +298,7 @@ public class TestCdnRouter
         cdnRouteFile("cachedFile", true);
     }
 
-    @Test
-    public void testBadUrlCommandCell()
-    {
-        try
-        {
-            new UrlCommandCell("", null, false)
-            {
-                protected Object executeInternal(Object data, Map<String, Object> ctx)
-                {
-                    return null;
-                }
-            };
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException ignored)
-        {
-        }
-
-        UrlCommandCell cell = new UrlCommandCell("println 'hello'", null, false)
-        {
-            protected Object executeInternal(Object data, Map<String, Object> ctx)
-            {
-                return null;
-            }
-        };
-
-        // Nothing more than covering method calls and lines.  These methods
-        // do nothing, therefore there is nothing to assert.
-        cell.getCubeNamesFromCommandText(null);
-        cell.getScopeKeys(null);
-
-        assertFalse(cell.equals("String"));
-
-        Map coord = new HashMap();
-        coord.put("content.type", "view");
-        coord.put("content.name", "badProtocol");
-        NCube cube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-        try
-        {
-            cube.getCell(coord);
-            fail("Should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        coord.put("content.name", "badRelative");
-        try
-        {
-            cube.getCell(coord);
-            fail("Should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        // Cause null urlLoader (it won't find URLs in NCubeManager for version 9.8.7)
-        coord.put("content.name", "file");
-        cube.setVersion("9.8.7");
-        try
-        {
-            cube.getCell(coord);
-            fail("Should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
-    }
-
-    private void cdnRouteFile(String logicalFileName, boolean mustMatch) throws IOException
+    private static void cdnRouteFile(String logicalFileName, boolean mustMatch) throws IOException
     {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);

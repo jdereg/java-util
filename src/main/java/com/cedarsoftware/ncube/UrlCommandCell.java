@@ -585,7 +585,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private static class CachingInputStream extends FilterInputStream
+    static class CachingInputStream extends FilterInputStream
     {
         ByteArrayOutputStream cache = new ByteArrayOutputStream();
 

@@ -311,11 +311,11 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 return;
             }
-            NCube ncube = (NCube) args.get("ncube");
+            NCube ncube = getNCube(args);
             Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
             StringBuilder expandedUrl = new StringBuilder();
             int last = 0;
-            Map input = (Map) args.get("input");
+            Map input = getInput(args);
 
             while (m.find())
             {

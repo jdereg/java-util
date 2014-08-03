@@ -1,10 +1,7 @@
-package com.cedarsoftware.ncube.util;
+package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.Axis;
-import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.ncube.NCubeManager;
-import com.cedarsoftware.ncube.TestNCube;
-import com.cedarsoftware.ncube.UrlCommandCell;
+import com.cedarsoftware.ncube.util.CdnRouter;
+import com.cedarsoftware.ncube.util.CdnRoutingProvider;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -421,7 +418,7 @@ public class TestCdnRouter
             };
             fail("should not make it here");
         }
-        catch (IllegalArgumentException e)
+        catch (IllegalArgumentException ignored)
         {
         }
 
@@ -449,7 +446,7 @@ public class TestCdnRouter
             cube.getCell(coord);
             fail("Should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -459,7 +456,19 @@ public class TestCdnRouter
             cube.getCell(coord);
             fail("Should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
+        {
+        }
+
+        // Cause null urlLoader (it won't find URLs in NCubeManager for version 9.8.7)
+        coord.put("content.name", "file");
+        cube.setVersion("9.8.7");
+        try
+        {
+            cube.getCell(coord);
+            fail("Should not make it here");
+        }
+        catch (Exception ignored)
         {
         }
     }

@@ -349,32 +349,19 @@ public abstract class UrlCommandCell implements CommandCell
     public static NCube getNCube(Map args)
     {
         NCube ncube = (NCube) args.get("ncube");
-        if (ncube == null)
-        {
-            throw new IllegalStateException("'ncube' not set for CommandCell to execute.  Arguments: " + args);
-        }
         return ncube;
     }
 
     public static Map getInput(Map args)
     {
         Map input = (Map) args.get("input");
-        if (input == null)
-        {
-            throw new IllegalStateException("'input' not set for CommandCell to execute.  Arguments: " + args);
-        }
         return input;
     }
 
     public static Map getOutput(Map args)
     {
         Map output = (Map) args.get("output");
-        if (output == null)
-        {
-            throw new IllegalStateException("'output' not set for CommandCell to execute.  Arguments: " + args);
-        }
         return output;
-
     }
 
     public boolean equals(Object other)
@@ -399,7 +386,7 @@ public abstract class UrlCommandCell implements CommandCell
         return this.hash;
     }
 
-    public void prepare(Object cmd, Map ctx)
+    public void prepare(Object command, Map ctx)
     {
     }
 
@@ -516,13 +503,10 @@ public abstract class UrlCommandCell implements CommandCell
         OutputStream out = null;
         try
         {
+            in = new BufferedInputStream(conn.getInputStream(), 32768);
             if (cacheable)
             {
-                in = new CachingInputStream(new BufferedInputStream(conn.getInputStream(), 32768));
-            }
-            else
-            {
-                in = new BufferedInputStream(conn.getInputStream(), 32768);
+                in = new CachingInputStream(in);
             }
             out = response.getOutputStream();
             IOUtilities.transfer(in, out);
@@ -536,7 +520,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void setupRequestHeaders(URLConnection c, HttpServletRequest request)
+    private static void setupRequestHeaders(URLConnection c, HttpServletRequest request)
     {
         Enumeration headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements())
@@ -547,7 +531,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private void transferResponseHeaders(URLConnection c, HttpServletResponse response)
+    private static void transferResponseHeaders(URLConnection c, HttpServletResponse response)
     {
         Map<String, List<String>> headerFields = c.getHeaderFields();
 
@@ -569,11 +553,11 @@ public abstract class UrlCommandCell implements CommandCell
         ByteArrayOutputStream cache = new ByteArrayOutputStream();
 
         /**
-         * Creates a <code>FilterInputStream</code>
-         * by assigning the  argument <code>in</code>
-         * to the field <code>this.in</code> so as
+         * Creates a {@code FilterInputStream}
+         * by assigning the  argument {@code in}
+         * to the field {@code this.in} so as
          * to remember it for later use.
-         * @param in the underlying input stream, or <code>null</code> if
+         * @param in the underlying input stream, or {@code null} if
          *           this instance is to be created without an underlying stream.
          */
         protected CachingInputStream(InputStream in)

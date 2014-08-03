@@ -51,29 +51,9 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<String>();
-        v.add("Accept");
-        v.add("Accept-Encoding");
-        v.add("Accept-Language");
-        v.add("User-Agent");
-        v.add("Cache-Control");
-
         when(request.getServletPath()).thenReturn("/dyn/view/index");
-        when(request.getHeaderNames()).thenReturn(v.elements());
-        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
-        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
-        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
-        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
-
-
-        when(response.containsHeader("Content-Length")).thenReturn(true);
-        when(response.containsHeader("Last-Modified")).thenReturn(true);
-        when(response.containsHeader("Expires")).thenReturn(true);
-        when(response.containsHeader("Content-Encoding")).thenReturn(true);
-        when(response.containsHeader("Content-Type")).thenReturn(true);
-        when(response.containsHeader("Cache-Control")).thenReturn(true);
-        when(response.containsHeader("Etag")).thenReturn(true);
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
 
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();
@@ -97,29 +77,9 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<String>();
-        v.add("Accept");
-        v.add("Accept-Encoding");
-        v.add("Accept-Language");
-        v.add("User-Agent");
-        v.add("Cache-Control");
-
         when(request.getServletPath()).thenReturn("/dyn/view/500");
-        when(request.getHeaderNames()).thenReturn(v.elements());
-        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
-        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
-        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
-        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
-
-
-        when(response.containsHeader("Content-Length")).thenReturn(true);
-        when(response.containsHeader("Last-Modified")).thenReturn(true);
-        when(response.containsHeader("Expires")).thenReturn(true);
-        when(response.containsHeader("Content-Encoding")).thenReturn(true);
-        when(response.containsHeader("Content-Type")).thenReturn(true);
-        when(response.containsHeader("Cache-Control")).thenReturn(true);
-        when(response.containsHeader("Etag")).thenReturn(true);
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
 
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();
@@ -153,6 +113,20 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath (must start with /dyn/) request: /foo/bar");
     }
 
+    @Test
+    public void testNullServletPathThoughItMayBeImpossibleToReproduceInTomcat() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenReturn(null);
+
+        setDefaultCdnRoutingProvider();
+
+        new CdnRouter().route(request, response);
+        verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath (must start with /dyn/) request: null");
+    }
+
 
     @Test
     public void testInvalidVersion() throws Exception
@@ -182,21 +156,8 @@ public class TestCdnRouter
         v.add("Cache-Control");
 
         when(request.getServletPath()).thenReturn("/dyn/view/404");
-        when(request.getHeaderNames()).thenReturn(v.elements());
-        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
-        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
-        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
-        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
-
-
-        when(response.containsHeader("Content-Length")).thenReturn(true);
-        when(response.containsHeader("Last-Modified")).thenReturn(true);
-        when(response.containsHeader("Expires")).thenReturn(true);
-        when(response.containsHeader("Content-Encoding")).thenReturn(true);
-        when(response.containsHeader("Content-Type")).thenReturn(true);
-        when(response.containsHeader("Cache-Control")).thenReturn(true);
-        when(response.containsHeader("Etag")).thenReturn(true);
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
 
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();
@@ -218,10 +179,8 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<String>();
-
         when(request.getServletPath()).thenReturn("/dyn/view/404");
-        when(request.getHeaderNames()).thenReturn(v.elements());
+        setupMockRequestHeaders(request);
 
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();
@@ -272,10 +231,7 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<String>();
-
         when(request.getServletPath()).thenReturn("/dyn/view/index");
-        when(request.getHeaderNames()).thenReturn(v.elements());
         when(request.getRequestURL()).thenReturn(new StringBuffer("http://www.foo.com/dyn/view/index"));
 
         setCdnRoutingProvider("CdnRouterTest", "file", false);
@@ -293,13 +249,8 @@ public class TestCdnRouter
 
         when(request.getServletPath()).thenReturn("/dyn/view/xml");
 
-        when(response.containsHeader("Content-Length")).thenReturn(true);
-        when(response.containsHeader("Last-Modified")).thenReturn(true);
-        when(response.containsHeader("Expires")).thenReturn(true);
-        when(response.containsHeader("Content-Encoding")).thenReturn(true);
-        when(response.containsHeader("Content-Type")).thenReturn(true);
-        when(response.containsHeader("Cache-Control")).thenReturn(true);
-        when(response.containsHeader("Etag")).thenReturn(true);
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
 
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();
@@ -318,6 +269,34 @@ public class TestCdnRouter
         verify(response, times(1)).addHeader("Content-Type", "application/xml");
         verify(response, times(1)).addHeader("Content-Length", "52");
 
+    }
+
+    private void setupMockResponseHeaders(HttpServletResponse response)
+    {
+        when(response.containsHeader("Content-Length")).thenReturn(true);
+        when(response.containsHeader("Last-Modified")).thenReturn(true);
+        when(response.containsHeader("Expires")).thenReturn(true);
+        when(response.containsHeader("Content-Encoding")).thenReturn(true);
+        when(response.containsHeader("Content-Type")).thenReturn(true);
+        when(response.containsHeader("Cache-Control")).thenReturn(true);
+        when(response.containsHeader("Etag")).thenReturn(true);
+    }
+
+    private void setupMockRequestHeaders(HttpServletRequest request)
+    {
+        Vector<String> v = new Vector<String>();
+        v.add("Accept");
+        v.add("Accept-Encoding");
+        v.add("Accept-Language");
+        v.add("User-Agent");
+        v.add("Cache-Control");
+
+        when(request.getHeaderNames()).thenReturn(v.elements());
+        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
+        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
+        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
+        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
     }
 
     @Test
@@ -363,20 +342,9 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<>();
-        v.add("Accept");
-        v.add("Accept-Encoding");
-        v.add("Accept-Language");
-        v.add("User-Agent");
-        v.add("Cache-Control");
-
         when(request.getServletPath()).thenReturn("/dyn/view/" + logicalFileName);
-        when(request.getHeaderNames()).thenReturn(v.elements());
-        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
-        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
-        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
-        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
 
         ServletOutputStream out = new DumboOutputStream();
         ServletInputStream in = new DumboInputStream();

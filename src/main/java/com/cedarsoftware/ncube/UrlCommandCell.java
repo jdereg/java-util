@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnRouter;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
@@ -18,7 +19,6 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
@@ -436,14 +436,7 @@ public abstract class UrlCommandCell implements CommandCell
     {
         if (cmdHash == null)
         {
-            try
-            {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(command.getBytes("UTF-8"));
-            }
-            catch (UnsupportedEncodingException e)
-            {
-                cmdHash = EncryptionUtilities.calculateSHA1Hash(command.getBytes());
-            }
+            cmdHash = EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(command, "UTF-8"));
         }
         return cmdHash;
     }

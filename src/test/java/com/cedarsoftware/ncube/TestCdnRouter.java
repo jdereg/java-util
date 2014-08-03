@@ -171,6 +171,30 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(404, "Not Found");
     }
 
+    @Test
+    public void testCdnRouterErrorHandleNoCubeName() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenReturn("/dyn/view/index");
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
+
+        ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+        when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
+
+        setCdnRoutingProvider(null, "file", true);
+
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
+    }
+
     private static void setCdnRoutingProvider(final String cubeName, final String version, final boolean isAuthorized)
     {
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()

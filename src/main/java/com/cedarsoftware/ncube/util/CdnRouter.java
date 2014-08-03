@@ -53,7 +53,7 @@ public class CdnRouter
             String[] info = getPathComponents(servletPath);
             if (info == null)
             {
-                String msg = "CdnRouter - File not found - servletPath: " + servletPath;   // Thx Corey Crider
+                String msg = "CdnRouter - Invalid ServletPath (must start with /dyn/) request: " + servletPath;   // Thx Corey Crider
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, msg);
                 return;
             }
@@ -97,12 +97,7 @@ public class CdnRouter
         catch (Exception e)
         {
             LOG.error("CdnRouter exception occurred", e);
-            try
-            {
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - Error occurred: " + e.getMessage());
-            }
-            catch (Exception ignore)
-            { }
+            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - Error occurred: " + e.getMessage());
         }
     }
 
@@ -117,7 +112,8 @@ public class CdnRouter
             response.sendError(error, msg);
         }
         catch (Exception ignore)
-        { }
+        {
+        }
     }
 
     private static String[] getPathComponents(String pathInfo)

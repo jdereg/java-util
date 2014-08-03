@@ -48,7 +48,7 @@ public class CdnClassLoader extends GroovyClassLoader
      * @param name Name of resource
      * @return true if we should only look locally.
      */
-    protected boolean isLocalOnlyResource(String name)
+    boolean isLocalOnlyResource(String name)
     {
         //  Groovy ASTTransform Service
         if (name.endsWith("org.codehaus.groovy.transform.ASTTransformation"))

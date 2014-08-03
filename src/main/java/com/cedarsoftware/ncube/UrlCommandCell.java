@@ -221,7 +221,7 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 LOG.error("Error occurred fetching: " + actualUrl, e);
                 UrlUtilities.readErrorResponse(conn);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid url provided: " + actualUrl);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
             }
             catch (IOException ignored) { }
         }
@@ -548,7 +548,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    private static class CachingInputStream extends FilterInputStream
+    static class CachingInputStream extends FilterInputStream
     {
         ByteArrayOutputStream cache = new ByteArrayOutputStream();
 

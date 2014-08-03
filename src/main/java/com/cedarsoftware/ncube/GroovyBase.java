@@ -10,10 +10,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 
 /**
@@ -37,28 +37,10 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    static final Map<String, Class> compiledClasses = new LinkedHashMap<>();
-    static final Map<String, Constructor> constructorMap = new LinkedHashMap<String, Constructor>()
-    {
-        protected boolean removeEldestEntry(Map.Entry eldest)
-        {
-            return size() > 500;
-        }
-    };
-    static final Map<String, Method> initMethodMap = new LinkedHashMap<String, Method>()
-    {
-        protected boolean removeEldestEntry(Map.Entry eldest)
-        {
-            return size() > 500;
-        }
-    };
-    static final Map<String, Method> methodMap = new LinkedHashMap<String, Method>()
-    {
-        protected boolean removeEldestEntry(Map.Entry eldest)
-        {
-            return size() > 500;
-        }
-    };
+    static final Map<String, Class> compiledClasses = new ConcurrentHashMap<>();
+    static final Map<String, Constructor> constructorMap = new ConcurrentHashMap<>();
+    static final Map<String, Method> initMethodMap = new ConcurrentHashMap<>();
+    static final Map<String, Method> methodMap = new ConcurrentHashMap<>();
 
     public GroovyBase(String cmd, String url)
     {
@@ -112,7 +94,7 @@ public abstract class GroovyBase extends UrlCommandCell
         Constructor c = constructorMap.get(cmdHash);
         if (c == null)
         {
-            synchronized (GroovyBase.class)
+            synchronized (constructorMap)
             {
                 c = constructorMap.get(cmdHash);
                 if (c == null)
@@ -130,7 +112,7 @@ public abstract class GroovyBase extends UrlCommandCell
         Method initMethod = initMethodMap.get(cmdHash);
         if (initMethod == null)
         {
-            synchronized (GroovyBase.class)
+            synchronized (initMethodMap)
             {
                 initMethod = initMethodMap.get(cmdHash);
                 if (initMethod == null)
@@ -148,7 +130,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (runMethod == null)
         {
-            synchronized (GroovyBase.class)
+            synchronized (methodMap)
             {
                 runMethod = methodMap.get(cmdHash);
                 if (runMethod == null)
@@ -179,7 +161,7 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         if (getRunnableCode() == null)
         {   // Not yet compiled, compile the cell (Lazy compilation)
-            synchronized(GroovyBase.class)
+            synchronized(compiledClasses)
             {
                 if (getRunnableCode() != null)
                 {   // More than one thread saw the empty code, but only let the first thread
@@ -217,7 +199,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (urlLoader == null)
         {
-            throw new IllegalStateException("No ClassLoader set in NCubeManager for version: " + cube.getVersion() + ".  Use NCubeManager.setBaseResourceUrls() to set it.  Found executing ncube: " + cube.getName());
+            throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for version: " + cube.getVersion() + ".  Use NCubeManager.addBaseResourceUrls() to set it.  Found executing ncube: " + cube.getName());
         }
 
         if (isUrlUsed)

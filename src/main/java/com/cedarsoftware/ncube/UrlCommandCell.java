@@ -535,10 +535,10 @@ public abstract class UrlCommandCell implements CommandCell
     private static void transferResponseHeaders(URLConnection c, HttpServletResponse response)
     {
         Map<String, List<String>> headerFields = c.getHeaderFields();
-
         Set<Map.Entry<String, List<String>>> entries = headerFields.entrySet();
 
-        for (Map.Entry<String, List<String>> entry : entries) {
+        for (Map.Entry<String, List<String>> entry : entries)
+        {
             if (entry.getValue() != null && entry.getKey() != null)
             {
                 for (String s : entry.getValue())

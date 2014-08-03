@@ -26,6 +26,7 @@ import java.util.Vector;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -161,23 +162,9 @@ public class TestCdnRouter
 
         when(request.getServletPath()).thenReturn("/dyn/view/404");
 
-        CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
-        {
-            public void setupCoordinate(Map coord)
-            {
-                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
-            }
+        setCdnRoutingProvider("CdnRouterTest", null, true);
 
-            public boolean isAuthorized(String type)
-            {
-                return true;
-            }
-        });
-
-
-        NCube routerCube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-        CdnRouter router = new CdnRouter();
-        router.route(request, response);
+        new CdnRouter().route(request, response);
         verify(response, times(1)).sendError(500, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
     }
 
@@ -217,26 +204,10 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        final Connection conn = Mockito.mock(Connection.class);
-
-        CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
-        {
-            public void setupCoordinate(Map coord)
-            {
-                coord.put(CdnRouter.CUBE_NAME, "foo");
-                coord.put(CdnRouter.CUBE_VERSION, "file");
-            }
-
-            public boolean isAuthorized(String type)
-            {
-                return true;
-            }
-        });
-
+        setCdnRoutingProvider("foo", "file", true);
 
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
-        CdnRouter router = new CdnRouter();
-        router.route(request, response);
+        new CdnRouter().route(request, response);
 
         verify(response, times(1)).sendError(500, "CdnRouter - Error occurred: In order to use the n-cube CDN routing capabilities, a CdnRouter n-cube must already be loaded, and it's name passed in as CdnRouter.CUBE_NAME");
     }
@@ -272,22 +243,27 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(404, "Not Found");
     }
 
-    private void setDefaultCdnRoutingProvider()
+    private void setCdnRoutingProvider(final String cubeName, final String version, final boolean isAuthorized)
     {
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
-                coord.put(CdnRouter.CUBE_VERSION, "file");
+                coord.put(CdnRouter.CUBE_NAME, cubeName);
+                coord.put(CdnRouter.CUBE_VERSION, version);
 
             }
 
             public boolean isAuthorized(String type)
             {
-                return true;
+                return isAuthorized;
             }
         });
+    }
+
+    private void setDefaultCdnRoutingProvider()
+    {
+        setCdnRoutingProvider("CdnRouterTest", "file", true);
     }
 
     @Test
@@ -302,23 +278,9 @@ public class TestCdnRouter
         when(request.getHeaderNames()).thenReturn(v.elements());
         when(request.getRequestURL()).thenReturn(new StringBuffer("http://www.foo.com/dyn/view/index"));
 
-        CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
-        {
-            public void setupCoordinate(Map coord)
-            {
-                coord.put(CdnRouter.CUBE_NAME, "CdnRouterTest");
-                coord.put(CdnRouter.CUBE_VERSION, "file");
-            }
+        setCdnRoutingProvider("CdnRouterTest", "file", false);
 
-            public boolean isAuthorized(String type)
-            {
-                return false;
-            }
-        });
-
-
-        CdnRouter router = new CdnRouter();
-        router.route(request, response);
+        new CdnRouter().route(request, response);
         verify(response, times(1)).sendError(401, "CdnRouter - Unauthorized access, request: http://www.foo.com/dyn/view/index");
     }
 
@@ -329,16 +291,7 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        Vector<String> v = new Vector<>();
-
         when(request.getServletPath()).thenReturn("/dyn/view/xml");
-        when(request.getHeaderNames()).thenReturn(v.elements());
-        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36");
-        when(request.getHeader("Accept-Encoding")).thenReturn("gzip,deflate");
-        when(request.getHeader("Accept-Language")).thenReturn("n-US,en;q=0.8");
-        when(request.getHeader("Cache-Control")).thenReturn("max-age=60");
-
 
         when(response.containsHeader("Content-Length")).thenReturn(true);
         when(response.containsHeader("Last-Modified")).thenReturn(true);
@@ -364,6 +317,20 @@ public class TestCdnRouter
         assertEquals("<cedarsoftware><jdereg name=\"john\"/></cedarsoftware>", s);
         verify(response, times(1)).addHeader("Content-Type", "application/xml");
         verify(response, times(1)).addHeader("Content-Length", "52");
+
+    }
+
+    @Test
+    public void testExceptionOnException() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenThrow(new RuntimeException("foo"));
+        doThrow(new IOException("bar")).when(response).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - Error occurred: Failure");
+
+        setDefaultCdnRoutingProvider();
+        new CdnRouter().route(request, response);
 
     }
 
@@ -421,8 +388,7 @@ public class TestCdnRouter
 
         NCube cube = NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
-        CdnRouter router = new CdnRouter();
-        router.route(request, response);
+        new CdnRouter().route(request, response);
         byte[] bytes = ((DumboOutputStream) out).getBytes();
         String s = new String(bytes);
         assertEquals("<html></html>", s);
@@ -476,9 +442,8 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        CdnRouter router = new CdnRouter();
         CdnRouter.setCdnRoutingProvider(null);
-        router.route(request, response);
+        new CdnRouter().route(request, response);
 
         verify(response, times(1)).sendError(500, "CdnRouter - CdnRoutingProvider has not been set into the CdnRouter.");
     }

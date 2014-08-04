@@ -370,16 +370,16 @@ public class TestCdnRouter
 
         String answer = (String) router.getCell(coord);
         assertEquals(6, axis.getColumns().size());
-        assertEquals("Glock.html", answer);
+        assertEquals("<html>Glock</html>", answer);
 
         answer = (String) router.getCell(coord);
         assertEquals(6, axis.getColumns().size());
-        assertEquals("Glock.html", answer);
+        assertEquals("<html>Glock</html>", answer);
 
-        coord.put("content.name", "Smith & Wesson");
+        coord.put("content.name", "Smith n Wesson");
         answer = (String) router.getCell(coord);
         assertEquals(7, axis.getColumns().size());
-        assertEquals("Smith & Wesson.html", answer);
+        assertEquals("<html>Smith n Wesson</html>", answer);
     }
 
     @Test

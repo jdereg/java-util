@@ -4,9 +4,9 @@ import com.cedarsoftware.ncube.Advice;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Method;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Base class for all GroovyExpression and GroovyMethod's within n-cube CommandCells.
@@ -30,18 +30,15 @@ import java.util.Map;
  */
 public class NCubeGroovyController extends NCubeGroovyExpression
 {
-    // LRU Cache reflective method look ups
-    private static final Map<String, Method> methodCache = new LinkedHashMap<String, Method>()
-    {
-        protected boolean removeEldestEntry(Map.Entry eldest)
-        {
-            return size() > 500;
-        }
-    };
+    // Cache reflective method look ups
+    private static final Map<String, Method> methodCache = new ConcurrentHashMap<>();
 
     public static void clearCache()
     {
-        methodCache.clear();
+        synchronized (methodCache)
+        {
+            methodCache.clear();
+        }
     }
     /**
      * Run the groovy method named by the column on the 'method' axis.
@@ -58,7 +55,7 @@ public class NCubeGroovyController extends NCubeGroovyExpression
 
         if (method == null)
         {
-            synchronized (NCubeGroovyController.class)
+            synchronized (methodCache)
             {
                 method = methodCache.get(methodKey);
                 if (method == null)

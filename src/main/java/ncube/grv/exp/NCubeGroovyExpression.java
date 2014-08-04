@@ -2,7 +2,9 @@ package ncube.grv.exp;
 
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
+import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.util.CaseInsensitiveMap;
 
 import java.util.Map;
 
@@ -87,12 +89,36 @@ public class NCubeGroovyExpression
         return cube.getCell(input, output);
     }
 
-    // TODO: Need to make GOTO or Restart (restarts rule execution again not returning to where it was called from)
-//    public Object runRule(Map coord)
-//    {
-//        input.putAll(coord);
-//        return ncube.getCells(input, output);
-//    }
+    /**
+     * Restart rule execution.  Must be executed within an n-cube with at least one rule axis.
+     */
+    public void jump()
+    {
+        throw new RuleJump(ncube.getName(), new CaseInsensitiveMap<>());
+    }
+
+    /**
+     * Restart rule execution.  The Map contains the names of rule axes to rule names.  For any rule axis
+     * specified in the map, the rule step counter will be moved (jumped) to the named rule.  More than one
+     * rule axis step counter can be moved by including multiple entries in the map.
+     * @param coord Map of rule axis names, to rule names.  If the map is empty, it is the same as calling
+     * jump() with no args.
+     */
+    public void jump(Map coord)
+    {
+        throw new RuleJump(ncube.getName(), coord);
+    }
+
+    /**
+     * Restart rule execution in another cube.  The Map contains the names of rule axes to rule names.  For any rule axis
+     * specified in the map, the rule step counter will be moved (jumped) to the named rule.  More than one
+     * rule axis step counter can be moved by including multiple entries in the map.
+     * @param coord Map of rule axis names, to rule names.
+     */
+    public void jump(String cubeName, Map coord)
+    {
+        throw new RuleJump(cubeName, coord);
+    }
 
     /**
      * Run another rule cube

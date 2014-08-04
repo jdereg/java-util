@@ -1425,11 +1425,9 @@ public class NCubeManager
             addCube(ncube, "file");
             return ncube;
         }
-        catch (IOException e)
+        catch (Exception e)
         {
-            String s = "Failed to load ncube from resource: " + name;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
+            throw new RuntimeException("Failed to load ncube from resource: " + name, e);
         }
     }
 
@@ -1489,8 +1487,14 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            LOG.error("Unable to load n-cube from simple JSON format.  Trying in serialized JSON format.", e);
-            return (NCube) JsonReader.jsonToJava(json);
+            try
+            {   // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
+                return (NCube) JsonReader.jsonToJava(json);
+            }
+            catch (Exception e1)
+            {
+                throw e;
+            }
         }
     }
 }

@@ -53,10 +53,25 @@ public abstract class GroovyBase extends UrlCommandCell
 
     static void clearCache()
     {
-        compiledClasses.clear(); // Free up stored references to Compiled Classes
-        constructorMap.clear();  // free up stored references to Compiled Constructors
-        methodMap.clear(); // free up stored references to Compiled Methods
-        initMethodMap.clear();  // free up stored references to NCubeGroovyExpression.init() methods
+        synchronized(compiledClasses)
+        {
+            compiledClasses.clear(); // Free up stored references to Compiled Classes
+        }
+
+        synchronized (constructorMap)
+        {
+            constructorMap.clear();  // free up stored references to Compiled Constructors
+        }
+
+        synchronized (methodMap)
+        {
+            methodMap.clear(); // free up stored references to Compiled Methods
+        }
+
+        synchronized (initMethodMap)
+        {
+            initMethodMap.clear();  // free up stored references to NCubeGroovyExpression.init() methods
+        }
     }
 
     protected Object executeInternal(Object data, Map args)
@@ -257,7 +272,6 @@ public abstract class GroovyBase extends UrlCommandCell
         getCubeNamesFromText(cubeNames, getCmd());
     }
 
-    // TODO: Need to check for cubeName reference in runRuleCube(cubeName, input)
     static void getCubeNamesFromText(final Set<String> cubeNames, final String text)
     {
         if (StringUtilities.isEmpty(text))
@@ -292,7 +306,19 @@ public abstract class GroovyBase extends UrlCommandCell
         m = Regexes.groovyExplicitCubeRefPattern.matcher(text);
         while (m.find())
         {
-            cubeNames.add(m.group(1));  // based on Regex pattern - if pattern changes, this could change
+            cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
+        }
+
+        m = Regexes.groovyExplicitRunRulePattern.matcher(text);
+        while (m.find())
+        {
+            cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
+        }
+
+        m = Regexes.groovyExplicitJumpPattern.matcher(text);
+        while (m.find())
+        {
+            cubeNames.add(m.group(2));  // based on Regex pattern - if pattern changes, this could change
         }
     }
 

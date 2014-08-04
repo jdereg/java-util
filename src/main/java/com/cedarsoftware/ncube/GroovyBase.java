@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 import com.cedarsoftware.util.StringUtilities;
 import groovy.lang.GroovyClassLoader;
@@ -91,6 +92,10 @@ public abstract class GroovyBase extends UrlCommandCell
             else if (cause instanceof RuleStop)
             {
                 throw (RuleStop) cause;
+            }
+            else if (cause instanceof RuleJump)
+            {
+                throw (RuleJump) cause;
             }
             throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "(), n-cube '" + cubeName + "', input: " + args.get("input"), e) ;
         }

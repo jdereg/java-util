@@ -1,5 +1,8 @@
 package ncube.grv.exp.cdn;
 
+import com.cedarsoftware.ncube.BinaryUrlCmd;
+import com.cedarsoftware.ncube.StringUrlCmd;
+import com.cedarsoftware.ncube.UrlCommandCell;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 /**
@@ -25,12 +28,19 @@ public class CdnDefaultHandler extends NCubeGroovyExpression
 {
     public Object resolve(String extension)
     {
+        return resolve(extension, true);
+    }
+
+    public Object resolve(final String extension, final boolean isString)
+    {
         String axis = "content.name";
-        synchronized(ncube.getName().intern())
+        synchronized (ncube.getName().intern())
         {
             String logicalFileName = (String) input.get(axis);
             ncube.addColumn(axis, logicalFileName);
-            ncube.setCell(logicalFileName + '.' + extension, input);
+            String url = extension + '/' + logicalFileName + '.' + extension;
+            UrlCommandCell exp = isString ? new StringUrlCmd(url, false) : new BinaryUrlCmd(url, false);
+            ncube.setCell(exp, input);
             return ncube.getCell(input);
         }
     }

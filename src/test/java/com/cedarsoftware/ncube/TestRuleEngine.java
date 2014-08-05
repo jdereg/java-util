@@ -50,7 +50,6 @@ public class TestRuleEngine
     public void testLoadRuleFromUrl() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource("rule-column-loaded-with-url.json");
-        n1.setRuleMode(false);
 
         Map coord = new HashMap();
         coord.put("age", 17);
@@ -85,7 +84,6 @@ public class TestRuleEngine
     public void testContainsCellRuleAxis() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource("multiRule.json");
-        n1.setRuleMode(false);
         Map coord = new HashMap();
         coord.put("age", 17);
         coord.put("weight", 99);
@@ -118,8 +116,6 @@ public class TestRuleEngine
     public void testRuleCube() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
-        ncube.setRuleMode(true);
-        assertTrue(ncube.getRuleMode());
         Axis cond = ncube.getAxis("condition");
         assertTrue(cond.getColumns().get(0).getId() != 1);
         Axis state = ncube.getAxis("state");
@@ -256,32 +252,20 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testMultipleRuleAxisBindingsThrowsExceptionInRuleMode() throws Exception
+    public void testMultipleRuleAxisBindings() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("multiRule.json");
-        ncube.setRuleMode(true);
         Map coord = new HashMap();
         coord.put("age", 10);
         coord.put("weight", 50);
         Map output = new HashMap();
-        try
-        {
-            ncube.getCells(coord, output);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("ultiple"));
-        }
-
-        ncube.setRuleMode(false);
         ncube.getCells(coord, output);
+
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
         Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(4L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
 
-        ncube.setRuleMode(true);
         output.clear();
         coord.put("age", 10);
         coord.put("weight", 150);

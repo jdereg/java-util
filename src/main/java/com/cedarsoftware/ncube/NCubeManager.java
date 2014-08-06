@@ -263,21 +263,6 @@ public class NCubeManager
         }
     }
 
-    private static void jdbcCleanup(PreparedStatement stmt)
-    {
-        if (stmt != null)
-        {
-            try
-            {
-                stmt.close();
-            }
-            catch (SQLException e)
-            {
-                LOG.error("Error closing JDBC Statement", e);
-            }
-        }
-    }
-
     static void validateConnection(Connection c)
     {
         try
@@ -517,34 +502,31 @@ public class NCubeManager
             sysDate = new Date();
         }
 
-        synchronized (cubeList)
+        try
         {
-            PreparedStatement stmt = null;
-            try
+            synchronized (cubeList)
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
-                stmt = connection.prepareStatement("SELECT n_cube_nm FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?");
 
-                stmt.setString(1, name);
-                stmt.setString(2, app);
-                stmt.setDate(3, systemDate);
-                stmt.setDate(4, systemDate);
-                stmt.setString(5, version);
-                stmt.setString(6, status);
-                ResultSet rs = stmt.executeQuery();
+                try(PreparedStatement stmt = connection.prepareStatement("SELECT n_cube_nm FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
+                {
+                    stmt.setString(1, name);
+                    stmt.setString(2, app);
+                    stmt.setDate(3, systemDate);
+                    stmt.setDate(4, systemDate);
+                    stmt.setString(5, version);
+                    stmt.setString(6, status);
+                    ResultSet rs = stmt.executeQuery();
 
-                return rs.next();
+                    return rs.next();
+                }
             }
-            catch (Exception e)
-            {
-                String s = "Error finding cube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
-                LOG.error(s, e);
-                throw new RuntimeException(s, e);
-            }
-            finally
-            {
-                jdbcCleanup(stmt);
-            }
+        }
+        catch (Exception e)
+        {
+            String s = "Error finding cube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
         }
     }
 
@@ -566,12 +548,9 @@ public class NCubeManager
             throw new IllegalArgumentException("null passed in for Set to hold referenced n-cube names");
         }
 
-        PreparedStatement stmt = null;
-        try
+        java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+        try(PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
         {
-            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
-            stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?");
-
             stmt.setString(1, name);
             stmt.setString(2, app);
             stmt.setDate(3, systemDate);
@@ -612,10 +591,6 @@ public class NCubeManager
             String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
-        }
-        finally
-        {
-            jdbcCleanup(stmt);
         }
     }
 

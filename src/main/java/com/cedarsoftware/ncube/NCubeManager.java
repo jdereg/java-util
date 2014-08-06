@@ -829,6 +829,8 @@ public class NCubeManager
                 }
                 addCube(ncube, version);
             }
+            //  TODO:  John, I'm seeing this pattern alot.  Can't we just catch SQLException and let the rest go through?
+            //  That way we don't have to catch and rethrow the IllegalArgumentException/IllegalStateExceptions
             catch (IllegalStateException e)
             {
                 throw e;

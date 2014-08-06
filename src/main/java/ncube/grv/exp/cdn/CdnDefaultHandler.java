@@ -3,6 +3,7 @@ package ncube.grv.exp.cdn;
 import com.cedarsoftware.ncube.BinaryUrlCmd;
 import com.cedarsoftware.ncube.StringUrlCmd;
 import com.cedarsoftware.ncube.UrlCommandCell;
+import com.cedarsoftware.ncube.util.CdnRouter;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 /**
@@ -33,11 +34,12 @@ public class CdnDefaultHandler extends NCubeGroovyExpression
 
     public Object resolve(final String extension, final boolean isString)
     {
-        String axis = "content.name";
+        final String axisName = CdnRouter.CONTENT_NAME;
+
         synchronized (ncube.getName().intern())
         {
-            String logicalFileName = (String) input.get(axis);
-            ncube.addColumn(axis, logicalFileName);
+            String logicalFileName = (String) input.get(axisName);
+            ncube.addColumn(axisName, logicalFileName);
             String url = extension + '/' + logicalFileName + '.' + extension;
             UrlCommandCell exp = isString ? new StringUrlCmd(url, false) : new BinaryUrlCmd(url, false);
             ncube.setCell(exp, input);

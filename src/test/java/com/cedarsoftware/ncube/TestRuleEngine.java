@@ -505,6 +505,26 @@ public class TestRuleEngine
     }
 
     @Test
+    public void testOneRuleSetCallsAnotherRuleSet() throws Exception
+    {
+        NCubeManager.getNCubeFromResource("ruleSet2.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleSet1.json");
+        Map input = new HashMap();
+        input.put("age", 10);
+        Map output = new HashMap();
+        ncube.getCells(input, output);
+        assertEquals(new BigDecimal("1.0"), output.get("total"));
+
+        input.put("age", 48);
+        ncube.getCells(input, output);
+        assertEquals(new BigDecimal("8.560"), output.get("total"));
+
+        input.put("age", 84);
+        ncube.getCells(input, output);
+        assertEquals(new BigDecimal("5.150"), output.get("total"));
+    }
+
+    @Test
     public void testRuleFalseValues() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("ruleFalseValues.json");

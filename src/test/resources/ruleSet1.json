@@ -1,0 +1,23 @@
+{
+    "ncube":"ruleSet1",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"input.age < 18" },
+                { "id":2, "type":"exp", "value":"input.age >= 18 && input.age <= 65" },
+                { "id":3, "type":"exp", "value":"input.age > 65" }
+            ]
+        }
+    ],
+    "cells":[
+        {"id":[1],"type":"exp","value":"runRuleCube('ruleSet2', [group:'child', price:1.0])"},
+        {"id":[2],"type":"exp","value":"runRuleCube('ruleSet2', [group:'adult', price:8.0])"},
+        {"id":[3],"type":"exp","value":"runRuleCube('ruleSet2', [group:'senior', price:5.0])"}
+    ]
+}

@@ -4584,7 +4584,7 @@ public class TestNCube
     @Test
     public void testGroovyMethods()
     {
-        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods1.json");
         Map coord = new HashMap();
         coord.put("method", "foo");
         coord.put("state", "OH");

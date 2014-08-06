@@ -83,7 +83,6 @@ public class JsonFormatter implements NCubeFormatter
             startObject();
 
             writeAttribute("ncube", name, true);
-            writeAttribute("ruleMode", ncube.getRuleMode(), true);
             Object defCellValue = ncube.getDefaultCellValue();
             if (defCellValue != null)
             {

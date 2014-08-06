@@ -1,0 +1,50 @@
+{
+    "ncube": "TestCube",
+    "defaultCellValue": "ZZZ",
+    "axes": [
+        {
+            "name": "method",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": true,
+            "preferredOrder": 0,
+            "columns": [
+            ]
+        },
+        {
+            "name": "state",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": false,
+            "preferredOrder": 0,
+            "columns": [
+                {
+                    "id": "OH"
+                },
+                {
+                    "id": "TX"
+                },
+                {
+                    "id": "GA"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id":["OH"],
+            "type":"method",
+            "url": "com/acme/controllers/FooBarBazQuxController.groovy"
+        },
+        {
+            "id":["GA"],
+            "type":"method",
+            "url": "com/acme/controllers/FooBarBazQuxController.groovy"
+        },
+        {
+            "id": ["TX"],
+            "type": "method",
+            "url": "com/acme/controllers/FooBarBazQuxController_tx.groovy"
+        }
+    ]
+}

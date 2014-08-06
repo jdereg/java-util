@@ -1,0 +1,23 @@
+{
+    "ncube":"ruleSet2",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"input.group == 'child'" },
+                { "id":2, "type":"exp", "value":"input.group == 'adult'" },
+                { "id":3, "type":"exp", "value":"input.group == 'senior'" }
+            ]
+        }
+    ],
+    "cells":[
+        {"id":[1],"type":"exp","value":"output.tax = 0.0; output.total = input.price"},
+        {"id":[2],"type":"exp","value":"output.tax = 1.07; output.total = input.price * output.tax"},
+        {"id":[3],"type":"exp","value":"output.tax = 1.03; output.total = input.price * output.tax"}
+    ]
+}

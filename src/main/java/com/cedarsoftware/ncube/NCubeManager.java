@@ -906,17 +906,17 @@ public class NCubeManager
 
     private static boolean cubeExists(Connection connection, String app, String version, ReleaseStatus status, String name)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?";
+        StringBuilder builder = new StringBuilder("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?");
 
         if (status != null) {
-            statement += " AND status_cd = ?";
+            builder.append(" AND status_cd = ?");
         }
 
         if (name != null) {
-            statement += " AND n_cube_nm = ?";
+            builder.append(" AND n_cube_nm = ?");
         }
 
-        try (PreparedStatement ps = connection.prepareStatement(statement))
+        try (PreparedStatement ps = connection.prepareStatement(builder.toString()))
         {
             ps.setString(1, app);
             ps.setString(2, version);

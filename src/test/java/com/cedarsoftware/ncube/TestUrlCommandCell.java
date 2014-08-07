@@ -1,14 +1,24 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.util.CdnRouter;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Created by kpartlow on 8/2/2014.
@@ -112,5 +122,57 @@ public class TestUrlCommandCell
         catch (Exception ignored)
         {
         }
+    }
+
+    @Test
+    public void testProxyFetchSocketTimeout() throws Exception {
+        UrlCommandCell cell = new StringUrlCmd("http://www.cedarsoftware.com", false);
+
+        NCube ncube = Mockito.mock(NCube.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+
+        when(request.getHeaderNames()).thenThrow(SocketTimeoutException.class);
+
+        when(ncube.getName()).thenReturn("foo-cube");
+        when(ncube.getVersion()).thenReturn("foo-version");
+
+        Map map = new HashMap();
+        map.put("ncube", ncube);
+
+        Map input = new HashMap();
+        input.put(CdnRouter.HTTP_RESPONSE, response);
+        input.put(CdnRouter.HTTP_REQUEST, request);
+
+        map.put("input", input);
+
+        cell.proxyFetch(map);
+
+        verify(response, times(1)).sendError(HttpServletResponse.SC_NOT_FOUND, "File not found: http://www.cedarsoftware.com");
+    }
+
+    @Test
+    public void testProxyFetchSocketTimeoutWithResponseSendErrorIssue() throws Exception {
+        UrlCommandCell cell = new StringUrlCmd("http://www.cedarsoftware.com", false);
+
+        NCube ncube = Mockito.mock(NCube.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+
+        when(request.getHeaderNames()).thenThrow(SocketTimeoutException.class);
+        doThrow(IOException.class).when(response).sendError(HttpServletResponse.SC_NOT_FOUND, "File not found: http://www.cedarsoftware.com");
+        when(ncube.getName()).thenReturn("foo-cube");
+        when(ncube.getVersion()).thenReturn("foo-version");
+
+        Map map = new HashMap();
+        map.put("ncube", ncube);
+
+        Map input = new HashMap();
+        input.put(CdnRouter.HTTP_RESPONSE, response);
+        input.put(CdnRouter.HTTP_REQUEST, request);
+
+        map.put("input", input);
+
+        cell.proxyFetch(map);
     }
 }

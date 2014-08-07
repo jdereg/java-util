@@ -664,7 +664,7 @@ public class Axis
         return "";
     }
 
-    private Comparable convertStringToDiscreteValue(String input, AxisValueType valType)
+    Comparable convertStringToDiscreteValue(String input, AxisValueType valType)
     {
         switch(valType)
         {
@@ -917,7 +917,7 @@ public class Axis
         }
     }
 
-	private static String getString(Comparable value)
+	static String getString(Comparable value)
 	{
 		if (value instanceof String)
 		{

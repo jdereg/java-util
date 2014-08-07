@@ -9,6 +9,9 @@ import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Date;
@@ -24,6 +27,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * NCubeManager Tests
@@ -245,6 +251,20 @@ DELIMITER ;
     }
 
     @Test
+    public void testLoadCubesException() throws Exception {
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
+
+        try
+        {
+            NCubeManager.loadCubes(c, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name());
+            fail();
+        } catch(RuntimeException e) {
+
+        }
+    }
+
+    @Test
     public void testBadCommandCellCommand() throws Exception
     {
         NCube<Object> continentCounty = new NCube<>("test.ContinentCountries");
@@ -337,6 +357,14 @@ DELIMITER ;
 
         assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), ver, true));
         assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n2.getName(), ver, true));
+
+        try
+        {
+            NCubeManager.getReferencedCubeNames(getConnection(), APP_ID, n2.getName(), ver, ReleaseStatus.SNAPSHOT.name(), null, null);
+            fail();
+        } catch (IllegalArgumentException e) {
+
+        }
     }
 
     @Test
@@ -389,8 +417,7 @@ DELIMITER ;
     }
 
     @Test
-    public void testChangeVersionValue() throws Exception
-    {
+    public void testChangeVersionValue() throws Exception {
         Connection conn = getConnection();
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
         String version = "1.1.99";
@@ -399,6 +426,14 @@ DELIMITER ;
         NCubeManager.changeVersionValue(conn, APP_ID, version, "1.1.20");
 
         NCube n2 = NCubeManager.loadCube(conn, APP_ID, n1.getName(), "1.1.20", ReleaseStatus.SNAPSHOT.name(), new Date());
+
+        try
+        {
+            NCubeManager.changeVersionValue(conn, APP_ID, version, "1.1.20");
+            fail();
+        } catch (IllegalStateException e) {
+
+        }
 
         assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), "1.1.20", true));
         assertEquals(n1, n2);
@@ -646,20 +681,55 @@ DELIMITER ;
             NCubeManager.createSnapshotCubes(null, "DASHBOARD", "0.1.0", "0.1.0");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalArgumentException ignore)
         {
-            assertTrue(e instanceof IllegalArgumentException);
         }
 
         try
         {
             NCubeManager.createSnapshotCubes(getConnection(), "DASHBOARD", "0.1.0", "0.1.0");
+            fail("versions are not allowed to match");
+        }
+        catch (IllegalArgumentException ignore)
+        {
+        }
+
+        try
+        {
+            NCube ncube2 = createCube();
+            NCubeManager.releaseCubes(getConnection(), APP_ID, "0.1.0");
+            NCubeManager.createSnapshotCubes(getConnection(), APP_ID, "0.1.0", "0.1.1");
+            NCubeManager.createSnapshotCubes(getConnection(), APP_ID, "0.1.0", "0.1.1");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalStateException ignore)
         {
-            assertTrue(e instanceof IllegalArgumentException);
         }
+
+
+        try
+        {
+
+            Connection c = mock(Connection.class);
+
+            PreparedStatement psVerify = mock(PreparedStatement.class);
+            ResultSet rsVerify = mock(ResultSet.class);
+
+            when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?")).thenReturn(psVerify);
+            when(psVerify.executeQuery()).thenReturn(rsVerify);
+            when(rsVerify.next()).thenReturn(false);
+
+            doThrow(SQLException.class).when(c).prepareStatement("SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
+                    "FROM n_cube\n" +
+                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?");
+
+            NCubeManager.createSnapshotCubes(c, APP_ID, "0.1.0", "0.1.1");
+            fail("should not make it here");
+        }
+        catch (RuntimeException ignore)
+        {
+        }
+
     }
 
     @Test
@@ -811,21 +881,6 @@ DELIMITER ;
             fail("Should not make it here");
         }
         catch (Exception expected)
-        { }
-    }
-
-    @Test
-    public void testValidateConnection() throws Exception
-    {
-        Connection c = getConnection();
-        NCubeManager.validateConnection(c);
-        c.close();
-        try
-        {
-            NCubeManager.validateConnection(c);
-            fail("should not make it here");
-        }
-        catch (Exception e)
         { }
     }
 

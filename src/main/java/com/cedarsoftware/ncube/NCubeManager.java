@@ -24,7 +24,6 @@ import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -265,20 +264,9 @@ public class NCubeManager
 
     static void validateConnection(Connection c)
     {
-        try
+        if (c == null)
         {
-            if (c == null)
-            {
-                throw new IllegalArgumentException("Connection cannot be null");
-            }
-            else if (c.isClosed())
-            {
-                throw new IllegalStateException("Connection already closed.");
-            }
-        }
-        catch (SQLException e)
-        {
-            throw new IllegalStateException("Error closing connection.", e);
+            throw new IllegalArgumentException("Connection cannot be null");
         }
     }
 
@@ -373,10 +361,6 @@ public class NCubeManager
                     NCube ncube = ncubeFromJson(json);
                     addCube(ncube, version);
                 }
-            }
-            catch (IllegalStateException e)
-            {
-                throw e;
             }
             catch (Exception e)
             {
@@ -494,32 +478,43 @@ public class NCubeManager
     public static boolean doesCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         validate(connection, app, version);
-        validateCubeName(name);
-        validateStatus(status);
 
-        if (sysDate == null)
-        {
-            sysDate = new Date();
+        StringBuilder builder = new StringBuilder("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
+
+        if (status != null) {
+            validateStatus(status);
+            builder.append(" AND status_cd = ?");
         }
 
-        try
+        if (name != null) {
+            validateCubeName(name);
+            builder.append(" AND n_cube_nm = ?");
+        }
+
+        java.sql.Date systemDate = new java.sql.Date((sysDate == null) ? new Date().getTime() : sysDate.getTime());
+
+        try (PreparedStatement ps = connection.prepareStatement(builder.toString()))
         {
-            synchronized (cubeList)
+
+            ps.setString(1, app);
+            ps.setString(2, version);
+            ps.setDate(3, systemDate);
+            ps.setDate(4, systemDate);
+
+            int count = 4;
+            if (status != null)
             {
-                java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+                ps.setString(++count, status);
+            }
 
-                try(PreparedStatement stmt = connection.prepareStatement("SELECT n_cube_nm FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
-                {
-                    stmt.setString(1, name);
-                    stmt.setString(2, app);
-                    stmt.setDate(3, systemDate);
-                    stmt.setDate(4, systemDate);
-                    stmt.setString(5, version);
-                    stmt.setString(6, status);
-                    ResultSet rs = stmt.executeQuery();
+            if (name != null)
+            {
+                ps.setString(++count, name);
+            }
 
-                    return rs.next();
-                }
+            try (ResultSet rs = ps.executeQuery())
+            {
+                return rs.next();
             }
         }
         catch (Exception e)
@@ -806,30 +801,33 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            if (cubeExists(connection, app, version, null, ncube.getName())) {
-                throw new IllegalStateException("NCube '" + ncube.getName() + "' (" + app + " " + version + ") already exists.");
-            }
-
-            try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)"))
+            try
             {
-                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                insert.setString(2, app);
-                insert.setString(3, ncube.getName());
-                String json = new JsonFormatter().format(ncube);
-                //                    String json = JsonWriter.objectToJson(ncube);
-                insert.setBytes(4, json.getBytes("UTF-8"));
-                insert.setString(5, version);
-                java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                insert.setDate(6, now);
-                insert.setDate(7, now);
-                int rowCount = insert.executeUpdate();
-                if (rowCount != 1)
+                if (doesCubeExist(connection, app, ncube.getName(), version, null, null))
                 {
-                    throw new IllegalStateException("error inserting new NCube: " + ncube.getName() + "', app: " + app + ", version: " + version + " (" + rowCount + " rows inserted, should be 1)");
+                    throw new IllegalStateException("NCube '" + ncube.getName() + "' (" + app + " " + version + ") already exists.");
                 }
-                addCube(ncube, version);
-            }
 
+                try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)"))
+                {
+                    insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                    insert.setString(2, app);
+                    insert.setString(3, ncube.getName());
+                    String json = new JsonFormatter().format(ncube);
+                    //                    String json = JsonWriter.objectToJson(ncube);
+                    insert.setBytes(4, json.getBytes("UTF-8"));
+                    insert.setString(5, version);
+                    java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+                    insert.setDate(6, now);
+                    insert.setDate(7, now);
+                    int rowCount = insert.executeUpdate();
+                    if (rowCount != 1)
+                    {
+                        throw new IllegalStateException("error inserting new NCube: " + ncube.getName() + "', app: " + app + ", version: " + version + " (" + rowCount + " rows inserted, should be 1)");
+                    }
+                    addCube(ncube, version);
+                }
+            }
             catch (IllegalStateException e)
             {
                 throw e;
@@ -861,7 +859,7 @@ public class NCubeManager
         {
             try
             {
-                if (cubeExists(connection, app, version, ReleaseStatus.RELEASE, null))
+                if (doesCubeExist(connection, app, null, version, ReleaseStatus.RELEASE.toString(), null))
                 {
                     throw new IllegalArgumentException("A RELEASE version " + version + " already exists. Have system admin renumber your SNAPSHOT version.");
                 }
@@ -889,48 +887,6 @@ public class NCubeManager
         }
     }
 
-    private static boolean cubeExists(Connection connection, String app, String version, ReleaseStatus status, String name)
-    {
-        StringBuilder builder = new StringBuilder("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?");
-
-        if (status != null)
-        {
-            builder.append(" AND status_cd = ?");
-        }
-
-        if (name != null)
-        {
-            builder.append(" AND n_cube_nm = ?");
-        }
-
-        try (PreparedStatement ps = connection.prepareStatement(builder.toString()))
-        {
-            ps.setString(1, app);
-            ps.setString(2, version);
-
-            int count = 2;
-            if (status != null)
-            {
-                ps.setString(++count, status.name());
-            }
-
-            if (name != null)
-            {
-                ps.setString(++count, name);
-            }
-
-            try (ResultSet rs = ps.executeQuery())
-            {
-                return rs.next();
-            }
-
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Database error", e);
-        }
-    }
-
     /**
      * This API creates a SNAPSHOT set of cubes by copying all of
      * the RELEASE ncubes that match the oldVersion and app to
@@ -948,62 +904,65 @@ public class NCubeManager
             throw new IllegalArgumentException("New SNAPSHOT version " + relVersion + " cannot be the same as the RELEASE version.");
         }
 
-        if (cubeExists(connection, app, newSnapVer, null, null)) {
-            throw new IllegalStateException("New SNAPSHOT Version specified (" + newSnapVer + ") matches an existing version.  Specify new SNAPSHOT version that does not exist.");
-        }
-
         synchronized (cubeList)
         {
-            try (PreparedStatement select = connection.prepareStatement(
+            try
+            {
+                if (doesCubeExist(connection, app, null, newSnapVer, null, null))
+                {
+                    throw new IllegalStateException("New SNAPSHOT Version specified (" + newSnapVer + ") matches an existing version.  Specify new SNAPSHOT version that does not exist.");
+                }
+
+                try (PreparedStatement select = connection.prepareStatement(
                         "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
                                 "FROM n_cube\n" +
                                 "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"
                 ))
-            {
-
-                select.setString(1, app);
-                select.setString(2, relVersion);
-                select.setString(3, ReleaseStatus.RELEASE.name());
-
-
-                try (ResultSet rs = select.executeQuery())
                 {
 
-                    try (PreparedStatement insert = connection.prepareStatement(
-                            "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin)\n" +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                    ))
+                    select.setString(1, app);
+                    select.setString(2, relVersion);
+                    select.setString(3, ReleaseStatus.RELEASE.name());
+
+
+                    try (ResultSet rs = select.executeQuery())
                     {
-                        int count = 0;
 
-                        while (rs.next())
+                        try (PreparedStatement insert = connection.prepareStatement(
+                                "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin)\n" +
+                                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        ))
                         {
-                            count++;
-                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                            insert.setString(2, rs.getString("n_cube_nm"));
-                            insert.setBytes(3, rs.getBytes("cube_value_bin"));
-                            insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-                            insert.setDate(5, new java.sql.Date(System.currentTimeMillis()));
-                            insert.setString(6, rs.getString("create_hid"));
-                            insert.setString(7, rs.getString("update_hid"));
-                            insert.setString(8, newSnapVer);
-                            insert.setString(9, ReleaseStatus.SNAPSHOT.name());
-                            insert.setDate(10, rs.getDate("sys_effective_dt"));
-                            insert.setDate(11, rs.getDate("sys_expiration_dt"));
-                            insert.setDate(12, rs.getDate("business_effective_dt"));
-                            insert.setDate(13, rs.getDate("business_expiration_dt"));
-                            insert.setString(14, rs.getString("app_cd"));
-                            insert.setBytes(15, rs.getBytes("test_data_bin"));
-                            insert.setBytes(16, rs.getBytes("notes_bin"));
-                            insert.executeUpdate();
-                        }
-                        return count;
-                    }
-                }
+                            int count = 0;
 
+                            while (rs.next())
+                            {
+                                count++;
+                                insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                                insert.setString(2, rs.getString("n_cube_nm"));
+                                insert.setBytes(3, rs.getBytes("cube_value_bin"));
+                                insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+                                insert.setDate(5, new java.sql.Date(System.currentTimeMillis()));
+                                insert.setString(6, rs.getString("create_hid"));
+                                insert.setString(7, rs.getString("update_hid"));
+                                insert.setString(8, newSnapVer);
+                                insert.setString(9, ReleaseStatus.SNAPSHOT.name());
+                                insert.setDate(10, rs.getDate("sys_effective_dt"));
+                                insert.setDate(11, rs.getDate("sys_expiration_dt"));
+                                insert.setDate(12, rs.getDate("business_effective_dt"));
+                                insert.setDate(13, rs.getDate("business_expiration_dt"));
+                                insert.setString(14, rs.getString("app_cd"));
+                                insert.setBytes(15, rs.getBytes("test_data_bin"));
+                                insert.setBytes(16, rs.getBytes("notes_bin"));
+                                insert.executeUpdate();
+                            }
+                            return count;
+                        }
+                    }
+
+                }
             }
-            catch (IllegalStateException e)
-            {
+            catch (IllegalStateException e) {
                 throw e;
             }
             catch (Exception e)
@@ -1032,21 +991,24 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            if (cubeExists(connection, app, newSnapVer, ReleaseStatus.RELEASE, null))
+            try
             {
-                throw new IllegalStateException("RELEASE n-cubes found with version " + newSnapVer + ".  Choose a different SNAPSHOT version.");
-            }
-
-            try (PreparedStatement ps = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
-            {
-                ps.setDate(1, new java.sql.Date(System.currentTimeMillis()));
-                ps.setString(2, newSnapVer);
-                ps.setString(3, app);
-                ps.setString(4, currVersion);
-                int count = ps.executeUpdate();
-                if (count < 1)
+                if (doesCubeExist(connection, app, null, newSnapVer, ReleaseStatus.RELEASE.name(), null))
                 {
-                    throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + currVersion + ", therefore nothing changed.");
+                    throw new IllegalStateException("RELEASE n-cubes found with version " + newSnapVer + ".  Choose a different SNAPSHOT version.");
+                }
+
+                try (PreparedStatement ps = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
+                {
+                    ps.setDate(1, new java.sql.Date(System.currentTimeMillis()));
+                    ps.setString(2, newSnapVer);
+                    ps.setString(3, app);
+                    ps.setString(4, currVersion);
+                    int count = ps.executeUpdate();
+                    if (count < 1)
+                    {
+                        throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + currVersion + ", therefore nothing changed.");
+                    }
                 }
             }
             catch (IllegalStateException e)

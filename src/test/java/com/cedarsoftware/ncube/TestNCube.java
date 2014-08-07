@@ -4593,35 +4593,16 @@ public class TestNCube
         NCube ncube = NCubeManager.getNCubeFromResource("containsCell.json");
 
         Map coord = new HashMap();
-        coord.put("gender", "Male");
-        assertTrue(ncube.containsCell(coord));
+        coord.put("Gender", "Male");
+        assertTrue(ncube.containsCell(coord, true));
         coord.put("gender", "Female");
         assertTrue(ncube.containsCell(coord));
 
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, true));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, true));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, false));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, false));
 
         coord.put("gender", "GI Joe");
         try
         {
             ncube.containsCell(coord);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof CoordinateNotFoundException);
-        }
-
-        try
-        {
-            ncube.containsCellValue(coord, false);
             fail("should not make it here");
         }
         catch (Exception e)
@@ -4636,30 +4617,10 @@ public class TestNCube
         coord.put("gender", "Female");
         assertTrue(ncube.containsCell(coord));
 
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, true));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, true));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, false));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, false));
-
         coord.put("gender", "GI Joe");
         try
         {
             ncube.containsCell(coord);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof CoordinateNotFoundException);
-        }
-
-        try
-        {
-            ncube.containsCellValue(coord, false);
             fail("should not make it here");
         }
         catch (Exception e)

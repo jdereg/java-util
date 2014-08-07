@@ -154,7 +154,7 @@ public class TestJsonFormatter
             }
         });
 
-        List<String> names = new ArrayList<String>(files.length);
+        List<String> names = new ArrayList<>(files.length);
         for (File f : files)
         {
             names.add(f.getName());

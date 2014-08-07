@@ -3750,39 +3750,6 @@ public class TestNCube
     }
 
     @Test
-    public void testOverlappingRangeCube() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("idBasedCube.json");
-        Map coord = new HashMap();
-        coord.put("age", 10);
-        coord.put("state", "CA");
-
-        String oneCell = (String) ncube.getCell(coord);
-        assertEquals("1 10", oneCell);
-
-        Map<Map<String, Column>, String> cells = ncube.getCells(coord, new HashMap());
-        assertTrue(cells.size() == 2);
-
-        coord.put("age", 10);
-        coord.put("state", "OH");
-
-        try
-        {
-            ncube.getCell(coord);
-            fail("should not get here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
-        }
-
-        coord.put("age", 75);
-        coord.put("state", "TX");
-        String ans = (String) ncube.getCell(coord);
-        assertEquals("def 30", ans);
-    }
-
-    @Test
     public void testOverlappingRangeCubeError() throws Exception
     {
         try
@@ -3794,39 +3761,6 @@ public class TestNCube
         {
             assertTrue(e instanceof RuntimeException);
         }
-    }
-
-    @Test
-    public void testOverlappingRangeSet() throws Exception
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("idBasedCubeSet.json");
-        Map coord = new HashMap();
-        coord.put("age", 10);
-        coord.put("state", "CA");
-
-        String oneCell = (String) ncube.getCell(coord);
-        assertEquals("1 10", oneCell);
-
-        Map<Map<String, Column>, String> cells = ncube.getCells(coord, new HashMap());
-        assertTrue(cells.size() == 2);
-
-        coord.put("age", 10);
-        coord.put("state", "OH");
-
-        try
-        {
-            ncube.getCell(coord);
-            fail("should not get here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
-        }
-
-        coord.put("age", 95);
-        coord.put("state", "TX");
-        String ans = (String) ncube.getCell(coord);
-        assertEquals("def 30", ans);
     }
 
     @Test
@@ -4198,7 +4132,6 @@ public class TestNCube
         simpleJsonCompare("expressionAxis.json");
         simpleJsonCompare("expressionAxis2.json");
         simpleJsonCompare("idBasedCube.json");
-        simpleJsonCompare("idBasedCubeSet.json");
         simpleJsonCompare("simpleJsonArrayTest.json");
         simpleJsonCompare("simpleJsonExpression.json");
         simpleJsonCompare("stringIds.json");
@@ -4652,29 +4585,6 @@ public class TestNCube
     public void testInvalidColumn() throws Exception
     {
         new GroovyTemplate(null, null, false);
-    }
-
-    @Test
-    public void testMultiMatchAxisWithNoMatchAndNoDefault()
-    {
-        NCube ncube = NCubeManager.getNCubeFromResource("multiMatch.json");
-
-        Map coord = new HashMap();
-        Map output = new HashMap();
-        coord.put("age", 85);
-        try
-        {
-            ncube.getCells(coord, output);
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof CoordinateNotFoundException);
-        }
-
-        coord.put("age", 16);
-        Map multi = ncube.getCells(coord, output);
-        assertEquals(2, multi.size());
     }
 
     @Test

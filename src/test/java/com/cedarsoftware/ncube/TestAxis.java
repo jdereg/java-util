@@ -12,7 +12,6 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -113,13 +112,12 @@ public class TestAxis
     @Test
     public void testAxisInsertAtFront()
     {
-        Axis states = new Axis("States", AxisType.SET, AxisValueType.STRING, false, Axis.SORTED, true);
+        Axis states = new Axis("States", AxisType.SET, AxisValueType.STRING, false, Axis.SORTED);
         RangeSet set = new RangeSet("GA");
         set.add("OH");
         set.add("TX");
         states.addColumn(set);
         set = new RangeSet("AL");
-        set.add("OH");
         set.add("WY");
         states.addColumn(set);
     }
@@ -285,18 +283,6 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisMultiMatch()
-    {
-        Axis axis = TestNCube.getContinentAxis();
-        assertFalse(axis.isMultiMatch());
-        axis.setMultiMatch(true);
-        assertTrue(axis.isMultiMatch());
-        assertNotNull(axis.toString());
-        axis.setMultiMatch(true);
-        assertTrue(axis.isMultiMatch());
-    }
-
-    @Test
     public void testDeleteColumnFromRangeSetAxis() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testCube4.json");
@@ -336,30 +322,6 @@ public class TestAxis
         catch (Exception e)
         {
             assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testRangeAxisOverlapInMultiMatchMode()
-    {
-        Axis rangeAxis = new Axis("age", AxisType.RANGE, AxisValueType.LONG, false, Axis.DISPLAY, true);
-        rangeAxis.addColumn(new Range(0, 10));
-        rangeAxis.addColumn(new Range(0, 100));        // overlap
-        rangeAxis.addColumn(new Range(20, 40));        // overlap
-        NCube ncube = new NCube("dohner");
-        ncube.addAxis(rangeAxis);
-        assertEquals(ncube.getNumMultiMatchAxis(), 1);
-
-        Map coord = new HashMap();
-        coord.put("age", 75);
-        try
-        {
-            ncube.setCell("hey", coord);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalStateException);
         }
     }
 

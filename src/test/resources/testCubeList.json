@@ -53,7 +53,6 @@
                 "valueType": "LONG",
                 "hasDefault": true,
                 "preferredOrder": 1,
-                "multiMatch": true,
                 "columns": [
                     {
                         "id": 1,
@@ -62,15 +61,15 @@
                     {
                         "id": 2,
                         "value": [
-                            [10, 25],
+                            [18, 25],
                             [50, 70]
                         ]
                     },
                     {
                         "id": 3,
                         "value": [
-                            [20, 40],
-                            [50, 80]
+                            [25, 40],
+                            [70, 80]
                         ]
                     }
                 ]
@@ -81,7 +80,6 @@
                 "valueType": "STRING",
                 "hasDefault": false,
                 "preferredOrder": 1,
-                "multiMatch": false,
                 "columns": [
                     {
                         "id": 10,

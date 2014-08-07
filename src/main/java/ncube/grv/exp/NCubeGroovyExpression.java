@@ -94,7 +94,7 @@ public class NCubeGroovyExpression
      */
     public void jump()
     {
-        throw new RuleJump(ncube.getName(), new CaseInsensitiveMap<>());
+        jump(new CaseInsensitiveMap<>());
     }
 
     /**
@@ -106,18 +106,8 @@ public class NCubeGroovyExpression
      */
     public void jump(Map coord)
     {
-        throw new RuleJump(ncube.getName(), coord);
-    }
-
-    /**
-     * Restart rule execution in another cube.  The Map contains the names of rule axes to rule names.  For any rule axis
-     * specified in the map, the rule step counter will be moved (jumped) to the named rule.  More than one
-     * rule axis step counter can be moved by including multiple entries in the map.
-     * @param coord Map of rule axis names, to rule names.
-     */
-    public void jump(String cubeName, Map coord)
-    {
-        throw new RuleJump(cubeName, coord);
+        input.putAll(coord);
+        throw new RuleJump(input);
     }
 
     /**

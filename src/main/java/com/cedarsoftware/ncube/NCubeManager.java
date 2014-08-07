@@ -829,8 +829,7 @@ public class NCubeManager
                 }
                 addCube(ncube, version);
             }
-            //  TODO:  John, I'm seeing this pattern alot.  Can't we just catch SQLException and let the rest go through?
-            //  That way we don't have to catch and rethrow the IllegalArgumentException/IllegalStateExceptions
+
             catch (IllegalStateException e)
             {
                 throw e;
@@ -890,29 +889,17 @@ public class NCubeManager
         }
     }
 
-//    private static void throwExceptionIfCubeExists(Connection c, String app, String version, ReleaseStatus status)  {
-//        if (cubeExists(c, app, version, status))
-//        {
-//            throw new IllegalStateException("A " + status + " cube for app (" + app + ") and version (" + version + ") already exists. Have system admin renumber your SNAPSHOT version.");
-//        }
-//    }
-//
-//    private static void throwExceptionIfCubeExists(Connection c, String app, String version)  {
-//        if (cubeExists(c, app, version))
-//        {
-//            throw new IllegalStateException("A cube with app (" + app + ") and version (" + version + ") already exists.");
-//        }
-//    }
-
     private static boolean cubeExists(Connection connection, String app, String version, ReleaseStatus status, String name)
     {
         StringBuilder builder = new StringBuilder("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?");
 
-        if (status != null) {
+        if (status != null)
+        {
             builder.append(" AND status_cd = ?");
         }
 
-        if (name != null) {
+        if (name != null)
+        {
             builder.append(" AND n_cube_nm = ?");
         }
 
@@ -937,7 +924,9 @@ public class NCubeManager
                 return rs.next();
             }
 
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             throw new IllegalArgumentException("Database error", e);
         }
     }

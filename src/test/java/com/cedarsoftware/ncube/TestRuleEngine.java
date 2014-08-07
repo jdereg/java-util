@@ -525,6 +525,28 @@ public class TestRuleEngine
     }
 
     @Test
+    public void testBasicJump() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("basicJump.json");
+        Map input = new HashMap();
+        input.put("age", 10);
+        Map output = new HashMap();
+        ncube.getCells(input, output);
+        assertEquals("child", output.get("group"));
+        Map ruleInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
+        List rulesExecuted = (List) ruleInfo.get(RuleMetaKeys.RULES_EXECUTED);
+        assertEquals(3, rulesExecuted.size());
+
+        input.put("age", 48);
+        ncube.getCells(input, output);
+        assertEquals("adult", output.get("group"));
+
+        input.put("age", 84);
+        ncube.getCells(input, output);
+        assertEquals("geezer", output.get("group"));
+    }
+
+    @Test
     public void testRuleFalseValues() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("ruleFalseValues.json");
@@ -533,7 +555,7 @@ public class TestRuleEngine
         Map output = new HashMap();
         ncube.getCells(input, output);
         Map stats = (Map) output.get("_rule");
-        assertEquals(1, ((Map) stats.get(RuleMetaKeys.RULES_EXECUTED)).size());
+        assertEquals(1, ((List) stats.get(RuleMetaKeys.RULES_EXECUTED)).size());
 
         // Groovy style false
         assertFalse(NCube.didRuleFire(null));

@@ -30,18 +30,11 @@ import java.util.Map;
  */
 public class RuleJump extends RuntimeException
 {
-    private String cubeName;
     private Map coord;
 
-    public RuleJump(String name, Map coordinate)
+    public RuleJump(Map coordinate)
     {
-        cubeName = name;
         coord = coordinate;
-    }
-
-    public String getCubeName()
-    {
-        return cubeName;
     }
 
     public Map getCoord()

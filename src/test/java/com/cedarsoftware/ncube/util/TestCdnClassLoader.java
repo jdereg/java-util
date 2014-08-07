@@ -2,6 +2,8 @@ package com.cedarsoftware.ncube.util;
 
 import org.junit.Test;
 
+import java.util.NoSuchElementException;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -47,5 +49,10 @@ public class TestCdnClassLoader
         assertTrue(testLoader1.getResources("cdnRouter.json").hasMoreElements());
         assertFalse(testLoader1.getResources("ncube/grv/method/NCubeGroovyController.class").hasMoreElements());
         assertTrue(TestCdnClassLoader.class.getClassLoader().getResources("ncube/grv/method/NCubeGroovyController.class").hasMoreElements());
+    }
+
+    @Test(expected=NoSuchElementException.class)
+    public void testGetResourcesWithLocalResource() throws Exception {
+        new CdnClassLoader(TestCdnClassLoader.class.getClassLoader(), true, true).getResources("ncube/grv/method/NCubeGroovyController.class").nextElement();
     }
 }

@@ -924,7 +924,7 @@ public class NCubeManager
             int count = 2;
             if (status != null)
             {
-                ps.setString(++count, status.toString());
+                ps.setString(++count, status.name());
             }
 
             if (name != null)
@@ -965,22 +965,22 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            try (PreparedStatement stmt1 = connection.prepareStatement(
+            try (PreparedStatement select = connection.prepareStatement(
                         "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
                                 "FROM n_cube\n" +
                                 "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"
                 ))
             {
 
-                stmt1.setString(1, app);
-                stmt1.setString(2, relVersion);
-                stmt1.setString(3, ReleaseStatus.RELEASE.name());
+                select.setString(1, app);
+                select.setString(2, relVersion);
+                select.setString(3, ReleaseStatus.RELEASE.name());
 
 
-                try (ResultSet rs = stmt1.executeQuery())
+                try (ResultSet rs = select.executeQuery())
                 {
 
-                    try (PreparedStatement stmt2 = connection.prepareStatement(
+                    try (PreparedStatement insert = connection.prepareStatement(
                             "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin)\n" +
                                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     ))
@@ -990,23 +990,23 @@ public class NCubeManager
                         while (rs.next())
                         {
                             count++;
-                            stmt2.setLong(1, UniqueIdGenerator.getUniqueId());
-                            stmt2.setString(2, rs.getString("n_cube_nm"));
-                            stmt2.setBytes(3, rs.getBytes("cube_value_bin"));
-                            stmt2.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-                            stmt2.setDate(5, new java.sql.Date(System.currentTimeMillis()));
-                            stmt2.setString(6, rs.getString("create_hid"));
-                            stmt2.setString(7, rs.getString("update_hid"));
-                            stmt2.setString(8, newSnapVer);
-                            stmt2.setString(9, ReleaseStatus.SNAPSHOT.name());
-                            stmt2.setDate(10, rs.getDate("sys_effective_dt"));
-                            stmt2.setDate(11, rs.getDate("sys_expiration_dt"));
-                            stmt2.setDate(12, rs.getDate("business_effective_dt"));
-                            stmt2.setDate(13, rs.getDate("business_expiration_dt"));
-                            stmt2.setString(14, rs.getString("app_cd"));
-                            stmt2.setBytes(15, rs.getBytes("test_data_bin"));
-                            stmt2.setBytes(16, rs.getBytes("notes_bin"));
-                            stmt2.executeUpdate();
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, rs.getString("n_cube_nm"));
+                            insert.setBytes(3, rs.getBytes("cube_value_bin"));
+                            insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+                            insert.setDate(5, new java.sql.Date(System.currentTimeMillis()));
+                            insert.setString(6, rs.getString("create_hid"));
+                            insert.setString(7, rs.getString("update_hid"));
+                            insert.setString(8, newSnapVer);
+                            insert.setString(9, ReleaseStatus.SNAPSHOT.name());
+                            insert.setDate(10, rs.getDate("sys_effective_dt"));
+                            insert.setDate(11, rs.getDate("sys_expiration_dt"));
+                            insert.setDate(12, rs.getDate("business_effective_dt"));
+                            insert.setDate(13, rs.getDate("business_expiration_dt"));
+                            insert.setString(14, rs.getString("app_cd"));
+                            insert.setBytes(15, rs.getBytes("test_data_bin"));
+                            insert.setBytes(16, rs.getBytes("notes_bin"));
+                            insert.executeUpdate();
                         }
                         return count;
                     }

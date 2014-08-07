@@ -13,6 +13,8 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -290,6 +292,8 @@ public class TestAxis
         axis.setMultiMatch(true);
         assertTrue(axis.isMultiMatch());
         assertNotNull(axis.toString());
+        axis.setMultiMatch(true);
+        assertTrue(axis.isMultiMatch());
     }
 
     @Test
@@ -303,6 +307,7 @@ public class TestAxis
         axis.deleteColumn("o");
         assertTrue(axis.getColumns().size() == 1);
         assertTrue(axis.idToCol.size() == 1);
+        assertNull(axis.deleteColumnById(9));
     }
 
     @Test
@@ -356,5 +361,65 @@ public class TestAxis
         {
             assertTrue(e instanceof IllegalStateException);
         }
+    }
+
+    @Test
+    public void testMetaProperties() {
+        Axis c = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        assertNull(c.getMetaProperties().get("foo"));
+
+        c.clearMetaProperties();
+        c.setMetaProperty("foo", "bar");
+        assertEquals("bar", c.getMetaProperties().get("foo"));
+
+        c.clearMetaProperties();
+        assertNull(c.getMetaProperties().get("foo"));
+
+        c.clearMetaProperties();
+        Map map = new HashMap();
+        map.put("BaZ", "qux");
+
+        c.addMetaProperties(map);
+        assertEquals("qux", c.getMetaProperties().get("baz"));
+    }
+
+    @Test
+    public void convertStringToDiscreteValue()
+    {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+
+        try
+        {
+            axis.convertStringToDiscreteValue(null, AxisValueType.DOUBLE);
+            fail();
+        } catch (IllegalArgumentException ignore)
+        {
+        }
+
+        try
+        {
+            axis.convertStringToDiscreteValue(null, AxisValueType.BIG_DECIMAL);
+            fail();
+        } catch (IllegalArgumentException ignore)
+        {
+        }
+
+        try
+        {
+            axis.convertStringToDiscreteValue(null, AxisValueType.COMPARABLE);
+            fail();
+        } catch (IllegalArgumentException ignore)
+        {
+        }
+
+
+    }
+
+    @Test
+    public void testGetString() {
+
+        assertEquals("1", Axis.getString(1));
+        assertEquals("true", Axis.getString(true));
+        assertSame("foo", Axis.getString("foo"));
     }
 }

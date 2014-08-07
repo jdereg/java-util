@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonReader;
 
@@ -1044,6 +1045,35 @@ public class Axis
         return defaultCol;
     }
 
+    List<Column> getRuleColumnsStartingAt(String ruleName)
+    {
+        if (StringUtilities.isEmpty(ruleName))
+        {
+            return getColumns();
+        }
+        List<Column> cols = new ArrayList<>();
+        boolean found = false;
+
+        for (Column col : getColumns())
+        {
+            if (ruleName.equalsIgnoreCase((String) col.getMetaProperties().get(Column.NAME)))
+            {
+                found = true;
+            }
+
+            if (found)
+            {
+                cols.add(col);
+            }
+        }
+
+        if (cols.isEmpty())
+        {
+            throw new IllegalArgumentException("Attempting to locate rule name '" + ruleName + "' on axis '" + name + "'.  Not found");
+        }
+        return cols;
+    }
+
     /**
      * Locate the column (AvisValue) along an axis.
      * @param value Comparable - A value that can be checked against the axis
@@ -1074,6 +1104,14 @@ public class Axis
         else if (type == AxisType.NEAREST)
         {   // The NEAREST axis type must be searched linearly O(n)
             pos = findNearest(promotedValue);
+        }
+        else if (type == AxisType.RULE)
+        {
+            if (!(promotedValue instanceof String))
+            {
+                throw new IllegalArgumentException("A column on a rule axis can only be located by the 'name' attribute, axis: " + name);
+            }
+            pos = findRuleByName((String)promotedValue);
         }
         else
         {
@@ -1163,11 +1201,25 @@ public class Axis
         return savePos;
     }
 
+    private int findRuleByName(final String name)
+    {
+        int pos = 0;
+
+        for (Column column : getColumnsWithoutDefault())
+        {
+            if (name.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
+            {
+                return pos;
+            }
+            pos++;
+        }
+        return -1;
+    }
+
     /**
      * Ensure that the passed in range does not overlap an existing Range on this
-     * 'Range-type' axis.  This method is only called in non-multiMatch mode.
-     * Test low range limit to see if it is valid.  Axis is already a RANGE type
-     * before this method is called.
+     * 'Range-type' axis.  Test low range limit to see if it is valid.
+     * Axis is already a RANGE type before this method is called.
      * @param value Range (value) that is intended to be a new low range limit.
      * @return true if the Range overlaps this axis, false otherwise.
      */

@@ -466,15 +466,9 @@ DELIMITER ;
     @Test
     public void testCreateCubeWithSqlException() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?")).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(false);
-
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?", false);
         when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenThrow(SQLException.class);
+
         try
         {
             NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
@@ -487,14 +481,8 @@ DELIMITER ;
     public void testReleaseCubesWithCubeThatExistsAlready() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
 
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?")).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(true);
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
 
-        //when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenThrow(SQLException.class);
         try
         {
             NCubeManager.releaseCubes(c, APP_ID, "0.1.0");
@@ -507,12 +495,7 @@ DELIMITER ;
     public void testReleaseCubesWithCubeWithSqlException() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
 
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?")).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(false);
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
 
         when(c.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
         try
@@ -527,14 +510,7 @@ DELIMITER ;
     public void testChangeVersionWhenCubeAlreadyExists() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
 
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?")).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(true);
-
-        //when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenThrow(SQLException.class);
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
         try
         {
             NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
@@ -547,12 +523,7 @@ DELIMITER ;
     public void testChangeVersionValueWithCubeWithSqlException() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
 
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?")).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(false);
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
 
         when(c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
         try
@@ -560,6 +531,60 @@ DELIMITER ;
             NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
             fail();
         } catch(RuntimeException e) {
+        }
+    }
+
+    private Connection getMockConnectionWithExistenceCheck(String query, boolean ret) throws SQLException
+    {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(query)).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(ret);
+        return c;
+    }
+
+    @Test
+    public void testRenameCubeThatThrowsSQLEXception() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = mock(Connection.class);
+
+        when(c.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testRenameWithMatchingNames() throws Exception {
+        Connection c = mock(Connection.class);
+        try
+        {
+            NCubeManager.renameCube(c, "foo", "foo", APP_ID, "0.1.0");
+            fail();
+        } catch(IllegalArgumentException e) {
+        }
+    }
+
+    @Test
+    public void testRenameCubeThatDoesNotExists() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
+
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
+        when(ps.executeUpdate()).thenReturn(0);
+        try
+        {
+            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
+            fail();
+        } catch(IllegalArgumentException e) {
         }
     }
 

@@ -1030,6 +1030,7 @@ public class NCubeManager
         }
     }
 
+
     public static boolean renameCube(Connection connection, String oldName, String newName, String app, String version)
     {
         validate(connection, app, version);
@@ -1058,7 +1059,7 @@ public class NCubeManager
                 cubeList.remove(makeCacheKey(oldName, version));
                 return true;
             }
-            catch (IllegalStateException e)
+            catch (IllegalArgumentException e)
             {
                 throw e;
             }

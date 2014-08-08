@@ -21,9 +21,9 @@
             "hasDefault":false,
             "preferredOrder":1,
             "columns":[
-                { "id":10, "type":"exp", "value":"input.weight < 100" },
-                { "id":20, "type":"exp", "value":"input.weight < 200" },
-                { "id":30, "type":"exp", "value":"input.weight >= 200" }
+                { "id":10, "name":"light", "type":"exp", "value":"input.weight < 100" },
+                { "id":20, "name":"medium", "type":"exp", "value":"input.weight < 200" },
+                { "id":30, "name":"heavy", "type":"exp", "value":"input.weight >= 200" }
             ]
         }
     ],

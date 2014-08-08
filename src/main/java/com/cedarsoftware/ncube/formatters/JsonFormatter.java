@@ -184,7 +184,6 @@ public class JsonFormatter implements NCubeFormatter
         //  optional inputs that can use defaults
         writeAttribute("preferredOrder", axis.getColumnOrder(), true);
         writeAttribute("hasDefault", axis.hasDefaultColumn(), true);
-        writeAttribute("multiMatch", axis.isMultiMatch(), true);
 
         if (axis.getMetaProperties().size() > 0)
         {

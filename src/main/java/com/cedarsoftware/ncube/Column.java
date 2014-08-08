@@ -46,6 +46,7 @@ public class Column implements Comparable<Comparable>
 	private Comparable value;
     Map<String, Object> metaProps = null;
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    public static final String NAME = "name";
 
     /**
      * 2nd argument is there to prevent this constructor from matching constructor that takes only Comparable.

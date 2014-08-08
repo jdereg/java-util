@@ -9,12 +9,11 @@
                 "valueType":"LONG",
                 "hasDefault":true,
                 "preferredOrder":1,
-                "multiMatch":true,
                 "columns":
                     [
                         {"id":1, "value":[0,18]},
-                        {"id":2, "value":[10,25]},
-                        {"id":3, "value":[20,40]}
+                        {"id":2, "value":[18,25]},
+                        {"id":3, "value":[25,40]}
                     ]
             },
             {
@@ -23,7 +22,6 @@
                 "valueType":"STRING",
                 "hasDefault":false,
                 "preferredOrder":1,
-                "multiMatch":false,
                 "columns":
                     [
                         {"id":10, "value":"CA"},

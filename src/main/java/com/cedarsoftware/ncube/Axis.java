@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonReader;
 
@@ -58,7 +59,6 @@ public class Axis
     private final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
-    private boolean multiMatch = false;
     private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
     Map<String, Object> metaProps = null;
 
@@ -78,20 +78,13 @@ public class Axis
 	}
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
-    {
-        this(name, type, valueType, hasDefault, order, false);
-    }
-
-	public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, boolean multiMatch)
 	{
 		this.name = name;
 		this.type = type;
         this.preferredOrder = order;
 		this.valueType = valueType;
-        this.multiMatch = multiMatch;
         if (type == AxisType.RULE)
         {
-            this.multiMatch = true;
             if (order == SORTED)
             {
                 throw new IllegalArgumentException("RULE axis '" + name + "' cannot be set to SORTED");
@@ -178,12 +171,7 @@ public class Axis
      */
     boolean hasScaffolding()
     {
-        return type == AxisType.SET && !multiMatch;
-    }
-
-    public boolean isMultiMatch()
-    {
-        return multiMatch;
+        return type == AxisType.SET;
     }
 
     /**
@@ -192,20 +180,6 @@ public class Axis
     public Column getColumnById(long colId)
     {
         return idToCol.get(colId);
-    }
-
-    /**
-     * Turn on multiMatch for this axis.
-     * @param state boolean true turns on multiMatch, false turns it off.
-     */
-    public void setMultiMatch(boolean state)
-    {
-        if (state == multiMatch)
-        {
-            return;
-        }
-        multiMatch = state;
-        buildScaffolding();
     }
 
     void buildScaffolding()
@@ -276,9 +250,6 @@ public class Axis
         s.append("\n");
         s.append("  preferred Order: ");
         s.append(getColumnOrder());
-        s.append("\n");
-        s.append("  multiMatch: ");
-        s.append(multiMatch);
         s.append("\n");
         for (Comparable value : columns)
         {
@@ -355,7 +326,7 @@ public class Axis
             else if (type == AxisType.RANGE)
             {
                 Range range = (Range)v;
-                if (!multiMatch && doesOverlap(range))
+                if (doesOverlap(range))
                 {
                     throw new AxisOverlapException("Passed in Range overlaps existing Range on axis '" + name + "'");
                 }
@@ -363,7 +334,7 @@ public class Axis
             else if (type == AxisType.SET)
             {
                 RangeSet set = (RangeSet)v;
-                if (!multiMatch && doesOverlap(set))
+                if (doesOverlap(set))
                 {
                     throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis '" + name + "'");
                 }
@@ -1074,6 +1045,35 @@ public class Axis
         return defaultCol;
     }
 
+    List<Column> getRuleColumnsStartingAt(String ruleName)
+    {
+        if (StringUtilities.isEmpty(ruleName))
+        {
+            return getColumns();
+        }
+        List<Column> cols = new ArrayList<>();
+        boolean found = false;
+
+        for (Column col : getColumns())
+        {
+            if (ruleName.equalsIgnoreCase((String) col.getMetaProperties().get(Column.NAME)))
+            {
+                found = true;
+            }
+
+            if (found)
+            {
+                cols.add(col);
+            }
+        }
+
+        if (cols.isEmpty())
+        {
+            throw new IllegalArgumentException("Attempting to locate rule name '" + ruleName + "' on axis '" + name + "'.  Not found");
+        }
+        return cols;
+    }
+
     /**
      * Locate the column (AvisValue) along an axis.
      * @param value Comparable - A value that can be checked against the axis
@@ -1105,6 +1105,14 @@ public class Axis
         {   // The NEAREST axis type must be searched linearly O(n)
             pos = findNearest(promotedValue);
         }
+        else if (type == AxisType.RULE)
+        {
+            if (!(promotedValue instanceof String))
+            {
+                throw new IllegalArgumentException("A column on a rule axis can only be located by the 'name' attribute, axis: " + name);
+            }
+            pos = findRuleByName((String)promotedValue);
+        }
         else
         {
             throw new IllegalArgumentException("Axis type '" + type + "' added but no code supporting it.");
@@ -1116,69 +1124,6 @@ public class Axis
         }
 
         return defaultCol;
-    }
-
-    /**
-     * In the case of a multiMatch axis, return all columns that match.
-     */
-    List<Column> findColumns(Comparable value)
-    {
-        List<Column> cols = new ArrayList<>();
-        if (value == null)
-        {
-            if (defaultCol != null)
-            {
-                cols.add(defaultCol);
-                return cols;
-            }
-            throw new IllegalArgumentException("'null' passed to axis '" + name + "' which does not have a default column");
-        }
-
-        final Comparable promotedValue = promoteValue(value);
-
-        if (multiMatch)
-        {
-            if (type == AxisType.SET)
-            {   // Linearly scan all columns, because multiMatch is true
-                for (Column column : getColumnsWithoutDefault())
-                {
-                    RangeSet set = (RangeSet) column.getValue();
-                    if (set.contains(promotedValue))
-                    {
-                        cols.add(column);
-                    }
-                }
-            }
-            else if (type == AxisType.RANGE)
-            {   // Linearly scan all columns, because multiMatch is true
-                for (Column column : getColumnsWithoutDefault())
-                {
-                    Range range = (Range) column.getValue();
-                    if (range.isWithin(promotedValue) == 0)
-                    {
-                        cols.add(column);
-                    }
-                }
-            }
-            else if (type == AxisType.DISCRETE || type == AxisType.NEAREST)
-            {
-                cols.add(findColumn(promotedValue));
-            }
-
-            if (cols.isEmpty() && hasDefaultColumn())
-            {   // Add in default, but only if no matches occurred.
-                cols.add(defaultCol);
-            }
-        }
-        else
-        {
-            Column col = findColumn(promotedValue);
-            if (col != null)
-            {
-                cols.add(col);
-            }
-        }
-        return cols;
     }
 
     private Column findOnSetAxis(final Comparable promotedValue)
@@ -1256,11 +1201,25 @@ public class Axis
         return savePos;
     }
 
+    private int findRuleByName(final String name)
+    {
+        int pos = 0;
+
+        for (Column column : getColumnsWithoutDefault())
+        {
+            if (name.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
+            {
+                return pos;
+            }
+            pos++;
+        }
+        return -1;
+    }
+
     /**
      * Ensure that the passed in range does not overlap an existing Range on this
-     * 'Range-type' axis.  This method is only called in non-multiMatch mode.
-     * Test low range limit to see if it is valid.  Axis is already a RANGE type
-     * before this method is called.
+     * 'Range-type' axis.  Test low range limit to see if it is valid.
+     * Axis is already a RANGE type before this method is called.
      * @param value Range (value) that is intended to be a new low range limit.
      * @return true if the Range overlaps this axis, false otherwise.
      */

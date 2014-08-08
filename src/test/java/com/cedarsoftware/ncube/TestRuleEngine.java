@@ -85,11 +85,9 @@ public class TestRuleEngine
     {
         NCube n1 = NCubeManager.getNCubeFromResource("multiRule.json");
         Map coord = new HashMap();
-        coord.put("age", 17);
-        coord.put("weight", 99);
-        boolean b = n1.containsCell(coord, false);
-        assertTrue(b);
-        b = n1.containsCell(coord, true);
+        coord.put("condition1", "youngster");
+        coord.put("condition2", "light");
+        boolean b = n1.containsCell(coord);
         assertTrue(b);
 
         List<Map<String, Object>> list = n1.getCoordinatesForCells();
@@ -462,46 +460,27 @@ public class TestRuleEngine
         NCube ncube = NCubeManager.getNCubeFromResource("containsCellRule.json");
 
         Map coord = new HashMap();
-        coord.put("gender", "Male");
+        coord.put("condition", "Male");
+        assertTrue(ncube.containsCell(coord, true));
+        coord.put("condition", "Female");
         assertTrue(ncube.containsCell(coord));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCell(coord));
 
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, true));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, true));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, false));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, false));
-
-        coord.put("gender", "GI Joe");
-        assertFalse(ncube.containsCell(coord));
-        assertFalse(ncube.containsCellValue(coord, false));
+        try
+        {
+            coord.put("condition", "GI Joe");
+            ncube.containsCell(coord);
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        {
+        }
 
         ncube.setDefaultCellValue(null);
 
-        coord.put("gender", "Male");
+        coord.put("condition", "Male");
         assertFalse(ncube.containsCell(coord));
-        coord.put("gender", "Female");
+        coord.put("condition", "Female");
         assertTrue(ncube.containsCell(coord));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, true));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, true));
-
-        coord.put("gender", "Male");
-        assertFalse(ncube.containsCellValue(coord, false));
-        coord.put("gender", "Female");
-        assertTrue(ncube.containsCellValue(coord, false));
-
-        coord.put("gender", "GI Joe");
-        assertFalse(ncube.containsCell(coord));
-
-        assertFalse(ncube.containsCellValue(coord, false));
     }
 
     @Test

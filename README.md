@@ -86,6 +86,8 @@ n-cube can be used free for personal use.
 
 Version History
 * 2.9.2
+ * jump() API added to expression cells.  Call jump() restarts the rule execution for the currently executing cube.  Calling jump([condition:ruleName, condition2:ruleName2, ...]) permits restarting the rule execution on a particular rule for each rule axis specified.
+ * rule execution: If a rule axis is specified in the input coordinate (it is optional), then the associated value is expected to be a rule name (the 'name' field on a Column).  Execution for the rule axis will start at the specified rule.
  * Added new API to n-cube to fetch a List containing all required coordinates for each cell.  The coordinates are in terms of variable key names, not column ids.  This is useful for the n-cube Editor (GUI), allowing it to generate the Test Input coordinates for any cube.
  * N-cube hashcode() API was dramatically simplified.
  * Updated to use json-io 2.7.0

@@ -2895,6 +2895,8 @@ public class TestNCube
         coord.put("state", "ZZ");
         val = (String) n1.getCell(coord);
         assertEquals("1 WY", val);
+
+        assertNull(n1.getAxisFromColumnId(100));
     }
 
     @Test
@@ -4815,6 +4817,11 @@ public class TestNCube
             assertTrue(coordinate.containsKey("code"));
             assertTrue(ncube.getCell(coordinate) instanceof Object[]);
         }
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testFromJsonException() {
+        NCube.fromJson(null);
     }
 
     // ---------------------------------------------------------------------------------

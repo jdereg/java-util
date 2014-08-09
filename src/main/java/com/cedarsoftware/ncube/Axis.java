@@ -613,7 +613,7 @@ public class Axis
 
             case RANGE:
                 Matcher matcher = rangePattern.matcher(value);
-                if (matcher.find())
+                if (matcher.matches())
                 {
                     String one = matcher.group(1);
                     String two = matcher.group(2);
@@ -638,11 +638,19 @@ public class Axis
                             {
                                 throw new IllegalArgumentException("Set Ranges must have two values only, range length: " + rangeValues.length + ", axis: " + name);
                             }
+                            if (!(rangeValues[0] instanceof Comparable) || !(rangeValues[1] instanceof Comparable))
+                            {
+                                throw new IllegalArgumentException("Set Ranges must have two Comparable values, axis: " + name);
+                            }
                             Range range = new Range((Comparable)rangeValues[0], (Comparable)rangeValues[1]);
                             set.add(range);
                         }
                         else
                         {
+                            if (!(pt instanceof Comparable))
+                            {
+                                throw new IllegalArgumentException("Set values must implement Comparable, axis: " + name);
+                            }
                             set.add((Comparable)pt);
                         }
                     }
@@ -660,7 +668,7 @@ public class Axis
                 return new GroovyExpression(value, null);
 
             default:
-                throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to process value: " + value);
+                throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to parse value: " + value);
         }
     }
 
@@ -1118,10 +1126,9 @@ public class Axis
 
     private Column findOnSetAxis(final Comparable promotedValue)
 	{
-        Column col = discreteToCol.get(promotedValue);
         if (discreteToCol.containsKey(promotedValue))
         {
-            return col;
+            return discreteToCol.get(promotedValue);
         }
 
         int pos = binarySearchRanges(promotedValue);
@@ -1137,8 +1144,8 @@ public class Axis
     {
         return Collections.binarySearch(rangeToCol, promotedValue, new Comparator()
         {
-            public int compare(Object r1, Object r2)
-            {
+            public int compare(Object r1, Object key)
+            {   // key not used as promoteValue, already of type Comparable, is the exact same thing, and already final
                 RangeToColumn rc = (RangeToColumn) r1;
                 Range range = rc.getRange();
                 return -1 * range.isWithin(promotedValue);
@@ -1151,8 +1158,8 @@ public class Axis
         List cols = getColumnsWithoutDefault();
 		return Collections.binarySearch(cols, promotedValue, new Comparator()
 		{
-			public int compare(Object o1, Object o2)
-			{
+			public int compare(Object o1, Object key)
+			{   // key not used as promoteValue, already of type Comparable, is the exact same thing, and already final
 				Column column = (Column) o1;
 
 				if (type == AxisType.DISCRETE)

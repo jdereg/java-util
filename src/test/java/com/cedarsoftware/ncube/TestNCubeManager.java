@@ -16,6 +16,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -205,6 +206,41 @@ DELIMITER ;
         return ncube;
     }
 
+    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
+    //adding in a second duplicate cube with all the same parameters.
+    @Test
+    public void testUpdateNotesWithDuplicateCubeUpdated() throws Exception {
+        Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenReturn(ps);
+        when(ps.executeUpdate()).thenReturn(2);
+        try
+        {
+            NCubeManager.updateNotes(c, APP_ID, "foo", "0.1.0", "notes");
+            fail();
+        } catch(IllegalStateException e) {
+        }
+    }
+
+    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
+    //adding in a second duplicate cube with all the same parameters.
+    @Test
+    public void testUpdateNotesWithSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenThrow(SQLException.class);
+        when(ps.executeUpdate()).thenReturn(2);
+        try
+        {
+            NCubeManager.updateNotes(c, APP_ID, "foo", "0.1.0", "notes");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+
     @Test
     public void testLoadCubes() throws Exception
     {
@@ -264,6 +300,452 @@ DELIMITER ;
         }
     }
 
+    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
+    //adding in a second duplicate cube with all the same parameters.
+    @Test
+    public void testLoadCubeThatReturnsTwoCubes() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+
+        Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?")).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getBytes("cube_value_bin")).thenReturn("{\"ncube\":\"containsCell\",\"defaultCellValue\":\"foo\",\"x\":\"y\",\"axes\":[{\"name\":\"Gender\",\"type\":\"DISCRETE\",\"valueType\":\"STRING\",\"hasDefault\":false, \"preferredOrder\":0,\"columns\":[{\"id\":\"Female\",\"name\":\"Jane\",\"age\":36},{\"id\":\"Male\"}],\"feet\":2}],\"cells\":[{\"id\":[\"Female\"],\"value\":\"bar\"}]}\n".getBytes("UTF-8"));
+        try
+        {
+            NCubeManager.loadCube(c, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, true);
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testLoadCubeWithException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+
+
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.loadCube(c, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, true);
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testLoadCubeWithTestData() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+
+
+        Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?")).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true).thenReturn(false);
+        when(rs.getBytes("cube_value_bin")).thenReturn("{\"ncube\":\"containsCell\",\"defaultCellValue\":\"foo\",\"x\":\"y\",\"axes\":[{\"name\":\"Gender\",\"type\":\"DISCRETE\",\"valueType\":\"STRING\",\"hasDefault\":false, \"preferredOrder\":0,\"columns\":[{\"id\":\"Female\",\"name\":\"Jane\",\"age\":36},{\"id\":\"Male\"}],\"feet\":2}],\"cells\":[{\"id\":[\"Female\"],\"value\":\"bar\"}]}\n".getBytes("UTF-8"));
+        when(rs.getBytes("test_data_bin")).thenReturn("foo".getBytes("UTF-8"));
+
+        NCube result = NCubeManager.loadCube(c, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, true);
+        assertEquals("foo", result.getTestData());
+        assertEquals("containsCell", result.getName());
+    }
+
+    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
+    //adding in a second duplicate cube with all the same parameters.
+    @Test
+    public void testGetReferencedCubesThatLoadsTwoCubes() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+
+
+        Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?")).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true).thenReturn(true);
+        when(rs.getBytes("cube_value_bin")).thenReturn("{\"ncube\":\"containsCell\",\"defaultCellValue\":\"foo\",\"x\":\"y\",\"axes\":[{\"name\":\"Gender\",\"type\":\"DISCRETE\",\"valueType\":\"STRING\",\"hasDefault\":false, \"preferredOrder\":0,\"columns\":[{\"id\":\"Female\",\"name\":\"Jane\",\"age\":36},{\"id\":\"Male\"}],\"feet\":2}],\"cells\":[{\"id\":[\"Female\"],\"value\":\"bar\"}]}\n".getBytes("UTF-8"));
+        try
+        {
+            Set<String> set = new HashSet<String>();
+            NCubeManager.getReferencedCubeNames(c, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, set);
+            fail();
+        } catch(IllegalStateException e) {
+        }
+    }
+
+
+    @Test
+    public void testGetAppNamesWithException() throws Exception {
+        Connection c = mock(Connection.class);
+
+        when(c.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.getAppNames(c, new Date());
+            fail();
+        } catch (RuntimeException e) {
+        }
+
+        //  Test with null date, too.  Auto creates current date.
+        try
+        {
+            NCubeManager.getAppNames(c, null);
+            fail();
+        } catch (RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testGetReferencedCubeNamesWithSqlException() throws Exception {
+        Connection c = mock(Connection.class);
+
+        when(c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
+        try
+        {
+            Set<String> set = new HashSet<String>();
+            NCubeManager.getReferencedCubeNames(c, APP_ID, "cubeName", "0.1.0", ReleaseStatus.SNAPSHOT.name(), null, set);
+            fail();
+        } catch (RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testGetNCubesWithSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+
+        when(c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, update_dt, " +
+                "create_hid, update_hid, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.getNCubes(c, "test", "0.1.0", ReleaseStatus.RELEASE.name(), null, null);
+            fail();
+        } catch (RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testUpdateCubeWithSqlException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
+
+        try
+        {
+            NCubeManager.updateCube(c, APP_ID, ncube, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testCreateCubeWithWrongUpdateCount() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?", false);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenReturn(ps);
+        when(ps.executeUpdate()).thenReturn(0);
+        try
+        {
+            NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testUpdateCubeWithWrongUpdateCount() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
+        when(ps.executeUpdate()).thenReturn(0);
+        try
+        {
+            NCubeManager.updateCube(c, APP_ID, ncube, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testGetNotesWithSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement("SELECT notes_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.getNotes(c, APP_ID, "foo", "0.1.0", null);
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testGetTestDataWithSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.getTestData(c, APP_ID, "foo", "0.1.0", null);
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testUpdateTestDataWithSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    //  Impossible to test without mocks
+    @Test
+    public void testUpdateTestDataWithDuplicateCubes() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
+        when(ps.executeUpdate()).thenReturn(2);
+        try
+        {
+            NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
+            fail();
+        } catch(IllegalStateException e) {
+        }
+    }
+
+    @Test
+    public void testGetAppVersionsWithSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement("SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? and status_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.getAppVersions(c, APP_ID, ReleaseStatus.RELEASE.name(), null);
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testCreateCubeWithSqlException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?", false);
+        when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenThrow(SQLException.class);
+
+        try
+        {
+            NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testReleaseCubesWithCubeThatExistsAlready() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
+
+        try
+        {
+            NCubeManager.releaseCubes(c, APP_ID, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testReleaseCubesWithCubeWithSqlException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
+
+        when(c.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.releaseCubes(c, APP_ID, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testChangeVersionWhenCubeAlreadyExists() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
+        try
+        {
+            NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testChangeVersionValueWithCubeWithSqlException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
+
+        when(c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    private Connection getMockConnectionWithExistenceCheck(String query, boolean ret) throws SQLException
+    {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(query)).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(ret);
+        return c;
+    }
+
+    @Test
+    public void testDeleteCubeWithSQLExceptino() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = mock(Connection.class);
+
+        when(c.prepareStatement("DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.deleteCube(c, APP_ID, "foo", "0.1.0", true);
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testRenameCubeThatThrowsSQLEXception() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = mock(Connection.class);
+
+        when(c.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
+        try
+        {
+            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
+            fail();
+        } catch(RuntimeException e) {
+        }
+    }
+
+    @Test
+    public void testRenameWithMatchingNames() throws Exception {
+        Connection c = mock(Connection.class);
+        try
+        {
+            NCubeManager.renameCube(c, "foo", "foo", APP_ID, "0.1.0");
+            fail();
+        } catch(IllegalArgumentException e) {
+        }
+    }
+
+    @Test
+    public void testRenameCubeThatDoesNotExists() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
+
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(c.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
+        when(ps.executeUpdate()).thenReturn(0);
+        try
+        {
+            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
+            fail();
+        } catch(IllegalArgumentException e) {
+        }
+    }
+
+
+
     @Test
     public void testBadCommandCellCommand() throws Exception
     {
@@ -312,16 +794,9 @@ DELIMITER ;
         }
 
         Connection conn = getConnection();
-        try
-        {
-            NCubeManager.createCube(conn, APP_ID, continentCounty, "1.0.0");
-            NCubeManager.createCube(conn, APP_ID, usa, "1.0.0");
-            NCubeManager.createCube(conn, APP_ID, canada, "1.0.0");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("save"));
-        }
+        NCubeManager.createCube(conn, APP_ID, continentCounty, "1.0.0");
+        NCubeManager.createCube(conn, APP_ID, usa, "1.0.0");
+        NCubeManager.createCube(conn, APP_ID, canada, "1.0.0");
 
         assertTrue(NCubeManager.getCachedNCubes().size() == 3);
         initManager();
@@ -919,5 +1394,11 @@ DELIMITER ;
         }
         catch (Exception e)
         { }
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testGetNCubesFromResourceException() throws Exception
+    {
+        NCubeManager.getNCubesFromResource(null);
     }
 }

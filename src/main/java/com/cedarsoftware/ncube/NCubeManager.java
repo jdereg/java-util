@@ -376,7 +376,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
-    private static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate, boolean includeTests)
+    public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate, boolean includeTests)
     {
         validate(connection, app, version);
         validateCubeName(name);
@@ -412,7 +412,12 @@ public class NCubeManager
 
 
                         if (includeTests) {
-                            ncube.setTestData(new String(rs.getBytes("test_data_bin"), "UTF-8"));
+                            byte[] bytes = rs.getBytes("test_data_bin");
+
+                            if (bytes != null)
+                            {
+                                ncube.setTestData(new String(bytes, "UTF-8"));
+                            }
                         }
 
                         if (rs.next())
@@ -552,27 +557,29 @@ public class NCubeManager
             stmt.setDate(4, systemDate);
             stmt.setString(5, version);
             stmt.setString(6, status);
-            ResultSet rs = stmt.executeQuery();
 
-            if (rs.next())
+            try (ResultSet rs = stmt.executeQuery())
             {
-                byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                String json = new String(jsonBytes, "UTF-8");
-                NCube ncube = ncubeFromJson(json);
-
                 if (rs.next())
                 {
-                    throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
-                }
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    NCube ncube = ncubeFromJson(json);
 
-                Set<String> subCubeList = ncube.getReferencedCubeNames();
-                refs.addAll(subCubeList);
-
-                for (String cubeName : subCubeList)
-                {
-                    if (!refs.contains(cubeName))
+                    if (rs.next())
                     {
-                        getReferencedCubeNames(connection, app, cubeName, version, status, sysDate, refs);
+                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
+                    }
+
+                    Set<String> subCubeList = ncube.getReferencedCubeNames();
+                    refs.addAll(subCubeList);
+
+                    for (String cubeName : subCubeList)
+                    {
+                        if (!refs.contains(cubeName))
+                        {
+                            getReferencedCubeNames(connection, app, cubeName, version, status, sysDate, refs);
+                        }
                     }
                 }
             }
@@ -814,7 +821,6 @@ public class NCubeManager
                     insert.setString(2, app);
                     insert.setString(3, ncube.getName());
                     String json = new JsonFormatter().format(ncube);
-                    //                    String json = JsonWriter.objectToJson(ncube);
                     insert.setBytes(4, json.getBytes("UTF-8"));
                     insert.setString(5, version);
                     java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
@@ -861,7 +867,7 @@ public class NCubeManager
             {
                 if (doesCubeExist(connection, app, null, version, ReleaseStatus.RELEASE.toString(), null))
                 {
-                    throw new IllegalArgumentException("A RELEASE version " + version + " already exists. Have system admin renumber your SNAPSHOT version.");
+                    throw new IllegalStateException("A RELEASE version " + version + " already exists. Have system admin renumber your SNAPSHOT version.");
                 }
 
                 try (PreparedStatement statement = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
@@ -1024,6 +1030,7 @@ public class NCubeManager
         }
     }
 
+
     public static boolean renameCube(Connection connection, String oldName, String newName, String app, String version)
     {
         validate(connection, app, version);
@@ -1052,7 +1059,7 @@ public class NCubeManager
                 cubeList.remove(makeCacheKey(oldName, version));
                 return true;
             }
-            catch (IllegalStateException e)
+            catch (IllegalArgumentException e)
             {
                 throw e;
             }

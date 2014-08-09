@@ -1,0 +1,65 @@
+{
+    "ncube":"basicJumpStart2D",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "name":"a", "id":1, "type":"exp", "value":"output.a='a'; input.letter=='a'" },
+                { "name":"b", "id":2, "type":"exp", "value":"output.b='b'; input.letter=='b'" },
+                { "name":"c", "id":3, "type":"exp", "value":"output.c='c'; input.letter=='c'" },
+                { "name":"d", "id":4, "type":"exp", "value":"output.d='d'; input.letter=='d'" },
+                { "name":"e", "id":5, "type":"exp", "value":"output.e='e'; input.letter=='e'" },
+                { "name":"f", "id":6, "type":"exp", "value":"output.f='f'; input.letter=='f'" },
+                { "name":"g", "id":7, "type":"exp", "value":"output.g='g'; input.letter=='g'" }
+            ]
+        },
+        {
+            "name":"condition2",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "name":"w", "id":11, "type":"exp", "value":"output.w='w'; input.column=='w'" },
+                { "name":"x", "id":22, "type":"exp", "value":"output.x='x'; input.column=='x'" },
+                { "name":"y", "id":33, "type":"exp", "value":"output.y='y'; input.column=='y'" },
+                { "name":"z", "id":44, "type":"exp", "value":"output.z='z'; input.column=='z'" }
+            ]
+        }
+    ],
+    "cells":[
+        {"id":[1, 11],"type":"exp","value":"output.word='alpha'; output.col='w'"},
+        {"id":[2, 11],"type":"exp","value":"output.word='bravo'; output.col='w'"},
+        {"id":[3, 11],"type":"exp","value":"output.word='charlie'; output.col='w'"},
+        {"id":[4, 11],"type":"exp","value":"output.word='delta'; output.col='w'"},
+        {"id":[5, 11],"type":"exp","value":"output.word='echo'; output.col='w'"},
+        {"id":[6, 11],"type":"exp","value":"output.word='foxtrot'; output.col='w'"},
+        {"id":[7, 11],"type":"exp","value":"output.word='golf'; output.col='w'"},
+        {"id":[1, 22],"type":"exp","value":"output.word='alpha'; output.col='x'"},
+        {"id":[2, 22],"type":"exp","value":"output.word='bravo'; output.col='x'"},
+        {"id":[3, 22],"type":"exp","value":"output.word='charlie'; output.col='x'"},
+        {"id":[4, 22],"type":"exp","value":"output.word='delta'; output.col='x'"},
+        {"id":[5, 22],"type":"exp","value":"output.word='echo'; output.col='x'"},
+        {"id":[6, 22],"type":"exp","value":"output.word='foxtrot'; output.col='x'"},
+        {"id":[7, 22],"type":"exp","value":"output.word='golf'; output.col='x'"},
+        {"id":[1, 33],"type":"exp","value":"output.word='alpha'; output.col='y'"},
+        {"id":[2, 33],"type":"exp","value":"output.word='bravo'; output.col='y'"},
+        {"id":[3, 33],"type":"exp","value":"output.word='charlie'; output.col='y'"},
+        {"id":[4, 33],"type":"exp","value":"output.word='delta'; output.col='y'"},
+        {"id":[5, 33],"type":"exp","value":"output.word='echo'; output.col='y'"},
+        {"id":[6, 33],"type":"exp","value":"output.word='foxtrot'; output.col='y'"},
+        {"id":[7, 33],"type":"exp","value":"output.word='golf'; output.col='y'"},
+        {"id":[1, 44],"type":"exp","value":"output.word='alpha'; output.col='z'"},
+        {"id":[2, 44],"type":"exp","value":"output.word='bravo'; output.col='z'"},
+        {"id":[3, 44],"type":"exp","value":"output.word='charlie'; output.col='z'"},
+        {"id":[4, 44],"type":"exp","value":"output.word='delta'; output.col='z'"},
+        {"id":[5, 44],"type":"exp","value":"output.word='echo'; output.col='z'"},
+        {"id":[6, 44],"type":"exp","value":"output.word='foxtrot'; output.col='z'"},
+        {"id":[7, 44],"type":"exp","value":"output.word='golf'; output.col='z'"}
+    ]
+}

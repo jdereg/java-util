@@ -2748,48 +2748,6 @@ public class TestNCube
     }
 
     @Test
-    public void testGetCellWithObject()
-    {
-        class Dto
-        {
-            private String months;
-            public String days;
-            public Set foo;    // not Comparable
-        }
-        ;
-
-        NCube<Object> ncube = new NCube<Object>("GetObjectTest");
-        ncube.addAxis(getShortMonthsOfYear());
-        ncube.addAxis(getShortDaysOfWeekAxis());
-
-        Dto dto = new Dto();
-        dto.months = "Jan";
-        dto.days = "Mon";
-        dto.foo = new HashSet();
-
-        ncube.setCellUsingObject("jan-mon", dto);
-        assertTrue("jan-mon".equals(ncube.getCellUsingObject(dto)));
-        assertTrue("jan-mon".equals(ncube.getCellUsingObject(dto, new HashMap())));
-
-        dto.months = "Dec";
-        dto.days = "Sun";
-        ncube.setCellUsingObject("dec-sun", dto);
-        assertTrue("dec-sun".equals(ncube.getCellUsingObject(dto)));
-
-        try
-        {
-            ncube.getCellUsingObject(null);
-            assertTrue("should throw exception", false);
-        }
-        catch (IllegalArgumentException expected)
-        {
-            assertTrue(expected.getMessage().contains("null"));
-            assertTrue(expected.getMessage().contains("not"));
-            assertTrue(expected.getMessage().contains("allowed"));
-        }
-    }
-
-    @Test
     public void testRenameAxis()
     {
         NCube<String> ncube = new NCube("RenameAxisTest");
@@ -4753,8 +4711,8 @@ public class TestNCube
         URL url = NCubeManager.class.getResource("/");
         urls.add(url.toString());
         urls.add("http://www.cedarsoftware.com");
-        NCubeManager.setBaseResourceUrls(urls, "file");
-        NCubeManager.setBaseResourceUrls(urls, "1.0.0");
+        NCubeManager.addBaseResourceUrls(urls, "file");
+        NCubeManager.addBaseResourceUrls(urls, "1.0.0");
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -4772,8 +4730,8 @@ public class TestNCube
         List urls = new ArrayList();
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
-        NCubeManager.setBaseResourceUrls(urls, "file");
-        NCubeManager.setBaseResourceUrls(urls, "1.0.0");
+        NCubeManager.addBaseResourceUrls(urls, "file");
+        NCubeManager.addBaseResourceUrls(urls, "1.0.0");
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
@@ -4820,8 +4778,35 @@ public class TestNCube
     }
 
     @Test(expected = RuntimeException.class)
-    public void testFromJsonException() {
+    public void testFromJsonException()
+    {
         NCube.fromJson(null);
+    }
+
+    @Test
+    public void testObjectToMap()
+    {
+        class dto
+        {
+            private Date when = new Date();
+            String fname = "Albert";
+            String lname = "Einstein";
+        }
+        Map coord = NCube.objectToMap(new dto());
+        assertTrue(coord.containsKey("fname"));
+        assertTrue(coord.containsKey("lname"));
+        assertTrue(coord.containsKey("when"));
+        assertEquals("Albert", coord.get("FName"));
+        assertEquals("Einstein", coord.get("LName"));
+        assertTrue(coord.get("when") instanceof Date);
+
+        try
+        {
+            NCube.objectToMap(null);
+            fail("should not make it here");
+        }
+        catch(Exception ignored)
+        { }
     }
 
     // ---------------------------------------------------------------------------------

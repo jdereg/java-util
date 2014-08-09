@@ -1,0 +1,31 @@
+{
+    "ncube":"basicJumpStart",
+    "ruleMode":true,
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "name":"a", "id":1, "type":"exp", "value":"output.a='a'; input.letter=='a'" },
+                { "name":"b", "id":2, "type":"exp", "value":"output.b='b'; input.letter=='b'" },
+                { "name":"c", "id":3, "type":"exp", "value":"output.c='c'; input.letter=='c'" },
+                { "name":"d", "id":4, "type":"exp", "value":"output.d='d'; input.letter=='d'" },
+                { "name":"e", "id":5, "type":"exp", "value":"output.e='e'; input.letter=='e'" },
+                { "name":"f", "id":6, "type":"exp", "value":"output.f='f'; input.letter=='f'" },
+                { "name":"g", "id":7, "type":"exp", "value":"output.g='g'; input.letter=='g'" }
+            ]
+        }
+    ],
+    "cells":[
+        {"id":[1],"type":"exp","value":"output.word='alpha'"},
+        {"id":[2],"type":"exp","value":"output.word='bravo'"},
+        {"id":[3],"type":"exp","value":"output.word='charlie'"},
+        {"id":[4],"type":"exp","value":"output.word='delta'"},
+        {"id":[5],"type":"exp","value":"output.word='echo'"},
+        {"id":[6],"type":"exp","value":"output.word='foxtrot'"},
+        {"id":[7],"type":"exp","value":"output.word='golf'"}
+    ]
+}

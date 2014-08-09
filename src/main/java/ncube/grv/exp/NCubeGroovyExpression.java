@@ -4,7 +4,6 @@ import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
-import com.cedarsoftware.util.CaseInsensitiveMap;
 
 import java.util.Map;
 
@@ -87,14 +86,6 @@ public class NCubeGroovyExpression
             throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting relative (@) reference to cell: " + coord.toString());
         }
         return cube.getCell(input, output);
-    }
-
-    /**
-     * Restart rule execution.  Must be executed within an n-cube with at least one rule axis.
-     */
-    public void jump()
-    {
-        jump(new CaseInsensitiveMap<>());
     }
 
     /**

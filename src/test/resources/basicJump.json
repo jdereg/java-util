@@ -12,7 +12,7 @@
                 { "name":"childRule", "id":1, "type":"exp", "value":"input.age < 18" },
                 { "name":"adultRule", "id":2, "type":"exp", "value":"input.age >= 18 && input.age <= 65" },
                 { "name":"geezerRule", "id":3, "type":"exp", "value":"input.age > 65" },
-                { "name":"thingRule", "id":4, "type":"exp", "value":"output.thing == null"}
+                { "name":"thingRule", "id":4, "type":"exp", "value":"output.thing == null;"}
             ]
         }
     ],
@@ -20,6 +20,6 @@
         {"id":[1],"type":"exp","value":"output.group = 'child'"},
         {"id":[2],"type":"exp","value":"output.group = 'adult'"},
         {"id":[3],"type":"exp","value":"output.group = 'geezer'"},
-        {"id":[4],"type":"exp","value":"output.thing = 'thang'; jump()"}
+        {"id":[4],"type":"exp","value":"output.thing = 'thang'; jump([:])"}
     ]
 }

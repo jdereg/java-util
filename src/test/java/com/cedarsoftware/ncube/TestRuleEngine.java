@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.CaseInsensitiveMap;
 import org.junit.After;
 import org.junit.Test;
 
@@ -511,7 +512,10 @@ public class TestRuleEngine
         input.put("age", 10);
         Map output = new HashMap();
         ncube.getCells(input, output);
+
         assertEquals("child", output.get("group"));
+        assertEquals("thang", output.get("thing"));
+
         Map ruleInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
         List rulesExecuted = (List) ruleInfo.get(RuleMetaKeys.RULES_EXECUTED);
         assertEquals(3, rulesExecuted.size());
@@ -537,49 +541,145 @@ public class TestRuleEngine
         assertEquals(1, ((List) stats.get(RuleMetaKeys.RULES_EXECUTED)).size());
 
         // Groovy style false
-        assertFalse(NCube.didRuleFire(null));
-        assertFalse(NCube.didRuleFire(false));
-        assertFalse(NCube.didRuleFire(Boolean.FALSE));
-        assertFalse(NCube.didRuleFire(new Boolean(false)));
-        assertFalse(NCube.didRuleFire((byte) 0));
-        assertFalse(NCube.didRuleFire((short) 0));
-        assertFalse(NCube.didRuleFire((int) 0));
-        assertFalse(NCube.didRuleFire((long) 0));
-        assertFalse(NCube.didRuleFire(0f));
-        assertFalse(NCube.didRuleFire(0d));
-        assertFalse(NCube.didRuleFire(BigInteger.ZERO));
-        assertFalse(NCube.didRuleFire(BigDecimal.ZERO));
-        assertFalse(NCube.didRuleFire(""));
-        assertFalse(NCube.didRuleFire(new HashMap()));
-        assertFalse(NCube.didRuleFire(new HashMap().keySet().iterator()));
-        assertFalse(NCube.didRuleFire(new ArrayList()));
-        assertFalse(NCube.didRuleFire(new ArrayList().iterator()));
-        assertFalse(NCube.didRuleFire(new Vector().elements()));
+        assertFalse(NCube.isTrue(null));
+        assertFalse(NCube.isTrue(false));
+        assertFalse(NCube.isTrue(Boolean.FALSE));
+        assertFalse(NCube.isTrue(new Boolean(false)));
+        assertFalse(NCube.isTrue((byte) 0));
+        assertFalse(NCube.isTrue((short) 0));
+        assertFalse(NCube.isTrue((int) 0));
+        assertFalse(NCube.isTrue((long) 0));
+        assertFalse(NCube.isTrue(0f));
+        assertFalse(NCube.isTrue(0d));
+        assertFalse(NCube.isTrue(BigInteger.ZERO));
+        assertFalse(NCube.isTrue(BigDecimal.ZERO));
+        assertFalse(NCube.isTrue(""));
+        assertFalse(NCube.isTrue(new HashMap()));
+        assertFalse(NCube.isTrue(new HashMap().keySet().iterator()));
+        assertFalse(NCube.isTrue(new ArrayList()));
+        assertFalse(NCube.isTrue(new ArrayList().iterator()));
+        assertFalse(NCube.isTrue(new Vector().elements()));
 
         // Groovy style true
-        assertTrue(NCube.didRuleFire(new Date()));
-        assertTrue(NCube.didRuleFire(true));
-        assertTrue(NCube.didRuleFire(Boolean.TRUE));
-        assertTrue(NCube.didRuleFire(new Boolean(true)));
-        assertTrue(NCube.didRuleFire((byte) 1));
-        assertTrue(NCube.didRuleFire((short) 1));
-        assertTrue(NCube.didRuleFire((int) 1));
-        assertTrue(NCube.didRuleFire((long) 1));
-        assertTrue(NCube.didRuleFire(1f));
-        assertTrue(NCube.didRuleFire(1d));
-        assertTrue(NCube.didRuleFire(BigInteger.ONE));
-        assertTrue(NCube.didRuleFire(BigDecimal.ONE));
-        assertTrue(NCube.didRuleFire("Yo"));
+        assertTrue(NCube.isTrue(new Date()));
+        assertTrue(NCube.isTrue(true));
+        assertTrue(NCube.isTrue(Boolean.TRUE));
+        assertTrue(NCube.isTrue(new Boolean(true)));
+        assertTrue(NCube.isTrue((byte) 1));
+        assertTrue(NCube.isTrue((short) 1));
+        assertTrue(NCube.isTrue((int) 1));
+        assertTrue(NCube.isTrue((long) 1));
+        assertTrue(NCube.isTrue(1f));
+        assertTrue(NCube.isTrue(1d));
+        assertTrue(NCube.isTrue(BigInteger.ONE));
+        assertTrue(NCube.isTrue(BigDecimal.ONE));
+        assertTrue(NCube.isTrue("Yo"));
         Map map = new HashMap();
         map.put("foo","bar");
-        assertTrue(NCube.didRuleFire(map));
-        assertTrue(NCube.didRuleFire(map.keySet().iterator()));
+        assertTrue(NCube.isTrue(map));
+        assertTrue(NCube.isTrue(map.keySet().iterator()));
         List list = new ArrayList();
         list.add(new Date());
-        assertTrue(NCube.didRuleFire(list));
-        assertTrue(NCube.didRuleFire(list.iterator()));
+        assertTrue(NCube.isTrue(list));
+        assertTrue(NCube.isTrue(list.iterator()));
         Vector v = new Vector();
         v.add(9);
-        assertTrue(NCube.didRuleFire(v.elements()));
+        assertTrue(NCube.isTrue(v.elements()));
+    }
+
+    @Test
+    public void testJumpStart()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("basicJumpStart.json");
+        Map input = new HashMap();
+        input.put("letter", "e");
+        Map output = new CaseInsensitiveMap();
+        ncube.getCells(input, output);
+
+        assertTrue(output.containsKey("A"));           // condition ran (condition axis was told to start at beginning - null)
+        assertTrue(output.containsKey("B"));
+        assertTrue(output.containsKey("C"));
+        assertTrue(output.containsKey("D"));
+        assertTrue(output.containsKey("E"));
+        assertTrue(output.containsKey("F"));
+        assertTrue(output.containsKey("G"));
+        assertEquals("echo", output.get("word"));
+
+        input.put("condition", "e");
+        output = new CaseInsensitiveMap();
+        ncube.getCells(input, output);
+
+        assertFalse(output.containsKey("A"));           // condition never ran (condition axis was told to start at a)
+        assertFalse(output.containsKey("B"));           // condition never ran (condition axis was told to start at a)
+        assertFalse(output.containsKey("C"));           // condition never ran (condition axis was told to start at a)
+        assertFalse(output.containsKey("D"));           // condition never ran (condition axis was told to start at a)
+        assertTrue(output.containsKey("E"));            // condition ran
+        assertTrue(output.containsKey("F"));            // condition ran
+        assertTrue(output.containsKey("G"));            // condition ran
+        assertEquals("echo", output.get("word"));
+    }
+
+    @Test
+    public void testJumpStart2D()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("basicJumpStart2D.json");
+        Map input = new HashMap();
+        input.put("letter", "f");
+        input.put("column", "y");
+        input.put("condition", "f");
+        input.put("condition2", "y");
+        Map output = new CaseInsensitiveMap();
+        ncube.getCells(input, output);
+
+        assertFalse(output.containsKey("A"));       // skipped - condition never ran (condition axis was told to start at f)
+        assertFalse(output.containsKey("B"));       // skipped
+        assertFalse(output.containsKey("C"));       // skipped
+        assertFalse(output.containsKey("D"));       // skipped
+        assertFalse(output.containsKey("E"));       // skipped
+        assertTrue(output.containsKey("F"));        // condition ran
+        assertTrue(output.containsKey("G"));        // condition ran
+        assertEquals("foxtrot", output.get("word"));
+
+        assertFalse(output.containsKey("W"));       // skipped - condition never ran (condition2 axis was told to start at y)
+        assertFalse(output.containsKey("X"));       // skipped
+        assertTrue(output.containsKey("Y"));        // condition ran
+        assertTrue(output.containsKey("Z"));        // condition ran
+        assertEquals("y", output.get("col"));
+    }
+
+    @Test
+    public void testJumpRestart()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("basicJumpRestart.json");
+        Map input = new HashMap();
+        input.put("letter", "e");
+        Map output = new CaseInsensitiveMap();
+        output.put("a", 0);
+        output.put("b", 0);
+        output.put("c", 0);
+        output.put("d", 0);
+        output.put("e", 0);
+        output.put("f", 0);
+        output.put("g", 0);
+        output.put("word", "");
+        ncube.getCells(input, output);
+        System.out.println("output = " + output);
+
+        assertTrue(output.containsKey("A"));           // condition ran (condition axis was told to start at beginning - null)
+        assertTrue(output.containsKey("B"));
+        assertTrue(output.containsKey("C"));
+        assertTrue(output.containsKey("D"));
+        assertTrue(output.containsKey("E"));
+        assertTrue(output.containsKey("F"));
+        assertTrue(output.containsKey("G"));
+        assertEquals("echoecho", output.get("word"));
+
+        assertEquals(1, output.get("a"));
+        assertEquals(1, output.get("b"));
+        assertEquals(1, output.get("c"));
+        assertEquals(1, output.get("d"));
+        assertEquals(2, output.get("e"));       // This step is run twice.
+        assertEquals(1, output.get("f"));       // This step is run once (skipped the first time, then after 'e' runs a 2nd time)
+        assertEquals(1, output.get("g"));       // This step is run once (skipped the first time, then after 'e' runs a 2nd time)
     }
 }

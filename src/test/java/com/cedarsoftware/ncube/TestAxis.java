@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Test;
@@ -581,5 +583,28 @@ public class TestAxis
         assertEquals(new BigDecimal("10"), range.low);
         assertEquals(new BigDecimal("20"), range.high);
         assertEquals(new BigDecimal("1979"), set.get(1));
+    }
+
+    @Test
+    public void testNearestWithDoubles()
+    {
+        Axis axis = new Axis("loc", AxisType.NEAREST, AxisValueType.COMPARABLE, false);
+        LatLon latlon = (LatLon) axis.convertStringToColumnValue("1.0, 2.0");
+        assertEquals(1.0, latlon.getLat(), 0.001);
+        assertEquals(2.0, latlon.getLon(), 0.001);
+
+        latlon = (LatLon) axis.convertStringToColumnValue("1,2");
+        assertEquals(1.0, latlon.getLat(), 0.001);
+        assertEquals(2.0, latlon.getLon(), 0.001);
+
+        latlon = (LatLon) axis.convertStringToColumnValue("-1,-2");
+        assertEquals(-1.0, latlon.getLat(), 0.001);
+        assertEquals(-2.0, latlon.getLon(), 0.001);
+
+        axis = new Axis("loc", AxisType.NEAREST, AxisValueType.COMPARABLE, false);
+        Point3D pt3d = (Point3D) axis.convertStringToColumnValue("1.0, 2.0, 3.0");
+        assertEquals(1.0, pt3d.getX(), 0.001);
+        assertEquals(2.0, pt3d.getY(), 0.001);
+        assertEquals(3.0, pt3d.getZ(), 0.001);
     }
 }

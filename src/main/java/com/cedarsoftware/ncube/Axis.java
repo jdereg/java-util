@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.ncube.proximity.LatLon;
-import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
@@ -655,7 +654,7 @@ public class Axis
                 }
 
             case NEAREST:
-                return "";
+                return standardizeColumnValue(value);
 
             case RULE:
                 return new GroovyExpression(value, null);
@@ -830,30 +829,30 @@ public class Axis
             case DATE:
                 return getDate(value);
             case COMPARABLE:
-                if (value instanceof Point2D ||
-                    value instanceof Point3D ||
-                    value instanceof LatLon ||
-                    value instanceof Date ||
-                    value instanceof Number ||
-                    value instanceof Character)
+                if (value instanceof String)
                 {
-                    return value;
-                }
+                    Matcher m = Regexes.valid2Doubles.matcher((String) value);
+                    if (m.matches())
+                    {   // No way to determine if it was supposed to be a Point2D. Specify as JSON for Point2D
+                        return new LatLon(getDouble(m.group(1)), getDouble(m.group(2)));
+                    }
 
-                Matcher m = Regexes.valid2Doubles.matcher((String) value);
-                if (m.matches())
-                {
-                    throw new IllegalArgumentException(String.format("Illegal Lat/Long value (%s)", value));
-                }
+                    m = Regexes.valid3Doubles.matcher((String) value);
+                    if (m.matches())
+                    {
+                        return new Point3D(getDouble(m.group(1)), getDouble(m.group(2)), getDouble(m.group(3)));
+                    }
 
-                try
-                {   // Try as JSON
-                    return (Comparable)JsonReader.jsonToJava((String)value);
+                    try
+                    {   // Try as JSON
+                        return (Comparable) JsonReader.jsonToJava((String) value);
+                    }
+                    catch (Exception e)
+                    {
+                        return value;
+                    }
                 }
-                catch (Exception e)
-                {
-                    return value;
-                }
+                return value;
             case EXPRESSION:
                 return value;
             default:

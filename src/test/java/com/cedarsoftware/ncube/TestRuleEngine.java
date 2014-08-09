@@ -663,7 +663,6 @@ public class TestRuleEngine
         output.put("g", 0);
         output.put("word", "");
         ncube.getCells(input, output);
-        System.out.println("output = " + output);
 
         assertTrue(output.containsKey("A"));           // condition ran (condition axis was told to start at beginning - null)
         assertTrue(output.containsKey("B"));

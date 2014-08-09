@@ -1,6 +1,9 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
@@ -600,10 +603,14 @@ public class Axis
     // Take the passed in value, and prepare it to be allowed on a given axis type.
     public Comparable convertStringToColumnValue(String value)
     {
+        if (StringUtilities.isEmpty(value))
+        {
+            throw new IllegalArgumentException("Column value cannot be empty, axis: " + name);
+        }
         switch(type)
         {
             case DISCRETE:
-                return convertStringToDiscreteValue(value, valueType);
+                return standardizeColumnValue(value);
 
             case RANGE:
                 Matcher matcher = rangePattern.matcher(value);
@@ -611,94 +618,54 @@ public class Axis
                 {
                     String one = matcher.group(1);
                     String two = matcher.group(2);
-                    return new Range(convertStringToDiscreteValue(one.trim(), valueType), convertStringToDiscreteValue(two.trim(), valueType));
+                    return standardizeColumnValue(new Range(one.trim(), two.trim()));
                 }
                 else
                 {
-                    throw new IllegalArgumentException("Value (" + value + ") cannot be parsed as a Range.  Use [value1, value2].");
+                    throw new IllegalArgumentException("Value (" + value + ") cannot be parsed as a Range.  Use [value1, value2], axis: " + name);
                 }
 
             case SET:
-                // TODO: Parse SETs
-                break;
+                try
+                {
+                    Object[] array = (Object[])JsonReader.jsonToJava(value);
+                    RangeSet set = new RangeSet();
+                    for (Object pt : array)
+                    {
+                        if (pt instanceof Object[])
+                        {
+                            Object[] rangeValues = (Object[]) pt;
+                            if (rangeValues.length != 2)
+                            {
+                                throw new IllegalArgumentException("Set Ranges must have two values only, range length: " + rangeValues.length + ", axis: " + name);
+                            }
+                            Range range = new Range((Comparable)rangeValues[0], (Comparable)rangeValues[1]);
+                            set.add(range);
+                        }
+                        else
+                        {
+                            set.add((Comparable)pt);
+                        }
+                    }
+                    return standardizeColumnValue(set);
+                }
+                catch (Exception e)
+                {
+                    throw new IllegalArgumentException("Value: " + value + " cannot be parsed as a Set.  Use [value, [low, high], ... ], axis: " + name, e);
+                }
 
             case NEAREST:
-                // TODO: Parse items on NEAREST (not just lat/lon, but also numbers, Strings, etc.)
-                break;
+                return "";
 
             case RULE:
-                return convertStringToDiscreteValue(value, valueType);
+                return new GroovyExpression(value, null);
 
             default:
                 throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to process value: " + value);
         }
-        return "";
     }
 
-    Comparable convertStringToDiscreteValue(String input, AxisValueType valType)
-    {
-        switch(valType)
-        {
-            case STRING:
-                return input;
-
-            case LONG:
-                try
-                {
-                    return Long.parseLong(input);
-                }
-                catch (NumberFormatException e)
-                {
-                    throw new IllegalArgumentException("Could not parse long integer: " + input, e);
-                }
-
-            case BIG_DECIMAL:
-                try
-                {
-                    return new BigDecimal(input);
-                }
-                catch (Exception e)
-                {
-                    throw new IllegalArgumentException("Could not parse big decimal: " + input, e);
-                }
-
-            case DOUBLE:
-                try
-                {
-                    return new Double(input);
-                }
-                catch (Exception e)
-                {
-                    throw new IllegalArgumentException("Could not parse floating point number: " + input, e);
-                }
-
-            case DATE:
-                try
-                {
-                    return DateUtilities.parseDate(input);
-                }
-                catch (Exception e)
-                {
-                    throw new IllegalArgumentException("Could not parse date: " + input, e);
-                }
-
-            case EXPRESSION:
-                return new GroovyExpression(input, null);
-
-            case COMPARABLE:
-                try
-                {
-                    return (Comparable) JsonReader.jsonToJava(input);
-                }
-                catch (Exception e)
-                {
-                    throw new IllegalArgumentException("Could not convert JSON string to Java Comparable instance, json: " + input, e);
-                }
-        }
-        throw new IllegalArgumentException("Unsupported axis value type (" + valueType + ") for axis '" + name + "', trying to process value: " + input);
-    }
-
-	private static void assignDisplayOrder(final List<Column> cols) 
+	private static void assignDisplayOrder(final List<Column> cols)
 	{
 		final int size = cols.size(); 
 		for (int k=0; k < size; k++)
@@ -863,10 +830,34 @@ public class Axis
             case DATE:
                 return getDate(value);
             case COMPARABLE:
+                if (value instanceof Point2D ||
+                    value instanceof Point3D ||
+                    value instanceof LatLon ||
+                    value instanceof Date ||
+                    value instanceof Number ||
+                    value instanceof Character)
+                {
+                    return value;
+                }
+
+                Matcher m = Regexes.valid2Doubles.matcher((String) value);
+                if (m.matches())
+                {
+                    throw new IllegalArgumentException(String.format("Illegal Lat/Long value (%s)", value));
+                }
+
+                try
+                {   // Try as JSON
+                    return (Comparable)JsonReader.jsonToJava((String)value);
+                }
+                catch (Exception e)
+                {
+                    return value;
+                }
             case EXPRESSION:
                 return value;
             default:
-                throw new IllegalArgumentException("AxisValueType '" + srcValueType + "' added but not code to support it.");
+                throw new IllegalArgumentException("AxisValueType '" + srcValueType + "' added but no code to support it.");
         }
     }
 
@@ -1069,7 +1060,7 @@ public class Axis
 
         if (cols.isEmpty())
         {
-            throw new IllegalArgumentException("Attempting to locate rule name '" + ruleName + "' on axis '" + name + "'.  Not found");
+            throw new IllegalArgumentException("Attempting to locate rule name '" + ruleName + "' on axis '" + name + "'.  Not found.");
         }
         return cols;
     }
@@ -1109,7 +1100,7 @@ public class Axis
         {
             if (!(promotedValue instanceof String))
             {
-                throw new IllegalArgumentException("A column on a rule axis can only be located by the 'name' attribute, axis: " + name);
+                throw new IllegalArgumentException("A column on a rule axis can only be located by the 'name' attribute, which must be a String, axis: " + name);
             }
             pos = findRuleByName((String)promotedValue);
         }

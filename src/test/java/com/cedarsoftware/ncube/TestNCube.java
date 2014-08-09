@@ -7,7 +7,6 @@ import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DeepEquals;
-import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -4241,80 +4240,6 @@ public class TestNCube
         assertEquals(cols.get(0).getValue(), "alpha");
         assertEquals(cols.get(1).getValue(), "charlie");
         assertEquals(cols.get(2).getValue(), "bravo");
-    }
-
-    @Test
-    public void testConvertDiscreteColumnValue() throws Exception
-    {
-        // Strings
-        Axis states = getStatesAxis();
-        assertEquals(states.convertStringToColumnValue("OH"), "OH");
-
-        // Longs
-        Axis longs = new Axis("longs", AxisType.DISCRETE, AxisValueType.LONG, false);
-        assertEquals(-1L, longs.convertStringToColumnValue("-1"));
-        assertEquals(0L, longs.convertStringToColumnValue("0"));
-        assertEquals(1L, longs.convertStringToColumnValue("1"));
-        assertEquals(12345678901234L, longs.convertStringToColumnValue("12345678901234"));
-        assertEquals(-12345678901234L, longs.convertStringToColumnValue("-12345678901234"));
-        try
-        {
-            longs.convertStringToColumnValue("-12345.678901234");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("not"));
-            assertTrue(e.getMessage().contains("parse"));
-        }
-
-        // BigDecimals
-        Axis bigDec = new Axis("bigDec", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, false);
-        assertEquals(new BigDecimal("-1"), bigDec.convertStringToColumnValue("-1"));
-        assertEquals(new BigDecimal("0"), bigDec.convertStringToColumnValue("0"));
-        assertEquals(new BigDecimal("1"), bigDec.convertStringToColumnValue("1"));
-        assertEquals(new BigDecimal("12345678901234"), bigDec.convertStringToColumnValue("12345678901234"));
-        assertEquals(new BigDecimal("-12345678901234"), bigDec.convertStringToColumnValue("-12345678901234"));
-        assertEquals(new BigDecimal("-12345.678901234"), bigDec.convertStringToColumnValue("-12345.678901234"));
-
-        // Doubles
-        Axis doubles = new Axis("bigDec", AxisType.DISCRETE, AxisValueType.DOUBLE, false);
-        assertEquals(-1.0, doubles.convertStringToColumnValue("-1"));
-        assertEquals(0.0, doubles.convertStringToColumnValue("0"));
-        assertEquals(1.0, doubles.convertStringToColumnValue("1"));
-        assertEquals(12345678901234.0, doubles.convertStringToColumnValue("12345678901234"));
-        assertEquals(-12345678901234.0, doubles.convertStringToColumnValue("-12345678901234"));
-        assertEquals(-12345.678901234, doubles.convertStringToColumnValue("-12345.678901234"));
-
-        // Dates
-        Axis dates = new Axis("Dates", AxisType.DISCRETE, AxisValueType.DATE, false);
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.set(2014, 0, 18, 0, 0, 0);
-        assertEquals(dates.convertStringToColumnValue("1/18/2014"), cal.getTime());
-        cal.clear();
-        cal.set(2014, 6, 9, 13, 10, 58);
-        assertEquals(dates.convertStringToColumnValue("2014 Jul 9 13:10:58"), cal.getTime());
-        try
-        {
-            dates.convertStringToColumnValue("2014 Ju1y 9 13:10:58");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            // Used 1 not L
-        }
-
-        // Expression
-        Axis exp = new Axis("Condition", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
-        assertEquals(new GroovyExpression("println 'Hello'", null), exp.convertStringToColumnValue("println 'Hello'"));
-
-        // Comparable (this allows user to create Java Comparable object instances as Column values!
-        Axis comp = new Axis("Comparable", AxisType.DISCRETE, AxisValueType.COMPARABLE, false);
-        cal.clear();
-        cal.set(2014, 0, 18, 16, 26, 0);
-        String json = JsonWriter.objectToJson(cal);
-        assertEquals(cal, comp.convertStringToColumnValue(json));
     }
 
     @Test

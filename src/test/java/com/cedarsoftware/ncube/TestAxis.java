@@ -1,11 +1,13 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
+import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -326,7 +328,8 @@ public class TestAxis
     }
 
     @Test
-    public void testMetaProperties() {
+    public void testMetaProperties()
+    {
         Axis c = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
         assertNull(c.getMetaProperties().get("foo"));
 
@@ -343,38 +346,6 @@ public class TestAxis
 
         c.addMetaProperties(map);
         assertEquals("qux", c.getMetaProperties().get("baz"));
-    }
-
-    @Test
-    public void convertStringToDiscreteValue()
-    {
-        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
-
-        try
-        {
-            axis.convertStringToDiscreteValue(null, AxisValueType.DOUBLE);
-            fail();
-        } catch (IllegalArgumentException ignore)
-        {
-        }
-
-        try
-        {
-            axis.convertStringToDiscreteValue(null, AxisValueType.BIG_DECIMAL);
-            fail();
-        } catch (IllegalArgumentException ignore)
-        {
-        }
-
-        try
-        {
-            axis.convertStringToDiscreteValue(null, AxisValueType.COMPARABLE);
-            fail();
-        } catch (IllegalArgumentException ignore)
-        {
-        }
-
-
     }
 
     @Test
@@ -401,5 +372,214 @@ public class TestAxis
                 "  hasDefault column: true\n" +
                 "  preferred Order: 0\n" +
                 "  Default\n", c.toString());
+    }
+
+    @Test
+    public void testConvertDiscreteColumnValue() throws Exception
+    {
+        // Strings
+        Axis states = TestNCube.getStatesAxis();
+        assertEquals(states.convertStringToColumnValue("OH"), "OH");
+
+        // Longs
+        Axis longs = new Axis("longs", AxisType.DISCRETE, AxisValueType.LONG, false);
+        assertEquals(-1L, longs.convertStringToColumnValue("-1"));
+        assertEquals(0L, longs.convertStringToColumnValue("0"));
+        assertEquals(1L, longs.convertStringToColumnValue("1"));
+        assertEquals(12345678901234L, longs.convertStringToColumnValue("12345678901234"));
+        assertEquals(-12345678901234L, longs.convertStringToColumnValue("-12345678901234"));
+        try
+        {
+            longs.convertStringToColumnValue("-12345.678901234");
+            fail("should not make it here");
+        }
+        catch (Exception ignore)
+        { }
+
+        // BigDecimals
+        Axis bigDec = new Axis("bigDec", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, false);
+        assertEquals(new BigDecimal("-1"), bigDec.convertStringToColumnValue("-1"));
+        assertEquals(new BigDecimal("0"), bigDec.convertStringToColumnValue("0"));
+        assertEquals(new BigDecimal("1"), bigDec.convertStringToColumnValue("1"));
+        assertEquals(new BigDecimal("12345678901234"), bigDec.convertStringToColumnValue("12345678901234"));
+        assertEquals(new BigDecimal("-12345678901234"), bigDec.convertStringToColumnValue("-12345678901234"));
+        assertEquals(new BigDecimal("-12345.678901234"), bigDec.convertStringToColumnValue("-12345.678901234"));
+
+        // Doubles
+        Axis doubles = new Axis("bigDec", AxisType.DISCRETE, AxisValueType.DOUBLE, false);
+        assertEquals(-1.0, doubles.convertStringToColumnValue("-1"));
+        assertEquals(0.0, doubles.convertStringToColumnValue("0"));
+        assertEquals(1.0, doubles.convertStringToColumnValue("1"));
+        assertEquals(12345678901234.0, doubles.convertStringToColumnValue("12345678901234"));
+        assertEquals(-12345678901234.0, doubles.convertStringToColumnValue("-12345678901234"));
+        assertEquals(-12345.678901234, doubles.convertStringToColumnValue("-12345.678901234"));
+
+        // Dates
+        Axis dates = new Axis("Dates", AxisType.DISCRETE, AxisValueType.DATE, false);
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(2014, 0, 18, 0, 0, 0);
+        assertEquals(dates.convertStringToColumnValue("1/18/2014"), cal.getTime());
+        cal.clear();
+        cal.set(2014, 6, 9, 13, 10, 58);
+        assertEquals(dates.convertStringToColumnValue("2014 Jul 9 13:10:58"), cal.getTime());
+        try
+        {
+            dates.convertStringToColumnValue("2014 Ju1y 9 13:10:58");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        {
+            // Used 1 not L
+        }
+
+        // Expression
+        Axis exp = new Axis("Condition", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
+        assertEquals(new GroovyExpression("println 'Hello'", null), exp.convertStringToColumnValue("println 'Hello'"));
+
+        // Comparable (this allows user to create Java Comparable object instances as Column values!
+        Axis comp = new Axis("Comparable", AxisType.DISCRETE, AxisValueType.COMPARABLE, false);
+        cal.clear();
+        cal.set(2014, 0, 18, 16, 26, 0);
+        String json = JsonWriter.objectToJson(cal);
+        assertEquals(cal, comp.convertStringToColumnValue(json));
+    }
+
+    @Test
+    public void testRangeParsing()
+    {
+        Axis axis = new Axis("ages", AxisType.RANGE, AxisValueType.LONG, true, Axis.SORTED);
+        Range range = (Range) axis.convertStringToColumnValue("[10,20]");
+        assertEquals(10L, range.low);
+        assertEquals(20L, range.high);
+
+        range = (Range) axis.convertStringToColumnValue("[  10 ,\t20  \n]");
+        assertEquals(10L, range.low);
+        assertEquals(20L, range.high);
+
+        try
+        {
+            axis.convertStringToColumnValue("10, 20");
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        axis = new Axis("ages", AxisType.RANGE, AxisValueType.DATE, false);
+        range = (Range) axis.convertStringToColumnValue("[ 12/25/2014, 12/25/2016)");
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), range.low);
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), range.high);
+    }
+
+    @Test
+    public void testDiscreteSetParsing()
+    {
+        Axis axis = new Axis("ages", AxisType.SET, AxisValueType.LONG, true, Axis.SORTED);
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[10,20]");
+        assertEquals(10L, set.get(0));
+        assertEquals(20L, set.get(1));
+
+        set = (RangeSet) axis.convertStringToColumnValue("[  10 ,\t20  \n]");
+        assertEquals(10L, set.get(0));
+        assertEquals(20L, set.get(1));
+
+        try
+        {
+            axis.convertStringToColumnValue("10, 20");
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
+        set = (RangeSet) axis.convertStringToColumnValue("[ \"12/25/2014\", \"12/25/2016\"]");
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), set.get(0));
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), set.get(1));
+    }
+
+    @Test
+    public void testRangeSetParsing()
+    {
+        Axis axis = new Axis("ages", AxisType.SET, AxisValueType.LONG, true, Axis.SORTED);
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[[10,20]]");
+        Range range = (Range) set.get(0);
+        assertEquals(10L, range.low);
+        assertEquals(20L, range.high);
+
+        set = (RangeSet) axis.convertStringToColumnValue("[ [  10 ,\t20  \n] ]");
+        range = (Range) set.get(0);
+        assertEquals(10L, range.low);
+        assertEquals(20L, range.high);
+
+        axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
+        set = (RangeSet) axis.convertStringToColumnValue("[[ \"12/25/2014\", \"12/25/2016\"]]");
+        range = (Range) set.get(0);
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), range.low);
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), range.high);
+    }
+
+    @Test
+    public void testRangeAndDiscreteSetParsing()
+    {
+        Axis axis = new Axis("ages", AxisType.SET, AxisValueType.LONG, true, Axis.SORTED);
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[[10,20], 1979]");
+        Range range = (Range) set.get(0);
+        assertEquals(10L, range.low);
+        assertEquals(20L, range.high);
+        assertEquals(1979L, set.get(1));
+
+        set = (RangeSet) axis.convertStringToColumnValue("[ [  10 ,\t20  \n] , 1979 ]");
+        range = (Range) set.get(0);
+        assertEquals(10L, range.low);
+        assertEquals(20L, range.high);
+        assertEquals(1979L, set.get(1));
+
+        axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
+        set = (RangeSet) axis.convertStringToColumnValue("[[ \"12/25/2014\", \"12/25/2016\"], \"12/25/2020\"]");
+        range = (Range) set.get(0);
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), range.low);
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), range.high);
+        calendar.clear();
+        calendar.set(2020, 11, 25);
+        assertEquals(calendar.getTime(), set.get(1));
+    }
+
+    @Test
+    public void testRangeAndDiscreteSetParsing2()
+    {
+        Axis axis = new Axis("ages", AxisType.SET, AxisValueType.BIG_DECIMAL, true, Axis.SORTED);
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[[10,20], 1979]");
+        Range range = (Range) set.get(0);
+        assertEquals(new BigDecimal("10"), range.low);
+        assertEquals(new BigDecimal("20"), range.high);
+        assertEquals(new BigDecimal("1979"), set.get(1));
+
+        set = (RangeSet) axis.convertStringToColumnValue("[ [  10.0 ,\t20  \n] , 1979 ]");
+        range = (Range) set.get(0);
+        assertEquals(new BigDecimal("10"), range.low);
+        assertEquals(new BigDecimal("20"), range.high);
+        assertEquals(new BigDecimal("1979"), set.get(1));
     }
 }

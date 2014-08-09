@@ -1,0 +1,22 @@
+{
+    "ncube":"containsCellNoDefault",
+    "axes":[
+        {
+            "name":"Gender",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":false,
+            "preferredOrder":0,
+            "columns":[
+                {
+                    "id":"Female"
+                },
+                {
+                    "id":"Male"
+                }
+            ],
+            "feet":2
+        }
+    ],
+    "cells":[{"id":["Female"],"value":"bar"}]
+}

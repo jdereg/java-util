@@ -6,7 +6,6 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.DeepEquals;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -543,10 +542,6 @@ public class TestNCube
             assertTrue(expected.getMessage().contains("found"));
             assertTrue(expected.getMessage().contains("axis"));
         }
-
-        String json = ncube.toJson();
-        NCube jcube = NCube.fromJson(json);
-        assertTrue(DeepEquals.deepEquals(ncube, jcube));
     }
 
     @Test
@@ -591,7 +586,10 @@ public class TestNCube
     public void testBig5D() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("big5D.json");
+        long start = System.nanoTime();
         List<Map<String, Object>> coords = ncube.getCoordinatesForCells();
+        long end = System.nanoTime();
+        assertTrue((end - start) / 1000000.0 < 1000);   // verify that it runs in under 1 second (actual 87ms)
         assertTrue(coords.size() > 0);
         Map<String, Object> coord = coords.get(0);
         assertEquals(5, coord.size());
@@ -2854,6 +2852,15 @@ public class TestNCube
         assertEquals("1 WY", val);
 
         assertNull(n1.getAxisFromColumnId(100));
+
+        try
+        {
+            // bogus column
+            n1.updateColumn(1234567, "zz");
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
     }
 
     @Test
@@ -2956,6 +2963,15 @@ public class TestNCube
         coord.put("businessDivisionCode", wild);
         slice = ncube.getMap(coord);
         assertTrue(slice.size() == 2);
+
+        coord.put("businessDivisionCode", null);
+        try
+        {
+            ncube.getMap(coord);
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
     }
 
     @Test
@@ -4196,6 +4212,23 @@ public class TestNCube
 
         ncube.deleteColumn("code", null);
         assertEquals(4, ncube.cells.size());
+
+        try
+        {
+            ncube.updateColumns(null);
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
+
+        try
+        {
+            Axis fake = new Axis("fake", AxisType.DISCRETE, AxisValueType.DOUBLE, false);
+            ncube.updateColumns(fake);
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
     }
 
     @Test
@@ -4483,7 +4516,6 @@ public class TestNCube
         coord.put("gender", "Female");
         assertTrue(ncube.containsCell(coord));
 
-
         coord.put("gender", "GI Joe");
         try
         {
@@ -4702,12 +4734,6 @@ public class TestNCube
         }
     }
 
-    @Test(expected = RuntimeException.class)
-    public void testFromJsonException()
-    {
-        NCube.fromJson(null);
-    }
-
     @Test
     public void testObjectToMap()
     {
@@ -4732,6 +4758,116 @@ public class TestNCube
         }
         catch(Exception ignored)
         { }
+    }
+
+    @Test
+    public void testContainsCellWithDefault() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("containsCellNoDefault.json");
+
+        Map input = new HashMap();
+        input.put("gender", "Female");
+        assertTrue(ncube.containsCell(input, true));
+        input.put("gender", "Male");
+        assertFalse(ncube.containsCell(input, true));
+    }
+
+    @Test
+    public void testMetaProps()
+    {
+        NCube ncube = new NCube("dude");
+        ncube.setMetaProperty("test", true);
+        assertTrue((Boolean) ncube.getMetaProperties().get("test"));
+        assertEquals(1, ncube.getMetaProperties().size());
+
+        Map metaProps = new HashMap();
+        metaProps.put("foo", "bar");
+        ncube.addMetaProperties(metaProps);
+        assertTrue((Boolean) ncube.getMetaProperties().get("test"));
+        assertEquals("bar", ncube.getMetaProperties().get("foo"));
+        assertEquals(2, ncube.getMetaProperties().size());
+
+        ncube = new NCube("dude");
+        ncube.addMetaProperties(metaProps);
+        assertEquals("bar", ncube.getMetaProperties().get("foo"));
+        assertEquals(1, ncube.getMetaProperties().size());
+    }
+
+    @Test
+    public void testGetLong()
+    {
+        Map map = new HashMap();
+        map.put("food", 'w');
+        try
+        {
+            NCube.getLong(map, "food");
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
+    }
+
+    @Test
+    public void testGetBoolean()
+    {
+        Map map = new HashMap();
+        map.put("food", null);
+        assertFalse(NCube.getBoolean(map, "food"));
+
+        try
+        {
+            map.put("food", 9);
+            NCube.getBoolean(map, "food");
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
+    }
+
+    @Test
+    public void testCubeEquals()
+    {
+        NCube c1 = NCubeManager.getNCubeFromResource("testCube6.json");
+        NCube c2 = c1.duplicate("TestCube");
+        assertEquals(c1, c2);
+
+        c2 = c1.duplicate("Joe");
+        assertNotEquals(c1, c2);
+
+        assertNotEquals(c1, "not a cube");
+
+        Axis a = getStatesAxis();
+        c2 = c1.duplicate("TestCube");
+        c2.addAxis(a);
+        assertNotEquals(c1, c2);
+
+        c2 = c1.duplicate("TestCube");
+        a = c2.getAxis("gender");
+        c2.deleteAxis("gender");
+        a.setName("foo");
+        c2.addAxis(a);
+        assertNotEquals(c1, c2);
+        assertNotEquals(c2, c1);
+
+        c2 = c1.duplicate("TestCube");
+        a = c2.getAxis("gender");
+        a.setColumnOrder(Axis.DISPLAY);
+        assertNotEquals(c1, c2);
+
+        c2 = c1.duplicate("TestCube");
+        c2.clearCells();
+        assertNotEquals(c1, c2);
+
+        c2 = c1.duplicate("TestCube");
+        Map input = new HashMap();
+        input.put("gender", "Female");
+        c2.setCell(9, input);
+        assertNotEquals(c1, c2);
+
+        c2 = c1.duplicate("TestCube");
+        c2.setDefaultCellValue(null);
+        assertNotEquals(c1, c2);
+        assertNotEquals(c2, c1);
     }
 
     // ---------------------------------------------------------------------------------

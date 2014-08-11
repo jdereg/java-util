@@ -530,6 +530,23 @@ public class TestRuleEngine
     }
 
     @Test
+    public void testBasicJumpErrorHandling() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("multiRule.json");
+        Map input = new HashMap();
+        input.put("age", 35);
+        input.put("weight", 99);
+        Map output = new HashMap();
+        try
+        {
+            ncube.getCell(input, output);
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        { }
+    }
+
+    @Test
     public void testRuleFalseValues() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("ruleFalseValues.json");

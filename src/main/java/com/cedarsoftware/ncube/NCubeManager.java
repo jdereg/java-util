@@ -320,6 +320,11 @@ public class NCubeManager
         throw new IllegalArgumentException("n-cube status must be RELEASE or SNAPSHOT");
     }
 
+
+    public static void validateTestData(String testData) {
+
+    }
+
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
      */
@@ -1212,6 +1217,7 @@ public class NCubeManager
     {
         validate(connection, app, version);
         validateCubeName(name);
+        validateTestData(testData);
 
         synchronized (cubeList)
         {

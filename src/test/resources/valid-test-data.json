@@ -1,0 +1,4 @@
+[
+    {"name1" : "test1", "coords" : {"coord1" : "value1", "coord2":"value2"}, "expectedResult" : "foo"},
+    {"name2" : "test2", "coords" : {"coord1" : "value1", "coord2":"value2"}, "expectedResult" : "foo"}
+]

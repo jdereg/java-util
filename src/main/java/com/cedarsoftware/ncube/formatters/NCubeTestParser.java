@@ -1,33 +1,65 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.NCubeTest;
-import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.ncube.GroovyExpression;
+import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.NCubeTestDto;
+import com.cedarsoftware.util.io.JsonReader;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Created by kpartlow on 8/11/2014.
+ * Created by kpartlow on 8/12/2014.
  */
-public class NCubeTestParser extends AbstractJsonFormat
+public class NCubeTestParser
 {
-    public String write(CaseInsensitiveMap<String, NCubeTest> test) {
-        try
-        {
-            StringBuilder builder = new StringBuilder();
-            Iterator<Map.Entry<String, NCubeTest>> set = test.entrySet().iterator();
-
-            while (set.hasNext()) {
-                Map.Entry<String, NCubeTest> item = set.next();
-                startObject();
-                endObject();
-            }
-
-            return builder.toString();
+    public Map<String, NCubeTestDto> parse(String data) throws IOException
+    {
+        if (data == null) {
+            return null;
         }
-        catch (Exception e)
+
+        Map maps = JsonReader.jsonToMaps(data);
+        Map<String, NCubeTestDto> tests = new LinkedHashMap<>();
+
+        Object[] items = (Object[])maps.get("@items");
+
+        for(Object o : items)
         {
-            throw new IllegalStateException(String.format("Unable to format NCube tests", e));
+            Map map = (Map)o;
+            String name = (String)map.get("name");
+            Map<String,Object> coords = resolveCoords((Map)map.get("coords"));
+            Object result = parseExpectedResult((Map)map.get("expectedResult"));
+
+            tests.put(name, new NCubeTestDto(name, coords, result));
         }
+
+        return tests;
+    }
+
+    public Map<String,Object> resolveCoords(Map map) {
+        Map<String, Object> coords = new LinkedHashMap<>();
+        Iterator<Map.Entry<String,Object>> i = map.entrySet().iterator();
+        while (i.hasNext()) {
+            Map.Entry<String, Object> item = i.next();
+            Map typeValue = (Map)item.getValue();
+
+            coords.put(item.getKey(), NCube.parseJsonValue((String) typeValue.get("type"), typeValue.get("value")));
+        }
+        return coords;
+    }
+
+    public Object parseExpectedResult(Map map) {
+        Object o = NCube.parseJsonValue((String)map.get("type"), map.get("value"));
+        if (o instanceof GroovyExpression) {
+            GroovyExpression g = (GroovyExpression)o;
+            g.execute(new HashMap());
+            return NCube.parseJsonValue((String)map.get("type"), g.execute(new HashMap()));
+        }
+
+        return o;
     }
 }

@@ -28,20 +28,20 @@ public class TestNCubeTestParser
 
 
         NCubeTestDto test1 = c.get("test1");
-        Map<String, Object> coords = test1.getCoords();
-        assertEquals("test1", test1.getName());
+        Map<String, Object> coords = test1.coords;
+        assertEquals("test1", test1.name);
         assertEquals("value1", coords.get("coord1"));
         assertEquals(new Long(9), coords.get("coord2"));
 
         NCubeTestDto test2 = c.get("test2");
-        coords = test2.getCoords();
-        assertEquals("test2", test2.getName());
+        coords = test2.coords;
+        assertEquals("test2", test2.name);
         assertEquals(true, coords.get("coord1"));
         assertEquals(5.9, coords.get("coord2"));
 
         NCubeTestDto test3 = c.get("test3");
         //assertEquals(map.getClass(), test3.getExpectedResult().getClass());
-        assertEquals(map, test3.getExpectedResult());
+        assertEquals(map, test3.expectedResult);
     }
 
     public static Map<String, NCubeTestDto> getTestsFromResource(String name)

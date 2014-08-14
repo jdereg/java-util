@@ -1,8 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTestDto;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.util.io.JsonReader;
@@ -18,18 +16,21 @@ import java.util.Map;
  */
 public class NCubeTestParser
 {
-    public Map<String, NCubeTestDto> parse(String data) throws IOException
+    public Map<String, NCubeTestDto> parse(NCube cube, String data) throws IOException
     {
         if (data == null) {
             return null;
         }
 
+        if (cube == null) {
+            throw new IllegalArgumentException("You need a valid cube to parse the ");
+        }
+
         Map maps = JsonReader.jsonToMaps(data);
+
         Map<String, NCubeTestDto> tests = new LinkedHashMap<>();
 
         Object[] items = (Object[])maps.get("@items");
-
-        NCube cube = NCubeManager.getNCubeFromResource("arrays.json");
 
         for(Object o : items)
         {
@@ -70,10 +71,6 @@ public class NCubeTestParser
 
         Map args = new HashMap();
         args.put("ncube", cube);
-        if (o instanceof GroovyExpression) {
-            return ((GroovyExpression)o).execute(args);
-        }
-
         return o;
     }
 

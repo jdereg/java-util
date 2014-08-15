@@ -4579,6 +4579,28 @@ public class TestNCube
         assertEquals(36L, col.getMetaProperties().get("age"));
     }
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueException() throws Exception {
+        NCube.parseJsonValue(Boolean.TRUE, "http://www.foo.com", "foo", true);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueNonUrlException() throws Exception {
+        NCube.parseJsonValue("blah blah blah", null, "foo", true);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueWithUnknownType() throws Exception {
+        NCube.parseJsonValue(new Object(), null, "foo", true);
+    }
+
+    @Test
+    public void testParseJsonValueGroovyMethod() throws Exception {
+        GroovyMethod method = (GroovyMethod)NCube.parseJsonValue("def [5]", null, "method", true);
+        assertEquals(new GroovyMethod("def [5]", null), method);
+        //method.execute(new HashMap()):
+    }
+
     @Test
     public void testMetaPropAPIs() throws Exception
     {

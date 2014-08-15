@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.GroovyExpression;
-import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTestDto;
 import com.cedarsoftware.ncube.TestNCube;
@@ -37,8 +36,7 @@ public class TestNCubeTestParser
 
     @Test
     public void testRead() {
-        NCube cube = new NCube("foo");
-        Map<String, NCubeTestDto> c = getTestsFromResource(cube, "valid-test-data.json");
+        Map<String, NCubeTestDto> c = getTestsFromResource("valid-test-data.json");
 
         HashMap map = new HashMap();
         map.put("foo", "bar");
@@ -63,12 +61,12 @@ public class TestNCubeTestParser
 
     }
 
-    public static Map<String, NCubeTestDto> getTestsFromResource(NCube cube, String name)
+    public static Map<String, NCubeTestDto> getTestsFromResource(String name)
     {
         try
         {
             String json = getResourceAsString(name);
-            return new NCubeTestParser().parse(cube, json);
+            return new NCubeTestParser().parse(json);
         }
         catch (Exception e)
         {

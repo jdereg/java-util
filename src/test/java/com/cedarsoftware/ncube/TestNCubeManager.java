@@ -181,6 +181,25 @@ DELIMITER ;
         return conn;
     }
 
+    private Connection getJdbcConnection() throws Exception
+    {
+        Connection conn = null;
+        if (test_db == MYSQL)
+        {
+            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
+        }
+        else if (test_db == HSQLDB)
+        {
+            conn = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "sa", "");
+        }
+        else if (test_db == ORACLE)
+        {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            conn = DriverManager.getConnection("jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
+        }
+        return conn;
+    }
+
     private NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -284,6 +303,65 @@ DELIMITER ;
 
         NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
         NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
+    }
+
+    @Test
+    public void testLoadCubesWithJdbcConnectionProvider() throws Exception
+    {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+        Connection ncubeSetupConn = null;
+
+        try
+        {
+            ncubeSetupConn = getJdbcConnection();
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
+            NCubeManager.updateTestData(ncubeSetupConn, APP_ID, ncube.getName(), version, JsonWriter.objectToJson(coord));
+            NCubeManager.updateNotes(ncubeSetupConn, APP_ID, ncube.getName(), version, "notes follow");
+
+            ncube = TestNCube.getTestNCube3D_Boolean();
+            String name2 = ncube.getName();
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
+
+            NCubeManager.clearCubeList();
+            NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
+            NCubeManager.loadCubes(nCubeConnectionProvider, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
+            nCubeConnectionProvider.commitTransaction();
+
+            NCube ncube1 = NCubeManager.getCube(name1, version);
+            NCube ncube2 = NCubeManager.getCube(name2, version);
+            assertNotNull(ncube1);
+            assertNotNull(ncube2);
+            assertEquals(name1, ncube1.getName());
+            assertEquals(name2, ncube2.getName());
+            NCubeManager.clearCubeList();
+            assertNull(NCubeManager.getCube(name1, version));
+            assertNull(NCubeManager.getCube(name2, version));
+
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
+        }
+        finally
+        {
+            if (ncubeSetupConn != null && ncubeSetupConn.isValid(1))
+                ncubeSetupConn.close();
+        }
     }
 
     @Test
@@ -405,6 +483,65 @@ DELIMITER ;
         NCube result = NCubeManager.loadCube(c, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, true);
         assertEquals("foo", result.getTestData());
         assertEquals("containsCell", result.getName());
+    }
+
+    @Test
+    public void testLoadCubeWithJdbcConnectionProvider() throws Exception
+    {
+        NCube<Double> ncube1 = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube1.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube1.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube1.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube1.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube1.getName();
+
+        NCube ncube2 = TestNCube.getTestNCube3D_Boolean();
+        String name2 = ncube2.getName();
+        Connection ncubeSetupConn = null;
+
+        try
+        {
+            ncubeSetupConn = getJdbcConnection();
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube1, version);
+            NCubeManager.updateTestData(ncubeSetupConn, APP_ID, ncube1.getName(), version, JsonWriter.objectToJson(coord));
+            NCubeManager.updateNotes(ncubeSetupConn, APP_ID, ncube1.getName(), version, "notes follow");
+
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube2, version);
+
+            NCubeManager.clearCubeList();
+            NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
+            NCube loadedCube1 = NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, true);
+            NCube loadedCube2 = NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name2, version, ReleaseStatus.SNAPSHOT.name(), null, true);
+            nCubeConnectionProvider.commitTransaction();
+
+            assertNotNull(loadedCube1);
+            assertNotNull(loadedCube2);
+            assertEquals(name1, loadedCube1.getName());
+            assertEquals(name2, loadedCube2.getName());
+            NCubeManager.clearCubeList();
+            assertNull(NCubeManager.getCube(name1, version));
+            assertNull(NCubeManager.getCube(name2, version));
+
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
+        }
+        finally
+        {
+            if (ncubeSetupConn != null && ncubeSetupConn.isValid(1))
+                ncubeSetupConn.close();
+        }
     }
 
     //This exception is impossible to hit without mocking since we prohibit you on createCube() from

@@ -28,6 +28,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -181,6 +183,38 @@ DELIMITER ;
         return conn;
     }
 
+    private Connection getJdbcConnection() throws Exception
+    {
+        Connection conn = null;
+        if (test_db == MYSQL)
+        {
+            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
+        }
+        else if (test_db == HSQLDB)
+        {
+            conn = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "sa", "");
+        }
+        else if (test_db == ORACLE)
+        {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            conn = DriverManager.getConnection("jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
+        }
+        return conn;
+    }
+
+    private void closeJdbcConnection(Connection connection)
+    {
+        try
+        {
+            if (connection != null)
+                connection.close();
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     private NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -215,6 +249,8 @@ DELIMITER ;
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenReturn(ps);
         when(ps.executeUpdate()).thenReturn(2);
+        when(c.isValid(anyInt())).thenReturn(true);
+
         try
         {
             NCubeManager.updateNotes(c, APP_ID, "foo", "0.1.0", "notes");
@@ -284,6 +320,147 @@ DELIMITER ;
 
         NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
         NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
+    }
+
+    @Test
+    public void testLoadCubesWithJdbcConnectionProvider() throws Exception
+    {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+        Connection ncubeSetupConn = null;
+
+        try
+        {
+            ncubeSetupConn = getJdbcConnection();
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
+            NCubeManager.updateTestData(ncubeSetupConn, APP_ID, ncube.getName(), version, JsonWriter.objectToJson(coord));
+            NCubeManager.updateNotes(ncubeSetupConn, APP_ID, ncube.getName(), version, "notes follow");
+
+            ncube = TestNCube.getTestNCube3D_Boolean();
+            String name2 = ncube.getName();
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
+
+            NCubeManager.clearCubeList();
+            NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
+            NCubeManager.loadCubes(nCubeConnectionProvider, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
+            nCubeConnectionProvider.commitTransaction();
+
+            NCube ncube1 = NCubeManager.getCube(name1, version);
+            NCube ncube2 = NCubeManager.getCube(name2, version);
+            assertNotNull(ncube1);
+            assertNotNull(ncube2);
+            assertEquals(name1, ncube1.getName());
+            assertEquals(name2, ncube2.getName());
+            NCubeManager.clearCubeList();
+            assertNull(NCubeManager.getCube(name1, version));
+            assertNull(NCubeManager.getCube(name2, version));
+
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
+        }
+        finally
+        {
+            closeJdbcConnection(ncubeSetupConn);
+        }
+    }
+
+    @Test
+    public void testLoadCubesWithConnectionProviderException()
+    {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        Connection ncubeSetupConn = null;
+
+        try
+        {
+            try
+            {
+                ncubeSetupConn = getJdbcConnection();
+                NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                fail("Unable to create test ncube...");
+            }
+
+            NCubeConnectionProvider nCubeConnectionProvider;
+            Exception testException = null;
+
+            //test with null connection
+            try
+            {
+                nCubeConnectionProvider = new NCubeJdbcConnectionProvider(null);
+            }
+            catch (Exception e)
+            {
+                testException = e;
+            }
+
+            assertTrue(testException != null && testException instanceof IllegalStateException);
+
+            //test when jdbc connection is closed
+            Connection jdbcConn = null;
+            try
+            {
+                jdbcConn = getJdbcConnection();
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                fail("Unable to create jdbc connection...");
+            }
+
+            nCubeConnectionProvider = new NCubeJdbcConnectionProvider(jdbcConn);
+            nCubeConnectionProvider.commitTransaction();
+            testException = null;
+
+            try
+            {
+                NCubeManager.loadCubes(nCubeConnectionProvider, APP_ID, version, ReleaseStatus.SNAPSHOT.name(), null);
+            }
+            catch (Exception e)
+            {
+                testException = e;
+            }
+
+            assertTrue(testException != null && testException instanceof IllegalArgumentException);
+        }
+        finally
+        {
+            closeJdbcConnection(ncubeSetupConn);
+        }
     }
 
     @Test
@@ -401,10 +578,153 @@ DELIMITER ;
         when(rs.next()).thenReturn(true).thenReturn(false);
         when(rs.getBytes("cube_value_bin")).thenReturn("{\"ncube\":\"containsCell\",\"defaultCellValue\":\"foo\",\"x\":\"y\",\"axes\":[{\"name\":\"Gender\",\"type\":\"DISCRETE\",\"valueType\":\"STRING\",\"hasDefault\":false, \"preferredOrder\":0,\"columns\":[{\"id\":\"Female\",\"name\":\"Jane\",\"age\":36},{\"id\":\"Male\"}],\"feet\":2}],\"cells\":[{\"id\":[\"Female\"],\"value\":\"bar\"}]}\n".getBytes("UTF-8"));
         when(rs.getBytes("test_data_bin")).thenReturn("foo".getBytes("UTF-8"));
+        when(c.isValid(anyInt())).thenReturn(true);
 
         NCube result = NCubeManager.loadCube(c, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null, true);
         assertEquals("foo", result.getTestData());
         assertEquals("containsCell", result.getName());
+    }
+
+    @Test
+    public void testLoadCubeWithJdbcConnectionProvider() throws Exception
+    {
+        NCube<Double> ncube1 = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube1.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube1.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube1.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube1.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube1.getName();
+
+        NCube ncube2 = TestNCube.getTestNCube3D_Boolean();
+        String name2 = ncube2.getName();
+        Connection ncubeSetupConn = null;
+
+        try
+        {
+            ncubeSetupConn = getJdbcConnection();
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube1, version);
+            NCubeManager.updateTestData(ncubeSetupConn, APP_ID, ncube1.getName(), version, JsonWriter.objectToJson(coord));
+            NCubeManager.updateNotes(ncubeSetupConn, APP_ID, ncube1.getName(), version, "notes follow");
+
+            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube2, version);
+
+            NCubeManager.clearCubeList();
+            NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
+            NCube loadedCube1 = NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null);
+            NCube loadedCube2 = NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name2, version, ReleaseStatus.SNAPSHOT.name(), null);
+            nCubeConnectionProvider.commitTransaction();
+
+            assertNotNull(loadedCube1);
+            assertNotNull(loadedCube2);
+            assertEquals(name1, loadedCube1.getName());
+            assertEquals(name2, loadedCube2.getName());
+            NCubeManager.clearCubeList();
+            assertNull(NCubeManager.getCube(name1, version));
+            assertNull(NCubeManager.getCube(name2, version));
+
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
+            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
+        }
+        finally
+        {
+            closeJdbcConnection(ncubeSetupConn);
+        }
+    }
+
+    @Test
+    public void testLoadCubeWithConnectionProviderException()
+    {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);
+
+        String version = "0.1.0";
+        String name1 = ncube.getName();
+        Connection ncubeSetupConn = null;
+
+        try
+        {
+            try
+            {
+                ncubeSetupConn = getJdbcConnection();
+                NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                fail("Unable to create test ncube...");
+            }
+
+            NCubeConnectionProvider nCubeConnectionProvider;
+            Exception testException = null;
+
+            //test with null connection
+            try
+            {
+                nCubeConnectionProvider = new NCubeJdbcConnectionProvider(null);
+            }
+            catch (Exception e)
+            {
+                testException = e;
+            }
+
+            assertTrue(testException != null && testException instanceof IllegalStateException);
+
+            //test when jdbc connection is closed
+            Connection jdbcConn = null;
+            try
+            {
+                jdbcConn = getJdbcConnection();
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                fail("Unable to create jdbc connection...");
+            }
+
+            nCubeConnectionProvider = new NCubeJdbcConnectionProvider(jdbcConn);
+            nCubeConnectionProvider.commitTransaction();
+            testException = null;
+
+            try
+            {
+                NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null);
+            }
+            catch (Exception e)
+            {
+                testException = e;
+            }
+
+            assertTrue(testException != null && testException instanceof IllegalArgumentException);
+        }
+        finally
+        {
+            closeJdbcConnection(ncubeSetupConn);
+        }
     }
 
     //This exception is impossible to hit without mocking since we prohibit you on createCube() from
@@ -438,6 +758,8 @@ DELIMITER ;
         when(ps.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true).thenReturn(true);
         when(rs.getBytes("cube_value_bin")).thenReturn("{\"ncube\":\"containsCell\",\"defaultCellValue\":\"foo\",\"x\":\"y\",\"axes\":[{\"name\":\"Gender\",\"type\":\"DISCRETE\",\"valueType\":\"STRING\",\"hasDefault\":false, \"preferredOrder\":0,\"columns\":[{\"id\":\"Female\",\"name\":\"Jane\",\"age\":36},{\"id\":\"Male\"}],\"feet\":2}],\"cells\":[{\"id\":[\"Female\"],\"value\":\"bar\"}]}\n".getBytes("UTF-8"));
+        when(c.isValid(anyInt())).thenReturn(true);
+
         try
         {
             Set<String> set = new HashSet<String>();
@@ -584,6 +906,8 @@ DELIMITER ;
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
         when(ps.executeUpdate()).thenReturn(2);
+        when(c.isValid(anyInt())).thenReturn(true);
+
         try
         {
             NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
@@ -940,6 +1264,10 @@ DELIMITER ;
         NCubeManager.createCube(conn, APP_ID, ncube, version);
 
         assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
+
+        NCubeJdbcConnectionProvider nCubeJdbcConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
+        assertTrue(NCubeManager.doesCubeExist(nCubeJdbcConnectionProvider, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
+        nCubeJdbcConnectionProvider.commitTransaction();
 
         NCube<String> cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date());
         assertTrue(DeepEquals.deepEquals(ncube, cube));

@@ -31,6 +31,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 
     /**
      * Constructs a new NCubeJdbcConnectionProvider with the input connection added to the connection context Map.
+     *
      * @param connection - java.sql.Connection
      * @throws java.lang.IllegalArgumentException - if connection is not a valid connection
      */
@@ -44,6 +45,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 
     /**
      * @see NCubeConnectionProvider#getConnectionContext()
+     *
      * @return Map - jdbc connection context
      */
     @Override
@@ -54,6 +56,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 
     /**
      * @see NCubeJdbcConnectionProvider#commitTransaction()
+     *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
     @Override
@@ -87,6 +90,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 
     /**
      * @see NCubeJdbcConnectionProvider#rollbackTransaction()
+     *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
     @Override

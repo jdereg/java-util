@@ -606,6 +606,7 @@ public class Axis
         {
             throw new IllegalArgumentException("Column value cannot be empty, axis: " + name);
         }
+
         switch(type)
         {
             case DISCRETE:

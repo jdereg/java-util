@@ -587,17 +587,16 @@ public class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("big5D.json");
         long start = System.nanoTime();
-        List<Map<String, Object>> coords = ncube.getCoordinatesForCells();
+        List<Map<String, Object>> list = ncube.getCoordinatesForCells();
         long end = System.nanoTime();
         assertTrue((end - start) / 1000000.0 < 1000);   // verify that it runs in under 1 second (actual 87ms)
+        Map<String, Object> coords = (Map<String, Object>)list.get(0);
         assertTrue(coords.size() > 0);
-        Map<String, Object> coord = coords.get(0);
+        Map<String, Object> coord = (Map<String, Object>)coords.get("coord");
         assertEquals(5, coord.size());
 
-        for (Map<String, Object> pt : coords)
-        {
-            assertEquals(coord.keySet(), pt.keySet());
-        }
+        assertEquals("Test1", coords.get("name"));
+        assertEquals(coord.keySet(), ((Map)coords.get("coord")).keySet());
     }
 
     @Test
@@ -4579,6 +4578,28 @@ public class TestNCube
         assertEquals(36L, col.getMetaProperties().get("age"));
     }
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueException() throws Exception {
+        NCube.parseJsonValue(Boolean.TRUE, "http://www.foo.com", "foo", true);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueNonUrlException() throws Exception {
+        NCube.parseJsonValue("blah blah blah", null, "foo", true);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueWithUnknownType() throws Exception {
+        NCube.parseJsonValue(new Object(), null, "foo", true);
+    }
+
+    @Test
+    public void testParseJsonValueGroovyMethod() throws Exception {
+        GroovyMethod method = (GroovyMethod)NCube.parseJsonValue("def [5]", null, "method", true);
+        assertEquals(new GroovyMethod("def [5]", null), method);
+        //method.execute(new HashMap()):
+    }
+
     @Test
     public void testMetaPropAPIs() throws Exception
     {
@@ -4729,8 +4750,11 @@ public class TestNCube
             coord.add(col.getId());
             Map<String, Object> coordinate = new CaseInsensitiveMap<>();
             ncube.getColumnsAndCoordinateFromIds(coord, null, coordinate);
+
             assertTrue(coordinate.containsKey("code"));
-            assertTrue(ncube.getCell(coordinate) instanceof Object[]);
+
+            Map<String, Object> map = (Map<String, Object>)coordinate.get("code");
+            assertTrue(map instanceof Map);
         }
     }
 

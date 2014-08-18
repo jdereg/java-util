@@ -505,7 +505,7 @@ public class HtmlFormatter implements NCubeFormatter
         s.append("</td>\n");
     }
 
-    private static String getCellValueAsString(Object cellValue)
+    static String getCellValueAsString(Object cellValue)
     {
         if (cellValue == null)
         {

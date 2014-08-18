@@ -1401,4 +1401,19 @@ DELIMITER ;
     {
         NCubeManager.getNCubesFromResource(null);
     }
+
+    @Test
+    public void testDeprecatedApisUntilTheyAreGone() {
+
+        List<String> strings = new ArrayList<>();
+        strings.add("http://www.cedarsoftware.com");
+
+        assertNull(NCubeManager.getUrlClassLoader("foo"));
+        NCubeManager.setUrlClassLoader(strings, "foo");
+        assertNotNull(NCubeManager.getUrlClassLoader("foo"));
+
+        assertNull(NCubeManager.getUrlClassLoader("bar"));
+        NCubeManager.setBaseResourceUrls(strings, "bar");
+        assertNotNull(NCubeManager.getUrlClassLoader("bar"));
+    }
 }

@@ -3083,6 +3083,12 @@ public class TestNCube
     }
 
     @Test
+    public void testGroovyExpressionUrlNotFound()
+    {
+
+    }
+
+    @Test
     public void testGroovyNCubeMgr() throws Exception
     {
         NCube ncube = new NCube("GroovyCube");
@@ -4291,6 +4297,16 @@ public class TestNCube
 
         coord.put("code", "RelativeExtExp");
         assertEquals("adult TX", ncube.getCell(coord));
+    }
+
+    @Test(expected=RuntimeException.class)
+    public void testGroovyExpressionThatDoesntExist() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("testExpressionAxisUrl.json");
+        Map coord = new HashMap();
+        coord.put("code", "exp");
+        assertEquals(6.28, ncube.getCell(coord));
+
     }
 
     @Test(expected=RuntimeException.class)

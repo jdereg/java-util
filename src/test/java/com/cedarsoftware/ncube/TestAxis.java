@@ -69,6 +69,34 @@ public class TestAxis
         assertTrue("bar".equals(axis.getName()));
     }
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testConvertStringToColumnValueWithEmptyString()
+    {
+        Axis axis = new Axis("test axis", AxisType.DISCRETE, AxisValueType.LONG, true);
+        axis.convertStringToColumnValue("");
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testConvertStringToColumnValueWithNull()
+    {
+        Axis axis = new Axis("test axis", AxisType.DISCRETE, AxisValueType.LONG, true);
+        axis.convertStringToColumnValue(null);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testConvertStringToColumnValueWihInvalidRangeDefinition()
+    {
+        Axis axis = new Axis("test axis", AxisType.SET, AxisValueType.LONG, true);
+        axis.convertStringToColumnValue("[[5]]");
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testConvertStringToColumnValueWihRangeException()
+    {
+        Axis axis = new Axis("test axis", AxisType.SET, AxisValueType.LONG, true);
+        axis.convertStringToColumnValue("[null]");
+    }
+
     @Test
     public void testAxisValueOverlap()
     {

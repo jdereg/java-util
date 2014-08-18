@@ -587,17 +587,16 @@ public class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("big5D.json");
         long start = System.nanoTime();
-        Map<String, Map<String, Map<String, Object>>> coords = ncube.getCoordinatesForCells();
+        List<Map<String, Object>> list = ncube.getCoordinatesForCells();
         long end = System.nanoTime();
         assertTrue((end - start) / 1000000.0 < 1000);   // verify that it runs in under 1 second (actual 87ms)
+        Map<String, Object> coords = (Map<String, Object>)list.get(0);
         assertTrue(coords.size() > 0);
-        Map<String, Map<String, Object>> coord = coords.get("Test1");
+        Map<String, Object> coord = (Map<String, Object>)coords.get("coord");
         assertEquals(5, coord.size());
 
-        for (Map.Entry<String, Map<String, Map<String, Object>>> pt : coords.entrySet())
-        {
-            assertEquals(coord.keySet(), pt.getValue().keySet());
-        }
+        assertEquals("Test1", coords.get("name"));
+        assertEquals(coord.keySet(), ((Map)coords.get("coord")).keySet());
     }
 
     @Test

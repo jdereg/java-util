@@ -62,16 +62,17 @@ public class TestRuleEngine
         assertEquals("light-weight", output.get("weight"));
         assertEquals("young", output.get("age"));
 
-        Map<String, Map<String, Object>> map = n1.getCoordinatesForCells();
+        List<Map<String, Object>> list = n1.getCoordinatesForCells();
         int weight = 0;
         int age = 0;
-        for (Map.Entry<String, Map<String, Object>> pt : map.entrySet())
+        for (Map<String, Object> pt : list)
         {
-            if (pt.getValue().containsKey("age"))
+            Map<String, Object> c = (Map<String, Object>)pt.get("coord");
+            if (c.containsKey("age"))
             {
                 age++;
             }
-            if (pt.getValue().containsKey("weight"))
+            if (c.containsKey("weight"))
             {
                 weight++;
             }
@@ -91,16 +92,17 @@ public class TestRuleEngine
         boolean b = n1.containsCell(coord);
         assertTrue(b);
 
-        Map<String, Map<String, Object>> map = n1.getCoordinatesForCells();
+        List<Map<String, Object>> list = n1.getCoordinatesForCells();
         int weight = 0;
         int age = 0;
-        for (Map.Entry<String, Map<String, Object>> pt : map.entrySet())
+        for (Map<String, Object> pt : list)
         {
-            if (pt.getValue().containsKey("age"))
+            Map<String, Object> c = (Map<String, Object>)pt.get("coord");
+            if (c.containsKey("age"))
             {
                 age++;
             }
-            if (pt.getValue().containsKey("weight"))
+            if (c.containsKey("weight"))
             {
                 weight++;
             }

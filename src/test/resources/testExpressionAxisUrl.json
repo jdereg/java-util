@@ -1,0 +1,16 @@
+{
+    "ncube":"TestCube",
+    "defaultCellValue":"ZZZ",
+    "axes":[ {
+        "name":"Code",
+        "type":"DISCRETE",
+        "valueType":"STRING",
+        "hasDefault":false,
+        "preferredOrder":0,
+        "columns":[
+            { "id":"exp" }
+        ]}],
+    "cells":[
+        { "id":["exp"], "type":"exp", "url": "com/files/not/there.groovy" }
+    ]
+}

@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * Created by kpartlow on 8/12/2014.
@@ -32,6 +33,17 @@ public class TestNCubeTestParser
     public void tearDown() throws Exception
     {
         NCubeManager.clearCubeList();
+    }
+
+    @Test
+    public void testReadNull() throws Exception {
+        assertNull(new NCubeTestParser().parse(null));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseWithInvlalidArgumnet() throws Exception {
+        Map<String, Object> map = new HashMap<>();
+        new NCubeTestParser().parseValue(map);
     }
 
     @Test

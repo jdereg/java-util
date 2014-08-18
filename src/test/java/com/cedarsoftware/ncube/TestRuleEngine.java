@@ -67,11 +67,12 @@ public class TestRuleEngine
         int age = 0;
         for (Map<String, Object> pt : list)
         {
-            if (pt.containsKey("age"))
+            Map<String, Object> c = (Map<String, Object>)pt.get("coord");
+            if (c.containsKey("age"))
             {
                 age++;
             }
-            if (pt.containsKey("weight"))
+            if (c.containsKey("weight"))
             {
                 weight++;
             }
@@ -96,11 +97,12 @@ public class TestRuleEngine
         int age = 0;
         for (Map<String, Object> pt : list)
         {
-            if (pt.containsKey("age"))
+            Map<String, Object> c = (Map<String, Object>)pt.get("coord");
+            if (c.containsKey("age"))
             {
                 age++;
             }
-            if (pt.containsKey("weight"))
+            if (c.containsKey("weight"))
             {
                 weight++;
             }

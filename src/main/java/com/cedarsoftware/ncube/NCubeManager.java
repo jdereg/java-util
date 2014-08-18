@@ -66,7 +66,7 @@ public class NCubeManager
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
-    private static Map<String, URLClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
     static
     {
@@ -89,14 +89,18 @@ public class NCubeManager
 
     public static void addBaseResourceUrls(List<String> urls, String version)
     {
-        if (urlClassLoaders.containsKey(version))
-        {
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(version);
+
+        if (urlClassLoader == null) {
+            LOG.info("Creating ClassLoader, n-cube version: " + version + ", urls: " + urls);
+            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+            urlClassLoaders.put(version, urlClassLoader);
+        }
+        else {
             LOG.info("Adding resource URLs, n-cube version: " + version + ", urls: " + urls);
         }
 
-        GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
         addUrlsToClassLoader(urls, urlClassLoader);
-        urlClassLoaders.put(version, urlClassLoader);
     }
 
     /**
@@ -210,7 +214,7 @@ public class NCubeManager
             cubeList.clear();
             GroovyBase.clearCache();
             NCubeGroovyController.clearCache();
-            for (Map.Entry<String, URLClassLoader> entry : urlClassLoaders.entrySet())
+            for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
             {
                 URLClassLoader classLoader = entry.getValue();
                 ((GroovyClassLoader)classLoader).clearCache(); // free up Class cache
@@ -319,6 +323,11 @@ public class NCubeManager
             return;
         }
         throw new IllegalArgumentException("n-cube status must be RELEASE or SNAPSHOT");
+    }
+
+
+    public static void validateTestData(String testData) {
+
     }
 
     /**
@@ -1213,6 +1222,7 @@ public class NCubeManager
     {
         validate(connection, app, version);
         validateCubeName(name);
+        validateTestData(testData);
 
         synchronized (cubeList)
         {

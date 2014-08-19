@@ -433,7 +433,7 @@ DELIMITER ;
                 testException = e;
             }
 
-            assertTrue(testException != null && testException instanceof IllegalStateException);
+            assertTrue(testException != null && testException instanceof IllegalArgumentException);
 
             //test when jdbc connection is closed
             Connection jdbcConn = null;
@@ -661,7 +661,7 @@ DELIMITER ;
                 testException = e;
             }
 
-            assertTrue(testException != null && testException instanceof IllegalStateException);
+            assertTrue(testException != null && testException instanceof IllegalArgumentException);
 
             //test when jdbc connection is closed
             Connection jdbcConn = null;

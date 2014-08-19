@@ -262,7 +262,7 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
         writeAttribute("type", type, true);
     }
 
-    private static String getColumnType(Object o)
+    public static String getColumnType(Object o)
     {
         if (o instanceof Range || o instanceof RangeSet) {
             return null;
@@ -283,7 +283,7 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
         return getCellType(o, "column");
     }
 
-    static String getCellType(Object cell, String type)
+    public static String getCellType(Object cell, String type)
     {
         if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {
             return null;

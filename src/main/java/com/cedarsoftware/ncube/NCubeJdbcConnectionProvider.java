@@ -30,6 +30,13 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     Map<ContextKey,Object> connectionContext = new HashMap<>();
 
     /**
+     * Constructs a new NCubeJdbcConnectionProvider with no setup. (Empty Constructor)
+     */
+    public NCubeJdbcConnectionProvider()
+    {
+    }
+
+    /**
      * Constructs a new NCubeJdbcConnectionProvider with the input connection added to the connection context Map.
      *
      * @param connection - java.sql.Connection
@@ -38,7 +45,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     public NCubeJdbcConnectionProvider(Connection connection)
     {
         if (!isActiveConnection(connection))
-            throw new IllegalStateException("Input jdbc connection is not valid, check state of connection prior to instantiating connection provider...");
+            throw new IllegalArgumentException("Input jdbc connection is not valid, check state of connection prior to instantiating connection provider...");
 
         connectionContext.put(ContextKey.JDBC_CONNECTION, connection);
     }

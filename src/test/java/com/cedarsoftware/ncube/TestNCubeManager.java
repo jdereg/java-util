@@ -28,7 +28,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -1744,4 +1743,20 @@ DELIMITER ;
         NCubeManager.setBaseResourceUrls(strings, "bar");
         assertNotNull(NCubeManager.getUrlClassLoader("bar"));
     }
+
+    @Test
+    public void testValidateConnection() throws Exception
+    {
+        Connection c = getConnection();
+        NCubeManager.validateConnection(c);
+        c.close();
+        try
+        {
+            NCubeManager.validateConnection(c);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
 }

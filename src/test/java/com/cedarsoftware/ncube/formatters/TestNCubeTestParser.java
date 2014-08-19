@@ -41,7 +41,7 @@ public class TestNCubeTestParser
     }
 
     @Test(expected=IllegalArgumentException.class)
-    public void testParseWithInvlalidArgumnet() throws Exception {
+    public void testParseWithInvalidArgumnet() throws Exception {
         Map<String, Object> map = new HashMap<>();
         new NCubeTestParser().parseValue(map);
     }
@@ -69,8 +69,6 @@ public class TestNCubeTestParser
 
         NCubeTestDto test3 = c.get("test3");
         assertEquals(new GroovyExpression("['foo':'bar', 'style':'black']", null), test3.expectedResult);
-
-
     }
 
     public static Map<String, NCubeTestDto> getTestsFromResource(String name)

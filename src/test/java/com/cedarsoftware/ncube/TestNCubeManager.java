@@ -30,7 +30,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -1523,13 +1522,14 @@ DELIMITER ;
             PreparedStatement psVerify = mock(PreparedStatement.class);
             ResultSet rsVerify = mock(ResultSet.class);
 
-            when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?")).thenReturn(psVerify);
+            when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenReturn(psVerify);
             when(psVerify.executeQuery()).thenReturn(rsVerify);
             when(rsVerify.next()).thenReturn(false);
 
-            doThrow(SQLException.class).when(c).prepareStatement("SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
+
+            when(c.prepareStatement("SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
                     "FROM n_cube\n" +
-                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?");
+                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
 
             NCubeManager.createSnapshotCubes(c, APP_ID, "0.1.0", "0.1.1");
             fail("should not make it here");

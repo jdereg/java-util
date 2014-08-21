@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
@@ -13,8 +14,9 @@ import static org.mockito.Mockito.when;
  */
 public class TestBinaryUrlCmd
 {
-    @Test(expected=IllegalStateException.class)
-    public void testSimpleFetchException() {
+    @Test
+    public void testSimpleFetchException()
+    {
         NCube mock = Mockito.mock(NCube.class);
         BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false);
 
@@ -23,7 +25,9 @@ public class TestBinaryUrlCmd
 
         when(mock.getName()).thenReturn("foo");
         when(mock.getVersion()).thenThrow(RuntimeException.class);
-        cmd.simpleFetch(map);
+        Object foo = cmd.simpleFetch(map);
+        String html = new String((byte[])foo);
+        assertTrue(html.contains("Software"));
     }
 
 }

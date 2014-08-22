@@ -1,8 +1,8 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.NCubeConnectionProvider.ContextKey;
 import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
-import com.cedarsoftware.ncube.NCubeConnectionProvider.ContextKey;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
@@ -1413,7 +1413,13 @@ public class NCubeManager
         {
             try
             {   // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
-                return (NCube) JsonReader.jsonToJava(json);
+                NCube ncube = (NCube) JsonReader.jsonToJava(json);
+                List<Axis> axes = ncube.getAxes();
+                for (Axis axis : axes)
+                {
+                    axis.buildScaffolding();
+                }
+                return ncube;
             }
             catch (Exception e1)
             {

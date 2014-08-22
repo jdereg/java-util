@@ -385,28 +385,29 @@ public class HtmlFormatter implements NCubeFormatter
                     "{\n" +
                     "background: #4D4D4D;\n" +
                     "}\n" +
-                    ".ncube-col\n" +
+                    ".column\n" +
                     "{\n" +
                     "background: #929292;\n" +
                     "}\n" +
-                    ".col-code\n" +
+                    ".column-code\n" +
                     "{\n" +
                     "color: white;\n" +
-                    "background: #929292;\n" +
                     "text-align: left;\n" +
                     "vertical-align: top;\n" +
                     "font-family: \"Courier New\", Courier, monospace\n" +
                     "}\n" +
-                    ".col-url\n" +
+                    ".column-url\n" +
                     "{\n" +
                     "color: blue;\n" +
-                    "background: #929292;\n" +
                     "text-align: left;\n" +
                     "vertical-align: top;\n" +
                     "}\n" +
                     ".cell\n" +
                     "{\n" +
+                    "color: black;\n" +
                     "background: white;\n" +
+                    "text-align: center;\n" +
+                    "vertical-align: middle\n" +
                     "}\n" +
                     ".cell-url\n" +
                     "{\n" +
@@ -458,21 +459,21 @@ public class HtmlFormatter implements NCubeFormatter
     {
         if (axis.getType() == AxisType.RULE)
         {
-            return "col-code";
+            return "column column-code";
         }
         if (col.getValue() instanceof CommandCell)
         {
             CommandCell cmd = (CommandCell) col.getValue();
             if (StringUtilities.hasContent(cmd.getUrl()))
             {
-                return "col-url";
+                return "column column-url";
             }
             else if (cmd instanceof GroovyBase)
             {
-                return "col-code";
+                return "column column-code";
             }
         }
-        return "ncube-col";
+        return "column";
     }
 
     private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
@@ -488,12 +489,12 @@ public class HtmlFormatter implements NCubeFormatter
                 CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.getUrl()))
                 {
-                    s.append("cell-url\">url: ");
+                    s.append("cell cell-url\">url: ");
                     s.append(cmd.getUrl());
                 }
                 else if (cmd instanceof GroovyBase)
                 {
-                    s.append("cell-code\">");
+                    s.append("cell cell-code\">");
                     s.append(getCellValueAsString(cell));
                 }
                 else

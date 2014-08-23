@@ -145,101 +145,10 @@ public class HtmlFormatter implements NCubeFormatter
     {
         if (ncube.getAxes().size() < 1)
         {
-            return "<!DOCTYPE html>\n" +
-                    "<html lang=\"en\">\n" +
-                    "  <head>\n" +
-                    "    <meta charset=\"UTF-8\">\n" +
-                    "    <title>Empty NCube</title>\n" +
-                    "  </head>\n" +
-                    "  <body/>\n" +
-                    "</html>";
+            return getNoAxisHtml();
         }
 
-        String html = "<!DOCTYPE html>\n" +
-                "<html lang=\"en\">\n" +
-                "<head>\n" +
-                " <meta charset=\"UTF-8\">\n" +
-                " <title>NCube: " + ncube.getName() + "</title>\n" +
-                " <style>\n" +
-                "table\n" +
-                "{\n" +
-                "border-collapse:collapse;\n" +
-                "}\n" +
-                "table, td, th\n" +
-                "{\n" +
-                "border:1px solid black;\n" +
-                "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
-                "font-size: small;\n" +
-                "font-weight: 500;\n" +
-                "padding: 2px;\n" +
-                "}\n" +
-                "td\n" +
-                "{\n" +
-                "color: black;\n" +
-                "background: white;\n" +
-                "text-align: center;\n" +
-                "}\n" +
-                "th\n" +
-                "{\n" +
-                "color: white;\n" +
-                "}\n" +
-                "td:hover { background: #E0F0FF }\n" +
-                "th:hover { background: #A2A2A2 }\n" +
-                ".ncube-num\n" +
-                "{\n" +
-                "text-align: right;\n" +
-                "}\n" +
-                ".ncube-dead\n" +
-                "{\n" +
-                "background: #6495ED;\n" +
-                "}\n" +
-                ".ncube-head\n" +
-                "{\n" +
-                "background: #4D4D4D;\n" +
-                "}\n" +
-                ".ncube-col\n" +
-                "{\n" +
-                "background: #929292;\n" +
-                "}\n" +
-                ".col-code\n" +
-                "{\n" +
-                "color: white;\n" +
-                "background: #929292;\n" +
-                "text-align: left;\n" +
-                "vertical-align: top;\n" +
-                "font-family: \"Courier New\", Courier, monospace\n" +
-                "}\n" +
-                ".col-url\n" +
-                "{\n" +
-                "color: blue;\n" +
-                "background: #929292;\n" +
-                "text-align: left;\n" +
-                "vertical-align: top;\n" +
-                "}\n" +
-                ".cell\n" +
-                "{\n" +
-                "background: white;\n" +
-                "}\n" +
-                ".cell-url\n" +
-                "{\n" +
-                "color: white;\n" +
-                "background: slategray;\n" +
-                "text-align: left;\n" +
-                "vertical-align: top\n" +
-                "}\n" +
-                ".cell-code\n" +
-                "{\n" +
-                "color: Lime;\n" +
-                "background: slategray;\n" +
-                "text-align: left;\n" +
-                "vertical-align: top;\n" +
-                "font-family: \"Courier New\", Courier, monospace\n" +
-                "}\n" +
-                " </style>\n" +
-                "</head>\n" +
-                "<body>\n" +
-                "<table border=\"1\">\n" +
-                "<tr>\n";
+        String html = getHtmlPreamble(ncube);
 
         StringBuilder s = new StringBuilder();
         Object[] displayValues = getDisplayValues(ncube);
@@ -267,7 +176,7 @@ public class HtmlFormatter implements NCubeFormatter
             s.append(ncube.getName());
             s.append("</th>\n");
             s.append("</tr>\n");
-            Set<Long> coord = new LinkedHashSet<Long>();
+            Set<Long> coord = new LinkedHashSet<>();
 
             for (int i = 0; i < width; i++)
             {
@@ -307,11 +216,11 @@ public class HtmlFormatter implements NCubeFormatter
 
             // Second row (special case)
             s.append("<tr>\n");
-            Map<String, Long> rowspanCounter = new HashMap();
-            Map<String, Long> rowspan = new HashMap();
-            Map<String, Long> columnCounter = new HashMap();
-            Map<String, List<Column>> columns = new HashMap();
-            Map<String, Long> coord = new HashMap();
+            Map<String, Long> rowspanCounter = new HashMap<>();
+            Map<String, Long> rowspan = new HashMap<>();
+            Map<String, Long> columnCounter = new HashMap<>();
+            Map<String, List<Column>> columns = new HashMap<>();
+            Map<String, Long> coord = new HashMap<>();
 
             final int axisCount = axes.size();
 
@@ -419,7 +328,7 @@ public class HtmlFormatter implements NCubeFormatter
                 {
                     coord.put(topAxisName, topColumns.get(i).getId());
                     // Other coordinate values are set above this for-loop
-                    buildCell(ncube, s, new LinkedHashSet<Long>(coord.values()));
+                    buildCell(ncube, s, new LinkedHashSet<>(coord.values()));
                 }
 
                 s.append("</tr>\n");
@@ -432,7 +341,109 @@ public class HtmlFormatter implements NCubeFormatter
         return s.toString();
     }
 
-    private void addColumnPrefixText(StringBuilder s, Column column)
+    private static String getHtmlPreamble(NCube ncube)
+    {
+        return "<!DOCTYPE html>\n" +
+                    "<html lang=\"en\">\n" +
+                    "<head>\n" +
+                    " <meta charset=\"UTF-8\">\n" +
+                    " <title>NCube: " + ncube.getName() + "</title>\n" +
+                    " <style>\n" +
+                    "table\n" +
+                    "{\n" +
+                    "border-collapse:collapse;\n" +
+                    "}\n" +
+                    "table, td, th\n" +
+                    "{\n" +
+                    "border:1px solid black;\n" +
+                    "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
+                    "font-size: small;\n" +
+                    "font-weight: 500;\n" +
+                    "padding: 2px;\n" +
+                    "}\n" +
+                    "td\n" +
+                    "{\n" +
+                    "color: black;\n" +
+                    "background: white;\n" +
+                    "text-align: center;\n" +
+                    "}\n" +
+                    "th\n" +
+                    "{\n" +
+                    "color: white;\n" +
+                    "}\n" +
+                    "td:hover { background: #E0F0FF }\n" +
+                    "th:hover { background: #A2A2A2 }\n" +
+                    ".ncube-num\n" +
+                    "{\n" +
+                    "text-align: right;\n" +
+                    "}\n" +
+                    ".ncube-dead\n" +
+                    "{\n" +
+                    "background: #6495ED;\n" +
+                    "}\n" +
+                    ".ncube-head\n" +
+                    "{\n" +
+                    "background: #4D4D4D;\n" +
+                    "}\n" +
+                    ".column\n" +
+                    "{\n" +
+                    "background: #929292;\n" +
+                    "}\n" +
+                    ".column-code\n" +
+                    "{\n" +
+                    "color: white;\n" +
+                    "text-align: left;\n" +
+                    "vertical-align: top;\n" +
+                    "font-family: \"Courier New\", Courier, monospace\n" +
+                    "}\n" +
+                    ".column-url\n" +
+                    "{\n" +
+                    "color: blue;\n" +
+                    "text-align: left;\n" +
+                    "vertical-align: top;\n" +
+                    "}\n" +
+                    ".cell\n" +
+                    "{\n" +
+                    "color: black;\n" +
+                    "background: white;\n" +
+                    "text-align: center;\n" +
+                    "vertical-align: middle\n" +
+                    "}\n" +
+                    ".cell-url\n" +
+                    "{\n" +
+                    "color: white;\n" +
+                    "background: slategray;\n" +
+                    "text-align: left;\n" +
+                    "vertical-align: top\n" +
+                    "}\n" +
+                    ".cell-code\n" +
+                    "{\n" +
+                    "color: Lime;\n" +
+                    "background: slategray;\n" +
+                    "text-align: left;\n" +
+                    "vertical-align: top;\n" +
+                    "font-family: \"Courier New\", Courier, monospace\n" +
+                    "}\n" +
+                    " </style>\n" +
+                    "</head>\n" +
+                    "<body>\n" +
+                    "<table border=\"1\">\n" +
+                    "<tr>\n";
+    }
+
+    private static String getNoAxisHtml()
+    {
+        return "<!DOCTYPE html>\n" +
+                "<html lang=\"en\">\n" +
+                "  <head>\n" +
+                "    <meta charset=\"UTF-8\">\n" +
+                "    <title>Empty NCube</title>\n" +
+                "  </head>\n" +
+                "  <body/>\n" +
+                "</html>";
+    }
+
+    private static void addColumnPrefixText(StringBuilder s, Column column)
     {
         if (column.getValue() instanceof CommandCell)
         {
@@ -444,25 +455,25 @@ public class HtmlFormatter implements NCubeFormatter
         }
     }
 
-    private String getColumnCssClass(Axis axis, Column col)
+    private static String getColumnCssClass(Axis axis, Column col)
     {
         if (axis.getType() == AxisType.RULE)
         {
-            return "col-code";
+            return "column column-code";
         }
         if (col.getValue() instanceof CommandCell)
         {
             CommandCell cmd = (CommandCell) col.getValue();
             if (StringUtilities.hasContent(cmd.getUrl()))
             {
-                return "col-url";
+                return "column column-url";
             }
             else if (cmd instanceof GroovyBase)
             {
-                return "col-code";
+                return "column column-code";
             }
         }
-        return "ncube-col";
+        return "column";
     }
 
     private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
@@ -478,12 +489,12 @@ public class HtmlFormatter implements NCubeFormatter
                 CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.getUrl()))
                 {
-                    s.append("cell-url\">url: ");
+                    s.append("cell cell-url\">url: ");
                     s.append(cmd.getUrl());
                 }
                 else if (cmd instanceof GroovyBase)
                 {
-                    s.append("cell-code\">");
+                    s.append("cell cell-code\">");
                     s.append(getCellValueAsString(cell));
                 }
                 else
@@ -500,7 +511,7 @@ public class HtmlFormatter implements NCubeFormatter
         }
         else
         {
-            s.append("\">");
+            s.append("cell\">");
         }
         s.append("</td>\n");
     }
@@ -586,7 +597,7 @@ public class HtmlFormatter implements NCubeFormatter
             s.append(i.next());
             if (i.hasNext())
             {
-                s.append('.');
+                s.append('-');
             }
         }
         return s.toString();

@@ -172,7 +172,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         try
         {
-            actualUrl = getActualUrl(cube.getVersion(), cube.getName());
+            actualUrl = getActualUrl(cube);
             URLConnection connection = actualUrl.openConnection();
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
@@ -253,7 +253,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         try
         {
-            URL u = getActualUrl(cube.getVersion(), cube.getName());
+            URL u = getActualUrl(cube);
             //TODO:  java-util change remove u.toString() when we have a URL version of this call
             return UrlUtilities.getContentFromUrlAsString(u.toString(), proxyServer, proxyPort, null, null, true);
         }
@@ -264,7 +264,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    protected URL getActualUrl(String version, String ncubeName) throws MalformedURLException
+    protected URL getActualUrl(NCube ncube) throws MalformedURLException
     {
         URL actualUrl;
 
@@ -278,23 +278,28 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {   // Relative URL
-                URLClassLoader loader = NCubeManager.getUrlClassLoader(version);
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getVersion());
                 if (loader == null)
                 {
-                    throw new IllegalStateException("No root URLs are set for relative path resources to be loaded, ncube: " + ncubeName + ", version: " + version);
+                    // TODO: Make attempt to load them from sys.classpath
+                    throw new IllegalStateException("No root URLs are set for relative path resources to be loaded, ncube: " + ncube.getName() + ", version: " + ncube.getVersion());
                 }
                 // Make URL absolute (uses URL roots added to NCubeManager)
                 actualUrl = loader.getResource(url);
             }
         }
+        catch(IllegalStateException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
-            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncubeName + ", version: " + version, e);
+            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.getName() + ", version: " + ncube.getVersion(), e);
         }
 
         if (actualUrl == null)
         {
-            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + url + ", ncube: " + ncubeName + ", version: " + version);
+            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + url + ", ncube: " + ncube.getName() + ", version: " + ncube.getVersion());
         }
         return actualUrl;
     }

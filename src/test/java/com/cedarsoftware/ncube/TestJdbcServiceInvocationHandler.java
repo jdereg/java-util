@@ -76,7 +76,7 @@ public class TestJdbcServiceInvocationHandler
         try {
             new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new FooServiceThatForgetsToImplementConnection());
         } catch (IllegalArgumentException e) {
-            System.out.println(e.toString());
+            assertEquals("java.lang.IllegalArgumentException: Adapter class 'FooServiceThatForgetsToImplementConnection' does not implement: getFoo(Connection,int)", e.toString());
         }
     }
 
@@ -88,7 +88,7 @@ public class TestJdbcServiceInvocationHandler
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
         } catch (RuntimeException e) {
-            assertTrue(e.getCause() instanceof NoSuchMethodException);
+            assertTrue(e.getCause() instanceof IllegalArgumentException);
         }
     }
 
@@ -104,8 +104,8 @@ public class TestJdbcServiceInvocationHandler
     }
 
     private class FooServiceThatThrowsAnException {
-        String getFoo(Connection c, int fooId) { throw new IllegalArgumentException(); }
-        boolean saveFoo(Connection c, int fooId, String name) { return true; }
+        public String getFoo(Connection c, int fooId) { throw new IllegalArgumentException(); }
+        public boolean saveFoo(Connection c, int fooId, String name) { return true; }
     }
 
     private class JdbcFooService {

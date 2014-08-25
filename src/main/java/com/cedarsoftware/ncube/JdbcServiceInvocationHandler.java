@@ -31,10 +31,23 @@ public class JdbcServiceInvocationHandler implements InvocationHandler {
                 Method adaptedMethod = adapter.getClass().getMethod(m.getName(), adaptedParameters);
                 methods.put(m, adaptedMethod);
             } catch (NoSuchMethodException e) {
-                String s = String.format("Adapter class '%s' does not implement '%s' with the parameters: %s", adapter.getClass().getName(), m.getName(), adaptedParameters.toString());
+                String s = buildDoesNotImplementMessage(m, adaptedParameters);
                 throw new IllegalArgumentException(s, e);
             }
         }
+    }
+
+    public String buildDoesNotImplementMessage(Method m, Class[] adaptedParameters) {
+        StringBuilder b = new StringBuilder(String.format("Adapter class '%s' does not implement: %s(", _adapter.getClass().getSimpleName(), m.getName()));
+        for (Class c : adaptedParameters) {
+            b.append(c.getSimpleName());
+            b.append(",");
+        }
+        if (adaptedParameters.length > 1) {
+            b.setLength(b.length()-1);
+        }
+        b.append(")");
+        return b.toString();
     }
 
     public Class[] getAdaptedParameters(Class[] classes) {

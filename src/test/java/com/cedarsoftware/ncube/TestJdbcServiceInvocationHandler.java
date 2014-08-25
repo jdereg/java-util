@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import javax.sql.DataSource;
+import java.lang.reflect.InvocationHandler;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,7 +20,8 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by ken on 8/21/2014.
  */
-public class TestJdbcServiceAdapter {
+public class TestJdbcServiceInvocationHandler
+{
 
 
     @Before
@@ -61,16 +63,50 @@ public class TestJdbcServiceAdapter {
 
     @Test
     public void testAdapter() {
-        JdbcServiceAdapter h = new JdbcServiceAdapter(getDataSource(), FooService.class, new JdbcFooService());
+        InvocationHandler h = new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new JdbcFooService());
         FooService service = ProxyFactory.create(FooService.class, h);
         assertEquals(null, service.getFoo(1));
         assertTrue(service.saveFoo(1, "baz"));
         assertEquals("baz", service.getFoo(1));
+
+    }
+
+    @Test
+    public void testFooServiceThatDoesntAddConnection() {
+
+        try {
+            new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new FooServiceThatForgetsToImplementConnection());
+        } catch (RuntimeException e) {
+            assertTrue(e.getCause() instanceof NoSuchMethodException);
+        }
+    }
+
+    @Test
+    public void testExceptionThrowDuringCall() {
+
+        try {
+            JdbcServiceInvocationHandler h = new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
+            FooService service = ProxyFactory.create(FooService.class, h);
+            service.getFoo(1);
+        } catch (RuntimeException e) {
+            assertTrue(e.getCause() instanceof NoSuchMethodException);
+        }
     }
 
     private interface FooService {
-        public String getFoo(int fooId);
-        public boolean saveFoo(int fooId, String name);
+        String getFoo(int fooId);
+        boolean saveFoo(int fooId, String name);
+    }
+
+    private class FooServiceThatForgetsToImplementConnection
+    {
+        String getFoo(int fooId) { return null; }
+        boolean saveFoo(int fooId, String name) { return true; }
+    }
+
+    private class FooServiceThatThrowsAnException {
+        String getFoo(Connection c, int fooId) { throw new IllegalArgumentException(); }
+        boolean saveFoo(Connection c, int fooId, String name) { return true; }
     }
 
     private class JdbcFooService {
@@ -94,14 +130,11 @@ public class TestJdbcServiceAdapter {
 
         public boolean saveFoo(Connection c, int fooId, String name) {
             try (PreparedStatement statement = c.prepareStatement(
-                    "INSERT INTO foo_table (foo_id, foo_name) VALUES (?, ?)"
+                    "MERGE INTO foo_table USING (VALUES(?, ?)) " +
+                    "AS vals(foo_id, foo_name) ON foo_table.foo_id = vals.foo_id " +
+                    "WHEN MATCHED THEN UPDATE SET foo_table.foo_name = vals.foo_name " +
+                    "WHEN NOT MATCHED THEN INSERT (foo_id, foo_name) values (vals.foo_id, vals.foo_name)"
             )) {
-
-//            try(PreparedStatement statement = c.prepareStatement(
-//                    "MERGE INTO foo_table USING (VALUES(CAST (? AS INT), CAST (? AS VARCHAR(100)))) " +
-//                    "AS I(foo_id, foo_name) ON foo_table.foo_id = I.foo_id " +
-//                    "WHEN MATCHED THEN UPDATE SET foo_table.foo_name = I.foo_name" +
-//                    "WHEN NOT MATCHED THEN INSERT (foo_id, foo_name) values (I.foo_id, I.foo_name)")) {
 
                 statement.setInt(1, fooId);
                 statement.setString(2, name);

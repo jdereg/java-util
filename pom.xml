@@ -41,6 +41,8 @@
         <version.groovy>2.3.4</version.groovy>
         <version.powermock>1.5.4</version.powermock>
         <version.mockito>1.9.5</version.mockito>
+        <version.mongo>2.12.3</version.mongo>
+        <version.nosqlunit>0.7.9</version.nosqlunit>
     </properties>
 
     <pluginRepositories>
@@ -171,6 +173,18 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.lordofthejars</groupId>
+            <artifactId>nosqlunit-mongodb</artifactId>
+            <version>${version.nosqlunit}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongo-java-driver</artifactId>
+            <version>${version.mongo}</version>
+        </dependency>
 
         <!--<dependency>-->
 			<!--<groupId>oracle</groupId>-->

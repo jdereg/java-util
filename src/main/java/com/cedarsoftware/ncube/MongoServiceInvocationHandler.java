@@ -1,24 +1,24 @@
 package com.cedarsoftware.ncube;
 
-import javax.sql.DataSource;
+import com.mongodb.Mongo;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by ken on 8/22/2014.
+ * Created by kpartlow on 8/23/2014.
  */
-public class JdbcServiceAdapter implements InvocationHandler {
-
+public class MongoServiceInvocationHandler implements InvocationHandler
+{
     private Object _adapter;
-    private DataSource _source;
+    private Mongo _client;
     private Map<Method, Method> methods = new HashMap<Method, Method>();
 
-    public JdbcServiceAdapter(DataSource source, Class service, Object adapter) {
-        _source = source;
+    public MongoServiceInvocationHandler(Mongo client, Class service, Object adapter) {
+        _client = client;
         _adapter = adapter;
 
         Method[] declaredMethods = service.getDeclaredMethods();
@@ -39,14 +39,14 @@ public class JdbcServiceAdapter implements InvocationHandler {
 
     public Class[] getAdaptedParameters(Class[] classes) {
         Class[] adaptedParameters = new Class[classes.length+1];
-        adaptedParameters[0] = Connection.class;
+        adaptedParameters[0] = Mongo.class;
         System.arraycopy(classes, 0, adaptedParameters, 1, classes.length);
         return adaptedParameters;
     }
 
-    public Object[] getAdaptedArguments(Object[] args, Connection c) {
+    public Object[] getAdaptedArguments(Object[] args) {
         Object[] adaptedArgs = new Object[args.length+1];
-        adaptedArgs[0] = c;
+        adaptedArgs[0] = _client;
         System.arraycopy(args, 0, adaptedArgs, 1, args.length);
         return adaptedArgs;
     }
@@ -55,9 +55,7 @@ public class JdbcServiceAdapter implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
         try {
-            try (Connection c = _source.getConnection()) {
-                return methods.get(m).invoke(_adapter, getAdaptedArguments(args, c));
-            }
+            return methods.get(m).invoke(_adapter, getAdaptedArguments(args));
         } catch (InvocationTargetException e) {
             throw e.getTargetException();
         }

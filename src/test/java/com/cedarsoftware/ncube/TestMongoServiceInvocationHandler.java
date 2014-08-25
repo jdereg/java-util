@@ -36,8 +36,8 @@ public class TestMongoServiceInvocationHandler
 
     @After
     public void tearDown() {
-        Mongo defaultEmbeddedInstance = EmbeddedMongoInstancesFactory.getInstance().getDefaultEmbeddedInstance();
-        defaultEmbeddedInstance.getDB("test").getCollection("collection1").drop();
+        //Mongo defaultEmbeddedInstance = EmbeddedMongoInstancesFactory.getInstance().getDefaultEmbeddedInstance();
+        //defaultEmbeddedInstance.getDB("test").getCollection("collection1").drop();
     }
 
 

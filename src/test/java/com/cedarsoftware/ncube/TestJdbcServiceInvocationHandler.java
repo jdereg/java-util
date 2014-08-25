@@ -87,8 +87,7 @@ public class TestJdbcServiceInvocationHandler
             JdbcServiceInvocationHandler h = new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
-        } catch (RuntimeException e) {
-            assertTrue(e.getCause() instanceof IllegalArgumentException);
+        } catch (IllegalArgumentException e) {
         }
     }
 

@@ -25,7 +25,7 @@ import static org.junit.Assert.assertEquals;
  * Created by ken on 8/21/2014.
  */
 
-public class TestMongoServiceInvocationHandler
+public class TestMongoProviderInvocationHandler
 {
     @ClassRule
     public static InMemoryMongoDb inMemoryMongoDb = newInMemoryMongoDbRule().build();
@@ -48,7 +48,7 @@ public class TestMongoServiceInvocationHandler
     @UsingDataSet(locations="testAdapter-initial.json", loadStrategy= LoadStrategyEnum.CLEAN_INSERT)
     @ShouldMatchDataSet(location="testAdapter-expected.json")
     public void testSaveWithNewItem() {
-        InvocationHandler h = new MongoServiceInvocationHandler(getDataSource(), FooService.class, new MongoFooService());
+        InvocationHandler h = new MongoProviderInvocationHandler(getDataSource(), FooService.class, new MongoFooService());
         FooService service = ProxyFactory.create(FooService.class, h);
 
         //finish tests later.
@@ -57,7 +57,7 @@ public class TestMongoServiceInvocationHandler
         String name = service.getFoo(2);
         assertEquals("Kenny P.", name);
 
-        //  Will add another item in since we aren't passing in _id with a value set.
+        //  Will add another item since we aren't passing in _id from a previous lookup.
         service.saveFoo(2, "Chuck R.");
     }
 

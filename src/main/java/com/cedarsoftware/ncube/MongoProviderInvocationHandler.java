@@ -8,11 +8,11 @@ import java.lang.reflect.Method;
 /**
  * Created by kpartlow on 8/23/2014.
  */
-public class MongoServiceInvocationHandler extends AbstractPersistenceProxy
+public class MongoProviderInvocationHandler extends AbstractPersistenceProxy
 {
     private Mongo _client;
 
-    public MongoServiceInvocationHandler(Mongo client, Class service, Object adapter) {
+    public MongoProviderInvocationHandler(Mongo client, Class service, Object adapter) {
         super(service, adapter);
         _client = client;
     }

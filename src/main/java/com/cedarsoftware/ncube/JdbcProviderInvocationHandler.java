@@ -8,11 +8,11 @@ import java.sql.Connection;
 /**
  * Created by ken on 8/22/2014.
  */
-public class JdbcServiceInvocationHandler extends AbstractPersistenceProxy {
+public class JdbcProviderInvocationHandler extends AbstractPersistenceProxy {
 
     private DataSource _source;
 
-    public JdbcServiceInvocationHandler(DataSource source, Class service, Object adapter) {
+    public JdbcProviderInvocationHandler(DataSource source, Class service, Object adapter) {
         super(service, adapter);
         _source = source;
     }

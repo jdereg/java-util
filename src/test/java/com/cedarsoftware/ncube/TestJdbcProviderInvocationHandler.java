@@ -81,14 +81,14 @@ public class TestJdbcProviderInvocationHandler
     }
 
     @Test
-    public void testExceptionThrowDuringCall() {
+    public void testExceptionThrownDuringCall() {
 
         try {
             JdbcProviderInvocationHandler h = new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
         } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
+            assertEquals("getFoo threw smart message", e.getMessage());
         }
     }
 
@@ -104,7 +104,7 @@ public class TestJdbcProviderInvocationHandler
     }
 
     private class FooServiceThatThrowsAnException {
-        public String getFoo(Connection c, int fooId) { throw new IllegalArgumentException(); }
+        public String getFoo(Connection c, int fooId) { throw new IllegalArgumentException("getFoo threw smart message"); }
         public boolean saveFoo(Connection c, int fooId, String name) { return true; }
     }
 

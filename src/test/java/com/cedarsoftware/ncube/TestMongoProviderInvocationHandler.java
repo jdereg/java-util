@@ -61,10 +61,31 @@ public class TestMongoProviderInvocationHandler
         service.saveFoo(2, "Chuck R.");
     }
 
+    @Test
+    public void testExceptionThrownDuringCall() {
+
+        try {
+            InvocationHandler h = new MongoProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
+            FooService service = ProxyFactory.create(FooService.class, h);
+            service.getFoo(1);
+        } catch (IllegalArgumentException e) {
+            assertEquals("getFoo threw stinky message", e.getMessage());
+        }
+    }
+
+
+
     private interface FooService {
         public String getFoo(int fooId);
         public boolean saveFoo(int fooId, String name);
     }
+
+    private class FooServiceThatThrowsAnException {
+        public String getFoo(Mongo c, int fooId) { throw new IllegalArgumentException("getFoo threw stinky message"); }
+        public boolean saveFoo(Mongo c, int fooId, String name) { return true; }
+    }
+
+
 
     private class MongoFooService {
         public String getFoo(Mongo mongo, int fooId) {

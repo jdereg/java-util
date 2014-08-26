@@ -1,0 +1,25 @@
+{
+    "foo":{
+        "indexes":[
+            {
+                "index":{
+                    "code":1
+                }
+            }
+        ],
+        "data":[
+            {
+                "id":1,
+                "code":"John D."
+            },
+            {
+                "id":2,
+                "code":"Kenny P."
+            },
+            {
+                "id":2,
+                "code":"Chuck R."
+            }
+        ]
+    }
+}

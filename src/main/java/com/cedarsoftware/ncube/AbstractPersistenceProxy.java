@@ -1,24 +1,19 @@
 package com.cedarsoftware.ncube;
 
-import com.mongodb.Mongo;
-
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by kpartlow on 8/23/2014.
+ * Created by kpartlow on 8/25/2014.
  */
-public class MongoServiceInvocationHandler implements InvocationHandler
+public abstract class AbstractPersistenceProxy implements InvocationHandler
 {
-    private Object _adapter;
-    private Mongo _client;
-    private Map<Method, Method> methods = new HashMap<Method, Method>();
+    protected Object _adapter;
+    protected Map<Method, Method> methods = new HashMap<Method, Method>();
 
-    public MongoServiceInvocationHandler(Mongo client, Class service, Object adapter) {
-        _client = client;
+    public AbstractPersistenceProxy(Class service, Object adapter) {
         _adapter = adapter;
 
         Method[] declaredMethods = service.getDeclaredMethods();
@@ -31,33 +26,38 @@ public class MongoServiceInvocationHandler implements InvocationHandler
                 Method adaptedMethod = adapter.getClass().getMethod(m.getName(), adaptedParameters);
                 methods.put(m, adaptedMethod);
             } catch (NoSuchMethodException e) {
-                String s = String.format("Adapter class '%s' does not implement '%s' with the parameters: %s", adapter.getClass().getName(), m.getName(), adaptedParameters.toString());
+                String s = buildDoesNotImplementMessage(m, adaptedParameters);
                 throw new IllegalArgumentException(s, e);
             }
         }
     }
 
+    public String buildDoesNotImplementMessage(Method m, Class[] adaptedParameters) {
+        StringBuilder b = new StringBuilder(String.format("Adapter class '%s' does not implement: %s(", _adapter.getClass().getSimpleName(), m.getName()));
+        for (Class c : adaptedParameters) {
+            b.append(c.getSimpleName());
+            b.append(",");
+        }
+        if (adaptedParameters.length > 1) {
+            b.setLength(b.length()-1);
+        }
+        b.append(")");
+        return b.toString();
+    }
+
     public Class[] getAdaptedParameters(Class[] classes) {
         Class[] adaptedParameters = new Class[classes.length+1];
-        adaptedParameters[0] = Mongo.class;
+        adaptedParameters[0] = getAddedClass();
         System.arraycopy(classes, 0, adaptedParameters, 1, classes.length);
         return adaptedParameters;
     }
 
-    public Object[] getAdaptedArguments(Object[] args) {
+    public Object[] getAdaptedArguments(Object[] args, Object addedArgument) {
         Object[] adaptedArgs = new Object[args.length+1];
-        adaptedArgs[0] = _client;
+        adaptedArgs[0] = addedArgument;
         System.arraycopy(args, 0, adaptedArgs, 1, args.length);
         return adaptedArgs;
     }
 
-
-    @Override
-    public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
-        try {
-            return methods.get(m).invoke(_adapter, getAdaptedArguments(args));
-        } catch (InvocationTargetException e) {
-            throw e.getTargetException();
-        }
-    }
+    public abstract Class getAddedClass();
 }

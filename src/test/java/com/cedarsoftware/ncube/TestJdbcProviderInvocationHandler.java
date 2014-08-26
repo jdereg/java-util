@@ -20,7 +20,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by ken on 8/21/2014.
  */
-public class TestJdbcServiceInvocationHandler
+public class TestJdbcProviderInvocationHandler
 {
 
 
@@ -63,7 +63,7 @@ public class TestJdbcServiceInvocationHandler
 
     @Test
     public void testAdapter() {
-        InvocationHandler h = new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new JdbcFooService());
+        InvocationHandler h = new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new JdbcFooService());
         FooService service = ProxyFactory.create(FooService.class, h);
         assertEquals(null, service.getFoo(1));
         assertTrue(service.saveFoo(1, "baz"));
@@ -74,20 +74,21 @@ public class TestJdbcServiceInvocationHandler
     @Test
     public void testFooServiceThatDoesntAddConnection() {
         try {
-            new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new FooServiceThatForgetsToImplementConnection());
+            new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatForgetsToImplementConnection());
         } catch (IllegalArgumentException e) {
             assertEquals("java.lang.IllegalArgumentException: Adapter class 'FooServiceThatForgetsToImplementConnection' does not implement: getFoo(Connection,int)", e.toString());
         }
     }
 
     @Test
-    public void testExceptionThrowDuringCall() {
+    public void testExceptionThrownDuringCall() {
 
         try {
-            JdbcServiceInvocationHandler h = new JdbcServiceInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
+            JdbcProviderInvocationHandler h = new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
         } catch (IllegalArgumentException e) {
+            assertEquals("getFoo threw smart message", e.getMessage());
         }
     }
 
@@ -103,7 +104,7 @@ public class TestJdbcServiceInvocationHandler
     }
 
     private class FooServiceThatThrowsAnException {
-        public String getFoo(Connection c, int fooId) { throw new IllegalArgumentException(); }
+        public String getFoo(Connection c, int fooId) { throw new IllegalArgumentException("getFoo threw smart message"); }
         public boolean saveFoo(Connection c, int fooId, String name) { return true; }
     }
 

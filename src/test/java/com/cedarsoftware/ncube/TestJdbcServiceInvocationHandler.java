@@ -88,6 +88,7 @@ public class TestJdbcServiceInvocationHandler
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
         } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
         }
     }
 

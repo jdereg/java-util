@@ -1,25 +1,16 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
-import com.cedarsoftware.ncube.BinaryUrlCmd;
 import com.cedarsoftware.ncube.Column;
-import com.cedarsoftware.ncube.GroovyExpression;
-import com.cedarsoftware.ncube.GroovyMethod;
-import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
-import com.cedarsoftware.ncube.StringUrlCmd;
 import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -233,35 +224,6 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
         endObject();
     }
 
-    public void writeCommandCell(UrlCommandCell cmd) throws IOException
-    {
-        if (!cmd.isCacheable()) {
-            writeAttribute("cache", cmd.isCacheable(), true);
-        }
-        if (cmd.getUrl() != null) {
-            writeAttribute("url", cmd.getUrl(), false);
-        }
-        else
-        {
-            writeAttribute("value", cmd.getCmd(), false);
-        }
-    }
-
-    /**
-     * According to parseJsonValue reading in, if your item is one of the following end types it does not need to
-     * specify the end type:  String, Long, Boolean, Double.  These items will all be picked up automatically
-     * so to save on those types I don't write out the type.
-     * @param type Type to write, if null don't write anything because its axis default type
-     */
-    public void writeType(String type) throws IOException
-    {
-        if (type == null) {
-            return;
-        }
-
-        writeAttribute("type", type, true);
-    }
-
     public static String getColumnType(Object o)
     {
         if (o instanceof Range || o instanceof RangeSet) {
@@ -281,63 +243,6 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
         }
 
         return getCellType(o, "column");
-    }
-
-    public static String getCellType(Object cell, String type)
-    {
-        if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {
-            return null;
-        }
-
-        if (cell instanceof BigDecimal) {
-            return "bigdec";
-        }
-
-        if (cell instanceof Float) {
-            return "float";
-        }
-
-        if (cell instanceof Integer) {
-            return "int";
-        }
-
-        if (cell instanceof BigInteger) {
-            return "bigint";
-        }
-
-        if (cell instanceof Byte) {
-            return "byte";
-        }
-
-        if (cell instanceof Short) {
-            return "short";
-        }
-
-        if (cell instanceof Date) {
-            return "date";
-        }
-
-        if (cell instanceof BinaryUrlCmd || cell instanceof byte[]) {
-            return "binary";
-        }
-
-        if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray()) {
-            return "exp";
-        }
-
-        if (cell instanceof GroovyMethod) {
-            return "method";
-        }
-
-        if (cell instanceof GroovyTemplate) {
-            return "template";
-        }
-
-        if (cell instanceof StringUrlCmd) {
-            return "string";
-        }
-
-        throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));
     }
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException

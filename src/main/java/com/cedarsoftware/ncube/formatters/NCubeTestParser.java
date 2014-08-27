@@ -6,8 +6,10 @@ import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,7 +17,7 @@ import java.util.Map;
  */
 public class NCubeTestParser
 {
-    public Map<String, NCubeTestDto> parse(String data) throws IOException
+    public List<NCubeTestDto> parse(String data) throws IOException
     {
         if (data == null) {
             return null;
@@ -23,7 +25,7 @@ public class NCubeTestParser
 
         Object[] items = (Object[])JsonReader.jsonToJava(data);
 
-        Map<String, NCubeTestDto> tests = new LinkedHashMap<>();
+        List<NCubeTestDto> tests = new ArrayList<>(items.length);
 
         for(Object o : items)
         {
@@ -32,7 +34,7 @@ public class NCubeTestParser
             Map<String,Object> coords = resolveCoords((Map<String, Map<String, Object>>)map.get("coords"));
             Object result = parseValue((Map<String, Object>) map.get("expectedResult"));
 
-            tests.put(name, new NCubeTestDto(name, coords, result));
+            tests.add(new NCubeTestDto(name, coords, result));
         }
 
         return tests;
@@ -62,10 +64,6 @@ public class NCubeTestParser
             throw new IllegalArgumentException("Test Items must have either a url or a type");
         }
         return NCube.parseJsonValue(value, url, type, false);
-    }
-
-    public void write(Map<String, NCubeTestDto> items) {
-
     }
 
 }

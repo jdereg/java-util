@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTestDto;
 import com.cedarsoftware.ncube.TestNCube;
@@ -14,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -48,30 +48,31 @@ public class TestNCubeTestParser
 
     @Test
     public void testRead() {
-        Map<String, NCubeTestDto> c = getTestsFromResource("valid-test-data.json");
+        List<NCubeTestDto> c = getTestsFromResource("valid-test-data.json");
+        assertEquals(3, c.size());
 
-        HashMap map = new HashMap();
-        map.put("foo", "bar");
-        map.put("style", "black");
+        NCubeTestDto dto = c.get(0);
+        assertEquals("test1", dto.name);
+        assertEquals("value1", dto.coords.get("coord1"));
+        assertEquals(new Long(9), dto.coords.get("coord2"));
+        assertEquals("foo", dto.expectedResult);
 
 
-        NCubeTestDto test1 = c.get("test1");
-        Map<String, Object> coords = test1.coords;
-        assertEquals("test1", test1.name);
-        assertEquals("value1", coords.get("coord1"));
-        assertEquals(new Long(9), coords.get("coord2"));
+        dto = c.get(1);
 
-        NCubeTestDto test2 = c.get("test2");
-        coords = test2.coords;
-        assertEquals("test2", test2.name);
-        assertEquals(true, coords.get("coord1"));
-        assertEquals(5.9, coords.get("coord2"));
+        assertEquals("test2", dto.name);
+        assertEquals(true, dto.coords.get("coord1"));
+        assertEquals(5.9, dto.coords.get("coord2"));
 
-        NCubeTestDto test3 = c.get("test3");
-        assertEquals(new GroovyExpression("['foo':'bar', 'style':'black']", null), test3.expectedResult);
+        dto = c.get(2);
+
+        assertEquals("test3", dto.name);
+        assertEquals(true, dto.coords.get("coord1"));
+        assertEquals(6, dto.coords.get("coord2"));
+
     }
 
-    public static Map<String, NCubeTestDto> getTestsFromResource(String name)
+    public static List<NCubeTestDto> getTestsFromResource(String name)
     {
         try
         {

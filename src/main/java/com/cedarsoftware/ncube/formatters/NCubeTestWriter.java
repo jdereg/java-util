@@ -41,17 +41,25 @@ public class NCubeTestWriter extends AbstractJsonFormat
     }
 
 
-    private void writeObjectType() throws IOException {
-
-    }
-
     private void writeExpectedResult(Object o) throws IOException
     {
+        builder.append(String.format(quotedStringFormat, "expectedResult"));
+        builder.append(':');
+
+        writeCoordinate(o, "expectedResult");
+    }
+
+    private void writeCoordinate(Object o, String value) throws IOException
+    {
+        startObject();
+        writeType(getCellType(o, value));
+
         if (o instanceof UrlCommandCell) {
             writeCommandCell((UrlCommandCell)o);
         } else {
             writeValue("value", o);
         }
+        endObject();
     }
 
     public void writeCoords(Map<String, Object> coords) throws IOException
@@ -65,17 +73,7 @@ public class NCubeTestWriter extends AbstractJsonFormat
         {
             for (Map.Entry<String, Object> entry : coords.entrySet())
             {
-                startObject();
-
-                Object value = entry.getValue();
-                writeType(getCellType(value, "coordinate"));
-
-                if ((entry.getValue() instanceof UrlCommandCell)) {
-                    writeCommandCell((UrlCommandCell) value);
-                } else {
-                    writeValue("value", value);
-                }
-                endObject();
+                writeCoordinate(entry.getValue(), "coordinate");
                 comma();
             }
         }

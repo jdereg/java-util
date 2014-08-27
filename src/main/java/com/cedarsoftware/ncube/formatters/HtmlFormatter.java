@@ -7,6 +7,7 @@ import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.GroovyBase;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -18,8 +19,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -176,7 +178,7 @@ public class HtmlFormatter implements NCubeFormatter
             s.append(ncube.getName());
             s.append("</th>\n");
             s.append("</tr>\n");
-            Set<Long> coord = new LinkedHashSet<>();
+            Map<String, Long> coord = new LinkedHashMap<>();
 
             for (int i = 0; i < width; i++)
             {
@@ -189,9 +191,11 @@ public class HtmlFormatter implements NCubeFormatter
                 addColumnPrefixText(s, column);
                 s.append(column.isDefault() ? "Default" : column.toString());
                 coord.clear();
-                coord.add(topColumns.get(i).getId());
+                coord.put(EncryptionUtilities.calculateSHA1Hash(topAxis.getName().getBytes()), (long) i);
                 s.append("</th>\n");
-                buildCell(ncube, s, coord);
+                Set<Long> colIds = new HashSet<>();
+                colIds.add(column.getId());
+                buildCell(ncube, s, coord, colIds);
                 s.append("</tr>\n");
             }
         }
@@ -220,7 +224,6 @@ public class HtmlFormatter implements NCubeFormatter
             Map<String, Long> rowspan = new HashMap<>();
             Map<String, Long> columnCounter = new HashMap<>();
             Map<String, List<Column>> columns = new HashMap<>();
-            Map<String, Long> coord = new HashMap<>();
 
             final int axisCount = axes.size();
 
@@ -266,6 +269,8 @@ public class HtmlFormatter implements NCubeFormatter
             }
 
             s.append("</tr>\n");
+            Map<String, Long> coord = new HashMap<>();
+            Map<String, Long> colIds = new HashMap<>();
 
             // The left column headers and cells
             for (long h = 0; h < height; h++)
@@ -282,7 +287,8 @@ public class HtmlFormatter implements NCubeFormatter
                     {
                         Long colIdx = columnCounter.get(axisName);
                         Column column = columns.get(axisName).get(colIdx.intValue());
-                        coord.put(axisName, column.getId());
+                        coord.put(EncryptionUtilities.calculateSHA1Hash(axisName.getBytes()), colIdx);
+                        colIds.put(axisName, column.getId());
                         long span = rowspan.get(axisName);
 
                         String colCssClass = getColumnCssClass(axis, column);
@@ -324,11 +330,13 @@ public class HtmlFormatter implements NCubeFormatter
                 }
 
                 // Cells for the row
+                final String sha1AxisName = EncryptionUtilities.calculateSHA1Hash(topAxisName.getBytes());
                 for (int i = 0; i < width; i++)
                 {
-                    coord.put(topAxisName, topColumns.get(i).getId());
+                    colIds.put(topAxisName, topColumns.get(i).getId());
+                    coord.put(sha1AxisName, (long)i);
                     // Other coordinate values are set above this for-loop
-                    buildCell(ncube, s, new LinkedHashSet<>(coord.values()));
+                    buildCell(ncube, s, coord, new HashSet<>(colIds.values()));
                 }
 
                 s.append("</tr>\n");
@@ -476,14 +484,14 @@ public class HtmlFormatter implements NCubeFormatter
         return "column";
     }
 
-    private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
+    private static void buildCell(NCube ncube, StringBuilder s, Map<String, Long> coord, Set<Long> coord2)
     {
-        String id = setToString(coord);
+        String id = mapToString(coord);
         s.append(" <td data-id=\"k").append(id).append("\" class=\"");
 
-        if (ncube.containsCellById(coord))
+        if (ncube.containsCellById(coord2))
         {
-            Object cell = ncube.getCellByIdNoExecute(coord);
+            Object cell = ncube.getCellByIdNoExecute(coord2);
             if (cell instanceof CommandCell)
             {
                 CommandCell cmd = (CommandCell) cell;
@@ -587,19 +595,22 @@ public class HtmlFormatter implements NCubeFormatter
         }
     }
 
-    private static String setToString(Set<Long> set)
+    private static String mapToString(Map<String, Long> map)
     {
         StringBuilder s = new StringBuilder();
-        Iterator<Long> i = set.iterator();
-
+        Iterator<Map.Entry<String, Long>> i = map.entrySet().iterator();
         while (i.hasNext())
         {
-            s.append(i.next());
+            Map.Entry<String, Long> entry = i.next();
+            s.append(entry.getKey());
+            s.append('-');
+            s.append(entry.getValue());
             if (i.hasNext())
             {
-                s.append('-');
+                s.append('_');
             }
         }
+
         return s.toString();
     }
 }

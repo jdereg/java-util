@@ -45,9 +45,8 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
+public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
 {
-    private String name;
     private Map<Long, Object> userIds = new HashMap<Long, Object>();
     private Map<Long, Long> generatedIds = new HashMap<Long, Long>();
     private long idCounter;
@@ -64,7 +63,7 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
     {
         try
         {
-            name = ncube.getName();
+            String name = ncube.getName();
             builder.setLength(0);
             userIds.clear();
             generatedIds.clear();
@@ -166,7 +165,6 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
                 comma();
             }
         }
-
 
         writeColumns(axis.getColumns());
         endObject();
@@ -354,9 +352,12 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
             writeIds(cell);
             writeType(getCellType(cell.getValue(), "cell"));
 
-            if ((cell.getValue() instanceof UrlCommandCell)) {
+            if ((cell.getValue() instanceof UrlCommandCell))
+            {
                 writeCommandCell((UrlCommandCell)cell.getValue());
-            } else {
+            }
+            else
+            {
                 writeValue("value", cell.getValue());
             }
             endObject();

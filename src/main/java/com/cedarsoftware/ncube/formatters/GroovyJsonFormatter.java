@@ -21,7 +21,7 @@ import java.util.Iterator;
 /**
  * Created by kpartlow on 8/12/2014.
  */
-public abstract class AbstractJsonFormat
+public class GroovyJsonFormatter
 {
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 

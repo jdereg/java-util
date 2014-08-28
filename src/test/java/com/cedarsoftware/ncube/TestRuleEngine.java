@@ -62,12 +62,12 @@ public class TestRuleEngine
         assertEquals("light-weight", output.get("weight"));
         assertEquals("young", output.get("age"));
 
-        List<Map<String, Object>> list = n1.getCoordinatesForCells();
+        List<NCubeTest> list = n1.generateNCubeTests();
         int weight = 0;
         int age = 0;
-        for (Map<String, Object> pt : list)
+        for (NCubeTest pt : list)
         {
-            Map<String, Object> c = (Map<String, Object>)pt.get("coord");
+            Map<String, Object> c = pt.getCoordinate();
             if (c.containsKey("age"))
             {
                 age++;
@@ -92,12 +92,12 @@ public class TestRuleEngine
         boolean b = n1.containsCell(coord);
         assertTrue(b);
 
-        List<Map<String, Object>> list = n1.getCoordinatesForCells();
+        List<NCubeTest> list = n1.generateNCubeTests();
         int weight = 0;
         int age = 0;
-        for (Map<String, Object> pt : list)
+        for (NCubeTest pt : list)
         {
-            Map<String, Object> c = (Map<String, Object>)pt.get("coord");
+            Map<String, Map<String, Object>> c = pt.getCoordDescription();
             if (c.containsKey("age"))
             {
                 age++;

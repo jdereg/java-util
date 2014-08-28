@@ -34,6 +34,27 @@ public abstract class AbstractJsonFormat
     protected StringBuilder builder = new StringBuilder();
     protected String quotedStringFormat = "\"%s\"";
 
+    public static String getColumnType(Object o)
+    {
+        if (o instanceof Range || o instanceof RangeSet) {
+            return null;
+        }
+
+        if (o instanceof LatLon) {
+            return "latlon";
+        }
+
+        if (o instanceof Point2D) {
+            return "point2d";
+        }
+
+        if (o instanceof Point3D) {
+            return "point3d";
+        }
+
+        return getCellType(o, "column");
+    }
+
     public static String getCellType(Object cell, String type)
     {
         if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {

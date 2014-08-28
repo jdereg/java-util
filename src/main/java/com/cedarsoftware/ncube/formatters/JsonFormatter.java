@@ -3,12 +3,7 @@ package com.cedarsoftware.ncube.formatters;
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.ncube.Range;
-import com.cedarsoftware.ncube.RangeSet;
 import com.cedarsoftware.ncube.UrlCommandCell;
-import com.cedarsoftware.ncube.proximity.LatLon;
-import com.cedarsoftware.ncube.proximity.Point2D;
-import com.cedarsoftware.ncube.proximity.Point3D;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -222,27 +217,6 @@ public class JsonFormatter extends AbstractJsonFormat implements NCubeFormatter
         }
 
         endObject();
-    }
-
-    public static String getColumnType(Object o)
-    {
-        if (o instanceof Range || o instanceof RangeSet) {
-            return null;
-        }
-
-        if (o instanceof LatLon) {
-            return "latlon";
-        }
-
-        if (o instanceof Point2D) {
-            return "point2d";
-        }
-
-        if (o instanceof Point3D) {
-            return "point3d";
-        }
-
-        return getCellType(o, "column");
     }
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException

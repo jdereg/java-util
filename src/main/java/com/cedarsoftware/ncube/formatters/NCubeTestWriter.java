@@ -1,6 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.NCubeTestDto;
+import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.ncube.UrlCommandCell;
 
 import java.io.IOException;
@@ -13,7 +13,7 @@ import java.util.Map;
 public class NCubeTestWriter extends AbstractJsonFormat
 {
 
-    public String write(List<NCubeTestDto> list) throws IOException
+    public String write(List<NCubeTest> list) throws IOException
     {
         builder.setLength(0);
 
@@ -22,7 +22,7 @@ public class NCubeTestWriter extends AbstractJsonFormat
         }
 
         startArray();
-        for (NCubeTestDto dto : list) {
+        for (NCubeTest dto : list) {
             writeDto(dto);
             comma();
         }
@@ -32,11 +32,11 @@ public class NCubeTestWriter extends AbstractJsonFormat
         return builder.toString();
     }
 
-    public void writeDto(NCubeTestDto dto) throws IOException {
+    public void writeDto(NCubeTest dto) throws IOException {
         startObject();
-        writeAttribute("name", dto.name, true);
-        writeCoords(dto.coords);
-        writeExpectedResult(dto.expectedResult);
+        //writeAttribute("name", dto.name, true);
+        //writeCoords(dto.coord);
+        //writeExpectedResult(dto.expectedResult);
         endObject();
     }
 
@@ -64,7 +64,7 @@ public class NCubeTestWriter extends AbstractJsonFormat
 
     public void writeCoords(Map<String, Object> coords) throws IOException
     {
-        builder.append(String.format(quotedStringFormat, "coords"));
+        builder.append(String.format(quotedStringFormat, "coord"));
         builder.append(':');
 
         startObject();

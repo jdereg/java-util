@@ -333,7 +333,8 @@ public class HtmlFormatter implements NCubeFormatter
                 final String sha1AxisName = EncryptionUtilities.calculateSHA1Hash(topAxisName.getBytes());
                 for (int i = 0; i < width; i++)
                 {
-                    colIds.put(topAxisName, topColumns.get(i).getId());
+                    Column column = topColumns.get(i);
+                    colIds.put(topAxisName, column.getId());
                     coord.put(sha1AxisName, (long)i);
                     // Other coordinate values are set above this for-loop
                     buildCell(ncube, s, coord, new HashSet<>(colIds.values()));

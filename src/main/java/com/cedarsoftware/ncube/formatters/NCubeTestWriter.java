@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.NCubeTest;
-import com.cedarsoftware.ncube.UrlCommandCell;
 
 import java.io.IOException;
 import java.util.List;
@@ -10,7 +9,7 @@ import java.util.Map;
 /**
  * Created by kpartlow on 8/27/2014.
  */
-public class NCubeTestWriter extends AbstractJsonFormat
+public class NCubeTestWriter extends GroovyJsonFormatter
 {
 
     public String write(List<NCubeTest> list) throws IOException
@@ -34,46 +33,40 @@ public class NCubeTestWriter extends AbstractJsonFormat
 
     public void writeDto(NCubeTest dto) throws IOException {
         startObject();
-        //writeAttribute("name", dto.name, true);
-        //writeCoords(dto.coord);
-        //writeExpectedResult(dto.expectedResult);
+        writeAttribute("name", dto.getName(), true);
+        writeCoordinate(dto.getCoordDescription());
+        comma();
+        writeDescription("expectedResult", dto.getExpectedResultDescription());
         endObject();
     }
 
 
-    private void writeExpectedResult(Object o) throws IOException
+    private void writeDescription(String attr, Map<String, Object> map) throws IOException
     {
-        builder.append(String.format(quotedStringFormat, "expectedResult"));
+        builder.append(String.format(quotedStringFormat, attr));
         builder.append(':');
 
-        writeCoordinate(o, "expectedResult");
-    }
-
-    private void writeCoordinate(Object o, String value) throws IOException
-    {
         startObject();
-        writeType(getCellType(o, value));
-
-        if (o instanceof UrlCommandCell) {
-            writeCommandCell((UrlCommandCell)o);
-        } else {
-            writeValue("value", o);
+        for (Map.Entry<String, Object> item : map.entrySet()) {
+            writeValue(item.getKey(), item.getValue());
+            comma();
         }
+        uncomma();
         endObject();
     }
 
-    public void writeCoords(Map<String, Object> coords) throws IOException
+    public void writeCoordinate(Map<String, Map<String, Object>> coord) throws IOException
     {
         builder.append(String.format(quotedStringFormat, "coord"));
         builder.append(':');
 
         startObject();
 
-        if (coords != null)
+        if (coord != null)
         {
-            for (Map.Entry<String, Object> entry : coords.entrySet())
+            for (Map.Entry<String, Map<String, Object>> entry : coord.entrySet())
             {
-                writeCoordinate(entry.getValue(), "coordinate");
+                writeDescription(entry.getKey(), entry.getValue());
                 comma();
             }
         }

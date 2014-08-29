@@ -25,7 +25,7 @@ Including in java-util:
 * **IOUtilities** - Handy methods for simplifying I/O including such niceties as properly setting up the input stream for HttpUrlConnections based on their specified encoding.  Single line .close() method that handles exceptions for you.
 * **MathUtilities** - Handy mathematical alrogithms to make your code smaller.  For example, minimum of array of values.
 * **ReflectionUtils** - Simple one-liners for many common reflection tasks.
-* **SafeSimpleDateFormat** - Instances of this class can be stored as member variables and reused, without any worry about thread safety.  Fixing the problems with the JDK's SimpleDateFormat and thread safety (no reentrancy support).
+* **SafeSimpleDateFormat** - Instances of this class can be stored as member variables and reused without any worry about thread safety.  Fixing the problems with the JDK's SimpleDateFormat and thread safety (no reentrancy support).
 * **StringUtilities** - Helpful methods that make simple work of common String related tasks.
 * **SystemUtilities** - A Helpful utility methods for working with external entities like the OS, environment variables, and system properties.
 * **Traverser** - Pass any Java object to this Utility class, it will call your passed in anonymous method for each object it encounters while traversing the complete graph.  It handles cycles within the graph. Permits you to perform generalized actions on all objects within an object graph.
@@ -35,7 +35,7 @@ Including in java-util:
 
 Version History
 * 1.12.0
- * `UniqueIdGenerator` used 99 as the cluster id, when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
+ * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
  * All the 1.11.x features rolled up.
 * 1.11.3
  * UrlUtilities - separated out call that resolves res:// to a public API to allow for wider use.

@@ -39,6 +39,8 @@ public class CellInfo
     boolean isUrl;
     boolean isCached;
 
+    private CellInfo() { }
+
     public CellInfo(Object cell)
     {
         isUrl = false;

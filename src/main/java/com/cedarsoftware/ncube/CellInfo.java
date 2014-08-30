@@ -281,7 +281,12 @@ public class CellInfo
             }
             else if (CellTypes.Boolean.desc().equals(type))
             {
-                return "true".equalsIgnoreCase((String)val);
+                String bool = (String)val;
+                if ("true".equalsIgnoreCase(bool) || "false".equalsIgnoreCase(bool))
+                {
+                    return "true".equalsIgnoreCase((String) val);
+                }
+                throw new IllegalArgumentException("Boolean must be 'true' or 'false'.  Case does not matter.");
             }
             else if (CellTypes.Byte.desc().equals(type))
             {
@@ -337,6 +342,15 @@ public class CellInfo
             }
             else if (CellTypes.Binary.desc().equals(type))
             {   // convert hex string "10AF3F" as byte[]
+                String hex = (String)val;
+                if (hex.length() % 2 != 0)
+                {
+                    throw new IllegalArgumentException("Binary (hex) values must have an even number of digits.");
+                }
+                if (!hex.matches("[0-9a-fA-F]+"))
+                {
+                    throw new IllegalArgumentException("Binary (hex) values must contain only the numbers 0 thru 9 and letters A thru F.");
+                }
                 return StringUtilities.decode((String) val);
             }
             else if (CellTypes.BigInteger.desc().equals(type))

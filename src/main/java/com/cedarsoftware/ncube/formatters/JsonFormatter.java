@@ -336,13 +336,27 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
             return CellTypes.String.desc();
         }
 
+        if (cell instanceof Point2D)
+        {
+            return CellTypes.Point2D.desc();
+        }
+        if (cell instanceof Point3D)
+        {
+            return CellTypes.Point3D.desc();
+        }
+        if (cell instanceof LatLon)
+        {
+            return CellTypes.LatLon.desc();
+        }
+
         throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));
     }
 
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException
     {
         builder.append("\"cells\":");
-        if (cells == null || cells.isEmpty()) {
+        if (cells == null || cells.isEmpty())
+        {
             builder.append("[]");
             return;
         }

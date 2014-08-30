@@ -6,6 +6,9 @@ import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.GroovyBase;
 import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
@@ -540,6 +543,14 @@ public class HtmlFormatter implements NCubeFormatter
         else if (cellValue instanceof Boolean || cellValue instanceof Character)
         {
             return String.valueOf(cellValue);
+        }
+        else if (cellValue instanceof Point2D || cellValue instanceof Point3D || cellValue instanceof LatLon)
+        {
+            return cellValue.toString();
+        }
+        else if (cellValue instanceof byte[])
+        {
+            return StringUtilities.encode((byte[])cellValue);
         }
         else if (isArray && JsonReader.isPrimitive(cellValue.getClass().getComponentType()))
         {

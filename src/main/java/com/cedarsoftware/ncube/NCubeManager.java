@@ -114,10 +114,7 @@ public class NCubeManager
 
     static String makeCacheKey(String name, ApplicationID appId)
     {
-//        String acct = appId.getAccount() == null ? "defAcct" : appId.getAccount();
-//        String app = appId.getApp() == null ? "defApp" : appId.getApp();
-//        return name + '.' + acct + '.' + app + '.' + appId.getVersion();
-        String acct = "defAcct";
+        String acct = appId.getAccount() == null ? "defAcct" : appId.getAccount();
         String app = appId.getApp() == null ? "defApp" : appId.getApp();
         return name + '.' + acct + '.' + app + '.' + appId.getVersion();
     }
@@ -385,6 +382,7 @@ public class NCubeManager
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
      */
+    @Deprecated
     public static void loadCubes(Connection connection, String app, String version, String status)
     {
         loadCubes(connection, app, version, status, null);
@@ -393,6 +391,7 @@ public class NCubeManager
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
      */
+    @Deprecated
     public static void loadCubes(Connection connection, String app, String version, String status, Date sysDate)
     {
         validate(connection, app, version);
@@ -409,6 +408,9 @@ public class NCubeManager
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 stmt.setString(1, app);
                 stmt.setDate(2, systemDate);
                 stmt.setDate(3, systemDate);
@@ -442,6 +444,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
+    @Deprecated
     public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate, boolean includeTests)
     {
         validate(connection, app, version);
@@ -461,6 +464,9 @@ public class NCubeManager
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 stmt.setString(1, name);
                 stmt.setString(2, app);
                 stmt.setDate(3, systemDate);
@@ -530,6 +536,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
+    @Deprecated
     public static NCube loadCube(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         return loadCube(connection, app, name, version, status, sysDate, false);
@@ -540,6 +547,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static NCube loadCubeWithTests(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         return loadCube(connection, app, name, version, status, sysDate, true);
@@ -551,6 +559,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
+    @Deprecated
     public static boolean doesCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         validate(connection, app, version);
@@ -571,7 +580,9 @@ public class NCubeManager
 
         try (PreparedStatement ps = connection.prepareStatement(builder.toString()))
         {
-
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             ps.setString(1, app);
             ps.setString(2, version);
             ps.setDate(3, systemDate);
@@ -604,6 +615,7 @@ public class NCubeManager
     /**
      * Retrieve all cube names that are deeply referenced by the named app, cube (name), version, and status.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static void getReferencedCubeNames(Connection connection, String app, String name, String version, String status, Date sysDate, Set<String> refs)
     {
         validate(connection, app, version);
@@ -622,6 +634,9 @@ public class NCubeManager
         java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
         try(PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
         {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, name);
             stmt.setString(2, app);
             stmt.setDate(3, systemDate);
@@ -675,6 +690,7 @@ public class NCubeManager
      * Retrieve all n-cubes that have a name that matches the SQL like statement, within the specified app, status,
      * version, and system date.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
     {
         validate(connection, app, version);
@@ -694,6 +710,9 @@ public class NCubeManager
         try(PreparedStatement stmt = connection.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, update_dt, " +
                     "create_hid, update_hid, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
         {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, sqlLike);
             stmt.setString(2, app);
             stmt.setString(3, version);
@@ -706,6 +725,9 @@ public class NCubeManager
 
             while (rs.next())
             {
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 NCubeInfoDto dto = new NCubeInfoDto();
                 dto.id = Long.toString(rs.getLong("n_cube_id"));
                 dto.name = rs.getString("n_cube_nm");
@@ -737,6 +759,7 @@ public class NCubeManager
     /**
      * Duplicate the specified n-cube, given it the new name, and the same app, version, status as the source n-cube.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static void duplicate(Connection connection, String newName, String name, String newApp, String app, String newVersion, String version, String status, Date sysDate)
     {
         NCube ncube = loadCube(connection, app, name, version, status, sysDate);
@@ -751,6 +774,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static Object[] getAppNames(Connection connection, Date sysDate)
     {
         validateConnection(connection);
@@ -762,6 +786,9 @@ public class NCubeManager
         java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
         try(PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
         {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             stmt.setDate(1, systemDate);
             stmt.setDate(2, systemDate);
             ResultSet rs = stmt.executeQuery();
@@ -785,6 +812,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static Object[] getAppVersions(Connection connection, String app, String status, Date sysDate)
     {
         validateConnection(connection);
@@ -798,6 +826,9 @@ public class NCubeManager
         java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
         try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? and status_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
         {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, app);
             stmt.setString(2, status);
             stmt.setDate(3, systemDate);
@@ -828,6 +859,7 @@ public class NCubeManager
      * @param ncube      NCube to be updated.
      * @return boolean true on success, false otherwise
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static boolean updateCube(Connection connection, String app, NCube ncube, String version)
     {
         validate(connection, app, version);
@@ -840,6 +872,9 @@ public class NCubeManager
         {
             try(PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
             {
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 stmt.setBytes(1, new JsonFormatter().format(ncube).getBytes("UTF-8"));
                 stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
                 stmt.setString(3, app);
@@ -872,6 +907,7 @@ public class NCubeManager
      * @param connection JDBC connection
      * @param ncube      NCube to be persisted
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static void createCube(Connection connection, String app, NCube ncube, String version)
     {
         validate(connection, app, version);
@@ -892,6 +928,9 @@ public class NCubeManager
 
                 try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)"))
                 {
+                    // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                    // TODO: see if the column exists, store the result for the entire app life cycle.
+                    // TODO: If account column does not exist, then account is null.
                     insert.setLong(1, UniqueIdGenerator.getUniqueId());
                     insert.setString(2, app);
                     insert.setString(3, ncube.getName());
@@ -936,6 +975,7 @@ public class NCubeManager
      * @param version    String version to move from SNAPSHOT to RELEASE
      * @return int count of ncubes that were released
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static int releaseCubes(Connection connection, String app, String version)
     {
         validate(connection, app, version);
@@ -951,6 +991,9 @@ public class NCubeManager
 
                 try (PreparedStatement statement = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
                 {
+                    // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                    // TODO: see if the column exists, store the result for the entire app life cycle.
+                    // TODO: If account column does not exist, then account is null.
                     statement.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                     statement.setString(2, ReleaseStatus.RELEASE.toString());
                     statement.setString(3, app);
@@ -979,6 +1022,7 @@ public class NCubeManager
      * an entire set of NCubes and places a new version label on them,
      * in SNAPSHOT status.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static int createSnapshotCubes(Connection connection, String app, String relVersion, String newSnapVer)
     {
         validate(connection, app, relVersion);
@@ -998,6 +1042,9 @@ public class NCubeManager
                     throw new IllegalStateException("New SNAPSHOT Version specified (" + newSnapVer + ") matches an existing version.  Specify new SNAPSHOT version that does not exist.");
                 }
 
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 try (PreparedStatement select = connection.prepareStatement(
                         "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
                                 "FROM n_cube\n" +
@@ -1023,6 +1070,10 @@ public class NCubeManager
                             while (rs.next())
                             {
                                 count++;
+                                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                                // TODO: see if the column exists, store the result for the entire app life cycle.
+                                // TODO: If account column does not exist, then account is null.
+
                                 insert.setLong(1, UniqueIdGenerator.getUniqueId());
                                 insert.setString(2, rs.getString("n_cube_nm"));
                                 insert.setBytes(3, rs.getBytes("cube_value_bin"));
@@ -1069,6 +1120,7 @@ public class NCubeManager
     /**
      * Change the SNAPSHOT version value.
      */
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static void changeVersionValue(Connection connection, String app, String currVersion, String newSnapVer)
     {
         validate(connection, app, currVersion);
@@ -1085,6 +1137,9 @@ public class NCubeManager
 
                 try (PreparedStatement ps = connection.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
                 {
+                    // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                    // TODO: see if the column exists, store the result for the entire app life cycle.
+                    // TODO: If account column does not exist, then account is null.
                     ps.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                     ps.setString(2, newSnapVer);
                     ps.setString(3, app);
@@ -1109,7 +1164,7 @@ public class NCubeManager
         }
     }
 
-
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     public static boolean renameCube(Connection connection, String oldName, String newName, String app, String version)
     {
         validate(connection, app, version);
@@ -1125,6 +1180,9 @@ public class NCubeManager
         {
             try (PreparedStatement ps = connection.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
             {
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 ps.setString(1, newName);
                 ps.setString(2, app);
                 ps.setString(3, version);
@@ -1157,12 +1215,13 @@ public class NCubeManager
      * Delete the named NCube from the database
      *
      * @param connection JDBC connection
-     * @param name       NCube to be deleted
+     * @param cubeName       NCube to be deleted
      */
-    public static boolean deleteCube(Connection connection, String app, String name, String version, boolean allowDelete)
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    public static boolean deleteCube(Connection connection, String app, String cubeName, String version, boolean allowDelete)
     {
         validate(connection, app, version);
-        validateCubeName(name);
+        validateCubeName(cubeName);
 
         synchronized (cubeList)
         {
@@ -1172,8 +1231,11 @@ public class NCubeManager
 
             try (PreparedStatement ps = connection.prepareStatement(statement))
             {
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 ps.setString(1, app);
-                ps.setString(2, name);
+                ps.setString(2, cubeName);
                 ps.setString(3, version);
 
                 if (!allowDelete) {
@@ -1185,14 +1247,14 @@ public class NCubeManager
                 {
                     // Any user of these old APIs will get the default (null) account
                     ApplicationID appId = new ApplicationID(null, app, version);
-                    cubeList.remove(makeCacheKey(name, appId));
+                    cubeList.remove(makeCacheKey(cubeName, appId));
                     return true;
                 }
                 return false;
             }
             catch (Exception e)
             {
-                String s = "Unable to delete NCube: " + name + ", app: " + app + ", version: " + version + " from database: " + e.getMessage();
+                String s = "Unable to delete NCube: " + cubeName + ", app: " + app + ", version: " + version + " from database";
                 LOG.error(s, e);
                 throw new RuntimeException(s, e);
             }
@@ -1204,19 +1266,23 @@ public class NCubeManager
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateNotes(Connection connection, String app, String name, String version, String notes)
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    public static boolean updateNotes(Connection connection, String app, String cubeName, String version, String notes)
     {
         validate(connection, app, version);
-        validateCubeName(name);
+        validateCubeName(cubeName);
 
         synchronized (cubeList)
         {
             try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?"))
             {
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 stmt.setBytes(1, notes == null ? null : notes.getBytes("UTF-8"));
                 stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
                 stmt.setString(3, app);
-                stmt.setString(4, name);
+                stmt.setString(4, cubeName);
                 stmt.setString(5, version);
                 int count = stmt.executeUpdate();
                 if (count > 1)
@@ -1225,7 +1291,7 @@ public class NCubeManager
                 }
                 if (count == 0)
                 {
-                    throw new IllegalStateException("No NCube matching app: " + app + ", name: " + name + ", version: " + version);
+                    throw new IllegalStateException("No NCube matching app: " + app + ", name: " + cubeName + ", version: " + version);
                 }
                 return true;
             }
@@ -1235,7 +1301,7 @@ public class NCubeManager
             }
             catch (Exception e)
             {
-                throw new RuntimeException("Unable to update notes for NCube: " + name + ", app: " + app + ", version: " + version, e);
+                throw new RuntimeException("Unable to update notes for NCube: " + cubeName + ", app: " + app + ", version: " + version, e);
             }
         }
     }
@@ -1245,10 +1311,11 @@ public class NCubeManager
      *
      * @return String notes.
      */
-    public static String getNotes(Connection connection, String app, String name, String version, Date sysDate)
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    public static String getNotes(Connection connection, String app, String cubeName, String version, Date sysDate)
     {
         validate(connection, app, version);
-        validateCubeName(name);
+        validateCubeName(cubeName);
 
         if (sysDate == null)
         {
@@ -1258,8 +1325,11 @@ public class NCubeManager
         java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
         try (PreparedStatement stmt = connection.prepareStatement("SELECT notes_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
         {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, app);
-            stmt.setString(2, name);
+            stmt.setString(2, cubeName);
             stmt.setString(3, version);
             stmt.setDate(4, systemDate);
             stmt.setDate(5, systemDate);
@@ -1279,7 +1349,7 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch notes for NCube: " + name + ", app: " + app + ", version: " + version;
+            String s = "Unable to fetch notes for NCube: " + cubeName + ", app: " + app + ", version: " + version;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -1291,20 +1361,24 @@ public class NCubeManager
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateTestData(Connection connection, String app, String name, String version, String testData)
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    public static boolean updateTestData(Connection connection, String app, String cubeName, String version, String testData)
     {
         validate(connection, app, version);
-        validateCubeName(name);
+        validateCubeName(cubeName);
         validateTestData(testData);
 
         synchronized (cubeList)
         {
             try (PreparedStatement stmt =  connection.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
             {
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
                 stmt.setBytes(1, testData == null ? null : testData.getBytes("UTF-8"));
                 stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
                 stmt.setString(3, app);
-                stmt.setString(4, name);
+                stmt.setString(4, cubeName);
                 stmt.setString(5, version);
                 int count = stmt.executeUpdate();
                 if (count > 1)
@@ -1313,7 +1387,7 @@ public class NCubeManager
                 }
                 if (count == 0)
                 {
-                    throw new IllegalStateException("No NCube matching app: " + app + ", name: " + name + ", version: " + version);
+                    throw new IllegalStateException("No NCube matching app: " + app + ", name: " + cubeName + ", version: " + version);
                 }
                 return true;
             }
@@ -1323,7 +1397,7 @@ public class NCubeManager
             }
             catch (Exception e)
             {
-                String s = "Unable to update test data for NCube: " + name + ", app: " + app + ", version: " + version;
+                String s = "Unable to update test data for NCube: " + cubeName + ", app: " + app + ", version: " + version;
                 LOG.error(s, e);
                 throw new RuntimeException(s, e);
             }
@@ -1336,10 +1410,11 @@ public class NCubeManager
      * @return String serialized JSON test data.  Use JsonReader to turn it back into
      * Java objects.
      */
-    public static String getTestData(Connection connection, String app, String name, String version, Date sysDate)
+    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    public static String getTestData(Connection connection, String app, String cubeName, String version, Date sysDate)
     {
         validate(connection, app, version);
-        validateCubeName(name);
+        validateCubeName(cubeName);
 
         if (sysDate == null)
         {
@@ -1349,8 +1424,11 @@ public class NCubeManager
         java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
         try (PreparedStatement stmt = connection.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
         {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, app);
-            stmt.setString(2, name);
+            stmt.setString(2, cubeName);
             stmt.setString(3, version);
             stmt.setDate(4, systemDate);
             stmt.setDate(5, systemDate);
@@ -1369,7 +1447,7 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch test data for NCube: " + name + ", app: " + app + ", version: " + version;
+            String s = "Unable to fetch test data for NCube: " + cubeName + ", app: " + app + ", version: " + version;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -1389,7 +1467,7 @@ public class NCubeManager
         {
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
-            // Application ID will be account: file, app: file, version: file
+            // Application ID will be account: null, app: null, version: 'file'
             addCube(ncube, ncube.getApplicationID());
             return ncube;
         }
@@ -1432,7 +1510,7 @@ public class NCubeManager
                 JsonObject ncube = (JsonObject) cube;
                 String json = JsonWriter.objectToJson(ncube);
                 NCube nCube = NCube.fromSimpleJson(json);
-                // account: "file", app: "file", version: "file"
+                // account: null, app: null, version: "file"
                 addCube(nCube, nCube.getApplicationID());
                 lastSuccessful = nCube.getName();
                 cubeList.add(nCube);
@@ -1479,21 +1557,16 @@ public class NCubeManager
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
      */
-    public static void loadCubes(NCubeConnectionProvider nCubeConnectionProvider, String app, String version, String status)
+    public static void loadCubes(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String status)
     {
-        loadCubes(nCubeConnectionProvider, app, version, status, null);
+        loadCubes(nCubeConnectionProvider, appId, status, null);
     }
 
 
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
-     * @param nCubeConnectionProvider
-     * @param app
-     * @param version
-     * @param status
-     * @param sysDate
      */
-    public static void loadCubes(NCubeConnectionProvider nCubeConnectionProvider, String app, String version, String status, Date sysDate)
+    public static void loadCubes(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String status, Date sysDate)
     {
         validateStatus(status);
 
@@ -1506,7 +1579,7 @@ public class NCubeManager
         {
             case JDBC:
                 Connection connection = extractJdbcConnection(nCubeConnectionProvider.getConnectionContext());
-                jdbcLoadCubes(connection, app, version, status, sysDate);
+                jdbcLoadCubes(connection, appId, status, sysDate);
                 break;
             case MONGO:
                 throw new UnsupportedOperationException("Mongo support not yet implemented...");
@@ -1518,19 +1591,12 @@ public class NCubeManager
 
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
-     * @param nCubeConnectionProvider
-     * @param app
-     * @param name
-     * @param version
-     * @param status
-     * @param sysDate
-     * @param includeTests
      * @return NCube that matches, or null if not found.
      * @throws java.lang.IllegalArgumentException when persistence connection type can not be determined
      */
-    public static NCube loadCube(NCubeConnectionProvider nCubeConnectionProvider, String app, String name, String version, String status, Date sysDate, boolean includeTests)
+    public static NCube loadCube(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String cubeName, String status, Date sysDate, boolean includeTests)
     {
-        validateCubeName(name);
+        validateCubeName(cubeName);
 
         if (sysDate == null)
             sysDate = new Date();
@@ -1542,7 +1608,7 @@ public class NCubeManager
         {
             case JDBC:
                 Connection connection = extractJdbcConnection(nCubeConnectionProvider.getConnectionContext());
-                loadedCube = jdbcLoadCube(connection, app, name, version, status, sysDate, includeTests);
+                loadedCube = jdbcLoadCube(connection, appId, cubeName, status, sysDate, includeTests);
                 break;
             case MONGO:
                 throw new UnsupportedOperationException("Mongo support not yet implemented...");
@@ -1555,18 +1621,12 @@ public class NCubeManager
 
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
-     * @param nCubeConnectionProvider
-     * @param app
-     * @param name
-     * @param version
-     * @param status
-     * @param sysDate
      * @return NCube that matches, or null if not found.
      * @throws java.lang.IllegalArgumentException when persistence connection type can not be determined
      */
-    public static NCube loadCube(NCubeConnectionProvider nCubeConnectionProvider, String app, String name, String version, String status, Date sysDate)
+    public static NCube loadCube(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String cubeName, String status, Date sysDate)
     {
-        return loadCube(nCubeConnectionProvider, app, name, version, status, sysDate, false);
+        return loadCube(nCubeConnectionProvider, appId, cubeName, status, sysDate, false);
     }
 
     /**
@@ -1576,18 +1636,12 @@ public class NCubeManager
      */
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
-     * @param nCubeConnectionProvider
-     * @param app
-     * @param name
-     * @param version
-     * @param status
-     * @param sysDate
      * @return NCube that matches, or null if not found.
      * @throws java.lang.IllegalArgumentException when persistence connection type can not be determined
      */
-    public static NCube loadCubeWithTests(NCubeConnectionProvider nCubeConnectionProvider, String app, String name, String version, String status, Date sysDate)
+    public static NCube loadCubeWithTests(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String cubeName, String status, Date sysDate)
     {
-        return loadCube(nCubeConnectionProvider, app, name, version, status, sysDate, true);
+        return loadCube(nCubeConnectionProvider, appId, cubeName, status, sysDate, true);
     }
 
 
@@ -1596,7 +1650,7 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
-    public static boolean doesCubeExist(NCubeConnectionProvider nCubeConnectionProvider, String app, String name, String version, String status, Date sysDate)
+    public static boolean doesCubeExist(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String cubeName, String status, Date sysDate)
     {
         ConnectionType connectionType = ConnectionType.resolveConnectionType(nCubeConnectionProvider.getConnectionContext());
         boolean ncubeExists;
@@ -1605,7 +1659,7 @@ public class NCubeManager
         {
             case JDBC:
                 Connection connection = extractJdbcConnection(nCubeConnectionProvider.getConnectionContext());
-                ncubeExists = jdbcDoesNCubeExist(connection, app, name, version, status, sysDate);
+                ncubeExists = jdbcDoesNCubeExist(connection, appId, cubeName, status, sysDate);
                 break;
             case MONGO:
                 throw new UnsupportedOperationException("Mongo support not yet implemented...");
@@ -1615,9 +1669,6 @@ public class NCubeManager
 
         return ncubeExists;
     }
-
-
-//    }
 
     private static void validate(String app, String version)
     {
@@ -1632,9 +1683,9 @@ public class NCubeManager
         return connection;
     }
 
-    private static void jdbcLoadCubes(Connection connection, String app, String version, String status, Date sysDate)
+    private static void jdbcLoadCubes(Connection connection, ApplicationID appId, String status, Date sysDate)
     {
-        validate(app, version);
+        validate(appId.getApp(), appId.getVersion());
 
         synchronized (cubeList)
         {
@@ -1642,10 +1693,13 @@ public class NCubeManager
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
-                stmt.setString(1, app);
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
+                stmt.setString(1, appId.getApp());
                 stmt.setDate(2, systemDate);
                 stmt.setDate(3, systemDate);
-                stmt.setString(4, version);
+                stmt.setString(4, appId.getVersion());
                 stmt.setString(5, status);
                 ResultSet rs = stmt.executeQuery();
 
@@ -1654,25 +1708,21 @@ public class NCubeManager
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = ncubeFromJson(json);
-                    ApplicationID appId = ncube.getApplicationID();
-                    appId.setAccount(null); // Any user of these old APIs will get default (null) account
-                    appId.setApp(app);
-                    appId.setVersion(version);
                     addCube(ncube, appId);
                 }
             }
             catch (Exception e)
             {
-                String s = "Unable to load n-cubes, app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+                String s = "Unable to load n-cubes, app: " + appId.getApp() + ", version: " + appId.getVersion() + ", status: " + status + ", sysDate: " + sysDate + " from database";
                 LOG.error(s, e);
                 throw new RuntimeException(s, e);
             }
         }
     }
 
-    private static NCube jdbcLoadCube(Connection connection, String app, String name, String version, String status, Date sysDate, boolean includeTests)
+    private static NCube jdbcLoadCube(Connection connection, ApplicationID appId, String cubeName, String status, Date sysDate, boolean includeTests)
     {
-        validate(app, version);
+        validate(appId.getApp(), appId.getVersion());
 
         synchronized (cubeList)
         {
@@ -1684,11 +1734,14 @@ public class NCubeManager
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
-                stmt.setString(1, name);
-                stmt.setString(2, app);
+                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+                // TODO: see if the column exists, store the result for the entire app life cycle.
+                // TODO: If account column does not exist, then account is null.
+                stmt.setString(1, cubeName);
+                stmt.setString(2, appId.getApp());
                 stmt.setDate(3, systemDate);
                 stmt.setDate(4, systemDate);
-                stmt.setString(5, version);
+                stmt.setString(5, appId.getVersion());
                 stmt.setString(6, status);
 
                 try (ResultSet rs = stmt.executeQuery())
@@ -1711,22 +1764,18 @@ public class NCubeManager
 
                         if (rs.next())
                         {
-                            throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
+                            throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", status: " + status + ", sysDate: " + sysDate);
                         }
 
-                        ApplicationID appId = ncube.getApplicationID();
-                        appId.setAccount(null);    // Any user of these old APIs will get the default account
-                        appId.setApp(app);
-                        appId.setVersion(version);
                         addCube(ncube, appId);
                         Set<String> subCubeList = ncube.getReferencedCubeNames();
 
-                        for (String cubeName : subCubeList)
+                        for (String cName : subCubeList)
                         {
-                            final String cacheKey = makeCacheKey(cubeName, appId);
+                            final String cacheKey = makeCacheKey(cName, appId);
                             if (!cubeList.containsKey(cacheKey))
                             {
-                                loadCube(connection, app, cubeName, version, status, sysDate, includeTests);
+                                loadCube(connection, appId.getApp(), cName, appId.getVersion(), status, sysDate, includeTests);
                             }
                         }
                         return ncube;
@@ -1740,26 +1789,28 @@ public class NCubeManager
             }
             catch (Exception e)
             {
-                String s = "Unable to load nNCube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+                String s = "Unable to load nNCube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", status: " + status + ", sysDate: " + sysDate + " from database";
                 LOG.error(s, e);
                 throw new RuntimeException(s, e);
             }
         }
     }
 
-    private static boolean jdbcDoesNCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
+    private static boolean jdbcDoesNCubeExist(Connection connection, ApplicationID appId, String cubeName, String status, Date sysDate)
     {
-        validate(app, version);
+        validate(appId.getApp(), appId.getVersion());
 
         StringBuilder builder = new StringBuilder("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)");
 
-        if (status != null) {
+        if (status != null)
+        {
             validateStatus(status);
             builder.append(" AND status_cd = ?");
         }
 
-        if (name != null) {
-            validateCubeName(name);
+        if (cubeName != null)
+        {
+            validateCubeName(cubeName);
             builder.append(" AND n_cube_nm = ?");
         }
 
@@ -1767,9 +1818,11 @@ public class NCubeManager
 
         try (PreparedStatement ps = connection.prepareStatement(builder.toString()))
         {
-
-            ps.setString(1, app);
-            ps.setString(2, version);
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
+            ps.setString(1, appId.getApp());
+            ps.setString(2, appId.getVersion());
             ps.setDate(3, systemDate);
             ps.setDate(4, systemDate);
 
@@ -1779,9 +1832,9 @@ public class NCubeManager
                 ps.setString(++count, status);
             }
 
-            if (name != null)
+            if (cubeName != null)
             {
-                ps.setString(++count, name);
+                ps.setString(++count, cubeName);
             }
 
             try (ResultSet rs = ps.executeQuery())
@@ -1791,7 +1844,7 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            String s = "Error finding cube: " + name + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+            String s = "Error finding cube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", status: " + status + ", sysDate: " + sysDate + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

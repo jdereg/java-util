@@ -361,10 +361,11 @@ DELIMITER ;
 
             NCubeManager.clearCubeList();
             NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
-            NCubeManager.loadCubes(nCubeConnectionProvider, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
+            ApplicationID appId = new ApplicationID(null, APP_ID, version);
+            NCubeManager.loadCubes(nCubeConnectionProvider, appId, ReleaseStatus.SNAPSHOT.name());
             nCubeConnectionProvider.commitTransaction();
 
-            ApplicationID appId = new ApplicationID(null, APP_ID, version);
+            appId = new ApplicationID(null, APP_ID, version);
             NCube ncube1 = NCubeManager.getCube(name1, appId);
             NCube ncube2 = NCubeManager.getCube(name2, appId);
             assertNotNull(ncube1);
@@ -452,7 +453,8 @@ DELIMITER ;
 
             try
             {
-                NCubeManager.loadCubes(nCubeConnectionProvider, APP_ID, version, ReleaseStatus.SNAPSHOT.name(), null);
+                ApplicationID appId = new ApplicationID(null, APP_ID, version);
+                NCubeManager.loadCubes(nCubeConnectionProvider, appId, ReleaseStatus.SNAPSHOT.name(), null);
             }
             catch (Exception e)
             {
@@ -587,8 +589,9 @@ DELIMITER ;
 
             NCubeManager.clearCubeList();
             NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
-            NCube loadedCube1 = NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null);
-            NCube loadedCube2 = NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name2, version, ReleaseStatus.SNAPSHOT.name(), null);
+            ApplicationID appId = new ApplicationID(null, APP_ID, version);
+            NCube loadedCube1 = NCubeManager.loadCube(nCubeConnectionProvider, appId, name1, ReleaseStatus.SNAPSHOT.name(), null);
+            NCube loadedCube2 = NCubeManager.loadCube(nCubeConnectionProvider, appId, name2, ReleaseStatus.SNAPSHOT.name(), null);
             nCubeConnectionProvider.commitTransaction();
 
             assertNotNull(loadedCube1);
@@ -596,7 +599,7 @@ DELIMITER ;
             assertEquals(name1, loadedCube1.getName());
             assertEquals(name2, loadedCube2.getName());
             NCubeManager.clearCubeList();
-            ApplicationID appId = new ApplicationID(null, APP_ID, version);
+            appId = new ApplicationID(null, APP_ID, version);
             assertNull(NCubeManager.getCube(name1, appId));
             assertNull(NCubeManager.getCube(name2, appId));
 
@@ -678,7 +681,8 @@ DELIMITER ;
 
             try
             {
-                NCubeManager.loadCube(nCubeConnectionProvider, APP_ID, name1, version, ReleaseStatus.SNAPSHOT.name(), null);
+                ApplicationID appId = new ApplicationID(null, APP_ID, version);
+                NCubeManager.loadCube(nCubeConnectionProvider, appId, name1, ReleaseStatus.SNAPSHOT.name(), null);
             }
             catch (Exception e)
             {
@@ -1267,7 +1271,8 @@ DELIMITER ;
         assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
 
         NCubeJdbcConnectionProvider nCubeJdbcConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
-        assertTrue(NCubeManager.doesCubeExist(nCubeJdbcConnectionProvider, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
+        ApplicationID appId = new ApplicationID(null, APP_ID, version);
+        assertTrue(NCubeManager.doesCubeExist(nCubeJdbcConnectionProvider, appId, name, ReleaseStatus.SNAPSHOT.name(), new Date()));
         nCubeJdbcConnectionProvider.commitTransaction();
 
         NCube<String> cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date());

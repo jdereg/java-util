@@ -278,6 +278,34 @@ public class CellInfo
             {
                 return val;
             }
+            else if (CellTypes.Boolean.desc().equals(type))
+            {
+                return "true".equalsIgnoreCase((String)val);
+            }
+            else if (CellTypes.Byte.desc().equals(type))
+            {
+                return Byte.parseByte((String)val);
+            }
+            else if (CellTypes.Short.desc().equals(type))
+            {
+                return Short.parseShort((String)val);
+            }
+            else if (CellTypes.Integer.desc().equals(type))
+            {
+                return Integer.parseInt((String)val);
+            }
+            else if (CellTypes.Long.desc().equals(type))
+            {
+                return Long.parseLong((String)val);
+            }
+            else if (CellTypes.Double.desc().equals(type))
+            {
+                return Double.parseDouble((String)val);
+            }
+            else if (CellTypes.Float.desc().equals(type))
+            {
+                return Float.parseFloat((String)val);
+            }
             else if (CellTypes.Exp.desc().equals(type))
             {
                 return new GroovyExpression((String)val, null);

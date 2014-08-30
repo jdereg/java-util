@@ -44,10 +44,10 @@ public class CellInfo
         isUrl = false;
         isCached = false;
         value = null;
+        dataType = null;
 
         if (cell == null)
         {
-            dataType = CellTypes.Null.desc();
             return;
         }
 

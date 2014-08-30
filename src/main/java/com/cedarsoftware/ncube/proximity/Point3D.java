@@ -85,7 +85,7 @@ public class Point3D implements Comparable<Point3D>, Distance<Point3D>
 	
 	public String toString()
 	{
-		return x + ", " + y + ", " + z;
+        return String.format("%s, %s, %s", x, y, z);
 	}
 
     public double getX() {

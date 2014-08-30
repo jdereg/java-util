@@ -51,7 +51,7 @@ public class Point2D implements Comparable<Point2D>, Distance<Point2D>
 	
 	public String toString()
 	{
-		return x + ", " + y;
+        return String.format("%s, %s", x, y);
 	}
 
 	public int compareTo(Point2D that)

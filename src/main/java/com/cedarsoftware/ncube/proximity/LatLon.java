@@ -94,7 +94,7 @@ public class LatLon implements Comparable<LatLon>, Distance<LatLon>
 	
 	public String toString()
 	{
-		return lat + ", " + lon;
+        return String.format("%s, %s", lat, lon);
 	}
 
     public double getLat() { return lat; }

@@ -74,18 +74,18 @@ public class GroovyJsonFormatter
         else if (o instanceof LatLon)
         {
             LatLon l = (LatLon)o;
-            builder.append(String.format("\"%s,%s\"", l.getLat(), l.getLon()));
+            builder.append(String.format("\"%f,%f\"", l.getLat(), l.getLon()));
         }
         else if (o instanceof Point2D)
         {
             Point2D l = (Point2D)o;
-            String twoDoubleFormat = "\"%s,%s\"";
+            String twoDoubleFormat = "\"%f,%f\"";
             builder.append(String.format(twoDoubleFormat, l.getX(), l.getY()));
         }
         else if (o instanceof Point3D)
         {
             Point3D p = (Point3D)o;
-            builder.append(String.format("\"%s,%s,%s\"", p.getX(), p.getY(), p.getZ()));
+            builder.append(String.format("\"%f,%f,%f\"", p.getX(), p.getY(), p.getZ()));
         }
         else if (o instanceof Range)
         {
@@ -171,7 +171,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Double)
         {
-            builder.append(String.format("%s", (Double) o));
+            builder.append(String.format("%f", (Double) o));
             builder.append('d');
         }
         else if (o instanceof Integer)
@@ -201,7 +201,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Float)
         {
-            builder.append(String.format("%s", (Float) o));
+            builder.append(String.format("%f", (Float) o));
             builder.append('f');
         }
         else if (o instanceof Short)

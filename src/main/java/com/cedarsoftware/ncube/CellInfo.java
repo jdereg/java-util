@@ -96,12 +96,12 @@ public class CellInfo
         }
         else if (cell instanceof Double)
         {
-            value = Column.formatDiscreteValue((Double) cell);
+            value = String.format("%f", (Double)cell);
             dataType = CellTypes.Double.desc();
         }
         else if (cell instanceof Float)
         {
-            value = Column.formatDiscreteValue((Float) cell);
+            value = String.format("%f", (Float)cell);
             dataType = CellTypes.Float.desc();
         }
         else if (cell instanceof BigDecimal)

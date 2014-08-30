@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.BinaryUrlCmd;
+import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.GroovyMethod;
@@ -267,15 +268,15 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof LatLon) {
-            return "latlon";
+            return CellTypes.LatLon.desc();
         }
 
         if (o instanceof Point2D) {
-            return "point2d";
+            return CellTypes.Point2d.desc();
         }
 
         if (o instanceof Point3D) {
-            return "point3d";
+            return CellTypes.Point3d.desc();
         }
 
         return getCellType(o, "column");
@@ -288,51 +289,51 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         }
 
         if (cell instanceof BigDecimal) {
-            return "bigdec";
+            return CellTypes.BigDecimal.desc();
         }
 
         if (cell instanceof Float) {
-            return "float";
+            return CellTypes.Float.desc();
         }
 
         if (cell instanceof Integer) {
-            return "int";
+            return CellTypes.Integer.desc();
         }
 
         if (cell instanceof BigInteger) {
-            return "bigint";
+            return CellTypes.BigInteger.desc();
         }
 
         if (cell instanceof Byte) {
-            return "byte";
+            return CellTypes.Byte.desc();
         }
 
         if (cell instanceof Short) {
-            return "short";
+            return CellTypes.Short.desc();
         }
 
         if (cell instanceof Date) {
-            return "date";
+            return CellTypes.Date.desc();
         }
 
         if (cell instanceof BinaryUrlCmd || cell instanceof byte[]) {
-            return "binary";
+            return CellTypes.Binary.desc();
         }
 
         if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray()) {
-            return "exp";
+            return CellTypes.Exp.desc();
         }
 
         if (cell instanceof GroovyMethod) {
-            return "method";
+            return CellTypes.Method.desc();
         }
 
         if (cell instanceof GroovyTemplate) {
-            return "template";
+            return CellTypes.Template.desc();
         }
 
         if (cell instanceof StringUrlCmd) {
-            return "string";
+            return CellTypes.String.desc();
         }
 
         throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));

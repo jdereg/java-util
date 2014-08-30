@@ -26,6 +26,6 @@ public class TestLatLon
         assertTrue(l.compareTo(new LatLon(10, 20)) < 0);
         assertTrue(l.compareTo(new LatLon(10, 10)) == 0);
 
-        assertEquals("(10.0, 10.0)", l.toString());
+        assertEquals("10.0, 10.0", l.toString());
     }
 }

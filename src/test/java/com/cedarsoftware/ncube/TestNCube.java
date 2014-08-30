@@ -2109,7 +2109,7 @@ public class TestNCube
 
         Point3D p1 = new Point3D(1.0, 2.0, 3.0);
         s = p1.toString();
-        assertTrue("(1.0, 2.0, 3.0)".equals(s));
+        assertTrue("1.0, 2.0, 3.0".equals(s));
         assertFalse(p1.equals("string"));
         Point3D p2 = new Point3D(1.0, 2.0, 3.0);
         assertTrue(p1.compareTo(p2) == 0);

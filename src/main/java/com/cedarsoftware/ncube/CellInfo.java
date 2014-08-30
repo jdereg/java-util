@@ -36,8 +36,8 @@ public class CellInfo
 {
     public String value;
     public String dataType;
-    boolean isUrl;
-    boolean isCached;
+    public boolean isUrl;
+    public boolean isCached;
 
     public CellInfo(Object cell)
     {

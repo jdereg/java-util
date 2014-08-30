@@ -37,8 +37,8 @@ public enum CellTypes
     Method("method"),
     Template("template"),
     LatLon("latlon"),
-    Point2d("point2d"),
-    Point3d("point3d"),
+    Point2D("point2d"),
+    Point3D("point3d"),
     Null("null");
 
     private final String desc;

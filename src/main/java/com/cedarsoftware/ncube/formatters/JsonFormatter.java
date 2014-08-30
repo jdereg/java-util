@@ -272,11 +272,11 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         }
 
         if (o instanceof Point2D) {
-            return CellTypes.Point2d.desc();
+            return CellTypes.Point2D.desc();
         }
 
         if (o instanceof Point3D) {
-            return CellTypes.Point3d.desc();
+            return CellTypes.Point3D.desc();
         }
 
         return getCellType(o, "column");

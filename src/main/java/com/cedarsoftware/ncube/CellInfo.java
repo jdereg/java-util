@@ -124,12 +124,12 @@ public class CellInfo
         else if (cell instanceof Point2D)
         {
             value = cell.toString();
-            dataType = CellTypes.Point2d.desc();
+            dataType = CellTypes.Point2D.desc();
         }
         else if (cell instanceof Point3D)
         {
             value = cell.toString();
-            dataType = CellTypes.Point3d.desc();
+            dataType = CellTypes.Point3D.desc();
         }
         else if (cell instanceof LatLon)
         {
@@ -329,7 +329,7 @@ public class CellInfo
                 }
                 return new LatLon(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2)));
             }
-            else if (CellTypes.Point2d.desc().equals(type))
+            else if (CellTypes.Point2D.desc().equals(type))
             {
                 Matcher m = Regexes.valid2Doubles.matcher((String) val);
                 if (!m.matches())
@@ -338,7 +338,7 @@ public class CellInfo
                 }
                 return new Point2D(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2)));
             }
-            else if (CellTypes.Point3d.desc().equals(type))
+            else if (CellTypes.Point3D.desc().equals(type))
             {
                 Matcher m = Regexes.valid3Doubles.matcher((String) val);
                 if (!m.matches())

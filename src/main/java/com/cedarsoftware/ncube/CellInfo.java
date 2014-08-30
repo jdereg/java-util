@@ -39,8 +39,6 @@ public class CellInfo
     boolean isUrl;
     boolean isCached;
 
-    private CellInfo() { }
-
     public CellInfo(Object cell)
     {
         isUrl = false;
@@ -264,7 +262,7 @@ public class CellInfo
             {
                 return (((Long) val).shortValue());
             }
-            else if (CellTypes.BigDecimal.equals(type))
+            else if (CellTypes.BigDecimal.desc().equals(type))
             {
                 return new BigDecimal((Long)val);
             }
@@ -353,7 +351,7 @@ public class CellInfo
             }
         }
         else if (val instanceof JsonObject)
-        {
+        {   // Legacy support - remove once we drop support for array type (can be done using GroovyExpression).
             Object[] values = ((JsonObject) val).getArray();
             for (int i=0; i < values.length; i++)
             {

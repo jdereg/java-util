@@ -1,6 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.NCubeTestDto;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
@@ -40,8 +40,6 @@ public class NCubeTestParser
 
     /**
      * Resolve coordinates for the test.
-     * @param map
-     * @return
      */
     public Map<String,Object> resolveCoords(Map<String, Map<String, Object>> map) {
         Map<String, Object> coords = new LinkedHashMap<>();
@@ -61,7 +59,7 @@ public class NCubeTestParser
         if (value == null && StringUtilities.isEmpty(url)) {
             throw new IllegalArgumentException("Test Items must have either a url or a type");
         }
-        return NCube.parseJsonValue(value, url, type, false);
+        return CellInfo.parseJsonValue(value, url, type, false);
     }
 
     public void write(Map<String, NCubeTestDto> items) {

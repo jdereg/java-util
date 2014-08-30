@@ -4,7 +4,6 @@ import java.util.Map;
 
 /**
  * Interface for a generic way to provide a database/persistence connection to the NCubeManager.
- * Additional managmen
  *
  * @author Chuck Rowland (pittsflyr@gmail.com)
  *         <br/>

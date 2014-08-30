@@ -274,6 +274,7 @@ public class CellInfo
         }
         else if (val instanceof String)
         {
+            val = ((String) val).trim();
             if (StringUtilities.isEmpty(type))
             {
                 return val;

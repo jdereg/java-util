@@ -39,7 +39,7 @@ public class ApplicationID
         return account;
     }
 
-    public void setAccount(String account)
+    void setAccount(String account)
     {
         this.account = account;
     }
@@ -49,7 +49,7 @@ public class ApplicationID
         return app;
     }
 
-    public void setApp(String app)
+    void setApp(String app)
     {
         this.app = app;
     }
@@ -59,7 +59,7 @@ public class ApplicationID
         return version;
     }
 
-    public void setVersion(String version)
+    void setVersion(String version)
     {
         this.version = version;
     }

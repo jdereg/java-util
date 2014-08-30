@@ -327,7 +327,7 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 expandedUrl.append(url.substring(last, m.start()));
                 String cubeName = m.group(2);
-                NCube refCube = NCubeManager.getCube(cubeName, ncube.getVersion());
+                NCube refCube = NCubeManager.getCube(cubeName, ncube.getApplicationID());
                 if (refCube == null)
                 {
                     throw new IllegalStateException("Reference to not-loaded NCube '" + cubeName + "', from NCube '" + ncube.getName() + "', url: " + url);

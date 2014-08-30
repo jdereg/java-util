@@ -95,26 +95,45 @@ public class NCubeManager
      * @return NCube instance with the given name.  Please note
      * that the cube must be loaded first before calling this.
      */
+    @Deprecated
     public static NCube getCube(String name, String version)
     {
-        return cubeList.get(makeCacheKey(name, version));
+        ApplicationID appId = new ApplicationID(null, null, version);
+        return cubeList.get(makeCacheKey(name, appId));
     }
 
-    static String makeCacheKey(String name, String version)
+    /**
+     * @param name String name of an NCube.
+     * @return NCube instance with the given name.  Please note
+     * that the cube must be loaded first before calling this.
+     */
+    public static NCube getCube(String name, ApplicationID appId)
     {
-        return name + '.' + version;
+        return cubeList.get(makeCacheKey(name, appId));
+    }
+
+    static String makeCacheKey(String name, ApplicationID appId)
+    {
+//        String acct = appId.getAccount() == null ? "defAcct" : appId.getAccount();
+//        String app = appId.getApp() == null ? "defApp" : appId.getApp();
+//        return name + '.' + acct + '.' + app + '.' + appId.getVersion();
+        String acct = "defAcct";
+        String app = appId.getApp() == null ? "defApp" : appId.getApp();
+        return name + '.' + acct + '.' + app + '.' + appId.getVersion();
     }
 
     public static void addBaseResourceUrls(List<String> urls, String version)
     {
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(version);
 
-        if (urlClassLoader == null) {
+        if (urlClassLoader == null)
+        {
             LOG.info("Creating ClassLoader, n-cube version: " + version + ", urls: " + urls);
             urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
             urlClassLoaders.put(version, urlClassLoader);
         }
-        else {
+        else
+        {
             LOG.info("Adding resource URLs, n-cube version: " + version + ", urls: " + urls);
         }
 
@@ -122,7 +141,7 @@ public class NCubeManager
     }
 
     /**
-     * @Deprecated Call addBaseResourceUrls() instead.
+     * Call addBaseResourceUrls() instead.
      */
     @Deprecated
     public static void setBaseResourceUrls(List<String> urls, String version)
@@ -131,7 +150,7 @@ public class NCubeManager
     }
 
     /**
-     * @Deprecated Call addBaseResourceUrls() instead.
+     * Call addBaseResourceUrls() instead.
      */
     @Deprecated
     public static void setUrlClassLoader(List<String> urls, String version)
@@ -172,8 +191,11 @@ public class NCubeManager
     {
         synchronized (cubeList)
         {
-            ncube.setVersion(appId.getVersion());
-            cubeList.put(makeCacheKey(ncube.getName(), appId.getVersion()), ncube);
+            ApplicationID ncubeAppId = ncube.getApplicationID();
+            ncubeAppId.setAccount(appId.getAccount());
+            ncubeAppId.setApp(appId.getApp());
+            ncubeAppId.setVersion(appId.getVersion());
+            cubeList.put(makeCacheKey(ncube.getName(), ncubeAppId), ncube);
 
             for (Map.Entry<String, Map<String, Advice>> entry : advices.entrySet())
             {
@@ -400,7 +422,7 @@ public class NCubeManager
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = ncubeFromJson(json);
                     ApplicationID appId = ncube.getApplicationID();
-                    appId.setAccount(null);
+                    appId.setAccount(null);     // Any user of these old APIs will get the default (null) account
                     appId.setApp(app);
                     appId.setVersion(version);
                     addCube(ncube, appId);
@@ -471,7 +493,7 @@ public class NCubeManager
                         }
 
                         ApplicationID appId = ncube.getApplicationID();
-                        appId.setAccount(null);
+                        appId.setAccount(null); // Any use of these deprecated IDs will get the null account.
                         appId.setApp(app);
                         appId.setVersion(version);
                         addCube(ncube, appId);
@@ -479,7 +501,7 @@ public class NCubeManager
 
                         for (String cubeName : subCubeList)
                         {
-                            final String cacheKey = makeCacheKey(cubeName, version);
+                            final String cacheKey = makeCacheKey(cubeName, appId);
                             if (!cubeList.containsKey(cacheKey))
                             {
                                 loadCube(connection, app, cubeName, version, status, sysDate, includeTests);
@@ -614,6 +636,10 @@ public class NCubeManager
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = ncubeFromJson(json);
+                    ApplicationID appId = ncube.getApplicationID();
+                    appId.setAccount(null);  // Any user of these old APIs will get the default (null) account.
+                    appId.setApp(app);
+                    appId.setVersion(version);
 
                     if (rs.next())
                     {
@@ -881,7 +907,7 @@ public class NCubeManager
                         throw new IllegalStateException("error inserting new NCube: " + ncube.getName() + "', app: " + app + ", version: " + version + " (" + rowCount + " rows inserted, should be 1)");
                     }
                     ApplicationID appId = ncube.getApplicationID();
-                    appId.setAccount(null);
+                    appId.setAccount(null);     // Any user of these old APIs will get the default (null) account
                     appId.setApp(app);
                     appId.setVersion(version);
                     addCube(ncube, appId);
@@ -1109,7 +1135,9 @@ public class NCubeManager
                     throw new IllegalArgumentException("No n-cube found to rename, for app:" + app + ", version: " + version + ", original name: " + oldName);
                 }
 
-                cubeList.remove(makeCacheKey(oldName, version));
+                // Any user of these old IDs will get the default (null) account
+                ApplicationID appId = new ApplicationID(null, app, version);
+                cubeList.remove(makeCacheKey(oldName, appId));
                 return true;
             }
             catch (IllegalArgumentException e)
@@ -1155,7 +1183,9 @@ public class NCubeManager
                 int rows = ps.executeUpdate();
                 if (rows > 0)
                 {
-                    cubeList.remove(makeCacheKey(name, version));
+                    // Any user of these old APIs will get the default (null) account
+                    ApplicationID appId = new ApplicationID(null, app, version);
+                    cubeList.remove(makeCacheKey(name, appId));
                     return true;
                 }
                 return false;
@@ -1359,11 +1389,8 @@ public class NCubeManager
         {
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
-            ApplicationID appId = ncube.getApplicationID();
-            appId.setAccount("file");
-            appId.setApp("file");
-            appId.setVersion("file");
-            addCube(ncube, appId);
+            // Application ID will be account: file, app: file, version: file
+            addCube(ncube, ncube.getApplicationID());
             return ncube;
         }
         catch (Exception e)
@@ -1405,11 +1432,8 @@ public class NCubeManager
                 JsonObject ncube = (JsonObject) cube;
                 String json = JsonWriter.objectToJson(ncube);
                 NCube nCube = NCube.fromSimpleJson(json);
-                ApplicationID appId = nCube.getApplicationID();
-                appId.setAccount("file");
-                appId.setApp("file");
-                appId.setVersion("file");
-                addCube(nCube, appId);
+                // account: "file", app: "file", version: "file"
+                addCube(nCube, nCube.getApplicationID());
                 lastSuccessful = nCube.getName();
                 cubeList.add(nCube);
             }
@@ -1631,7 +1655,7 @@ public class NCubeManager
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = ncubeFromJson(json);
                     ApplicationID appId = ncube.getApplicationID();
-                    appId.setAccount(null);
+                    appId.setAccount(null); // Any user of these old APIs will get default (null) account
                     appId.setApp(app);
                     appId.setVersion(version);
                     addCube(ncube, appId);
@@ -1691,7 +1715,7 @@ public class NCubeManager
                         }
 
                         ApplicationID appId = ncube.getApplicationID();
-                        appId.setAccount(null);
+                        appId.setAccount(null);    // Any user of these old APIs will get the default account
                         appId.setApp(app);
                         appId.setVersion(version);
                         addCube(ncube, appId);
@@ -1699,7 +1723,7 @@ public class NCubeManager
 
                         for (String cubeName : subCubeList)
                         {
-                            final String cacheKey = makeCacheKey(cubeName, version);
+                            final String cacheKey = makeCacheKey(cubeName, appId);
                             if (!cubeList.containsKey(cacheKey))
                             {
                                 loadCube(connection, app, cubeName, version, status, sysDate, includeTests);

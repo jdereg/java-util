@@ -309,15 +309,17 @@ DELIMITER ;
 
         NCubeManager.clearCubeList();
         NCubeManager.loadCubes(getConnection(), APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-        NCube ncube1 = NCubeManager.getCube(name1, version);
-        NCube ncube2 = NCubeManager.getCube(name2, version);
+
+        ApplicationID appId = new ApplicationID(null, APP_ID, version);
+        NCube ncube1 = NCubeManager.getCube(name1, appId);
+        NCube ncube2 = NCubeManager.getCube(name2, appId);
         assertNotNull(ncube1);
         assertNotNull(ncube2);
         assertEquals(name1, ncube1.getName());
         assertEquals(name2, ncube2.getName());
         NCubeManager.clearCubeList();
-        assertNull(NCubeManager.getCube(name1, version));
-        assertNull(NCubeManager.getCube(name2, version));
+        assertNull(NCubeManager.getCube(name1, appId));
+        assertNull(NCubeManager.getCube(name2, appId));
 
         NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
         NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
@@ -362,15 +364,16 @@ DELIMITER ;
             NCubeManager.loadCubes(nCubeConnectionProvider, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
             nCubeConnectionProvider.commitTransaction();
 
-            NCube ncube1 = NCubeManager.getCube(name1, version);
-            NCube ncube2 = NCubeManager.getCube(name2, version);
+            ApplicationID appId = new ApplicationID(null, APP_ID, version);
+            NCube ncube1 = NCubeManager.getCube(name1, appId);
+            NCube ncube2 = NCubeManager.getCube(name2, appId);
             assertNotNull(ncube1);
             assertNotNull(ncube2);
             assertEquals(name1, ncube1.getName());
             assertEquals(name2, ncube2.getName());
             NCubeManager.clearCubeList();
-            assertNull(NCubeManager.getCube(name1, version));
-            assertNull(NCubeManager.getCube(name2, version));
+            assertNull(NCubeManager.getCube(name1, appId));
+            assertNull(NCubeManager.getCube(name2, appId));
 
             NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
             NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
@@ -593,8 +596,9 @@ DELIMITER ;
             assertEquals(name1, loadedCube1.getName());
             assertEquals(name2, loadedCube2.getName());
             NCubeManager.clearCubeList();
-            assertNull(NCubeManager.getCube(name1, version));
-            assertNull(NCubeManager.getCube(name2, version));
+            ApplicationID appId = new ApplicationID(null, APP_ID, version);
+            assertNull(NCubeManager.getCube(name1, appId));
+            assertNull(NCubeManager.getCube(name2, appId));
 
             NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
             NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
@@ -1039,7 +1043,8 @@ DELIMITER ;
     }
 
     @Test
-    public void testRenameCubeThatDoesNotExists() throws Exception {
+    public void testRenameCubeThatDoesNotExists() throws Exception
+    {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
 
         Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
@@ -1051,8 +1056,8 @@ DELIMITER ;
         {
             NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
             fail();
-        } catch(IllegalArgumentException e) {
         }
+        catch(IllegalArgumentException ignored) { }
     }
 
 
@@ -1061,8 +1066,10 @@ DELIMITER ;
     public void testBadCommandCellCommand() throws Exception
     {
         NCube<Object> continentCounty = new NCube<>("test.ContinentCountries");
-        continentCounty.getApplicationID().setVersion("1.0.0");
-        NCubeManager.addCube(continentCounty, continentCounty.getApplicationID());
+        ApplicationID appId = continentCounty.getApplicationID();
+        appId.setApp(APP_ID);
+        appId.setVersion("1.0.0");
+        NCubeManager.addCube(continentCounty, appId);
         continentCounty.addAxis(TestNCube.getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1071,13 +1078,17 @@ DELIMITER ;
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<>("test.Provinces");
-        canada.getApplicationID().setVersion("1.0.0");
-        NCubeManager.addCube(canada, canada.getApplicationID());
+        appId = canada.getApplicationID();
+        appId.setApp(APP_ID);
+        appId.setVersion("1.0.0");
+        NCubeManager.addCube(canada, appId);
         canada.addAxis(TestNCube.getProvincesAxis());
 
         NCube<Object> usa = new NCube<>("test.States");
-        usa.getApplicationID().setVersion("1.0.0");
-        NCubeManager.addCube(usa, usa.getApplicationID());
+        appId = usa.getApplicationID();
+        appId.setApp(APP_ID);
+        appId.setVersion("1.0.0");
+        NCubeManager.addCube(usa, appId);
         usa.addAxis(TestNCube.getStatesAxis());
 
         Map coord1 = new HashMap();

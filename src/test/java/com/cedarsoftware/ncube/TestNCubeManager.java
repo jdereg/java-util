@@ -1061,7 +1061,8 @@ DELIMITER ;
     public void testBadCommandCellCommand() throws Exception
     {
         NCube<Object> continentCounty = new NCube<>("test.ContinentCountries");
-        NCubeManager.addCube(continentCounty, "1.0.0");
+        continentCounty.getApplicationID().setVersion("1.0.0");
+        NCubeManager.addCube(continentCounty, continentCounty.getApplicationID());
         continentCounty.addAxis(TestNCube.getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1070,11 +1071,13 @@ DELIMITER ;
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<>("test.Provinces");
-        NCubeManager.addCube(canada, "1.0.0");
+        canada.getApplicationID().setVersion("1.0.0");
+        NCubeManager.addCube(canada, canada.getApplicationID());
         canada.addAxis(TestNCube.getProvincesAxis());
 
         NCube<Object> usa = new NCube<>("test.States");
-        NCubeManager.addCube(usa, "1.0.0");
+        usa.getApplicationID().setVersion("1.0.0");
+        NCubeManager.addCube(usa, usa.getApplicationID());
         usa.addAxis(TestNCube.getStatesAxis());
 
         Map coord1 = new HashMap();

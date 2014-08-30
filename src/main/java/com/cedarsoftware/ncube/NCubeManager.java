@@ -168,12 +168,12 @@ public class NCubeManager
      *
      * @param ncube NCube to add to the list.
      */
-    static void addCube(NCube ncube, String version)
+    static void addCube(NCube ncube, ApplicationID appId)
     {
         synchronized (cubeList)
         {
-            ncube.setVersion(version);
-            cubeList.put(makeCacheKey(ncube.getName(), version), ncube);
+            ncube.setVersion(appId.getVersion());
+            cubeList.put(makeCacheKey(ncube.getName(), appId.getVersion()), ncube);
 
             for (Map.Entry<String, Map<String, Advice>> entry : advices.entrySet())
             {
@@ -399,7 +399,11 @@ public class NCubeManager
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = ncubeFromJson(json);
-                    addCube(ncube, version);
+                    ApplicationID appId = ncube.getApplicationID();
+                    appId.setAccount(null);
+                    appId.setApp(app);
+                    appId.setVersion(version);
+                    addCube(ncube, appId);
                 }
             }
             catch (Exception e)
@@ -451,7 +455,8 @@ public class NCubeManager
                         NCube ncube = ncubeFromJson(json);
 
 
-                        if (includeTests) {
+                        if (includeTests)
+                        {
                             byte[] bytes = rs.getBytes("test_data_bin");
 
                             if (bytes != null)
@@ -465,7 +470,11 @@ public class NCubeManager
                             throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
                         }
 
-                        addCube(ncube, version);
+                        ApplicationID appId = ncube.getApplicationID();
+                        appId.setAccount(null);
+                        appId.setApp(app);
+                        appId.setVersion(version);
+                        addCube(ncube, appId);
                         Set<String> subCubeList = ncube.getReferencedCubeNames();
 
                         for (String cubeName : subCubeList)
@@ -871,7 +880,11 @@ public class NCubeManager
                     {
                         throw new IllegalStateException("error inserting new NCube: " + ncube.getName() + "', app: " + app + ", version: " + version + " (" + rowCount + " rows inserted, should be 1)");
                     }
-                    addCube(ncube, version);
+                    ApplicationID appId = ncube.getApplicationID();
+                    appId.setAccount(null);
+                    appId.setApp(app);
+                    appId.setVersion(version);
+                    addCube(ncube, appId);
                 }
             }
             catch (IllegalStateException e)
@@ -1346,7 +1359,11 @@ public class NCubeManager
         {
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
-            addCube(ncube, "file");
+            ApplicationID appId = ncube.getApplicationID();
+            appId.setAccount("file");
+            appId.setApp("file");
+            appId.setVersion("file");
+            addCube(ncube, appId);
             return ncube;
         }
         catch (Exception e)
@@ -1388,7 +1405,11 @@ public class NCubeManager
                 JsonObject ncube = (JsonObject) cube;
                 String json = JsonWriter.objectToJson(ncube);
                 NCube nCube = NCube.fromSimpleJson(json);
-                addCube(nCube, "file");
+                ApplicationID appId = nCube.getApplicationID();
+                appId.setAccount("file");
+                appId.setApp("file");
+                appId.setVersion("file");
+                addCube(nCube, appId);
                 lastSuccessful = nCube.getName();
                 cubeList.add(nCube);
             }
@@ -1609,7 +1630,11 @@ public class NCubeManager
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = ncubeFromJson(json);
-                    addCube(ncube, version);
+                    ApplicationID appId = ncube.getApplicationID();
+                    appId.setAccount(null);
+                    appId.setApp(app);
+                    appId.setVersion(version);
+                    addCube(ncube, appId);
                 }
             }
             catch (Exception e)
@@ -1650,8 +1675,8 @@ public class NCubeManager
                         String json = new String(jsonBytes, "UTF-8");
                         NCube ncube = ncubeFromJson(json);
 
-
-                        if (includeTests) {
+                        if (includeTests)
+                        {
                             byte[] bytes = rs.getBytes("test_data_bin");
 
                             if (bytes != null)
@@ -1665,7 +1690,11 @@ public class NCubeManager
                             throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
                         }
 
-                        addCube(ncube, version);
+                        ApplicationID appId = ncube.getApplicationID();
+                        appId.setAccount(null);
+                        appId.setApp(app);
+                        appId.setVersion(version);
+                        addCube(ncube, appId);
                         Set<String> subCubeList = ncube.getReferencedCubeNames();
 
                         for (String cubeName : subCubeList)

@@ -67,6 +67,6 @@ public class NCubeTest
         //if (value == null && StringUtilities.isEmpty(url)) {
         //    throw new IllegalArgumentException("Test Items must have either a url or a value");
         //}
-        return NCube.parseJsonValue(value, url, type, false);
+        return CellInfo.parseJsonValue(value, url, type, false);
     }
 }

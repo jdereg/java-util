@@ -1,14 +1,14 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.BinaryUrlCmd;
+import com.cedarsoftware.ncube.CellInfo;
+import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.GroovyMethod;
 import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
 import com.cedarsoftware.ncube.StringUrlCmd;
-import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
@@ -41,18 +41,6 @@ public class GroovyJsonFormatter
             return null;
         }
 
-        if (o instanceof LatLon) {
-            return "latlon";
-        }
-
-        if (o instanceof Point2D) {
-            return "point2d";
-        }
-
-        if (o instanceof Point3D) {
-            return "point3d";
-        }
-
         return getCellType(o, "column");
     }
 
@@ -63,55 +51,69 @@ public class GroovyJsonFormatter
         }
 
         if (cell instanceof BigDecimal) {
-            return "bigdec";
+            return CellTypes.BigDecimal.desc();
         }
 
         if (cell instanceof Float) {
-            return "float";
+            return CellTypes.Float.desc();
         }
 
         if (cell instanceof Integer) {
-            return "int";
+            return CellTypes.Integer.desc();
         }
 
         if (cell instanceof BigInteger) {
-            return "bigint";
+            return CellTypes.BigInteger.desc();
         }
 
         if (cell instanceof Byte) {
-            return "byte";
+            return CellTypes.Byte.desc();
         }
 
         if (cell instanceof Short) {
-            return "short";
+            return CellTypes.Short.desc();
         }
 
         if (cell instanceof Date) {
-            return "date";
+            return CellTypes.Date.desc();
         }
 
         if (cell instanceof BinaryUrlCmd || cell instanceof byte[]) {
-            return "binary";
+            return CellTypes.Binary.desc();
         }
 
         if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray()) {
-            return "exp";
+            return CellTypes.Exp.desc();
         }
 
         if (cell instanceof GroovyMethod) {
-            return "method";
+            return CellTypes.Method.desc();
         }
 
         if (cell instanceof GroovyTemplate) {
-            return "template";
+            return CellTypes.Template.desc();
         }
 
         if (cell instanceof StringUrlCmd) {
-            return "string";
+            return CellTypes.String.desc();
+        }
+
+        if (cell instanceof Point2D)
+        {
+            return CellTypes.Point2D.desc();
+        }
+        if (cell instanceof Point3D)
+        {
+            return CellTypes.Point3D.desc();
+        }
+        if (cell instanceof LatLon)
+        {
+            return CellTypes.LatLon.desc();
         }
 
         throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));
     }
+
 
     public void startArray() {
         builder.append("[");
@@ -320,34 +322,5 @@ public class GroovyJsonFormatter
         {
             builder.append(",");
         }
-    }
-
-    public void writeCommandCell(UrlCommandCell cmd) throws IOException
-    {
-        if (!cmd.isCacheable()) {
-            writeAttribute("cache", cmd.isCacheable(), true);
-        }
-        if (cmd.getUrl() != null) {
-            writeAttribute("url", cmd.getUrl(), false);
-        }
-        else
-        {
-            writeAttribute("value", cmd.getCmd(), false);
-        }
-    }
-
-    /**
-     * According to parseJsonValue reading in, if your item is one of the following end types it does not need to
-     * specify the end type:  String, Long, Boolean, Double.  These items will all be picked up automatically
-     * so to save on those types I don't write out the type.
-     * @param type Type to write, if null don't write anything because its axis default type
-     */
-    public void writeType(String type) throws IOException
-    {
-        if (type == null) {
-            return;
-        }
-
-        writeAttribute("type", type, true);
     }
 }

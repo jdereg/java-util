@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
@@ -74,18 +75,25 @@ public class GroovyJsonFormatter
         else if (o instanceof LatLon)
         {
             LatLon l = (LatLon)o;
-            builder.append(String.format("\"%f,%f\"", l.getLat(), l.getLon()));
+            builder.append(String.format("\"%s,%s\"",
+                    Column.formatFloatingPoint(l.getLat()),
+                    Column.formatFloatingPoint(l.getLon())));
         }
         else if (o instanceof Point2D)
         {
             Point2D l = (Point2D)o;
-            String twoDoubleFormat = "\"%f,%f\"";
-            builder.append(String.format(twoDoubleFormat, l.getX(), l.getY()));
+            String twoDoubleFormat = "\"%s,%s\"";
+            builder.append(String.format(twoDoubleFormat,
+                    Column.formatFloatingPoint(l.getX()),
+                    Column.formatFloatingPoint(l.getY())));
         }
         else if (o instanceof Point3D)
         {
             Point3D p = (Point3D)o;
-            builder.append(String.format("\"%f,%f,%f\"", p.getX(), p.getY(), p.getZ()));
+            builder.append(String.format("\"%s,%s,%s\"",
+                    Column.formatFloatingPoint(p.getX()),
+                    Column.formatFloatingPoint(p.getY()),
+                    Column.formatFloatingPoint(p.getZ())));
         }
         else if (o instanceof Range)
         {
@@ -171,7 +179,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Double)
         {
-            builder.append(String.format("%f", (Double) o));
+            builder.append(Column.formatFloatingPoint((Number)o));
             builder.append('d');
         }
         else if (o instanceof Integer)
@@ -186,7 +194,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof BigDecimal)
         {
-            builder.append(((BigDecimal) o).toPlainString());
+            builder.append(((BigDecimal) o).stripTrailingZeros().toPlainString());
             builder.append('g');
         }
         else if (o instanceof BigInteger)
@@ -201,7 +209,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Float)
         {
-            builder.append(String.format("%f", (Float) o));
+            builder.append(Column.formatFloatingPoint((Number)o));
             builder.append('f');
         }
         else if (o instanceof Short)

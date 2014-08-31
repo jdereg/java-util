@@ -2071,7 +2071,7 @@ public class TestNCube
         points.addColumn(new Point3D(0.0, 0.0, -1.0));
         ncube.addAxis(points);
 
-        Map<String, Object> coord = new HashMap<String, Object>();
+        Map<String, Object> coord = new HashMap<>();
         coord.put("Point", new Point3D(0.0, 0.0, 0.0));
         ncube.setCell("0.0, 0.0, 0.0", coord);
         coord.put("Point", new Point3D(1.0, 0.0, 0.0));
@@ -2109,7 +2109,7 @@ public class TestNCube
 
         Point3D p1 = new Point3D(1.0, 2.0, 3.0);
         s = p1.toString();
-        assertTrue("1.0, 2.0, 3.0".equals(s));
+        assertEquals("1.0, 2.0, 3.0", s);
         assertFalse(p1.equals("string"));
         Point3D p2 = new Point3D(1.0, 2.0, 3.0);
         assertTrue(p1.compareTo(p2) == 0);

@@ -227,7 +227,7 @@ public class Column implements Comparable<Comparable>
         }
         else if (val instanceof Double)
         {
-            return new DecimalFormat("#,##0.0##############").format(val);
+            return new DecimalFormat("#0.0##############").format(val);
         }
         else if (val instanceof BigDecimal)
         {
@@ -246,5 +246,15 @@ public class Column implements Comparable<Comparable>
         {
             return val.toString();
         }
+    }
+
+    public static String formatFloatingPoint(Number n)
+    {
+        DecimalFormat fmt = new DecimalFormat("#0.0##############");
+        if (n instanceof Double || n instanceof Float)
+        {
+            return fmt.format(n.doubleValue());
+        }
+        return n.toString();
     }
 }

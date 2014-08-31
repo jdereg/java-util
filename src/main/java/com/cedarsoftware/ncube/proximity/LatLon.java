@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube.proximity;
 
+import com.cedarsoftware.ncube.Column;
+
 import static java.lang.Math.atan2;
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;
@@ -94,7 +96,7 @@ public class LatLon implements Comparable<LatLon>, Distance<LatLon>
 	
 	public String toString()
 	{
-        return String.format("%s, %s", lat, lon);
+        return String.format("%s, %s", Column.formatFloatingPoint(lat), Column.formatFloatingPoint(lon));
 	}
 
     public double getLat() { return lat; }

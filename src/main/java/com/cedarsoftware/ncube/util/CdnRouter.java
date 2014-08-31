@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.util;
 
+import com.cedarsoftware.ncube.ApplicationID;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.Regexes;
@@ -100,7 +101,9 @@ public class CdnRouter
             coord.put(HTTP_REQUEST, request);
             coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
-            NCube routingCube = NCubeManager.getCube(cubeName, version);
+            // TODO: MUST send account and app so that the router knows what cube to get.
+            ApplicationID appId = new ApplicationID(null, null, version);
+            NCube routingCube = NCubeManager.getCube(cubeName, appId);
             if (routingCube == null)
             {
                 throw new IllegalStateException("In order to use the n-cube CDN routing capabilities, " +

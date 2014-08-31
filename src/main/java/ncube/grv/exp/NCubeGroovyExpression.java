@@ -63,7 +63,7 @@ public class NCubeGroovyExpression
 
     public Object getFixedCubeCell(String name, Map coord)
     {
-        NCube cube = NCubeManager.getCube(name, ncube.getVersion());
+        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
         if (cube == null)
         {
             throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting fixed ($) reference to cell: " + coord.toString());
@@ -80,7 +80,7 @@ public class NCubeGroovyExpression
     public Object getRelativeCubeCell(String name, Map coord)
     {
         input.putAll(coord);
-        NCube cube = NCubeManager.getCube(name, ncube.getVersion());
+        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
         if (cube == null)
         {
             throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting relative (@) reference to cell: " + coord.toString());
@@ -110,7 +110,7 @@ public class NCubeGroovyExpression
     public Object runRuleCube(String name, Map coord)
     {
         input.putAll(coord);
-        NCube cube = NCubeManager.getCube(name, ncube.getVersion());
+        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
         if (cube == null)
         {
             throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting runRuleCube() to cell: " + coord.toString());

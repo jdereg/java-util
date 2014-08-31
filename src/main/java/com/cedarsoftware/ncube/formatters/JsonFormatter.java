@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.BinaryUrlCmd;
+import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.UrlCommandCell;
@@ -217,10 +219,131 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         endObject();
     }
 
+    public void writeCommandCell(UrlCommandCell cmd) throws IOException
+    {
+        if (!cmd.isCacheable()) {
+            writeAttribute("cache", cmd.isCacheable(), true);
+        }
+        if (cmd.getUrl() != null) {
+            writeAttribute("url", cmd.getUrl(), false);
+        }
+        else
+        {
+            writeAttribute("value", cmd.getCmd(), false);
+        }
+    }
+
+    /**
+     * According to parseJsonValue reading in, if your item is one of the following end types it does not need to
+     * specify the end type:  String, Long, Boolean, Double.  These items will all be picked up automatically
+     * so to save on those types I don't write out the type.
+     * @param type Type to write, if null don't write anything because its axis default type
+     */
+    public void writeType(String type) throws IOException
+    {
+        if (type == null) {
+            return;
+        }
+
+        writeAttribute("type", type, true);
+    }
+
+    public static String getColumnType(Object o)
+    {
+        if (o instanceof Range || o instanceof RangeSet) {
+            return null;
+        }
+
+        if (o instanceof LatLon) {
+            return CellTypes.LatLon.desc();
+        }
+
+        if (o instanceof Point2D) {
+            return CellTypes.Point2D.desc();
+        }
+
+        if (o instanceof Point3D) {
+            return CellTypes.Point3D.desc();
+        }
+
+        return getCellType(o, "column");
+    }
+
+    public static String getCellType(Object cell, String type)
+    {
+        if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {
+            return null;
+        }
+
+        if (cell instanceof BigDecimal) {
+            return CellTypes.BigDecimal.desc();
+        }
+
+        if (cell instanceof Float) {
+            return CellTypes.Float.desc();
+        }
+
+        if (cell instanceof Integer) {
+            return CellTypes.Integer.desc();
+        }
+
+        if (cell instanceof BigInteger) {
+            return CellTypes.BigInteger.desc();
+        }
+
+        if (cell instanceof Byte) {
+            return CellTypes.Byte.desc();
+        }
+
+        if (cell instanceof Short) {
+            return CellTypes.Short.desc();
+        }
+
+        if (cell instanceof Date) {
+            return CellTypes.Date.desc();
+        }
+
+        if (cell instanceof BinaryUrlCmd || cell instanceof byte[]) {
+            return CellTypes.Binary.desc();
+        }
+
+        if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray()) {
+            return CellTypes.Exp.desc();
+        }
+
+        if (cell instanceof GroovyMethod) {
+            return CellTypes.Method.desc();
+        }
+
+        if (cell instanceof GroovyTemplate) {
+            return CellTypes.Template.desc();
+        }
+
+        if (cell instanceof StringUrlCmd) {
+            return CellTypes.String.desc();
+        }
+
+        if (cell instanceof Point2D)
+        {
+            return CellTypes.Point2D.desc();
+        }
+        if (cell instanceof Point3D)
+        {
+            return CellTypes.Point3D.desc();
+        }
+        if (cell instanceof LatLon)
+        {
+            return CellTypes.LatLon.desc();
+        }
+
+        throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));
+    }
+
     public void writeCells(Map<Set<Column>, ?> cells) throws IOException
     {
         builder.append("\"cells\":");
-        if (cells == null || cells.isEmpty()) {
+        if (cells == null || cells.isEmpty())
+        {
             builder.append("[]");
             return;
         }

@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube.proximity;
 
 
+import com.cedarsoftware.ncube.CellInfo;
+
 /**
  * This class is used to represent a 2D point.
  *
@@ -51,7 +53,7 @@ public class Point2D implements Comparable<Point2D>, Distance<Point2D>
 	
 	public String toString()
 	{
-		return "(" + x + ", " + y + ")";
+        return String.format("%s, %s", CellInfo.formatForEditing(x), CellInfo.formatForEditing(y));
 	}
 
 	public int compareTo(Point2D that)

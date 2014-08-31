@@ -42,7 +42,7 @@ public class Range implements Comparable<Range>
     
     public String toString()
     {
-        return "[" + Column.formatDiscreteValue(low) + " - " + Column.formatDiscreteValue(high) + ")";
+        return "[" + CellInfo.formatForDisplay(low) + " - " + CellInfo.formatForDisplay(high) + ")";
     }
     
 	public int compareTo(Range that) 

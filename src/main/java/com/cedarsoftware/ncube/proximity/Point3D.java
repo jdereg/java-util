@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube.proximity;
 
+import com.cedarsoftware.ncube.CellInfo;
+
 /**
  * This class is used to represent a 3D point.  This 
  * class implements the Proximity interface so that it
@@ -85,18 +87,24 @@ public class Point3D implements Comparable<Point3D>, Distance<Point3D>
 	
 	public String toString()
 	{
-		return "(" + x + ", " + y + ", " + z + ")";
+        return String.format("%s, %s, %s",
+                CellInfo.formatForEditing(x),
+                CellInfo.formatForEditing(y),
+                CellInfo.formatForEditing(z));
 	}
 
-    public double getX() {
+    public double getX()
+    {
         return x;
     }
 
-    public double getY() {
+    public double getY()
+    {
         return y;
-
     }
-    public double getZ() {
+
+    public double getZ()
+    {
         return z;
     }
 

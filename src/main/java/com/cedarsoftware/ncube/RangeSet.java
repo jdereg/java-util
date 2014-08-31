@@ -177,7 +177,7 @@ public class RangeSet implements Comparable<RangeSet>
             }
             else
             {
-                s.append(Column.formatDiscreteValue(item));
+                s.append(CellInfo.formatForDisplay(item));
             }
             if (i.hasNext())
             {

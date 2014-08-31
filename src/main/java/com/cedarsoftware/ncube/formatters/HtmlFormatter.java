@@ -2,10 +2,14 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.AxisType;
+import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.GroovyBase;
 import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
@@ -333,7 +337,8 @@ public class HtmlFormatter implements NCubeFormatter
                 final String sha1AxisName = EncryptionUtilities.calculateSHA1Hash(topAxisName.getBytes());
                 for (int i = 0; i < width; i++)
                 {
-                    colIds.put(topAxisName, topColumns.get(i).getId());
+                    Column column = topColumns.get(i);
+                    colIds.put(topAxisName, column.getId());
                     coord.put(sha1AxisName, (long)i);
                     // Other coordinate values are set above this for-loop
                     buildCell(ncube, s, coord, new HashSet<>(colIds.values()));
@@ -532,13 +537,25 @@ public class HtmlFormatter implements NCubeFormatter
         }
         boolean isArray = cellValue.getClass().isArray();
 
-        if (cellValue instanceof Date || cellValue instanceof Number || cellValue instanceof String)
+        if (cellValue instanceof Date || cellValue instanceof String)
         {
-            return Column.formatDiscreteValue((Comparable) cellValue);
+            return CellInfo.formatForDisplay((Comparable) cellValue);
         }
         else if (cellValue instanceof Boolean || cellValue instanceof Character)
         {
             return String.valueOf(cellValue);
+        }
+        else if (cellValue instanceof Point2D || cellValue instanceof Point3D || cellValue instanceof LatLon)
+        {
+            return cellValue.toString();
+        }
+        else if (cellValue instanceof Number)
+        {
+            return CellInfo.formatForDisplay((Comparable) cellValue);
+        }
+        else if (cellValue instanceof byte[])
+        {
+            return StringUtilities.encode((byte[]) cellValue);
         }
         else if (isArray && JsonReader.isPrimitive(cellValue.getClass().getComponentType()))
         {

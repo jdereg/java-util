@@ -1,9 +1,7 @@
 package com.cedarsoftware.ncube;
 
 /**
- * This class binds together Account, App, and version.  These fields together
- * completely identify the application (and version) that a given n-cube belongs
- * to.
+ * Allowed cell types for n-cube.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -21,46 +19,37 @@ package com.cedarsoftware.ncube;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ApplicationID
+public enum CellTypes
 {
-    String account;
-    String app;
-    String version;
+    String("string"),
+    Date("date"),
+    Boolean("boolean"),
+    Byte("byte"),
+    Short("short"),
+    Integer("int"),
+    Long("long"),
+    Float("float"),
+    Double("double"),
+    BigDecimal("bigdec"),
+    BigInteger("bigint"),
+    Binary("binary"),
+    Exp("exp"),
+    Method("method"),
+    Template("template"),
+    LatLon("latlon"),
+    Point2D("point2d"),
+    Point3D("point3d"),
+    Null("null");
 
-    public ApplicationID(String account, String app, String version)
+    private final String desc;
+
+    private CellTypes(String desc)
     {
-        this.account = account;
-        this.app = app;
-        this.version = version;
+        this.desc=desc;
     }
 
-    public String getAccount()
+    public String desc()
     {
-        return account;
-    }
-
-    void setAccount(String account)
-    {
-        this.account = account;
-    }
-
-    public String getApp()
-    {
-        return app;
-    }
-
-    void setApp(String app)
-    {
-        this.app = app;
-    }
-
-    public String getVersion()
-    {
-        return version;
-    }
-
-    void setVersion(String version)
-    {
-        this.version = version;
+        return desc;
     }
 }

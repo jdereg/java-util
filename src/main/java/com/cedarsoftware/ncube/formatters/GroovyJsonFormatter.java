@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.BinaryUrlCmd;
 import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.GroovyMethod;
@@ -158,18 +159,23 @@ public class GroovyJsonFormatter
         else if (o instanceof LatLon)
         {
             LatLon l = (LatLon)o;
-            builder.append(String.format("\"%f,%f\"", l.getLat(), l.getLon()));
+            builder.append('"');
+            builder.append(l.toString());
+            builder.append('"');
         }
         else if (o instanceof Point2D)
         {
-            Point2D l = (Point2D)o;
-            String twoDoubleFormat = "\"%f,%f\"";
-            builder.append(String.format(twoDoubleFormat, l.getX(), l.getY()));
+            Point2D pt = (Point2D)o;
+            builder.append('"');
+            builder.append(pt.toString());
+            builder.append('"');
         }
         else if (o instanceof Point3D)
         {
-            Point3D p = (Point3D)o;
-            builder.append(String.format("\"%f,%f,%f\"", p.getX(), p.getY(), p.getZ()));
+            Point3D pt = (Point3D)o;
+            builder.append('"');
+            builder.append(pt.toString());
+            builder.append('"');
         }
         else if (o instanceof Range)
         {
@@ -210,6 +216,20 @@ public class GroovyJsonFormatter
             builder.append(" as Object[]");
             builder.append("\"");
         }
+        else if (o instanceof BigInteger)
+        {
+            BigInteger i = (BigInteger)o;
+            builder.append('"');
+            builder.append(i.toString());
+            builder.append('"');
+        }
+        else if (o instanceof BigDecimal)
+        {
+            BigDecimal d = (BigDecimal)o;
+            builder.append('"');
+            builder.append(d.stripTrailingZeros().toPlainString());
+            builder.append('"');
+        }
         else
         {
             builder.append(o.toString());
@@ -241,7 +261,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Double)
         {
-            builder.append(String.format("%f", (Double) o));
+            builder.append(CellInfo.formatForEditing(o));
             builder.append('d');
         }
         else if (o instanceof Integer)
@@ -256,7 +276,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof BigDecimal)
         {
-            builder.append(((BigDecimal) o).toPlainString());
+            builder.append(((BigDecimal) o).stripTrailingZeros().toPlainString());
             builder.append('g');
         }
         else if (o instanceof BigInteger)
@@ -271,7 +291,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Float)
         {
-            builder.append(String.format("%f", (Float) o));
+            builder.append(CellInfo.formatForEditing(o));
             builder.append('f');
         }
         else if (o instanceof Short)

@@ -38,4 +38,32 @@ public class NCubeTestParser
         return tests;
     }
 
+    /**
+     * Resolve coordinates for the test.
+     */
+    public Map<String,Object> resolveCoords(Map<String, Map<String, Object>> map) {
+        Map<String, Object> coords = new LinkedHashMap<>();
+        Iterator<Map.Entry<String, Map<String, Object>>> i = map.entrySet().iterator();
+        while (i.hasNext()) {
+            Map.Entry<String, Map<String, Object>> item = i.next();
+            coords.put(item.getKey(), parseValue(item.getValue()));
+        }
+        return coords;
+    }
+
+    public Object parseValue(Map<String, Object> map) {
+        Object value = map.get("value");
+        String url = (String)map.get("url");
+        String type = (String)map.get("type");
+
+        if (value == null && StringUtilities.isEmpty(url)) {
+            throw new IllegalArgumentException("Test Items must have either a url or a type");
+        }
+        return CellInfo.parseJsonValue(value, url, type, false);
+    }
+
+    public void write(Map<String, NCubeTestDto> items) {
+
+    }
+
 }

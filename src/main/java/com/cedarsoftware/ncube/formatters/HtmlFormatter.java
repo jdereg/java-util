@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.AxisType;
+import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.GroovyBase;
@@ -536,9 +537,9 @@ public class HtmlFormatter implements NCubeFormatter
         }
         boolean isArray = cellValue.getClass().isArray();
 
-        if (cellValue instanceof Date || cellValue instanceof Number || cellValue instanceof String)
+        if (cellValue instanceof Date || cellValue instanceof String)
         {
-            return Column.formatDiscreteValue((Comparable) cellValue);
+            return CellInfo.formatForDisplay((Comparable) cellValue);
         }
         else if (cellValue instanceof Boolean || cellValue instanceof Character)
         {
@@ -548,9 +549,13 @@ public class HtmlFormatter implements NCubeFormatter
         {
             return cellValue.toString();
         }
+        else if (cellValue instanceof Number)
+        {
+            return CellInfo.formatForDisplay((Comparable) cellValue);
+        }
         else if (cellValue instanceof byte[])
         {
-            return StringUtilities.encode((byte[])cellValue);
+            return StringUtilities.encode((byte[]) cellValue);
         }
         else if (isArray && JsonReader.isPrimitive(cellValue.getClass().getComponentType()))
         {

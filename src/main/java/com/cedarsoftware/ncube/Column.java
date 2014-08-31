@@ -5,10 +5,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.UniqueIdGenerator;
 
-import java.math.BigDecimal;
-import java.text.DecimalFormat;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Map;
 
 /**
@@ -215,46 +212,7 @@ public class Column implements Comparable<Comparable>
         }
         else
         {
-		    return formatDiscreteValue(value);
+		    return CellInfo.formatForDisplay(value);
         }
 	}
-
-    public static String formatDiscreteValue(Comparable val)
-    {
-        if (val instanceof Date)
-        {
-            return dateFormat.format(val);
-        }
-        else if (val instanceof Double)
-        {
-            return new DecimalFormat("#0.0##############").format(val);
-        }
-        else if (val instanceof BigDecimal)
-        {
-            BigDecimal x = (BigDecimal) val;
-            return x.stripTrailingZeros().toPlainString();
-        }
-        else if (val instanceof Number)
-        {
-            return new DecimalFormat("#,##0").format(val);
-        }
-        else if (val == null)
-        {
-            return "Default";
-        }
-        else
-        {
-            return val.toString();
-        }
-    }
-
-    public static String formatFloatingPoint(Number n)
-    {
-        DecimalFormat fmt = new DecimalFormat("#0.0##############");
-        if (n instanceof Double || n instanceof Float)
-        {
-            return fmt.format(n.doubleValue());
-        }
-        return n.toString();
-    }
 }

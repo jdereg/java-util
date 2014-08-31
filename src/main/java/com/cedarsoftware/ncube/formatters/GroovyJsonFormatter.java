@@ -1,6 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
@@ -75,25 +75,23 @@ public class GroovyJsonFormatter
         else if (o instanceof LatLon)
         {
             LatLon l = (LatLon)o;
-            builder.append(String.format("\"%s,%s\"",
-                    Column.formatFloatingPoint(l.getLat()),
-                    Column.formatFloatingPoint(l.getLon())));
+            builder.append('"');
+            builder.append(l.toString());
+            builder.append('"');
         }
         else if (o instanceof Point2D)
         {
-            Point2D l = (Point2D)o;
-            String twoDoubleFormat = "\"%s,%s\"";
-            builder.append(String.format(twoDoubleFormat,
-                    Column.formatFloatingPoint(l.getX()),
-                    Column.formatFloatingPoint(l.getY())));
+            Point2D pt = (Point2D)o;
+            builder.append('"');
+            builder.append(pt.toString());
+            builder.append('"');
         }
         else if (o instanceof Point3D)
         {
-            Point3D p = (Point3D)o;
-            builder.append(String.format("\"%s,%s,%s\"",
-                    Column.formatFloatingPoint(p.getX()),
-                    Column.formatFloatingPoint(p.getY()),
-                    Column.formatFloatingPoint(p.getZ())));
+            Point3D pt = (Point3D)o;
+            builder.append('"');
+            builder.append(pt.toString());
+            builder.append('"');
         }
         else if (o instanceof Range)
         {
@@ -145,7 +143,7 @@ public class GroovyJsonFormatter
         {
             BigDecimal d = (BigDecimal)o;
             builder.append('"');
-            builder.append(d.toPlainString());
+            builder.append(d.stripTrailingZeros().toPlainString());
             builder.append('"');
         }
         else
@@ -179,7 +177,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Double)
         {
-            builder.append(Column.formatFloatingPoint((Number)o));
+            builder.append(CellInfo.formatForEditing(o));
             builder.append('d');
         }
         else if (o instanceof Integer)
@@ -209,7 +207,7 @@ public class GroovyJsonFormatter
         }
         else if (o instanceof Float)
         {
-            builder.append(Column.formatFloatingPoint((Number)o));
+            builder.append(CellInfo.formatForEditing(o));
             builder.append('f');
         }
         else if (o instanceof Short)

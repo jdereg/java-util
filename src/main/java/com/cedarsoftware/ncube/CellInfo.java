@@ -4,13 +4,16 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Get information about a cell (makes it a uniform query-able object).  Optional method
@@ -38,6 +41,8 @@ public class CellInfo
     public String dataType;
     public boolean isUrl;
     public boolean isCached;
+    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
 
     public CellInfo(Object cell)
     {
@@ -91,27 +96,27 @@ public class CellInfo
         }
         else if (cell instanceof Date)
         {
-            value = Column.formatDiscreteValue((Date) cell);
+            value = CellInfo.formatForDisplay((Date) cell);
             dataType = CellTypes.Date.desc();
         }
         else if (cell instanceof Double)
         {
-            value = Column.formatFloatingPoint((Number) cell);
+            value = CellInfo.formatForEditing((Number) cell);
             dataType = CellTypes.Double.desc();
         }
         else if (cell instanceof Float)
         {
-            value = Column.formatFloatingPoint((Number) cell);
+            value = CellInfo.formatForEditing((Number) cell);
             dataType = CellTypes.Float.desc();
         }
         else if (cell instanceof BigDecimal)
         {
-            value = Column.formatDiscreteValue((BigDecimal) cell);
+            value = ((BigDecimal) cell).stripTrailingZeros().toPlainString();
             dataType = CellTypes.BigDecimal.desc();
         }
         else if (cell instanceof BigInteger)
         {
-            value = Column.formatDiscreteValue((BigInteger) cell);
+            value = cell.toString();
             dataType = CellTypes.BigInteger.desc();
         }
         else if (cell instanceof byte[])
@@ -408,4 +413,63 @@ public class CellInfo
         }
     }
 
+    public static String formatForDisplay(Comparable val)
+    {
+        if (val instanceof Date)
+        {
+            return dateFormat.format(val);
+        }
+        else if (val instanceof Double || val instanceof Float)
+        {
+            return new DecimalFormat("#,##0.0##############").format(val);
+        }
+        else if (val instanceof BigDecimal)
+        {
+            BigDecimal x = (BigDecimal) val;
+            String s = x.stripTrailingZeros().toPlainString();
+            if (s.contains("."))
+            {
+                String[] pieces = DECIMAL_REGEX.split(s);
+                if (pieces.length != 2)
+                {
+                    throw new IllegalArgumentException("Invalid value for BigDecimal: " + val);
+                }
+                return new DecimalFormat("#,##0").format(new BigInteger(pieces[0])) + "." + pieces[1];
+            }
+            else
+            {
+                return new DecimalFormat("#,##0").format(val);
+            }
+        }
+        else if (val instanceof Number)
+        {
+            return new DecimalFormat("#,##0").format(val);
+        }
+        else if (val == null)
+        {
+            return "Default";
+        }
+        else
+        {
+            return val.toString();
+        }
+    }
+
+    public static String formatForEditing(Object val)
+    {
+        if (val instanceof Date)
+        {
+            return dateFormat.format(val);
+        }
+        else if (val instanceof Double || val instanceof Float)
+        {
+            DecimalFormat fmt = new DecimalFormat("#0.0##############");
+            return fmt.format(((Number)val).doubleValue());
+        }
+        else if (val instanceof BigDecimal)
+        {
+            return ((BigDecimal)val).stripTrailingZeros().toPlainString();
+        }
+        return val.toString();
+    }
 }

@@ -2040,6 +2040,8 @@ public class TestNCube
         Point2D p3 = new Point2D(36.0, 24.0);
         assertTrue(p1.equals(p2));
         assertTrue(p1.compareTo(p2) == 0);
+        assertEquals(p1.getX(), p2.getX(), .0001);
+        assertEquals(p1.getY(), p2.getY(), .0001);
         assertFalse(p2.equals(p3));
         assertFalse(p1.equals("string"));
     }

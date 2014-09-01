@@ -100,7 +100,7 @@ public class TestJdbcProviderInvocationHandler
     private class FooServiceThatForgetsToImplementConnection
     {
         String getFoo(int fooId) { return null; }
-        boolean saveFoo(int fooId, String name) { return true; }
+        boolean saveFoo(Connection c, int fooId, String name) { return true; }
     }
 
     private class FooServiceThatThrowsAnException {

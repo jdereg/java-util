@@ -1,9 +1,14 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.BinaryUrlCmd;
 import com.cedarsoftware.ncube.CellInfo;
+import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.GroovyExpression;
+import com.cedarsoftware.ncube.GroovyMethod;
+import com.cedarsoftware.ncube.GroovyTemplate;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
+import com.cedarsoftware.ncube.StringUrlCmd;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
@@ -16,6 +21,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 
@@ -28,6 +34,86 @@ public class GroovyJsonFormatter
 
     protected StringBuilder builder = new StringBuilder();
     protected String quotedStringFormat = "\"%s\"";
+
+    public static String getColumnType(Object o)
+    {
+        if (o instanceof Range || o instanceof RangeSet) {
+            return null;
+        }
+
+        return getCellType(o, "column");
+    }
+
+    public static String getCellType(Object cell, String type)
+    {
+        if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {
+            return null;
+        }
+
+        if (cell instanceof BigDecimal) {
+            return CellTypes.BigDecimal.desc();
+        }
+
+        if (cell instanceof Float) {
+            return CellTypes.Float.desc();
+        }
+
+        if (cell instanceof Integer) {
+            return CellTypes.Integer.desc();
+        }
+
+        if (cell instanceof BigInteger) {
+            return CellTypes.BigInteger.desc();
+        }
+
+        if (cell instanceof Byte) {
+            return CellTypes.Byte.desc();
+        }
+
+        if (cell instanceof Short) {
+            return CellTypes.Short.desc();
+        }
+
+        if (cell instanceof Date) {
+            return CellTypes.Date.desc();
+        }
+
+        if (cell instanceof BinaryUrlCmd || cell instanceof byte[]) {
+            return CellTypes.Binary.desc();
+        }
+
+        if (cell instanceof GroovyExpression || cell instanceof Collection || cell.getClass().isArray()) {
+            return CellTypes.Exp.desc();
+        }
+
+        if (cell instanceof GroovyMethod) {
+            return CellTypes.Method.desc();
+        }
+
+        if (cell instanceof GroovyTemplate) {
+            return CellTypes.Template.desc();
+        }
+
+        if (cell instanceof StringUrlCmd) {
+            return CellTypes.String.desc();
+        }
+
+        if (cell instanceof Point2D)
+        {
+            return CellTypes.Point2D.desc();
+        }
+        if (cell instanceof Point3D)
+        {
+            return CellTypes.Point3D.desc();
+        }
+        if (cell instanceof LatLon)
+        {
+            return CellTypes.LatLon.desc();
+        }
+
+        throw new IllegalArgumentException(String.format("Unsupported type %s located in %s", cell.getClass().getName(), type));
+    }
+
 
     public void startArray() {
         builder.append("[");
@@ -237,5 +323,4 @@ public class GroovyJsonFormatter
             builder.append(",");
         }
     }
-
 }

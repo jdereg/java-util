@@ -57,7 +57,7 @@ public class TestMongoProviderInvocationHandler
         String name = service.getFoo(2);
         assertEquals("Kenny P.", name);
 
-        //  Will add another item since we aren't passing in _id from a previous lookup.
+        //  Will add another item since we aren't passing in Mongo generated _id.
         service.saveFoo(2, "Chuck R.");
     }
 

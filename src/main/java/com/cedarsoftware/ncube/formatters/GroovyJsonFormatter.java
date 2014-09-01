@@ -46,8 +46,24 @@ public class GroovyJsonFormatter
 
     public static String getCellType(Object cell, String type)
     {
-        if (cell == null || cell instanceof String || cell instanceof Double || cell instanceof Long || cell instanceof Boolean) {
+        if (cell == null) {
             return null;
+        }
+
+        if (cell instanceof String) {
+            return CellTypes.String.desc();
+        }
+
+        if (cell instanceof Double) {
+            return CellTypes.Double.desc();
+        }
+
+        if (cell instanceof Long) {
+            return CellTypes.Long.desc();
+        }
+
+        if (cell instanceof Boolean) {
+            return CellTypes.Boolean.desc();
         }
 
         if (cell instanceof BigDecimal) {

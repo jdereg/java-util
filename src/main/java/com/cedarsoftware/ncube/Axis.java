@@ -58,7 +58,7 @@ public class Axis
 	private String name;
 	private final AxisType type;
 	private final AxisValueType valueType;
-    private final List<Column> columns = new CopyOnWriteArrayList<>();
+    final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
     private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
@@ -308,7 +308,7 @@ public class Axis
         Comparable v;
         if (value == null)
         {  // Attempting to add Default column to axis
-            if (defaultCol != null)
+            if (hasDefaultColumn())
             {
                 throw new IllegalArgumentException("Cannot add default column to axis '" + name + "' because it already has a default column.");
             }
@@ -572,7 +572,7 @@ public class Axis
         });
 
         // Put default column back if it was already there.
-        if (defaultCol != null)
+        if (hasDefaultColumn())
         {
             columns.add(defaultCol);
         }
@@ -1083,7 +1083,7 @@ public class Axis
      {
         if (value == null)
         {
-            if (defaultCol != null)
+            if (hasDefaultColumn())
             {
                 return defaultCol;
             }
@@ -1290,7 +1290,7 @@ public class Axis
 
     public List<Column> getColumnsWithoutDefault()
     {
-        if (defaultCol != null)
+        if (hasDefaultColumn())
         {
             if (columns.size() == 1)
             {

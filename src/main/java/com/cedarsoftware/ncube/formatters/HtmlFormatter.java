@@ -63,7 +63,7 @@ public class HtmlFormatter implements NCubeFormatter
     }
 
     /**
-     * Calculate import values needed to display an NCube.
+     * Calculate important values needed to display an NCube.
      *
      * @return Object[], where element 0 is a List containing the axes
      * where the first axis (element 0) is the axis to be displayed at the

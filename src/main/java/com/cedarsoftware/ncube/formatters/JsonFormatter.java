@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.UrlCommandCell;
@@ -62,7 +63,7 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
             Object defCellValue = ncube.getDefaultCellValue();
             if (defCellValue != null)
             {
-                String valType = getCellType(defCellValue, "defaultCell");
+                String valType = CellTypes.getType(defCellValue, "defaultCell");
                 if (valType != null)
                 {
                     writeValue("defaultCellValueType", valType);
@@ -261,7 +262,7 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         {
             startObject();
             writeIds(cell);
-            writeType(getCellType(cell.getValue(), "cell"));
+            writeType(CellTypes.getType(cell.getValue(), "cell"));
 
             if ((cell.getValue() instanceof UrlCommandCell))
             {

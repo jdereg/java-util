@@ -38,13 +38,6 @@ public class TestJsonFormatter
         runAllTests(s);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testGetCellTypeException() throws Exception
-    {
-        JsonFormatter formatter = new JsonFormatter();
-        formatter.getCellType(new StringBuilder(), "cell");
-    }
-
     @Test
     public void testConvertArray() throws Exception
     {

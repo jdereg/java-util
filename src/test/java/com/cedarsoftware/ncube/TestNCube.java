@@ -4868,17 +4868,25 @@ public class TestNCube
     {
         NCube c1 = NCubeManager.getNCubeFromResource("testCube6.json");
         NCube c2 = c1.duplicate("TestCube");
+        String sha1_a = c1.sha1();
+        String sha1_b = c2.sha1();
         assertEquals(c1, c2);
+        assertEquals(sha1_a, sha1_b);
 
         c2 = c1.duplicate("Joe");
         assertNotEquals(c1, c2);
-
         assertNotEquals(c1, "not a cube");
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
 
         Axis a = getStatesAxis();
         c2 = c1.duplicate("TestCube");
         c2.addAxis(a);
         assertNotEquals(c1, c2);
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
 
         c2 = c1.duplicate("TestCube");
         a = c2.getAxis("gender");
@@ -4887,26 +4895,41 @@ public class TestNCube
         c2.addAxis(a);
         assertNotEquals(c1, c2);
         assertNotEquals(c2, c1);
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
 
         c2 = c1.duplicate("TestCube");
         a = c2.getAxis("gender");
         a.setColumnOrder(Axis.DISPLAY);
         assertNotEquals(c1, c2);
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
 
         c2 = c1.duplicate("TestCube");
         c2.clearCells();
         assertNotEquals(c1, c2);
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
 
         c2 = c1.duplicate("TestCube");
         Map input = new HashMap();
         input.put("gender", "Female");
         c2.setCell(9, input);
         assertNotEquals(c1, c2);
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
 
         c2 = c1.duplicate("TestCube");
         c2.setDefaultCellValue(null);
         assertNotEquals(c1, c2);
         assertNotEquals(c2, c1);
+        sha1_a = c1.sha1();
+        sha1_b = c2.sha1();
+        assertNotEquals(sha1_a, sha1_b);
     }
 
     // ---------------------------------------------------------------------------------

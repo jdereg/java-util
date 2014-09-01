@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import static java.lang.Math.abs;
 
@@ -53,6 +54,7 @@ import static java.lang.Math.abs;
  */
 public class HtmlFormatter implements NCubeFormatter
 {
+    private static final Pattern SAFE_AXIS_NAME_REGEX = Pattern.compile("[A-Za-z][0-9A-Za-z]*");
     String[] _headers;
 
     public HtmlFormatter(String... headers)
@@ -61,7 +63,7 @@ public class HtmlFormatter implements NCubeFormatter
     }
 
     /**
-     * Calculate import values needed to display an NCube.
+     * Calculate important values needed to display an NCube.
      *
      * @return Object[], where element 0 is a List containing the axes
      * where the first axis (element 0) is the axis to be displayed at the
@@ -172,13 +174,13 @@ public class HtmlFormatter implements NCubeFormatter
 
         if (axes.size() == 1)
         {   // Ensure that one dimension is vertically down the page
-            s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"ncube-head\">");
+            s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"th-ncube ncube-head\">");
             s.append("  <div class=\"btn-group axis-menu\" data-id=\"").append(topAxisName).append("\">\n");
             s.append("   <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
             s.append("    <span>").append(topAxisName).append("</span><span class=\"caret\"></span>");
             s.append("   </button></th>\n");
             s.append("  </div>\n");
-            s.append(" <th class=\"ncube-dead\">");
+            s.append(" <th class=\"th-ncube ncube-dead\">");
             s.append(ncube.getName());
             s.append("</th>\n");
             s.append("</tr>\n");
@@ -188,14 +190,15 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
-                s.append(" <th data-id=\"c").append(column.getId());
-                s.append("\" class=\"");
+                String colId = makeColumnId(topAxisName, i);
+                s.append(" <th data-id=\"").append(colId);
+                s.append("\" class=\"th-ncube ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
                 addColumnPrefixText(s, column);
                 s.append(column.isDefault() ? "Default" : column.toString());
                 coord.clear();
-                coord.put(EncryptionUtilities.calculateSHA1Hash(topAxis.getName().getBytes()), (long) i);
+                coord.put(topAxisName, (long) i);
                 s.append("</th>\n");
                 Set<Long> colIds = new HashSet<>();
                 colIds.add(column.getId());
@@ -208,11 +211,11 @@ public class HtmlFormatter implements NCubeFormatter
             int deadCols = axes.size() - 1;
             if (deadCols > 0)
             {
-                s.append(" <th class=\"ncube-dead\" colspan=\"").append(deadCols).append("\">");
+                s.append(" <th class=\"th-ncube ncube-dead\" colspan=\"").append(deadCols).append("\">");
                 s.append(ncube.getName());
                 s.append("</th>\n");
             }
-            s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"ncube-head\" colspan=\"");
+            s.append(" <th data-id=\"a").append(topAxis.getId()).append("\" class=\"th-ncube ncube-head\" colspan=\"");
             s.append(topAxis.size());
             s.append("\">");
             s.append("  <div class=\"btn-group axis-menu\" data-id=\"").append(topAxisName).append("\">\n");
@@ -235,7 +238,7 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 Axis axis = axes.get(i);
                 String axisName = axis.getName();
-                s.append(" <th data-id=\"a").append(axis.getId()).append("\" class=\"ncube-head\">\n");
+                s.append(" <th data-id=\"a").append(axis.getId()).append("\" class=\"th-ncube ncube-head\">\n");
                 s.append("  <div class=\"btn-group axis-menu\" data-id=\"").append(axisName).append("\">\n");
                 s.append("   <button type=\"button\" class=\"btn-sm btn-primary dropdown-toggle axis-btn\" data-toggle=\"dropdown\">");
                 s.append("    <span>").append(axisName).append("</span><span class=\"caret\"></span>");
@@ -257,7 +260,8 @@ public class HtmlFormatter implements NCubeFormatter
 
             for (Column column : topColumns)
             {
-                s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"");
+                String colId = makeColumnId(topAxisName, column.getDisplayOrder());
+                s.append(" <th data-id=\"").append(colId).append("\" class=\"th-ncube-top ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
                 addColumnPrefixText(s, column);
@@ -267,7 +271,7 @@ public class HtmlFormatter implements NCubeFormatter
 
             if (topAxis.size() != topColumnSize)
             {
-                s.append(" <th class=\"");
+                s.append(" <th class=\"th-ncube-top ");
                 s.append(getColumnCssClass(topAxis, topAxis.getDefaultColumn()));
                 s.append("\">Default</th>");
             }
@@ -291,22 +295,23 @@ public class HtmlFormatter implements NCubeFormatter
                     {
                         Long colIdx = columnCounter.get(axisName);
                         Column column = columns.get(axisName).get(colIdx.intValue());
-                        coord.put(EncryptionUtilities.calculateSHA1Hash(axisName.getBytes()), colIdx);
+                        coord.put(axisName, colIdx);
                         colIds.put(axisName, column.getId());
                         long span = rowspan.get(axisName);
 
+                        String columnId = makeColumnId(axisName, colIdx);
                         String colCssClass = getColumnCssClass(axis, column);
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"");
+                            s.append(" <th data-id=\"").append(columnId).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
                             s.append("\">");
                         }
                         else
                         {   // Need to show rowspan attribute
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"c").append(column.getId()).append("\" class=\"");
+                            s.append(" <th data-id=\"").append(columnId).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
                             s.append("\" rowspan=\"");
                             s.append(span);
@@ -334,12 +339,11 @@ public class HtmlFormatter implements NCubeFormatter
                 }
 
                 // Cells for the row
-                final String sha1AxisName = EncryptionUtilities.calculateSHA1Hash(topAxisName.getBytes());
                 for (int i = 0; i < width; i++)
                 {
                     Column column = topColumns.get(i);
                     colIds.put(topAxisName, column.getId());
-                    coord.put(sha1AxisName, (long)i);
+                    coord.put(topAxisName, (long)i);
                     // Other coordinate values are set above this for-loop
                     buildCell(ncube, s, coord, new HashSet<>(colIds.values()));
                 }
@@ -357,91 +361,101 @@ public class HtmlFormatter implements NCubeFormatter
     private static String getHtmlPreamble(NCube ncube)
     {
         return "<!DOCTYPE html>\n" +
-                    "<html lang=\"en\">\n" +
-                    "<head>\n" +
-                    " <meta charset=\"UTF-8\">\n" +
-                    " <title>NCube: " + ncube.getName() + "</title>\n" +
-                    " <style>\n" +
-                    "table\n" +
-                    "{\n" +
-                    "border-collapse:collapse;\n" +
-                    "}\n" +
-                    "table, td, th\n" +
-                    "{\n" +
-                    "border:1px solid black;\n" +
-                    "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
-                    "font-size: small;\n" +
-                    "font-weight: 500;\n" +
-                    "padding: 2px;\n" +
-                    "}\n" +
-                    "td\n" +
-                    "{\n" +
-                    "color: black;\n" +
-                    "background: white;\n" +
-                    "text-align: center;\n" +
-                    "}\n" +
-                    "th\n" +
-                    "{\n" +
-                    "color: white;\n" +
-                    "}\n" +
-                    "td:hover { background: #E0F0FF }\n" +
-                    "th:hover { background: #A2A2A2 }\n" +
-                    ".ncube-num\n" +
-                    "{\n" +
-                    "text-align: right;\n" +
-                    "}\n" +
-                    ".ncube-dead\n" +
-                    "{\n" +
-                    "background: #6495ED;\n" +
-                    "}\n" +
-                    ".ncube-head\n" +
-                    "{\n" +
-                    "background: #4D4D4D;\n" +
-                    "}\n" +
-                    ".column\n" +
-                    "{\n" +
-                    "background: #929292;\n" +
-                    "}\n" +
-                    ".column-code\n" +
-                    "{\n" +
-                    "color: white;\n" +
-                    "text-align: left;\n" +
-                    "vertical-align: top;\n" +
-                    "font-family: \"Courier New\", Courier, monospace\n" +
-                    "}\n" +
-                    ".column-url\n" +
-                    "{\n" +
-                    "color: blue;\n" +
-                    "text-align: left;\n" +
-                    "vertical-align: top;\n" +
-                    "}\n" +
-                    ".cell\n" +
-                    "{\n" +
-                    "color: black;\n" +
-                    "background: white;\n" +
-                    "text-align: center;\n" +
-                    "vertical-align: middle\n" +
-                    "}\n" +
-                    ".cell-url\n" +
-                    "{\n" +
-                    "color: white;\n" +
-                    "background: slategray;\n" +
-                    "text-align: left;\n" +
-                    "vertical-align: top\n" +
-                    "}\n" +
-                    ".cell-code\n" +
-                    "{\n" +
-                    "color: Lime;\n" +
-                    "background: slategray;\n" +
-                    "text-align: left;\n" +
-                    "vertical-align: top;\n" +
-                    "font-family: \"Courier New\", Courier, monospace\n" +
-                    "}\n" +
-                    " </style>\n" +
-                    "</head>\n" +
-                    "<body>\n" +
-                    "<table border=\"1\">\n" +
-                    "<tr>\n";
+                "<html lang=\"en\">\n" +
+                "<head>\n" +
+                " <meta charset=\"UTF-8\">\n" +
+                " <title>NCube: " + ncube.getName() + "</title>\n" +
+                " <style>\n" +
+                ".table-ncube\n" +
+                "{\n" +
+                "border-collapse:collapse;\n" +
+                "border:1px solid black;\n" +
+                "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
+                "font-size: small;\n" +
+                "padding: 2px;\n" +
+                "}\n" +
+                ".td-ncube .th-ncube .th-ncube-top\n" +
+                "{\n" +
+                "border:1px solid black;\n" +
+                "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
+                "font-size: small;\n" +
+                "padding: 2px;\n" +
+                "}\n" +
+                ".td-ncube\n" +
+                "{\n" +
+                "color: black;\n" +
+                "background: white;\n" +
+                "text-align: center;\n" +
+                "}\n" +
+                ".th-ncube\n" +
+                "{\n" +
+                "color: white;\n" +
+                "font-weight: normal;\n" +
+                "}\n" +
+                ".th-ncube-top\n" +
+                "{\n" +
+                "color: white;\n" +
+                "text-align: center;\n" +
+                "font-weight: normal;\n" +
+                "}\n" +
+                ".td-ncube:hover { background: #E0F0FF }\n" +
+                ".th-ncube:hover { background: #A2A2A2 }\n" +
+                ".ncube-num\n" +
+                "{\n" +
+                "text-align: right;\n" +
+                "}\n" +
+                ".ncube-dead\n" +
+                "{\n" +
+                "background: #6495ED;\n" +
+                "}\n" +
+                ".ncube-head\n" +
+                "{\n" +
+                "background: #4D4D4D;\n" +
+                "}\n" +
+                ".column\n" +
+                "{\n" +
+                "background: #929292;\n" +
+                "}\n" +
+                ".column-code\n" +
+                "{\n" +
+                "color: white;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top;\n" +
+                "font-family: \"Courier New\", Courier, monospace\n" +
+                "}\n" +
+                ".column-url\n" +
+                "{\n" +
+                "color: blue;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top;\n" +
+                "}\n" +
+                ".cell\n" +
+                "{\n" +
+                "color: black;\n" +
+                "background: white;\n" +
+                "text-align: center;\n" +
+                "vertical-align: middle\n" +
+                "}\n" +
+                ".cell-url\n" +
+                "{\n" +
+                "color: white;\n" +
+                "background: slategray;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top\n" +
+                "}\n" +
+                ".cell-code\n" +
+                "{\n" +
+                "color: Lime;\n" +
+                "background: slategray;\n" +
+                "text-align: left;\n" +
+                "vertical-align: top;\n" +
+                "font-family: \"Courier New\", Courier, monospace\n" +
+                "}\n" +
+                " </style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "<table class=\"table-ncube\" border=\"1\">\n" +
+                "<tr>\n";
     }
 
     private static String getNoAxisHtml()
@@ -491,8 +505,8 @@ public class HtmlFormatter implements NCubeFormatter
 
     private static void buildCell(NCube ncube, StringBuilder s, Map<String, Long> coord, Set<Long> coord2)
     {
-        String id = mapToString(coord);
-        s.append(" <td data-id=\"k").append(id).append("\" class=\"");
+        String id = makeCellId(coord);
+        s.append(" <td data-id=\"").append(id).append("\" class=\"td-ncube ");
 
         if (ncube.containsCellById(coord2))
         {
@@ -612,16 +626,14 @@ public class HtmlFormatter implements NCubeFormatter
         }
     }
 
-    private static String mapToString(Map<String, Long> map)
+    private static String makeCellId(Map<String, Long> map)
     {
         StringBuilder s = new StringBuilder();
         Iterator<Map.Entry<String, Long>> i = map.entrySet().iterator();
         while (i.hasNext())
         {
             Map.Entry<String, Long> entry = i.next();
-            s.append(entry.getKey());
-            s.append('-');
-            s.append(entry.getValue());
+            s.append(makeColumnId(entry.getKey(), entry.getValue()));
             if (i.hasNext())
             {
                 s.append('_');
@@ -629,5 +641,26 @@ public class HtmlFormatter implements NCubeFormatter
         }
 
         return s.toString();
+    }
+
+    private static String makeColumnId(String axisName, long pos)
+    {
+        StringBuilder builder = new StringBuilder();
+        if (isSafeAxisName(axisName))
+        {
+            builder.append(axisName);
+        }
+        else
+        {
+            builder.append(EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(axisName, "UTF-8")));
+        }
+        builder.append('-');
+        builder.append(pos);
+        return builder.toString();
+    }
+
+    public static boolean isSafeAxisName(String axisName)
+    {
+        return SAFE_AXIS_NAME_REGEX.matcher(axisName).matches();
     }
 }

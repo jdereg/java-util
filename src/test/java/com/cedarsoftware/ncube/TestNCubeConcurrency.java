@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube;
 
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.powermock.core.IdentityHashSet;
 
@@ -24,7 +23,7 @@ public class TestNCubeConcurrency
         TestNCube.initialize();
     }
 
-    @Ignore
+    @Test
     public void testConcurrencyWithDifferentFiles() throws Exception
     {
         concurrencyTest("StringFromRemoteUrlBig", true);

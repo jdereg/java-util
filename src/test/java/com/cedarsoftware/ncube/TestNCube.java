@@ -593,7 +593,7 @@ public class TestNCube
         NCubeTest test = (NCubeTest)list.get(0);
         assertTrue(test.getCoordinate().size() > 0);
         assertEquals(5, test.getCoordinate().size());
-        assertEquals("Test1", test.getName());
+        assertEquals("test-001", test.getName());
     }
 
     @Test

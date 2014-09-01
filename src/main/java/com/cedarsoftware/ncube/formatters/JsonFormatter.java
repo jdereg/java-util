@@ -217,7 +217,6 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         endObject();
     }
 
-
     public void writeCommandCell(UrlCommandCell cmd) throws IOException
     {
         if (!cmd.isCacheable())

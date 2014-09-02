@@ -875,7 +875,7 @@ public class NCubeManager
                 // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
                 // TODO: see if the column exists, store the result for the entire app life cycle.
                 // TODO: If account column does not exist, then account is null.
-                stmt.setBytes(1, new JsonFormatter().format(ncube).getBytes("UTF-8"));
+                stmt.setBytes(1, ncube.toFormattedJson().getBytes("UTF-8"));
                 stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
                 stmt.setString(3, app);
                 stmt.setString(4, ncube.getName());

@@ -26,5 +26,6 @@ public enum RuleMetaKeys
 {
     RULE_STOP,          // RuleStop forcefully called (within condition or cell)
     NUM_RESOLVED_CELLS, // Number of cells resolved when processing rule cube
-    RULES_EXECUTED      // Map of condition names (or IDs if no name for conditions) to associated statements return value
+    RULES_EXECUTED,     // Map of condition names (or IDs if no name for conditions) to associated statements return value
+    OUTPUT_CELLS        // Map, where keys are coordinates (Map) and values are the return value for the associated coordinate
 }

@@ -54,16 +54,16 @@ public class TestJsonFormatter
         Map<String, Object> coord = new HashMap<String, Object>();
 
         coord.put("Code", "longs");
-        assertEquals(new Long(9223372036854775807L), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(9223372036854775807L, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "ints");
-        assertEquals(new Integer(2147483647), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(2147483647, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "bytes");
-        assertEquals(new Byte((byte) 127), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals((byte) 127, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "shorts");
-        assertEquals(new Short((short) 32767), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals((short) 32767, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "booleans");
         assertEquals(Boolean.TRUE, ((Object[]) ncube.getCell(coord))[2]);
@@ -73,7 +73,7 @@ public class TestJsonFormatter
         assertEquals(new Float(3.8), ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "doubles");
-        assertEquals(new Double(10.1), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(10.1, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "bigints");
         assertEquals(new BigInteger("0"), ((Object[]) ncube.getCell(coord))[0]);
@@ -85,16 +85,16 @@ public class TestJsonFormatter
         ncube = NCube.fromSimpleJson(s);
 
         coord.put("Code", "longs");
-        assertEquals(new Long(9223372036854775807L), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(9223372036854775807L, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "ints");
-        assertEquals(new Integer(2147483647), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(2147483647, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "bytes");
-        assertEquals(new Byte((byte) 127), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals((byte) 127, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "shorts");
-        assertEquals(new Short((short) 32767), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals((short) 32767, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "booleans");
         assertEquals(Boolean.TRUE, ((Object[]) ncube.getCell(coord))[2]);
@@ -104,7 +104,7 @@ public class TestJsonFormatter
         assertEquals(new Float(3.8), ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "doubles");
-        assertEquals(new Double(10.1), ((Object[]) ncube.getCell(coord))[2]);
+        assertEquals(10.1, ((Object[]) ncube.getCell(coord))[2]);
 
         coord.put("Code", "bigints");
         assertEquals(new BigInteger("0"), ((Object[]) ncube.getCell(coord))[0]);
@@ -166,10 +166,10 @@ public class TestJsonFormatter
     {
         for (String f : strings)
         {
-            //System.out.println("Starting " + f);
+//            System.out.println("Starting " + f);
             NCube ncube = NCubeManager.getNCubeFromResource(f);
             String s = ncube.toFormattedJson();
-            //System.out.println(s);
+//            System.out.println(s);
             NCube res = NCube.fromSimpleJson(s);
             assertEquals(res, ncube);
         }

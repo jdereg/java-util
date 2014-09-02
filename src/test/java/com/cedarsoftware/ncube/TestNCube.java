@@ -4631,7 +4631,7 @@ public class TestNCube
         axis.setMetaProperty("car", "cruze");
         col.setMetaProperty("one", 1);
 
-        assertTrue(ncube.getMetaProperties().size() == 2);
+        assertTrue(ncube.getMetaProperties().size() == 3);
         assertTrue(axis.getMetaProperties().size() == 2);
         assertTrue(col.getMetaProperties().size() == 3);
 
@@ -4642,13 +4642,14 @@ public class TestNCube
         ncube.addMetaProperties(metaProps);
         axis.addMetaProperties(metaProps);
         col.addMetaProperties(metaProps);
+        ncube.removeMetaProperty("sha1");
 
         String json = ncube.toFormattedJson();
         ncube = NCube.fromSimpleJson(json);
         axis = ncube.getAxis("gender");
         col = axis.findColumn("Female");
 
-        assertTrue(ncube.getMetaProperties().size() == 4);
+        assertTrue(ncube.getMetaProperties().size() == 5);
         assertTrue(axis.getMetaProperties().size() == 4);
         assertTrue(col.getMetaProperties().size() == 5);
 
@@ -4665,7 +4666,7 @@ public class TestNCube
         axis = ncube.getAxis("gender");
         col = axis.findColumn("Female");
 
-        assertTrue(ncube.getMetaProperties().size() == 0);
+        assertTrue(ncube.getMetaProperties().size() == 1);
         assertTrue(axis.getMetaProperties().size() == 0);
         assertTrue(col.getMetaProperties().size() == 0);
     }

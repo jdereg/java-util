@@ -400,16 +400,95 @@ public class CellInfo
         }
         else if (val instanceof JsonObject)
         {   // Legacy support - remove once we drop support for array type (can be done using GroovyExpression).
+            StringBuilder exp = new StringBuilder();
+            exp.append("[");
             Object[] values = ((JsonObject) val).getArray();
-            for (int i=0; i < values.length; i++)
+            int i=0;
+            for (Object value : values)
             {
-                values[i] = parseJsonValue(values[i], null, type, false);
+                i++;
+                Object o = parseJsonValue(value, null, type, false);
+                javaToGroovySource(exp, o);
+                if (i < values.length)
+                {
+                    exp.append(",");
+                }
             }
-            return values;
+            exp.append("] as Object[]");
+            return new GroovyExpression(exp.toString(), null);
         }
         else
         {
             throw new IllegalArgumentException("Error reading value of type '" + val.getClass().getName() + "' - Simple JSON format for NCube only supports Long, Double, String, String Date, Boolean, or null");
+        }
+    }
+
+    /**
+     * Convert Java data-type to a Groovy Source equivalent
+     * @param builder StringBuilder to add to
+     * @param o Java primitive type
+     */
+    private static void javaToGroovySource(StringBuilder builder, Object o)
+    {
+        if (o instanceof String)
+        {
+            builder.append("'");
+            builder.append(o.toString());
+            builder.append("'");
+        }
+        else if (o instanceof GroovyExpression)
+        {
+            builder.append("'");
+            builder.append(((GroovyExpression) o).getCmd());
+            builder.append("'");
+        }
+        else if (o instanceof Boolean)
+        {
+            builder.append((Boolean) o ? "true" : "false");
+        }
+        else if (o instanceof Double)
+        {
+            builder.append(CellInfo.formatForEditing(o));
+            builder.append('d');
+        }
+        else if (o instanceof Integer)
+        {
+            builder.append(o);
+            builder.append('i');
+        }
+        else if (o instanceof Long)
+        {
+            builder.append(o);
+            builder.append('L');
+        }
+        else if (o instanceof BigDecimal)
+        {
+            builder.append(((BigDecimal) o).stripTrailingZeros().toPlainString());
+            builder.append('g');
+        }
+        else if (o instanceof BigInteger)
+        {
+            builder.append(o);
+            builder.append('g');
+        }
+        else if (o instanceof Byte)
+        {
+            builder.append(o);
+            builder.append(" as Byte");
+        }
+        else if (o instanceof Float)
+        {
+            builder.append(CellInfo.formatForEditing(o));
+            builder.append('f');
+        }
+        else if (o instanceof Short)
+        {
+            builder.append(o);
+            builder.append(" as Short");
+        }
+        else
+        {
+            throw new IllegalArgumentException("Unknown Groovy Type : " + o.getClass());
         }
     }
 

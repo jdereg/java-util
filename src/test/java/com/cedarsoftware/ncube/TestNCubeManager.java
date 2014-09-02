@@ -1249,7 +1249,7 @@ DELIMITER ;
         Connection conn = getConnection();
         String name = "test.NCube" + System.currentTimeMillis();
 
-        NCube<String> ncube = new NCube<String>(name);
+        NCube<String> ncube = new NCube<>(name);
         ncube.addAxis(TestNCube.getStatesAxis());
         ncube.addAxis(TestNCube.getFullGenderAxis());
 
@@ -1276,6 +1276,8 @@ DELIMITER ;
         nCubeJdbcConnectionProvider.commitTransaction();
 
         NCube<String> cube = (NCube<String>) NCubeManager.loadCube(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date());
+        cube.removeMetaProperty("sha1");
+        ncube.removeMetaProperty("sha1");
         assertTrue(DeepEquals.deepEquals(ncube, cube));
 
         ncube.setCell("Lija", coord);
@@ -1680,7 +1682,7 @@ DELIMITER ;
         NCube ncube = createCube();
         String json = ncube.toFormattedJson();
         ncube = NCube.fromSimpleJson(json);
-        assertTrue(ncube.getMetaProperties().size() == 0);
+        assertTrue(ncube.getMetaProperties().size() == 1);  // sha1
 
         List<Axis> axes = ncube.getAxes();
         for (Axis axis : axes)

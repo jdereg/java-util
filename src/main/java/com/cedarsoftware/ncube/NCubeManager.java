@@ -1542,6 +1542,7 @@ public class NCubeManager
                 {
                     axis.buildScaffolding();
                 }
+                ncube.setMetaProperty("sha1", ncube.sha1());
                 return ncube;
             }
             catch (Exception e1)

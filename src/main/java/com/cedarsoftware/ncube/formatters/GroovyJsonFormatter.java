@@ -14,7 +14,6 @@ import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
@@ -131,17 +130,7 @@ public class GroovyJsonFormatter
         }
         else if (o.getClass().isArray())
         {
-            builder.append("\"");
-            startArray();
-            int len = Array.getLength(o);
-            for (int i=0; i< len; i++) {
-                writeGroovyObject(Array.get(o, i));
-                comma();
-            }
-            uncomma();
-            endArray();
-            builder.append(" as Object[]");
-            builder.append("\"");
+            throw new IllegalStateException("Cell cannot be an array (except byte[]). Use Groovy Expression to make cell an array, a List, or a Map, etc.");
         }
         else if (o instanceof BigInteger)
         {
@@ -214,7 +203,7 @@ public class GroovyJsonFormatter
         else if (o instanceof Byte)
         {
             builder.append(o);
-            builder.append("as Byte");
+            builder.append(" as Byte");
         }
         else if (o instanceof Float)
         {
@@ -224,7 +213,7 @@ public class GroovyJsonFormatter
         else if (o instanceof Short)
         {
             builder.append(o);
-            builder.append("as Short");
+            builder.append(" as Short");
         }
         else
         {

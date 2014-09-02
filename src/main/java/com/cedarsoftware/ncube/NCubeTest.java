@@ -8,25 +8,25 @@ import java.util.Map;
  */
 public class NCubeTest
 {
-    private String _name;
-    private Map<String, Map<String, Object>> _coordDescription;
-    private Map<String, Object> _expectedResultDescription;
+    private String name;
+    private Map<String, Map<String, Object>> coordDescription;
+    private Map<String, Object> expectedResultDescription;
 
     // generated items.
-    private Map<String, Object> _coordinate;
-    private Object _expectedResult;
+    private Map<String, Object> coord;
+    private Object expectedResult;
 
     public NCubeTest(String name, Map<String, Map<String, Object>> coordDescription, Map<String, Object> expectedResultDescription) {
-        _name = name;
-        _coordDescription = coordDescription;
-        _expectedResultDescription = expectedResultDescription;
-        _coordinate = buildCoordinate(_coordDescription);
-        _expectedResult = buildExpectedResult(_expectedResultDescription);
+        this.name = name;
+        this.coordDescription = coordDescription;
+        this.expectedResultDescription = expectedResultDescription;
+        coord = buildCoordinate(this.coordDescription);
+        expectedResult = buildExpectedResult(this.expectedResultDescription);
     }
 
     private Map<String, Object> buildCoordinate(Map<String, Map<String, Object>> descritpion) {
         Map<String, Object> coordinate = new LinkedHashMap<>();
-        for (Map.Entry<String, Map<String, Object>> item : _coordDescription.entrySet()) {
+        for (Map.Entry<String, Map<String, Object>> item : coordDescription.entrySet()) {
             coordinate.put(item.getKey(), parseValue(item.getValue()));
         }
         return coordinate;
@@ -37,23 +37,23 @@ public class NCubeTest
     }
 
     public String getName() {
-        return _name;
+        return name;
     }
 
     public Map<String, Map<String, Object>> getCoordDescription() {
-        return _coordDescription;
+        return coordDescription;
     }
 
     public Map<String, Object> getExpectedResultDescription() {
-        return _expectedResultDescription;
+        return expectedResultDescription;
     }
 
     public Object getExpectedResult() {
-        return _expectedResult;
+        return expectedResult;
     }
 
     public Map<String, Object> getCoordinate() {
-        return _coordinate;
+        return coord;
     }
 
     public Object parseValue(Map<String, Object> map) {

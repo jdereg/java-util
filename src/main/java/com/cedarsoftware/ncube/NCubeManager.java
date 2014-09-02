@@ -1437,7 +1437,7 @@ public class NCubeManager
             if (rs.next())
             {
                 byte[] testData = rs.getBytes("test_data_bin");
-                return new String(testData == null ? "".getBytes() : testData, "UTF-8");
+                return testData == null ? new String() : new String(testData, "UTF-8");
             }
             throw new IllegalArgumentException("No NCube matching passed in parameters.");
         }

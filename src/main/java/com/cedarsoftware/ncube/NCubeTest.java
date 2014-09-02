@@ -12,16 +12,10 @@ public class NCubeTest
     private Map<String, Map<String, Object>> coordDescription;
     private Map<String, Object> expectedResultDescription;
 
-    // generated items.
-    private Map<String, Object> coord;
-    private Object expectedResult;
-
     public NCubeTest(String name, Map<String, Map<String, Object>> coordDescription, Map<String, Object> expectedResultDescription) {
         this.name = name;
         this.coordDescription = coordDescription;
         this.expectedResultDescription = expectedResultDescription;
-        coord = buildCoordinate(this.coordDescription);
-        expectedResult = buildExpectedResult(this.expectedResultDescription);
     }
 
     private Map<String, Object> buildCoordinate(Map<String, Map<String, Object>> descritpion) {
@@ -49,11 +43,11 @@ public class NCubeTest
     }
 
     public Object getExpectedResult() {
-        return expectedResult;
+        return buildExpectedResult(this.expectedResultDescription);
     }
 
     public Map<String, Object> getCoordinate() {
-        return coord;
+        return  buildCoordinate(this.coordDescription);
     }
 
     public Object parseValue(Map<String, Object> map) {
@@ -64,9 +58,6 @@ public class NCubeTest
         String url = (String)map.get("url");
         String type = (String)map.get("type");
 
-        //if (value == null && StringUtilities.isEmpty(url)) {
-        //    throw new IllegalArgumentException("Test Items must have either a url or a value");
-        //}
         return CellInfo.parseJsonValue(value, url, type, false);
     }
 }

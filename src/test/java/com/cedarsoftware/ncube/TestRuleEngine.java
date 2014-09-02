@@ -129,9 +129,9 @@ public class TestRuleEngine
         coord.put("vehicleCylinders", 8);
         coord.put("state", "TX");
         Map output = new HashMap();
-        Map<Map<String, Column>, ?> steps = ncube.getCells(coord, output);
+        Object out = ncube.getCells(coord, output);
+        assertEquals(10, out);
         assertEquals(new BigDecimal("119.0"), output.get("premium"));
-        assertTrue(steps.size() == 4);
     }
 
     // This test ensures that identical expressions result in a single dynamic Groovy class being generated for them.
@@ -146,9 +146,9 @@ public class TestRuleEngine
         coord.put("gender", "male");
         coord.put("vehicleCylinders", 8);
         Map output = new HashMap();
-        Map<Map<String, Column>, ?> steps = ncube.getCells(coord, output);
+        Object out = ncube.getCells(coord, output);
+        assertEquals(10, out);
         assertEquals(new BigDecimal("119.0"), output.get("premium"));
-        assertTrue(steps.size() == 4);
     }
 
     @Test
@@ -532,20 +532,14 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testBasicJumpErrorHandling() throws Exception
+    public void testMultipleRuleAxesWithMoreThanOneRuleFiring() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("multiRule.json");
         Map input = new HashMap();
         input.put("age", 35);
         input.put("weight", 99);
         Map output = new HashMap();
-        try
-        {
-            ncube.getCell(input, output);
-            fail("should not make it here");
-        }
-        catch (Exception ignored)
-        { }
+        assertEquals("medium-weight", ncube.getCell(input, output));
     }
 
     @Test

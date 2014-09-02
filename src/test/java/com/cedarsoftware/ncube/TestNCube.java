@@ -3409,7 +3409,7 @@ public class TestNCube
         Object o = ncube.getCell(coord, output);
         assertEquals(16, o);
         assertEquals(16, output.get("good"));
-        assertEquals(output.size(), 2);
+        assertEquals(output.size(), 3);
         String foo = (String) output.get("stack");
         assertEquals("foo", foo) ;
 
@@ -4736,8 +4736,8 @@ public class TestNCube
         Map coord = new HashMap();
         coord.put("state", "OH");
         Map output = new LinkedHashMap();
-        Map out = ncube.getCells(coord, output);
-        assertEquals(10, out.values().iterator().next());
+        Object out = ncube.getCells(coord, output);
+        assertEquals(10, out);
 
         NCubeManager.clearCubeList();
         fo = new FileOutputStream(base + "Abc.groovy");
@@ -4748,7 +4748,7 @@ public class TestNCube
 
         ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
         out = ncube.getCells(coord, output);
-        assertEquals(20, out.values().iterator().next());
+        assertEquals(20, out);
 
         coord.put("state", "IN");
         String gcode = (String) ncube.getCell(coord, output);

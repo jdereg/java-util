@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.9.3</version>
+  <version>2.9.4</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -85,6 +85,15 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.4
+ * Rule execution tracing is complete, including calls to sub-rule cubes, sub-sub-rule cubes, etc.  It includes both 'begin>cubeName' and 'end>cubeName' markers as well as an entry for all rules that executed (condition true) in between.  If other rule cubes were called during rule execution, there execution traces are added, maintaining order.  The number of steps execution for a given rule set is kept, as well as all column bindings for each rule (indicates which columns pointed to the rule executed).
+ * n-cube sha1() is now computed when formatted into JSON.  It is added as a meta-property on n-cube.  The SHA1 will be used along with NCE to determine if an n-cube has changed (basic for optimistic locking).
+ * APIs added to generate test case input coordinates for all populated cells.
+ * Improved HTML formatting for display in NCE (eventually NCE will do this in Javascript, and the JSON for the n-cube only will be sent to the client).
+ * Code clean up related to formatting values and parsing values.
+ * NCubeManager support for ApplicationID started, but not yet complete.
+ * NCubeManager support for MongoDB started, but not yet complete.
+ * MultiMatch flag removed from n-cube.  If you need multi-match on an axis, use a Rule axis.
 * 2.9.3
  * SET and NEAREST axis values are now supported within Axis.convertStringToColumnValue().  This allows in-line editing of these values in the n-cube editor.
  * Many more tests added getting line coverage up to 96%.

@@ -85,6 +85,11 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.5
+ * SHA1 calculation of an n-cube is faster using a SHA1 MessageDigest instance directly.
+ * Consolidated JsonFormatter / GroovyJsonFormatter into JsonFormatter.
+ * Code moved from JsonFormatter to CellType Enum.
+ * RuleInfo now a first-rate class. Dig into it (found on output map of getCell()) for rule execution tracing.
 * 2.9.4
  * Rule execution tracing is complete, including calls to sub-rule cubes, sub-sub-rule cubes, etc.  It includes both 'begin>cubeName' and 'end>cubeName' markers as well as an entry for all rules that executed (condition true) in between.  If other rule cubes were called during rule execution, there execution traces are added, maintaining order.  The number of steps execution for a given rule set is kept, as well as all column bindings for each rule (indicates which columns pointed to the rule executed).
  * n-cube sha1() is now computed when formatted into JSON.  It is added as a meta-property on n-cube.  The SHA1 will be used along with NCE to determine if an n-cube has changed (basic for optimistic locking).

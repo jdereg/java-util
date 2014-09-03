@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Created by kpartlow on 8/27/2014.
  */
-public class NCubeTestWriter extends GroovyJsonFormatter
+public class NCubeTestWriter extends JsonFormatter
 {
 
     public String write(List<NCubeTest> list) throws IOException

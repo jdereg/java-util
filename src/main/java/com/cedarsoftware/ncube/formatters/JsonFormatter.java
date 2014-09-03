@@ -4,11 +4,24 @@ import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.Range;
+import com.cedarsoftware.ncube.RangeSet;
 import com.cedarsoftware.ncube.UrlCommandCell;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.SafeSimpleDateFormat;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
+import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,15 +45,16 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
+public class JsonFormatter implements NCubeFormatter
 {
     private Map<Long, Object> userIds = new HashMap<Long, Object>();
     private Map<Long, Long> generatedIds = new HashMap<Long, Long>();
     private long idCounter;
+    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    protected StringBuilder builder = new StringBuilder();
+    protected String quotedStringFormat = "\"%s\"";
 
-    public JsonFormatter()
-    {
-    }
+    public JsonFormatter() { }
 
     /**
      * Use this API to generate axis JSON view of this NCube.
@@ -334,4 +348,148 @@ public class JsonFormatter extends GroovyJsonFormatter implements NCubeFormatter
         }
     }
 
+    public static String getColumnType(Object o)
+    {
+        if (o instanceof Range || o instanceof RangeSet) {
+            return null;
+        }
+
+        return CellTypes.getType(o, "column");
+    }
+
+
+    public void startArray() {
+        builder.append("[");
+    }
+
+    public void endArray() {
+        builder.append("]");
+    }
+
+    public void startObject() {
+        builder.append("{");
+    }
+
+    public void endObject() {
+        builder.append("}");
+    }
+
+    public void comma() {
+        builder.append(",");
+    }
+
+    public void writeValue(String attr, Object o) throws IOException
+    {
+        builder.append(String.format(quotedStringFormat, attr));
+        builder.append(':');
+        writeObject(o);
+    }
+
+    public void writeObject(Object o) throws IOException
+    {
+        if (o == null)
+        {
+            builder.append("null");
+        }
+        else if (o instanceof String)
+        {
+            StringWriter w = new StringWriter();
+            JsonWriter.writeJsonUtf8String(o.toString(), w);
+            builder.append(w.toString());
+        }
+        else if (o instanceof Date)
+        {
+            builder.append(String.format(quotedStringFormat, dateFormat.format(o)));
+        }
+        else if (o instanceof LatLon)
+        {
+            LatLon l = (LatLon)o;
+            builder.append('"');
+            builder.append(l.toString());
+            builder.append('"');
+        }
+        else if (o instanceof Point2D)
+        {
+            Point2D pt = (Point2D)o;
+            builder.append('"');
+            builder.append(pt.toString());
+            builder.append('"');
+        }
+        else if (o instanceof Point3D)
+        {
+            Point3D pt = (Point3D)o;
+            builder.append('"');
+            builder.append(pt.toString());
+            builder.append('"');
+        }
+        else if (o instanceof Range)
+        {
+            Range r = (Range)o;
+            startArray();
+            writeObject(r.getLow());
+            comma();
+            writeObject(r.getHigh());
+            endArray();
+        }
+        else if (o instanceof RangeSet)
+        {
+            RangeSet r = (RangeSet)o;
+            Iterator i = r.iterator();
+            startArray();
+            while (i.hasNext()) {
+                writeObject(i.next());
+                comma();
+            }
+            uncomma();
+            endArray();
+        }
+        else if (o instanceof byte[])
+        {
+            builder.append(String.format(quotedStringFormat, StringUtilities.encode((byte[]) o)));
+        }
+        else if (o.getClass().isArray())
+        {
+            throw new IllegalStateException("Cell cannot be an array (except byte[]). Use Groovy Expression to make cell an array, a List, or a Map, etc.");
+        }
+        else if (o instanceof BigInteger)
+        {
+            BigInteger i = (BigInteger)o;
+            builder.append('"');
+            builder.append(i.toString());
+            builder.append('"');
+        }
+        else if (o instanceof BigDecimal)
+        {
+            BigDecimal d = (BigDecimal)o;
+            builder.append('"');
+            builder.append(d.stripTrailingZeros().toPlainString());
+            builder.append('"');
+        }
+        else
+        {
+            builder.append(o.toString());
+        }
+    }
+
+    protected void uncomma()
+    {
+        builder.setLength(builder.length() - 1);
+    }
+
+    public void writeAttribute(String attr, Object value, boolean includeComma) throws IOException
+    {
+        if (value instanceof String)
+        {
+            StringWriter w = new StringWriter();
+            JsonWriter.writeJsonUtf8String((String) value, w);
+            value = w.toString();
+        }
+        builder.append(String.format(quotedStringFormat, attr));
+        builder.append(":");
+        builder.append(value.toString());
+        if (includeComma)
+        {
+            builder.append(",");
+        }
+    }
 }

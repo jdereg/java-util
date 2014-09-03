@@ -264,8 +264,8 @@ public class TestRuleEngine
 
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
-        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(4L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(4L, ruleInfo.getNumberOfRulesExecuted());
 
         output.clear();
         coord.put("age", 10);
@@ -273,8 +273,8 @@ public class TestRuleEngine
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(2L, ruleInfo.getNumberOfRulesExecuted());
 
         output.clear();
         coord.put("age", 35);
@@ -282,8 +282,8 @@ public class TestRuleEngine
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1L, ruleInfo.getNumberOfRulesExecuted());
 
         output.clear();
         coord.put("age", 42);
@@ -291,8 +291,8 @@ public class TestRuleEngine
         ncube.getCells(coord, output);
         assertEquals(output.get("weight"), "heavy-weight");
         assertEquals(output.get("age"), "middle-aged");
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(1L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1L, ruleInfo.getNumberOfRulesExecuted());
     }
 
     @Test
@@ -323,15 +323,15 @@ public class TestRuleEngine
         ncube.getCells(coord, output);
         assertEquals(output.get("age"), "young");
         assertEquals(output.get("weight"), "light-weight");
-        Map ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1, ruleInfo.getNumberOfRulesExecuted());
 
         coord.put("age", 25);
         coord.put("weight", 60);
         output.clear();
         ncube.getCells(coord, output);
-        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertTrue((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
+        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(0, ruleInfo.getNumberOfRulesExecuted());
 
         coord.put("age", 45);
         coord.put("weight", 60);
@@ -339,8 +339,8 @@ public class TestRuleEngine
         ncube.getCells(coord, output);
         assertEquals(output.get("age"), "middle-aged");
         assertEquals(output.get("weight"), "light-weight");
-        ruleOut = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertFalse((Boolean) ruleOut.get(RuleMetaKeys.RULE_STOP));
+        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(1, ruleInfo.getNumberOfRulesExecuted());
     }
 
     @Test
@@ -446,15 +446,15 @@ public class TestRuleEngine
         coord.put("age", 85);
         ncube.getCells(coord, output);
         assertEquals(1, output.size());
-        Map ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(0L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(0L, ruleInfo.getNumberOfRulesExecuted());
 
         coord.put("age", 22);
         ncube.getCells(coord, output);
         assertTrue(output.containsKey("adult"));
         assertTrue(output.containsKey("old"));
-        ruleExecInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        assertEquals(2L, ruleExecInfo.get(RuleMetaKeys.NUM_RESOLVED_CELLS));
+        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(2L, ruleInfo.getNumberOfRulesExecuted());
     }
 
     @Test
@@ -518,9 +518,9 @@ public class TestRuleEngine
         assertEquals("child", output.get("group"));
         assertEquals("thang", output.get("thing"));
 
-        Map ruleInfo = (Map) output.get(NCube.RULE_EXEC_INFO);
-        List rulesExecuted = (List) ruleInfo.get(RuleMetaKeys.RULES_EXECUTED);
-        assertEquals(3, rulesExecuted.size());
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(3, ruleInfo.getNumberOfRulesExecuted());
+        System.out.println("ruleInfo.getRuleExecutionTrace() = " + ruleInfo.getRuleExecutionTrace());
 
         input.put("age", 48);
         ncube.getCells(input, output);
@@ -550,8 +550,8 @@ public class TestRuleEngine
         input.put("state", "OH");
         Map output = new HashMap();
         ncube.getCells(input, output);
-        Map stats = (Map) output.get("_rule");
-        assertEquals(1, ((List) stats.get(RuleMetaKeys.RULES_EXECUTED)).size());
+        RuleInfo ruleInfo = (RuleInfo) output.get("_rule");
+        assertEquals(1, ruleInfo.getNumberOfRulesExecuted());
 
         // Groovy style false
         assertFalse(NCube.isTrue(null));

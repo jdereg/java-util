@@ -81,10 +81,15 @@ public class Axis
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
 	{
-		this.name = name;
-		this.type = type;
+        this(name, type, valueType, hasDefault, order, UniqueIdGenerator.getUniqueId());
+	}
+
+    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long forceId)
+    {
+        this.name = name;
+        this.type = type;
         this.preferredOrder = order;
-		this.valueType = valueType;
+        this.valueType = valueType;
         if (type == AxisType.RULE)
         {
             if (order == SORTED)
@@ -107,8 +112,8 @@ public class Axis
             columns.add(defaultCol);
             idToCol.put(defaultCol.id, defaultCol);
         }
-        id = UniqueIdGenerator.getUniqueId();
-	}
+        id = forceId;
+    }
 
     /**
      * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.

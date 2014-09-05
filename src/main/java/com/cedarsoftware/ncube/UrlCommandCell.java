@@ -259,7 +259,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
         catch (Exception e)
         {
-            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", NCube '" + cube.getName() + "'");
+            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", n-cube: " + cube.getName() + "', version: " + cube.getVersion());
             throw new IllegalStateException(getErrorMessage(), e);
         }
     }

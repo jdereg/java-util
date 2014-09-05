@@ -2623,9 +2623,9 @@ public class TestNCube
     @Test
     public void testInternalColumnPointers()
     {
-        NCube<String> ncube = new NCube<String>("TestColumnPointers");
+        NCube<String> ncube = new NCube<>("TestColumnPointers");
         ncube.addAxis(getGenderAxis(true));
-        Axis triAxis = new Axis("Tristate", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY);
+        Axis triAxis = new Axis("Tristate", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 2);
         triAxis.addColumn("true");
         triAxis.addColumn("false");
         ncube.addAxis(triAxis);
@@ -4166,7 +4166,7 @@ public class TestNCube
         assertEquals(cols.get(5).getValue(), "aSun");
         assertEquals(cols.get(6).getValue(), "aWed");
 
-        assertEquals(-1, cols.get(4).compareTo(new Column(null)));
+        assertEquals(-1, cols.get(4).compareTo(new Column(null, dow.getNextColId())));
     }
 
     @Test
@@ -4949,7 +4949,7 @@ public class TestNCube
         for (Axis axis : ncube.getAxes())
         {
             Axis dupeAxis = dupe.getAxis(axis.getName());
-            assertNotEquals(axis.getId(), dupeAxis.getId());
+            assertEquals(axis.getId(), dupeAxis.getId());
 
             Iterator<Column> iThisCol = axis.getColumns().iterator();
             Iterator<Column> iThatCol = dupeAxis.getColumns().iterator();
@@ -4957,7 +4957,7 @@ public class TestNCube
             {
                 Column thisCol = iThisCol.next();
                 Column thatCol = iThatCol.next();
-                assertNotEquals(thisCol.getId(), thatCol.getId());
+                assertEquals(thisCol.getId(), thatCol.getId());
             }
         }
     }

@@ -55,6 +55,7 @@ public class Axis
 	public static final int SORTED = 0;
 	public static final int DISPLAY = 1;
 	final long id;
+    long colIdBase = 0;
 	private String name;
 	private final AxisType type;
 	private final AxisValueType valueType;
@@ -81,11 +82,13 @@ public class Axis
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
 	{
+        // TODO: Do something other than using UniqueIdGenerator
         this(name, type, valueType, hasDefault, order, UniqueIdGenerator.getUniqueId());
 	}
 
-    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long forceId)
+    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long id)
     {
+        this.id = id;
         this.name = name;
         this.type = type;
         this.preferredOrder = order;
@@ -107,14 +110,17 @@ public class Axis
             {
                 throw new IllegalArgumentException("NEAREST type axis '" + name + "' cannot have a default column");
             }
-            defaultCol = new Column(null);
+            defaultCol = new Column(null, getNextColId());
             defaultCol.setDisplayOrder(Integer.MAX_VALUE);  // Always at the end
             columns.add(defaultCol);
             idToCol.put(defaultCol.id, defaultCol);
         }
-        id = forceId;
     }
 
+    long getNextColId()
+    {
+        return id * 1000000000000L + (++colIdBase);
+    }
     /**
      * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
      */
@@ -362,7 +368,7 @@ public class Axis
                 throw new IllegalStateException("New axis type added without complete support.");
             }
         }
-        return new Column(v);
+        return new Column(v, getNextColId());
     }
 
 	public Column addColumn(Comparable value)
@@ -559,7 +565,7 @@ public class Axis
                 column.setDisplayOrder(order++);
                 if (column.getId() < 0)
                 {   // Create new ID for new column
-                    column.setId(UniqueIdGenerator.getUniqueId());
+                    column.setId(getNextColId());
                 }
                 columns.add(column);
             }
@@ -1204,13 +1210,13 @@ public class Axis
         return savePos;
     }
 
-    private int findRuleByName(final String name)
+    private int findRuleByName(final String ruleName)
     {
         int pos = 0;
 
         for (Column column : getColumnsWithoutDefault())
         {
-            if (name.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
+            if (ruleName.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
             {
                 return pos;
             }

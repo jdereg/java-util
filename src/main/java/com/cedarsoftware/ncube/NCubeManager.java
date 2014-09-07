@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.NCubeConnectionProvider.ContextKey;
-import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
@@ -934,8 +933,7 @@ public class NCubeManager
                     insert.setLong(1, UniqueIdGenerator.getUniqueId());
                     insert.setString(2, app);
                     insert.setString(3, ncube.getName());
-                    String json = new JsonFormatter().format(ncube);
-                    insert.setBytes(4, json.getBytes("UTF-8"));
+                    insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
                     insert.setString(5, version);
                     java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
                     insert.setDate(6, now);
@@ -1176,17 +1174,21 @@ public class NCubeManager
             throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName);
         }
 
+        NCube ncube = loadCube(connection, app, oldName, version, "SNAPSHOT", null);
+
         synchronized (cubeList)
         {
-            try (PreparedStatement ps = connection.prepareStatement("UPDATE n_cube SET n_cube_nm = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
+            try (PreparedStatement ps = connection.prepareStatement("UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'"))
             {
                 // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
                 // TODO: see if the column exists, store the result for the entire app life cycle.
                 // TODO: If account column does not exist, then account is null.
                 ps.setString(1, newName);
-                ps.setString(2, app);
-                ps.setString(3, version);
-                ps.setString(4, oldName);
+                ncube.name = newName;
+                ps.setBytes(2, ncube.toFormattedJson().getBytes("UTF-8"));
+                ps.setString(3, app);
+                ps.setString(4, version);
+                ps.setString(5, oldName);
                 int count = ps.executeUpdate();
                 if (count < 1)
                 {
@@ -1196,6 +1198,7 @@ public class NCubeManager
                 // Any user of these old IDs will get the default (null) account
                 ApplicationID appId = new ApplicationID(null, app, version);
                 cubeList.remove(makeCacheKey(oldName, appId));
+                // TODO: Put n-cube back into cache (not really needed as most n-cube apps should not allowed n-cube editing)
                 return true;
             }
             catch (IllegalArgumentException e)

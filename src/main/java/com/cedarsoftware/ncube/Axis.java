@@ -121,6 +121,7 @@ public class Axis
     {
         return id * 1000000000000L + (++colIdBase);
     }
+
     /**
      * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
      */
@@ -143,6 +144,31 @@ public class Axis
             metaProps = new CaseInsensitiveMap<>();
         }
         return metaProps.put(key, value);
+    }
+
+    /**
+     * Fetch the value associated to the passed in Key from the MetaProperties (if any exist).  If
+     * none exist, null is returned.
+     */
+    public Object getMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.get(key);
+    }
+
+    /**
+     * Remove a meta-property entry
+     */
+    public Object removeMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.remove(key);
     }
 
     /**
@@ -338,14 +364,7 @@ public class Axis
             }
             else if (type == AxisType.RANGE)
             {
-                if (value instanceof String)
-                {
-                    v = convertStringToColumnValue((String)value);
-                }
-                else
-                {
-                    v = standardizeColumnValue(value);
-                }
+                v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
                 Range range = (Range)v;
                 if (doesOverlap(range))
                 {
@@ -354,14 +373,7 @@ public class Axis
             }
             else if (type == AxisType.SET)
             {
-                if (value instanceof String)
-                {
-                    v = convertStringToColumnValue((String)value);
-                }
-                else
-                {
-                    v = standardizeColumnValue(value);
-                }
+                v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
                 RangeSet set = (RangeSet)v;
                 if (doesOverlap(set))
                 {
@@ -370,14 +382,7 @@ public class Axis
             }
             else if (type == AxisType.RULE)
             {
-                if (value instanceof String)
-                {
-                    v = convertStringToColumnValue((String)value);
-                }
-                else
-                {
-                    v = standardizeColumnValue(value);
-                }
+                v = value instanceof String ? convertStringToColumnValue((String) value) : value;
 
                 if (!(v instanceof CommandCell))
                 {
@@ -658,14 +663,7 @@ public class Axis
                 }
 
             case SET:
-                if (!value.startsWith("["))
-                {   // sandwich inside JSON array
-                    value = "[" + value + "]";
-                }
-                if (!value.endsWith("]"))
-                {   // sandwich inside JSON array
-                    value = "[" + value + "]";
-                }
+                value = "[" + value + "]";
                 try
                 {
                     Object[] array = (Object[])JsonReader.jsonToJava(value);
@@ -765,7 +763,7 @@ public class Axis
 		{	
 			throw new IllegalArgumentException("'null' cannot be used as an axis value, axis: " + name);
 		}
-		
+
 		if (type == AxisType.DISCRETE)
 		{
 			return promoteValue(value);
@@ -853,6 +851,24 @@ public class Axis
 	}
 
     /**
+     * Convert passed in value to a similar value of the highest type.  Axis
+     * values and inputs are always promoted before being stored or compared.
+     * @param value Comparable to promote
+     * @return promoted value, or the same value if no promotion occurs.
+     */
+    Comparable promoteValue(Comparable value)
+    {
+        try
+        {
+            return promoteValue(valueType, value);
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Error promoting value for Axis: " + name, e);
+        }
+    }
+
+    /**
      * Convert passed in value to a similar value of the highest type.  If the
      * valueType is not the same basic type as the value passed in, intelligent
      * conversions will happen, and the result will be of the requested type.
@@ -909,30 +925,16 @@ public class Axis
         }
     }
 
-	/**
-	 * Convert passed in value to a similar value of the highest type.  Axis
-	 * values and inputs are always promoted before being stored or compared.
-	 * @param value Comparable to promote
-	 * @return promoted value, or the same value if no promotion occurs.
-	 */
-	Comparable promoteValue(Comparable value)
-	{
-        try
-        {
-            return promoteValue(valueType, value);
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Error promoting value for Axis: " + name, e);
-        }
-    }
-
 	static String getString(Comparable value)
 	{
 		if (value instanceof String)
 		{
 			return (String) value;
 		}
+        else if (value instanceof BigDecimal)
+        {
+            return ((BigDecimal) value).stripTrailingZeros().toPlainString();
+        }
         else if (value instanceof Number)
         {
             return value.toString();

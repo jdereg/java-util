@@ -529,11 +529,11 @@ public class TestAxis
     public void testDiscreteSetParsing()
     {
         Axis axis = new Axis("ages", AxisType.SET, AxisValueType.LONG, true, Axis.SORTED);
-        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[10,20]");
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("10,20");
         assertEquals(10L, set.get(0));
         assertEquals(20L, set.get(1));
 
-        set = (RangeSet) axis.convertStringToColumnValue("[  10 ,\t20  \n]");
+        set = (RangeSet) axis.convertStringToColumnValue("  10 ,\t20  \n");
         assertEquals(10L, set.get(0));
         assertEquals(20L, set.get(1));
 
@@ -543,8 +543,17 @@ public class TestAxis
         assertEquals(20L, set.get(1));
 
         axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
-        set = (RangeSet) axis.convertStringToColumnValue("[ \"12/25/2014\", \"12/25/2016\"]");
+        set = (RangeSet) axis.convertStringToColumnValue(" \"12/25/2014\", \"12/25/2016\"");
         Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), set.get(0));
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), set.get(1));
+
+        set = (RangeSet) axis.convertStringToColumnValue(" \"Dec 25, 2014\", \"Dec 25, 2016\"");
+        calendar = Calendar.getInstance();
         calendar.clear();
         calendar.set(2014, 11, 25);
         assertEquals(calendar.getTime(), set.get(0));
@@ -557,18 +566,18 @@ public class TestAxis
     public void testRangeSetParsing()
     {
         Axis axis = new Axis("ages", AxisType.SET, AxisValueType.LONG, true, Axis.SORTED);
-        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[[10,20]]");
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[10,20]");
         Range range = (Range) set.get(0);
         assertEquals(10L, range.low);
         assertEquals(20L, range.high);
 
-        set = (RangeSet) axis.convertStringToColumnValue("[ [  10 ,\t20  \n] ]");
+        set = (RangeSet) axis.convertStringToColumnValue(" [  10 ,\t20  \n] ");
         range = (Range) set.get(0);
         assertEquals(10L, range.low);
         assertEquals(20L, range.high);
 
         axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
-        set = (RangeSet) axis.convertStringToColumnValue("[[ \"12/25/2014\", \"12/25/2016\"]]");
+        set = (RangeSet) axis.convertStringToColumnValue("[ \"12/25/2014\", \"12/25/2016\"]");
         range = (Range) set.get(0);
         Calendar calendar = Calendar.getInstance();
         calendar.clear();
@@ -583,20 +592,20 @@ public class TestAxis
     public void testRangeAndDiscreteSetParsing()
     {
         Axis axis = new Axis("ages", AxisType.SET, AxisValueType.LONG, true, Axis.SORTED);
-        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[[10,20], 1979]");
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[10,20], 1979");
         Range range = (Range) set.get(0);
         assertEquals(10L, range.low);
         assertEquals(20L, range.high);
         assertEquals(1979L, set.get(1));
 
-        set = (RangeSet) axis.convertStringToColumnValue("[ [  10 ,\t20  \n] , 1979 ]");
+        set = (RangeSet) axis.convertStringToColumnValue(" [  10 ,\t20  \n] , 1979 ");
         range = (Range) set.get(0);
         assertEquals(10L, range.low);
         assertEquals(20L, range.high);
         assertEquals(1979L, set.get(1));
 
         axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
-        set = (RangeSet) axis.convertStringToColumnValue("[[ \"12/25/2014\", \"12/25/2016\"], \"12/25/2020\"]");
+        set = (RangeSet) axis.convertStringToColumnValue("[ \"12/25/2014\", \"12/25/2016\"], \"12/25/2020\"");
         range = (Range) set.get(0);
         Calendar calendar = Calendar.getInstance();
         calendar.clear();
@@ -614,13 +623,13 @@ public class TestAxis
     public void testRangeAndDiscreteSetParsing2()
     {
         Axis axis = new Axis("ages", AxisType.SET, AxisValueType.BIG_DECIMAL, true, Axis.SORTED);
-        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[[10,20], 1979]");
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue("[10,20], 1979");
         Range range = (Range) set.get(0);
         assertEquals(new BigDecimal("10"), range.low);
         assertEquals(new BigDecimal("20"), range.high);
         assertEquals(new BigDecimal("1979"), set.get(1));
 
-        set = (RangeSet) axis.convertStringToColumnValue("[ [  10.0 ,\t20  \n] , 1979 ]");
+        set = (RangeSet) axis.convertStringToColumnValue(" [  10.0 ,\t20  \n] , 1979 ");
         range = (Range) set.get(0);
         assertEquals(new BigDecimal("10"), range.low);
         assertEquals(new BigDecimal("20"), range.high);

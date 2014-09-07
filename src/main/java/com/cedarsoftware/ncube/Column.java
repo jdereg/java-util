@@ -58,6 +58,19 @@ public class Column implements Comparable<Comparable>
     }
 
     /**
+     * Fetch the value associated to the passed in Key from the MetaProperties (if any exist).  If
+     * none exist, null is returned.
+     */
+    public Object getMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.get(key);
+    }
+
+    /**
      * Set (add / overwrite) a Meta Property associated to this Column.
      * @param key String key name of meta property
      * @param metaPropValue Object value to associate to key
@@ -70,6 +83,18 @@ public class Column implements Comparable<Comparable>
             metaProps = new CaseInsensitiveMap<>();
         }
         return metaProps.put(key, metaPropValue);
+    }
+
+    /**
+     * Remove a meta-property entry
+     */
+    public Object removeMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.remove(key);
     }
 
     /**

@@ -11,6 +11,7 @@ import com.cedarsoftware.util.io.JsonObject;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,7 +42,8 @@ public class CellInfo
     public String dataType;
     public boolean isUrl;
     public boolean isCached;
-    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd");
+    static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
 
     public CellInfo(Object cell)
@@ -175,7 +177,7 @@ public class CellInfo
         {
             Range range = (Range) cell;
             isUrl = false;
-            value = CellInfo.formatForEditing(range.low) + ", " + CellInfo.formatForEditing(range.high);
+            value = "[" + CellInfo.formatForEditing(range.low) + ", " + CellInfo.formatForEditing(range.high) + "]";
             dataType = null;
             isCached = false;
         }
@@ -183,7 +185,7 @@ public class CellInfo
         {
             RangeSet set = (RangeSet) cell;
             isUrl = false;
-            StringBuilder builder = new StringBuilder("[");
+            StringBuilder builder = new StringBuilder();
             for (int i=0; i < set.size(); i++)
             {
                 if (i != 0)
@@ -205,7 +207,6 @@ public class CellInfo
                     builder.append(CellInfo.formatForEditing(val));
                 }
             }
-            builder.append("]");
             value = builder.toString();
             dataType = null;
             isCached = false;
@@ -538,7 +539,7 @@ public class CellInfo
     {
         if (val instanceof Date)
         {
-            return dateFormat.format(val);
+            return getDateAsString((Date)val);
         }
         else if (val instanceof Double || val instanceof Float)
         {
@@ -580,7 +581,7 @@ public class CellInfo
     {
         if (val instanceof Date)
         {
-            return '"' + dateFormat.format(val) + '"';
+            return '"' + getDateAsString((Date)val) + '"';
         }
         else if (val instanceof Double || val instanceof Float)
         {
@@ -592,5 +593,16 @@ public class CellInfo
             return ((BigDecimal)val).stripTrailingZeros().toPlainString();
         }
         return val.toString();
+    }
+
+    private static String getDateAsString(Date date)
+    {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        if (cal.get(Calendar.HOUR) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
+        {
+            return dateFormat.format(date);
+        }
+        return dateTimeFormat.format(date);
     }
 }

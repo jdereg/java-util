@@ -62,7 +62,7 @@ public class Axis
     final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
-    private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
+    private static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
     Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
@@ -331,13 +331,21 @@ public class Axis
         }
         else
         {
-            v = standardizeColumnValue(value);
             if (type == AxisType.DISCRETE)
             {
+                v = standardizeColumnValue(value);
                 doesMatchExistingValue(v);
             }
             else if (type == AxisType.RANGE)
             {
+                if (value instanceof String)
+                {
+                    v = convertStringToColumnValue((String)value);
+                }
+                else
+                {
+                    v = standardizeColumnValue(value);
+                }
                 Range range = (Range)v;
                 if (doesOverlap(range))
                 {
@@ -346,6 +354,14 @@ public class Axis
             }
             else if (type == AxisType.SET)
             {
+                if (value instanceof String)
+                {
+                    v = convertStringToColumnValue((String)value);
+                }
+                else
+                {
+                    v = standardizeColumnValue(value);
+                }
                 RangeSet set = (RangeSet)v;
                 if (doesOverlap(set))
                 {
@@ -354,13 +370,23 @@ public class Axis
             }
             else if (type == AxisType.RULE)
             {
-                if (!(value instanceof CommandCell))
+                if (value instanceof String)
+                {
+                    v = convertStringToColumnValue((String)value);
+                }
+                else
+                {
+                    v = standardizeColumnValue(value);
+                }
+
+                if (!(v instanceof CommandCell))
                 {
                     throw new IllegalArgumentException("Columns for RULE axis must be a CommandCell, axis '" + name + "'");
                 }
             }
             else if (type == AxisType.NEAREST)
             {
+                v = standardizeColumnValue(value);
                 doesMatchNearestValue(v);
             }
             else
@@ -545,8 +571,15 @@ public class Axis
     public Set<Long> updateColumns(final Axis newCols)
     {
         Set<Long> colsToDelete = new HashSet<>();
-        newCols.buildScaffolding();
 
+        // Build quick-cheap scaffolding for newCols axis
+        newCols.idToCol.clear();
+        for (Column col : newCols.columns)
+        {
+            newCols.idToCol.put(col.id, col);
+        }
+
+        // Build list of columns that no longer exist (add to deleted list)
         for (Column col : columns)
         {
             if (!newCols.idToCol.containsKey(col.id))
@@ -555,32 +588,19 @@ public class Axis
             }
         }
 
+        // Reset this axis columns
         columns.clear();
-        int order = 1;
 
+        // Add new columns back to this Axis
         for (Column column : newCols.columns)
-        {
-            if (!column.isDefault())
+        {   // Not the fastest method, but absolutely correct.
+            // Need to revisit this if slow when editing axis with many columns.
+            if (column.getValue() != null)
             {
-                column.setDisplayOrder(order++);
-                if (column.getId() < 0)
-                {   // Create new ID for new column
-                    column.setId(getNextColId());
-                }
-                columns.add(column);
+                Column col = createColumnFromValue(column.getValue());
+                addColumn(col.getValue());
             }
         }
-
-        // Columns must be stored sorted for fast retrieval, regardless of whether the
-        // preferred order is SORTED or DISPLAY.  Display order was already marked above,
-        // from newCols.
-        sortColumns(columns, new Comparator<Column>()
-        {
-            public int compare(Column c1, Column c2)
-            {
-                return c1.compareTo(c2);
-            }
-        });
 
         // Put default column back if it was already there.
         if (hasDefaultColumn())
@@ -588,6 +608,7 @@ public class Axis
             columns.add(defaultCol);
         }
 
+        // index
         buildScaffolding();
         return colsToDelete;
     }
@@ -637,6 +658,14 @@ public class Axis
                 }
 
             case SET:
+                if (!value.startsWith("["))
+                {   // sandwich inside JSON array
+                    value = "[" + value + "]";
+                }
+                if (!value.endsWith("]"))
+                {   // sandwich inside JSON array
+                    value = "[" + value + "]";
+                }
                 try
                 {
                     Object[] array = (Object[])JsonReader.jsonToJava(value);
@@ -1301,6 +1330,10 @@ public class Axis
 
     public List<Column> getColumnsWithoutDefault()
     {
+        if (columns.size() == 0)
+        {
+            return columns;
+        }
         if (hasDefaultColumn())
         {
             if (columns.size() == 1)

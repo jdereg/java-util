@@ -479,26 +479,44 @@ public class TestAxis
     public void testRangeParsing()
     {
         Axis axis = new Axis("ages", AxisType.RANGE, AxisValueType.LONG, true, Axis.SORTED);
-        Range range = (Range) axis.convertStringToColumnValue("[10,20]");
+        Range range = (Range) axis.convertStringToColumnValue("10,20");
         assertEquals(10L, range.low);
         assertEquals(20L, range.high);
 
-        range = (Range) axis.convertStringToColumnValue("[  10 ,\t20  \n]");
+        range = (Range) axis.convertStringToColumnValue("  10 ,\t20  \n");
         assertEquals(10L, range.low);
         assertEquals(20L, range.high);
-
-        try
-        {
-            axis.convertStringToColumnValue("10, 20");
-            fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
 
         axis = new Axis("ages", AxisType.RANGE, AxisValueType.DATE, false);
-        range = (Range) axis.convertStringToColumnValue("[ 12/25/2014, 12/25/2016)");
+        range = (Range) axis.convertStringToColumnValue("12/25/2014, 12/25/2016");
         Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), range.low);
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), range.high);
+
+        range = (Range) axis.convertStringToColumnValue("Dec 25 2014, 12/25/2016");
+        calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), range.low);
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), range.high);
+
+        range = (Range) axis.convertStringToColumnValue("Dec 25 2014, Dec 25 2016");
+        calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2014, 11, 25);
+        assertEquals(calendar.getTime(), range.low);
+        calendar.clear();
+        calendar.set(2016, 11, 25);
+        assertEquals(calendar.getTime(), range.high);
+
+        range = (Range) axis.convertStringToColumnValue("12/25/2014, Dec 25 2016");
+        calendar = Calendar.getInstance();
         calendar.clear();
         calendar.set(2014, 11, 25);
         assertEquals(calendar.getTime(), range.low);
@@ -519,14 +537,10 @@ public class TestAxis
         assertEquals(10L, set.get(0));
         assertEquals(20L, set.get(1));
 
-        try
-        {
-            axis.convertStringToColumnValue("10, 20");
-            fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        // Support no outer brackets
+        axis.convertStringToColumnValue("10, 20");
+        assertEquals(10L, set.get(0));
+        assertEquals(20L, set.get(1));
 
         axis = new Axis("ages", AxisType.SET, AxisValueType.DATE, false);
         set = (RangeSet) axis.convertStringToColumnValue("[ \"12/25/2014\", \"12/25/2016\"]");

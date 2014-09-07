@@ -101,12 +101,12 @@ public class CellInfo
         }
         else if (cell instanceof Double)
         {
-            value = CellInfo.formatForEditing((Number) cell);
+            value = CellInfo.formatForEditing(cell);
             dataType = CellTypes.Double.desc();
         }
         else if (cell instanceof Float)
         {
-            value = CellInfo.formatForEditing((Number) cell);
+            value = CellInfo.formatForEditing(cell);
             dataType = CellTypes.Float.desc();
         }
         else if (cell instanceof BigDecimal)
@@ -170,6 +170,45 @@ public class CellInfo
             value = isUrl ? templateCmd.getUrl() : templateCmd.getCmd();
             dataType = CellTypes.Template.desc();
             isCached = templateCmd.isCacheable();
+        }
+        else if (cell instanceof Range)
+        {
+            Range range = (Range) cell;
+            isUrl = false;
+            value = CellInfo.formatForEditing(range.low) + ", " + CellInfo.formatForEditing(range.high);
+            dataType = null;
+            isCached = false;
+        }
+        else if (cell instanceof RangeSet)
+        {
+            RangeSet set = (RangeSet) cell;
+            isUrl = false;
+            StringBuilder builder = new StringBuilder("[");
+            for (int i=0; i < set.size(); i++)
+            {
+                if (i != 0)
+                {
+                    builder.append(", ");
+                }
+                Object val = set.get(i);
+                if (val instanceof Range)
+                {
+                    Range range = (Range) val;
+                    builder.append('[');
+                    builder.append(CellInfo.formatForEditing(range.low));
+                    builder.append(", ");
+                    builder.append(CellInfo.formatForEditing(range.high));
+                    builder.append("]");
+                }
+                else
+                {
+                    builder.append(CellInfo.formatForEditing(val));
+                }
+            }
+            builder.append("]");
+            value = builder.toString();
+            dataType = null;
+            isCached = false;
         }
         else
         {
@@ -408,7 +447,7 @@ public class CellInfo
             {
                 i++;
                 Object o = parseJsonValue(value, null, type, false);
-                javaToGroovySource(exp, o);
+                exp.append(javaToGroovySource(o));
                 if (i < values.length)
                 {
                     exp.append(",");
@@ -425,11 +464,13 @@ public class CellInfo
 
     /**
      * Convert Java data-type to a Groovy Source equivalent
-     * @param builder StringBuilder to add to
      * @param o Java primitive type
+     * @return Groovy source code equivalent of passed in value.  For example, if a BigInteger is passed in,
+     * the value will be return as a String with a "G" at the end.
      */
-    private static void javaToGroovySource(StringBuilder builder, Object o)
+    private static String javaToGroovySource(Object o)
     {
+        StringBuilder builder = new StringBuilder();
         if (o instanceof String)
         {
             builder.append("'");
@@ -464,12 +505,12 @@ public class CellInfo
         else if (o instanceof BigDecimal)
         {
             builder.append(((BigDecimal) o).stripTrailingZeros().toPlainString());
-            builder.append('g');
+            builder.append('G');
         }
         else if (o instanceof BigInteger)
         {
             builder.append(o);
-            builder.append('g');
+            builder.append('G');
         }
         else if (o instanceof Byte)
         {
@@ -490,6 +531,7 @@ public class CellInfo
         {
             throw new IllegalArgumentException("Unknown Groovy Type : " + o.getClass());
         }
+        return builder.toString();
     }
 
     public static String formatForDisplay(Comparable val)
@@ -538,7 +580,7 @@ public class CellInfo
     {
         if (val instanceof Date)
         {
-            return dateFormat.format(val);
+            return '"' + dateFormat.format(val) + '"';
         }
         else if (val instanceof Double || val instanceof Float)
         {

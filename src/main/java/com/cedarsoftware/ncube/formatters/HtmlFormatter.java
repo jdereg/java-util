@@ -187,7 +187,7 @@ public class HtmlFormatter implements NCubeFormatter
                 Column column = topColumns.get(i);
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId);
-                s.append("\" class=\"th-ncube ");
+                s.append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
                 addColumnPrefixText(s, column);
@@ -254,7 +254,7 @@ public class HtmlFormatter implements NCubeFormatter
             for (Column column : topColumns)
             {
                 String colId = String.valueOf(column.getId());
-                s.append(" <th data-id=\"").append(colId).append("\" class=\"th-ncube-top ");
+                s.append(" <th data-id=\"").append(colId).append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube-top ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
                 addColumnPrefixText(s, column);
@@ -297,14 +297,14 @@ public class HtmlFormatter implements NCubeFormatter
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"").append(columnId).append("\" class=\"th-ncube ");
+                            s.append(" <th data-id=\"").append(columnId).append("\" data-axis=\"").append(axisName).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
                             s.append("\">");
                         }
                         else
                         {   // Need to show rowspan attribute
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"").append(columnId).append("\" class=\"th-ncube ");
+                            s.append(" <th data-id=\"").append(columnId).append("\" data-axis=\"").append(axisName).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
                             s.append("\" rowspan=\"");
                             s.append(span);

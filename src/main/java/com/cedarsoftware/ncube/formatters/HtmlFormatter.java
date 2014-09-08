@@ -393,6 +393,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".td-ncube:hover { background: #E0F0FF }\n" +
                 ".th-ncube:hover { background: #A2A2A2 }\n" +
+                ".th-ncube-top:hover { background: #A2A2A2 }\n" +
                 ".ncube-num\n" +
                 "{\n" +
                 "text-align: right;\n" +

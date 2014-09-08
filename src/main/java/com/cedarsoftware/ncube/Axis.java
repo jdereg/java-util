@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -345,14 +346,6 @@ public class Axis
         Comparable v;
         if (value == null)
         {  // Attempting to add Default column to axis
-            if (hasDefaultColumn())
-            {
-                throw new IllegalArgumentException("Cannot add default column to axis '" + name + "' because it already has a default column.");
-            }
-            if (type == AxisType.NEAREST)
-            {
-                throw new IllegalArgumentException("Cannot add default column to NEAREST axis '" + name + "' as it would never be chosen.");
-            }
             v = null;
         }
         else
@@ -360,39 +353,22 @@ public class Axis
             if (type == AxisType.DISCRETE)
             {
                 v = standardizeColumnValue(value);
-                doesMatchExistingValue(v);
             }
             else if (type == AxisType.RANGE)
             {
                 v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
-                Range range = (Range)v;
-                if (doesOverlap(range))
-                {
-                    throw new AxisOverlapException("Passed in Range overlaps existing Range on axis '" + name + "'");
-                }
             }
             else if (type == AxisType.SET)
             {
                 v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
-                RangeSet set = (RangeSet)v;
-                if (doesOverlap(set))
-                {
-                    throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis '" + name + "'");
-                }
             }
             else if (type == AxisType.RULE)
             {
                 v = value instanceof String ? convertStringToColumnValue((String) value) : value;
-
-                if (!(v instanceof CommandCell))
-                {
-                    throw new IllegalArgumentException("Columns for RULE axis must be a CommandCell, axis '" + name + "'");
-                }
             }
             else if (type == AxisType.NEAREST)
             {
                 v = standardizeColumnValue(value);
-                doesMatchNearestValue(v);
             }
             else
             {
@@ -402,9 +378,66 @@ public class Axis
         return new Column(v, getNextColId());
     }
 
+    /**
+     * Will throw IllegalArgumentException if passed in value duplicates a value on this axis.
+     */
+    void ensureUnique(Comparable value)
+    {
+        if (value == null)
+        {  // Attempting to add Default column to axis
+            if (hasDefaultColumn())
+            {
+                throw new IllegalArgumentException("Cannot add default column to axis '" + name + "' because it already has a default column.");
+            }
+            if (type == AxisType.NEAREST)
+            {
+                throw new IllegalArgumentException("Cannot add default column to NEAREST axis '" + name + "' as it would never be chosen.");
+            }
+        }
+        else
+        {
+            if (type == AxisType.DISCRETE)
+            {
+                doesMatchExistingValue(value);
+            }
+            else if (type == AxisType.RANGE)
+            {
+                Range range = (Range)value;
+                if (doesOverlap(range))
+                {
+                    throw new AxisOverlapException("Passed in Range overlaps existing Range on axis '" + name + "'");
+                }
+            }
+            else if (type == AxisType.SET)
+            {
+                RangeSet set = (RangeSet)value;
+                if (doesOverlap(set))
+                {
+                    throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis '" + name + "'");
+                }
+            }
+            else if (type == AxisType.RULE)
+            {
+                if (!(value instanceof CommandCell))
+                {
+                    throw new IllegalArgumentException("Columns for RULE axis must be a CommandCell, axis '" + name + "'");
+                }
+            }
+            else if (type == AxisType.NEAREST)
+            {
+                doesMatchNearestValue(value);
+            }
+            else
+            {
+                throw new IllegalStateException("New axis type added without complete support.");
+            }
+        }
+    }
+
 	public Column addColumn(Comparable value)
 	{
         Column column = createColumnFromValue(value);
+        ensureUnique(column.getValue());
 
         if (column.getValue() == null)
         {
@@ -544,6 +577,7 @@ public class Axis
         Column col = idToCol.get(colId);
         deleteColumnById(colId);
         Column newCol = createColumnFromValue(value);
+        ensureUnique(newCol.getValue());
         newCol.setId(colId);
         newCol.setDisplayOrder(col.getDisplayOrder());
 
@@ -576,34 +610,53 @@ public class Axis
     public Set<Long> updateColumns(final Axis newCols)
     {
         Set<Long> colsToDelete = new HashSet<>();
+        Map<Long, Column> newColumnMap = new LinkedHashMap<>();
 
-        // Build quick-cheap scaffolding for newCols axis
-        newCols.idToCol.clear();
         for (Column col : newCols.columns)
         {
-            newCols.idToCol.put(col.id, col);
+            Column newColumn = createColumnFromValue(col.getValue());
+            newColumnMap.put(col.id, newColumn);
         }
 
         // Build list of columns that no longer exist (add to deleted list)
-        for (Column col : columns)
+        // Move data from new column to existing columns that match
+        List<Column> tempCol = new ArrayList<>(columns);
+        Iterator<Column> i = tempCol.iterator();
+        Set<Long> existing = new HashSet<>();
+
+        while (i.hasNext())
         {
-            if (!newCols.idToCol.containsKey(col.id))
-            {
+            Column col = i.next();
+            if (newColumnMap.containsKey(col.id))
+            {   // Update case - matches existing column
+                col.setValue(newColumnMap.get(col.id).getValue());
+                col.setDisplayOrder(newColumnMap.get(col.id).getDisplayOrder());
+                existing.add(col.id);
+                // TODO: Copy meta-property 'name'
+            }
+            else
+            {   // Delete case - existing column id no longer found
                 colsToDelete.add(col.id);
+                i.remove();
             }
         }
 
-        // Reset this axis columns
         columns.clear();
+        columns.addAll(tempCol);
 
-        // Add new columns back to this Axis
-        for (Column column : newCols.columns)
-        {   // Not the fastest method, but absolutely correct.
-            // Need to revisit this if slow when editing axis with many columns.
-            if (column.getValue() != null)
-            {
-                Column col = createColumnFromValue(column.getValue());
-                addColumn(col.getValue());
+        for (Column col : newCols.columns)
+        {
+            if (col.id < 0)
+            {   // Add case - negative id, add new column to 'columns' List.
+                Column newColumn = newColumnMap.get(col.id);
+                newColumn.id = getNextColId();
+                int where = Collections.binarySearch(columns, newColumn.getValue());
+                if (where < 0)
+                {
+                    where = Math.abs(where + 1);
+                }
+                columns.add(where, newColumn);
+                addScaffolding(newColumn);
             }
         }
 

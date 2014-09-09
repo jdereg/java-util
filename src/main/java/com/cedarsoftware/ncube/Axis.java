@@ -612,27 +612,33 @@ public class Axis
         Set<Long> colsToDelete = new HashSet<>();
         Map<Long, Column> newColumnMap = new LinkedHashMap<>();
 
+        // Step 1. Map all columns coming in from "DTO" Axis by ID
         for (Column col : newCols.columns)
         {
             Column newColumn = createColumnFromValue(col.getValue());
             newColumnMap.put(col.id, newColumn);
         }
 
-        // Build list of columns that no longer exist (add to deleted list)
-        // Move data from new column to existing columns that match
+        // Step 2.  Build list of columns that no longer exist (add to deleted list)
+        // and update existing columns that match by ID columns from the passed in DTO.
         List<Column> tempCol = new ArrayList<>(columns);
         Iterator<Column> i = tempCol.iterator();
-        Set<Long> existing = new HashSet<>();
 
         while (i.hasNext())
         {
             Column col = i.next();
+            if (col.getValue() == null)
+            {   // Don't add default column to columns to delete (that is done through toggle hasDefault in NCE)
+                continue;
+            }
             if (newColumnMap.containsKey(col.id))
             {   // Update case - matches existing column
-                col.setValue(newColumnMap.get(col.id).getValue());
-                col.setDisplayOrder(newColumnMap.get(col.id).getDisplayOrder());
-                existing.add(col.id);
-                // TODO: Copy meta-property 'name'
+                Column newCol = newColumnMap.get(col.id);
+                col.setValue(newCol.getValue());
+                if (newCol.getMetaProperty("name") != null)
+                {   // Copy 'name' meta-property (used on Rule axis Expression [condition] columns)
+                    col.setMetaProperty("name", newCol.getMetaProperty("name"));
+                }
             }
             else
             {   // Delete case - existing column id no longer found
@@ -644,20 +650,55 @@ public class Axis
         columns.clear();
         columns.addAll(tempCol);
 
+        // Step 3. Sort columns by value, as that is how they are expected to be stored for binary searches.
+        sortColumns(columns, new Comparator()
+        {
+            public int compare(Object o1, Object o2)
+            {
+                Column c1 = (Column) o1;
+                Column c2 = (Column) o2;
+                if (c1.getValue() == null && c2.getValue() == null)
+                {
+                    return 0;
+                }
+                if (c1.getValue() == null)
+                {
+                    return 1;
+                }
+                if (c2.getValue() == null)
+                {
+                    return -1;
+                }
+
+                return c1.getValue().compareTo(c2.getValue());
+            }
+        });
+
+        int displayOrder = 0;
+        Map<Long, Column> realColumnMap = new LinkedHashMap<>();
+
+        for (Column column : columns)
+        {
+            realColumnMap.put(column.id, column);
+        }
+
+        // Step 4. Add new columns (they exist in the passed in Axis, but not in this Axis) and
+        // set display order to match the columns coming in from the DTO axis (argument).
         for (Column col : newCols.columns)
         {
+            if (col.getValue() == null)
+            {   // Skip Default column
+                continue;
+            }
+            long realId = col.id;
             if (col.id < 0)
             {   // Add case - negative id, add new column to 'columns' List.
-                Column newColumn = newColumnMap.get(col.id);
-                newColumn.id = getNextColId();
-                int where = Collections.binarySearch(columns, newColumn.getValue());
-                if (where < 0)
-                {
-                    where = Math.abs(where + 1);
-                }
-                columns.add(where, newColumn);
-                addScaffolding(newColumn);
+                Column newCol = addColumn(newColumnMap.get(col.id).getValue());
+                realId = newCol.id;
+                realColumnMap.put(realId, newCol);
             }
+            Column realColumn = realColumnMap.get(realId);
+            realColumn.setDisplayOrder(displayOrder++);
         }
 
         // Put default column back if it was already there.

@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.9.6</version>
+  <version>2.9.7</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -85,6 +85,8 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.7
+ * Bug fix: Axis.updateColumns() should not have been processed (it is 'turned' on / off at Axis level).  This caused cells pointing to it to be dropped when the columns were edited.
 * 2.9.6
  * The n-cube API that supports batch column editing (updateColumns()) has been updated to support all the proper parsing and range checking.
  * The HTML n-cube has been updated to include data-axis tags on the columns to support double-click column editing in NCE.

@@ -113,13 +113,6 @@ public class TestJsonFormatter
         formatter.format(ncube);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testWriteGroovyObjectException() throws Exception
-    {
-        JsonFormatter formatter = new JsonFormatter();
-        formatter.writeGroovyObject(new ArrayList());
-    }
-
     @Test
     public void testWriteObjectException() throws Exception
     {

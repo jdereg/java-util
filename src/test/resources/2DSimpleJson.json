@@ -10,12 +10,12 @@
                 "preferredOrder":0,
                 "columns":
                     [
-                        {"value":"EQM"},
-                        {"value":"AGR"},
-                        {"value":"PIM"},
-                        {"value":"SHS"},
-                        {"value":"ALT"},
-                        {"value":"FIDCR"}
+                        {"id":"EQM"},
+                        {"id":"AGR"},
+                        {"id":"PIM"},
+                        {"id":"SHS"},
+                        {"id":"ALT"},
+                        {"id":"FIDCR"}
                     ]
             },
             {
@@ -26,134 +26,134 @@
                 "preferredOrder":1,
                 "columns":
                     [
-                        {"value":"businessDivisionId"},
-                        {"value":"longName"},
-                        {"value":"underwriterLdapGroup"},
-                        {"value":"assignToLdapGroup"},
-                        {"value":"workflowAppCode"}
+                        {"id":"businessDivisionId"},
+                        {"id":"longName"},
+                        {"id":"underwriterLdapGroup"},
+                        {"id":"assignToLdapGroup"},
+                        {"id":"workflowAppCode"}
                     ]
             }
         ],
     "cells":
         [
             {
-                "key":{"businessDivisionCode":"EQM","attribute":"businessDivisionId"},
+                "id":["EQM","businessDivisionId"],
                 "value":"1"
             },
             {
-                "key":{"businessDivisionCode":"AGR","attribute":"businessDivisionId"},
+                "id":["AGR","businessDivisionId"],
                 "value":"2"
             },
             {
-                "key":{"businessDivisionCode":"PIM","attribute":"businessDivisionId"},
+                "id":["PIM","businessDivisionId"],
                 "value":"3"
             },
             {
-                "key":{"businessDivisionCode":"SHS","attribute":"businessDivisionId"},
+                "id":["SHS","businessDivisionId"],
                 "value":"4"
             },
             {
-                "key":{"businessDivisionCode":"ALT","attribute":"businessDivisionId"},
+                "id":["ALT","businessDivisionId"],
                 "value":"5"
             },
             {
-                "key":{"businessDivisionCode":"FIDCR","attribute":"businessDivisionId"},
+                "id":["FIDCR","businessDivisionId"],
                 "value":"7"
             },
             {
-                "key":{"businessDivisionCode":"EQM","attribute":"longName"},
+                "id":["EQM","longName"],
                 "value":"Equine Mortality"
             },
             {
-                "key":{"businessDivisionCode":"AGR","attribute":"longName"},
+                "id":["AGR","longName"],
                 "value":"AgriBusiness"
             },
             {
-                "key":{"businessDivisionCode":"PIM","attribute":"longName"},
+                "id":["PIM","longName"],
                 "value":"Property & Inland Marine"
             },
             {
-                "key":{"businessDivisionCode":"SHS","attribute":"longName"},
+                "id":["SHS","longName"],
                 "value":"Specialty Human Services"
             },
             {
-                "key":{"businessDivisionCode":"ALT","attribute":"longName"},
+                "id":["ALT","longName"],
                 "value":"Alternative Markets"
             },
             {
-                "key":{"businessDivisionCode":"FIDCR","attribute":"longName"},
+                "id":["FIDCR","longName"],
                 "value":"Fidelity/Crime Division"
             },
             {
-                "key":{"businessDivisionCode":"EQM","attribute":"underwriterLdapGroup"},
+                "id":["EQM","underwriterLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"AGR","attribute":"underwriterLdapGroup"},
+                "id":["AGR","underwriterLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"PIM","attribute":"underwriterLdapGroup"},
+                "id":["PIM","underwriterLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"SHS","attribute":"underwriterLdapGroup"},
+                "id":["SHS","underwriterLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"ALT","attribute":"underwriterLdapGroup"},
+                "id":["ALT","underwriterLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"FIDCR","attribute":"underwriterLdapGroup"},
+                "id":["FIDCR","underwriterLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"EQM","attribute":"assignToLdapGroup"},
+                "id":["EQM","assignToLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"AGR","attribute":"assignToLdapGroup"},
+                "id":["AGR","assignToLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"PIM","attribute":"assignToLdapGroup"},
+                "id":["PIM","assignToLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"SHS","attribute":"assignToLdapGroup"},
+                "id":["SHS","assignToLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"ALT","attribute":"assignToLdapGroup"},
+                "id":["ALT","assignToLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"FIDCR","attribute":"assignToLdapGroup"},
+                "id":["FIDCR","assignToLdapGroup"],
                 "value":"Static.Global.WF.PIM.Edit"
             },
             {
-                "key":{"businessDivisionCode":"EQM","attribute":"workflowAppCode"},
+                "id":["EQM","workflowAppCode"],
                 "value":"EQMWRKFLW"
             },
             {
-                "key":{"businessDivisionCode":"AGR","attribute":"workflowAppCode"},
+                "id":["AGR","workflowAppCode"],
                 "value":"AGRIWRKFLW"
             },
             {
-                "key":{"businessDivisionCode":"PIM","attribute":"workflowAppCode"},
+                "id":["PIM","workflowAppCode"],
                 "value":"PIMWRKFLW"
             },
             {
-                "key":{"businessDivisionCode":"SHS","attribute":"workflowAppCode"},
+                "id":["SHS","workflowAppCode"],
                 "value":"SHSWRKFLW"
             },
             {
-                "key":{"businessDivisionCode":"ALT","attribute":"workflowAppCode"},
+                "id":["ALT","workflowAppCode"],
                 "value":"AMWRKFLW"
             },
             {
-                "key":{"businessDivisionCode":"FIDCR","attribute":"workflowAppCode"},
+                "id":["FIDCR","workflowAppCode"],
                 "value":"FCWRKFLW"
             }
         ]

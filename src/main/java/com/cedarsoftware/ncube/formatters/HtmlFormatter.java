@@ -11,7 +11,6 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -23,13 +22,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static java.lang.Math.abs;
 
@@ -54,7 +51,6 @@ import static java.lang.Math.abs;
  */
 public class HtmlFormatter implements NCubeFormatter
 {
-    private static final Pattern SAFE_AXIS_NAME_REGEX = Pattern.compile("[A-Za-z][0-9A-Za-z]*");
     String[] _headers;
 
     public HtmlFormatter(String... headers)
@@ -184,25 +180,31 @@ public class HtmlFormatter implements NCubeFormatter
             s.append(ncube.getName());
             s.append("</th>\n");
             s.append("</tr>\n");
-            Map<String, Long> coord = new LinkedHashMap<>();
 
             for (int i = 0; i < width; i++)
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
-                String colId = makeColumnId(topAxisName, i);
+                boolean isCmd = isColumnInlineExpression(column);
+                String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId);
-                s.append("\" class=\"th-ncube ");
+                s.append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
+                if (isCmd)
+                {
+                    s.append("<pre class=\"ncube-pre\">");
+                }
                 addColumnPrefixText(s, column);
                 s.append(column.isDefault() ? "Default" : column.toString());
-                coord.clear();
-                coord.put(topAxisName, (long) i);
+                if (isCmd)
+                {
+                    s.append("</pre>");
+                }
                 s.append("</th>\n");
-                Set<Long> colIds = new HashSet<>();
+                Set<Long> colIds = new LinkedHashSet<>();
                 colIds.add(column.getId());
-                buildCell(ncube, s, coord, colIds);
+                buildCell(ncube, s, colIds);
                 s.append("</tr>\n");
             }
         }
@@ -260,12 +262,21 @@ public class HtmlFormatter implements NCubeFormatter
 
             for (Column column : topColumns)
             {
-                String colId = makeColumnId(topAxisName, column.getDisplayOrder());
-                s.append(" <th data-id=\"").append(colId).append("\" class=\"th-ncube-top ");
+                boolean isCmd = isColumnInlineExpression(column);
+                String colId = String.valueOf(column.getId());
+                s.append(" <th data-id=\"").append(colId).append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube-top ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
+                if (isCmd)
+                {
+                    s.append("<pre class=\"ncube-pre\">");
+                }
                 addColumnPrefixText(s, column);
                 s.append(column.toString());
+                if (isCmd)
+                {
+                    s.append("</pre>");
+                }
                 s.append("</th>\n");
             }
 
@@ -299,26 +310,35 @@ public class HtmlFormatter implements NCubeFormatter
                         colIds.put(axisName, column.getId());
                         long span = rowspan.get(axisName);
 
-                        String columnId = makeColumnId(axisName, colIdx);
+                        String columnId = String.valueOf(column.getId());
                         String colCssClass = getColumnCssClass(axis, column);
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"").append(columnId).append("\" class=\"th-ncube ");
+                            s.append(" <th data-id=\"").append(columnId).append("\" data-axis=\"").append(axisName).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
-                            s.append("\">");
                         }
                         else
                         {   // Need to show rowspan attribute
                             // Use column's ID as TH element's ID
-                            s.append(" <th data-id=\"").append(columnId).append("\" class=\"th-ncube ");
+                            s.append(" <th data-id=\"").append(columnId).append("\" data-axis=\"").append(axisName).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
                             s.append("\" rowspan=\"");
                             s.append(span);
-                            s.append("\">");
+                        }
+                        s.append("\">");
+                        boolean isCmd = isColumnInlineExpression(column);
+
+                        if (isCmd)
+                        {
+                            s.append("<pre class=\"ncube-pre\">");
                         }
                         addColumnPrefixText(s, column);
                         s.append(column.toString());
+                        if (isCmd)
+                        {
+                            s.append("</pre>");
+                        }
                         s.append("</th>\n");
 
                         // Increment column counter
@@ -345,7 +365,7 @@ public class HtmlFormatter implements NCubeFormatter
                     colIds.put(topAxisName, column.getId());
                     coord.put(topAxisName, (long)i);
                     // Other coordinate values are set above this for-loop
-                    buildCell(ncube, s, coord, new HashSet<>(colIds.values()));
+                    buildCell(ncube, s, new LinkedHashSet<>(colIds.values()));
                 }
 
                 s.append("</tr>\n");
@@ -400,6 +420,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".td-ncube:hover { background: #E0F0FF }\n" +
                 ".th-ncube:hover { background: #A2A2A2 }\n" +
+                ".th-ncube-top:hover { background: #A2A2A2 }\n" +
                 ".ncube-num\n" +
                 "{\n" +
                 "text-align: right;\n" +
@@ -418,10 +439,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".column-code\n" +
                 "{\n" +
-                "color: white;\n" +
-                "text-align: left;\n" +
                 "vertical-align: top;\n" +
-                "font-family: \"Courier New\", Courier, monospace\n" +
                 "}\n" +
                 ".column-url\n" +
                 "{\n" +
@@ -445,11 +463,13 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".cell-code\n" +
                 "{\n" +
-                "color: Lime;\n" +
                 "background: slategray;\n" +
                 "text-align: left;\n" +
-                "vertical-align: top;\n" +
-                "font-family: \"Courier New\", Courier, monospace\n" +
+                "}\n" +
+                ".ncube-pre\n" +
+                "{\n" +
+                "padding: 2px;" +
+                "margin: 2px" +
                 "}\n" +
                 " </style>\n" +
                 "</head>\n" +
@@ -503,14 +523,14 @@ public class HtmlFormatter implements NCubeFormatter
         return "column";
     }
 
-    private static void buildCell(NCube ncube, StringBuilder s, Map<String, Long> coord, Set<Long> coord2)
+    private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
     {
         String id = makeCellId(coord);
         s.append(" <td data-id=\"").append(id).append("\" class=\"td-ncube ");
 
-        if (ncube.containsCellById(coord2))
+        if (ncube.containsCellById(coord))
         {
-            Object cell = ncube.getCellByIdNoExecute(coord2);
+            Object cell = ncube.getCellByIdNoExecute(coord);
             if (cell instanceof CommandCell)
             {
                 CommandCell cmd = (CommandCell) cell;
@@ -521,8 +541,9 @@ public class HtmlFormatter implements NCubeFormatter
                 }
                 else if (cmd instanceof GroovyBase)
                 {
-                    s.append("cell cell-code\">");
+                    s.append("cell cell-code\"><pre class=\"ncube-pre\">");
                     s.append(getCellValueAsString(cell));
+                    s.append("</pre>");
                 }
                 else
                 {
@@ -626,14 +647,13 @@ public class HtmlFormatter implements NCubeFormatter
         }
     }
 
-    private static String makeCellId(Map<String, Long> map)
+    private static String makeCellId(Set<Long> colIds)
     {
         StringBuilder s = new StringBuilder();
-        Iterator<Map.Entry<String, Long>> i = map.entrySet().iterator();
+        Iterator<Long> i = colIds.iterator();
         while (i.hasNext())
         {
-            Map.Entry<String, Long> entry = i.next();
-            s.append(makeColumnId(entry.getKey(), entry.getValue()));
+            s.append(i.next());
             if (i.hasNext())
             {
                 s.append('_');
@@ -643,24 +663,8 @@ public class HtmlFormatter implements NCubeFormatter
         return s.toString();
     }
 
-    private static String makeColumnId(String axisName, long pos)
+    private static boolean isColumnInlineExpression(Column column)
     {
-        StringBuilder builder = new StringBuilder();
-        if (isSafeAxisName(axisName))
-        {
-            builder.append(axisName);
-        }
-        else
-        {
-            builder.append(EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(axisName, "UTF-8")));
-        }
-        builder.append('-');
-        builder.append(pos);
-        return builder.toString();
-    }
-
-    public static boolean isSafeAxisName(String axisName)
-    {
-        return SAFE_AXIS_NAME_REGEX.matcher(axisName).matches();
+        return column.getValue() instanceof CommandCell && StringUtilities.isEmpty(((CommandCell)column.getValue()).getUrl());
     }
 }

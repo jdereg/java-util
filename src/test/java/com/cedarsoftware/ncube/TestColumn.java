@@ -15,7 +15,7 @@ public class TestColumn
 {
     @Test
     public void testSetValue() {
-        Column c = new Column(5, true);
+        Column c = new Column(0, 5);
         assertEquals(0, c.getValue());
         c.setValue(5);
         assertEquals(5, c.getValue());
@@ -23,7 +23,7 @@ public class TestColumn
 
     @Test
     public void testMetaProperties() {
-        Column c = new Column(5, true);
+        Column c = new Column(true, 5);
         assertNull(c.getMetaProperties().get("foo"));
 
         c.clearMetaProperties();

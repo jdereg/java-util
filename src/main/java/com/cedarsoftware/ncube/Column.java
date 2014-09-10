@@ -2,8 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.proximity.Distance;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.SafeSimpleDateFormat;
-import com.cedarsoftware.util.UniqueIdGenerator;
 
 import java.util.Collections;
 import java.util.Map;
@@ -42,22 +40,12 @@ public class Column implements Comparable<Comparable>
 	private int displayOrder;
 	private Comparable value;
     Map<String, Object> metaProps = null;
-    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     public static final String NAME = "name";
 
-    /**
-     * 2nd argument is there to prevent this constructor from matching constructor that takes only Comparable.
-     */
-    Column(long id, boolean notUsed)
-    {
-        value = 0;
-        this.id = id;
-    }
-
-	public Column(Comparable value)
+	public Column(Comparable value, long id)
 	{
 		this.value = value;
-		id = UniqueIdGenerator.getUniqueId();
+		this.id = id;
 	}
 
     /**
@@ -67,6 +55,19 @@ public class Column implements Comparable<Comparable>
     {
         Map ret = metaProps == null ? new CaseInsensitiveMap() : metaProps;
         return Collections.unmodifiableMap(ret);
+    }
+
+    /**
+     * Fetch the value associated to the passed in Key from the MetaProperties (if any exist).  If
+     * none exist, null is returned.
+     */
+    public Object getMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.get(key);
     }
 
     /**
@@ -82,6 +83,18 @@ public class Column implements Comparable<Comparable>
             metaProps = new CaseInsensitiveMap<>();
         }
         return metaProps.put(key, metaPropValue);
+    }
+
+    /**
+     * Remove a meta-property entry
+     */
+    public Object removeMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.remove(key);
     }
 
     /**

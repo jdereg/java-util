@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,13 +56,14 @@ public class Axis
 	public static final int SORTED = 0;
 	public static final int DISPLAY = 1;
 	final long id;
+    long colIdBase = 0;
 	private String name;
 	private final AxisType type;
 	private final AxisValueType valueType;
     final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
-    private static final Pattern rangePattern = Pattern.compile("\\[\\s*([^,]+)\\s*[,]\\s*([^]]+)\\s*[]|)]");
+    private static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
     Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
@@ -81,10 +83,17 @@ public class Axis
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
 	{
-		this.name = name;
-		this.type = type;
+        // TODO: Do something other than using UniqueIdGenerator
+        this(name, type, valueType, hasDefault, order, UniqueIdGenerator.getUniqueId());
+	}
+
+    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long id)
+    {
+        this.id = id;
+        this.name = name;
+        this.type = type;
         this.preferredOrder = order;
-		this.valueType = valueType;
+        this.valueType = valueType;
         if (type == AxisType.RULE)
         {
             if (order == SORTED)
@@ -102,13 +111,17 @@ public class Axis
             {
                 throw new IllegalArgumentException("NEAREST type axis '" + name + "' cannot have a default column");
             }
-            defaultCol = new Column(null);
+            defaultCol = new Column(null, getNextColId());
             defaultCol.setDisplayOrder(Integer.MAX_VALUE);  // Always at the end
             columns.add(defaultCol);
             idToCol.put(defaultCol.id, defaultCol);
         }
-        id = UniqueIdGenerator.getUniqueId();
-	}
+    }
+
+    long getNextColId()
+    {
+        return id * 1000000000000L + (++colIdBase);
+    }
 
     /**
      * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
@@ -132,6 +145,31 @@ public class Axis
             metaProps = new CaseInsensitiveMap<>();
         }
         return metaProps.put(key, value);
+    }
+
+    /**
+     * Fetch the value associated to the passed in Key from the MetaProperties (if any exist).  If
+     * none exist, null is returned.
+     */
+    public Object getMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.get(key);
+    }
+
+    /**
+     * Remove a meta-property entry
+     */
+    public Object removeMetaProperty(String key)
+    {
+        if (metaProps == null)
+        {
+            return null;
+        }
+        return metaProps.remove(key);
     }
 
     /**
@@ -308,6 +346,45 @@ public class Axis
         Comparable v;
         if (value == null)
         {  // Attempting to add Default column to axis
+            v = null;
+        }
+        else
+        {
+            if (type == AxisType.DISCRETE)
+            {
+                v = standardizeColumnValue(value);
+            }
+            else if (type == AxisType.RANGE)
+            {
+                v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
+            }
+            else if (type == AxisType.SET)
+            {
+                v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
+            }
+            else if (type == AxisType.RULE)
+            {
+                v = value instanceof String ? convertStringToColumnValue((String) value) : value;
+            }
+            else if (type == AxisType.NEAREST)
+            {
+                v = standardizeColumnValue(value);
+            }
+            else
+            {
+                throw new IllegalStateException("New axis type added without complete support.");
+            }
+        }
+        return new Column(v, getNextColId());
+    }
+
+    /**
+     * Will throw IllegalArgumentException if passed in value duplicates a value on this axis.
+     */
+    void ensureUnique(Comparable value)
+    {
+        if (value == null)
+        {  // Attempting to add Default column to axis
             if (hasDefaultColumn())
             {
                 throw new IllegalArgumentException("Cannot add default column to axis '" + name + "' because it already has a default column.");
@@ -316,18 +393,16 @@ public class Axis
             {
                 throw new IllegalArgumentException("Cannot add default column to NEAREST axis '" + name + "' as it would never be chosen.");
             }
-            v = null;
         }
         else
         {
-            v = standardizeColumnValue(value);
             if (type == AxisType.DISCRETE)
             {
-                doesMatchExistingValue(v);
+                doesMatchExistingValue(value);
             }
             else if (type == AxisType.RANGE)
             {
-                Range range = (Range)v;
+                Range range = (Range)value;
                 if (doesOverlap(range))
                 {
                     throw new AxisOverlapException("Passed in Range overlaps existing Range on axis '" + name + "'");
@@ -335,7 +410,7 @@ public class Axis
             }
             else if (type == AxisType.SET)
             {
-                RangeSet set = (RangeSet)v;
+                RangeSet set = (RangeSet)value;
                 if (doesOverlap(set))
                 {
                     throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis '" + name + "'");
@@ -350,19 +425,19 @@ public class Axis
             }
             else if (type == AxisType.NEAREST)
             {
-                doesMatchNearestValue(v);
+                doesMatchNearestValue(value);
             }
             else
             {
                 throw new IllegalStateException("New axis type added without complete support.");
             }
         }
-        return new Column(v);
     }
 
 	public Column addColumn(Comparable value)
 	{
         Column column = createColumnFromValue(value);
+        ensureUnique(column.getValue());
 
         if (column.getValue() == null)
         {
@@ -502,6 +577,7 @@ public class Axis
         Column col = idToCol.get(colId);
         deleteColumnById(colId);
         Column newCol = createColumnFromValue(value);
+        ensureUnique(newCol.getValue());
         newCol.setId(colId);
         newCol.setDisplayOrder(col.getDisplayOrder());
 
@@ -534,42 +610,96 @@ public class Axis
     public Set<Long> updateColumns(final Axis newCols)
     {
         Set<Long> colsToDelete = new HashSet<>();
-        newCols.buildScaffolding();
+        Map<Long, Column> newColumnMap = new LinkedHashMap<>();
 
-        for (Column col : columns)
+        // Step 1. Map all columns coming in from "DTO" Axis by ID
+        for (Column col : newCols.columns)
         {
-            if (!newCols.idToCol.containsKey(col.id))
-            {
+            Column newColumn = createColumnFromValue(col.getValue());
+            newColumnMap.put(col.id, newColumn);
+        }
+
+        // Step 2.  Build list of columns that no longer exist (add to deleted list)
+        // and update existing columns that match by ID columns from the passed in DTO.
+        List<Column> tempCol = new ArrayList<>(columns);
+        Iterator<Column> i = tempCol.iterator();
+
+        while (i.hasNext())
+        {
+            Column col = i.next();
+            if (col.getValue() == null)
+            {   // Don't add default column to columns to delete (that is done through toggle hasDefault in NCE)
+                continue;
+            }
+            if (newColumnMap.containsKey(col.id))
+            {   // Update case - matches existing column
+                Column newCol = newColumnMap.get(col.id);
+                col.setValue(newCol.getValue());
+                if (newCol.getMetaProperty("name") != null)
+                {   // Copy 'name' meta-property (used on Rule axis Expression [condition] columns)
+                    col.setMetaProperty("name", newCol.getMetaProperty("name"));
+                }
+            }
+            else
+            {   // Delete case - existing column id no longer found
                 colsToDelete.add(col.id);
+                i.remove();
             }
         }
 
         columns.clear();
-        int order = 1;
+        columns.addAll(tempCol);
 
-        for (Column column : newCols.columns)
+        // Step 3. Sort columns by value, as that is how they are expected to be stored for binary searches.
+        sortColumns(columns, new Comparator()
         {
-            if (!column.isDefault())
+            public int compare(Object o1, Object o2)
             {
-                column.setDisplayOrder(order++);
-                if (column.getId() < 0)
-                {   // Create new ID for new column
-                    column.setId(UniqueIdGenerator.getUniqueId());
+                Column c1 = (Column) o1;
+                Column c2 = (Column) o2;
+                if (c1.getValue() == null && c2.getValue() == null)
+                {
+                    return 0;
                 }
-                columns.add(column);
-            }
-        }
+                if (c1.getValue() == null)
+                {
+                    return 1;
+                }
+                if (c2.getValue() == null)
+                {
+                    return -1;
+                }
 
-        // Columns must be stored sorted for fast retrieval, regardless of whether the
-        // preferred order is SORTED or DISPLAY.  Display order was already marked above,
-        // from newCols.
-        sortColumns(columns, new Comparator<Column>()
-        {
-            public int compare(Column c1, Column c2)
-            {
-                return c1.compareTo(c2);
+                return c1.getValue().compareTo(c2.getValue());
             }
         });
+
+        int displayOrder = 0;
+        Map<Long, Column> realColumnMap = new LinkedHashMap<>();
+
+        for (Column column : columns)
+        {
+            realColumnMap.put(column.id, column);
+        }
+
+        // Step 4. Add new columns (they exist in the passed in Axis, but not in this Axis) and
+        // set display order to match the columns coming in from the DTO axis (argument).
+        for (Column col : newCols.columns)
+        {
+            if (col.getValue() == null)
+            {   // Skip Default column
+                continue;
+            }
+            long realId = col.id;
+            if (col.id < 0)
+            {   // Add case - negative id, add new column to 'columns' List.
+                Column newCol = addColumn(newColumnMap.get(col.id).getValue());
+                realId = newCol.id;
+                realColumnMap.put(realId, newCol);
+            }
+            Column realColumn = realColumnMap.get(realId);
+            realColumn.setDisplayOrder(displayOrder++);
+        }
 
         // Put default column back if it was already there.
         if (hasDefaultColumn())
@@ -577,6 +707,7 @@ public class Axis
             columns.add(defaultCol);
         }
 
+        // index
         buildScaffolding();
         return colsToDelete;
     }
@@ -626,6 +757,7 @@ public class Axis
                 }
 
             case SET:
+                value = "[" + value + "]";
                 try
                 {
                     Object[] array = (Object[])JsonReader.jsonToJava(value);
@@ -725,7 +857,7 @@ public class Axis
 		{	
 			throw new IllegalArgumentException("'null' cannot be used as an axis value, axis: " + name);
 		}
-		
+
 		if (type == AxisType.DISCRETE)
 		{
 			return promoteValue(value);
@@ -813,6 +945,24 @@ public class Axis
 	}
 
     /**
+     * Convert passed in value to a similar value of the highest type.  Axis
+     * values and inputs are always promoted before being stored or compared.
+     * @param value Comparable to promote
+     * @return promoted value, or the same value if no promotion occurs.
+     */
+    Comparable promoteValue(Comparable value)
+    {
+        try
+        {
+            return promoteValue(valueType, value);
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Error promoting value for Axis: " + name, e);
+        }
+    }
+
+    /**
      * Convert passed in value to a similar value of the highest type.  If the
      * valueType is not the same basic type as the value passed in, intelligent
      * conversions will happen, and the result will be of the requested type.
@@ -869,30 +1019,16 @@ public class Axis
         }
     }
 
-	/**
-	 * Convert passed in value to a similar value of the highest type.  Axis
-	 * values and inputs are always promoted before being stored or compared.
-	 * @param value Comparable to promote
-	 * @return promoted value, or the same value if no promotion occurs.
-	 */
-	Comparable promoteValue(Comparable value)
-	{
-        try
-        {
-            return promoteValue(valueType, value);
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Error promoting value for Axis: " + name, e);
-        }
-    }
-
 	static String getString(Comparable value)
 	{
 		if (value instanceof String)
 		{
 			return (String) value;
 		}
+        else if (value instanceof BigDecimal)
+        {
+            return ((BigDecimal) value).stripTrailingZeros().toPlainString();
+        }
         else if (value instanceof Number)
         {
             return value.toString();
@@ -1199,13 +1335,13 @@ public class Axis
         return savePos;
     }
 
-    private int findRuleByName(final String name)
+    private int findRuleByName(final String ruleName)
     {
         int pos = 0;
 
         for (Column column : getColumnsWithoutDefault())
         {
-            if (name.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
+            if (ruleName.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
             {
                 return pos;
             }
@@ -1290,6 +1426,10 @@ public class Axis
 
     public List<Column> getColumnsWithoutDefault()
     {
+        if (columns.size() == 0)
+        {
+            return columns;
+        }
         if (hasDefaultColumn())
         {
             if (columns.size() == 1)

@@ -185,13 +185,22 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
+                boolean isCmd = column.getValue() instanceof CommandCell;
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId);
                 s.append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
+                if (isCmd)
+                {
+                    s.append("<pre class=\"ncube-pre\">");
+                }
                 addColumnPrefixText(s, column);
                 s.append(column.isDefault() ? "Default" : column.toString());
+                if (isCmd)
+                {
+                    s.append("</pre>");
+                }
                 s.append("</th>\n");
                 Set<Long> colIds = new LinkedHashSet<>();
                 colIds.add(column.getId());
@@ -253,12 +262,21 @@ public class HtmlFormatter implements NCubeFormatter
 
             for (Column column : topColumns)
             {
+                boolean isCmd = column.getValue() instanceof CommandCell;
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId).append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube-top ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
+                if (isCmd)
+                {
+                    s.append("<pre class=\"ncube-pre\">");
+                }
                 addColumnPrefixText(s, column);
                 s.append(column.toString());
+                if (isCmd)
+                {
+                    s.append("</pre>");
+                }
                 s.append("</th>\n");
             }
 
@@ -299,7 +317,6 @@ public class HtmlFormatter implements NCubeFormatter
                             // Use column's ID as TH element's ID
                             s.append(" <th data-id=\"").append(columnId).append("\" data-axis=\"").append(axisName).append("\" class=\"th-ncube ");
                             s.append(colCssClass);
-                            s.append("\">");
                         }
                         else
                         {   // Need to show rowspan attribute
@@ -308,10 +325,19 @@ public class HtmlFormatter implements NCubeFormatter
                             s.append(colCssClass);
                             s.append("\" rowspan=\"");
                             s.append(span);
-                            s.append("\">");
+                        }
+                        s.append("\">");
+                        boolean isCmd = column.getValue() instanceof CommandCell;
+                        if (isCmd)
+                        {
+                            s.append("<pre class=\"ncube-pre\">");
                         }
                         addColumnPrefixText(s, column);
                         s.append(column.toString());
+                        if (isCmd)
+                        {
+                            s.append("</pre>");
+                        }
                         s.append("</th>\n");
 
                         // Increment column counter
@@ -412,10 +438,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".column-code\n" +
                 "{\n" +
-                "color: white;\n" +
-                "text-align: left;\n" +
                 "vertical-align: top;\n" +
-                "font-family: \"Courier New\", Courier, monospace\n" +
                 "}\n" +
                 ".column-url\n" +
                 "{\n" +
@@ -439,11 +462,13 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".cell-code\n" +
                 "{\n" +
-                "color: Lime;\n" +
                 "background: slategray;\n" +
                 "text-align: left;\n" +
-                "vertical-align: top;\n" +
-                "font-family: \"Courier New\", Courier, monospace\n" +
+                "}\n" +
+                ".ncube-pre\n" +
+                "{\n" +
+                "padding: 2px;" +
+                "margin: 2px" +
                 "}\n" +
                 " </style>\n" +
                 "</head>\n" +
@@ -480,18 +505,18 @@ public class HtmlFormatter implements NCubeFormatter
     {
         if (axis.getType() == AxisType.RULE)
         {
-            return "column column-code";
+            return "column column-code ncube-pre";
         }
         if (col.getValue() instanceof CommandCell)
         {
             CommandCell cmd = (CommandCell) col.getValue();
             if (StringUtilities.hasContent(cmd.getUrl()))
             {
-                return "column column-url";
+                return "column column-url ncube-pre";
             }
             else if (cmd instanceof GroovyBase)
             {
-                return "column column-code";
+                return "column column-code ncube-pre";
             }
         }
         return "column";
@@ -515,8 +540,9 @@ public class HtmlFormatter implements NCubeFormatter
                 }
                 else if (cmd instanceof GroovyBase)
                 {
-                    s.append("cell cell-code\">");
+                    s.append("cell cell-code\"><pre class=\"ncube-pre\">");
                     s.append(getCellValueAsString(cell));
+                    s.append("</pre>");
                 }
                 else
                 {

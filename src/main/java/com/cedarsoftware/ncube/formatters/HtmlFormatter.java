@@ -457,19 +457,22 @@ public class HtmlFormatter implements NCubeFormatter
                 ".cell-url\n" +
                 "{\n" +
                 "color: white;\n" +
-                "background: slategray;\n" +
+                "background: cornsilk;\n" +
                 "text-align: left;\n" +
                 "vertical-align: top\n" +
                 "}\n" +
                 ".cell-code\n" +
                 "{\n" +
-                "background: slategray;\n" +
+                "background: cornsilk;\n" +
                 "text-align: left;\n" +
+                "vertical-align: top\n" +
                 "}\n" +
                 ".ncube-pre\n" +
                 "{\n" +
                 "padding: 2px;" +
-                "margin: 2px" +
+                "margin: 2px;" +
+                "word-break: normal;" +
+                "word-wrap: normal" +
                 "}\n" +
                 " </style>\n" +
                 "</head>\n" +

@@ -463,17 +463,22 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".cell-code\n" +
                 "{\n" +
-                "background: cornsilk;\n" +
+                "background: white;\n" +
                 "text-align: left;\n" +
                 "vertical-align: top\n" +
                 "}\n" +
                 ".ncube-pre\n" +
                 "{\n" +
-                "padding: 2px;" +
-                "margin: 2px;" +
-                "word-break: normal;" +
-                "word-wrap: normal" +
+                "padding: 2px;\n" +
+                "margin: 2px;\n" +
+                "word-break: normal;\n" +
+                "word-wrap: normal;\n" +
+                "border: 0;\n" +
+                "border-radius: 0;\n" +
+                "background: white;\n" +
+                "color: mediumblue" +
                 "}\n" +
+                ".ncube-pre:hover { background: #E0F0FF }\n" +
                 " </style>\n" +
                 "</head>\n" +
                 "<body>\n" +

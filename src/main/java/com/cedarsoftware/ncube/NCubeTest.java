@@ -9,15 +9,16 @@ import java.util.Map;
 public class NCubeTest
 {
     private String name;
-    private Map<String, Map<String, Object>> coordDescription;
-    private Map<String, Object> expectedResultDescription;
+    private Map<String, CellInfo> coord;
+    private Map<String, CellInfo> expected;
 
-    public NCubeTest(String name, Map<String, Map<String, Object>> coordDescription, Map<String, Object> expectedResultDescription) {
+    public NCubeTest(String name, Map<String, CellInfo> coord, Map<String, CellInfo> expected) {
         this.name = name;
-        this.coordDescription = coordDescription;
-        this.expectedResultDescription = expectedResultDescription;
+        this.coord = coord;
+        this.expected = expected;
     }
 
+    /*
     private Map<String, Object> buildCoordinate(Map<String, Map<String, Object>> descritpion) {
         Map<String, Object> coordinate = new LinkedHashMap<>();
         for (Map.Entry<String, Map<String, Object>> item : coordDescription.entrySet()) {
@@ -26,30 +27,38 @@ public class NCubeTest
         return coordinate;
     }
 
-    private Object buildExpectedResult(Map<String, Object> description) {
-        return parseValue(description);
-    }
+    */
 
     public String getName() {
         return name;
     }
 
-    public Map<String, Map<String, Object>> getCoordDescription() {
-        return coordDescription;
+    public Map<String, CellInfo> getCoord() {
+        return this.coord;
     }
 
-    public Map<String, Object> getExpectedResultDescription() {
-        return expectedResultDescription;
+    public Map<String, Object> createCoord() {
+        Map<String, Object> actuals = new LinkedHashMap<>();
+        for (Map.Entry<String, CellInfo> item : this.coord.entrySet()) {
+            actuals.put(item.getKey(), item.getValue().recreate());
+        }
+        return actuals;
     }
 
-    public Object getExpectedResult() {
-        return buildExpectedResult(this.expectedResultDescription);
+    public Map<String, CellInfo> getExpected() {
+        return this.expected;
     }
 
-    public Map<String, Object> getCoordinate() {
-        return  buildCoordinate(this.coordDescription);
+    public Map<String, Object> createExpected() {
+        Map<String, Object> actuals = new LinkedHashMap<>();
+        for (Map.Entry<String, CellInfo> item : this.expected.entrySet()) {
+            actuals.put(item.getKey(), item.getValue().recreate());
+        }
+        return actuals;
     }
 
+
+    /*
     public Object parseValue(Map<String, Object> map) {
         if (map == null) {
             return null;
@@ -60,4 +69,5 @@ public class NCubeTest
 
         return CellInfo.parseJsonValue(value, url, type, false);
     }
+    */
 }

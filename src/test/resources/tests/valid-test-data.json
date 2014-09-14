@@ -1,6 +1,0 @@
-[
-    {"name" : "test1", "coord" : {"coord1" : {"value": "value1"}, "coord2" :{"value":9}}, "expectedResult" : {"type":"string", "value":"foo"}},
-    {"name" : "test2", "coord" : {"coord1" : {"value": true},     "coord2" :{"value":5.9}}, "expectedResult" : {"type":"exp", "value" : "['foo', 'bar', 'baz']" }},
-    {"name" : "test3", "coord" : {"coord1" : {"type" : "float", "value": true}, "coord2" :{"type" : "int", "value": 6}}, "expectedResult" : {"type":"exp", "value" : "['foo':'bar', 'style':'black']" }}
-
-]

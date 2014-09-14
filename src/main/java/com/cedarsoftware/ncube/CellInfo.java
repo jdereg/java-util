@@ -46,6 +46,13 @@ public class CellInfo
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
 
+    public CellInfo(String type, String value, String isUrl, String isCached) {
+        this.dataType = type;
+        this.value = value;
+        this.isUrl = Boolean.valueOf(isUrl);
+        this.isCached = Boolean.valueOf(isCached);
+    }
+
     public CellInfo(Object cell)
     {
         isUrl = false;
@@ -217,6 +224,57 @@ public class CellInfo
         }
     }
 
+    public Object recreate() {
+        switch (this.dataType) {
+            case "string":
+                return isUrl ? new StringUrlCmd(this.value, isCached) : this.value;
+
+            case "date":
+                return DateUtilities.parseDate(this.value);
+
+            case "boolean":
+                return Boolean.valueOf(this.value);
+
+            case "byte":
+                return Byte.valueOf(this.value);
+
+            case "short":
+                return Short.valueOf(this.value);
+
+            case "int":
+                return Integer.valueOf(this.value);
+
+            case "long":
+                return Long.valueOf(this.value);
+
+            case "float":
+                return Float.valueOf(this.value);
+
+            case "double":
+                return Double.valueOf(this.value);
+
+            case "bigdec":
+                return new BigDecimal(this.value);
+
+            case "bigint":
+                return new BigInteger(this.value);
+
+            case "binary":
+                return new BinaryUrlCmd(this.value, isCached);
+
+            case "exp":
+                return new GroovyExpression(isUrl ? null : value, isUrl ? value : null);
+
+            case "method":
+                return new GroovyMethod(isUrl ? null : value, isUrl ? value : null);
+
+            case "template":
+                return new GroovyTemplate(isUrl ? null : value, isUrl ? value : null, isCached);
+
+            default:
+                return new IllegalArgumentException("Invalid Cell Type Passed in:  " + this.dataType);
+        }
+    }
     /**
      * Collapse: byte, short, int ==> long
      * Collapse: float ==> double
@@ -224,15 +282,15 @@ public class CellInfo
      */
     public void collapseToUiSupportedTypes()
     {
-        if (CellTypes.Byte.desc().equals(dataType) || CellTypes.Short.desc().equals(dataType) || CellTypes.Integer.desc().equals(dataType))
+        if (CellTypes.Byte.equals(dataType) || CellTypes.Short.equals(dataType) || CellTypes.Integer.equals(dataType))
         {
             dataType = CellTypes.Long.desc();
         }
-        else if (CellTypes.Float.desc().equals(dataType))
+        else if (CellTypes.Float.equals(dataType))
         {
             dataType = CellTypes.Double.desc();
         }
-        else if (CellTypes.BigInteger.desc().equals(dataType))
+        else if (CellTypes.BigInteger.equals(dataType))
         {
             dataType = CellTypes.BigDecimal.desc();
         }

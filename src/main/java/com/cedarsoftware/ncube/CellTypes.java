@@ -60,6 +60,73 @@ public enum CellTypes
         return desc;
     }
 
+    public static CellTypes getTypeFromString(String type)
+    {
+        if (type == null) {
+            return CellTypes.String;
+        }
+
+        switch (type)
+        {
+            case "string":
+                return CellTypes.String;
+
+            case "date":
+                return CellTypes.Date;
+
+            case "boolean":
+                return CellTypes.Boolean;
+
+            case "byte":
+                return CellTypes.Byte;
+
+            case "short":
+                return CellTypes.Short;
+
+            case "int":
+                return CellTypes.Integer;
+
+            case "long":
+                return CellTypes.Long;
+
+            case "float":
+                return CellTypes.Float;
+
+            case "double":
+                return CellTypes.Double;
+
+            case "bigdec":
+                return CellTypes.BigDecimal;
+
+            case "bigint":
+                return CellTypes.BigInteger;
+
+            case "binary":
+                return CellTypes.Binary;
+
+            case "exp":
+                return CellTypes.Exp;
+
+            case "method":
+                return CellTypes.Method;
+
+            case "template":
+                return CellTypes.Template;
+
+            case "latlon":
+                return CellTypes.LatLon;
+
+            case "point2d":
+                return CellTypes.Point2D;
+
+            case "point3d":
+                return CellTypes.Point3D;
+
+            default:
+                throw new IllegalArgumentException("Invalid Type:  " + type);
+        }
+    }
+
     public static String getType(Object cell, String section)
     {
         if (cell == null) {

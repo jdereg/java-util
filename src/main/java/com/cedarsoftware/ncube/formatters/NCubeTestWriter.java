@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.NCubeTest;
 
 import java.io.IOException;
@@ -34,37 +35,48 @@ public class NCubeTestWriter extends JsonFormatter
     public void writeDto(NCubeTest dto) throws IOException {
         startObject();
         writeAttribute("name", dto.getName(), true);
-        writeCoordinate(dto.getCoordDescription());
+        writeDescriptions("coord", dto.getCoord());
         comma();
-        writeDescription("expectedResult", dto.getExpectedResultDescription());
+        writeDescriptions("expected", dto.getExpected());
         endObject();
     }
 
 
-    private void writeDescription(String attr, Map<String, Object> map) throws IOException
+    private void writeDescription(String attr, CellInfo info) throws IOException
     {
         builder.append(String.format(quotedStringFormat, attr));
         builder.append(':');
 
         startObject();
-        for (Map.Entry<String, Object> item : map.entrySet()) {
-            writeValue(item.getKey(), item.getValue());
+        writeValue("type", info.dataType);
+        comma();
+        writeValue("value", info.value);
+
+        if (info.isUrl)
+        {
             comma();
+            writeValue("isUrl", Boolean.valueOf(info.isUrl));
         }
-        uncomma();
+
+        if (info.isCached)
+        {
+            comma();
+            writeValue("isCached", Boolean.valueOf(info.isCached));
+        }
+
         endObject();
     }
 
-    public void writeCoordinate(Map<String, Map<String, Object>> coord) throws IOException
+    public void writeDescriptions(String name, Map<String, CellInfo> descriptions) throws IOException
     {
-        builder.append(String.format(quotedStringFormat, "coord"));
+        builder.append(String.format(quotedStringFormat, name));
         builder.append(':');
 
         startObject();
 
-        if (coord != null)
+        if (descriptions != null)
         {
-            for (Map.Entry<String, Map<String, Object>> entry : coord.entrySet())
+            for (Map.Entry<String, CellInfo> entry : descriptions.entrySet())
             {
                 writeDescription(entry.getKey(), entry.getValue());
                 comma();

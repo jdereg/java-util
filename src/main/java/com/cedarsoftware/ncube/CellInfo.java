@@ -39,12 +39,19 @@ import java.util.regex.Pattern;
 public class CellInfo
 {
     public String value;
-    public String dataType;
+    public CellTypes dataType;
     public boolean isUrl;
     public boolean isCached;
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd");
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
+
+    public CellInfo(String type, String value, String isUrl, String isCached) {
+        this.dataType = CellTypes.getTypeFromString(type);
+        this.value = value;
+        this.isUrl = Boolean.valueOf(isUrl);
+        this.isCached = Boolean.valueOf(isCached);
+    }
 
     public CellInfo(Object cell)
     {
@@ -61,91 +68,91 @@ public class CellInfo
         if (cell instanceof String)
         {
             value = (String) cell;
-            dataType = CellTypes.String.desc();
+            dataType = CellTypes.String;
         }
         else if (cell instanceof Long)
         {
             value = cell.toString();
-            dataType = CellTypes.Long.desc();
+            dataType = CellTypes.Long;
         }
         else if (cell instanceof Boolean)
         {
             value = cell.toString();
-            dataType = CellTypes.Boolean.desc();
+            dataType = CellTypes.Boolean;
         }
         else if (cell instanceof GroovyExpression)
         {
             GroovyExpression exp = (GroovyExpression) cell;
             isUrl = StringUtilities.hasContent(exp.getUrl());
             value = isUrl ? exp.getUrl() : exp.getCmd();
-            dataType = CellTypes.Exp.desc();
+            dataType = CellTypes.Exp;
             isCached = true;
         }
         else if (cell instanceof Byte)
         {
             value = cell.toString();
-            dataType = CellTypes.Byte.desc();
+            dataType = CellTypes.Byte;
         }
         else if (cell instanceof Short)
         {
             value = cell.toString();
-            dataType = CellTypes.Short.desc();
+            dataType = CellTypes.Short;
         }
         else if (cell instanceof Integer)
         {
             value = cell.toString();
-            dataType = CellTypes.Integer.desc();
+            dataType = CellTypes.Integer;
         }
         else if (cell instanceof Date)
         {
             value = CellInfo.formatForDisplay((Date) cell);
-            dataType = CellTypes.Date.desc();
+            dataType = CellTypes.Date;
         }
         else if (cell instanceof Double)
         {
             value = CellInfo.formatForEditing(cell);
-            dataType = CellTypes.Double.desc();
+            dataType = CellTypes.Double;
         }
         else if (cell instanceof Float)
         {
             value = CellInfo.formatForEditing(cell);
-            dataType = CellTypes.Float.desc();
+            dataType = CellTypes.Float;
         }
         else if (cell instanceof BigDecimal)
         {
             value = ((BigDecimal) cell).stripTrailingZeros().toPlainString();
-            dataType = CellTypes.BigDecimal.desc();
+            dataType = CellTypes.BigDecimal;
         }
         else if (cell instanceof BigInteger)
         {
             value = cell.toString();
-            dataType = CellTypes.BigInteger.desc();
+            dataType = CellTypes.BigInteger;
         }
         else if (cell instanceof byte[])
         {
             value = StringUtilities.encode((byte[]) cell);
-            dataType = CellTypes.Binary.desc();
+            dataType = CellTypes.Binary;
         }
         else if (cell instanceof Point2D)
         {
             value = cell.toString();
-            dataType = CellTypes.Point2D.desc();
+            dataType = CellTypes.Point2D;
         }
         else if (cell instanceof Point3D)
         {
             value = cell.toString();
-            dataType = CellTypes.Point3D.desc();
+            dataType = CellTypes.Point3D;
         }
         else if (cell instanceof LatLon)
         {
             value = cell.toString();
-            dataType = CellTypes.LatLon.desc();
+            dataType = CellTypes.LatLon;
         }
         else if (cell instanceof GroovyMethod)
         {
             GroovyMethod method = (GroovyMethod) cell;
             value = method.getCmd();
-            dataType = CellTypes.Method.desc();
+            dataType = CellTypes.Method;
             isUrl = StringUtilities.hasContent(method.getUrl());
             isCached = true;
         }
@@ -153,7 +160,7 @@ public class CellInfo
         {
             StringUrlCmd strCmd = (StringUrlCmd) cell;
             value = strCmd.getUrl();
-            dataType = CellTypes.String.desc();
+            dataType = CellTypes.String;
             isUrl = true;
             isCached = strCmd.isCacheable();
         }
@@ -161,7 +168,7 @@ public class CellInfo
         {
             BinaryUrlCmd binCmd = (BinaryUrlCmd) cell;
             value = binCmd.getUrl();
-            dataType = CellTypes.Binary.desc();
+            dataType = CellTypes.Binary;
             isUrl = true;
             isCached = binCmd.isCacheable();
         }
@@ -170,7 +177,7 @@ public class CellInfo
             GroovyTemplate templateCmd = (GroovyTemplate) cell;
             isUrl = StringUtilities.hasContent(templateCmd.getUrl());
             value = isUrl ? templateCmd.getUrl() : templateCmd.getCmd();
-            dataType = CellTypes.Template.desc();
+            dataType = CellTypes.Template;
             isCached = templateCmd.isCacheable();
         }
         else if (cell instanceof Range)
@@ -217,6 +224,57 @@ public class CellInfo
         }
     }
 
+    public Object recreate() {
+        switch (this.dataType) {
+            case String:
+                return isUrl ? new StringUrlCmd(this.value, isCached) : this.value;
+
+            case Date:
+                return DateUtilities.parseDate(this.value);
+
+            case Boolean:
+                return Boolean.valueOf(this.value);
+
+            case Byte:
+                return Byte.valueOf(this.value);
+
+            case Short:
+                return Short.valueOf(this.value);
+
+            case Integer:
+                return Integer.valueOf(this.value);
+
+            case Long:
+                return Long.valueOf(this.value);
+
+            case Float:
+                return Float.valueOf(this.value);
+
+            case Double:
+                return Double.valueOf(this.value);
+
+            case BigDecimal:
+                return new BigDecimal(this.value);
+
+            case BigInteger:
+                return new BigInteger(this.value);
+
+            case Binary:
+                return null;
+
+            case Exp:
+                return new GroovyExpression(isUrl ? null : value, isUrl ? value : null);
+
+            case Method:
+                return new GroovyMethod(isUrl ? null : value, isUrl ? value : null);
+
+            case Template:
+                return new GroovyTemplate(isUrl ? null : value, isUrl ? value : null, isCached);
+
+            default:
+                return new IllegalArgumentException("Invalid Cell Type Passed in:  " + this.dataType);
+        }
+    }
     /**
      * Collapse: byte, short, int ==> long
      * Collapse: float ==> double
@@ -224,17 +282,17 @@ public class CellInfo
      */
     public void collapseToUiSupportedTypes()
     {
-        if (CellTypes.Byte.desc().equals(dataType) || CellTypes.Short.desc().equals(dataType) || CellTypes.Integer.desc().equals(dataType))
+        if (CellTypes.Byte.equals(dataType) || CellTypes.Short.equals(dataType) || CellTypes.Integer.equals(dataType))
         {
-            dataType = CellTypes.Long.desc();
+            dataType = CellTypes.Long;
         }
-        else if (CellTypes.Float.desc().equals(dataType))
+        else if (CellTypes.Float.equals(dataType))
         {
-            dataType = CellTypes.Double.desc();
+            dataType = CellTypes.Double;
         }
-        else if (CellTypes.BigInteger.desc().equals(dataType))
+        else if (CellTypes.BigInteger.equals(dataType))
         {
-            dataType = CellTypes.BigDecimal.desc();
+            dataType = CellTypes.BigDecimal;
         }
     }
 

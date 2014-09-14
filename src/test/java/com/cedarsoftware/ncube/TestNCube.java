@@ -591,8 +591,8 @@ public class TestNCube
         long end = System.nanoTime();
         assertTrue((end - start) / 1000000.0 < 1000);   // verify that it runs in under 1 second (actual 87ms)
         NCubeTest test = (NCubeTest)list.get(0);
-        assertTrue(test.getCoordinate().size() > 0);
-        assertEquals(5, test.getCoordinate().size());
+        assertTrue(test.getCoord().size() > 0);
+        assertEquals(5, test.getCoord().size());
         assertEquals("test-001", test.getName());
     }
 
@@ -4764,13 +4764,12 @@ public class TestNCube
             Column col = cols.iterator().next();
             Set<Long> coord = new HashSet<>();
             coord.add(col.getId());
-            Map<String, Object> coordinate = new CaseInsensitiveMap<>();
+            Map<String, CellInfo> coordinate = new CaseInsensitiveMap<>();
             ncube.getColumnsAndCoordinateFromIds(coord, null, coordinate);
 
             assertTrue(coordinate.containsKey("code"));
 
-            Map<String, Object> map = (Map<String, Object>)coordinate.get("code");
-            assertTrue(map instanceof Map);
+            CellInfo map = (CellInfo)coordinate.get("code");
         }
     }
 

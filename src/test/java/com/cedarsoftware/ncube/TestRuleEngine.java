@@ -67,7 +67,7 @@ public class TestRuleEngine
         int age = 0;
         for (NCubeTest pt : list)
         {
-            Map<String, Object> c = pt.getCoordinate();
+            Map<String, CellInfo> c = pt.getCoord();
             if (c.containsKey("age"))
             {
                 age++;
@@ -97,7 +97,7 @@ public class TestRuleEngine
         int age = 0;
         for (NCubeTest pt : list)
         {
-            Map<String, Map<String, Object>> c = pt.getCoordDescription();
+            Map<String, CellInfo> c = pt.getCoord();
             if (c.containsKey("age"))
             {
                 age++;

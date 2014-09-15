@@ -85,6 +85,8 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.11
+ * output.return entry added to output Map when getCell() / getCells() called.  The value associated to the key "return" is the value of the last step executed.  If it is a table of values, it is the value that was accessed.
 * 2.9.8-2.9.10
  * Improvements in HTML display when a cell (or Column) has code in it.
 * 2.9.7

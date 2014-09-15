@@ -445,7 +445,7 @@ public class TestRuleEngine
         Map output = new HashMap();
         coord.put("age", 85);
         ncube.getCells(coord, output);
-        assertEquals(1, output.size());
+        assertEquals(2, output.size());
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(0L, ruleInfo.getNumberOfRulesExecuted());
 

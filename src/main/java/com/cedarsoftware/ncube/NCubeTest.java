@@ -18,17 +18,6 @@ public class NCubeTest
         this.expected = expected;
     }
 
-    /*
-    private Map<String, Object> buildCoordinate(Map<String, Map<String, Object>> descritpion) {
-        Map<String, Object> coordinate = new LinkedHashMap<>();
-        for (Map.Entry<String, Map<String, Object>> item : coordDescription.entrySet()) {
-            coordinate.put(item.getKey(), parseValue(item.getValue()));
-        }
-        return coordinate;
-    }
-
-    */
-
     public String getName() {
         return name;
     }
@@ -45,14 +34,14 @@ public class NCubeTest
         return actuals;
     }
 
-    public Map<String, CellInfo> getExpected() {
+    public Map<String, CellInfo> getAssertions() {
         return this.expected;
     }
 
-    public Map<String, Object> createExpected() {
-        Map<String, Object> actuals = new LinkedHashMap<>();
+    public Map<String, GroovyExpression> createAssertions() {
+        Map<String, GroovyExpression> actuals = new LinkedHashMap<>();
         for (Map.Entry<String, CellInfo> item : this.expected.entrySet()) {
-            actuals.put(item.getKey(), item.getValue().recreate());
+            actuals.put(item.getKey(), (GroovyExpression)item.getValue().recreate());
         }
         return actuals;
     }

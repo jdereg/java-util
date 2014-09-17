@@ -35,7 +35,7 @@ public class TestResultsFormatter
     {
         _builder.append("Trace:");
         _builder.append(newLine);
-        StringBuilder spaces = new StringBuilder();
+        StringBuilder spaces = new StringBuilder("   ");
         for (MapEntry entry : trace) {
 
             if (entry.getValue() instanceof Map)
@@ -96,6 +96,7 @@ public class TestResultsFormatter
     public void formatResult() {
         _builder.append("Result:");
         _builder.append(newLine);
+        _builder.append("   ");
         _builder.append(_output.get("return"));
         _builder.append(newLine);
         _builder.append(newLine);
@@ -118,6 +119,7 @@ public class TestResultsFormatter
             {
                 continue;
             }
+            _builder.append("   ");
             _builder.append(item.getKey());
             _builder.append(" = ");
             _builder.append(item.getValue());

@@ -10,7 +10,7 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by kpartlow on 9/16/2014.
@@ -42,7 +42,7 @@ public class TestTestResultsFormatter
         output.put("foo.name", "John");
         ncube.getCells(coord, output);
         String s = new TestResultsFormatter(output).format();
-        assertNotNull(s);
+        assertEquals("", s);
     }
 
 

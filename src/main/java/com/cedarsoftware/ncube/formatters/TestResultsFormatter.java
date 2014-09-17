@@ -22,8 +22,8 @@ public class TestResultsFormatter
 
     public String format() {
 
-        _builder.append("Result:  " + _output.get("return"));
-        _builder.append(newLine);
+        formatResult();
+        formatOutput();
 
         RuleInfo info = (RuleInfo)_output.get("_rule");
         format(info.getRuleExecutionTrace());
@@ -31,30 +31,46 @@ public class TestResultsFormatter
         return _builder.toString();
     }
 
-    public void format(List<MapEntry> trace) {
-        StringBuilder spaces = new StringBuilder();
+    public void format(List<MapEntry> trace)
+    {
+        _builder.append("Trace:");
+        _builder.append(newLine);
+        StringBuilder spaces = new StringBuilder("   ");
         for (MapEntry entry : trace) {
 
-            if (entry.getValue() instanceof Map) {
+            if (entry.getValue() instanceof Map)
+            {
                 ((Map)entry.getValue()).remove("ncube");
             }
 
-            if (isEnd(entry.getKey()))
+            boolean end = isEnd(entry.getKey());
+            boolean begin = isBegin(entry.getKey());
+
+            if (end)
             {
                 spaces.setLength(spaces.length()-3);
             }
 
             _builder.append(spaces);
+
             _builder.append(entry.getKey());
 
-            if (isBegin(entry.getKey()))
+            if (begin)
             {
                 spaces.append("   ");
+                _builder.append("(");
+                turnMapIntoCoords((Map<String, Object>) entry.getValue());
+                _builder.append(")");
             }
-            _builder.append(" = ");
-            _builder.append(entry.getValue());
+            else
+            {
+                _builder.append(" = ");
+                _builder.append(entry.getValue());
+            }
+
             _builder.append(newLine);
         }
+        _builder.setLength(_builder.length()-1);
     }
 
     public boolean isBegin(Object o) {
@@ -63,5 +79,52 @@ public class TestResultsFormatter
 
     public boolean isEnd(Object o) {
         return o instanceof String && ((String)o).startsWith("end:");
+    }
+
+    public void turnMapIntoCoords(Map<String, Object> map)
+    {
+        for (Map.Entry<String, Object> entry : map.entrySet())
+        {
+            _builder.append(entry.getKey());
+            _builder.append(":");
+            _builder.append(entry.getValue());
+            _builder.append(",");
+        }
+        _builder.setLength(_builder.length()-1);
+    }
+
+    public void formatResult() {
+        _builder.append("Result:");
+        _builder.append(newLine);
+        _builder.append("   ");
+        _builder.append(_output.get("return"));
+        _builder.append(newLine);
+        _builder.append(newLine);
+    }
+
+    public void formatOutput()
+    {
+        if (_output.size() <= 2) {
+            return;
+        }
+
+        _builder.append("Output:");
+        _builder.append(newLine);
+        java.util.Iterator i = _output.entrySet().iterator();
+
+        while (i.hasNext()) {
+            Map.Entry item = (Map.Entry)i.next();
+
+            if ("_rule".equals(item.getKey()) || "return".equals(item.getKey()))
+            {
+                continue;
+            }
+            _builder.append("   ");
+            _builder.append(item.getKey());
+            _builder.append(" = ");
+            _builder.append(item.getValue());
+            _builder.append(newLine);
+        }
+        _builder.append(newLine);
     }
 }

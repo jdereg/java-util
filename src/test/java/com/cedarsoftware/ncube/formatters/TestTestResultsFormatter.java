@@ -38,12 +38,11 @@ public class TestTestResultsFormatter
         coord.put("state", "OH");
 
         Map output = new HashMap();
+        output.put("foo.age", "56");
+        output.put("foo.name", "John");
         ncube.getCells(coord, output);
         String s = new TestResultsFormatter(output).format();
-        assertEquals("Result:  18 OH\n" +
-                "begin: idNoValue = {age=18, state=OH}\n" +
-                "   {Age=18, State=OH} = 18 OH\n" +
-                "end: idNoValue = 1\n", s);
+        assertEquals("", s);
     }
 
 

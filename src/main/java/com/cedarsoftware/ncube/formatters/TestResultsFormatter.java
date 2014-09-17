@@ -58,10 +58,10 @@ public class TestResultsFormatter
     }
 
     public boolean isBegin(Object o) {
-        return o instanceof String && ((String)o).startsWith("begin");
+        return o instanceof String && ((String)o).startsWith("begin:");
     }
 
     public boolean isEnd(Object o) {
-        return o instanceof String && ((String)o).startsWith("end");
+        return o instanceof String && ((String)o).startsWith("end:");
     }
 }

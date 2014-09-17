@@ -1425,6 +1425,7 @@ public class NCubeManager
         }
 
         java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+
         try (PreparedStatement stmt = connection.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
         {
             // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to

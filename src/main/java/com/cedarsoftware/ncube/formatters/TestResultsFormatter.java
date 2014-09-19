@@ -13,7 +13,7 @@ public class TestResultsFormatter
 {
     private Map _output;
     private StringBuilder _builder = new StringBuilder();
-    private static final String newLine = System.getProperty("line.separator");
+    private static final String newLine = "\n";
 
     public TestResultsFormatter(Map output)
     {

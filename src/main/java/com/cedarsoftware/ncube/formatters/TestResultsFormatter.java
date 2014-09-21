@@ -33,7 +33,7 @@ public class TestResultsFormatter
 
     public void format(List<MapEntry> trace)
     {
-        _builder.append("Trace:");
+        _builder.append("<b><u>Trace</u></b>");
         _builder.append(newLine);
         StringBuilder spaces = new StringBuilder("   ");
         for (MapEntry entry : trace) {
@@ -94,7 +94,7 @@ public class TestResultsFormatter
     }
 
     public void formatResult() {
-        _builder.append("Result:");
+        _builder.append("<b><u>Result</u></b>");
         _builder.append(newLine);
         _builder.append("   ");
         _builder.append(_output.get("return"));
@@ -108,7 +108,7 @@ public class TestResultsFormatter
             return;
         }
 
-        _builder.append("Output:");
+        _builder.append("<b><u>Output</u></b>");
         _builder.append(newLine);
         java.util.Iterator i = _output.entrySet().iterator();
 

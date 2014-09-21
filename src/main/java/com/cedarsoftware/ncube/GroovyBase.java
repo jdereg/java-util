@@ -38,7 +38,7 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    static final Map<String, Class> compiledClasses = new ConcurrentHashMap<>();
+    static final Map<String, Class>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<String, Constructor> constructorMap = new ConcurrentHashMap<>();
     static final Map<String, Method> initMethodMap = new ConcurrentHashMap<>();
     static final Map<String, Method> methodMap = new ConcurrentHashMap<>();
@@ -179,39 +179,50 @@ public abstract class GroovyBase extends UrlCommandCell
      */
     public void prepare(Object data, Map ctx)
     {
-        if (getRunnableCode() == null)
-        {   // Not yet compiled, compile the cell (Lazy compilation)
-            synchronized(compiledClasses)
-            {
-                if (getRunnableCode() != null)
-                {   // More than one thread saw the empty code, but only let the first thread
-                    // call setRunnableCode().
-                    return;
-                }
+        if (getRunnableCode() != null)
+        {
+            return;
+        }
+        //  This order is important because data can be null before the url is loaded
+        //  and then be present afterwards.  we'd have two different hashes for the same object.
+        String cmdHash;
+        if (getUrl() == null)
+        {
+            cmdHash = getCmdHash(data != null ? data.toString() : "null");
+        }
+        else
+        {
+            cmdHash = getCmdHash(getUrl());
+        }
 
-                //  This order is important because data can be null before the url is loaded
-                //  and then be present afterwards.  we'd have two different hashes for the same object.
-                String cmdHash = getCmdHash(getUrl() == null ? data.toString() : getUrl());
-                if (compiledClasses.containsKey(cmdHash))
-                {   // Already been compiled, re-use class
-                    setRunnableCode(compiledClasses.get(cmdHash));
-                    return;
-                }
-                NCube cube = getNCube(ctx);
-                try
-                {
-                    compile(cube, cmdHash);
-                }
-                catch (Exception e)
-                {
-                    setErrorMessage("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cube.getName() + "'");
-                    throw new IllegalArgumentException(getErrorMessage(), e);
+        if (compiledClasses.containsKey(cmdHash))
+        {   // Already been compiled, re-use class
+            setRunnableCode(compiledClasses.get(cmdHash));
+            return;
+        }
+
+        NCube cube = getNCube(ctx);
+        try
+        {
+            synchronized(cmdHash.intern())
+            {
+                if (!compiledClasses.containsKey(cmdHash))
+                {   // in case two threads accessed cell with code at the same time, only compile and store the
+                    // code once.
+                    Class groovyCode = compile(cube, cmdHash);
+                    setRunnableCode(groovyCode);
+                    compiledClasses.put(cmdHash, getRunnableCode());
                 }
             }
         }
+        catch (Exception e)
+        {
+            setErrorMessage("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cube.getName() + "'");
+            throw new IllegalArgumentException(getErrorMessage(), e);
+        }
     }
 
-    protected void compile(NCube cube, String cmdHash) throws Exception
+    protected Class compile(NCube cube, String cmdHash) throws Exception
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
@@ -233,15 +244,13 @@ public abstract class GroovyBase extends UrlCommandCell
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-
-            setRunnableCode(urlLoader.parseClass(gcs));
+            return urlLoader.parseClass(gcs);
         }
         else
         {
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
-            setRunnableCode(urlLoader.parseClass(groovySource));
+            return urlLoader.parseClass(groovySource);
         }
-        compiledClasses.put(cmdHash, getRunnableCode());
     }
 
     static String expandNCubeShortCuts(String groovy)

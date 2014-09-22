@@ -33,7 +33,7 @@ public class TestResultsFormatter
 
     public void format(List<MapEntry> trace)
     {
-        _builder.append("<b><u>Trace</u></b>");
+        _builder.append("<b>Trace</b>");
         _builder.append("<pre>");
         _builder.append(newLine);
         StringBuilder spaces = new StringBuilder("   ");
@@ -96,7 +96,7 @@ public class TestResultsFormatter
     }
 
     public void formatResult() {
-        _builder.append("<b><u>Result</u></b>");
+        _builder.append("<b>Result</b>");
         _builder.append("<pre>");
         _builder.append(newLine);
         _builder.append("   ");
@@ -111,7 +111,7 @@ public class TestResultsFormatter
             return;
         }
 
-        _builder.append("<b><u>Output</u></b>");
+        _builder.append("<b>Output</b>");
         _builder.append("<pre>");
         _builder.append(newLine);
         java.util.Iterator i = _output.entrySet().iterator();
@@ -129,7 +129,6 @@ public class TestResultsFormatter
             _builder.append(item.getValue());
             _builder.append(newLine);
         }
-        _builder.append(newLine);
         _builder.append("</pre>");
     }
 }

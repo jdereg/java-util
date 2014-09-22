@@ -13,7 +13,7 @@ public class TestResultsFormatter
 {
     private Map _output;
     private StringBuilder _builder = new StringBuilder();
-    private static final String newLine = System.getProperty("line.separator");
+    private static final String newLine = "\n";
 
     public TestResultsFormatter(Map output)
     {
@@ -33,7 +33,8 @@ public class TestResultsFormatter
 
     public void format(List<MapEntry> trace)
     {
-        _builder.append("Trace:");
+        _builder.append("<b>Trace</b>");
+        _builder.append("<pre>");
         _builder.append(newLine);
         StringBuilder spaces = new StringBuilder("   ");
         for (MapEntry entry : trace) {
@@ -71,6 +72,7 @@ public class TestResultsFormatter
             _builder.append(newLine);
         }
         _builder.setLength(_builder.length()-1);
+        _builder.append("</pre>");
     }
 
     public boolean isBegin(Object o) {
@@ -94,12 +96,13 @@ public class TestResultsFormatter
     }
 
     public void formatResult() {
-        _builder.append("Result:");
+        _builder.append("<b>Result</b>");
+        _builder.append("<pre>");
         _builder.append(newLine);
         _builder.append("   ");
         _builder.append(_output.get("return"));
         _builder.append(newLine);
-        _builder.append(newLine);
+        _builder.append("</pre>");
     }
 
     public void formatOutput()
@@ -108,7 +111,8 @@ public class TestResultsFormatter
             return;
         }
 
-        _builder.append("Output:");
+        _builder.append("<b>Output</b>");
+        _builder.append("<pre>");
         _builder.append(newLine);
         java.util.Iterator i = _output.entrySet().iterator();
 
@@ -125,6 +129,6 @@ public class TestResultsFormatter
             _builder.append(item.getValue());
             _builder.append(newLine);
         }
-        _builder.append(newLine);
+        _builder.append("</pre>");
     }
 }

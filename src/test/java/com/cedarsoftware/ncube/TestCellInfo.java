@@ -58,7 +58,7 @@ public class TestCellInfo
         performArrayRecreateAssertion(new byte[]{0, 4, 5, 6});
         performRecreateAssertion("foo");
 
-        //  Have to special create this because millisecondar are not saved
+        //  Have to special create this because milliseconds are not saved
         Calendar c = Calendar.getInstance();
         c.set(Calendar.MILLISECOND, 0);
         performRecreateAssertion(c.getTime());

@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.RuleInfo;
 import groovy.util.MapEntry;
 
@@ -26,7 +27,7 @@ public class TestResultsFormatter
         formatResult();
         formatOutput();
 
-        RuleInfo info = (RuleInfo)_output.get("_rule");
+        RuleInfo info = (RuleInfo)_output.get(NCube.RULE_EXEC_INFO);
         format(info.getRuleExecutionTrace());
 
         return _builder.toString();

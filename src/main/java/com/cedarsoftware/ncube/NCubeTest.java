@@ -45,18 +45,4 @@ public class NCubeTest
         }
         return actuals;
     }
-
-
-    /*
-    public Object parseValue(Map<String, Object> map) {
-        if (map == null) {
-            return null;
-        }
-        Object value = map.get("value");
-        String url = (String)map.get("url");
-        String type = (String)map.get("type");
-
-        return CellInfo.parseJsonValue(value, url, type, false);
-    }
-    */
 }

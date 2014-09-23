@@ -29,16 +29,22 @@ public class TestColumn
         c.clearMetaProperties();
         c.setMetaProperty("foo", "bar");
         assertEquals("bar", c.getMetaProperties().get("foo"));
+        assertEquals("bar", c.getMetaProperty("foo"));
 
         c.clearMetaProperties();
         assertNull(c.getMetaProperties().get("foo"));
-
+        assertNull(c.getMetaProperty("foo"));
         c.clearMetaProperties();
         Map map = new HashMap();
         map.put("BaZ", "qux");
 
         c.addMetaProperties(map);
         assertEquals("qux", c.getMetaProperties().get("baz"));
+        assertEquals("qux", c.getMetaProperty("baz"));
+
+        assertEquals("qux", c.removeMetaProperty("baz"));
+        assertEquals(null, c.removeMetaProperty("baz"));
+
     }
 
 

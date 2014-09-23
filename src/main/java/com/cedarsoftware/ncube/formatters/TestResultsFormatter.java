@@ -5,6 +5,7 @@ import groovy.util.MapEntry;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by kpartlow on 9/16/2014.
@@ -102,32 +103,48 @@ public class TestResultsFormatter
         _builder.append("   ");
         _builder.append(_output.get("return"));
         _builder.append(newLine);
+
+        Set<String> failures = (Set<String>)_output.get("_failures");
+        if (!failures.isEmpty()) {
+            _builder.append(newLine);
+            for (String entry : failures)
+            {
+                _builder.append("   ");
+                _builder.append(entry);
+                _builder.append(newLine);
+            }
+            _builder.setLength(_builder.length()-1);
+        }
         _builder.append("</pre>");
     }
 
     public void formatOutput()
     {
-        if (_output.size() <= 2) {
-            return;
-        }
-
         _builder.append("<b>Output</b>");
         _builder.append("<pre>");
         _builder.append(newLine);
-        java.util.Iterator i = _output.entrySet().iterator();
 
-        while (i.hasNext()) {
-            Map.Entry item = (Map.Entry)i.next();
-
-            if ("_rule".equals(item.getKey()) || "return".equals(item.getKey()))
-            {
-                continue;
-            }
-            _builder.append("   ");
-            _builder.append(item.getKey());
-            _builder.append(" = ");
-            _builder.append(item.getValue());
+        if (_output.size() <= 3) {
+            _builder.append("   No output");
             _builder.append(newLine);
+        }
+        else
+        {
+            java.util.Iterator i = _output.entrySet().iterator();
+            while (i.hasNext())
+            {
+                Map.Entry item = (Map.Entry) i.next();
+
+                if ("_rule".equals(item.getKey()) || "return".equals(item.getKey()) || "_failures".equals(item.getKey()))
+                {
+                    continue;
+                }
+                _builder.append("   ");
+                _builder.append(item.getKey());
+                _builder.append(" = ");
+                _builder.append(item.getValue());
+                _builder.append(newLine);
+            }
         }
         _builder.append("</pre>");
     }

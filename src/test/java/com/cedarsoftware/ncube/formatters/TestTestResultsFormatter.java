@@ -8,9 +8,12 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by kpartlow on 9/16/2014.
@@ -30,7 +33,30 @@ public class TestTestResultsFormatter
     }
 
     @Test
-    public void testResultsFormatting()
+    public void testResultsFromNCube()
+    {
+        NCube<String> ncube = NCubeManager.getNCubeFromResource("idNoValue.json");
+        Map coord = new HashMap();
+        coord.put("age", 18);
+        coord.put("state", "OH");
+
+
+        Map output = new HashMap();
+        output.put("_failures", new TreeSet());
+        ncube.getCells(coord, output);
+        String s = new TestResultsFormatter(output).format();
+        assertEquals("<b>Result</b><pre>\n" +
+                "   18 OH\n" +
+                "</pre><b>Output</b><pre>\n" +
+                "   No output\n" +
+                "</pre><b>Trace</b><pre>\n" +
+                "   begin: idNoValue(age:18,state:OH)\n" +
+                "      {Age=18, State=OH} = 18 OH\n" +
+                "   end: idNoValue = 1</pre>", s);
+    }
+
+    @Test
+    public void testResultsWithOutputAndError()
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource("idNoValue.json");
         Map coord = new HashMap();
@@ -39,12 +65,28 @@ public class TestTestResultsFormatter
 
         Map output = new HashMap();
         output.put("foo.age", "56");
-        output.put("foo.name", "John");
+        output.put("foo.nassertame", "John");
+
         ncube.getCells(coord, output);
+
+        Set<String> set = new HashSet<>();
+        set.add("[some assertion happened]");
+
+        output.put("_failures", set);
+
+
         String s = new TestResultsFormatter(output).format();
-        assertTrue(s.contains("foo.name = John"));
-        assertTrue(s.contains("foo.age = 56"));
-        assertTrue(s.contains("idNoValue(age:18,state:OH)"));
+
+        assertEquals("<b>Result</b><pre>\n" +
+                "   18 OH\n" +
+                "\n" +
+                "   [some assertion happened]</pre><b>Output</b><pre>\n" +
+                "   foo.nassertame = John\n" +
+                "   foo.age = 56\n" +
+                "</pre><b>Trace</b><pre>\n" +
+                "   begin: idNoValue(age:18,state:OH)\n" +
+                "      {Age=18, State=OH} = 18 OH\n" +
+                "   end: idNoValue = 1</pre>", s);
     }
 
 

@@ -105,7 +105,7 @@ public class TestResultsFormatter
         _builder.append(newLine);
 
         Set<String> failures = (Set<String>)_output.get("_failures");
-        if (failures != null && failures.isEmpty()) {
+        if (failures != null && !failures.isEmpty()) {
             _builder.append(newLine);
             for (String entry : failures)
             {

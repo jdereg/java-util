@@ -456,7 +456,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "}\n" +
                 ".cell-url\n" +
                 "{\n" +
-                "color: white;\n" +
+                "color: mediumblue;\n" +
                 "background: cornsilk;\n" +
                 "text-align: left;\n" +
                 "vertical-align: top\n" +

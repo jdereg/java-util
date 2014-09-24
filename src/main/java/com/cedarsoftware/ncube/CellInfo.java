@@ -225,6 +225,10 @@ public class CellInfo
     }
 
     public Object recreate() {
+        if (value == null) {
+            return null;
+        }
+
         switch (this.dataType) {
             case "string":
                 return isUrl ? new StringUrlCmd(this.value, isCached) : this.value;
@@ -260,7 +264,7 @@ public class CellInfo
                 return new BigInteger(this.value);
 
             case "binary":
-                return new BinaryUrlCmd(this.value, isCached);
+                return isUrl ? new BinaryUrlCmd(this.value, isCached) : StringUtilities.decode(this.value);
 
             case "exp":
                 return new GroovyExpression(isUrl ? null : value, isUrl ? value : null);

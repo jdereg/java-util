@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -10,9 +12,9 @@ public class NCubeTest
 {
     private String name;
     private Map<String, CellInfo> coord;
-    private Map<String, CellInfo> expected;
+    private List<CellInfo> expected;
 
-    public NCubeTest(String name, Map<String, CellInfo> coord, Map<String, CellInfo> expected) {
+    public NCubeTest(String name, Map<String, CellInfo> coord, List<CellInfo> expected) {
         this.name = name;
         this.coord = coord;
         this.expected = expected;
@@ -34,14 +36,14 @@ public class NCubeTest
         return actuals;
     }
 
-    public Map<String, CellInfo> getAssertions() {
+    public List<CellInfo> getAssertions() {
         return this.expected;
     }
 
-    public Map<String, GroovyExpression> createAssertions() {
-        Map<String, GroovyExpression> actuals = new LinkedHashMap<>();
-        for (Map.Entry<String, CellInfo> item : this.expected.entrySet()) {
-            actuals.put(item.getKey(), (GroovyExpression)item.getValue().recreate());
+    public List<GroovyExpression> createAssertions() {
+        List<GroovyExpression> actuals = new ArrayList<>();
+        for (CellInfo item : this.expected) {
+            actuals.add((GroovyExpression) item.recreate());
         }
         return actuals;
     }

@@ -64,6 +64,34 @@ public class TestCellInfo
         performRecreateAssertion(c.getTime());
     }
 
+    @Test
+    public void testParseJsonValue() {
+        assertEquals(Boolean.TRUE, CellInfo.parseJsonValue("boolean", "true"));
+        assertEquals(Boolean.FALSE, CellInfo.parseJsonValue("boolean", "false"));
+        assertEquals((byte)2, CellInfo.parseJsonValue("byte", "2"));
+        assertEquals((short)5, CellInfo.parseJsonValue("short", "5"));
+        assertEquals(9L, CellInfo.parseJsonValue("long", "9"));
+        assertEquals(9, CellInfo.parseJsonValue("int", "9"));
+        assertEquals(9.87d, CellInfo.parseJsonValue("double", "9.87"));
+        assertEquals(9.65f, CellInfo.parseJsonValue("float", "9.65"));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueBinaryWithOddNumberString() {
+        CellInfo.parseJsonValue("binary", "0");
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueInvalidHexString() {
+        CellInfo.parseJsonValue("binary", "GF");
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void testParseJsonValueWithInvalidBoolean() {
+        CellInfo.parseJsonValue("boolean", "yes");
+
+    }
+
     public void performRecreateAssertion(Object o) {
         assertEquals(o, new CellInfo(o).recreate());
     }

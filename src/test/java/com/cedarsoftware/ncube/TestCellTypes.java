@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 /**
@@ -30,6 +31,7 @@ public class TestCellTypes
         assertEquals("long", CellTypes.getType(Long.MAX_VALUE, "cells"));
         assertEquals("double", CellTypes.getType(Double.MAX_VALUE, "cells"));
         assertEquals("float", CellTypes.getType(Float.MAX_VALUE, "cells"));
+        assertNull("float", CellTypes.getType(null, "cells"));
     }
 
     @Test
@@ -55,4 +57,9 @@ public class TestCellTypes
         assertEquals(CellTypes.Point3D, CellTypes.getTypeFromString("point3d"));
     }
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testInvalidType()
+    {
+        CellTypes.getTypeFromString("foo");
+    }
 }

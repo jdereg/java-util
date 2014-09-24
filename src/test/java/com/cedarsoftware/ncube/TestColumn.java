@@ -24,6 +24,8 @@ public class TestColumn
     @Test
     public void testMetaProperties() {
         Column c = new Column(true, 5);
+
+        assertNull(c.removeMetaProperty("foo"));
         assertNull(c.getMetaProperties().get("foo"));
 
         c.clearMetaProperties();

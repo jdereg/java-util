@@ -1,14 +1,20 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.CellInfo;
+import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
+import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.ncube.TestNCube;
+import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -89,5 +95,15 @@ public class TestTestResultsFormatter
                 "   end: idNoValue = 1</pre>", s);
     }
 
+    @Test
+    public void testOutput() throws Exception {
+        Map<String, CellInfo> coord = new HashMap<String, CellInfo>();
+        List<CellInfo> expected = new ArrayList<CellInfo>();
+        expected.add(new CellInfo(new Double(3.0)));
+        expected.add(new CellInfo(new Float(3.0)));
+        expected.add(new CellInfo(new GroovyExpression("help me", null)));
 
+        NCubeTest test = new NCubeTest("testName", coord, expected);
+        System.out.println(JsonWriter.objectToJson(test));
+    }
 }

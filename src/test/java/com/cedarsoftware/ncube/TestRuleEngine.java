@@ -67,12 +67,13 @@ public class TestRuleEngine
         int age = 0;
         for (NCubeTest pt : list)
         {
-            Map<String, CellInfo> c = pt.getCoord();
-            if (c.containsKey("age"))
+            List<StringValuePair<CellInfo>> c = pt.getCoord();
+
+            if (c.contains(new StringValuePair<CellInfo>("age", null)))
             {
                 age++;
             }
-            if (c.containsKey("weight"))
+            if (c.contains(new StringValuePair<CellInfo>("weight", null)))
             {
                 weight++;
             }
@@ -97,12 +98,12 @@ public class TestRuleEngine
         int age = 0;
         for (NCubeTest pt : list)
         {
-            Map<String, CellInfo> c = pt.getCoord();
-            if (c.containsKey("age"))
+            List<StringValuePair<CellInfo>> c = pt.getCoord();
+            if (c.contains(new StringValuePair<CellInfo>("age", null)))
             {
                 age++;
             }
-            if (c.containsKey("weight"))
+            if (c.contains(new StringValuePair<CellInfo>("weight", null)))
             {
                 weight++;
             }

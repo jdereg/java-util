@@ -105,12 +105,12 @@ public class TestJsonFormatter
         assertEquals(new BigInteger("147573952589676410000"), ((Object[]) ncube.getCell(coord))[3]);
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testInvalidNCube()
     {
         NCube ncube = new NCube(null);
         JsonFormatter formatter = new JsonFormatter();
-        formatter.format(ncube);
+        assertEquals("{\"ncube\":null,\"axes\":],\"cells\":[]}", formatter.format(ncube));
     }
 
     @Test

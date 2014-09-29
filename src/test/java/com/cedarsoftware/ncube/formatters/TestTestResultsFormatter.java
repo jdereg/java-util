@@ -5,6 +5,7 @@ import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTest;
+import com.cedarsoftware.ncube.StringValuePair;
 import com.cedarsoftware.ncube.TestNCube;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
@@ -97,7 +98,7 @@ public class TestTestResultsFormatter
 
     @Test
     public void testOutput() throws Exception {
-        Map<String, CellInfo> coord = new HashMap<String, CellInfo>();
+        List<StringValuePair<CellInfo>> coord = new ArrayList<>();
         List<CellInfo> expected = new ArrayList<CellInfo>();
         expected.add(new CellInfo(new Double(3.0)));
         expected.add(new CellInfo(new Float(3.0)));

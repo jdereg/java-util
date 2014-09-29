@@ -11,10 +11,10 @@ import java.util.Map;
 public class NCubeTest
 {
     private String name;
-    private Map<String, CellInfo> coord;
+    private List<StringValuePair<CellInfo>> coord;
     private List<CellInfo> expected;
 
-    public NCubeTest(String name, Map<String, CellInfo> coord, List<CellInfo> expected) {
+    public NCubeTest(String name, List<StringValuePair<CellInfo>> coord, List<CellInfo> expected) {
         this.name = name;
         this.coord = coord;
         this.expected = expected;
@@ -24,14 +24,14 @@ public class NCubeTest
         return name;
     }
 
-    public Map<String, CellInfo> getCoord() {
+    public List<StringValuePair<CellInfo>> getCoord() {
         return this.coord;
     }
 
     public Map<String, Object> createCoord() {
         Map<String, Object> actuals = new LinkedHashMap<>();
-        for (Map.Entry<String, CellInfo> item : this.coord.entrySet()) {
-            actuals.put(item.getKey(), item.getValue().recreate());
+        for (StringValuePair item : this.coord) {
+            actuals.put((String)item.getKey(), ((CellInfo)item.getValue()).recreate());
         }
         return actuals;
     }

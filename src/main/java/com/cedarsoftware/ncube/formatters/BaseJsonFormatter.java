@@ -55,7 +55,7 @@ public class BaseJsonFormatter
             value = w.toString();
         }
         writeAttributeIdentifier(attr);
-        builder.append(value.toString());
+        builder.append(value == null ? "null" : value.toString());
         if (includeComma)
         {
             comma();

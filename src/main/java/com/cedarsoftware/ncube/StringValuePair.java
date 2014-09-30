@@ -38,8 +38,6 @@ public class StringValuePair<V> implements Map.Entry<String,V> {
     public boolean equals(Object that) {
         if (that instanceof StringValuePair) {
             return equals((StringValuePair) that);
-        } else if (that instanceof String) {
-            return equals((String)that);
         }
         return false;
     }

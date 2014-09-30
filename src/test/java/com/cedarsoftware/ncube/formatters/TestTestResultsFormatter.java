@@ -12,10 +12,8 @@ import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -63,7 +61,7 @@ public class TestTestResultsFormatter
     }
 
     @Test
-    public void testResultsWithOutputAndError()
+    public void testResultsWithOutputAndError() throws Exception
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource("idNoValue.json");
         Map coord = new HashMap();
@@ -94,15 +92,16 @@ public class TestTestResultsFormatter
                 "   begin: idNoValue(age:18,state:OH)\n" +
                 "      {Age=18, State=OH} = 18 OH\n" +
                 "   end: idNoValue = 1</pre>", s);
+
     }
 
     @Test
     public void testOutput() throws Exception {
-        List<StringValuePair<CellInfo>> coord = new ArrayList<>();
-        List<CellInfo> expected = new ArrayList<CellInfo>();
-        expected.add(new CellInfo(new Double(3.0)));
-        expected.add(new CellInfo(new Float(3.0)));
-        expected.add(new CellInfo(new GroovyExpression("help me", null)));
+        StringValuePair<CellInfo>[] coord = new StringValuePair[0];
+        CellInfo[] expected = new CellInfo[3];
+        expected[0] = new CellInfo(new Double(3.0));
+        expected[1] = new CellInfo(new Float(3.0));
+        expected[2] = new CellInfo(new GroovyExpression("help me", null));
 
         NCubeTest test = new NCubeTest("testName", coord, expected);
         System.out.println(JsonWriter.objectToJson(test));

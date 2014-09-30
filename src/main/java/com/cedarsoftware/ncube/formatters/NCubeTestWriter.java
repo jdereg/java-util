@@ -5,12 +5,11 @@ import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.ncube.StringValuePair;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Created by kpartlow on 9/24/2014.
  */
-public class NCubeTestFormatter extends BaseJsonFormatter
+public class NCubeTestWriter extends BaseJsonFormatter
 {
     public String format(Object[] tests) throws IOException {
         startArray();
@@ -35,8 +34,8 @@ public class NCubeTestFormatter extends BaseJsonFormatter
         endObject();
     }
 
-    private void writeCoord(List<StringValuePair<CellInfo>> coord) throws IOException {
-        startObject();
+    private void writeCoord(StringValuePair<CellInfo>[] coord) throws IOException {
+        startArray();
         if (coord != null)
         {
             for (StringValuePair<CellInfo> parameter : coord)
@@ -47,10 +46,10 @@ public class NCubeTestFormatter extends BaseJsonFormatter
             }
             uncomma();
         }
-        endObject();
+        endArray();
     }
 
-    private void writeAssertions(List<CellInfo> assertions) throws IOException {
+    private void writeAssertions(CellInfo[] assertions) throws IOException {
         startArray();
         if (assertions != null)
         {

@@ -11,10 +11,10 @@ import java.util.Map;
 public class NCubeTest
 {
     private String name;
-    private List<StringValuePair<CellInfo>> coord;
-    private List<CellInfo> expected;
+    private StringValuePair<CellInfo>[] coord;
+    private CellInfo[] expected;
 
-    public NCubeTest(String name, List<StringValuePair<CellInfo>> coord, List<CellInfo> expected) {
+    public NCubeTest(String name, StringValuePair<CellInfo>[] coord, CellInfo[] expected) {
         this.name = name;
         this.coord = coord;
         this.expected = expected;
@@ -24,7 +24,7 @@ public class NCubeTest
         return name;
     }
 
-    public List<StringValuePair<CellInfo>> getCoord() {
+    public StringValuePair<CellInfo>[] getCoord() {
         return this.coord;
     }
 
@@ -36,7 +36,7 @@ public class NCubeTest
         return actuals;
     }
 
-    public List<CellInfo> getAssertions() {
+    public CellInfo[] getAssertions() {
         return this.expected;
     }
 

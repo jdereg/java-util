@@ -30,7 +30,7 @@ public class NCubeTestReader
             List<StringValuePair<CellInfo>> coord = createCoord((JsonObject) item.get("coord"));
             List<CellInfo> assertions = createAssertions((JsonObject) item.get("assertions"));
 
-            NCubeTest test = new NCubeTest(name, coord, assertions);
+            NCubeTest test = new NCubeTest(name, coord.toArray(new StringValuePair[coord.size()]), assertions.toArray(new CellInfo[assertions.size()]));
         }
         return null;
     }

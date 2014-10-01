@@ -70,7 +70,6 @@ public class NCubeTestWriter extends BaseJsonFormatter
         startObject();
         writeObjectKeyValue("type", info.dataType, true);
         writeObjectKeyValue("isUrl", info.isUrl, true);
-        writeObjectKeyValue("cache", info.isCached, true);
         writeObjectKeyValue("value", info.value, false);
         endObject();
     }

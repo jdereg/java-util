@@ -57,6 +57,7 @@ public class NCubeTestWriter extends BaseJsonFormatter
         {
             for (CellInfo item : assertions)
             {
+                // what do we do on null?  shouldn't be null
                 writeCellInfo(item);
                 comma();
             }
@@ -68,18 +69,9 @@ public class NCubeTestWriter extends BaseJsonFormatter
     public void writeCellInfo(CellInfo info) throws IOException
     {
         startObject();
-        if (info.dataType != null)
-        {
-            writeAttribute("type", info.dataType, true);
-        }
-        if (info.isUrl)
-        {
-            writeAttribute("isUrl", info.isUrl, true);
-        }
-        if (info.isCached)
-        {
-            writeAttribute("isCached", info.isCached, true);
-        }
+        writeAttribute("type", info.dataType, true);
+        writeAttribute("isUrl", info.isUrl, true);
+        writeAttribute("isCached", info.isCached, true);
         writeAttribute("value", info.value, false);
         endObject();
     }

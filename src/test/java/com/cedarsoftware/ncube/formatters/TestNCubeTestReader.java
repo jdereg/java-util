@@ -2,7 +2,7 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.util.IOUtilities;
-import org.junit.Ignore;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -18,7 +18,7 @@ import static org.junit.Assert.assertEquals;
 public class TestNCubeTestReader
 {
     // This test is broken.
-    @Ignore
+    @Test
     public void testReading() throws Exception {
 
         String s = getResourceAsString("n-cube-tests/test.json");

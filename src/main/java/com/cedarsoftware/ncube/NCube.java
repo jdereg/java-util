@@ -1197,7 +1197,9 @@ public class NCube<T>
         {
             if (!copy.containsKey(scopeKey))
             {
-                throw new IllegalArgumentException("Input coordinate with keys: " + coordinate.keySet() + ", does not contain all of the required scope keys: " + requiredScope + ", required for NCube '" + name + "'");
+                throw new IllegalArgumentException("Input coordinate with keys: " + coordinate.keySet() +
+                        ", does not contain all of the required scope keys: " + requiredScope +
+                        ", required for NCube '" + name + "'");
             }
         }
 

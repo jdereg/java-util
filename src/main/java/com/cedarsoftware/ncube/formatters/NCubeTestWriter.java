@@ -40,8 +40,10 @@ public class NCubeTestWriter extends BaseJsonFormatter
         {
             for (StringValuePair<CellInfo> parameter : coord)
             {
+                startObject();
                 writeAttributeIdentifier(parameter.getKey());
                 writeCellInfo(parameter.getValue());
+                endObject();
                 comma();
             }
             uncomma();
@@ -78,10 +80,7 @@ public class NCubeTestWriter extends BaseJsonFormatter
         {
             writeAttribute("isCached", info.isCached, true);
         }
-        if (info.value != null)
-        {
-            writeAttribute("value", info.value, false);
-        }
+        writeAttribute("value", info.value, false);
         endObject();
     }
 }

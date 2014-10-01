@@ -31,15 +31,21 @@ public class NCubeTestReader
             List<CellInfo> assertions = createAssertions((JsonObject) item.get("assertions"));
 
             NCubeTest test = new NCubeTest(name, coord.toArray(new StringValuePair[coord.size()]), assertions.toArray(new CellInfo[assertions.size()]));
+            list.add(test);
         }
-        return null;
+        return list;
     }
 
     public List<StringValuePair<CellInfo>> createCoord(JsonObject<String, Object> o) {
         List<StringValuePair<CellInfo>> list = new ArrayList<StringValuePair<CellInfo>>();
 
-        for (Map.Entry<String, Object> item : o.entrySet()) {
-            list.add(new StringValuePair(item.getKey(), createCellInfo((JsonObject)item.getValue())));
+        for (Object item : ((Object[])o.getArray()))
+        {
+            JsonObject<String, Object> jo = (JsonObject<String, Object>)item;
+            for (Map.Entry<String, Object> entry : jo.entrySet())
+            {
+                list.add(new StringValuePair((String) entry.getKey(), createCellInfo((JsonObject)entry.getValue())));
+            }
         }
 
         return list;
@@ -49,13 +55,12 @@ public class NCubeTestReader
         String type = (String)o.get("type");
         String value = (String)o.get("value");
 
-        return new CellInfo(type, value, (String)o.get("isUrl"), (String)o.get("isCached"));
+        return new CellInfo(type, value, o.get("isUrl"), o.get("isCached"));
     }
 
     public List<CellInfo> createAssertions(JsonObject o) {
-        Object[] items = o.getArray();
         List<CellInfo> list = new ArrayList<CellInfo>();
-        for (Object item : items) {
+        for (Object item : o.getArray()) {
             list.add(createCellInfo((JsonObject)item));
         }
         return list;

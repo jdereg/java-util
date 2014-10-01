@@ -56,7 +56,7 @@ public class NCubeTestReader
         String type = (String)o.get("type");
         String value = (String)o.get("value");
 
-        return new CellInfo(type, value, o.get("isUrl"), o.get("isCached"));
+        return new CellInfo(type, value, o.get("isUrl"), o.get("cache"));
     }
 
     public List<CellInfo> createAssertions(JsonObject o) {

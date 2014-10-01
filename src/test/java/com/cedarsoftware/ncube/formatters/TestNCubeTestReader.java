@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.util.IOUtilities;
 import org.junit.Test;
 
@@ -7,6 +8,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by kpartlow on 9/25/2014.
@@ -18,8 +22,8 @@ public class TestNCubeTestReader
 
         String s = getResourceAsString("n-cube-tests/test.json");
         NCubeTestReader reader = new NCubeTestReader();
-        Object o = reader.convert(s);
-        System.out.println(o);
+        List<NCubeTest> list = reader.convert(s);
+        assertEquals(17, list.size());
     }
 
     private static String getResourceAsString(String name) throws IOException

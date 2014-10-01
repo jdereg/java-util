@@ -111,7 +111,16 @@ public class NCube<T>
             return null;
         }
 
-        Object value = metaProps.get(key);
+        return metaProps.get(key);
+    }
+
+    /**
+     * If a meta property value is fetched from an Axis or a Column, the value should be extracted
+     * using this API, so as to allow executable values to be retreived.
+     * @param value Object value to be extracted.
+     */
+    public Object extractMetaPropertyValue(Object value)
+    {
         if (value instanceof CommandCell)
         {
             CommandCell cmd = (CommandCell) value;
@@ -425,6 +434,12 @@ public class NCube<T>
         return cells.get(cols);
     }
 
+    @Deprecated
+    public T getCells(Map input, Map output)
+    {
+        throw new IllegalArgumentException("Call ncube.getCell() instead of getCells().");
+    }
+
     /**
      * Fetch the contents of the cell at the location specified by the coordinate argument.
      * Be aware that if you have any rule cubes in the execution path, they can execute
@@ -451,7 +466,137 @@ public class NCube<T>
      */
     public T getCell(final Map<String, Object> coordinate, final Map<String, Object> output)
     {
-        return getCells(coordinate, output);
+        final RuleInfo ruleInfo = getRuleInfo(output);
+        final List<MapEntry> trace = ruleInfo.getRuleExecutionTrace();
+        final Map<String, Object> validCoord = validateCoordinate(coordinate);
+        Map<String, Object> input = new CaseInsensitiveMap<>(validCoord);
+        boolean run = true;
+        trace.add(new MapEntry("begin: " + getName(), coordinate));
+        long numRulesExec = 0;
+        T lastExecutedCellValue = null;
+
+        while (run)
+        {
+            run = false;
+            final Map<String, List<Column>> boundCoordinates = bindCoordinateToAxes(input);
+            final String[] axisNames = getAxisNames(boundCoordinates);
+            final Map<String, Integer> counters = getCountersPerAxis(boundCoordinates);
+            final Set<Column> idCoord = new HashSet<>();
+            final Map<Long, Object[]> cachedConditionValues = new HashMap<>();
+            final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
+            boolean done = false;
+
+            try
+            {
+                while (!done)
+                {
+                    idCoord.clear();
+                    Map<String, Object> ruleIds = new LinkedHashMap<>();
+
+                    for (final String axisName : axisNames)
+                    {
+                        final List<Column> cols = boundCoordinates.get(axisName);
+                        final Column boundColumn = cols.get(counters.get(axisName) - 1);
+                        final Axis axis = axisList.get(axisName);
+
+                        if (axis.getType() == AxisType.RULE)
+                        {
+                            Object conditionValue;
+
+                            // Use Object[] to hold cached condition value to distinguish from a condition
+                            // that returned null as it's value.
+                            Object[] cachedConditionValue = cachedConditionValues.get(boundColumn.id);
+                            if (cachedConditionValue == null)
+                            {   // Has the condition on the Rule axis been run this execution?  If not, run it and cache it.
+                                CommandCell cmd = (CommandCell) boundColumn.getValue();
+                                Map<String, Object> ctx = prepareExecutionContext(input, output);
+
+                                // If the cmd == null, then we are looking at a default column on a rule axis.
+                                // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
+                                conditionValue = cmd == null ? isZero(conditionsFiredCountPerAxis.get(axisName)) : cmd.execute(ctx);
+                                cachedConditionValues.put(boundColumn.id, new Object[]{conditionValue});
+
+                                if (isTrue(conditionValue))
+                                {   // Rule fired
+                                    Integer count = conditionsFiredCountPerAxis.get(axisName);
+                                    conditionsFiredCountPerAxis.put(axisName, count == null ? 1 : count + 1);
+                                }
+                            }
+                            else
+                            {   // re-use condition on this rule axis (happens when more than one rule axis on an n-cube)
+                                conditionValue = cachedConditionValue[0];
+                            }
+
+                            // A rule column on a given axis can be accessed more than once (example: A, B, C on
+                            // one rule axis, X, Y, Z on another).  This generates coordinate combinations
+                            // (AX, AY, AZ, BX, BY, BZ, CX, CY, CZ).  The condition columns must be run only once, on
+                            // subsequent access, the cached result of the condition is used.
+                            if (isTrue(conditionValue))
+                            {
+                                bindColumn(idCoord, ruleIds, axis, boundColumn);
+                            }
+                        }
+                        else
+                        {
+                            bindColumn(idCoord, ruleIds, axis, boundColumn);
+                        }
+                    }
+
+                    // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
+                    if (idCoord.size() == axisNames.length)
+                    {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
+                        numRulesExec++;
+                        MapEntry entry = new MapEntry(ruleIds, null);
+                        try
+                        {
+                            lastExecutedCellValue = getCellById(idCoord, input, output);
+                            entry.setValue(lastExecutedCellValue);
+                            trace.add(entry);
+                        }
+                        catch (RuleStop e)
+                        {   // Statement threw at RuleStop
+                            entry.setValue("[RuleStop]");
+                            trace.add(entry);
+                            throw e;
+                        }
+                        catch(RuleJump e)
+                        {   // Statement threw at RuleJump
+                            entry.setValue("[RuleJump]");
+                            trace.add(entry);
+                            throw e;
+                        }
+                        catch (Exception e)
+                        {
+                            String msg = e.getMessage();
+                            if (StringUtilities.isEmpty(msg))
+                            {
+                                msg = e.getClass().getName();
+                            }
+                            entry.setValue("[" + msg + "]");
+                            trace.add(entry);
+                            throw e;
+                        }
+                    }
+
+                    // Step #3 increment counters (variable radix increment)
+                    done = incrementVariableRadixCount(counters, boundCoordinates, axisNames);
+                }
+            }
+            catch (RuleStop ignored)
+            {
+                // ends this execution cycle
+            }
+            catch (RuleJump e)
+            {
+                input = e.getCoord();
+                run = true;
+            }
+        }
+
+        trace.add(new MapEntry("end: " + getName(), numRulesExec));
+        ruleInfo.addToRulesExecuted(numRulesExec);
+        output.put("return", lastExecutedCellValue);
+        return lastExecutedCellValue;
     }
 
     /**
@@ -586,153 +731,6 @@ public class NCube<T>
         }
 
         return result;
-    }
-
-    /**
-     * Fetch the contents of the cell at the location specified by the coordinate argument.
-     * Be aware that if you have any rule cubes in the execution path, they can execute
-     * more than one cell.  The cell value returned is the value of the last cell executed.
-     * Typically, in a rule cube, you are writing to specific keys within the rule cube, and
-     * the calling code then accesses the 'output' Map to fetch the values at these specific
-     * keys.
-     * @param coordinate Map of String keys to values meant to bind to each axis of the n-cube.
-     * @param output Map that can be written to by the code within the the n-cubes (for example,
-     *               GroovyExpressions.
-     * @return Cell pinpointed by the input coordinate.
-     */
-    public T getCells(final Map<String, Object> coordinate, final Map<String, Object> output)
-    {
-        final RuleInfo ruleInfo = getRuleInfo(output);
-        final List<MapEntry> trace = ruleInfo.getRuleExecutionTrace();
-        final Map<String, Object> validCoord = validateCoordinate(coordinate);
-        Map<String, Object> input = new CaseInsensitiveMap<>(validCoord);
-        boolean run = true;
-        trace.add(new MapEntry("begin: " + getName(), coordinate));
-        long numRulesExec = 0;
-        T lastExecutedCellValue = null;
-
-        while (run)
-        {
-            run = false;
-            final Map<String, List<Column>> boundCoordinates = bindCoordinateToAxes(input);
-            final String[] axisNames = getAxisNames(boundCoordinates);
-            final Map<String, Integer> counters = getCountersPerAxis(boundCoordinates);
-            final Set<Column> idCoord = new HashSet<>();
-            final Map<Long, Object[]> cachedConditionValues = new HashMap<>();
-            final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
-            boolean done = false;
-
-            try
-            {
-                while (!done)
-                {
-                    idCoord.clear();
-                    Map<String, Object> ruleIds = new LinkedHashMap<>();
-
-                    for (final String axisName : axisNames)
-                    {
-                        final List<Column> cols = boundCoordinates.get(axisName);
-                        final Column boundColumn = cols.get(counters.get(axisName) - 1);
-                        final Axis axis = axisList.get(axisName);
-
-                        if (axis.getType() == AxisType.RULE)
-                        {
-                            Object conditionValue;
-
-                            // Use Object[] to hold cached condition value to distinguish from a condition
-                            // that returned null as it's value.
-                            Object[] cachedConditionValue = cachedConditionValues.get(boundColumn.id);
-                            if (cachedConditionValue == null)
-                            {   // Has the condition on the Rule axis been run this execution?  If not, run it and cache it.
-                                CommandCell cmd = (CommandCell) boundColumn.getValue();
-                                Map<String, Object> ctx = prepareExecutionContext(input, output);
-
-                                // If the cmd == null, then we are looking at a default column on a rule axis.
-                                // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
-                                conditionValue = cmd == null ? isZero(conditionsFiredCountPerAxis.get(axisName)) : cmd.execute(ctx);
-                                cachedConditionValues.put(boundColumn.id, new Object[]{conditionValue});
-
-                                if (isTrue(conditionValue))
-                                {   // Rule fired
-                                    Integer count = conditionsFiredCountPerAxis.get(axisName);
-                                    conditionsFiredCountPerAxis.put(axisName, count == null ? 1 : count + 1);
-                                }
-                            }
-                            else
-                            {   // re-use condition on this rule axis (happens when more than one rule axis on an n-cube)
-                                conditionValue = cachedConditionValue[0];
-                            }
-
-                            // A rule column on a given axis can be accessed more than once (example: A, B, C on
-                            // one rule axis, X, Y, Z on another).  This generates coordinate combinations
-                            // (AX, AY, AZ, BX, BY, BZ, CX, CY, CZ).  The condition columns must be run only once, on
-                            // subsequent access, the cached result of the condition is used.
-                            if (isTrue(conditionValue))
-                            {
-                                bindColumn(idCoord, ruleIds, axis, boundColumn);
-                            }
-                        }
-                        else
-                        {
-                            bindColumn(idCoord, ruleIds, axis, boundColumn);
-                        }
-                    }
-
-                    // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
-                    if (idCoord.size() == axisNames.length)
-                    {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
-                        numRulesExec++;
-                        MapEntry entry = new MapEntry(ruleIds, null);
-                        try
-                        {
-                            lastExecutedCellValue = getCellById(idCoord, input, output);
-                            entry.setValue(lastExecutedCellValue);
-                            trace.add(entry);
-                        }
-                        catch (RuleStop e)
-                        {   // Statement threw at RuleStop
-                            entry.setValue("[RuleStop]");
-                            trace.add(entry);
-                            throw e;
-                        }
-                        catch(RuleJump e)
-                        {   // Statement threw at RuleJump
-                            entry.setValue("[RuleJump]");
-                            trace.add(entry);
-                            throw e;
-                        }
-                        catch (Exception e)
-                        {
-                            String msg = e.getMessage();
-                            if (StringUtilities.isEmpty(msg))
-                            {
-                                msg = e.getClass().getName();
-                            }
-                            entry.setValue("[" + msg + "]");
-                            trace.add(entry);
-                            throw e;
-                        }
-                    }
-
-                    // Step #3 increment counters (variable radix increment)
-                    done = incrementVariableRadixCount(counters, boundCoordinates, axisNames);
-                }
-            }
-            catch (RuleStop ignored)
-            {
-                // ends this execution cycle
-            }
-            catch (RuleJump e)
-            {
-                input = e.getCoord();
-                run = true;
-            }
-        }
-
-        trace.add(new MapEntry("end: " + getName(), numRulesExec));
-        ruleInfo.addToRulesExecuted(numRulesExec);
-        output.put("return", lastExecutedCellValue);
-        return lastExecutedCellValue;
     }
 
     private void bindColumn(Set<Column> idCoord, Map<String, Object> ruleIds, Axis axis, Column boundColumn)
@@ -1181,42 +1179,17 @@ public class NCube<T>
             throw new IllegalArgumentException("'null' passed in for coordinate Map, NCube '" + name + "'");
         }
 
-        if (coordinate.isEmpty())
-        {
-            throw new IllegalArgumentException("Coordinate Map must have at least one coordinate, NCube '" + name + "'");
-        }
-
         // Duplicate input coordinate
         final Map<String, Object> copy = new CaseInsensitiveMap<>(coordinate);
 
-        for (Map.Entry<String, Axis> entry : axisList.entrySet())
-        {
-            final String key = entry.getKey();
-            final Axis axis = entry.getValue();
-            if (!copy.containsKey(key) && axis.getType() != AxisType.RULE)
-            {
-                StringBuilder keys = new StringBuilder();
-                Iterator<String> i = coordinate.keySet().iterator();
-                while (i.hasNext())
-                {
-                    keys.append("'");
-                    keys.append(i.next());
-                    keys.append("'");
-                    if (i.hasNext())
-                    {
-                        keys.append(", ");
-                    }
-                }
-                throw new IllegalArgumentException("Input coordinate with axes (" + keys + ") does not contain a coordinate for axis '" + axis.getName() + "' required for NCube '" + name + "'");
-            }
+        // Ensure required scope is supplied within the input coordinate
+        Set<String> requiredScope = getRequiredScope();
 
-            final Object value = copy.get(key);
-            if (value != null)
+        for (String scopeKey : requiredScope)
+        {
+            if (!copy.containsKey(scopeKey))
             {
-                if (!(value instanceof Comparable) && !(value instanceof Set))
-                {
-                    throw new IllegalArgumentException("Coordinate value '" + value + "' must be of type 'Comparable' (or a Set) to bind to axis '" + axis.getName() + "' on NCube '" + name + "'");
-                }
+                throw new IllegalArgumentException("Input coordinate with keys: " + coordinate.keySet() + ", does not contain all of the required scope keys: " + requiredScope + ", required for NCube '" + name + "'");
             }
         }
 
@@ -1569,7 +1542,7 @@ public class NCube<T>
 
                 for (final Axis axis : cube.axisList.values())
                 {   // Use original axis name (not .toLowerCase() version)
-                    if (axis.hasDefaultColumn())
+                    if (axis.hasDefaultColumn() || axis.getType() == AxisType.RULE)
                     {
                         optionalScope.add(axis.getName());
                     }
@@ -1615,7 +1588,6 @@ public class NCube<T>
         }
     }
 
-    // TODO: Add tests that set required scope via the 'requiredScope' meta-property
     // TODO: Validate coordinate needs to validate against proper Required Scope - getCell() not setCell
     // TODO: Allow axes to be bound to if no value supplied (land on default)
     // Release after completion.
@@ -1637,28 +1609,19 @@ public class NCube<T>
 
         for (final Axis axis : axisList.values())
         {   // Use original axis name (not .toLowerCase() version)
-            if (!axis.hasDefaultColumn())
+            if (!axis.hasDefaultColumn() && !(axis.getType() == AxisType.RULE))
             {
                 requiredScope.add(axis.getName());
             }
         }
 
-        Object[] declaredRequiredScope = (Object[]) getMetaProperty("requiredScopeKeys");
-        if (declaredRequiredScope != null && declaredRequiredScope.length > 0)
+        List declaredRequiredScope = (List) extractMetaPropertyValue(getMetaProperty("requiredScopeKeys"));
+        if (declaredRequiredScope != null && declaredRequiredScope.size() > 0)
         {
-            for (Object scopeKey : declaredRequiredScope)
-            {
-                requiredScope.add((String)scopeKey);
-            }
+            requiredScope.addAll(declaredRequiredScope);
         }
 
-        // Cheap sort
-        Set<String> reqScope = new TreeSet<>(requiredScope);
-
-        // Convert TreeSet to CaseInsensitiveSet which will maintain sorted order, but
-        // will be case-insensitive on scope keys. Also, the return set is mutable (not
-        // a reference to the cached required scope).
-        return new CaseInsensitiveSet<>(reqScope);
+        return new CaseInsensitiveSet<>(requiredScope);
     }
 
     /**

@@ -1,4 +1,5 @@
 import com.cedarsoftware.ncube.NCubeManager
+import com.cedarsoftware.ncube.exception.RuleJump
 import com.cedarsoftware.ncube.exception.RuleStop
 
 def getRelativeCubeCell =
@@ -34,3 +35,5 @@ def getFixedCell =
         }
 
 def ruleStop = { throw new RuleStop(); }
+
+def jump = { throw new RuleJump(); }

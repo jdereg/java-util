@@ -58,7 +58,7 @@ public class TestRuleEngine
         coord.put("weight", 99);
         Map output = new HashMap();
 
-        n1.getCells(coord, output);
+        n1.getCell(coord, output);
 
         assertEquals("light-weight", output.get("weight"));
         assertEquals("young", output.get("age"));
@@ -131,7 +131,7 @@ public class TestRuleEngine
         coord.put("vehicleCylinders", 8);
         coord.put("state", "TX");
         Map output = new HashMap();
-        Object out = ncube.getCells(coord, output);
+        Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
         assertEquals(new BigDecimal("119.0"), output.get("premium"));
     }
@@ -148,7 +148,7 @@ public class TestRuleEngine
         coord.put("gender", "male");
         coord.put("vehicleCylinders", 8);
         Map output = new HashMap();
-        Object out = ncube.getCells(coord, output);
+        Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
         assertEquals(new BigDecimal("119.0"), output.get("premium"));
     }
@@ -205,12 +205,12 @@ public class TestRuleEngine
         NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
 
         Set<String> reqScope = ncube.getRequiredScope();
-        assertEquals(2, reqScope.size());
+        assertEquals(1, reqScope.size());
         assertTrue(reqScope.contains("state"));
-        assertTrue(reqScope.contains("condition"));
 
         Set<String> optScope = ncube.getOptionalScope();
-        assertEquals(5, optScope.size());
+        assertEquals(6, optScope.size());
+        assertTrue(optScope.contains("condition"));
         assertTrue(optScope.contains("driverAge"));
         assertTrue(optScope.contains("gender"));
         assertTrue(optScope.contains("stop"));
@@ -230,30 +230,30 @@ public class TestRuleEngine
 
         NCube ncube2 = NCubeManager.getNCubeFromResource("expressionAxis2.json");
         reqScope = ncube2.getRequiredScope();
-        assertTrue(reqScope.size() == 2);
-        assertTrue(reqScope.contains("condition"));
+        assertTrue(reqScope.size() == 1);
         assertTrue(reqScope.contains("state"));
         optScope = ncube2.getOptionalScope();
-        assertEquals(1, optScope.size());
+        assertEquals(2, optScope.size());
+        assertTrue(optScope.contains("condition"));
         assertTrue(optScope.contains("AGE"));
 
         Map coord = new HashMap();
         coord.put("age", 18);
         coord.put("state", "OH");
         Map output = new LinkedHashMap();
-        ncube2.getCells(coord, output);
+        ncube2.getCell(coord, output);
         assertEquals(new BigDecimal("5.0"), output.get("premium"));
 
         coord.put("state", "TX");
         output.clear();
-        ncube2.getCells(coord, output);
+        ncube2.getCell(coord, output);
         assertEquals(new BigDecimal("-5.0"), output.get("premium"));
 
         coord.clear();
         coord.put("state", "OH");
         coord.put("Age", 23);
         output.clear();
-        ncube2.getCells(coord, output);
+        ncube2.getCell(coord, output);
         assertEquals(new BigDecimal("1.0"), output.get("premium"));
     }
 
@@ -265,7 +265,7 @@ public class TestRuleEngine
         coord.put("age", 10);
         coord.put("weight", 50);
         Map output = new HashMap();
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
 
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
@@ -275,7 +275,7 @@ public class TestRuleEngine
         output.clear();
         coord.put("age", 10);
         coord.put("weight", 150);
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -284,7 +284,7 @@ public class TestRuleEngine
         output.clear();
         coord.put("age", 35);
         coord.put("weight", 150);
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(output.get("weight"), "medium-weight");
         assertEquals(output.get("age"), "adult");
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -293,7 +293,7 @@ public class TestRuleEngine
         output.clear();
         coord.put("age", 42);
         coord.put("weight", 205);
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(output.get("weight"), "heavy-weight");
         assertEquals(output.get("age"), "middle-aged");
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -308,7 +308,7 @@ public class TestRuleEngine
         coord.put("age", 10);
         coord.put("weight", 60);
         Map output = new HashMap();
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(output.get("weight"), "light-weight");
 
         // The age is 'adult' because two rules are matching on the age axis (intentional rule error)
@@ -325,7 +325,7 @@ public class TestRuleEngine
         coord.put("age", 10);
         coord.put("weight", 60);
         Map output = new HashMap();
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(output.get("age"), "young");
         assertEquals(output.get("weight"), "light-weight");
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -334,14 +334,14 @@ public class TestRuleEngine
         coord.put("age", 25);
         coord.put("weight", 60);
         output.clear();
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(0, ruleInfo.getNumberOfRulesExecuted());
 
         coord.put("age", 45);
         coord.put("weight", 60);
         output.clear();
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(output.get("age"), "middle-aged");
         assertEquals(output.get("weight"), "light-weight");
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -449,13 +449,13 @@ public class TestRuleEngine
         Map coord = new HashMap();
         Map output = new HashMap();
         coord.put("age", 85);
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertEquals(2, output.size());
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(0L, ruleInfo.getNumberOfRulesExecuted());
 
         coord.put("age", 22);
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         assertTrue(output.containsKey("adult"));
         assertTrue(output.containsKey("old"));
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -499,15 +499,15 @@ public class TestRuleEngine
         Map input = new HashMap();
         input.put("age", 10);
         Map output = new HashMap();
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
         assertEquals(new BigDecimal("1.0"), output.get("total"));
 
         input.put("age", 48);
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
         assertEquals(new BigDecimal("8.560"), output.get("total"));
 
         input.put("age", 84);
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
         assertEquals(new BigDecimal("5.150"), output.get("total"));
     }
 
@@ -518,7 +518,7 @@ public class TestRuleEngine
         Map input = new HashMap();
         input.put("age", 10);
         Map output = new HashMap();
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
 
         assertEquals("child", output.get("group"));
         assertEquals("thang", output.get("thing"));
@@ -528,11 +528,11 @@ public class TestRuleEngine
 //        System.out.println("ruleInfo.getRuleExecutionTrace() = " + ruleInfo.getRuleExecutionTrace());
 
         input.put("age", 48);
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
         assertEquals("adult", output.get("group"));
 
         input.put("age", 84);
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
         assertEquals("geezer", output.get("group"));
     }
 
@@ -554,7 +554,7 @@ public class TestRuleEngine
         Map input = new HashMap();
         input.put("state", "OH");
         Map output = new HashMap();
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
         RuleInfo ruleInfo = (RuleInfo) output.get("_rule");
         assertEquals(1, ruleInfo.getNumberOfRulesExecuted());
 
@@ -612,7 +612,7 @@ public class TestRuleEngine
         Map input = new HashMap();
         input.put("letter", "e");
         Map output = new CaseInsensitiveMap();
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
 
         assertTrue(output.containsKey("A"));           // condition ran (condition axis was told to start at beginning - null)
         assertTrue(output.containsKey("B"));
@@ -625,7 +625,7 @@ public class TestRuleEngine
 
         input.put("condition", "e");
         output = new CaseInsensitiveMap();
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
 
         assertFalse(output.containsKey("A"));           // condition never ran (condition axis was told to start at a)
         assertFalse(output.containsKey("B"));           // condition never ran (condition axis was told to start at a)
@@ -647,7 +647,7 @@ public class TestRuleEngine
         input.put("condition", "f");
         input.put("condition2", "y");
         Map output = new CaseInsensitiveMap();
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
 
         assertFalse(output.containsKey("A"));       // skipped - condition never ran (condition axis was told to start at f)
         assertFalse(output.containsKey("B"));       // skipped
@@ -680,7 +680,7 @@ public class TestRuleEngine
         output.put("f", 0);
         output.put("g", 0);
         output.put("word", "");
-        ncube.getCells(input, output);
+        ncube.getCell(input, output);
 
         assertTrue(output.containsKey("A"));           // condition ran (condition axis was told to start at beginning - null)
         assertTrue(output.containsKey("B"));

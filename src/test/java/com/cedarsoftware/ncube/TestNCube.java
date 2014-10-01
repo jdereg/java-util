@@ -1253,9 +1253,9 @@ public class TestNCube
         }
         catch (IllegalArgumentException expected)
         {
-            assertTrue(expected.getMessage().contains("least"));
-            assertTrue(expected.getMessage().contains("one"));
-            assertTrue(expected.getMessage().contains("coordinate"));
+            assertTrue(expected.getMessage().contains("not"));
+            assertTrue(expected.getMessage().contains("contain"));
+            assertTrue(expected.getMessage().contains("required"));
         }
 
         // Map with not enough dimensions
@@ -1310,7 +1310,7 @@ public class TestNCube
         {
             assertTrue(expected.getMessage().contains("not"));
             assertTrue(expected.getMessage().contains("contain"));
-            assertTrue(expected.getMessage().contains("axis"));
+            assertTrue(expected.getMessage().contains("key"));
         }
 
         try
@@ -2490,9 +2490,9 @@ public class TestNCube
         }
         catch (Exception expected)
         {
-            assertTrue(expected.getMessage().contains("must"));
-            assertTrue(expected.getMessage().contains("one"));
-            assertTrue(expected.getMessage().contains("coordinate"));
+            assertTrue(expected.getMessage().contains("not"));
+            assertTrue(expected.getMessage().contains("contain"));
+            assertTrue(expected.getMessage().contains("key"));
         }
 
         try
@@ -4741,7 +4741,7 @@ public class TestNCube
         Map coord = new HashMap();
         coord.put("state", "OH");
         Map output = new LinkedHashMap();
-        Object out = ncube.getCells(coord, output);
+        Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
 
         NCubeManager.clearCubeList();
@@ -4752,7 +4752,7 @@ public class TestNCube
         fo.flush();
 
         ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
-        out = ncube.getCells(coord, output);
+        out = ncube.getCell(coord, output);
         assertEquals(20, out);
 
         coord.put("state", "IN");
@@ -4866,6 +4866,42 @@ public class TestNCube
         }
         catch (Exception ignored)
         { }
+    }
+
+    @Test
+    public void testRequiredScope()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("requiredScopeKeys.json");
+        Set<String> scope = ncube.getRequiredScope();
+        assertEquals(3, scope.size());
+        assertTrue(scope.contains("codE"));
+        assertTrue(scope.contains("bU"));
+        assertTrue(scope.contains("sTaTe"));
+
+        Axis axis = ncube.getAxis("codE");
+        Object b = ncube.extractMetaPropertyValue(axis.getMetaProperty("extraByte"));
+        assertTrue(b instanceof Byte);
+        assertEquals((byte)8, b);
+
+        List<Column> columns = axis.getColumns();
+        assertEquals(3, columns.size());
+        Column col1 = columns.get(0);
+        Map map = (Map) ncube.extractMetaPropertyValue(col1.getMetaProperty("colProp"));
+        assertEquals(1, map.size());
+        assertTrue(map.containsKey("dude"));
+        assertEquals("male", map.get("dude"));
+
+        Column col2 = columns.get(1);
+        map = (Map) ncube.extractMetaPropertyValue(col2.getMetaProperty("colProp"));
+        assertEquals(1, map.size());
+        assertTrue(map.containsKey("chick"));
+        assertEquals("female", map.get("chick"));
+
+        Column col3 = columns.get(2);
+        map = (Map) ncube.extractMetaPropertyValue(col3.getMetaProperty("colProp"));
+        assertEquals(1, map.size());
+        assertTrue(map.containsKey("42"));
+        assertEquals("meaning of life", map.get("42"));
     }
 
     @Test

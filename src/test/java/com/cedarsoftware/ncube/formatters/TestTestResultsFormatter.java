@@ -48,7 +48,7 @@ public class TestTestResultsFormatter
 
         Map output = new HashMap();
         output.put("_failures", new TreeSet());
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
         String s = new TestResultsFormatter(output).format();
         assertEquals("<b>Result</b><pre>\n" +
                 "   18 OH\n" +
@@ -72,7 +72,7 @@ public class TestTestResultsFormatter
         output.put("foo.age", "56");
         output.put("foo.nassertame", "John");
 
-        ncube.getCells(coord, output);
+        ncube.getCell(coord, output);
 
         Set<String> set = new HashSet<>();
         set.add("[some assertion happened]");

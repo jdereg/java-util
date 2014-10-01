@@ -115,9 +115,31 @@ public class NCubeGroovyExpression
         {
             throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting runRuleCube() to cell: " + coord.toString());
         }
-        return cube.getCells(input, output);
+        return cube.getCell(input, output);
     }
 
+    /**
+     * @return long Current time in nano seconds (used to compute how long something takes to execute)
+     */
+    public long now()
+    {
+        return System.nanoTime();
+    }
+
+    /**
+     * Get floating point millisecond value for how much time elapsed.
+     * @param begin long value from call to now()
+     * @param end long value from call to now()
+     * @return double elapsed time in milliseconds.
+     */
+    public double elapsedMillis(long begin, long end)
+    {
+        return (end - begin) / 1000000.0;
+    }
+
+    /**
+     * Stop rule execution from going any further.
+     */
     public void ruleStop()
     {
         throw new RuleStop();

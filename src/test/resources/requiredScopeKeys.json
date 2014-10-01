@@ -5,19 +5,23 @@
     "axes":[
         {
             "name":"Code",
+            "extraByte":{"type":"exp", "value":"(byte)8" },
             "type":"DISCRETE",
             "valueType":"LONG",
             "hasDefault":false,
             "preferredOrder":0,
             "columns":[
                 {
-                    "id":-10
+                    "id":-10,
+                    "colProp":{"type":"exp", "value":"[dude:'male']"}
                 },
                 {
-                    "id":0
+                    "id":0,
+                    "colProp":{"type":"exp", "value":"[chick:'female']"}
                 },
                 {
-                    "id":10
+                    "id":10,
+                    "colProp":{"type":"exp", "value":"['42':'meaning of life']"}
                 }
             ]
         }

@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -9,10 +11,10 @@ import java.util.Map;
 public class NCubeTest
 {
     private String name;
-    private Map<String, CellInfo> coord;
-    private Map<String, CellInfo> expected;
+    private StringValuePair<CellInfo>[] coord;
+    private CellInfo[] expected;
 
-    public NCubeTest(String name, Map<String, CellInfo> coord, Map<String, CellInfo> expected) {
+    public NCubeTest(String name, StringValuePair<CellInfo>[] coord, CellInfo[] expected) {
         this.name = name;
         this.coord = coord;
         this.expected = expected;
@@ -22,26 +24,26 @@ public class NCubeTest
         return name;
     }
 
-    public Map<String, CellInfo> getCoord() {
+    public StringValuePair<CellInfo>[] getCoord() {
         return this.coord;
     }
 
     public Map<String, Object> createCoord() {
         Map<String, Object> actuals = new LinkedHashMap<>();
-        for (Map.Entry<String, CellInfo> item : this.coord.entrySet()) {
-            actuals.put(item.getKey(), item.getValue().recreate());
+        for (StringValuePair item : this.coord) {
+            actuals.put((String)item.getKey(), ((CellInfo)item.getValue()).recreate());
         }
         return actuals;
     }
 
-    public Map<String, CellInfo> getAssertions() {
+    public CellInfo[] getAssertions() {
         return this.expected;
     }
 
-    public Map<String, GroovyExpression> createAssertions() {
-        Map<String, GroovyExpression> actuals = new LinkedHashMap<>();
-        for (Map.Entry<String, CellInfo> item : this.expected.entrySet()) {
-            actuals.put(item.getKey(), (GroovyExpression)item.getValue().recreate());
+    public List<GroovyExpression> createAssertions() {
+        List<GroovyExpression> actuals = new ArrayList<>();
+        for (CellInfo item : this.expected) {
+            actuals.add((GroovyExpression) item.recreate());
         }
         return actuals;
     }

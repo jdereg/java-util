@@ -591,8 +591,7 @@ public class TestNCube
         long end = System.nanoTime();
         assertTrue((end - start) / 1000000.0 < 1000);   // verify that it runs in under 1 second (actual 87ms)
         NCubeTest test = (NCubeTest)list.get(0);
-        assertTrue(test.getCoord().size() > 0);
-        assertEquals(5, test.getCoord().size());
+        assertEquals(5, test.getCoord().length);
         assertEquals("test-001", test.getName());
     }
 

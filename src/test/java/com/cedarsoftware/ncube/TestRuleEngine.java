@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -67,12 +68,13 @@ public class TestRuleEngine
         int age = 0;
         for (NCubeTest pt : list)
         {
-            Map<String, CellInfo> c = pt.getCoord();
-            if (c.containsKey("age"))
+            StringValuePair<CellInfo>[] c = pt.getCoord();
+
+            if (Arrays.asList(c).contains(new StringValuePair<CellInfo>("age", null)))
             {
                 age++;
             }
-            if (c.containsKey("weight"))
+            if (Arrays.asList(c).contains(new StringValuePair<CellInfo>("weight", null)))
             {
                 weight++;
             }
@@ -97,12 +99,12 @@ public class TestRuleEngine
         int age = 0;
         for (NCubeTest pt : list)
         {
-            Map<String, CellInfo> c = pt.getCoord();
-            if (c.containsKey("age"))
+            StringValuePair<CellInfo>[] c = pt.getCoord();
+            if (Arrays.asList(c).contains(new StringValuePair<CellInfo>("age", null)))
             {
                 age++;
             }
-            if (c.containsKey("weight"))
+            if (Arrays.asList(c).contains(new StringValuePair<CellInfo>("weight", null)))
             {
                 weight++;
             }

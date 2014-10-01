@@ -10,7 +10,6 @@ import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
-import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
 
@@ -43,11 +42,8 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class JsonFormatter implements NCubeFormatter
+public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 {
-    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    protected StringBuilder builder = new StringBuilder();
-    protected String quotedStringFormat = "\"%s\"";
 
     public JsonFormatter() { }
 
@@ -99,8 +95,7 @@ public class JsonFormatter implements NCubeFormatter
 
     void writeAxes(List<Axis> axes) throws IOException
     {
-        builder.append(String.format(quotedStringFormat, "axes"));
-        builder.append(':');
+        writeAttributeIdentifier("axes");
         startArray();
         for (Axis item : axes)
         {
@@ -284,8 +279,7 @@ public class JsonFormatter implements NCubeFormatter
 
     void writeId(Long longId, boolean addComma) throws IOException
     {
-        builder.append(String.format(quotedStringFormat, "id"));
-        builder.append(':');
+        writeAttributeIdentifier("id");
         writeIdValue(longId, addComma);
     }
 
@@ -306,26 +300,6 @@ public class JsonFormatter implements NCubeFormatter
         }
 
         return CellTypes.getType(o, "column");
-    }
-
-    void startArray() {
-        builder.append("[");
-    }
-
-    void endArray() {
-        builder.append("]");
-    }
-
-    void startObject() {
-        builder.append("{");
-    }
-
-    void endObject() {
-        builder.append("}");
-    }
-
-    void comma() {
-        builder.append(",");
     }
 
     void writeValue(String attr, Object o) throws IOException
@@ -421,25 +395,4 @@ public class JsonFormatter implements NCubeFormatter
         }
     }
 
-    void uncomma()
-    {
-        builder.setLength(builder.length() - 1);
-    }
-
-    void writeAttribute(String attr, Object value, boolean includeComma) throws IOException
-    {
-        if (value instanceof String)
-        {
-            StringWriter w = new StringWriter();
-            JsonWriter.writeJsonUtf8String((String) value, w);
-            value = w.toString();
-        }
-        builder.append(String.format(quotedStringFormat, attr));
-        builder.append(":");
-        builder.append(value.toString());
-        if (includeComma)
-        {
-            builder.append(",");
-        }
-    }
 }

@@ -1,0 +1,26 @@
+[
+    {
+        "name":"test-001",
+        "coord": {
+            "param-1" : {
+                "type" : "string",
+                "value" : "foo",
+                "isUrl" : "false",
+                "isCached" : "false"
+            },
+            "param-2" : {
+            },
+            "param-3" : {
+              "type" : "GroovyExpression",
+              "value" : "true"
+            }
+        },
+        "assertions": [
+            {
+                "type" : "exp",
+                "value" : "true",
+                "isUrl" : "false"
+            }
+        ]
+    }
+]

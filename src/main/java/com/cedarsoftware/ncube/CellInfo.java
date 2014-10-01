@@ -46,11 +46,28 @@ public class CellInfo
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
 
-    public CellInfo(String type, String value, String isUrl, String isCached) {
+    public CellInfo(String type, String value, Object isUrl, Object isCached) {
         this.dataType = type;
         this.value = value;
-        this.isUrl = Boolean.valueOf(isUrl);
-        this.isCached = Boolean.valueOf(isCached);
+        this.isUrl = booleanValue(isUrl);
+        this.isCached = booleanValue(isCached);
+    }
+
+    public boolean booleanValue(Object o)
+    {
+        if (o instanceof Boolean) {
+            return ((Boolean)o).booleanValue();
+        } else if (o instanceof String) {
+            String s = (String)o;
+
+            if ("true".equalsIgnoreCase(s) ||
+                "t".equalsIgnoreCase(s) ||
+                "yes".equalsIgnoreCase(s)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public CellInfo(Object cell)

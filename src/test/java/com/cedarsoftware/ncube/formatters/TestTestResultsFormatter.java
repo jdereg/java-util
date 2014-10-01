@@ -1,8 +1,13 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.CellInfo;
+import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
+import com.cedarsoftware.ncube.NCubeTest;
+import com.cedarsoftware.ncube.StringValuePair;
 import com.cedarsoftware.ncube.TestNCube;
+import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -56,7 +61,7 @@ public class TestTestResultsFormatter
     }
 
     @Test
-    public void testResultsWithOutputAndError()
+    public void testResultsWithOutputAndError() throws Exception
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource("idNoValue.json");
         Map coord = new HashMap();
@@ -87,7 +92,18 @@ public class TestTestResultsFormatter
                 "   begin: idNoValue(age:18,state:OH)\n" +
                 "      {Age=18, State=OH} = 18 OH\n" +
                 "   end: idNoValue = 1</pre>", s);
+
     }
 
+    @Test
+    public void testOutput() throws Exception {
+        StringValuePair<CellInfo>[] coord = new StringValuePair[0];
+        CellInfo[] expected = new CellInfo[3];
+        expected[0] = new CellInfo(new Double(3.0));
+        expected[1] = new CellInfo(new Float(3.0));
+        expected[2] = new CellInfo(new GroovyExpression("help me", null));
 
+        NCubeTest test = new NCubeTest("testName", coord, expected);
+        System.out.println(JsonWriter.objectToJson(test));
+    }
 }

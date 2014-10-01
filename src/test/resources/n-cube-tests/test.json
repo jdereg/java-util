@@ -57,7 +57,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "@[system:'UD']"
             }
         ]
@@ -86,7 +85,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[BND:'Bound',DECL:'Declined',ISSU:'Issued',QUOTED:'Quoted',RATED:'Rated',LOST:'Lost',WITH:'Withdrawn']"
             }
         ]
@@ -115,7 +113,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',DECL:'Declined',LOST:'Lost',WITH:'Withdrawn',RATED:'Rated']"
             }
         ]
@@ -144,7 +141,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',DECL:'Declined']"
             }
         ]
@@ -172,7 +168,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "@[system:'UD']"
             }
         ]
@@ -200,7 +195,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',BND:'Bound',DECL:'Declined',ISSU:'Issued',QUOTED:'Quoted',RATED:'Rated',LOST:'Lost',WITH:'Withdrawn']"
             }
         ]
@@ -229,7 +223,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[ISSU:'Issue']"
             }
         ]
@@ -257,7 +250,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "@[system:'UD']"
             }
         ]
@@ -286,7 +278,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',WITH:'Withdrawn']"
             }
         ]
@@ -315,7 +306,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',LOST:'Declined']"
             }
         ]
@@ -343,7 +333,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',BND:'Bound',DECL:'Declined',ISSU:'Issued',QUOTED:'Quoted',RATED:'Rated',LOST:'Lost',WITH:'Withdrawn']"
             }
         ]
@@ -371,7 +360,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "@bar[system:'UD']"
             }
         ]
@@ -399,7 +387,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "@[system:'UD']"
             }
         ]
@@ -429,7 +416,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "if (foo == bar)\n{\n    //\n}\nelse\n{\n}"
             }
         ]
@@ -458,7 +444,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',BND:'Bound',DECL:'Declined',ISSU:'Issued',QUOTED:'Quoted',RATED:'Rated',LOST:'Lost',WITH:'Withdrawn']"
             }
         ]
@@ -487,7 +472,6 @@
         "assertions": [
             {
                 "type": "exp",
-                "isCached": true,
                 "value": "[OPEN:'Open',BND:'Bound',DECL:'Declined',ISSU:'Issued',QUOTED:'Quoted',RATED:'Rated',LOST:'Lost',WITH:'Withdrawn']"
             }
         ]

@@ -25,11 +25,11 @@ public class NCubeTestWriter extends BaseJsonFormatter
 
     private void writeTest(NCubeTest test) throws IOException {
         startObject();
-        writeAttribute("name", test.getName(), true);
-        writeAttributeIdentifier("coord");
+        writeObjectKeyValue("name", test.getName(), true);
+        writeObjectKey("coord");
         writeCoord(test.getCoord());
         comma();
-        writeAttributeIdentifier("assertions");
+        writeObjectKey("assertions");
         writeAssertions(test.getAssertions());
         endObject();
     }
@@ -41,7 +41,7 @@ public class NCubeTestWriter extends BaseJsonFormatter
             for (StringValuePair<CellInfo> parameter : coord)
             {
                 startObject();
-                writeAttributeIdentifier(parameter.getKey());
+                writeObjectKey(parameter.getKey());
                 writeCellInfo(parameter.getValue());
                 endObject();
                 comma();
@@ -70,17 +70,17 @@ public class NCubeTestWriter extends BaseJsonFormatter
         startObject();
         if (info.dataType != null)
         {
-            writeAttribute("type", info.dataType, true);
+            writeObjectKeyValue("type", info.dataType, true);
         }
         if (info.isUrl)
         {
-            writeAttribute("isUrl", info.isUrl, true);
+            writeObjectKeyValue("isUrl", info.isUrl, true);
         }
         if (info.isCached)
         {
-            writeAttribute("isCached", info.isCached, true);
+            writeObjectKeyValue("isCached", info.isCached, true);
         }
-        writeAttribute("value", info.value, false);
+        writeObjectKeyValue("value", info.value, false);
         endObject();
     }
 }

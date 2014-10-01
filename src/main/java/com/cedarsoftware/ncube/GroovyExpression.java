@@ -51,7 +51,7 @@ public class GroovyExpression extends GroovyBase
     {
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
-        StringBuilder groovy = new StringBuilder("package ncube.grv.exp;\n");
+        StringBuilder groovy = new StringBuilder("package ncube.grv.exp;\nimport com.cedarsoftware.ncube.NCubeManager;\n");
 
         for (String importLine : imports)
         {

@@ -203,15 +203,20 @@ public class TestNCube
         String riskType = (String) ncube.getCell(coord);
         assertTrue("AUTOPS".equals(riskType));
 
+        Set<String> optionalScope = ncube.getOptionalScope();
+        assertEquals(1, optionalScope.size());
+        assertTrue(optionalScope.contains("bu"));
+
         Set<String> requiredScope = ncube.getRequiredScope();
         println("requiredScope 2 cubes = " + requiredScope);
-        assertTrue(requiredScope.size() == 3);
-        assertTrue(requiredScope.contains("Attribute"));
-        assertTrue(requiredScope.contains("BU"));
+        assertTrue(requiredScope.size() == 1);
         assertTrue(requiredScope.contains("PROD_LINE"));
 
-        Set scopeValues = ncube.getRequiredScope();
-        assertTrue(scopeValues.size() == 3);
+        requiredScope = commAuto.getRequiredScope();
+        assertEquals(1, requiredScope.size());
+        assertTrue(requiredScope.contains("attribute"));
+        optionalScope = commAuto.getOptionalScope();
+        assertEquals(0, optionalScope.size());
 
         coord.clear();
         coord.put("BU", "Agri");
@@ -220,9 +225,7 @@ public class TestNCube
 
         requiredScope = ncube.getRequiredScope();
         println("requiredScope 2 cubes = " + requiredScope);
-        assertTrue(requiredScope.size() == 3);
-        assertTrue(requiredScope.contains("Attribute"));
-        assertTrue(requiredScope.contains("BU"));
+        assertTrue(requiredScope.size() == 1);
         assertTrue(requiredScope.contains("PROD_LINE"));
     }
 
@@ -3468,11 +3471,11 @@ public class TestNCube
             assertTrue(e instanceof RuntimeException);
         }
 
-
         Set<String> names = ncube.getRequiredScope();
-        assertTrue(names.size() == 2);
-        assertTrue(names.contains("state"));
+        assertTrue(names.size() == 1);
         assertTrue(names.contains("type"));
+        names = ncube.getOptionalScope();
+        assertTrue(names.size() == 0);
     }
 
     @Test
@@ -3980,17 +3983,20 @@ public class TestNCube
         NCubeManager.getNCubeFromResource("stringIds.json");
         NCube<String> ncube = NCubeManager.getNCubeFromResource("simpleJsonExpression.json");
         Set<String> scope = ncube.getRequiredScope();
-        assertTrue(scope.size() == 4);
-        assertTrue(scope.contains("CODE"));
-        assertTrue(scope.contains("OVERDUE"));
+        assertEquals(1, scope.size());
+        assertTrue(scope.contains("CODe"));
+
+        scope = ncube.getOptionalScope();
+        assertEquals(2, scope.size());
+        assertTrue(scope.contains("AGe"));
+        assertTrue(scope.contains("OVERDUe"));
 
         NCubeManager.getNCubeFromResource("template2.json");   // Get it loaded
         ncube = NCubeManager.getNCubeFromResource("template1.json");
         scope = ncube.getRequiredScope();
-        assertTrue(scope.size() == 3);
+        assertEquals(2, scope.size());
         assertTrue(scope.contains("coDe"));
         assertTrue(scope.contains("staTe"));
-        assertTrue(scope.contains("BitCoin"));
     }
 
 //    @Test

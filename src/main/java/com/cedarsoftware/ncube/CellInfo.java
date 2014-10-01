@@ -46,23 +46,26 @@ public class CellInfo
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
 
-    public CellInfo(String type, String value, Object isUrl, Object isCached) {
+    public CellInfo(String type, String value, Object isUrl, Object isCached)
+    {
         this.dataType = type;
         this.value = value;
         this.isUrl = booleanValue(isUrl);
         this.isCached = booleanValue(isCached);
     }
 
-    public boolean booleanValue(Object o)
+    public static boolean booleanValue(Object o)
     {
-        if (o instanceof Boolean) {
-            return ((Boolean)o).booleanValue();
-        } else if (o instanceof String) {
-            String s = (String)o;
+        if (o instanceof Boolean)
+        {
+            return (Boolean) o;
+        }
+        else if (o instanceof String)
+        {
+            String s = (String) o;
 
-            if ("true".equalsIgnoreCase(s) ||
-                "t".equalsIgnoreCase(s) ||
-                "yes".equalsIgnoreCase(s)) {
+            if ("true".equalsIgnoreCase(s))
+            {
                 return true;
             }
         }
@@ -241,12 +244,15 @@ public class CellInfo
         }
     }
 
-    public Object recreate() {
-        if (value == null) {
+    public Object recreate()
+    {
+        if (value == null)
+        {
             return null;
         }
 
-        switch (this.dataType) {
+        switch (this.dataType)
+        {
             case "string":
                 return isUrl ? new StringUrlCmd(this.value, isCached) : this.value;
 
@@ -296,6 +302,7 @@ public class CellInfo
                 return new IllegalArgumentException("Invalid Cell Type Passed in:  " + this.dataType);
         }
     }
+
     /**
      * Collapse: byte, short, int ==> long
      * Collapse: float ==> double
@@ -303,15 +310,15 @@ public class CellInfo
      */
     public void collapseToUiSupportedTypes()
     {
-        if (CellTypes.Byte.equals(dataType) || CellTypes.Short.equals(dataType) || CellTypes.Integer.equals(dataType))
+        if (CellTypes.Byte.desc().equals(dataType) || CellTypes.Short.desc().equals(dataType) || CellTypes.Integer.desc().equals(dataType))
         {
             dataType = CellTypes.Long.desc();
         }
-        else if (CellTypes.Float.equals(dataType))
+        else if (CellTypes.Float.desc().equals(dataType))
         {
             dataType = CellTypes.Double.desc();
         }
-        else if (CellTypes.BigInteger.equals(dataType))
+        else if (CellTypes.BigInteger.desc().equals(dataType))
         {
             dataType = CellTypes.BigDecimal.desc();
         }

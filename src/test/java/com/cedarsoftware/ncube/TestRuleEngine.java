@@ -204,20 +204,18 @@ public class TestRuleEngine
     {
         NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
 
-        Set<String> requiredScope = ncube.getRequiredScope();
-        assertTrue(requiredScope.size() == 6);
-        assertTrue(requiredScope.contains("driverAge"));
-        assertTrue(requiredScope.contains("gender"));
-        assertTrue(requiredScope.contains("state"));
-        assertTrue(requiredScope.contains("stop"));
-        assertTrue(requiredScope.contains("vehicleCylinders"));
-        assertTrue(requiredScope.contains("vehiclePrice"));
-        Object x = ncube.getRequiredScope();
-        assertEquals(requiredScope, x);
-        assertTrue(requiredScope != x);
+        Set<String> reqScope = ncube.getRequiredScope();
+        assertEquals(2, reqScope.size());
+        assertTrue(reqScope.contains("state"));
+        assertTrue(reqScope.contains("condition"));
 
-        Set scopeValues = ncube.getRequiredScope();
-        assertTrue(scopeValues.size() == 6);
+        Set<String> optScope = ncube.getOptionalScope();
+        assertEquals(5, optScope.size());
+        assertTrue(optScope.contains("driverAge"));
+        assertTrue(optScope.contains("gender"));
+        assertTrue(optScope.contains("stop"));
+        assertTrue(optScope.contains("vehicleCylinders"));
+        assertTrue(optScope.contains("vehiclePrice"));
     }
 
     @Test
@@ -225,14 +223,19 @@ public class TestRuleEngine
     {
         NCube ncube1 = NCubeManager.getNCubeFromResource("testCube5.json");
         Set reqScope = ncube1.getRequiredScope();
-        assertTrue(reqScope.size() == 1);
-        assertTrue(reqScope.contains("Age"));
+        Set optScope = ncube1.getOptionalScope();
+        assertTrue(optScope.size() == 1);
+        assertTrue(optScope.contains("Age"));
+        assertEquals(0, reqScope.size());
 
         NCube ncube2 = NCubeManager.getNCubeFromResource("expressionAxis2.json");
         reqScope = ncube2.getRequiredScope();
         assertTrue(reqScope.size() == 2);
-        assertTrue(reqScope.contains("Age"));
+        assertTrue(reqScope.contains("condition"));
         assertTrue(reqScope.contains("state"));
+        optScope = ncube2.getOptionalScope();
+        assertEquals(1, optScope.size());
+        assertTrue(optScope.contains("AGE"));
 
         Map coord = new HashMap();
         coord.put("age", 18);
@@ -522,7 +525,7 @@ public class TestRuleEngine
 
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(3, ruleInfo.getNumberOfRulesExecuted());
-        System.out.println("ruleInfo.getRuleExecutionTrace() = " + ruleInfo.getRuleExecutionTrace());
+//        System.out.println("ruleInfo.getRuleExecutionTrace() = " + ruleInfo.getRuleExecutionTrace());
 
         input.put("age", 48);
         ncube.getCells(input, output);

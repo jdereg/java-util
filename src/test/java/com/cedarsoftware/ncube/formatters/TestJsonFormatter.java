@@ -117,7 +117,7 @@ public class TestJsonFormatter
     public void testWriteObjectException() throws Exception
     {
         JsonFormatter formatter = new JsonFormatter();
-        formatter.writeObject(null);
+        formatter.writeObjectValue(null);
     }
 
     public List<String> getAllTestFiles()

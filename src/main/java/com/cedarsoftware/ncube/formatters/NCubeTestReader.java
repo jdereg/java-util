@@ -22,7 +22,7 @@ public class NCubeTestReader
 
         Object[] items = (Object[])map.get("@items");
 
-        List<NCubeTest> list = new ArrayList<NCubeTest>();
+        List<NCubeTest> list = new ArrayList<>();
         for (Object o : items) {
             JsonObject item = (JsonObject)o;
 
@@ -36,15 +36,16 @@ public class NCubeTestReader
         return list;
     }
 
-    public List<StringValuePair<CellInfo>> createCoord(JsonObject<String, Object> o) {
-        List<StringValuePair<CellInfo>> list = new ArrayList<StringValuePair<CellInfo>>();
+    public List<StringValuePair<CellInfo>> createCoord(JsonObject<String, Object> o)
+    {
+        List<StringValuePair<CellInfo>> list = new ArrayList<>();
 
-        for (Object item : ((Object[])o.getArray()))
+        for (Object item : (o.getArray()))
         {
             JsonObject<String, Object> jo = (JsonObject<String, Object>)item;
             for (Map.Entry<String, Object> entry : jo.entrySet())
             {
-                list.add(new StringValuePair((String) entry.getKey(), createCellInfo((JsonObject)entry.getValue())));
+                list.add(new StringValuePair(entry.getKey(), createCellInfo((JsonObject)entry.getValue())));
             }
         }
 

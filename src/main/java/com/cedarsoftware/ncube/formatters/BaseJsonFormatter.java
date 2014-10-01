@@ -11,9 +11,8 @@ import java.io.StringWriter;
  */
 public class BaseJsonFormatter
 {
-    static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    public static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     protected StringBuilder builder = new StringBuilder();
-    protected String quotedStringFormat = "\"%s\"";
 
     void startArray() {
         builder.append("[");
@@ -40,13 +39,25 @@ public class BaseJsonFormatter
         builder.setLength(builder.length() - 1);
     }
 
-    protected void writeAttributeIdentifier(String attr)
+    protected void writeObjectKey(String key)
     {
-        builder.append(String.format(quotedStringFormat, attr));
+        builder.append('"');
+        builder.append(key);
+        builder.append('"');
         builder.append(":");
     }
 
-    protected void writeAttribute(String attr, Object value, boolean includeComma) throws IOException
+    protected void writeObjectKeyValue(String key, Object value, boolean includeComma) throws IOException
+    {
+        writeObjectKey(key);
+        writeObjectValue(value);
+        if (includeComma)
+        {
+            comma();
+        }
+    }
+
+    protected void writeObjectValue(Object value) throws IOException
     {
         if (value instanceof String)
         {
@@ -54,11 +65,6 @@ public class BaseJsonFormatter
             JsonWriter.writeJsonUtf8String((String) value, w);
             value = w.toString();
         }
-        writeAttributeIdentifier(attr);
         builder.append(value == null ? "null" : value.toString());
-        if (includeComma)
-        {
-            comma();
-        }
     }
 }

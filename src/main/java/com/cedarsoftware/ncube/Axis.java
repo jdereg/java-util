@@ -1160,7 +1160,7 @@ public class Axis
 	
 	/**
 	 * @param value to test against this Axis
-	 * @return boolean true if the value will be found along the access, false
+	 * @return boolean true if the value will be found along the axis, false
 	 * if the value does not match anything along the axis.
 	 */
 	public boolean contains(Comparable value)

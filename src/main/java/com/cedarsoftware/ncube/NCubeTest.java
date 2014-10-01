@@ -31,7 +31,7 @@ public class NCubeTest
     public Map<String, Object> createCoord() {
         Map<String, Object> actuals = new LinkedHashMap<>();
         for (StringValuePair item : this.coord) {
-            actuals.put((String)item.getKey(), ((CellInfo)item.getValue()).recreate());
+            actuals.put(item.getKey(), ((CellInfo)item.getValue()).recreate());
         }
         return actuals;
     }

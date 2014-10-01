@@ -7,7 +7,6 @@
            "name":"businessDivisionCode",
             "type":"DISCRETE",
             "hasDefault":true,
-            "multiMatch":false,
             "valueType":"STRING",
             "columns":[
                     {
@@ -15,8 +14,7 @@
                         "value":null
                     }
                 ],
-            "preferredOrder":0,
-            "multiMatch":false
+            "preferredOrder":0
         }
     ],
     "cells":[

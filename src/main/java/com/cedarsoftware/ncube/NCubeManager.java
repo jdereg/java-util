@@ -183,7 +183,7 @@ public class NCubeManager
      *
      * @param ncube NCube to add to the list.
      */
-    static void addCube(NCube ncube, ApplicationID appId)
+    public static void addCube(NCube ncube, ApplicationID appId)
     {
         synchronized (cubeList)
         {

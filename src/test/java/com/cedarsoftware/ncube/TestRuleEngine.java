@@ -699,4 +699,17 @@ public class TestRuleEngine
         assertEquals(1, output.get("f"));       // This step is run once (skipped the first time, then after 'e' runs a 2nd time)
         assertEquals(1, output.get("g"));       // This step is run once (skipped the first time, then after 'e' runs a 2nd time)
     }
+
+    @Test
+    public void testNoRuleBinding()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleSet2.json");
+
+        Map<String, Object> output = new HashMap<>();
+        Object value = ncube.getCell(new HashMap<>(), output);
+        assertEquals(null, value);
+
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        assertEquals(0, ruleInfo.getNumberOfRulesExecuted());
+    }
 }

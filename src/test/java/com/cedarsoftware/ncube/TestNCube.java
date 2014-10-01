@@ -4905,6 +4905,65 @@ public class TestNCube
     }
 
     @Test
+    public void testRequiredScopeSetCell()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("requiredScopeKeys.json");
+
+        Map input = new HashMap();
+        input.put("code", 0);
+        ncube.setCell("123", input);
+        assertTrue(ncube.containsCell(input));
+
+        try
+        {
+            ncube.getCell(input);
+            fail("Should not make it here");
+        }
+        catch (Exception expected)
+        {
+            assertTrue(expected.getMessage().contains("not"));
+            assertTrue(expected.getMessage().contains("contain"));
+            assertTrue(expected.getMessage().contains("scope"));
+            assertTrue(expected.getMessage().contains("key"));
+        }
+
+        input.put("bU", "blah");
+        input.put("StAtE", "blah");
+        Object value = ncube.getCell(input);
+        assertEquals("123", value);
+
+        input.put("code", -10);
+        value = ncube.getCell(input);
+        assertEquals("ABC", value);
+
+        input.put("code", 10);
+        value = ncube.getCell(input);
+        assertEquals("GHI", value);
+
+        input.clear();
+        input.put("code", 0);
+        ncube.removeCell(input);
+        assertFalse(ncube.containsCell(input));
+        assertTrue(ncube.containsCell(input, true));
+
+        input.put("bU", "blah");
+        input.put("StAtE", "blah");
+        value = ncube.getCell(input);
+        assertEquals("f", value);   // The default n-cube value (cell no longer exists)
+    }
+
+    @Test
+    public void testNoRequiredScope()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("noRequiredScope.json");
+        Set<String> scope = ncube.getRequiredScope();
+        assertEquals(0, scope.size());
+
+        Object value = ncube.getCell(new HashMap());
+        assertEquals("XYZ", value);
+    }
+
+    @Test
     public void testCubeEquals()
     {
         NCube c1 = NCubeManager.getNCubeFromResource("testCube6.json");

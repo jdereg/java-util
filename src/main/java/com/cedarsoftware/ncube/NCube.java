@@ -39,7 +39,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 
 /**
@@ -70,7 +69,8 @@ public class NCube<T>
     private final Map<String, Axis> axisList = new LinkedHashMap<>();
     final Map<Set<Column>, T> cells = new HashMap<>();
     private T defaultCellValue;
-    private transient final Map<String, Set<String>> optionalScopeKeys = new ConcurrentHashMap<>();
+    private volatile Set<String> optionalScopeKeys = null;
+    private volatile Set<String> declaredScopeKeys = null;
     private transient ApplicationID appId = new ApplicationID(null, null, "file");
     public static final String validCubeNameChars = "0-9a-zA-Z:.|#_-";
     private static final String[] emptyStringArray = new String[] {};
@@ -315,7 +315,7 @@ public class NCube<T>
     public T removeCell(final Map<String, Object> coordinate)
     {
         clearScopeKeyCaches();
-        return cells.remove(getCoordinateKey(validateCoordinate(coordinate)));
+        return cells.remove(getCoordinateKey(validateCoordinate(coordinate, true)));
     }
 
     /**
@@ -338,7 +338,7 @@ public class NCube<T>
      */
     public boolean containsCell(final Map<String, Object> coordinate)
     {
-        Set<Column> cols = getCoordinateKey(validateCoordinate(coordinate));
+        Set<Column> cols = getCoordinateKey(validateCoordinate(coordinate, true));
         return cells.containsKey(cols);
     }
 
@@ -359,7 +359,7 @@ public class NCube<T>
                 return true;
             }
         }
-        Set<Column> cols = getCoordinateKey(validateCoordinate(coordinate));
+        Set<Column> cols = getCoordinateKey(validateCoordinate(coordinate, true));
         return cells.containsKey(cols);
     }
 
@@ -390,7 +390,7 @@ public class NCube<T>
             throw new IllegalArgumentException("Cannot set a cell to be an array type directly (except byte[]). Instead use GroovyExpression.");
         }
         clearScopeKeyCaches();
-        return cells.put(getCoordinateKey(validateCoordinate(coordinate)), value);
+        return cells.put(getCoordinateKey(validateCoordinate(coordinate, true)), value);
     }
 
     /**
@@ -415,9 +415,9 @@ public class NCube<T>
      */
     private void clearScopeKeyCaches()
     {
-        synchronized(optionalScopeKeys)
+        synchronized(name)
         {
-            optionalScopeKeys.clear();
+            optionalScopeKeys = null;
         }
     }
 
@@ -468,7 +468,7 @@ public class NCube<T>
     {
         final RuleInfo ruleInfo = getRuleInfo(output);
         final List<MapEntry> trace = ruleInfo.getRuleExecutionTrace();
-        final Map<String, Object> validCoord = validateCoordinate(coordinate);
+        final Map<String, Object> validCoord = validateCoordinate(coordinate, false);
         Map<String, Object> input = new CaseInsensitiveMap<>(validCoord);
         boolean run = true;
         trace.add(new MapEntry("begin: " + getName(), coordinate));
@@ -718,7 +718,7 @@ public class NCube<T>
      */
     public Map<Object, T> getMap(final Map<String, Object> coordinate)
     {
-        final Map<String, Object> coord = validateCoordinate(coordinate);
+        final Map<String, Object> coord = validateCoordinate(coordinate, false);
         final Axis wildcardAxis = getWildcardAxis(coord);
         final List<Column> columns = getWildcardColumns(wildcardAxis, coord);
         final Map<Object, T> result = new HashMap<>();
@@ -1171,8 +1171,11 @@ public class NCube<T>
      * exact case match, this method performs much faster.  It must make a second
      * pass through the axis list when the input coordinate axis names do not match
      * the case of the axis.
+     * @param coordinate Map input coordinate
+     * @param ignoreDeclaredRequiredScope If this is true, then the requiredScopeKeys ncube
+     *                                    metaProperty is ignored
      */
-    private Map<String, Object> validateCoordinate(final Map<String, Object> coordinate)
+    private Map<String, Object> validateCoordinate(final Map<String, Object> coordinate, boolean ignoreDeclaredRequiredScope)
     {
         if (coordinate == null)
         {
@@ -1184,6 +1187,11 @@ public class NCube<T>
 
         // Ensure required scope is supplied within the input coordinate
         Set<String> requiredScope = getRequiredScope();
+
+        if (ignoreDeclaredRequiredScope)
+        {
+            requiredScope.removeAll(getDeclaredScopeKeys());
+        }
 
         for (String scopeKey : requiredScope)
         {
@@ -1513,19 +1521,19 @@ public class NCube<T>
      */
     public Set<String> getOptionalScope()
     {
-        if (optionalScopeKeys.containsKey(name))
+        if (optionalScopeKeys != null)
         {   // Cube name ==> optional scope keys map
-            return new CaseInsensitiveSet<>(optionalScopeKeys.get(name)); // return modifiable copy (sorted order maintained)
+            return new CaseInsensitiveSet<>(optionalScopeKeys); // return sorted, modifiable, case-insensitive copy
         }
 
-        synchronized (optionalScopeKeys)
+        synchronized(name)
         {
-            if (optionalScopeKeys.containsKey(name))
+            if (optionalScopeKeys != null)
             {   // Check again in case more than one thread was waiting for the cached answer to be built.
-                return new CaseInsensitiveSet<>(optionalScopeKeys.get(name));  // return modifiable copy (sorted order maintained)
+                return new CaseInsensitiveSet<>(optionalScopeKeys);  // return sorted, modifiable, case-insensitive copy
             }
 
-            final Set<String> optionalScope = new CaseInsensitiveSet<>();
+            optionalScopeKeys = new CaseInsensitiveSet<>();
             final LinkedList<NCube> stack = new LinkedList<>();
             final Set<String> visited = new HashSet<>();
             stack.addFirst(this);
@@ -1544,20 +1552,20 @@ public class NCube<T>
                 {   // Use original axis name (not .toLowerCase() version)
                     if (axis.hasDefaultColumn() || axis.getType() == AxisType.RULE)
                     {
-                        optionalScope.add(axis.getName());
+                        optionalScopeKeys.add(axis.getName());
                     }
                 }
 
                 // Snag all input.variable references from CommandCells ('variable' is a potential required scope)
                 for (String key : getScopeKeysFromCommandCells(cube.cells))
                 {
-                    optionalScope.add(key);
+                    optionalScopeKeys.add(key);
                 }
 
                 // Snag all input.variable references from Rule axis conditions ('variable' is a potential required scope)
                 for (String key : getScopeKeysFromRuleAxes(cube))
                 {
-                    optionalScope.add(key);
+                    optionalScopeKeys.add(key);
                 }
 
                 // Add all referenced sub-cubes to the stack (locate n-cube references @cube[:], $cube[:],
@@ -1567,24 +1575,17 @@ public class NCube<T>
                     NCube refCube = NCubeManager.getCube(ncube, appId);
                     if (refCube == null)
                     {
-                        throw new IllegalStateException("Attempting to get required scope, but NCube '" + ncube + "' is not loaded into NCubeManager.");
+                        throw new IllegalStateException("Attempting to get required scope, but NCube '" + ncube + "' is not loaded into NCubeManager.  Use NCubeManager.loadCubes() at application start.");
                     }
                     stack.addFirst(refCube);
                 }
             }
 
-            optionalScope.removeAll(getRequiredScope());
-
-            // Sort the required scope keys by placing in TreeSet
-            Set<String> optScope = new TreeSet<>(optionalScope);
-
-            // Cache required scope for fast retrieval
-            optionalScopeKeys.put(name, optScope);
-
-            // Convert TreeSet to CaseInsensitiveSet which will maintain sorted order, but
-            // will be case-insensitive on scope keys. Also, the return set is mutable (not
-            // a reference to the cached required scope).
-            return new CaseInsensitiveSet<>(optScope);
+            optionalScopeKeys.removeAll(getRequiredScope());
+            Set<String> sort = new TreeSet<>(optionalScopeKeys);
+            optionalScopeKeys.clear();
+            optionalScopeKeys.addAll(sort);
+            return new CaseInsensitiveSet<>(optionalScopeKeys); // return sorted, modifiable, case-insensitive copy
         }
     }
 
@@ -1615,13 +1616,34 @@ public class NCube<T>
             }
         }
 
-        List declaredRequiredScope = (List) extractMetaPropertyValue(getMetaProperty("requiredScopeKeys"));
-        if (declaredRequiredScope != null && declaredRequiredScope.size() > 0)
-        {
-            requiredScope.addAll(declaredRequiredScope);
-        }
+        requiredScope.addAll(getDeclaredScopeKeys());
+        return requiredScope;
+    }
 
-        return new CaseInsensitiveSet<>(requiredScope);
+    Set<String> getDeclaredScopeKeys()
+    {
+        if (declaredScopeKeys != null)
+        {
+            return declaredScopeKeys;
+        }
+        // Declared scope keys have not yet been set.
+        synchronized(name)
+        {
+            if (declaredScopeKeys != null)
+            {   // Double-check (blocked threads should not rebuild...only do for first thread allowed thru)
+                return declaredScopeKeys;
+            }
+            List declaredRequiredScope = (List) extractMetaPropertyValue(getMetaProperty("requiredScopeKeys"));
+            if (declaredRequiredScope == null)
+            {
+                declaredScopeKeys = new CaseInsensitiveSet<>();
+            }
+            else
+            {
+                declaredScopeKeys = new CaseInsensitiveSet(declaredRequiredScope);
+            }
+        }
+        return declaredScopeKeys;
     }
 
     /**

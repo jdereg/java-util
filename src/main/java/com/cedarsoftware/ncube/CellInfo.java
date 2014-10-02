@@ -204,7 +204,7 @@ public class CellInfo
         {
             Range range = (Range) cell;
             isUrl = false;
-            value = "[" + CellInfo.formatForEditing(range.low) + ", " + CellInfo.formatForEditing(range.high) + "]";
+            value = formatForEditing(range);
             dataType = null;
             isCached = false;
         }
@@ -224,14 +224,14 @@ public class CellInfo
                 {
                     Range range = (Range) val;
                     builder.append('[');
-                    builder.append(CellInfo.formatForEditing(range.low));
+                    builder.append(formatForEditing(range.low));
                     builder.append(", ");
-                    builder.append(CellInfo.formatForEditing(range.high));
+                    builder.append(formatForEditing(range.high));
                     builder.append("]");
                 }
                 else
                 {
-                    builder.append(CellInfo.formatForEditing(val));
+                    builder.append(formatForEditing(val));
                 }
             }
             value = builder.toString();
@@ -251,43 +251,43 @@ public class CellInfo
             return null;
         }
 
-        switch (this.dataType)
+        switch (dataType)
         {
             case "string":
-                return isUrl ? new StringUrlCmd(this.value, isCached) : this.value;
+                return isUrl ? new StringUrlCmd(value, isCached) : value;
 
             case "date":
-                return DateUtilities.parseDate(this.value);
+                return DateUtilities.parseDate(value);
 
             case "boolean":
-                return Boolean.valueOf(this.value);
+                return Boolean.valueOf(value);
 
             case "byte":
-                return Byte.valueOf(this.value);
+                return Byte.valueOf(value);
 
             case "short":
-                return Short.valueOf(this.value);
+                return Short.valueOf(value);
 
             case "int":
-                return Integer.valueOf(this.value);
+                return Integer.valueOf(value);
 
             case "long":
-                return Long.valueOf(this.value);
+                return Long.valueOf(value);
 
             case "float":
-                return Float.valueOf(this.value);
+                return Float.valueOf(value);
 
             case "double":
-                return Double.valueOf(this.value);
+                return Double.valueOf(value);
 
             case "bigdec":
-                return new BigDecimal(this.value);
+                return new BigDecimal(value);
 
             case "bigint":
-                return new BigInteger(this.value);
+                return new BigInteger(value);
 
             case "binary":
-                return isUrl ? new BinaryUrlCmd(this.value, isCached) : StringUtilities.decode(this.value);
+                return isUrl ? new BinaryUrlCmd(value, isCached) : StringUtilities.decode(value);
 
             case "exp":
                 return new GroovyExpression(isUrl ? null : value, isUrl ? value : null);
@@ -299,7 +299,7 @@ public class CellInfo
                 return new GroovyTemplate(isUrl ? null : value, isUrl ? value : null, isCached);
 
             default:
-                return new IllegalArgumentException("Invalid Cell Type Passed in:  " + this.dataType);
+                return new IllegalArgumentException("Invalid Cell Type Passed in: " + dataType);
         }
     }
 
@@ -497,7 +497,7 @@ public class CellInfo
                 Matcher m = Regexes.valid2Doubles.matcher((String) val);
                 if (!m.matches())
                 {
-                    throw new IllegalArgumentException(String.format("Illegal Lat/Long value (%s)", val));
+                    throw new IllegalArgumentException(String.format("Invalid Lat/Long value (%s)", val));
                 }
                 return new LatLon(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2)));
             }
@@ -506,7 +506,7 @@ public class CellInfo
                 Matcher m = Regexes.valid2Doubles.matcher((String) val);
                 if (!m.matches())
                 {
-                    throw new IllegalArgumentException(String.format("Illegal Point2D value (%s)", val));
+                    throw new IllegalArgumentException(String.format("Invalid Point2D value (%s)", val));
                 }
                 return new Point2D(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2)));
             }
@@ -515,7 +515,7 @@ public class CellInfo
                 Matcher m = Regexes.valid3Doubles.matcher((String) val);
                 if (!m.matches())
                 {
-                    throw new IllegalArgumentException(String.format("Illegal Point3D value (%s)", val));
+                    throw new IllegalArgumentException(String.format("Invalid Point3D value (%s)", val));
                 }
                 return new Point3D(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2)), Double.parseDouble(m.group(3)));
             }
@@ -677,6 +677,11 @@ public class CellInfo
         else if (val instanceof BigDecimal)
         {
             return ((BigDecimal)val).stripTrailingZeros().toPlainString();
+        }
+        else if (val instanceof Range)
+        {
+            Range range = (Range) val;
+            return formatForEditing(range.low) + ", " + formatForEditing(range.high);
         }
         return val.toString();
     }

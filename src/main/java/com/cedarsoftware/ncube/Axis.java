@@ -63,7 +63,7 @@ public class Axis
     final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
-    private static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
+    public static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
     Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set

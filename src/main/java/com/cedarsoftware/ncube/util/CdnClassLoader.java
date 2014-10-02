@@ -51,45 +51,48 @@ public class CdnClassLoader extends GroovyClassLoader
      */
     protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
-        return isLocalOnlyClass(name) ? super.getParent().loadClass(name) : super.findClass(name);
+        // We only allow loading classes off of the local classpath.
+        // no true url classpath loading when dealing with classes.
+        // this is for security reasons to keep injected code from loading
+        // remotely.
+        return super.getParent().loadClass(name);
     }
 
-    boolean isLocalOnlyClass(String name) {
-        if (name.startsWith("java.lang") ||
-            name.startsWith("java.io") ||
-            name.startsWith("java.net") ||
-            name.startsWith("java.util") ||
-            name.startsWith("groovy.lang") ||
-            name.startsWith("groovy.util") ||
-            name.startsWith("ncube.grv")) {
-            return true;
-        }
-
-        if (_preventRemoteBeanInfo && name.endsWith("BeanInfo")) {
-            return true;
-        }
-
-        return _preventRemoteBeanInfo && name.endsWith("Customizer");
-    }
     /**
      * @param name Name of resource
      * @return true if we should only look locally.
      */
     boolean isLocalOnlyResource(String name)
     {
-        if (name.startsWith("META-INF") ||
-            name.startsWith("ncube/grv/exp") ||
-            name.startsWith("ncube/grv/method"))
+        //  Groovy ASTTransform Service
+        if (name.endsWith("org.codehaus.groovy.transform.ASTTransformation"))
         {
             return true;
         }
 
-        if (_preventRemoteBeanInfo && name.endsWith("BeanInfo.groovy"))
+        if (name.startsWith("ncube/grv/exp/") ||
+            name.startsWith("ncube/grv/method/"))
         {
             return true;
         }
 
-        return (_preventRemoteCustomizer && name.endsWith("Customizer.groovy"));
+        if (_preventRemoteBeanInfo)
+        {
+            if (name.endsWith("BeanInfo.groovy"))
+            {
+                return true;
+            }
+        }
+
+        if (_preventRemoteCustomizer)
+        {
+            if (name.endsWith("Customizer.groovy"))
+            {
+                return true;
+            }
+        }
+
+        return name.endsWith(".class");
     }
 
     public Enumeration<URL> getResources(String name) throws IOException

@@ -886,7 +886,6 @@ public class NCube<T>
      */
     public void getColumnsAndCoordinateFromIds(final Set<Long> coordinate, Set<Column> cols, Map<String, CellInfo> coord)
     {
-        // TODO: Use Column ID to Axis API
         // Ensure that the specified coordinate matches a column on each axis
         final Set<String> axisNamesRef = new CaseInsensitiveSet<>();
         final Set<String> allAxes = new CaseInsensitiveSet<>(axisList.keySet());
@@ -941,21 +940,11 @@ public class NCube<T>
         //  This is highly valuable as it will find, for example, input.vehicle from the Groovy code.
         if (coord != null)
         {
-            Object cell = cells.get(point); // use built-up point to get actual cell
-            if (cell instanceof CommandCell)
+            for (String scopeKey : getRequiredScope())
             {
-                CommandCell cmd = (CommandCell) cell;
-                Set<String> inputKeys = new HashSet<>();
-                cmd.getScopeKeys(inputKeys);
-
-                // Add in scope keys from CommandCell (if any exist) and the key is not already
-                // in the coord Map being built up (don't overwrite, in case there was a value associated to it).
-                for (String inputKey : inputKeys)
+                if (!coord.containsKey(scopeKey))
                 {
-                    if (!coord.containsKey(inputKey))
-                    {
-                        coord.put(inputKey, null);
-                    }
+                    coord.put(scopeKey, null);
                 }
             }
         }
@@ -983,24 +972,7 @@ public class NCube<T>
             return;
         }
 
-        if (axis.getType() == AxisType.RULE)
-        {
-            // Add in RULE axis (rule axis name can be used for beginning rule execution further down the list)
-            map.put(axis.getName(), null);
-            if (!column.isDefault())
-            {   // Add in any referenced input variables from the condition column
-                CommandCell cmd = (CommandCell) column.getValue();
-                if (cmd.getCmd() != null)
-                {
-                    Matcher m = Regexes.inputVar.matcher(cmd.getCmd());
-                    while (m.find())
-                    {
-                        map.put(m.group(2), null);
-                    }
-                }
-            }
-        }
-        else
+        if (axis.getType() != AxisType.RULE)
         {
             Object value = column.getValueThatMatches();
             CellInfo info = new CellInfo(value);
@@ -2164,14 +2136,14 @@ public class NCube<T>
             {
                 colIds.add(col.id);
             }
-            Map<String, CellInfo> coord = new HashMap();
-            Set<Column> cols = new HashSet<>();
+            Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
+            Set<Column> cols = new CaseInsensitiveSet<>();
             getColumnsAndCoordinateFromIds(colIds, cols, coord);
 
-            String name = String.format("test-%03d", i);
+            String testName = String.format("test-%03d", i);
             CellInfo[] result = new CellInfo[1];
             result[0] = new CellInfo(cells.get(cols));
-            coordinates.add(new NCubeTest(name, convertCoordToList(coord), result));
+            coordinates.add(new NCubeTest(testName, convertCoordToList(coord), result));
             i++;
         }
 

@@ -1694,7 +1694,7 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
+            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin, n_cube_nm FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
             {
                 java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
 
@@ -1711,9 +1711,17 @@ public class NCubeManager
                 while (rs.next())
                 {
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String name = rs.getString("n_cube_nm");
                     String json = new String(jsonBytes, "UTF-8");
-                    NCube ncube = ncubeFromJson(json);
-                    addCube(ncube, appId);
+                    try
+                    {
+                        NCube ncube = ncubeFromJson(json);
+                        addCube(ncube, appId);
+                    }
+                    catch (Exception e)
+                    {
+                        LOG.warn("Failed to load n-cube from database: " + name);
+                    }
                 }
             }
             catch (Exception e)

@@ -80,7 +80,7 @@ public class TestRuleEngine
             }
         }
 
-        assertEquals(3, age);
+        assertEquals(9, age);
         assertEquals(9, weight);
     }
 
@@ -110,8 +110,8 @@ public class TestRuleEngine
             }
         }
 
-        assertEquals(9, age);
-        assertEquals(9, weight);
+        assertEquals(0, age);
+        assertEquals(0, weight);
     }
 
     // This test also tests ID-based ncube's specified in simple JSON format

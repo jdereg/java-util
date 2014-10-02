@@ -68,9 +68,12 @@ public class NCubeTestWriter extends BaseJsonFormatter
     public void writeCellInfo(CellInfo info) throws IOException
     {
         startObject();
-        writeObjectKeyValue("type", info.dataType, true);
-        writeObjectKeyValue("isUrl", info.isUrl, true);
-        writeObjectKeyValue("value", info.value, false);
+        if (info != null)
+        {
+            writeObjectKeyValue("type", info.dataType, true);
+            writeObjectKeyValue("isUrl", info.isUrl, true);
+            writeObjectKeyValue("value", info.value, false);
+        }
         endObject();
     }
 }

@@ -7,7 +7,6 @@ import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.ncube.StringValuePair;
 import com.cedarsoftware.ncube.TestNCube;
-import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -104,6 +103,5 @@ public class TestTestResultsFormatter
         expected[2] = new CellInfo(new GroovyExpression("help me", null));
 
         NCubeTest test = new NCubeTest("testName", coord, expected);
-        System.out.println(JsonWriter.objectToJson(test));
     }
 }

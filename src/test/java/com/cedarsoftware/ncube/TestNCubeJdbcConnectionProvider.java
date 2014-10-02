@@ -1,97 +1,93 @@
 package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.tomcat.jdbc.pool.PoolProperties;
+import static org.junit.Assert.*;
 import org.junit.Test;
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import com.cedarsoftware.ncube.NCubeConnectionProvider.ContextKey;
+
+import javax.sql.DataSource;
 
 public class TestNCubeJdbcConnectionProvider
 {
     @Test
-    public void testConstruct()
+    public void testConstructWithDataSourceAndCommit() throws Exception
     {
-        //test empty constructor
-        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider();
-        assertNotNull("Connection context must not be null...", nCubeConnectionProvider.getConnectionContext());
-
-        //test constructor with connection
-        nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getValidMockConnection());
-        assertNotNull("Connection context must not be null...", nCubeConnectionProvider.getConnectionContext());
-        assertNotNull("Connection context must have jdbc connection...", nCubeConnectionProvider.getConnectionContext().get(ContextKey.JDBC_CONNECTION));
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getValidDataSource());
+        
+        Object connection = nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
+        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+        
+        nCubeConnectionProvider.commitTransaction();
+        assertTrue("Connection must be closed...", ((Connection) connection).isClosed());
     }
 
     @Test
-    public void testConstructWithException()
+    public void testConstructWithDataSourceAndRollback() throws Exception
     {
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getValidDataSource());
+
+        Object connection = nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
+        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+
+        nCubeConnectionProvider.rollbackTransaction();
+        assertTrue("Connection must be closed...", ((Connection)connection).isClosed());
+    }
+
+    @Test
+    public void testConstructWithDataSourceAndException() throws Exception
+    {       
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getInvalidMockDataSource());
+        
         Exception testException = null;
 
-        //test construct
         try
         {
-            NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getInvalidMockConnection());
+            nCubeConnectionProvider.beginTransaction();
         }
         catch (Exception e)
         {
             testException = e;
         }
-
-        assertTrue(testException != null && testException instanceof IllegalArgumentException);
-    }
-
-    @Test
-    public void testCommitTransaction()
-    {
-
-    }
-
-    @Test
-    public void testRollbackTransaction()
-    {
-
+        
+        assertNotNull("Must throw an exception when using an invalid DataSource...", testException);
+        assertEquals("Incorrect exception message", "Unable to create connection from DataSource...", testException.getMessage());
     }
 
 
     //------------------ private methods ---------------------
-
-    private static Connection getValidMockConnection()
+    
+    private DataSource getValidDataSource()
     {
-        Connection connection = null;
+        PoolProperties props = new PoolProperties();
+        props.setUrl("jdbc:hsqldb:mem:testdb");
+        props.setDriverClassName("org.hsqldb.jdbc.JDBCDriver");
+        props.setUsername("sa");
+        props.setPassword("");
+        
+        org.apache.tomcat.jdbc.pool.DataSource tcDatasource = new org.apache.tomcat.jdbc.pool.DataSource(props);
+        return tcDatasource;
+    }   
+
+    private static DataSource getInvalidMockDataSource()
+    {
+        DataSource ds = null;
         try
         {
-            connection = mock(Connection.class);
-            when(connection.isValid(anyInt())).thenReturn(true);
-            return connection;
+            ds = mock(DataSource.class);
+            when(ds.getConnection()).thenThrow(new SQLException());
         }
         catch (Exception e)
         {
             e.printStackTrace();
             fail(e.getMessage());
         }
-
-        return connection;
-    }
-
-    private static Connection getInvalidMockConnection()
-    {
-        Connection connection = null;
-        try
-        {
-            connection = mock(Connection.class);
-            when(connection.isValid(anyInt())).thenReturn(false);
-            return connection;
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            fail(e.getMessage());
-        }
-
-        return connection;
+        
+        return ds;
     }
 }

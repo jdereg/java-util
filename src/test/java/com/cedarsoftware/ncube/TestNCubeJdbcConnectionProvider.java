@@ -58,6 +58,52 @@ public class TestNCubeJdbcConnectionProvider
         assertNotNull("Must throw an exception when using an invalid DataSource...", testException);
         assertEquals("Incorrect exception message", "Unable to create connection from DataSource...", testException.getMessage());
     }
+    
+    @Test
+    public void testConstructWithParamsAndCommit() throws Exception
+    {
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
+
+        Object connection = nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
+        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+
+        nCubeConnectionProvider.commitTransaction();
+        assertTrue("Connection must be closed...", ((Connection) connection).isClosed());
+    }
+
+    @Test
+    public void testConstructWithParamsAndRollback() throws Exception
+    {
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
+
+        Object connection = nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
+        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+
+        nCubeConnectionProvider.rollbackTransaction();
+        assertTrue("Connection must be closed...", ((Connection) connection).isClosed());
+    }
+
+    @Test
+    public void testConstructWithParamsAnException() throws Exception
+    {
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","","","");
+
+        Exception testException = null;
+
+        try
+        {
+            nCubeConnectionProvider.beginTransaction();
+        }
+        catch (Exception e)
+        {
+            testException = e;
+        }
+
+        assertNotNull("Must throw an exception when using an invalid DataSource...", testException);
+        assertEquals("Incorrect exception message", "Unable to create connection from input connection parameters...", testException.getMessage());
+    }
 
 
     //------------------ private methods ---------------------

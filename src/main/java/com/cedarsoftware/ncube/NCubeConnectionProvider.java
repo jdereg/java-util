@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import java.util.Map;
 
 /**
  * Interface for a generic way to provide a database/persistence connection to the NCubeManager.
@@ -25,20 +24,13 @@ import java.util.Map;
 public interface NCubeConnectionProvider
 {
     /**
-     * Defines keys to be used for the connection context.
+     * Creates a connection object to be used for persistence operations. The type is determined by the 
+     * specific implementation.
+     * 
+     * @return Object - "connection" used for persistence operations
      */
-    public enum ContextKey
-    {
-        JDBC_CONNECTION,
-        MONGO_CLIENT
-    }
-
-    /**
-     * Returns an instantiated Map with ContextKey as the keys for each entry in the Map.
-     * @return - Map
-     */
-    Map<ContextKey,Object> getConnectionContext();
-
+    Object beginTransaction();
+    
     /**
      * Ensures the current database/persistence connection commits all write operations of the current transaction.
      * Ensures the current database/persistence connection is closed if appropriated.

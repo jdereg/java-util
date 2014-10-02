@@ -23,15 +23,24 @@ package com.cedarsoftware.ncube;
  */
 public class ApplicationID
 {
-    String account;
-    String app;
-    String version;
+    private String account;
+    private String app;
+    private String version;
+    private String status;
 
     public ApplicationID(String account, String app, String version)
     {
         this.account = account;
         this.app = app;
         this.version = version;
+    }
+
+    public ApplicationID(String account, String app, String version, String status)
+    {
+        this.account = account;
+        this.app = app;
+        this.version = version;
+        this.status = status;
     }
 
     public String getAccount()
@@ -63,4 +72,8 @@ public class ApplicationID
     {
         this.version = version;
     }
+
+    public String getStatus() { return status; }
+
+    public void setStatus(String status) { this.status = status; }
 }

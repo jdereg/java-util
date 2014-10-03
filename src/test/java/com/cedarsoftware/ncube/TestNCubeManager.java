@@ -83,7 +83,7 @@ public class TestNCubeManager
             stmt.execute("CREATE TABLE n_cube ( " +
                     "n_cube_id bigint NOT NULL, " +
                     "n_cube_nm VARCHAR(100) NOT NULL, " +
-                    "tenant_id CHAR(64), " +
+                    "tenant_cd CHAR(10), " +
                     "cube_value_bin varbinary(999999), " +
                     "create_dt DATE NOT NULL, " +
                     "update_dt DATE DEFAULT NULL, " +
@@ -98,9 +98,9 @@ public class TestNCubeManager
                     "app_cd VARCHAR(20), " +
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +
-                    "tags varbinary(999999), " +
+                    "revision_number bigint, " +
                     "PRIMARY KEY (n_cube_id), " +
-                    "UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd) " +
+                    "UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd, revision_number) " +
                     ");");
             stmt.close();
             conn.close();
@@ -113,7 +113,7 @@ public class TestNCubeManager
 CREATE TABLE `ncube`.n_cube (
 n_cube_id bigint NOT NULL,
 n_cube_nm varchar(100) NOT NULL,
-n_tenant_id char(64),
+tenant_cd char(10),
 cube_value_bin longtext,
 create_dt date NOT NULL,
 update_dt date DEFAULT NULL,
@@ -128,9 +128,9 @@ business_expiration_dt date,
 app_cd varchar(20),
 test_data_bin longtext,
 notes_bin longtext,
-tags longtext,
+revision_number bigint,
 PRIMARY KEY (n_cube_id),
-UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd)
+UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd, revision_number)
 );
 
 drop trigger if exists `ncube`.sysEffDateTrigger;

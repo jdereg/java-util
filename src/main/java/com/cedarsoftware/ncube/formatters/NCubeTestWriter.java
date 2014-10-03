@@ -13,11 +13,15 @@ public class NCubeTestWriter extends BaseJsonFormatter
 {
     public String format(Object[] tests) throws IOException {
         startArray();
-        for (Object test : tests) {
-            writeTest((NCubeTest)test);
-            comma();
+        if (tests != null && tests.length > 0)
+        {
+            for (Object test : tests)
+            {
+                writeTest((NCubeTest) test);
+                comma();
+            }
+            uncomma();
         }
-        uncomma();
         endArray();
 
         return builder.toString();
@@ -36,7 +40,7 @@ public class NCubeTestWriter extends BaseJsonFormatter
 
     private void writeCoord(StringValuePair<CellInfo>[] coord) throws IOException {
         startArray();
-        if (coord != null)
+        if (coord != null && coord.length > 0)
         {
             for (StringValuePair<CellInfo> parameter : coord)
             {
@@ -53,7 +57,7 @@ public class NCubeTestWriter extends BaseJsonFormatter
 
     private void writeAssertions(CellInfo[] assertions) throws IOException {
         startArray();
-        if (assertions != null)
+        if (assertions != null && assertions.length > 0)
         {
             for (CellInfo item : assertions)
             {

@@ -87,6 +87,8 @@ n-cube can be used free for personal use.
 Version History
 * 2.9.14
  * Required Scope and Optional Scope supported added.  Required scope is the minimal amount of keys (Set<String>) that must be present on the input coordinate in order to call ncube.getCell().  The n-cube meta property requiredScopeKeys can be set to a Groovy Expression (type="exp") in order to return a List of declared required scope keys.  Optional scope is computed by scanning all the rule conditions, and cells (and joining to other cubes) and including all of the scope keys that are found after 'input.'  The required scope keys are subtracted from this, and that is the full optional scope. Calls to ncube.setCell() need only the scope keys that the n-cube demands (values for Axes that do not have a Default column and are not Rule axes).  The declared required scope keys are not required for setCell(), removeCell(), or containsCell().
+ * The 'RUN' feature (Tests) updated to use custom JSON written format, insulating the code from changes.
+ * The 'RUN' feature obtains the Required Scope using the new Required Scope API.
 * 2.9.13
  * The sys.classpath n-cube (one per app) now allows processing for loading .class files
  * Bug fix: not enough contrast between text URLs and background color on expression cells using URL to point to code.

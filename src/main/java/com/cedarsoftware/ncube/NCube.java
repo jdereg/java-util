@@ -2141,7 +2141,7 @@ public class NCube<T>
             getColumnsAndCoordinateFromIds(colIds, cols, coord);
 
             String testName = String.format("test-%03d", i);
-            CellInfo[] result = {new CellInfo("exp", "true", false, false)};
+            CellInfo[] result = {new CellInfo("exp", "output.return", false, false)};
             coordinates.add(new NCubeTest(testName, convertCoordToList(coord), result));
             i++;
         }

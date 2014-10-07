@@ -1215,7 +1215,7 @@ public class Axis
      * @return Column that 'matches' the passed in value, or null if no column
      * found.  'Matches' because matches depends on AxisType.
      */
-     Column findColumn(Comparable value)
+     public Column findColumn(Comparable value)
      {
         if (value == null)
         {

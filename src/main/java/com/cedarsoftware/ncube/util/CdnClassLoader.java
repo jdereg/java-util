@@ -39,23 +39,38 @@ public class CdnClassLoader extends GroovyClassLoader
         _preventRemoteCustomizer = preventRemoteCustomizer;
     }
 
-    /**
-     * Finds and loads the class with the specified name from the URL search
-     * path. Any URLs referring to JAR files are loaded and opened as needed
-     * until the class is found.
-     *
-     * @param name the name of the class
-     * @return the resulting class
-     * @throws ClassNotFoundException if the class could not be found,
-     *                                or if the loader is closed.
-     */
     protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
-        // We only allow loading classes off of the local classpath.
-        // no true url classpath loading when dealing with classes.
-        // this is for security reasons to keep injected code from loading
-        // remotely.
-        return super.getParent().loadClass(name);
+        return isLocalOnlyClass(name) ? super.getParent().loadClass(name) : super.findClass(name);
+    }
+
+    boolean isLocalOnlyClass(String name)
+    {
+        if (name.startsWith("java.lang.") ||
+                name.startsWith("java.io.") ||
+                name.startsWith("java.net.") ||
+                name.startsWith("java.util.") ||
+                name.startsWith("java.text.") ||
+                name.startsWith("groovy.lang.") ||
+                name.startsWith("groovy.util.") ||
+                name.startsWith("com.cedarsoftware") ||
+                name.startsWith("ncube$grv") ||
+                name.startsWith("ncube.grv"))
+        {
+            return true;
+        }
+
+        if (_preventRemoteBeanInfo && name.endsWith("BeanInfo"))
+        {
+            return true;
+        }
+
+        if (_preventRemoteCustomizer && name.endsWith("Customizer"))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -70,9 +85,18 @@ public class CdnClassLoader extends GroovyClassLoader
             return true;
         }
 
-        if (name.startsWith("ncube/grv/exp/") ||
-            name.startsWith("ncube/grv/method/"))
+        if (name.startsWith("META-INF") ||
+            name.startsWith("ncube/grv/") ||
+            name.startsWith("java/lang/ncube") ||
+            name.startsWith("java/io/ncube") ||
+            name.startsWith("java/util/ncube") ||
+            name.startsWith("java/net/ncube") ||
+            name.startsWith("com/cedarsoftware/"))
         {
+            if (name.startsWith("ncube/grv/closure/NCubeTemplateClosures"))
+            {
+                return false;
+            }
             return true;
         }
 
@@ -92,7 +116,7 @@ public class CdnClassLoader extends GroovyClassLoader
             }
         }
 
-        return name.endsWith(".class");
+        return false;
     }
 
     public Enumeration<URL> getResources(String name) throws IOException

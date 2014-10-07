@@ -1,5 +1,7 @@
 package ncube.grv.exp;
 
+import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.exception.RuleJump;
@@ -44,16 +46,29 @@ public class NCubeGroovyExpression
         ncube = (NCube) args.get("ncube");
     }
 
-    protected Map getInput() {
+    protected Map getInput()
+    {
         return input;
     }
 
-    protected Map getOutput() {
+    protected Map getOutput()
+    {
         return output;
     }
 
-    protected NCube getNCube() {
+    protected NCube getNCube()
+    {
         return ncube;
+    }
+
+    public NCube getCube(String name)
+    {
+        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
+        if (cube == null)
+        {
+            throw new IllegalArgumentException("n-cube: " + name + " not loaded into NCubeManager, make sure to load all n-cubes first.");
+        }
+        return cube;
     }
 
     public Object getFixedCell(Map coord)
@@ -61,14 +76,9 @@ public class NCubeGroovyExpression
         return ncube.getCell(coord, output);
     }
 
-    public Object getFixedCubeCell(String name, Map coord)
+    public Object getFixedCubeCell(String cubeName, Map coord)
     {
-        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
-        if (cube == null)
-        {
-            throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting fixed ($) reference to cell: " + coord.toString());
-        }
-        return cube.getCell(coord, output);
+        return getCube(cubeName).getCell(coord, output);
     }
 
     public Object getRelativeCell(Map coord)
@@ -77,15 +87,10 @@ public class NCubeGroovyExpression
         return ncube.getCell(input, output);
     }
 
-    public Object getRelativeCubeCell(String name, Map coord)
+    public Object getRelativeCubeCell(String cubeName, Map coord)
     {
         input.putAll(coord);
-        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
-        if (cube == null)
-        {
-            throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting relative (@) reference to cell: " + coord.toString());
-        }
-        return cube.getCell(input, output);
+        return getCube(cubeName).getCell(input, output);
     }
 
     /**
@@ -102,20 +107,57 @@ public class NCubeGroovyExpression
     }
 
     /**
+     * Stop rule execution from going any further.
+     */
+    public void ruleStop()
+    {
+        throw new RuleStop();
+    }
+
+    /**
      * Run another rule cube
-     * @param name String name of the other rule cube
+     * @param cubeName String name of the other rule cube
      * @param coord Map input coordinate
      * @return is the return Map from the other rule cube
      */
-    public Object runRuleCube(String name, Map coord)
+    public Object runRuleCube(String cubeName, Map coord)
     {
         input.putAll(coord);
-        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
-        if (cube == null)
+        return getCube(cubeName).getCell(input, output);
+    }
+
+    public Column getColumn(String axisName, Comparable value)
+    {
+        Axis axis = getAxis(axisName);
+        return axis.findColumn(value);
+    }
+
+    public Column getColumn(String cubeName, String axisName, Comparable value)
+    {
+        Axis axis = getAxis(cubeName, axisName);
+        return axis.findColumn(value);
+    }
+
+    public Axis getAxis(String axisName)
+    {
+        Axis axis = ncube.getAxis(axisName);
+        if (axis == null)
         {
-            throw new IllegalArgumentException("NCube '" + name + "' not loaded into NCubeManager, attempting runRuleCube() to cell: " + coord.toString());
+            throw new IllegalArgumentException("Axis '" + axisName + "' does not exist on n-cube: " + ncube.getName());
         }
-        return cube.getCell(input, output);
+
+        return axis;
+    }
+
+    public Axis getAxis(String cubeName, String axisName)
+    {
+        Axis axis = getCube(cubeName).getAxis(axisName);
+        if (axis == null)
+        {
+            throw new IllegalArgumentException("Axis '" + axisName + "' does not exist on n-cube: " + cubeName);
+        }
+
+        return axis;
     }
 
     /**
@@ -135,13 +177,5 @@ public class NCubeGroovyExpression
     public double elapsedMillis(long begin, long end)
     {
         return (end - begin) / 1000000.0;
-    }
-
-    /**
-     * Stop rule execution from going any further.
-     */
-    public void ruleStop()
-    {
-        throw new RuleStop();
     }
 }

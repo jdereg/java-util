@@ -87,13 +87,16 @@ public class CdnClassLoader extends GroovyClassLoader
 
         if (name.startsWith("META-INF") ||
             name.startsWith("ncube/grv/") ||
-            name.startsWith("java/lang/ncube") ||
-            name.startsWith("java/io/ncube") ||
-            name.startsWith("java/util/ncube") ||
-            name.startsWith("java/net/ncube") ||
+            name.startsWith("java/lang/") ||
+            name.startsWith("java/io/") ||
+            name.startsWith("java/util/") ||
+            name.startsWith("java/net/") ||
+            name.startsWith("java/text/") ||
+            name.startsWith("groovy/lang/") ||
+            name.startsWith("groovy/util/") ||
             name.startsWith("com/cedarsoftware/"))
         {
-            if (name.startsWith("ncube/grv/closure/NCubeTemplateClosures"))
+            if (name.startsWith("ncube/grv/closure/"))
             {
                 return false;
             }

@@ -47,32 +47,6 @@ public class NCubeGroovyExpression
     }
 
     /**
-     * @return Map input that was used in getCell() to reach this expression.  If this
-     * Expression is an Assertion, MetaProperty, etc, the input could be an empty Map.
-     */
-    protected Map getInput()
-    {
-        return input;
-    }
-
-    /**
-     * @return Map output that was used in getCell() to reach this expression.  If this
-     * Expression is an Assertion, MetaProperty, etc, the output could be an empty Map.
-     */
-    protected Map getOutput()
-    {
-        return output;
-    }
-
-    /**
-     * @return NCube that this expression is executing within.
-     */
-    protected NCube getNCube()
-    {
-        return ncube;
-    }
-
-    /**
      * Fetch the named n-cube from the NCubeManager.  It looks at the same
      * account, app, and version as the running n-cube.
      * @param name String n-cube name.

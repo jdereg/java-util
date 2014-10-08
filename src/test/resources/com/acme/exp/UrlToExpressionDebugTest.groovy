@@ -6,7 +6,7 @@ class UrlToExpressionDebugTest extends NCubeGroovyExpression
 {
     def run()
     {
-        if (getInput().get('age') == null)
+        if (input.get('age') == null)
         {
             return -1
         }

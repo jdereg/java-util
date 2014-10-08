@@ -1563,9 +1563,6 @@ public class NCube<T>
         }
     }
 
-    // TODO: Validate coordinate needs to validate against proper Required Scope - getCell() not setCell
-    // TODO: Allow axes to be bound to if no value supplied (land on default)
-    // Release after completion.
     /**
      * Determine the required 'scope' needed to access all cells within this
      * NCube.  Effectively, you are determining how many axis names (keys in

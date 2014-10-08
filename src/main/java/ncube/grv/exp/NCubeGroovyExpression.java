@@ -46,21 +46,38 @@ public class NCubeGroovyExpression
         ncube = (NCube) args.get("ncube");
     }
 
+    /**
+     * @return Map input that was used in getCell() to reach this expression.  If this
+     * Expression is an Assertion, MetaProperty, etc, the input could be an empty Map.
+     */
     protected Map getInput()
     {
         return input;
     }
 
+    /**
+     * @return Map output that was used in getCell() to reach this expression.  If this
+     * Expression is an Assertion, MetaProperty, etc, the output could be an empty Map.
+     */
     protected Map getOutput()
     {
         return output;
     }
 
+    /**
+     * @return NCube that this expression is executing within.
+     */
     protected NCube getNCube()
     {
         return ncube;
     }
 
+    /**
+     * Fetch the named n-cube from the NCubeManager.  It looks at the same
+     * account, app, and version as the running n-cube.
+     * @param name String n-cube name.
+     * @return NCube with the given name.
+     */
     public NCube getCube(String name)
     {
         NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
@@ -71,22 +88,49 @@ public class NCubeGroovyExpression
         return cube;
     }
 
+    /**
+     * Using the input Map passed in, fetch the coordinate at that location.
+     * @param coord Input Map with the required scope keys.
+     * @return executed cell contents at the given coordinate.
+     */
     public Object getFixedCell(Map coord)
     {
         return ncube.getCell(coord, output);
     }
 
+    /**
+     * Fetch the contents at the given coordinate specified, within the named
+     * n-cube specified.  The input map is used as-is.
+     * @param cubeName String n-cube name.
+     * @param coord Input Map with the required scope keys.
+     * @return executed cell contents at the given coordinate within the given n-cube.
+     */
     public Object getFixedCubeCell(String cubeName, Map coord)
     {
         return getCube(cubeName).getCell(coord, output);
     }
 
+    /**
+     * Fetch the cell contents using the current input coordinate, but first apply
+     * any updates from the passed in coordinate.
+     * @param coord Map containing 'updates' to the current input coordinate.
+     * @return executed cell contents at the current input location, but first apply
+     * updates to the current input coordinate from the passed in coord.
+     */
     public Object getRelativeCell(Map coord)
     {
         input.putAll(coord);
         return ncube.getCell(input, output);
     }
 
+    /**
+     * Fetch the cell contents using the current input coordinate and specified n-cube,
+     * but first apply any updates from the passed in coordinate.
+     * @param cubeName String n-cube name.
+     * @param coord Map containing 'updates' to the current input coordinate.
+     * @return executed cell contents at the current input location and specified n-cube,
+     * but first apply updates to the current input coordinate from the passed in coord.
+     */
     public Object getRelativeCubeCell(String cubeName, Map coord)
     {
         input.putAll(coord);
@@ -126,18 +170,38 @@ public class NCubeGroovyExpression
         return getCube(cubeName).getCell(input, output);
     }
 
+    /**
+     * Fetch the Column instance at the location along the axis specified by value.
+     * @param axisName String axis name.
+     * @param value Comparable value to bind to the axis.
+     * @return Column instance at the specified location (value) along the specified axis (axisName).
+     */
     public Column getColumn(String axisName, Comparable value)
     {
         Axis axis = getAxis(axisName);
         return axis.findColumn(value);
     }
 
+    /**
+     * Fetch the Column instance at the location along the axis specified by value within
+     * the named n-cube.
+     * @param cubeName String n-cube name.
+     * @param axisName String axis name.
+     * @param value Comparable value to bind to the axis.
+     * @return Column instance at the specified location (value) within the specified cube (cubeName)
+     * along the specified axis (axisName).
+     */
     public Column getColumn(String cubeName, String axisName, Comparable value)
     {
         Axis axis = getAxis(cubeName, axisName);
         return axis.findColumn(value);
     }
 
+    /**
+     * Fetch the Axis within the current n-cube with the specified name.
+     * @param axisName String axis name.
+     * @return Axis instance from the current n-cube that has the specified (axisName) name.
+     */
     public Axis getAxis(String axisName)
     {
         Axis axis = ncube.getAxis(axisName);
@@ -149,6 +213,13 @@ public class NCubeGroovyExpression
         return axis;
     }
 
+    /**
+     * Fetch the Axis within the passed in n-cube with the specified name.
+     * @param cubeName String n-cube name.
+     * @param axisName String axis name.
+     * @return Axis instance from the specified n-cube (cubeName) that has the
+     * specified (axisName) name.
+     */
     public Axis getAxis(String cubeName, String axisName)
     {
         Axis axis = getCube(cubeName).getAxis(axisName);

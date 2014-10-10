@@ -1,0 +1,120 @@
+{
+    "ncube": "expressionTests",
+    "sha1": "5D38B1D980BF87975D3236559124976E6964175F",
+    "axes": [
+        {
+            "name": "rule",
+            "type": "RULE",
+            "valueType": "EXPRESSION",
+            "preferredOrder": 1,
+            "hasDefault": false,
+            "columns": [
+                {
+                    "id": 1000000000001,
+                    "type": "exp",
+                    "value": "true"
+                },
+                {
+                    "id": 1000000000002,
+                    "type": "exp",
+                    "value": "true"
+                },
+                {
+                    "id": 1000000000003,
+                    "type": "exp",
+                    "value": "true"
+                },
+                {
+                    "id": 1000000000004,
+                    "type": "exp",
+                    "value": "true"
+                },
+                {
+                    "id": 1000000000005,
+                    "type": "exp",
+                    "name": "getCubeNames",
+                    "value": "true"
+                }
+            ]
+        },
+        {
+            "name": "age",
+            "type": "RANGE",
+            "valueType": "LONG",
+            "preferredOrder": 1,
+            "hasDefault": true,
+            "columns": [
+                {
+                    "id": 2000000000002,
+                    "value": [
+                        0,
+                        18
+                    ]
+                },
+                {
+                    "id": 2000000000003,
+                    "value": [
+                        18,
+                        30
+                    ]
+                },
+                {
+                    "id": 2000000000004,
+                    "value": [
+                        30,
+                        50
+                    ]
+                },
+                {
+                    "id": 2000000000005,
+                    "value": [
+                        50,
+                        65
+                    ]
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": [
+                1000000000005,
+                2000000000002
+            ],
+            "type": "exp",
+            "value": "def list = getCubeNames()\nint i=0;\nfor (name in list)\n{\n    output[i++] = name\n}"
+        },
+        {
+            "id": [
+                2000000000002,
+                1000000000002
+            ],
+            "type": "exp",
+            "value": "input.column = getColumn('age', 40)\noutput.isRange = input.column.value instanceof Range\noutput.colId = input.column.id"
+        },
+        {
+            "id": [
+                2000000000002,
+                1000000000004
+            ],
+            "type": "exp",
+            "value": "input.column = getColumn('months', 'month', 'Dec')\noutput.isColumn = input.column instanceof Column"
+        },
+        {
+            "id": [
+                2000000000002,
+                1000000000003
+            ],
+            "type": "exp",
+            "value": "input.axis = getAxis 'age'\noutput.isAxis = input.axis instanceof Axis"
+        },
+        {
+            "id": [
+                2000000000002,
+                1000000000001
+            ],
+            "type": "exp",
+            "value": "input.m1 = getCube 'months' getAxis 'Month'\ninput.m2 = getAxis('months', 'Month')\ninput.m1.is(input.m2)"
+        }
+    ]
+}

@@ -1,0 +1,161 @@
+{
+    "ncube": "months",
+    "sha1": "5992EBE5F7ACC8E7F4A97E5697018D5169CE6041",
+    "axes": [
+        {
+            "name": "Month",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "preferredOrder": 1,
+            "hasDefault": false,
+            "columns": [
+                {
+                    "id": 1000000000001,
+                    "type": "string",
+                    "value": "Jan"
+                },
+                {
+                    "id": 1000000000002,
+                    "type": "string",
+                    "value": "Feb"
+                },
+                {
+                    "id": 1000000000003,
+                    "type": "string",
+                    "value": "Mar"
+                },
+                {
+                    "id": 1000000000004,
+                    "type": "string",
+                    "value": "Apr"
+                },
+                {
+                    "id": 1000000000005,
+                    "type": "string",
+                    "value": "May"
+                },
+                {
+                    "id": 1000000000006,
+                    "type": "string",
+                    "value": "Jun"
+                },
+                {
+                    "id": 1000000000007,
+                    "type": "string",
+                    "value": "Jul"
+                },
+                {
+                    "id": 1000000000008,
+                    "type": "string",
+                    "value": "Aug"
+                },
+                {
+                    "id": 1000000000009,
+                    "type": "string",
+                    "value": "Sep"
+                },
+                {
+                    "id": 1000000000010,
+                    "type": "string",
+                    "value": "Oct"
+                },
+                {
+                    "id": 1000000000011,
+                    "type": "string",
+                    "value": "Nov"
+                },
+                {
+                    "id": 1000000000012,
+                    "type": "string",
+                    "value": "Dec"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": [
+                1000000000005
+            ],
+            "type": "long",
+            "value": 5
+        },
+        {
+            "id": [
+                1000000000012
+            ],
+            "type": "long",
+            "value": 12
+        },
+        {
+            "id": [
+                1000000000004
+            ],
+            "type": "long",
+            "value": 4
+        },
+        {
+            "id": [
+                1000000000008
+            ],
+            "type": "long",
+            "value": 8
+        },
+        {
+            "id": [
+                1000000000006
+            ],
+            "type": "long",
+            "value": 6
+        },
+        {
+            "id": [
+                1000000000001
+            ],
+            "type": "long",
+            "value": 1
+        },
+        {
+            "id": [
+                1000000000010
+            ],
+            "type": "long",
+            "value": 10
+        },
+        {
+            "id": [
+                1000000000011
+            ],
+            "type": "long",
+            "value": 11
+        },
+        {
+            "id": [
+                1000000000007
+            ],
+            "type": "long",
+            "value": 7
+        },
+        {
+            "id": [
+                1000000000003
+            ],
+            "type": "long",
+            "value": 3
+        },
+        {
+            "id": [
+                1000000000009
+            ],
+            "type": "long",
+            "value": 9
+        },
+        {
+            "id": [
+                1000000000002
+            ],
+            "type": "long",
+            "value": 2
+        }
+    ]
+}

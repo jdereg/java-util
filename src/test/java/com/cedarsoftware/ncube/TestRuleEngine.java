@@ -712,4 +712,25 @@ public class TestRuleEngine
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(0, ruleInfo.getNumberOfRulesExecuted());
     }
+
+    @Test
+    public void testNCubeGroovyExpressionAPIs()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("expressionTests.json");
+        NCube ncube1 = NCubeManager.getNCubeFromResource("months.json");
+
+        Map input = new HashMap();
+        Map output = new LinkedHashMap();
+        input.put("Age", 10);
+        ncube.getCell(input, output);
+        System.out.println("output = " + output);
+        assertTrue((boolean)output.get("isAxis"));
+        assertTrue((boolean)output.get("isColumn"));
+        assertTrue((boolean)output.get("isRange"));
+        assertTrue((long)output.get("colId") > 0);
+        assertTrue(output.containsKey(0));
+        assertEquals("expressionTests", output.get(0));
+        assertTrue(output.containsKey(1));
+        assertEquals("months", output.get(1));
+    }
 }

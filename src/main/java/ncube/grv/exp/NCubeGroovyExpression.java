@@ -8,6 +8,7 @@ import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Base class for all GroovyExpression and GroovyMethod's within n-cube CommandCells.
@@ -60,6 +61,11 @@ public class NCubeGroovyExpression
             throw new IllegalArgumentException("n-cube: " + name + " not loaded into NCubeManager, make sure to load all n-cubes first.");
         }
         return cube;
+    }
+
+    public Set<String> getCubeNames()
+    {
+        return NCubeManager.getCubeNames(ncube.getApplicationID().getApp(), ncube.getVersion(), ncube.getStatus());
     }
 
     /**

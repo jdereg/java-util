@@ -389,14 +389,14 @@ public class HtmlFormatter implements NCubeFormatter
                 ".table-ncube\n" +
                 "{\n" +
                 "border-collapse:collapse;\n" +
-                "border:1px solid black;\n" +
+                "border:1px solid lightgray;\n" +
                 "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
                 "font-size: small;\n" +
                 "padding: 2px;\n" +
                 "}\n" +
                 ".td-ncube .th-ncube .th-ncube-top\n" +
                 "{\n" +
-                "border:1px solid black;\n" +
+                "border:1px solid lightgray;\n" +
                 "font-family: \"arial\",\"helvetica\", sans-serif;\n" +
                 "font-size: small;\n" +
                 "padding: 2px;\n" +
@@ -503,6 +503,13 @@ public class HtmlFormatter implements NCubeFormatter
         if (column.getValue() instanceof CommandCell)
         {
             CommandCell cmd = (CommandCell) column.getValue();
+            String name = (String)column.getMetaProperty("name");
+            if (StringUtilities.hasContent(name))
+            {
+                s.append("name: ");
+                s.append(name);
+                s.append("<hr style=\"margin:1px\"/>");
+            }
             if (StringUtilities.hasContent(cmd.getUrl()))
             {
                 s.append("url: ");

@@ -72,6 +72,7 @@ public class NCube<T>
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
     private transient ApplicationID appId = new ApplicationID(null, null, "file");
+    private transient String status = ReleaseStatus.SNAPSHOT.name();
     public static final String validCubeNameChars = "0-9a-zA-Z:.|#_-";
     private static final String[] emptyStringArray = new String[] {};
     public static final String RULE_EXEC_INFO = "_rule";
@@ -267,6 +268,22 @@ public class NCube<T>
             NCubeManager.validateCubeName(name);
         }
         this.name = name;
+    }
+
+    /**
+     * @param stat ReleaseStatus enumeration of RELEASE or SNAPSHOT
+     */
+    void setStatus(String stat)
+    {
+        status = stat;
+    }
+
+    /**
+     * @return ReleaseStatus of this n-cube as it was loaded.
+     */
+    public String getStatus()
+    {
+        return status;
     }
 
     /**

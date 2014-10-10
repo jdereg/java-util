@@ -102,7 +102,7 @@ public class NCubeManager
 
         for (NCube ncube : cubes)
         {
-            if (version.equals(ncube.getVersion()) && status.equals(status) && app.equals(ncube.getApplicationID().app))
+            if (version.equals(ncube.getVersion()) && status.equals(status) && StringUtilities.equals(app, ncube.getApplicationID().app))
             {
                 result.add(ncube.getName());
             }
@@ -1492,8 +1492,8 @@ public class NCubeManager
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
             // Application ID will be account: null, app: null, version: 'file'
-            ApplicationID appId = ncube.getApplicationID();
-            appId.setApp("file");
+//            ApplicationID appId = ncube.getApplicationID();
+//            appId.setApp("file");
             addCube(ncube, ncube.getApplicationID());
             return ncube;
         }

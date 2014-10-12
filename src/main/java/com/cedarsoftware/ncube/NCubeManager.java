@@ -67,6 +67,7 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
+    private static final NCube EMPTY_CUBE = new NCube("0a0.-_");
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
     private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
@@ -536,7 +537,7 @@ public class NCubeManager
                             {
                                 if (loadCube(connection, app, cubeName, version, status, sysDate, includeTests) == null)
                                 {   // If the n-cube specified was misspelled (and not found), still add to cache otherwise infinite loop will occur.
-                                    cubeList.put(cacheKey, null);
+                                    cubeList.put(cacheKey, EMPTY_CUBE);
                                 }
                             }
                         }

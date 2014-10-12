@@ -723,7 +723,6 @@ public class TestRuleEngine
         Map output = new LinkedHashMap();
         input.put("Age", 10);
         ncube.getCell(input, output);
-        System.out.println("output = " + output);
         assertTrue((boolean)output.get("isAxis"));
         assertTrue((boolean)output.get("isColumn"));
         assertTrue((boolean)output.get("isRange"));

@@ -134,9 +134,10 @@ public class NCubeManager
 
     static String makeCacheKey(String name, ApplicationID appId)
     {
-        String acct = appId.getAccount() == null ? "defAcct" : appId.getAccount();
+        String acct = appId.getAccount() == null ? "NONE" : appId.getAccount();
         String app = appId.getApp() == null ? "defApp" : appId.getApp();
-        return name + '.' + acct + '.' + app + '.' + appId.getVersion();
+        String key = name + '.' + acct + '.' + app + '.' + appId.getVersion();
+        return key.toLowerCase();
     }
 
     public static void addBaseResourceUrls(List<String> urls, String version)
@@ -533,7 +534,10 @@ public class NCubeManager
                             final String cacheKey = makeCacheKey(cubeName, appId);
                             if (!cubeList.containsKey(cacheKey))
                             {
-                                loadCube(connection, app, cubeName, version, status, sysDate, includeTests);
+                                if (loadCube(connection, app, cubeName, version, status, sysDate, includeTests) == null)
+                                {   // If the n-cube specified was misspelled (and not found), still add to cache otherwise infinite loop will occur.
+                                    cubeList.put(cacheKey, null);
+                                }
                             }
                         }
                         return ncube;

@@ -19,6 +19,7 @@ n-cube 'ToDo' list
   * filter cube names (with drop-down type matching)
   * search cubes (including axis names, column, and cell values) for string
   
+// TODO: Where does cell menu go? (for cut/copy/paste)
 // TODO: Implement Ctrl-X (Cut)
 // TODO: Implement optional keys (with minus sign support)
 // TODO: test all regex's related to finding referenced cubes

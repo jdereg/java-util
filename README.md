@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.9.15</version>
+  <version>2.9.17</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -85,6 +85,16 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.17
+ * Updated CSS tags in Html version of n-cube
+ * bug fix: Removed StackOverflow that would occur if an n-cube cell referenced a non-existent n-cube.
+ * n-cube names are now treated as case-retentive (case is ignored when locating them, however, original case is retained).
+ * Improved unit test coverage.
+* 2.9.16
+ * Rule name is now displayed (if the 'name' meta-property on column is added) in the HTML.
+ * Updated to use Groovy 2.3.7 up from 2.3.4
+ * Added more exclusions to the CdnClassLoader to ensure that it does not make wasteful requests.
+ * getCubeNames() is now available to Groovy cells to obtain the list of all n-cubes within the app (version and status).
 * 2.9.15
  * Added getCube(), getAxis(), getColumn() APIs to NCubeGroovyExpression so that executing cells have easy access to these elements.
  * Added many n-cube classes and all of Java-util's classes as imports within NCubeGroovyExpression so that executing cells have direct access to these classes without requiring them to perform imports. 

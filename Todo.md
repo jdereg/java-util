@@ -14,9 +14,14 @@ n-cube 'ToDo' list
  * CellInfo
 
 ### n-cube editor (NCE)
-* Hyperlink all cube names so that they can be single-click and become the active n-cube being edited
 * Search / Filter support
   * filter app names (with drop-down type matching)
   * filter cube names (with drop-down type matching)
   * search cubes (including axis names, column, and cell values) for string
+  
+// TODO: Implement Ctrl-X (Cut)
+// TODO: Implement optional keys (with minus sign support)
+// TODO: test all regex's related to finding referenced cubes
+// TODO: test CellInfo (in preparation for list, array, set, map)
+
   

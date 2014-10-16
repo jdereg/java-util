@@ -47,4 +47,14 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
     {
         return (List<MapEntry>)get(RuleMetaKeys.RULES_EXECUTED.name());
     }
+
+    public void ruleStopThrown()
+    {
+        put(RuleMetaKeys.RULE_STOP.name(), Boolean.TRUE);
+    }
+
+    public boolean wasRuleStopThrown()
+    {
+        return containsKey(RuleMetaKeys.RULE_STOP.name()) && (Boolean.TRUE == get(RuleMetaKeys.RULE_STOP.name()));
+    }
 }

@@ -574,6 +574,8 @@ public class NCube<T>
                         {   // Statement threw at RuleStop
                             entry.setValue("[RuleStop]");
                             trace.add(entry);
+                            // Mark that RULE_STOP occurred
+                            ruleInfo.ruleStopThrown();
                             throw e;
                         }
                         catch(RuleJump e)

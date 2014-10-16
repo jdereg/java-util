@@ -604,6 +604,7 @@ public class NCube<T>
             catch (RuleStop ignored)
             {
                 // ends this execution cycle
+                ruleInfo.ruleStopThrown();
             }
             catch (RuleJump e)
             {

@@ -33,26 +33,37 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
         put(RuleMetaKeys.RULES_EXECUTED.name(), new ArrayList<MapEntry>());
     }
 
+    /**
+     * @return long indicating the number of conditions that fired (and therefore steps that executed).
+     */
     public long getNumberOfRulesExecuted()
     {
         return (Long) get(RuleMetaKeys.NUM_RESOLVED_CELLS.name());
     }
 
-    public void addToRulesExecuted(long count)
+    void addToRulesExecuted(long count)
     {
         put(RuleMetaKeys.NUM_RESOLVED_CELLS.name(), getNumberOfRulesExecuted() + count);
     }
 
+    /**
+     * @return List<MapEntry> which contain information about each rule step executed.  The Key of this MapEntry
+     * is a Map<String axisName, column.value()>.  This is the location of the rule (map key) and the executed
+     * value (map value).  It is a list because it contains the executed rule steps in order of execution.
+     */
     public List<MapEntry> getRuleExecutionTrace()
     {
         return (List<MapEntry>)get(RuleMetaKeys.RULES_EXECUTED.name());
     }
 
-    public void ruleStopThrown()
+    void ruleStopThrown()
     {
         put(RuleMetaKeys.RULE_STOP.name(), Boolean.TRUE);
     }
 
+    /**
+     * @return true if a RuleStop was thrown during rule execution
+     */
     public boolean wasRuleStopThrown()
     {
         return containsKey(RuleMetaKeys.RULE_STOP.name()) && (Boolean.TRUE == get(RuleMetaKeys.RULE_STOP.name()));

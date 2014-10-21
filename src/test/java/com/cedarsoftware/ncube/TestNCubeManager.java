@@ -67,6 +67,7 @@ public class TestNCubeManager
         TestNCube.initialize();
     }
 
+
     @Before
     public void setUp() throws Exception
     {
@@ -100,7 +101,7 @@ public class TestNCubeManager
                     "notes_bin varbinary(999999), " +
                     "revision_number bigint, " +
                     "PRIMARY KEY (n_cube_id), " +
-                    "UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd, revision_number) " +
+                    "UNIQUE (tenant_cd, n_cube_nm, version_no_cd, app_cd, status_cd, revision_number) " +
                     ");");
             stmt.close();
             conn.close();
@@ -130,7 +131,7 @@ test_data_bin longtext,
 notes_bin longtext,
 revision_number bigint,
 PRIMARY KEY (n_cube_id),
-UNIQUE (n_cube_nm, version_no_cd, app_cd, status_cd, revision_number)
+UNIQUE (tenant_cd, n_cube_nm, version_no_cd, app_cd, status_cd, revision_number)
 );
 
 drop trigger if exists `ncube`.sysEffDateTrigger;

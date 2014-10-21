@@ -137,7 +137,7 @@ public class NCubeManager
     {
         String acct = appId.getAccount() == null ? "NONE" : appId.getAccount();
         String app = appId.getApp() == null ? "defApp" : appId.getApp();
-        String key = name + '.' + acct + '.' + app + '.' + appId.getVersion();
+        String key = acct + '.' + app + '.' + appId.getVersion() + '.' + name;
         return key.toLowerCase();
     }
 

@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.ApplicationID;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.Regexes;
+import com.cedarsoftware.ncube.ReleaseStatus;
 import com.cedarsoftware.util.StringUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -101,8 +102,8 @@ public class CdnRouter
             coord.put(HTTP_REQUEST, request);
             coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
-            // TODO: MUST send account and app so that the router knows what cube to get.
-            ApplicationID appId = new ApplicationID(null, null, version);
+            // TODO: MUST send account, app, and status so that the router knows what cube to get.
+            ApplicationID appId = new ApplicationID(null, null, version, ReleaseStatus.SNAPSHOT.name());
             NCube routingCube = NCubeManager.getCube(cubeName, appId);
             if (routingCube == null)
             {

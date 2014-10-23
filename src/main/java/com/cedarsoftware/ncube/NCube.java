@@ -71,8 +71,7 @@ public class NCube<T>
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
-    private transient ApplicationID appId = new ApplicationID(null, null, "file");
-    private transient String status = ReleaseStatus.SNAPSHOT.name();
+    private transient ApplicationID appId = new ApplicationID(null, null, "file", ReleaseStatus.SNAPSHOT.name());
     public static final String validCubeNameChars = "0-9a-zA-Z:.|#_-";
     private static final String[] emptyStringArray = new String[] {};
     public static final String RULE_EXEC_INFO = "_rule";
@@ -271,30 +270,11 @@ public class NCube<T>
     }
 
     /**
-     * @param stat ReleaseStatus enumeration of RELEASE or SNAPSHOT
-     */
-    void setStatus(String stat)
-    {
-        status = stat;
-    }
-
-    /**
      * @return ReleaseStatus of this n-cube as it was loaded.
      */
     public String getStatus()
     {
-        return status;
-    }
-
-    /**
-     * Stamp the version number on a loaded n-cube.  This is so that when it is put into the
-     * NCubeManager cache, it can differentiate between two cubes with the same name but different
-     * version.
-     * @param ver String version (e.g. "1.0.1")
-     */
-    void setVersion(String ver)
-    {
-        appId.setVersion(ver);
+        return appId.getStatus();
     }
 
     /**
@@ -304,6 +284,11 @@ public class NCube<T>
     public String getVersion()
     {
         return appId.getVersion();
+    }
+
+    public void setApplicationID(ApplicationID appId)
+    {
+        this.appId = appId;
     }
 
     /**
@@ -1788,7 +1773,6 @@ public class NCube<T>
                 throw new IllegalArgumentException("JSON format must have a root 'ncube' field containing the String name of the NCube.");
             }
             NCube ncube = new NCube(cubeName);
-            ncube.setVersion("file");
             ncube.metaProps = new CaseInsensitiveMap();
             ncube.metaProps.putAll(jsonNCube);
             ncube.metaProps.remove("ncube");
@@ -1808,10 +1792,6 @@ public class NCube<T>
             {
                 loadMetaProperties(ncube.metaProps);
             }
-            // TODO: UI for Update Axis appears to leave 'Sort' checked and allows it to be copied to an axis type that cannot be sorted
-            // TODO: Updating an n-cube recently, we hit an 'update count does not match'
-            // TODO: Range's should not show '[' in the NCE edit columns modal.  Also, check Range Sets
-            // TODO: Where is app and account set? - database record -- may not be an issue
 
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
@@ -2166,7 +2146,8 @@ public class NCube<T>
         return coordinates;
     }
 
-    private StringValuePair<CellInfo>[] convertCoordToList(Map<String, CellInfo> coord) {
+    private static StringValuePair<CellInfo>[] convertCoordToList(Map<String, CellInfo> coord)
+    {
         int size = coord == null ? 0 : coord.size();
         //List<StringValuePair<CellInfo>> list = new ArrayList<StringValuePair<CellInfo>>(size);
         StringValuePair<CellInfo>[] list = new StringValuePair[size];
@@ -2182,9 +2163,7 @@ public class NCube<T>
 
 
     /**
-     * Create an equivalent n-cube as 'this', however, ensure that all IDs are unique
-     * within the ncube.  This means it cannot be created with a traditional 'json-io clone'
-     * technique.
+     * Create an equivalent n-cube as 'this'.
      */
     public NCube duplicate(String newName)
     {
@@ -2498,6 +2477,4 @@ public class NCube<T>
     {
         this.testData = testData;
     }
-
-
 }

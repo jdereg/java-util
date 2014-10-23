@@ -131,13 +131,6 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
         if (connection == null || !(connection instanceof Connection))
             throw new IllegalStateException("Input connection is null and not valid...");
 
-        try
-        {
-            return ((Connection)connection).isValid(1);
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeException("Unable to determine validity of jdbc connection...", e);
-        }
+        return true;
     }
 }

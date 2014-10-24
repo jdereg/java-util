@@ -34,10 +34,8 @@ public class NCubeJdbcPersister implements NCubePersister
         String version = appId.getVersion();        
 
         try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)"))
-        {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
+        {            
+            //TODO: remove sys effective date
             insert.setLong(1, UniqueIdGenerator.getUniqueId());
             insert.setString(2, app);
             insert.setString(3, ncube.getName());
@@ -94,10 +92,8 @@ public class NCubeJdbcPersister implements NCubePersister
             NCube ncube = null;
             
             java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
-
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
+            
+            //todo - remove sys effective date and expiration date
             stmt.setString(1, ncubeName);
             stmt.setString(2, app);
             stmt.setDate(3, systemDate);
@@ -169,6 +165,8 @@ public class NCubeJdbcPersister implements NCubePersister
             // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
             // TODO: see if the column exists, store the result for the entire app life cycle.
             // TODO: If account column does not exist, then account is null.
+            
+            //TODO: remove date params
             stmt.setString(1, app);
             stmt.setDate(2, systemDate);
             stmt.setDate(3, systemDate);
@@ -181,9 +179,7 @@ public class NCubeJdbcPersister implements NCubePersister
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
                 String json = new String(jsonBytes, "UTF-8");
                 NCube ncube = ncubeFromJson(json);
-
-                //todo - hydrate app, version, status, tenant into account
-                
+                ncube.setApplicationID(appId);                
                 ncubes.add(ncube);
             }
             

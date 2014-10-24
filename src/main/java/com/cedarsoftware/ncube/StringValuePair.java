@@ -55,7 +55,7 @@ public class StringValuePair<V> implements Map.Entry<String,V> {
     }
 
     public String toString() {
-        return "" + key + ":" + value;
+        return key + ":" + value;
     }
 
     public String getKey() {

@@ -68,4 +68,46 @@ public class ApplicationID
         s.append(name);
         return s.toString().toLowerCase();
     }
+
+    public boolean equals(Object o)
+    {
+        if (this == o)
+        {
+            return true;
+        }
+        if (!(o instanceof ApplicationID))
+        {
+            return false;
+        }
+
+        ApplicationID that = (ApplicationID) o;
+
+        if (account != null ? !account.equals(that.account) : that.account != null)
+        {
+            return false;
+        }
+        if (app != null ? !app.equals(that.app) : that.app != null)
+        {
+            return false;
+        }
+        if (!status.equals(that.status))
+        {
+            return false;
+        }
+        if (!version.equals(that.version))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public int hashCode()
+    {
+        int result = account != null ? account.hashCode() : 0;
+        result = 31 * result + (app != null ? app.hashCode() : 0);
+        result = 31 * result + version.hashCode();
+        result = 31 * result + status.hashCode();
+        return result;
+    }
 }

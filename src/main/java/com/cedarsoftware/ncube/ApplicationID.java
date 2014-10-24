@@ -23,17 +23,10 @@ package com.cedarsoftware.ncube;
  */
 public class ApplicationID
 {
-    public String account;
-    public String app;
-    public String version;
-    public String status = ReleaseStatus.SNAPSHOT.name();
-
-    public ApplicationID(String account, String app, String version)
-    {
-        this.account = account;
-        this.app = app;
-        this.version = version;
-    }
+    private String account;
+    private String app;
+    private String version;
+    private String status;
 
     public ApplicationID(String account, String app, String version, String status)
     {

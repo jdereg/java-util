@@ -1401,24 +1401,43 @@ public class NCubeManager
         for (NCube ncube : ncubes)
             addCube(ncube, appId);
     }
-
     
-    /**
-     * Load an NCube from the database (any joined sub-cubes will also be loaded).
-     *
-     * @return NCube that matches, or null if not found.
-     * @throws java.lang.IllegalArgumentException when persistence connection type can not be determined
-     */
-//    public static NCube loadCubeWithTests(ApplicationID appId, String cubeName)
-//    {
-//        return loadCube(appId, cubeName, true, nCubePersister);
-//    }    
+    public static void createCube(NCube ncube)
+    {
+        createCube(ncube, nCubePersister);
+    }
+
+    public static void createCube(NCube ncube, NCubePersister myNCubePersister)
+    {
+        ApplicationID appId = ncube.getApplicationID();
+        validate(appId);        
+        validateCubeName(ncube.getName());      
+        
+        try
+        {
+            myNCubePersister.saveNCube(ncube);
+            addCube(ncube, ncube.getApplicationID());
+        }
+        catch (IllegalStateException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to save NCube: " + ncube.getName() + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + " to database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
 
     private static void validate(ApplicationID appId)
     {
-        validateApp(appId.app);
-        validateVersion(appId.version);
-        validateStatus(appId.status);
+        if (appId == null)
+            throw new IllegalArgumentException("ApplicationID can not be null. Please check input ApplicationID argument or input NCube argument");
+            
+        validateApp(appId.getApp());
+        validateVersion(appId.getVersion());
+        validateStatus(appId.getStatus());
         
         //todo validate tenant 10 or less
     }

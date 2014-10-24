@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.io.JsonWriter;
+import org.apache.tomcat.jdbc.pool.PoolProperties;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -32,6 +33,8 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import javax.sql.DataSource;
 
 /**
  * NCubeManager Tests
@@ -183,38 +186,6 @@ DELIMITER ;
         return conn;
     }
 
-    private Connection getJdbcConnection() throws Exception
-    {
-        Connection conn = null;
-        if (test_db == MYSQL)
-        {
-            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
-        }
-        else if (test_db == HSQLDB)
-        {
-            conn = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "sa", "");
-        }
-        else if (test_db == ORACLE)
-        {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            conn = DriverManager.getConnection("jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
-        }
-        return conn;
-    }
-
-    private void closeJdbcConnection(Connection connection)
-    {
-        try
-        {
-            if (connection != null)
-                connection.close();
-        }
-        catch (SQLException e)
-        {
-            e.printStackTrace();
-        }
-    }
-
     private NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -324,152 +295,7 @@ DELIMITER ;
 
         NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
         NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
-    }
-
-    @Test
-    public void testLoadCubesWithJdbcConnectionProvider() throws Exception
-    {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Map coord = new HashMap();
-        coord.put("gender", "male");
-        coord.put("age", "47");
-        ncube.setCell(1.0, coord);
-
-        coord.put("gender", "female");
-        ncube.setCell(1.1, coord);
-
-        coord.put("age", 16);
-        ncube.setCell(1.5, coord);
-
-        coord.put("gender", "male");
-        ncube.setCell(1.8, coord);
-
-        String version = "0.1.0";
-        String name1 = ncube.getName();
-        Connection ncubeSetupConn = null;
-
-        try
-        {
-            ncubeSetupConn = getJdbcConnection();
-            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
-            NCubeManager.updateTestData(ncubeSetupConn, APP_ID, ncube.getName(), version, JsonWriter.objectToJson(coord));
-            NCubeManager.updateNotes(ncubeSetupConn, APP_ID, ncube.getName(), version, "notes follow");
-
-            ncube = TestNCube.getTestNCube3D_Boolean();
-            String name2 = ncube.getName();
-            NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
-
-            NCubeManager.clearCubeList();
-            NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
-            ApplicationID appId = new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.loadCubes(nCubeConnectionProvider, appId);
-            nCubeConnectionProvider.commitTransaction();
-
-            appId = new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-            NCube ncube1 = NCubeManager.getCube(name1, appId);
-            NCube ncube2 = NCubeManager.getCube(name2, appId);
-            assertNotNull(ncube1);
-            assertNotNull(ncube2);
-            assertEquals(name1, ncube1.getName());
-            assertEquals(name2, ncube2.getName());
-            NCubeManager.clearCubeList();
-            assertNull(NCubeManager.getCube(name1, appId));
-            assertNull(NCubeManager.getCube(name2, appId));
-
-            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name1, version, true);
-            NCubeManager.deleteCube(ncubeSetupConn, APP_ID, name2, version, true);
-        }
-        finally
-        {
-            closeJdbcConnection(ncubeSetupConn);
-        }
-    }
-
-    @Test
-    public void testLoadCubesWithConnectionProviderException()
-    {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Map coord = new HashMap();
-        coord.put("gender", "male");
-        coord.put("age", "47");
-        ncube.setCell(1.0, coord);
-
-        coord.put("gender", "female");
-        ncube.setCell(1.1, coord);
-
-        coord.put("age", 16);
-        ncube.setCell(1.5, coord);
-
-        coord.put("gender", "male");
-        ncube.setCell(1.8, coord);
-
-        String version = "0.1.0";
-        String name1 = ncube.getName();
-        Connection ncubeSetupConn = null;
-
-        try
-        {
-            try
-            {
-                ncubeSetupConn = getJdbcConnection();
-                NCubeManager.createCube(ncubeSetupConn, APP_ID, ncube, version);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-                fail("Unable to create test ncube...");
-            }
-
-            NCubeConnectionProvider nCubeConnectionProvider;
-            Exception testException = null;
-
-            //test with null connection
-            try
-            {
-                nCubeConnectionProvider = new NCubeJdbcConnectionProvider(null);
-            }
-            catch (Exception e)
-            {
-                testException = e;
-            }
-
-            assertTrue(testException != null && testException instanceof IllegalStateException);
-
-            //test when jdbc connection is closed
-            Connection jdbcConn = null;
-            try
-            {
-                jdbcConn = getJdbcConnection();
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-                fail("Unable to create jdbc connection...");
-            }
-
-            nCubeConnectionProvider = new NCubeJdbcConnectionProvider(jdbcConn);
-            nCubeConnectionProvider.commitTransaction();
-            testException = null;
-
-            try
-            {
-                ApplicationID appId = new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-                NCubeManager.loadCubes(nCubeConnectionProvider, appId);
-            }
-            catch (Exception e)
-            {
-                testException = e;
-            }
-
-            assertTrue(testException != null && testException instanceof IllegalArgumentException);
-        }
-        finally
-        {
-            closeJdbcConnection(ncubeSetupConn);
-        }
-    }
+    }   
 
     @Test
     public void testLoadCubesException() throws Exception {
@@ -1023,10 +849,10 @@ DELIMITER ;
 
         assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
 
-        NCubeJdbcConnectionProvider nCubeJdbcConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
-        ApplicationID appId = new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-        assertTrue(NCubeManager.doesCubeExist(nCubeJdbcConnectionProvider, appId, name));
-        nCubeJdbcConnectionProvider.commitTransaction();
+//        NCubeJdbcConnectionProvider nCubeJdbcConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
+//        ApplicationID appId = new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
+//        assertTrue(NCubeManager.doesCubeExist(nCubeJdbcConnectionProvider, appId, name));
+//        nCubeJdbcConnectionProvider.commitTransaction();
 
         NCube<String> cube = (NCube<String>) NCubeManager.getCube(name, new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name()));
 
@@ -1524,5 +1350,75 @@ DELIMITER ;
         catch (Exception e)
         { }
     }
+    
+    
+    //-------------------- tests for loading with jdbc persister -----------------------------   
+    
+    
+    @Test
+    public void testCreateAndLoadCubesWithJdbcPersister() throws Exception
+    {        
+        setUpNCubeManager();
 
+        ApplicationID appId = new ApplicationID(null, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name());
+        String version = appId.getVersion();
+
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        ncube.setApplicationID(appId);
+        String name1 = ncube.getName();
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", "47");
+        ncube.setCell(1.0, coord);
+
+        coord.put("gender", "female");
+        ncube.setCell(1.1, coord);
+
+        coord.put("age", 16);
+        ncube.setCell(1.5, coord);
+
+        coord.put("gender", "male");
+        ncube.setCell(1.8, coord);        
+        
+        //new api
+        NCubeManager.createCube(ncube);
+        
+        NCubeManager.updateTestData(getConnection(), APP_ID, ncube.getName(), version, JsonWriter.objectToJson(coord));
+        NCubeManager.updateNotes(getConnection(), APP_ID, ncube.getName(), version, "notes follow");
+
+        ncube = TestNCube.getTestNCube3D_Boolean();
+        ncube.setApplicationID(appId);
+        String name2 = ncube.getName();
+        
+        //new api
+        NCubeManager.createCube(ncube);
+
+        NCubeManager.clearCubeList();       
+        
+        //new api
+        NCubeManager.loadCubes(appId);
+
+        NCube ncube1 = NCubeManager.getCube(name1, appId);
+        NCube ncube2 = NCubeManager.getCube(name2, appId);
+        assertNotNull(ncube1);
+        assertNotNull(ncube2);
+        assertEquals(name1, ncube1.getName());
+        assertEquals(name2, ncube2.getName());
+        NCubeManager.clearCubeList();
+        assertNull(NCubeManager.getCube(name1, appId));
+        assertNull(NCubeManager.getCube(name2, appId));
+
+        NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
+        NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
+    }
+    
+    private void setUpNCubeManager()
+    {
+        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
+        NCubePersister nCubePersister = new NCubeJdbcPersister();
+        nCubePersister.setNCubeConnectionProvider(nCubeConnectionProvider);
+
+        NCubeManager.setNCubePersister(nCubePersister);
+    }
 }

@@ -38,7 +38,5 @@ public class TestStringValuePair
 
         two.setKey(null);
         assertEquals(0xbabe, two.hashCode());
-
-
     }
 }

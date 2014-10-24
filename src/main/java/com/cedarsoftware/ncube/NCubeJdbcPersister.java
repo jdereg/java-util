@@ -77,7 +77,7 @@ public class NCubeJdbcPersister implements NCubePersister
     }
 
     @Override
-    public NCube findNCube(ApplicationID appId, String ncubeName, Date sysDate, boolean includeTests)
+    public NCube findNCube(ApplicationID appId, String ncubeName, boolean includeTests)
     {
         String query = includeTests ?
             "SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?" :
@@ -93,7 +93,7 @@ public class NCubeJdbcPersister implements NCubePersister
         {
             NCube ncube = null;
             
-            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
 
             // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
             // TODO: see if the column exists, store the result for the entire app life cycle.
@@ -129,7 +129,7 @@ public class NCubeJdbcPersister implements NCubePersister
 
                     if (rs.next())
                     {
-                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate);
+                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status );
                     }                    
                 }
                 
@@ -142,7 +142,7 @@ public class NCubeJdbcPersister implements NCubePersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load nNCube: " + ncubeName + ", app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+            String s = "Unable to load nNCube: " + ncubeName + ", app: " + app + ", version: " + version + ", status: " + status + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -153,7 +153,7 @@ public class NCubeJdbcPersister implements NCubePersister
     }
 
     @Override
-    public List<NCube> findAllNCubes(ApplicationID appId, Date sysDate)
+    public List<NCube> findAllNCubes(ApplicationID appId)
     {        
         Connection connection = getConnection();
 
@@ -164,7 +164,7 @@ public class NCubeJdbcPersister implements NCubePersister
         try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
         {
             List<NCube> ncubes = new ArrayList<>();
-            java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
+            java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
 
             // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
             // TODO: see if the column exists, store the result for the entire app life cycle.
@@ -191,7 +191,7 @@ public class NCubeJdbcPersister implements NCubePersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load n-cubes, app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
+            String s = "Unable to load n-cubes, app: " + app + ", version: " + version + ", status: " + status + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

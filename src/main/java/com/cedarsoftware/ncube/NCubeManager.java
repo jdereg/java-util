@@ -853,6 +853,9 @@ public class NCubeManager
     //todo - lose connection
     private static void validate(Connection connection, String app, String relVersion)
     {
+        if (connection == null)
+            throw new IllegalArgumentException();
+            
         validateApp(app);
         validateVersion(relVersion);
     }

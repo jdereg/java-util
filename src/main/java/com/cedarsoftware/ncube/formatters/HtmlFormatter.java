@@ -474,9 +474,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "word-break: normal;\n" +
                 "word-wrap: normal;\n" +
                 "border: 0;\n" +
-                "border-radius: 0;\n" +
                 "background: white;\n" +
-                "color: mediumblue" +
                 "}\n" +
                 ".ncube-pre:hover { background: #E0F0FF }\n" +
                 " </style>\n" +

@@ -18,12 +18,11 @@ public class TestNCubeJdbcConnectionProvider
     {
         NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getValidDataSource());
         
-        Object connection = nCubeConnectionProvider.beginTransaction();
-        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
-        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+        Connection connection = (Connection)nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be valid...", connection.isValid(1));
         
-        nCubeConnectionProvider.commitTransaction();
-        assertTrue("Connection must be closed...", ((Connection) connection).isClosed());
+        nCubeConnectionProvider.commitTransaction(connection);
+        assertTrue("Connection must be closed...", connection.isClosed());
     }
 
     @Test
@@ -31,12 +30,11 @@ public class TestNCubeJdbcConnectionProvider
     {
         NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider(getValidDataSource());
 
-        Object connection = nCubeConnectionProvider.beginTransaction();
-        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
-        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+        Connection connection = (Connection)nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be valid...", connection.isValid(1));
 
-        nCubeConnectionProvider.rollbackTransaction();
-        assertTrue("Connection must be closed...", ((Connection)connection).isClosed());
+        nCubeConnectionProvider.rollbackTransaction(connection);
+        assertTrue("Connection must be closed...", connection.isClosed());
     }
 
     @Test
@@ -64,12 +62,11 @@ public class TestNCubeJdbcConnectionProvider
     {
         NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
 
-        Object connection = nCubeConnectionProvider.beginTransaction();
-        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
-        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+        Connection connection = (Connection)nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be valid...", connection.isValid(1));
 
-        nCubeConnectionProvider.commitTransaction();
-        assertTrue("Connection must be closed...", ((Connection) connection).isClosed());
+        nCubeConnectionProvider.commitTransaction(connection);
+        assertTrue("Connection must be closed...", connection.isClosed());
     }
 
     @Test
@@ -77,12 +74,11 @@ public class TestNCubeJdbcConnectionProvider
     {
         NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
 
-        Object connection = nCubeConnectionProvider.beginTransaction();
-        assertTrue("Connection must be a jdbc connection...", connection instanceof Connection);
-        assertTrue("Connection must be valid...", ((Connection)connection).isValid(1));
+        Connection connection = (Connection)nCubeConnectionProvider.beginTransaction();
+        assertTrue("Connection must be valid...", connection.isValid(1));
 
-        nCubeConnectionProvider.rollbackTransaction();
-        assertTrue("Connection must be closed...", ((Connection) connection).isClosed());
+        nCubeConnectionProvider.rollbackTransaction(connection);
+        assertTrue("Connection must be closed...", connection.isClosed());
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube;
 
 
+import java.sql.Connection;
+
 /**
  * Interface for a generic way to provide a database/persistence connection to the NCubeManager.
  *
@@ -35,11 +37,11 @@ public interface NCubeConnectionProvider
      * Ensures the current database/persistence connection commits all write operations of the current transaction.
      * Ensures the current database/persistence connection is closed if appropriated.
      */
-    void commitTransaction();
+    void commitTransaction(Connection connection);
 
     /**
      * If the current database/persistence connection is valid, all write operations of the current transaction are rolled back.
      * Ensures the current database/persistence connection is closed if appropriated.
      */
-    void rollbackTransaction();
+    void rollbackTransaction(Connection connection);
 }

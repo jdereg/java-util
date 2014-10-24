@@ -32,9 +32,6 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     private String username;
     private String password;
 
-    //TODO - better way to track connections than using a thread local
-    private static final ThreadLocal<Connection> CONNECTION = new ThreadLocal<Connection>();
-
     /**
      * Constructs a new NCubeJdbcConnectionProvider with an initialized Datasource.
      */
@@ -73,14 +70,8 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 
     @Override
     public Object beginTransaction()
-    {
-        //if this thread already has an active connection use
-        if (CONNECTION.get() != null && isActiveConnection(CONNECTION.get()))
-        {
-            return CONNECTION.get();
-        }        
-            
-        Connection connection = null;
+    {            
+        Connection connection;
         
         if (dataSource != null)
         {
@@ -88,6 +79,8 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
             try
             {
                 connection = dataSource.getConnection();
+                
+                //todo - log connection that is in auto-commit mode
             }
             catch (SQLException e)
             {
@@ -112,32 +105,25 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
             try
             {
                 //auto commit always to false;
-                //TODO support a parameter to set this property?
                 connection.setAutoCommit(false);
             }
             catch (SQLException e)
             {
                 throw new RuntimeException("Unable to set connection auto-commit to false...", e);
             }
-            
-            //set connection to thread local
-            CONNECTION.set(connection);
         }
         
         return connection;
     }
 
     /**
-     * @see NCubeJdbcConnectionProvider#commitTransaction()
+     * @see NCubeJdbcConnectionProvider#commitTransaction(java.sql.Connection)
      *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
     @Override
-    public void commitTransaction()
+    public void commitTransaction(Connection connection)
     {
-        Connection connection = CONNECTION.get();
-        CONNECTION.set(null);
-
         if (!isActiveConnection(connection))
             throw new IllegalStateException("Unable to commit transaction. Current jdbc connection is invalid.");
 
@@ -163,20 +149,17 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     }
 
     /**
-     * @see NCubeJdbcConnectionProvider#rollbackTransaction()
+     * @see NCubeJdbcConnectionProvider#rollbackTransaction(java.sql.Connection)
      *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
     @Override
-    public void rollbackTransaction()
+    public void rollbackTransaction(Connection connection)
     {
-        Connection connection = CONNECTION.get();
-        CONNECTION.set(null);
-
         if (!isActiveConnection(connection))
             throw new IllegalStateException("Unable to rollback transaction. Current jdbc connection is invalid.");
 
-        try
+        try 
         {
             connection.rollback();
         }
@@ -204,15 +187,8 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     private boolean isActiveConnection(Object connection)
     {
         if (connection == null || !(connection instanceof Connection))
-            throw new IllegalStateException("Input connection is null and not valid...");
+            throw new IllegalArgumentException("Input connection is null and not valid...");
 
-        try
-        {
-            return ((Connection)connection).isValid(1);
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeException("Unable to determine validity of jdbc connection...", e);
-        }
+        return true;
     }
 }

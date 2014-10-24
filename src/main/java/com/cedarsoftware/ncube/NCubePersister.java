@@ -8,7 +8,7 @@ public interface NCubePersister
     
     void updateNCube(ApplicationID appId, NCube ncube);
         
-    NCube findNCube(ApplicationID appId, String ncubeName);
+    NCube findNCube(ApplicationID appId, String ncubeName, boolean includeTests);
     
     List<NCube> findAllNCubes(ApplicationID appId);
     

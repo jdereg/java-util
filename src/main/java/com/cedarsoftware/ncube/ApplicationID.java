@@ -23,10 +23,10 @@ package com.cedarsoftware.ncube;
  */
 public class ApplicationID
 {
-    private String account;
-    private String app;
-    private String version;
-    private String status;
+    public String account;
+    public String app;
+    public String version;
+    public String status = ReleaseStatus.SNAPSHOT.name();
 
     public ApplicationID(String account, String app, String version)
     {
@@ -48,19 +48,9 @@ public class ApplicationID
         return account;
     }
 
-    void setAccount(String account)
-    {
-        this.account = account;
-    }
-
     public String getApp()
     {
         return app;
-    }
-
-    void setApp(String app)
-    {
-        this.app = app;
     }
 
     public String getVersion()
@@ -68,12 +58,21 @@ public class ApplicationID
         return version;
     }
 
-    void setVersion(String version)
+    public String getStatus()
     {
-        this.version = version;
+        return status;
     }
 
-    public String getStatus() { return status; }
-
-    public void setStatus(String status) { this.status = status; }
+    public String getAppStr(String name)
+    {
+        StringBuilder s = new StringBuilder();
+        s.append(account == null ? "null" : account);
+        s.append('.');
+        s.append(app == null ? "null" : app);
+        s.append('.');
+        s.append(version);
+        s.append('.');
+        s.append(name);
+        return s.toString().toLowerCase();
+    }
 }

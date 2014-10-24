@@ -330,6 +330,7 @@ public class TestRuleEngine
         assertEquals(output.get("weight"), "light-weight");
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(1, ruleInfo.getNumberOfRulesExecuted());
+        assertFalse(ruleInfo.wasRuleStopThrown());
 
         coord.put("age", 25);
         coord.put("weight", 60);
@@ -337,6 +338,7 @@ public class TestRuleEngine
         ncube.getCell(coord, output);
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(0, ruleInfo.getNumberOfRulesExecuted());
+        assertTrue(ruleInfo.wasRuleStopThrown());
 
         coord.put("age", 45);
         coord.put("weight", 60);
@@ -346,6 +348,7 @@ public class TestRuleEngine
         assertEquals(output.get("weight"), "light-weight");
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         assertEquals(1, ruleInfo.getNumberOfRulesExecuted());
+        assertFalse(ruleInfo.wasRuleStopThrown());
     }
 
     @Test
@@ -723,7 +726,6 @@ public class TestRuleEngine
         Map output = new LinkedHashMap();
         input.put("Age", 10);
         ncube.getCell(input, output);
-        System.out.println("output = " + output);
         assertTrue((boolean)output.get("isAxis"));
         assertTrue((boolean)output.get("isColumn"));
         assertTrue((boolean)output.get("isRange"));

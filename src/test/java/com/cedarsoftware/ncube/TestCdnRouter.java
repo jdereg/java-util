@@ -160,7 +160,7 @@ public class TestCdnRouter
 
         setDefaultCdnRoutingProvider();
 
-        NCubeManager.getUrlClassLoader("file");
+        NCubeManager.getUrlClassLoader("null.null.file.");
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();

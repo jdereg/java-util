@@ -23,7 +23,6 @@ import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -66,12 +65,12 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
-    private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
+    private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
     static
     {
-        urlClassLoaders.put("file", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+        urlClassLoaders.put("null.null.file.", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
     }
 
     public static Set<String> getCubeNames(ApplicationID appId)
@@ -99,19 +98,19 @@ public class NCubeManager
         return cubeList.get(appId.getAppStr(name));
     }
 
-    public static void addBaseResourceUrls(List<String> urls, String version)
+    public static void addBaseResourceUrls(List<String> urls, String appStr)
     {
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(version);
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appStr);
 
         if (urlClassLoader == null)
         {
-            LOG.info("Creating ClassLoader, n-cube version: " + version + ", urls: " + urls);
+            LOG.info("Creating ClassLoader, n-cube version: " + appStr + ", urls: " + urls);
             urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(version, urlClassLoader);
+            urlClassLoaders.put(appStr, urlClassLoader);
         }
         else
         {
-            LOG.info("Adding resource URLs, n-cube version: " + version + ", urls: " + urls);
+            LOG.info("Adding resource URLs, n-cube version: " + appStr + ", urls: " + urls);
         }
 
         addUrlsToClassLoader(urls, urlClassLoader);
@@ -154,9 +153,9 @@ public class NCubeManager
         }
     }
 
-    public static URLClassLoader getUrlClassLoader(String version)
+    public static URLClassLoader getUrlClassLoader(String appStr)
     {
-        return urlClassLoaders.get(version);
+        return urlClassLoaders.get(appStr);
     }
 
     /**

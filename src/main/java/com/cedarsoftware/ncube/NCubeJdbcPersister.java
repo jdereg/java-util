@@ -178,9 +178,16 @@ public class NCubeJdbcPersister implements NCubePersister
             {
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
                 String json = new String(jsonBytes, "UTF-8");
-                NCube ncube = ncubeFromJson(json);
-                ncube.setApplicationID(appId);                
-                ncubes.add(ncube);
+                try
+                {
+                    NCube ncube = ncubeFromJson(json);
+                    ncube.setApplicationID(appId);
+                    ncubes.add(ncube);
+                }
+                catch (Exception e)
+                {
+                    LOG.warn("account: " + appId.getAccount() + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", Failed to load n-cube: " + json.substring(0, 40));
+                }
             }
             
             return ncubes;

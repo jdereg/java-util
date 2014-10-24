@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface NCubePersister
 {
-    void saveNCube(ApplicationID appId, NCube ncube);
+    void saveNCube(NCube ncube);
     
     void updateNCube(ApplicationID appId, NCube ncube);
         

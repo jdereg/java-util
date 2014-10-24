@@ -20,18 +20,18 @@ public class NCubeJdbcPersister implements NCubePersister
     private NCubeConnectionProvider nCubeConnectionProvider;
 
     @Override
-    public void saveNCube(ApplicationID appId, NCube ncube)
+    public void saveNCube(NCube ncube)
     { 
         Connection connection = getConnection();
+        ApplicationID appId = ncube.getApplicationID();
         
         if (doesCubeExist(connection, ncube.getName(), appId, null))
         {
-            throw new IllegalStateException("NCube '" + ncube.getName() + "' (" + appId.app + " " + appId.app + ") already exists.");
+            throw new IllegalStateException("NCube '" + ncube.getName() + "' (" + appId.getApp() + ") already exists.");
         }
         
-        String app = appId.app;
-        String version = appId.getVersion();
-        
+        String app = appId.getApp();
+        String version = appId.getVersion();        
 
         try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)"))
         {
@@ -85,9 +85,9 @@ public class NCubeJdbcPersister implements NCubePersister
 
         Connection connection = getConnection();
 
-        String app = appId.app;
-        String version = appId.version;
-        String status = appId.status;
+        String app = appId.getApp();
+        String version = appId.getVersion();
+        String status = appId.getStatus();
         
         try (PreparedStatement stmt = connection.prepareStatement(query))
         {
@@ -157,9 +157,9 @@ public class NCubeJdbcPersister implements NCubePersister
     {        
         Connection connection = getConnection();
 
-        String app = appId.app;
-        String version = appId.version;
-        String status = appId.status;
+        String app = appId.getApp();
+        String version = appId.getVersion();
+        String status = appId.getStatus();
         
         try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
         {

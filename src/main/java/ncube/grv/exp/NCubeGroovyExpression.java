@@ -65,8 +65,7 @@ public class NCubeGroovyExpression
 
     public Set<String> getCubeNames()
     {
-        //todo - change getCubeName api to take ApplicationId only
-        return NCubeManager.getCubeNames(ncube.getApplicationID().app, ncube.getVersion(), ncube.getStatus());
+        return NCubeManager.getCubeNames(ncube.getApplicationID().getApp(), ncube.getVersion(), ncube.getStatus());
     }
 
     /**

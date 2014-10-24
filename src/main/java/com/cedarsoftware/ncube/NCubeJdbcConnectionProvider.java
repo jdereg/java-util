@@ -1,12 +1,12 @@
 package com.cedarsoftware.ncube;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Implementation for JDBC using a JDBC connection.
+ * Implementation for JDBC using a JDBC connection and transactions.
  *
  * @author Chuck Rowland (pittsflyr@gmail.com)
  *         <br/>
@@ -27,48 +27,108 @@ import java.util.Map;
 
 public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 {
-    Map<ContextKey,Object> connectionContext = new HashMap<>();
+    private DataSource dataSource;
+    private String databaseUrl;
+    private String username;
+    private String password;
 
     /**
-     * Constructs a new NCubeJdbcConnectionProvider with the input connection added to the connection context Map.
+     * Constructs a new NCubeJdbcConnectionProvider with an initialized Datasource.
+     */
+    public NCubeJdbcConnectionProvider(DataSource datasource)
+    {
+        this.dataSource = datasource;
+    }    
+
+    /**
+     * Constructs a new NCubeJdbcConnectionProvider with the input parameters needed to create a single database connection.
      *
-     * @param connection - java.sql.Connection
+     * @param driverClass - name of the database driver class
+     * @param databaseUrl - database connection url
+     * @param username - username of the account to be used to log into the database
+     * @param password - password for the account to be used to log into the database
      * @throws java.lang.IllegalArgumentException - if connection is not a valid connection
      */
-    public NCubeJdbcConnectionProvider(Connection connection)
+    public NCubeJdbcConnectionProvider(String driverClass, String databaseUrl, String username, String password)
     {
-        if (!isActiveConnection(connection))
-            throw new IllegalStateException("Input jdbc connection is not valid, check state of connection prior to instantiating connection provider...");
-
-        connectionContext.put(ContextKey.JDBC_CONNECTION, connection);
+        this.databaseUrl = databaseUrl;
+        this.username = username;
+        this.password = password;
+        
+        if (driverClass != null)
+        {
+            try
+            {
+                Class.forName(driverClass);
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException("Unable to initialize driver class for input: " + driverClass, e);
+            }
+        }
     }
 
-    /**
-     * @see NCubeConnectionProvider#getConnectionContext()
-     *
-     * @return Map - jdbc connection context
-     */
     @Override
-    public Map<ContextKey, Object> getConnectionContext()
-    {
-        return connectionContext;
+    public Object beginTransaction()
+    {            
+        Connection connection;
+        
+        if (dataSource != null)
+        {
+            //using a datasource
+            try
+            {
+                connection = dataSource.getConnection();
+                
+                //todo - log connection that is in auto-commit mode
+            }
+            catch (SQLException e)
+            {
+                throw new RuntimeException("Unable to create connection from DataSource...", e);
+            }
+        }
+        else
+        {
+            //single connection from input connection params
+            try
+            {
+                connection = DriverManager.getConnection(databaseUrl, username, password);
+            }
+            catch (SQLException e)
+            {
+                throw new RuntimeException("Unable to create connection from input connection parameters...", e);
+            }
+        }
+        
+        if (connection != null)
+        {
+            try
+            {
+                //auto commit always to false;
+                connection.setAutoCommit(false);
+            }
+            catch (SQLException e)
+            {
+                throw new RuntimeException("Unable to set connection auto-commit to false...", e);
+            }
+        }
+        
+        return connection;
     }
 
     /**
-     * @see NCubeJdbcConnectionProvider#commitTransaction()
+     * @see NCubeJdbcConnectionProvider#commitTransaction(java.sql.Connection)
      *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
     @Override
-    public void commitTransaction()
+    public void commitTransaction(Connection connection)
     {
-        if (!isActiveConnection(connectionContext.get(ContextKey.JDBC_CONNECTION)))
-            throw new IllegalStateException("Unable to commit transaction. Current jdbc connection is invalid, provide active connection to connection context.");
-
-        Connection connection = (Connection)(connectionContext.get(ContextKey.JDBC_CONNECTION));
+        if (!isActiveConnection(connection))
+            throw new IllegalStateException("Unable to commit transaction. Current jdbc connection is invalid.");
 
         try
-        {
+        {            
             connection.commit();
         }
         catch (SQLException e)
@@ -89,19 +149,17 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     }
 
     /**
-     * @see NCubeJdbcConnectionProvider#rollbackTransaction()
+     * @see NCubeJdbcConnectionProvider#rollbackTransaction(java.sql.Connection)
      *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
     @Override
-    public void rollbackTransaction()
+    public void rollbackTransaction(Connection connection)
     {
-        if (!isActiveConnection(connectionContext.get(ContextKey.JDBC_CONNECTION)))
-            throw new IllegalStateException("Unable to rollback transaction. Current jdbc connection is invalid and may have been previously closed.");
+        if (!isActiveConnection(connection))
+            throw new IllegalStateException("Unable to rollback transaction. Current jdbc connection is invalid.");
 
-        Connection connection = (Connection)(connectionContext.get(ContextKey.JDBC_CONNECTION));
-
-        try
+        try 
         {
             connection.rollback();
         }
@@ -129,7 +187,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     private boolean isActiveConnection(Object connection)
     {
         if (connection == null || !(connection instanceof Connection))
-            throw new IllegalStateException("Input connection is null and not valid...");
+            throw new IllegalArgumentException("Input connection is null and not valid...");
 
         return true;
     }

@@ -183,12 +183,10 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             return;
         }
-        // This order is important because data can be null before the url is loaded
-        // and then be present afterwards.  We'd have two different hashes for the same object.
-        // NOTE: GroovyCode specified by URL is being loaded by the GroovyClassLoder, NOT the
-        // GroovyBase fetch() method.
+        //  This order is important because data can be null before the url is loaded
+        //  and then be present afterwards.  we'd have two different hashes for the same object.
         String cmdHash;
-        if (getUrl() == null || data != null)
+        if (getUrl() == null)
         {
             cmdHash = getCmdHash(data != null ? data.toString() : "null");
         }

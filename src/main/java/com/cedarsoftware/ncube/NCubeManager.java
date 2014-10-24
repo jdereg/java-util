@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.NCubeConnectionProvider.ContextKey;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
@@ -70,26 +69,6 @@ public class NCubeManager
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
     private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
-    private enum ConnectionType
-    {
-        JDBC, MONGO;
-
-        static ConnectionType resolveConnectionType(Map<ContextKey, Object> connectionContext)
-        {
-            if (connectionContext.containsKey(ContextKey.JDBC_CONNECTION))
-            {
-                return JDBC;
-            }
-
-            if (connectionContext.containsKey(ContextKey.MONGO_CLIENT))
-            {
-                return MONGO;
-            }
-
-            throw new IllegalArgumentException("Unable to resolve connection type from input connection context...");
-        }
-    }
-
     static
     {
         urlClassLoaders.put("file", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
@@ -138,6 +117,24 @@ public class NCubeManager
         addUrlsToClassLoader(urls, urlClassLoader);
     }
 
+    /**
+     * Call addBaseResourceUrls() instead.
+     */
+    @Deprecated
+    public static void setBaseResourceUrls(List<String> urls, String version)
+    {
+        addBaseResourceUrls(urls, version);
+    }
+
+    /**
+     * Call addBaseResourceUrls() instead.
+     */
+    @Deprecated
+    public static void setUrlClassLoader(List<String> urls, String version)
+    {
+        addBaseResourceUrls(urls, version);
+    }
+
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
         for (String url : urls)
@@ -169,6 +166,7 @@ public class NCubeManager
      */
     public static void addCube(NCube ncube, ApplicationID appId)
     {
+        //todo lose synch
         synchronized (cubeList)
         {
             cubeList.put(appId.getAppStr(ncube.getName()), ncube);
@@ -283,25 +281,7 @@ public class NCubeManager
         }
     }
 
-    static void validateConnection(Connection c)
-    {
-        if (c == null)
-        {
-            throw new IllegalArgumentException("Connection cannot be null");
-        }
-
-        try
-        {
-            if (!c.isValid(2))
-            {
-                throw new IllegalArgumentException("Jdbc connection is not a valid connection...");
-            }
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeException("Unable to perform idValid on input jdbc connection...", e);
-        }
-    }
+    
 
     public static void validateApp(String app)
     {
@@ -357,66 +337,7 @@ public class NCubeManager
     public static void validateTestData(String testData)
     {
 
-    }
-
-    /**
-     * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
-     */
-    @Deprecated
-    public static void loadCubes(Connection connection, String app, String version, String status)
-    {
-        loadCubes(connection, app, version, status, null);
-    }
-
-    /**
-     * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
-     */
-    @Deprecated
-    public static void loadCubes(Connection connection, String app, String version, String status, Date sysDate)
-    {
-        validate(connection, app, version);
-        validateStatus(status);
-
-        if (sysDate == null)
-        {
-            sysDate = new Date();
-        }
-
-        synchronized (cubeList)
-        {
-            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
-            {
-                java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
-
-                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-                // TODO: see if the column exists, store the result for the entire app life cycle.
-                // TODO: If account column does not exist, then account is null.
-                stmt.setString(1, app);
-                stmt.setDate(2, systemDate);
-                stmt.setDate(3, systemDate);
-                stmt.setString(4, version);
-                stmt.setString(5, status);
-                ResultSet rs = stmt.executeQuery();
-
-                ApplicationID appId = new ApplicationID(null, app, version, status);
-
-                while (rs.next())
-                {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String json = new String(jsonBytes, "UTF-8");
-                    NCube ncube = ncubeFromJson(json);
-                    ncube.setApplicationID(appId);
-                    addCube(ncube, appId);
-                }
-            }
-            catch (Exception e)
-            {
-                String s = "Unable to load n-cubes, app: " + app + ", version: " + version + ", status: " + status + ", sysDate: " + sysDate + " from database";
-                LOG.error(s, e);
-                throw new RuntimeException(s, e);
-            }
-        }
-    }
+    }    
 
     /**
      * Load an NCube from the database (any joined sub-cubes will also be loaded).
@@ -424,6 +345,8 @@ public class NCubeManager
      * @return NCube that matches, or null if not found.
      */
     @Deprecated
+    
+    //TODO-replace with new api
     public static boolean doesCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         validate(connection, app, version);
@@ -509,6 +432,7 @@ public class NCubeManager
      * version, and system date.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //TODO: replace with new api
     public static Object[] getNCubes(Connection connection, String app, String version, String status, String sqlLike, Date sysDate)
     {
         validate(connection, app, version);
@@ -578,6 +502,7 @@ public class NCubeManager
      * Duplicate the specified n-cube, given it the new name, and the same app, version, status as the source n-cube.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //TODO: replace with new api
     public static void duplicate(Connection connection, String newName, String name, String newApp, String app, String newVersion, String version, String status, Date sysDate)
     {
         NCube ncube = getCube(name, new ApplicationID(null, app, version, status));
@@ -593,9 +518,9 @@ public class NCubeManager
      * Return an array [] of Strings containing all unique App names.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo replace with new api
     public static Object[] getAppNames(Connection connection, Date sysDate)
     {
-        validateConnection(connection);
         if (sysDate == null)
         {
             sysDate = new Date();
@@ -631,9 +556,9 @@ public class NCubeManager
      * Return an array [] of Strings containing all unique App names.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //TODO: replace with new api
     public static Object[] getAppVersions(Connection connection, String app, String status, Date sysDate)
     {
-        validateConnection(connection);
         validateApp(app);
         validateStatus(status);
         if (sysDate == null)
@@ -678,6 +603,7 @@ public class NCubeManager
      * @return boolean true on success, false otherwise
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //TODO: replace with new api
     public static boolean updateCube(Connection connection, String app, NCube ncube, String version)
     {
         validate(connection, app, version);
@@ -924,9 +850,12 @@ public class NCubeManager
         }
     }
 
+    //todo - lose connection
     private static void validate(Connection connection, String app, String relVersion)
     {
-        validateConnection(connection);
+        if (connection == null)
+            throw new IllegalArgumentException();
+            
         validateApp(app);
         validateVersion(relVersion);
     }
@@ -935,6 +864,7 @@ public class NCubeManager
      * Change the SNAPSHOT version value.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo: replace with new api
     public static void changeVersionValue(Connection connection, String app, String currVersion, String newSnapVer)
     {
         validate(connection, app, currVersion);
@@ -964,7 +894,7 @@ public class NCubeManager
                         throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + currVersion + ", therefore nothing changed.");
                     }
                 }
-                loadCubes(connection, app, newSnapVer, ReleaseStatus.SNAPSHOT.name());
+                loadCubes(new ApplicationID(null, app, currVersion, ReleaseStatus.SNAPSHOT.name()));
             }
             catch (IllegalStateException e)
             {
@@ -980,6 +910,7 @@ public class NCubeManager
     }
 
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo: replace with new api
     public static boolean renameCube(Connection connection, String oldName, String newName, String app, String version)
     {
         validate(connection, app, version);
@@ -1038,6 +969,7 @@ public class NCubeManager
      * @param cubeName   NCube to be deleted
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo replace with new api
     public static boolean deleteCube(Connection connection, String app, String cubeName, String version, boolean allowDelete)
     {
         validate(connection, app, version);
@@ -1088,6 +1020,7 @@ public class NCubeManager
      * @return true if the update succeeds, false otherwise
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo replace with new api
     public static boolean updateNotes(Connection connection, String app, String cubeName, String version, String notes)
     {
         validate(connection, app, version);
@@ -1133,6 +1066,7 @@ public class NCubeManager
      * @return String notes.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo replace with new api
     public static String getNotes(Connection connection, String app, String cubeName, String version, Date sysDate)
     {
         validate(connection, app, version);
@@ -1183,6 +1117,7 @@ public class NCubeManager
      * @return true if the update succeeds, false otherwise
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo replace with new api
     public static boolean updateTestData(Connection connection, String app, String cubeName, String version, String testData)
     {
         validate(connection, app, version);
@@ -1232,6 +1167,7 @@ public class NCubeManager
      * Java objects.
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
+    //todo replace with new api
     public static String getTestData(Connection connection, String app, String cubeName, String version, Date sysDate)
     {
         validate(connection, app, version);
@@ -1375,153 +1311,71 @@ public class NCubeManager
 
 
     //----------------------new api's that take persistence connection provider to replace connection on param list-----------------------------
+    
+    private static NCubePersister nCubePersister;
+    public static void setNCubePersister(NCubePersister nCubePersister)
+    {
+        NCubeManager.nCubePersister = nCubePersister;
+    }
 
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
      */
-    public static void loadCubes(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId)
+    public static void loadCubes(ApplicationID appId)
     {
-        validateStatus(appId.getStatus());
-
-        ConnectionType connectionType = ConnectionType.resolveConnectionType(nCubeConnectionProvider.getConnectionContext());
-
-        switch (connectionType)
-        {
-            case JDBC:
-                Connection connection = extractJdbcConnection(nCubeConnectionProvider.getConnectionContext());
-                jdbcLoadCubes(connection, appId);
-                break;
-            case MONGO:
-                throw new UnsupportedOperationException("Mongo support not yet implemented...");
-            default:
-                throw new IllegalArgumentException("Unsupported database/persistence connection type...");
-        }
+        loadCubes(appId, nCubePersister);
     }
 
     /**
-     * Load an NCube from the database (any joined sub-cubes will also be loaded).
-     *
-     * @return NCube that matches, or null if not found.
+     * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
      */
-    public static boolean doesCubeExist(NCubeConnectionProvider nCubeConnectionProvider, ApplicationID appId, String cubeName)
+    public static void loadCubes(ApplicationID appId, NCubePersister myNCubePersister)
     {
-        ConnectionType connectionType = ConnectionType.resolveConnectionType(nCubeConnectionProvider.getConnectionContext());
-        boolean ncubeExists;
-
-        switch (connectionType)
-        {
-            case JDBC:
-                Connection connection = extractJdbcConnection(nCubeConnectionProvider.getConnectionContext());
-                ncubeExists = jdbcDoesNCubeExist(connection, appId, cubeName);
-                break;
-            case MONGO:
-                throw new UnsupportedOperationException("Mongo support not yet implemented...");
-            default:
-                throw new IllegalArgumentException("Unsupported database/persistence connection type...");
-        }
-
-        return ncubeExists;
+        validate(appId);        
+        
+        List<NCube> ncubes = myNCubePersister.findAllNCubes(appId);
+        
+        for (NCube ncube : ncubes)
+            addCube(ncube, appId);
+    }
+    
+    public static void createCube(NCube ncube)
+    {
+        createCube(ncube, nCubePersister);
     }
 
-    private static void validate(String app, String version)
+    public static void createCube(NCube ncube, NCubePersister myNCubePersister)
     {
-        validateApp(app);
-        validateVersion(version);
-    }
-
-    private static Connection extractJdbcConnection(Map<ContextKey, Object> connectionContext)
-    {
-        Connection connection = (Connection) connectionContext.get(ContextKey.JDBC_CONNECTION);
-        validateConnection(connection);
-        return connection;
-    }
-
-    private static void jdbcLoadCubes(Connection connection, ApplicationID appId)
-    {
-        validateStatus(appId.getStatus());
-        validate(appId.getApp(), appId.getVersion());
-
-        synchronized (cubeList)
+        ApplicationID appId = ncube.getApplicationID();
+        validate(appId);        
+        validateCubeName(ncube.getName());      
+        
+        try
         {
-            try (PreparedStatement stmt = connection.prepareStatement("SELECT cube_value_bin, n_cube_nm FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
-            {
-                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-                // TODO: see if the column exists, store the result for the entire app life cycle.
-                // TODO: If account column does not exist, then account is null.
-                stmt.setString(1, appId.getApp());
-                stmt.setString(2, appId.getVersion());
-                stmt.setString(3, appId.getStatus());
-                ResultSet rs = stmt.executeQuery();
-
-                while (rs.next())
-                {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String name = rs.getString("n_cube_nm");
-                    String json = new String(jsonBytes, "UTF-8");
-                    try
-                    {
-                        NCube ncube = ncubeFromJson(json);
-                        ncube.setApplicationID(appId);
-                        addCube(ncube, appId);
-                    }
-                    catch (Exception e)
-                    {
-                        LOG.warn("Failed to load n-cube from database: " + name);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                String s = "Unable to load n-cubes, app: " + appId.getApp() + ", version: " + appId.getVersion() + ", status: " + appId.getStatus();
-                LOG.error(s, e);
-                throw new RuntimeException(s, e);
-            }
+            myNCubePersister.saveNCube(ncube);
+            addCube(ncube, ncube.getApplicationID());
         }
-    }
-
-    private static boolean jdbcDoesNCubeExist(Connection connection, ApplicationID appId, String cubeName)
-    {
-        validate(appId.getApp(), appId.getVersion());
-
-        StringBuilder builder = new StringBuilder("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?");
-        if (appId.getStatus() != null)
+        catch (IllegalStateException e)
         {
-            validateStatus(appId.getStatus());
-            builder.append(" AND status_cd = ?");
-        }
-
-        if (cubeName != null)
-        {
-            validateCubeName(cubeName);
-            builder.append(" AND n_cube_nm = ?");
-        }
-
-        try (PreparedStatement ps = connection.prepareStatement(builder.toString()))
-        {
-            ps.setString(1, appId.getApp());
-            ps.setString(2, appId.getVersion());
-
-            int count = 2;
-            if (appId.getStatus() != null)
-            {
-                ps.setString(++count, appId.getStatus());
-            }
-
-            if (cubeName != null)
-            {
-                ps.setString(++count, cubeName);
-            }
-
-            try (ResultSet rs = ps.executeQuery())
-            {
-                return rs.next();
-            }
+            throw e;
         }
         catch (Exception e)
         {
-            String s = "Error finding cube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", status: " + appId.getStatus() + " in database";
+            String s = "Unable to save NCube: " + ncube.getName() + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + " to database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
+    }
+
+    private static void validate(ApplicationID appId)
+    {
+        if (appId == null)
+            throw new IllegalArgumentException("ApplicationID can not be null. Please check input ApplicationID argument or input NCube argument");
+            
+        validateApp(appId.getApp());
+        validateVersion(appId.getVersion());
+        validateStatus(appId.getStatus());
+        
+        //todo validate tenant 10 or less
     }
 }

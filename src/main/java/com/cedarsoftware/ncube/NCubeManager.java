@@ -67,7 +67,6 @@ public class NCubeManager
 {
     private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static final NCube EMPTY_CUBE = new NCube("0a0.-_");
     private static Map<String, Map<String, Advice>> advices = new LinkedHashMap<>();
     private static Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
 
@@ -96,14 +95,14 @@ public class NCubeManager
         urlClassLoaders.put("file", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
     }
 
-    public static Set<String> getCubeNames(String app, String version, String status)
+    public static Set<String> getCubeNames(ApplicationID appId)
     {
         Set<String> result = new TreeSet<>();
         Collection<NCube> cubes = cubeList.values();
 
         for (NCube ncube : cubes)
         {
-            if (version.equals(ncube.getVersion()) && status.equals(status) && StringUtilities.equals(app, ncube.getApplicationID().getApp()))
+            if (appId.equals(ncube.getApplicationID()))
             {
                 result.add(ncube.getName());
             }
@@ -137,24 +136,6 @@ public class NCubeManager
         }
 
         addUrlsToClassLoader(urls, urlClassLoader);
-    }
-
-    /**
-     * Call addBaseResourceUrls() instead.
-     */
-    @Deprecated
-    public static void setBaseResourceUrls(List<String> urls, String version)
-    {
-        addBaseResourceUrls(urls, version);
-    }
-
-    /**
-     * Call addBaseResourceUrls() instead.
-     */
-    @Deprecated
-    public static void setUrlClassLoader(List<String> urls, String version)
-    {
-        addBaseResourceUrls(urls, version);
     }
 
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)

@@ -436,12 +436,6 @@ public class NCube<T>
         return cells.get(cols);
     }
 
-    @Deprecated
-    public T getCells(Map input, Map output)
-    {
-        throw new IllegalArgumentException("Call ncube.getCell() instead of getCells().");
-    }
-
     /**
      * Fetch the contents of the cell at the location specified by the coordinate argument.
      * Be aware that if you have any rule cubes in the execution path, they can execute

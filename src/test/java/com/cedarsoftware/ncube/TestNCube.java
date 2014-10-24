@@ -69,8 +69,9 @@ public class TestNCube
     {
         if (_classLoaderInitialize)
         {
-            List<String> urls = new ArrayList<String>();
+            List<String> urls = new ArrayList<>();
             urls.add("http://www.cedarsoftware.com");
+
             NCubeManager.addBaseResourceUrls(urls, "file");
             NCubeManager.addBaseResourceUrls(urls, "1.0.0");
             _classLoaderInitialize = false;
@@ -4710,6 +4711,7 @@ public class TestNCube
         URL url = NCubeManager.class.getResource("/");
         urls.add(url.toString());
         urls.add("http://www.cedarsoftware.com");
+
         NCubeManager.addBaseResourceUrls(urls, "file");
         NCubeManager.addBaseResourceUrls(urls, "1.0.0");
 

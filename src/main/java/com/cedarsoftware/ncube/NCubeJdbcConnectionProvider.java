@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
@@ -37,6 +36,9 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
      */
     public NCubeJdbcConnectionProvider(DataSource datasource)
     {
+        if (datasource == null) {
+            throw new NullPointerException("datasource cannot be null");
+        }
         this.dataSource = datasource;
     }    
 
@@ -51,21 +53,7 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
      */
     public NCubeJdbcConnectionProvider(String driverClass, String databaseUrl, String username, String password)
     {
-        this.databaseUrl = databaseUrl;
-        this.username = username;
-        this.password = password;
-        
-        if (driverClass != null)
-        {
-            try
-            {
-                Class.forName(driverClass);
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException("Unable to initialize driver class for input: " + driverClass, e);
-            }
-        }
+        this(new BasicDataSource(driverClass, databaseUrl, username, password));
     }
 
     @Override
@@ -73,33 +61,18 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     {            
         Connection connection;
         
-        if (dataSource != null)
+        //using a datasource
+        try
         {
-            //using a datasource
-            try
-            {
-                connection = dataSource.getConnection();
-                
-                //todo - log connection that is in auto-commit mode
-            }
-            catch (SQLException e)
-            {
-                throw new RuntimeException("Unable to create connection from DataSource...", e);
-            }
+            connection = dataSource.getConnection();
+
+            //todo - log connection that is in auto-commit mode
         }
-        else
+        catch (SQLException e)
         {
-            //single connection from input connection params
-            try
-            {
-                connection = DriverManager.getConnection(databaseUrl, username, password);
-            }
-            catch (SQLException e)
-            {
-                throw new RuntimeException("Unable to create connection from input connection parameters...", e);
-            }
+            throw new RuntimeException("Unable to get Connection...", e);
         }
-        
+
         if (connection != null)
         {
             try
@@ -124,8 +97,10 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     @Override
     public void commitTransaction(Connection connection)
     {
-        if (!isActiveConnection(connection))
-            throw new IllegalStateException("Unable to commit transaction. Current jdbc connection is invalid.");
+        if (connection == null)
+        {
+            throw new IllegalArgumentException("Unable to commit transaction.  Connection is null.");
+        }
 
         try
         {            
@@ -156,8 +131,10 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
     @Override
     public void rollbackTransaction(Connection connection)
     {
-        if (!isActiveConnection(connection))
-            throw new IllegalStateException("Unable to rollback transaction. Current jdbc connection is invalid.");
+        if (connection == null)
+        {
+            throw new IllegalArgumentException("Unable to rollback transaction. Connection is null.");
+        }
 
         try 
         {
@@ -178,17 +155,5 @@ public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
                 throw new RuntimeException("Unable to close connection after rolling back transaction...", e);
             }
         }
-    }
-
-
-
-    //-------------------- private -------------------------------
-
-    private boolean isActiveConnection(Object connection)
-    {
-        if (connection == null || !(connection instanceof Connection))
-            throw new IllegalArgumentException("Input connection is null and not valid...");
-
-        return true;
     }
 }

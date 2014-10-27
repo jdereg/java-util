@@ -116,24 +116,6 @@ public class NCubeManager
         addUrlsToClassLoader(urls, urlClassLoader);
     }
 
-    /**
-     * Call addBaseResourceUrls() instead.
-     */
-    @Deprecated
-    public static void setBaseResourceUrls(List<String> urls, String version)
-    {
-        addBaseResourceUrls(urls, version);
-    }
-
-    /**
-     * Call addBaseResourceUrls() instead.
-     */
-    @Deprecated
-    public static void setUrlClassLoader(List<String> urls, String version)
-    {
-        addBaseResourceUrls(urls, version);
-    }
-
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
         for (String url : urls)

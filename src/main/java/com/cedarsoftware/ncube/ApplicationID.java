@@ -24,7 +24,7 @@ package com.cedarsoftware.ncube;
 public class ApplicationID
 {
     public static final String DEFAULT_TENANT = "NONE";
-    public static final String DEFAULT_APP = null;
+    public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
     private final String account;
     private final String app;
@@ -37,10 +37,10 @@ public class ApplicationID
         {
             throw new IllegalArgumentException("Account (tenant) cannot be null in ApplicationID constructor");
         }
-//        if (app == null)
-//        {
-//            throw new IllegalArgumentException("Application name cannot be null in ApplicationID constructor");
-//        }
+        if (app == null)
+        {
+            throw new IllegalArgumentException("Application name cannot be null in ApplicationID constructor");
+        }
         if (version == null)
         {
             throw new IllegalArgumentException("Version cannot be null in ApplicationID constructor");

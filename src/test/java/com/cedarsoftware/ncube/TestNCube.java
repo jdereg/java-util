@@ -72,8 +72,8 @@ public class TestNCube
             List<String> urls = new ArrayList<>();
             urls.add("http://www.cedarsoftware.com");
 
-            NCubeManager.addBaseResourceUrls(urls, "null.null.file.");
-            NCubeManager.addBaseResourceUrls(urls, "null.ncube.test.1.0.0.");
+            NCubeManager.addBaseResourceUrls(urls, "none/null/file/");
+            NCubeManager.addBaseResourceUrls(urls, "none/ncube.test/1.0.0/");
             _classLoaderInitialize = false;
         }
     }
@@ -4731,8 +4731,8 @@ public class TestNCube
         List urls = new ArrayList();
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
-        NCubeManager.addBaseResourceUrls(urls, "null.null.file.");
-        NCubeManager.addBaseResourceUrls(urls, "null.null.1.0.0.");
+        NCubeManager.addBaseResourceUrls(urls, "none/null/file/");
+        NCubeManager.addBaseResourceUrls(urls, "none/null/1.0.0/");
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";

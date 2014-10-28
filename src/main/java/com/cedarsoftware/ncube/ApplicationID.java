@@ -23,13 +23,31 @@ package com.cedarsoftware.ncube;
  */
 public class ApplicationID
 {
-    private String account;
-    private String app;
-    private String version;
-    private String status;
+    public static final String DEFAULT_TENANT = "NONE";
+    public static final String DEFAULT_VERSION = "999.99.9";
+    private final String account;
+    private final String app;
+    private final String version;
+    private final String status;
 
     public ApplicationID(String account, String app, String version, String status)
     {
+        if (account == null)
+        {
+            throw new IllegalArgumentException("Account (tenant) cannot be null in ApplicationID constructor");
+        }
+//        if (app == null)
+//        {
+//            throw new IllegalArgumentException("Application name cannot be null in ApplicationID constructor");
+//        }
+        if (version == null)
+        {
+            throw new IllegalArgumentException("Version cannot be null in ApplicationID constructor");
+        }
+        if (status == null)
+        {
+            throw new IllegalArgumentException("Status cannot be null in ApplicationID constructor");
+        }
         this.account = account;
         this.app = app;
         this.version = version;
@@ -59,12 +77,12 @@ public class ApplicationID
     public String getAppStr(String name)
     {
         StringBuilder s = new StringBuilder();
-        s.append(account == null ? "null" : account);
-        s.append('.');
+        s.append(account == null ? DEFAULT_TENANT : account);
+        s.append('/');
         s.append(app == null ? "null" : app);
-        s.append('.');
+        s.append('/');
         s.append(version);
-        s.append('.');
+        s.append('/');
         s.append(name);
         return s.toString().toLowerCase();
     }
@@ -109,5 +127,10 @@ public class ApplicationID
         result = 31 * result + version.hashCode();
         result = 31 * result + status.hashCode();
         return result;
+    }
+
+    public String toString()
+    {
+        return getAppStr("");
     }
 }

@@ -70,7 +70,7 @@ public class NCubeManager
 
     static
     {
-        urlClassLoaders.put("null.null.file.", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+        urlClassLoaders.put("none/null/file/", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
     }
 
     public static Set<String> getCubeNames(ApplicationID appId)
@@ -486,7 +486,7 @@ public class NCubeManager
     //TODO: replace with new api
     public static void duplicate(Connection connection, String newName, String name, String newApp, String app, String newVersion, String version, String status, Date sysDate)
     {
-        NCube ncube = getCube(name, new ApplicationID(null, app, version, status));
+        NCube ncube = getCube(name, new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, status));
         NCube copy = ncube.duplicate(newName);
         createCube(connection, newApp, copy, newVersion);
         String json = getTestData(connection, app, name, version, sysDate);
@@ -668,7 +668,7 @@ public class NCubeManager
                     {
                         throw new IllegalStateException("error inserting new NCube: " + ncube.getName() + "', app: " + app + ", version: " + version + " (" + rowCount + " rows inserted, should be 1)");
                     }
-                    ncube.setApplicationID(new ApplicationID(null, app, version, ReleaseStatus.SNAPSHOT.name()));
+                    ncube.setApplicationID(new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, ReleaseStatus.SNAPSHOT.name()));
                     addCube(ncube, ncube.getApplicationID());
                 }
             }
@@ -875,7 +875,7 @@ public class NCubeManager
                         throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + currVersion + ", therefore nothing changed.");
                     }
                 }
-                loadCubes(new ApplicationID(null, app, currVersion, ReleaseStatus.SNAPSHOT.name()));
+                loadCubes(new ApplicationID(ApplicationID.DEFAULT_TENANT, app, currVersion, ReleaseStatus.SNAPSHOT.name()));
             }
             catch (IllegalStateException e)
             {
@@ -903,7 +903,7 @@ public class NCubeManager
             throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName);
         }
 
-        NCube ncube = getCube(oldName, new ApplicationID(null, app, version, ReleaseStatus.SNAPSHOT.name()));
+        NCube ncube = getCube(oldName, new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, ReleaseStatus.SNAPSHOT.name()));
 
         synchronized (cubeList)
         {
@@ -925,7 +925,7 @@ public class NCubeManager
                 }
 
                 // Any user of these old IDs will get the default (null) account
-                ApplicationID appId = new ApplicationID(null, app, version, ReleaseStatus.SNAPSHOT.name());
+                ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, ReleaseStatus.SNAPSHOT.name());
                 cubeList.remove(appId.getAppStr(oldName));
                 // TODO: Put n-cube back into cache (not really needed as most n-cube apps should not allowed n-cube editing)
                 return true;
@@ -980,7 +980,7 @@ public class NCubeManager
                 if (rows > 0)
                 {
                     // Any user of these old APIs will get the default (null) account
-                    ApplicationID appId = new ApplicationID(null, app, version, ReleaseStatus.SNAPSHOT.name());
+                    ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, ReleaseStatus.SNAPSHOT.name());
                     cubeList.remove(appId.getAppStr(cubeName));
                     return true;
                 }

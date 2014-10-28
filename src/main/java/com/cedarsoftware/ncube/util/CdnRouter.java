@@ -103,7 +103,7 @@ public class CdnRouter
             coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
             // TODO: MUST send account, app, and status so that the router knows what cube to get.
-            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, null, version, ReleaseStatus.SNAPSHOT.name());
+            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, version, ReleaseStatus.SNAPSHOT.name());
             NCube routingCube = NCubeManager.getCube(cubeName, appId);
             if (routingCube == null)
             {

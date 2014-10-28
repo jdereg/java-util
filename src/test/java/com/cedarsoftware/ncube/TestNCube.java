@@ -72,8 +72,10 @@ public class TestNCube
             List<String> urls = new ArrayList<>();
             urls.add("http://www.cedarsoftware.com");
 
-            NCubeManager.addBaseResourceUrls(urls, "none/null/file/");
-            NCubeManager.addBaseResourceUrls(urls, "none/ncube.test/1.0.0/");
+            ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+            NCubeManager.addBaseResourceUrls(urls, appId1.getAppStr(""));
+            ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+            NCubeManager.addBaseResourceUrls(urls, appId2.getAppStr(""));
             _classLoaderInitialize = false;
         }
     }
@@ -4712,8 +4714,10 @@ public class TestNCube
         urls.add(url.toString());
         urls.add("http://www.cedarsoftware.com");
 
-        NCubeManager.addBaseResourceUrls(urls, "null.null.file.");
-        NCubeManager.addBaseResourceUrls(urls, "null.null.1.0.0.");
+        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.addBaseResourceUrls(urls, appId1.getAppStr(""));
+        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.addBaseResourceUrls(urls, appId2.getAppStr(""));
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -4731,8 +4735,10 @@ public class TestNCube
         List urls = new ArrayList();
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
-        NCubeManager.addBaseResourceUrls(urls, "none/null/file/");
-        NCubeManager.addBaseResourceUrls(urls, "none/null/1.0.0/");
+        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.addBaseResourceUrls(urls, appId1.getAppStr(""));
+        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.addBaseResourceUrls(urls, appId2.getAppStr(""));
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";

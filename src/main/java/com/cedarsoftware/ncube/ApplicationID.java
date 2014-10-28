@@ -24,6 +24,7 @@ package com.cedarsoftware.ncube;
 public class ApplicationID
 {
     public static final String DEFAULT_TENANT = "NONE";
+    public static final String DEFAULT_APP = null;
     public static final String DEFAULT_VERSION = "999.99.9";
     private final String account;
     private final String app;

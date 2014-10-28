@@ -1290,7 +1290,8 @@ DELIMITER ;
         urls.add(url);
         try
         {
-            NCubeManager.addBaseResourceUrls(urls, "null.null.2.");
+            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2", ReleaseStatus.SNAPSHOT.name());
+            NCubeManager.addBaseResourceUrls(urls, appId.getAppStr(""));
             fail("Should not make it here");
         }
         catch (Exception expected)

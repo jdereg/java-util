@@ -70,7 +70,8 @@ public class NCubeManager
 
     static
     {
-        urlClassLoaders.put("none/null/file/", new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        urlClassLoaders.put(appId.getAppStr(""), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
     }
 
     public static Set<String> getCubeNames(ApplicationID appId)

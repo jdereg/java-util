@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.io.JsonReader;
+import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -176,5 +178,15 @@ public class TestApplicationID
     {
         ApplicationID appId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         assertEquals(appId.toString(), appId.getAppStr(""));
+    }
+
+    // Want to know if this assumption ever changes
+    @Test
+    public void testApplicationIDSerialize() throws Exception
+    {
+        ApplicationID appId1 = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        String json = JsonWriter.objectToJson(appId1);
+        ApplicationID appId2 = (ApplicationID) JsonReader.jsonToJava(json);
+        assertEquals(appId1, appId2);
     }
 }

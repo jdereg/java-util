@@ -34,6 +34,15 @@ public class ApplicationID
     private final String version;
     private final String status;
 
+    // For serialization support
+    private ApplicationID()
+    {
+        account = DEFAULT_TENANT;
+        app = DEFAULT_APP;
+        version = DEFAULT_VERSION;
+        status = ReleaseStatus.SNAPSHOT.name();
+    }
+
     public ApplicationID(String account, String app, String version, String status)
     {
         if (account == null)

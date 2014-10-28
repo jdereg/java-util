@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import java.util.regex.Pattern;
+
 /**
  * This class binds together Account, App, and version.  These fields together
  * completely identify the application (and version) that a given n-cube belongs
@@ -26,6 +28,7 @@ public class ApplicationID
     public static final String DEFAULT_TENANT = "NONE";
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
+    private static final Pattern versionPattern = Pattern.compile("^\\d+\\.\\d+\\.\\d+$");
     private final String account;
     private final String app;
     private final String version;
@@ -48,6 +51,14 @@ public class ApplicationID
         if (status == null)
         {
             throw new IllegalArgumentException("Status cannot be null in ApplicationID constructor");
+        }
+        if (!versionPattern.matcher(version).find())
+        {
+            throw new IllegalArgumentException("version must be in the form of x.y.z where x, y, and z are 0 or greater integers.");
+        }
+        if (!status.equals(ReleaseStatus.RELEASE.name()) && !status.equals(ReleaseStatus.SNAPSHOT.name()))
+        {
+            throw new IllegalArgumentException("Status must be " + ReleaseStatus.SNAPSHOT.name() + " or " + ReleaseStatus.RELEASE.name());
         }
         this.account = account;
         this.app = app;
@@ -78,9 +89,9 @@ public class ApplicationID
     public String getAppStr(String name)
     {
         StringBuilder s = new StringBuilder();
-        s.append(account == null ? DEFAULT_TENANT : account);
+        s.append(account);
         s.append('/');
-        s.append(app == null ? "null" : app);
+        s.append(app);
         s.append('/');
         s.append(version);
         s.append('/');
@@ -101,11 +112,11 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        if (account != null ? !account.equals(that.account) : that.account != null)
+        if (!account.equals(that.account))
         {
             return false;
         }
-        if (app != null ? !app.equals(that.app) : that.app != null)
+        if (!app.equals(that.app))
         {
             return false;
         }
@@ -123,8 +134,8 @@ public class ApplicationID
 
     public int hashCode()
     {
-        int result = account != null ? account.hashCode() : 0;
-        result = 31 * result + (app != null ? app.hashCode() : 0);
+        int result = account.hashCode();
+        result = 31 * result + app.hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.hashCode();
         return result;

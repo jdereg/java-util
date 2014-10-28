@@ -27,9 +27,6 @@ import java.sql.SQLException;
 public class NCubeJdbcConnectionProvider implements NCubeConnectionProvider
 {
     private DataSource dataSource;
-    private String databaseUrl;
-    private String username;
-    private String password;
 
     /**
      * Constructs a new NCubeJdbcConnectionProvider with an initialized Datasource.

@@ -88,7 +88,7 @@ public class TestCdnRouter
         CdnRouter router = new CdnRouter();
         router.route(request, response);
 
-        verify(response, times(1)).sendError(500, "n-cube cell URL resolved to null, url: tests/does/not/exist/index.html, ncube: CdnRouterTest, version: file");
+        verify(response, times(1)).sendError(500, "n-cube cell URL resolved to null, url: tests/does/not/exist/index.html, ncube: CdnRouterTest, version: " + ApplicationID.DEFAULT_VERSION);
     }
 
     @Test
@@ -135,7 +135,7 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        setCdnRoutingProvider("foo", "file", true);
+        setCdnRoutingProvider("foo", ApplicationID.DEFAULT_VERSION, true);
 
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         new CdnRouter().route(request, response);
@@ -160,7 +160,8 @@ public class TestCdnRouter
 
         setDefaultCdnRoutingProvider();
 
-        NCubeManager.getUrlClassLoader("null.null.file.");
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.getUrlClassLoader(appId.getAppStr(""));
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
@@ -212,7 +213,7 @@ public class TestCdnRouter
 
     private static void setDefaultCdnRoutingProvider()
     {
-        setCdnRoutingProvider("CdnRouterTest", "file", true);
+        setCdnRoutingProvider("CdnRouterTest", ApplicationID.DEFAULT_VERSION, true);
     }
 
     @Test
@@ -224,7 +225,7 @@ public class TestCdnRouter
         when(request.getServletPath()).thenReturn("/dyn/view/index");
         when(request.getRequestURL()).thenReturn(new StringBuffer("http://www.foo.com/dyn/view/index"));
 
-        setCdnRoutingProvider("CdnRouterTest", "file", false);
+        setCdnRoutingProvider("CdnRouterTest", ApplicationID.DEFAULT_VERSION, false);
 
         new CdnRouter().route(request, response);
         verify(response, times(1)).sendError(401, "CdnRouter - Unauthorized access, request: http://www.foo.com/dyn/view/index");

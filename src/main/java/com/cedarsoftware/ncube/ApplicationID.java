@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import java.util.regex.Pattern;
+
 /**
  * This class binds together Account, App, and version.  These fields together
  * completely identify the application (and version) that a given n-cube belongs
@@ -23,13 +25,50 @@ package com.cedarsoftware.ncube;
  */
 public class ApplicationID
 {
-    private String account;
-    private String app;
-    private String version;
-    private String status;
+    public static final String DEFAULT_TENANT = "NONE";
+    public static final String DEFAULT_APP = "DEFAULT_APP";
+    public static final String DEFAULT_VERSION = "999.99.9";
+    private static final Pattern versionPattern = Pattern.compile("^\\d+\\.\\d+\\.\\d+$");
+    private final String account;
+    private final String app;
+    private final String version;
+    private final String status;
+
+    // For serialization support
+    private ApplicationID()
+    {
+        account = DEFAULT_TENANT;
+        app = DEFAULT_APP;
+        version = DEFAULT_VERSION;
+        status = ReleaseStatus.SNAPSHOT.name();
+    }
 
     public ApplicationID(String account, String app, String version, String status)
     {
+        if (account == null)
+        {
+            throw new IllegalArgumentException("Account (tenant) cannot be null in ApplicationID constructor");
+        }
+        if (app == null)
+        {
+            throw new IllegalArgumentException("Application name cannot be null in ApplicationID constructor");
+        }
+        if (version == null)
+        {
+            throw new IllegalArgumentException("Version cannot be null in ApplicationID constructor");
+        }
+        if (status == null)
+        {
+            throw new IllegalArgumentException("Status cannot be null in ApplicationID constructor");
+        }
+        if (!versionPattern.matcher(version).find())
+        {
+            throw new IllegalArgumentException("version must be in the form of x.y.z where x, y, and z are 0 or greater integers.");
+        }
+        if (!status.equals(ReleaseStatus.RELEASE.name()) && !status.equals(ReleaseStatus.SNAPSHOT.name()))
+        {
+            throw new IllegalArgumentException("Status must be " + ReleaseStatus.SNAPSHOT.name() + " or " + ReleaseStatus.RELEASE.name());
+        }
         this.account = account;
         this.app = app;
         this.version = version;
@@ -59,12 +98,12 @@ public class ApplicationID
     public String getAppStr(String name)
     {
         StringBuilder s = new StringBuilder();
-        s.append(account == null ? "null" : account);
-        s.append('.');
-        s.append(app == null ? "null" : app);
-        s.append('.');
+        s.append(account);
+        s.append('/');
+        s.append(app);
+        s.append('/');
         s.append(version);
-        s.append('.');
+        s.append('/');
         s.append(name);
         return s.toString().toLowerCase();
     }
@@ -82,11 +121,11 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        if (account != null ? !account.equals(that.account) : that.account != null)
+        if (!account.equals(that.account))
         {
             return false;
         }
-        if (app != null ? !app.equals(that.app) : that.app != null)
+        if (!app.equals(that.app))
         {
             return false;
         }
@@ -104,10 +143,15 @@ public class ApplicationID
 
     public int hashCode()
     {
-        int result = account != null ? account.hashCode() : 0;
-        result = 31 * result + (app != null ? app.hashCode() : 0);
+        int result = account.hashCode();
+        result = 31 * result + app.hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.hashCode();
         return result;
+    }
+
+    public String toString()
+    {
+        return getAppStr("");
     }
 }

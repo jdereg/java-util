@@ -44,7 +44,7 @@ public class TestJsonFormatter
         //  Load Arrays Type, write to new formatted type (they'll become Groovy Expressions
         NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
 
-        Map<String, Object> coord = new HashMap<String, Object>();
+        Map<String, Object> coord = new HashMap<>();
 
         coord.put("Code", "longs");
         assertEquals(9223372036854775807L, ((Object[]) ncube.getCell(coord))[2]);

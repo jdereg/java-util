@@ -264,7 +264,7 @@ public class NCube<T>
     {
         if (name != null)
         {   // If name is null, likely being instantiated via serialization
-            NCubeManager.validateCubeName(name);
+            ApplicationID.validateCubeName(name);
         }
         this.name = name;
     }

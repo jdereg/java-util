@@ -8,11 +8,11 @@ import java.lang.reflect.Method;
 /**
  * Created by kpartlow on 8/23/2014.
  */
-public class MongoProviderInvocationHandler extends AbstractPersistenceProxy
+public class MongoPersistenceProxy extends AbstractPersistenceProxy
 {
     private Mongo _client;
 
-    public MongoProviderInvocationHandler(Mongo client, Class service, Object adapter) {
+    public MongoPersistenceProxy(Mongo client, Class service, Object adapter) {
         super(service, adapter);
         _client = client;
     }
@@ -20,7 +20,7 @@ public class MongoProviderInvocationHandler extends AbstractPersistenceProxy
     @Override
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
         try {
-            return methods.get(m).invoke(_adapter, getAdaptedArguments(args, _client));
+            return methods.get(m).invoke(adapter, getAdaptedArguments(args, _client));
         } catch (InvocationTargetException e) {
             throw e.getTargetException();
         }

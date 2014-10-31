@@ -48,7 +48,7 @@ public class TestMongoProviderInvocationHandler
     @UsingDataSet(locations="testAdapter-initial.json", loadStrategy= LoadStrategyEnum.CLEAN_INSERT)
     @ShouldMatchDataSet(location="testAdapter-expected.json")
     public void testSaveWithNewItem() {
-        InvocationHandler h = new MongoProviderInvocationHandler(getDataSource(), FooService.class, new MongoFooService());
+        InvocationHandler h = new MongoPersistenceProxy(getDataSource(), FooService.class, new MongoFooService());
         FooService service = ProxyFactory.create(FooService.class, h);
 
         //finish tests later.
@@ -65,7 +65,7 @@ public class TestMongoProviderInvocationHandler
     public void testExceptionThrownDuringCall() {
 
         try {
-            InvocationHandler h = new MongoProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
+            InvocationHandler h = new MongoPersistenceProxy(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
         } catch (IllegalArgumentException e) {

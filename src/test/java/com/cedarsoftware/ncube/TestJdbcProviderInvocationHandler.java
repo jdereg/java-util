@@ -63,7 +63,7 @@ public class TestJdbcProviderInvocationHandler
 
     @Test
     public void testAdapter() {
-        InvocationHandler h = new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new JdbcFooService());
+        InvocationHandler h = new DataSourcePersistenceProxy(getDataSource(), FooService.class, new JdbcFooService());
         FooService service = ProxyFactory.create(FooService.class, h);
         assertEquals(null, service.getFoo(1));
         assertTrue(service.saveFoo(1, "baz"));
@@ -74,7 +74,7 @@ public class TestJdbcProviderInvocationHandler
     @Test
     public void testFooServiceThatDoesntAddConnection() {
         try {
-            new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatForgetsToImplementConnection());
+            new DataSourcePersistenceProxy(getDataSource(), FooService.class, new FooServiceThatForgetsToImplementConnection());
         } catch (IllegalArgumentException e) {
             assertEquals("java.lang.IllegalArgumentException: Adapter class 'FooServiceThatForgetsToImplementConnection' does not implement: getFoo(Connection,int)", e.toString());
         }
@@ -84,7 +84,7 @@ public class TestJdbcProviderInvocationHandler
     public void testExceptionThrownDuringCall() {
 
         try {
-            JdbcProviderInvocationHandler h = new JdbcProviderInvocationHandler(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
+            DataSourcePersistenceProxy h = new DataSourcePersistenceProxy(getDataSource(), FooService.class, new FooServiceThatThrowsAnException());
             FooService service = ProxyFactory.create(FooService.class, h);
             service.getFoo(1);
         } catch (IllegalArgumentException e) {

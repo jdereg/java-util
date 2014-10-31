@@ -4,15 +4,29 @@ import java.util.List;
 
 public interface NCubePersister
 {
-    void saveNCube(NCube ncube);
+    void createCube(ApplicationID id, NCube cube);
     
-    void updateNCube(ApplicationID appId, NCube ncube);
+    void updateCube(ApplicationID appId, NCube cube);
         
-    NCube findNCube(ApplicationID appId, String ncubeName, boolean includeTests);
+    NCube findCube(ApplicationID appId, String name, boolean includeTests);
     
-    List<NCube> findAllNCubes(ApplicationID appId);
+    List<NCube> loadCubes(ApplicationID appId);
+    Object[] getNCubes(ApplicationID appId, String sqlLike);
     
-    void deleteNCube(ApplicationID appId, String ncubeName);
-    
-    void setNCubeConnectionProvider(NCubeConnectionProvider nCubeConnectionProvider);
+    boolean deleteCube(ApplicationID appId, String name, boolean allowDelete);
+
+    String[] getAppNames();
+    String[] getAppVersions(ApplicationID id);
+
+    boolean updateNotes(ApplicationID id, String cubeName, String notes);
+    String getNotes(ApplicationID id, String cubeName);
+
+    int createSnapshotVersion(ApplicationID id, String newVersion);
+    int changeVersionValue(ApplicationID id, String newVersion);
+    int releaseCubes(ApplicationID id);
+
+    boolean renameCube(ApplicationID id, NCube oldCube, String newName);
+
+    boolean updateTestData(ApplicationID id, String cubeName, String testData);
+    String getTestData(ApplicationID id, String cubeName);
 }

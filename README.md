@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.9.17</version>
+  <version>2.9.18</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -85,6 +85,8 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 2.9.18
+ * Carrying ApplicationID throughout n-cube in preparation for n-cube 3.0.0.  This version is technically a pre-release candidate for 3.0.0.  It changes API and removes deprecated APIs.
 * 2.9.17
  * Updated CSS tags in Html version of n-cube
  * bug fix: Removed StackOverflow that would occur if an n-cube cell referenced a non-existent n-cube.

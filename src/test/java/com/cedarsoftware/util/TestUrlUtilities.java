@@ -42,7 +42,8 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestUrlUtilities
 {
-    private static final String httpsUrl = "https://www.ssllabs.com/ssltest/";
+//    private static final String httpsUrl = "https://www.ssllabs.com/ssltest/";
+    private static final String httpsUrl = "https://gotofail.com/";
     //private static final String httpsGoogleUrl = "https://www.google.com";
     private static final String domain  = "ssllabs";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
@@ -102,11 +103,11 @@ public class TestUrlUtilities
         String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
 
         //  Allow for small difference between pages between requests to handle time and hash value changes.
-        assertTrue(StringUtilities.levenshteinDistance(content1, content2) < 10);
-        assertTrue(StringUtilities.levenshteinDistance(content2, content3) < 10);
-        assertTrue(StringUtilities.levenshteinDistance(content3, content4) < 10);
-        assertTrue(StringUtilities.levenshteinDistance(content4, content5) < 10);
-        assertTrue(StringUtilities.levenshteinDistance(content5, content1) < 10);
+        assertEquals(content1, content2);
+        assertEquals(content2, content3);
+        assertEquals(content3, content4);
+        assertEquals(content4, content5);
+        assertEquals(content5, content1);
 
             //TODO - add in when we find self-signing site.
 //        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
@@ -117,8 +118,8 @@ public class TestUrlUtilities
         String content7 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false));
         String content8 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null));
 
-        assertTrue(StringUtilities.levenshteinDistance(content6, content7) < 10);
-        assertTrue(StringUtilities.levenshteinDistance(content7, content8) < 10);
+        assertEquals(content6, content7);
+        assertEquals(content7, content8);
 
         // 404
         assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-bucks.html", null, null, Proxy.NO_PROXY, null, null));

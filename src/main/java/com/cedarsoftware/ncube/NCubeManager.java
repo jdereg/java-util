@@ -794,22 +794,9 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            try
-            {
-                persister.createCube(id, ncube);
-                ncube.setApplicationID(id);
-                addCube(ncube, id);
-            }
-            catch (IllegalStateException e)
-            {
-                throw e;
-            }
-            catch (Exception e)
-            {
-                String s = "Unable to save NCube: " + ncube.getName() + ", app: " + id.getApp() + ", version: " + id.getVersion() + " to database";
-                LOG.error(s, e);
-                throw new RuntimeException(s, e);
-            }
+            persister.createCube(id, ncube);
+            ncube.setApplicationID(id);
+            addCube(ncube, id);
         }
     }
 

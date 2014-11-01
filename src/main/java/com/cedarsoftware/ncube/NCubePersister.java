@@ -7,8 +7,9 @@ public interface NCubePersister
     void createCube(ApplicationID id, NCube cube);
     
     void updateCube(ApplicationID appId, NCube cube);
-        
-    NCube findCube(ApplicationID appId, String name, boolean includeTests);
+
+    //It doesn't look like findCube is used
+    //NCube findCube(ApplicationID appId, String name);
     
     List<NCube> loadCubes(ApplicationID appId);
     Object[] getNCubes(ApplicationID appId, String sqlLike);

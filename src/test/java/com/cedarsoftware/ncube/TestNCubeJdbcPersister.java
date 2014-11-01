@@ -2,6 +2,19 @@ package com.cedarsoftware.ncube;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Created by kpartlow on 10/28/2014.
@@ -9,17 +22,17 @@ import org.junit.Before;
 public class TestNCubeJdbcPersister
 {
     private int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+
     static final String APP_ID = "ncube.test";
+    private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
 
     TestingDatabaseManager manager;
-    NCubePersister persister;
 
     @Before
     public void setUp() throws Exception
     {
         manager = TestingDatabaseHelper.getTestingDatabaseManager(test_db);
         manager.setUp();
-        persister = TestingDatabaseHelper.getPersister(test_db);
     }
 
     @After
@@ -27,7 +40,6 @@ public class TestNCubeJdbcPersister
     {
         manager.tearDown();
         manager = null;
-        persister = null;
     }
 
     /*
@@ -83,57 +95,222 @@ public class TestNCubeJdbcPersister
 
         conn.close();
     }
+*/
 
     @Test
     public void testDoesCubeExistWithException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
+        Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            NCubeManager.doesCubeExist(c, APP_ID, "name", "0.1.0", ReleaseStatus.SNAPSHOT.name(), null);
+            new NCubeJdbcPersister().doesCubeExist(c, defaultSnapshotApp, "name");
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
-*/
 
-        /*
+
+
     //  Impossible to test without mocks
     @Test
     public void testLoadCubesException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-
+        Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            NCubeManager.loadCubes(defaultSnapshotApp);
+            new NCubeJdbcPersister().loadCubes(c, defaultSnapshotApp);
             fail();
         } catch(RuntimeException e) {
-            assertEquals("Unable to update notes for NCube: foo, app: ncube.test, version: 999.99.9", e.getMessage());
             assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().startsWith("Unable to load n-cubes"));
         }
     }
 
     @Test
     public void testUpdateCubeWithSqlException() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-
+        Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            NCubeManager.updateCube(c, APP_ID, ncube, "0.1.0");
+            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().startsWith("Unable to update NCube"));
+        }
+    }
+
+    @Test
+    public void testGetAppVersionsWithSQLException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().getAppVersions(c, defaultSnapshotApp);
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
 
+    @Test
+    public void testGetNotesWithSQLException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().getNotes(c, defaultSnapshotApp, "name");
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+    @Test
+    public void testGetTestDataWithSQLException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().getTestData(c, defaultSnapshotApp, "name");
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+    @Test
+    public void testUpdateTestDataWithSQLException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().updateTestData(c, defaultSnapshotApp, "foo", "test data");
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().startsWith("Unable to update test data"));
+        }
+    }
+
+
+
+    @Test
+    public void testChangeVersionValueWithSqlException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false);
+
+        try
+        {
+            new NCubeJdbcPersister().changeVersionValue(c, defaultSnapshotApp, "1.1.1");
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().startsWith("Unable to change"));
+        }
+    }
+
+    @Test
+    public void testGetNCubesWithSQLException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().getNCubes(c, defaultSnapshotApp, null);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().startsWith("Unable to fetch"));
+        }
+    }
+
+    private Connection getConnectionThatThrowsSQLException() throws SQLException
+    {
+        Connection c = mock(Connection.class);
+        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
+        return c;
+    }
+
+    private Connection getConnectionThatThrowsSQLExceptionAfterExistenceCheck(boolean exists) throws SQLException {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(exists);
+        return c;
+    }
+
+    @Test
+    public void testCreateCubeWithSqlException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false);
+        try
+        {
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().startsWith("Unable to create"));
+        }
+    }
+
+    @Test
+    public void testCreateCubeWhenOneAlreadyExists() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true);
+
+        try
+        {
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            fail();
+        } catch(IllegalStateException e) {
+            assertTrue(e.getMessage().startsWith("Cube already exists"));
+        }
+    }
+
+    @Test
+    public void testCreateCubeThatDoesntCreateCube() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(false);
+        when(ps.executeUpdate()).thenReturn(0);
+
+
+        try
+        {
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            fail();
+        } catch(IllegalStateException e) {
+            assertTrue(e.getMessage().startsWith("error inserting new NCube"));
+        }
+    }
+
+    @Test
+    public void testDeleteCubeWithSQLException() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", true);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+    @Test
+    public void testRenameCubeThatThrowsSQLEXception() throws Exception {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, ncube, "foo");
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+/*
     @Test
     public void testCreateCubeWithWrongUpdateCount() throws Exception {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -143,6 +320,7 @@ public class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0);
         try
         {
+            NCubeJdbcPersister persister = new NCubeJdbcPersister();
             NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
             fail();
         } catch(RuntimeException e) {
@@ -168,48 +346,6 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testGetNotesWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getNotes(c, APP_ID, "foo", "0.1.0", null);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testGetTestDataWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getTestData(c, APP_ID, "foo", "0.1.0", null);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testUpdateTestDataWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
     public void testUpdateTestDataWithDuplicateCubes() throws Exception {
         Connection c = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
@@ -222,35 +358,6 @@ public class TestNCubeJdbcPersister
             NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
             fail();
         } catch(IllegalStateException e) {
-        }
-    }
-
-    @Test
-    public void testGetAppVersionsWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getAppVersions(c, APP_ID, ReleaseStatus.RELEASE.name(), null);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testCreateCubeWithSqlException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?", false);
-        when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenThrow(SQLException.class);
-
-        try
-        {
-            NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
 
@@ -294,65 +401,6 @@ public class TestNCubeJdbcPersister
             fail();
         } catch(RuntimeException e) {
             assertNull(e.getCause());
-        }
-    }
-
-    @Test
-    public void testChangeVersionValueWithCubeWithSqlException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
-        when(c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    private Connection getMockConnectionWithExistenceCheck(String query, boolean ret) throws SQLException
-    {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement(query)).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(ret);
-        return c;
-    }
-
-    @Test
-    public void testDeleteCubeWithSQLException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.deleteCube(c, APP_ID, "foo", "0.1.0", true);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testRenameCubeThatThrowsSQLEXception() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
 

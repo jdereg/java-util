@@ -240,11 +240,13 @@ public class TestApplicationID
 
 
     @Test
-    public void testIsSnapshot() {
+    public void testIsSnapshotOrRelease() {
         ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         assertTrue(snapshot.isSnapshot());
+        assertFalse(snapshot.isRelease());
         ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
         assertFalse(releaseId.isSnapshot());
+        assertTrue(releaseId.isRelease());
     }
 
     @Test

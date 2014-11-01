@@ -16,6 +16,14 @@ public abstract class AbstractPersistenceProxy implements InvocationHandler
     public AbstractPersistenceProxy(Class interfaceClass, Object adapter) {
         this.adapter = adapter;
 
+        if (interfaceClass == null) {
+            throw new NullPointerException("The interface for a persistence proxy cannot be null");
+        }
+
+        if (adapter == null) {
+            throw new NullPointerException("The adapter for a persistence proxy cannot be null");
+        }
+
         Method[] declaredMethods = interfaceClass.getDeclaredMethods();
 
         //  Verify all adapted methods are available in our proxied class.
@@ -26,7 +34,7 @@ public abstract class AbstractPersistenceProxy implements InvocationHandler
                 Method adaptedMethod = adapter.getClass().getMethod(m.getName(), adaptedParameters);
                 if (!adaptedMethod.getReturnType().equals(m.getReturnType()))
                 {
-                    throw new NoSuchMethodException("Return types do not match on method:  " + m.getName() + " for classes [" + adapter.getClass().getName() + ", " + interfaceClass.getName() + "]");
+                    throw new IllegalArgumentException("Return types do not match on method:  " + m.getName() + " for classes [" + adapter.getClass().getName() + ", " + interfaceClass.getName() + "]");
                 }
                 methods.put(m, adaptedMethod);
             } catch (NoSuchMethodException e) {

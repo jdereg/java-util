@@ -34,30 +34,18 @@ public abstract class AbstractJdbcPersistenceProxy extends AbstractPersistencePr
 
 
     public Connection getConnectionAndSetAutoCommit() {
-        Connection c = null;
-
         try
         {
-            c = getConnection();
+            Connection c = getConnection();
+            c.setAutoCommit(false);
+            return c;
         }
         catch (SQLException e)
         {
             throw new RuntimeException("Unable to get Connection...", e);
         }
-
-        try
-        {
-            //auto commit always to false;
-            c.setAutoCommit(false);
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeException("Unable to set connection auto-commit to false...", e);
-        }
-
-        return c;
-
     }
+
     public abstract Connection getConnection() throws SQLException;
 
     public Class getAddedClass() { return Connection.class; }
@@ -67,7 +55,7 @@ public abstract class AbstractJdbcPersistenceProxy extends AbstractPersistencePr
      *
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
-    public void commit(Connection c)
+    public static void commit(Connection c)
     {
         try
         {
@@ -82,7 +70,7 @@ public abstract class AbstractJdbcPersistenceProxy extends AbstractPersistencePr
     /**
      * @throws java.lang.IllegalStateException - when current connection is not valid
      */
-    public void rollback(Connection connection)
+    public static void rollback(Connection connection)
     {
         try
         {

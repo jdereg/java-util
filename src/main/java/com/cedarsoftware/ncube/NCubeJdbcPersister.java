@@ -20,11 +20,12 @@ public class NCubeJdbcPersister
     
     public void createCube(Connection c, ApplicationID id, NCube ncube)
     {
+        if (doesCubeExist(c, id, ncube.getName())) {
+            throw new IllegalStateException("Cube already exists:  " + ncube.getName() + " " + id.toString());
+        }
+
         try
         {
-            if (doesCubeExist(c, id, ncube.getName())) {
-                throw new IllegalStateException("Cube already exists:  " + ncube.getName() + " " + id.toString());
-            }
 
             try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)"))
             {
@@ -45,14 +46,12 @@ public class NCubeJdbcPersister
                     throw new IllegalStateException("error inserting new NCube: " + ncube.getName() + "', app: " + id.getApp() + ", version: " + id.getVersion() + " (" + rowCount + " rows inserted, should be 1)");
                 }
             }
-        }
-        catch (IllegalStateException e)
-        {
+        } catch (IllegalStateException e) {
             throw e;
         }
         catch (Exception e)
         {
-            String s = "Unable to save NCube: " + ncube.getName() + ", app: " + id.getApp() + ", version: " + id.getVersion() + " to database";
+            String s = "Unable to create NCube: " + ncube.getName() + ", app: " + id.getApp() + ", version: " + id.getVersion() + " to database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -91,16 +90,17 @@ public class NCubeJdbcPersister
 
     }
 
+
     public NCube findCube(Connection c, ApplicationID appId, String ncubeName, boolean includeTests)
     {
-        String query = includeTests ?
-            "SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?" :
-            "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?";
+        if (appId == null) {
+            throw new IllegalArgumentException("ApplicationID cannot be null");
+        }
 
-        String app = appId.getApp();
-        String version = appId.getVersion();
-        String status = appId.getStatus();
-        
+        String query = includeTests ?
+            "SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?" :
+            "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?";
+
         try (PreparedStatement stmt = c.prepareStatement(query))
         {
             NCube ncube = null;
@@ -109,11 +109,9 @@ public class NCubeJdbcPersister
             
             //todo - remove sys effective date and expiration date
             stmt.setString(1, ncubeName);
-            stmt.setString(2, app);
-            stmt.setDate(3, systemDate);
-            stmt.setDate(4, systemDate);
-            stmt.setString(5, version);
-            stmt.setString(6, status);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getStatus());
 
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -139,7 +137,7 @@ public class NCubeJdbcPersister
 
                     if (rs.next())
                     {
-                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", app: " + app + ", version: " + version + ", status: " + status );
+                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", appId:  " + appId.toString());
                     }                    
                 }
                 
@@ -152,7 +150,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load nNCube: " + ncubeName + ", app: " + app + ", version: " + version + ", status: " + status + " from database";
+            String s = "Unable to load nNCube: " + ncubeName + ", app: " + appId.toString();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -441,12 +439,13 @@ public class NCubeJdbcPersister
 
 
     public int releaseCubes(Connection c, ApplicationID id) {
+        if (doReleaseCubesExist(c, id))
+        {
+            throw new IllegalStateException("A RELEASE version " + id.getVersion() + " already exists. Have system admin renumber your SNAPSHOT version.");
+        }
+
         try
         {
-            if (doReleaseCubesExist(c, id))
-            {
-                throw new IllegalStateException("A RELEASE version " + id.getVersion() + " already exists. Have system admin renumber your SNAPSHOT version.");
-            }
 
             try (PreparedStatement statement = c.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
             {
@@ -475,12 +474,13 @@ public class NCubeJdbcPersister
 
     public int changeVersionValue(Connection c, ApplicationID id, String newVersion)
     {
+        if (doCubesExist(c, id.createNewSnapshotId(newVersion)))
+        {
+            throw new IllegalStateException("RELEASE n-cubes found with version " + newVersion + ".  Choose a different SNAPSHOT version.");
+        }
+
         try
         {
-            if (doCubesExist(c, id.createNewSnapshotId(newVersion)))
-            {
-                throw new IllegalStateException("RELEASE n-cubes found with version " + newVersion + ".  Choose a different SNAPSHOT version.");
-            }
 
             try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
             {
@@ -594,6 +594,8 @@ public class NCubeJdbcPersister
             // TODO: see if the column exists, store the result for the entire app life cycle.
             // TODO: If account column does not exist, then account is null.
             ps.setString(1, newName);
+            //John, is there any way to keep from having to reformat the whole cube when its name changes
+            //Is this just because of loading a cube from disk?
             ps.setBytes(2, cube.toFormattedJson().getBytes("UTF-8"));
             ps.setString(3, id.getApp());
             ps.setString(4, id.getVersion());

@@ -466,16 +466,6 @@ public class NCubeManager
         }
     }
 
-//    //todo - lose connection
-//    private static void validate(Connection connection, String app, String relVersion)
-//    {
-//        if (connection == null)
-//            throw new IllegalArgumentException();
-//
-//        validateId(app);
-//        validateVersion(relVersion);
-//    }
-
     public static void changeVersionValue(ApplicationID id, String newVersion) {
         changeVersionValue(nCubePersister, id, newVersion);
     }
@@ -759,7 +749,7 @@ public class NCubeManager
      */
     public static void loadCubes(NCubePersister persister, ApplicationID appId)
     {
-        validate(appId);
+        validateId(appId);
 
         List<NCube> ncubes = persister.loadCubes(appId);
 
@@ -780,10 +770,9 @@ public class NCubeManager
      *
      * @param ncube      NCube to be persisted
      */
-    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     static void createCube(NCubePersister persister, ApplicationID id, NCube ncube)
     {
-        validate(id);
+        validateId(id);
 
         if (ncube == null)
         {
@@ -797,14 +786,6 @@ public class NCubeManager
             persister.createCube(id, ncube);
             ncube.setApplicationID(id);
             addCube(ncube, id);
-        }
-    }
-
-    private static void validate(ApplicationID appId)
-    {
-        if (appId == null)
-        {
-            throw new IllegalArgumentException("ApplicationID can not be null. Please check input ApplicationID argument or input NCube argument");
         }
     }
 }

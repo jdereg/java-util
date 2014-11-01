@@ -61,7 +61,7 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID id, NCube cube)
     {
-        try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "'"))
+        try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ?"))
         {
             // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
             // TODO: see if the column exists, store the result for the entire app life cycle.
@@ -70,7 +70,9 @@ public class NCubeJdbcPersister
             stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
             stmt.setString(3, id.getApp());
             stmt.setString(4, cube.getName());
-            stmt.setString(5, cube.getVersion());
+            stmt.setString(5, id.getVersion());
+            stmt.setString(6, ReleaseStatus.SNAPSHOT.name());
+
             int count = stmt.executeUpdate();
             if (count != 1)
             {
@@ -91,15 +93,9 @@ public class NCubeJdbcPersister
     }
 
 
-    public NCube findCube(Connection c, ApplicationID appId, String ncubeName, boolean includeTests)
+    public NCube findCube(Connection c, ApplicationID appId, String cubeName)
     {
-        if (appId == null) {
-            throw new IllegalArgumentException("ApplicationID cannot be null");
-        }
-
-        String query = includeTests ?
-            "SELECT cube_value_bin, test_data_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?" :
-            "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?";
+        String query = "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?";
 
         try (PreparedStatement stmt = c.prepareStatement(query))
         {
@@ -108,7 +104,7 @@ public class NCubeJdbcPersister
             java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
             
             //todo - remove sys effective date and expiration date
-            stmt.setString(1, ncubeName);
+            stmt.setString(1, cubeName);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
@@ -120,20 +116,6 @@ public class NCubeJdbcPersister
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     ncube = ncubeFromJson(json);
-                    
-                    //todo - hydrate app, version, status, tenant into account
-                    
-                    if (includeTests)
-                    {
-                        byte[] bytes = rs.getBytes("test_data_bin");
-
-                        if (bytes != null)
-                        {
-                            ncube.setTestData(new String(bytes, "UTF-8"));
-                        }
-                    }
-                    
-                    
 
                     if (rs.next())
                     {
@@ -150,7 +132,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load nNCube: " + ncubeName + ", app: " + appId.toString();
+            String s = "Unable to load nNCube: " + cubeName + ", app: " + appId.toString();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -315,7 +297,7 @@ public class NCubeJdbcPersister
             }
             return true;
         }
-        catch (IllegalArgumentException e)
+        catch (IllegalStateException e)
         {
             throw e;
         }
@@ -459,10 +441,6 @@ public class NCubeJdbcPersister
                 statement.setString(5, ReleaseStatus.SNAPSHOT.name());
                 return statement.executeUpdate();
             }
-        }
-        catch (IllegalStateException e)
-        {
-            throw e;
         }
         catch (Exception e)
         {

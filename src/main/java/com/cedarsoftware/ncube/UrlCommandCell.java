@@ -69,6 +69,15 @@ public abstract class UrlCommandCell implements CommandCell
     private static Map<String, String> extToMimeType = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
 
+
+    //TODO  These are really not needed and should be set for the environment with the following -D options
+    // or could be set as environment variables
+    // http.proxyHost
+    // http.proxyPort (default: 80)
+    // http.nonProxyHosts (default: <none>), but should alwasy include localhost
+    // https.proxyHost
+    // https.proxyPort
+    // Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
     static
     {
         proxyServer = SystemUtilities.getExternalVariable("http.proxy.host");

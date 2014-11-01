@@ -13,7 +13,9 @@ public interface NCubePersister
     
     List<NCube> loadCubes(ApplicationID appId);
     Object[] getNCubes(ApplicationID appId, String sqlLike);
-    
+
+    NCube findCube(ApplicationID appId, String ncubeName);
+
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete);
 
     String[] getAppNames();

@@ -7,9 +7,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,9 +21,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * NCubeManager Tests
@@ -113,48 +108,6 @@ public class TestNCubeManager
         return ncube;
     }
 
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
-    @Test
-    public void testUpdateNotesWithDuplicateCubeUpdated() throws Exception {
-        Connection c = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenReturn(ps);
-        when(ps.executeUpdate()).thenReturn(2);
-        when(c.isValid(anyInt())).thenReturn(true);
-
-        try
-        {
-            NCubeManager.updateNotes(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals("Unable to update notes for NCube: foo, app: ncube.test, version: 999.99.9", e.getMessage());
-            assertEquals(IllegalStateException.class, e.getCause().getClass());
-        }
-    }
-
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
-    @Test
-    public void testUpdateNotesWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenThrow(SQLException.class);
-        when(ps.executeUpdate()).thenReturn(2);
-        when(c.isValid(anyInt())).thenReturn(true);
-        try
-        {
-
-            NCubeManager.updateNotes(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo",  "notes");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals("Unable to update notes for NCube: foo, app: ncube.test, version: 999.99.9", e.getMessage());
-            assertEquals(IllegalStateException.class, e.getCause().getClass());
-        }
-    }
-
     @Test
     public void testLoadCubes() throws Exception
     {
@@ -221,7 +174,6 @@ public class TestNCubeManager
     @Test
     public void testRenameWithMatchingNames() throws Exception {
         Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
         try
         {
             NCubeManager.renameCube(defaultSnapshotApp, "foo", "foo");
@@ -230,25 +182,6 @@ public class TestNCubeManager
             assertNull(e.getCause());
         }
     }
-
-    // TODO: Ken, this test needs updated now that renameCube renames the JSON n-cube
-//    @Test
-//    public void testRenameCubeThatDoesNotExists() throws Exception
-//    {
-//        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-//
-//        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
-//
-//        PreparedStatement ps = mock(PreparedStatement.class);
-//        when(c.prepareStatement("UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
-//        when(ps.executeUpdate()).thenReturn(0);
-//        try
-//        {
-//            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
-//            fail();
-//        }
-//        catch(IllegalArgumentException ignored) { }
-//    }
 
     @Test
     public void testBadCommandCellCommandWithJdbc() throws Exception
@@ -653,11 +586,9 @@ public class TestNCubeManager
             NCubeManager.updateNotes(defaultSnapshotApp, "test.funky", null);
             fail("should not make it here");
         }
-        catch (RuntimeException e)
+        catch (IllegalStateException e)
         {
-            assertEquals(IllegalStateException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("Unable to update notes for"));
-            assertTrue(e.getCause().getMessage().contains("No NCube matching"));
+            assertTrue(e.getMessage().contains("No NCube matching"));
         }
 
         try
@@ -753,6 +684,21 @@ public class TestNCubeManager
         }
         catch (Exception expected)
         { }
+    }
+
+
+
+    @Test
+    public void testLoadCubesWithNullApplicationID() throws Exception
+    {
+        try
+        {
+            NCubeManager.loadCubes(null);
+            fail();
+        }
+        catch(IllegalArgumentException e) {
+            assertEquals("ApplicationId cannot be null", e.getMessage());
+        }
     }
 
 

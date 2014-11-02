@@ -726,7 +726,7 @@ public class NCubeJdbcPersister
      */
     // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
     //todo replace with new api
-    public String[] getAppNames(Connection connection)
+    public Object[] getAppNames(Connection connection)
     {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube"))
         {
@@ -741,7 +741,7 @@ public class NCubeJdbcPersister
                 records.add(rs.getString(1));
             }
             Collections.sort(records);
-            return records.toArray(new String[0]);
+            return records.toArray();
         }
         catch (Exception e)
         {
@@ -751,7 +751,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public String[] getAppVersions(Connection connection, ApplicationID id) {
+    public Object[] getAppVersions(Connection connection, ApplicationID id) {
 
         try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? and status_cd = ?"))
         {
@@ -769,7 +769,7 @@ public class NCubeJdbcPersister
                 records.add(rs.getString(1));
             }
             Collections.sort(records);  // May need to enhance to ensure 2.19.1 comes after 2.2.1
-            return records.toArray(new String[0]);
+            return records.toArray();
         }
         catch (Exception e)
         {

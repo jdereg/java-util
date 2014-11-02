@@ -19,8 +19,8 @@ public interface NCubePersister
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete);
     boolean doesCubeExist(ApplicationID id, String name);
 
-    String[] getAppNames();
-    String[] getAppVersions(ApplicationID id);
+    Object[] getAppNames();
+    Object[] getAppVersions(ApplicationID id);
 
     boolean updateNotes(ApplicationID id, String cubeName, String notes);
     String getNotes(ApplicationID id, String cubeName);

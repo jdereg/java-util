@@ -64,6 +64,7 @@ public class TestNCubeManager
     @BeforeClass
     public static void init() throws Exception
     {
+        setNCubePersister();
         TestNCube.initialize();
     }
 
@@ -464,10 +465,12 @@ DELIMITER ;
         when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
         try
         {
-            NCubeManager.getTestData(c, APP_ID, "foo", "0.1.0", null);
+            NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name()), "foo");
             fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+        catch(Exception e)
+        {
+            assertTrue(e instanceof IllegalArgumentException);
         }
     }
 
@@ -950,11 +953,11 @@ DELIMITER ;
         assertTrue("Trailer Config Notes".equals(notes1));
 
         NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
+        String testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
         assertTrue("".equals(testData));
 
         NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", "This is JSON data");
-        testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
+        testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
@@ -1215,7 +1218,7 @@ DELIMITER ;
     {
         try
         {
-            NCubeManager.getTestData(null, "DASHBOARD", "DashboardRoles", "0.1.0", null);
+            NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name()), "DashboardRoles");
             fail("should not make it here");
         }
         catch (Exception e)
@@ -1224,7 +1227,7 @@ DELIMITER ;
         }
 
         createCube();
-        String testData = NCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", null);
+        String testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name()), "test.Age-Gender");
         assertNotNull(testData);
         assertTrue(testData.length() > 0);
 
@@ -1250,7 +1253,7 @@ DELIMITER ;
 
         try
         {
-            NCubeManager.getTestData(getConnection(), APP_ID, "test.Age-Gender", "0.1.1", null);
+            NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.1", ReleaseStatus.SNAPSHOT.name()), "test.Age-Gender");
             fail("Should not make it here");
         }
         catch (Exception e)
@@ -1341,7 +1344,7 @@ DELIMITER ;
         NCubeManager.getNCubesFromResource(null);
     }
 
-    private void setNCubePersister()
+    private static void setNCubePersister()
     {
         NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
         NCubePersister nCubePersister = new NCubeJdbcPersister();

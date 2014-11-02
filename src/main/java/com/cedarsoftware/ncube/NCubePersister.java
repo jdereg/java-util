@@ -13,6 +13,8 @@ public interface NCubePersister
     List<NCube> findAllNCubes(ApplicationID appId);
     
     void deleteNCube(ApplicationID appId, String ncubeName);
+
+    String getTestData(ApplicationID appId, String ncubeName);
     
     void setNCubeConnectionProvider(NCubeConnectionProvider nCubeConnectionProvider);
 }

@@ -45,6 +45,35 @@ public class ApplicationID
 
     public ApplicationID(String account, String app, String version, String status)
     {
+        this.account = account;
+        this.app = app;
+        this.version = version;
+        this.status = status;
+        validate();
+    }
+
+    public String getAccount()
+    {
+        return account;
+    }
+
+    public String getApp()
+    {
+        return app;
+    }
+
+    public String getVersion()
+    {
+        return version;
+    }
+
+    public String getStatus()
+    {
+        return status;
+    }
+
+    public void validate()
+    {
         if (account == null)
         {
             throw new IllegalArgumentException("Account (tenant) cannot be null in ApplicationID constructor");
@@ -69,30 +98,6 @@ public class ApplicationID
         {
             throw new IllegalArgumentException("Status must be " + ReleaseStatus.SNAPSHOT.name() + " or " + ReleaseStatus.RELEASE.name());
         }
-        this.account = account;
-        this.app = app;
-        this.version = version;
-        this.status = status;
-    }
-
-    public String getAccount()
-    {
-        return account;
-    }
-
-    public String getApp()
-    {
-        return app;
-    }
-
-    public String getVersion()
-    {
-        return version;
-    }
-
-    public String getStatus()
-    {
-        return status;
     }
 
     public String getAppStr(String name)

@@ -67,11 +67,17 @@ public class NCubeManager
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static NCubePersister nCubePersister;
 
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
         urlClassLoaders.put(appId.getAppStr(""), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+    }
+
+    public static void setNCubePersister(NCubePersister nCubePersister)
+    {
+        NCubeManager.nCubePersister = nCubePersister;
     }
 
     public static Set<String> getCubeNames(ApplicationID appId)
@@ -326,9 +332,6 @@ public class NCubeManager
      *
      * @return NCube that matches, or null if not found.
      */
-    @Deprecated
-    
-    //TODO-replace with new api
     public static boolean doesCubeExist(Connection connection, String app, String name, String version, String status, Date sysDate)
     {
         validate(connection, app, version);
@@ -490,7 +493,7 @@ public class NCubeManager
         NCube ncube = getCube(name, new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, status));
         NCube copy = ncube.duplicate(newName);
         createCube(connection, newApp, copy, newVersion);
-        String json = getTestData(connection, app, name, version, sysDate);
+        String json = getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, app, version, status), name);
         updateTestData(connection, newApp, newName, newVersion, json);
         String notes = getNotes(connection, app, name, version, sysDate);
         updateNotes(connection, newApp, newName, newVersion, notes);
@@ -1148,49 +1151,9 @@ public class NCubeManager
      * @return String serialized JSON test data.  Use JsonReader to turn it back into
      * Java objects.
      */
-    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
-    //todo replace with new api
-    public static String getTestData(Connection connection, String app, String cubeName, String version, Date sysDate)
+    public static String getTestData(ApplicationID appId, String cubeName)
     {
-        validate(connection, app, version);
-        validateCubeName(cubeName);
-
-        if (sysDate == null)
-        {
-            sysDate = new Date();
-        }
-
-        java.sql.Date systemDate = new java.sql.Date(sysDate.getTime());
-
-        try (PreparedStatement stmt = connection.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)"))
-        {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
-            stmt.setString(1, app);
-            stmt.setString(2, cubeName);
-            stmt.setString(3, version);
-            stmt.setDate(4, systemDate);
-            stmt.setDate(5, systemDate);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next())
-            {
-                byte[] testData = rs.getBytes("test_data_bin");
-                return testData == null ? new String() : new String(testData, "UTF-8");
-            }
-            throw new IllegalArgumentException("No NCube matching passed in parameters.");
-        }
-        catch (IllegalArgumentException e)
-        {
-            throw e;
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch test data for NCube: " + cubeName + ", app: " + app + ", version: " + version;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        return nCubePersister.getTestData(appId, cubeName);
     }
 
     private static String getResourceAsString(String name) throws IOException
@@ -1293,12 +1256,6 @@ public class NCubeManager
 
 
     //----------------------new api's that take persistence connection provider to replace connection on param list-----------------------------
-    
-    private static NCubePersister nCubePersister;
-    public static void setNCubePersister(NCubePersister nCubePersister)
-    {
-        NCubeManager.nCubePersister = nCubePersister;
-    }
 
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
@@ -1311,14 +1268,16 @@ public class NCubeManager
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
      */
-    public static void loadCubes(ApplicationID appId, NCubePersister myNCubePersister)
+    static void loadCubes(ApplicationID appId, NCubePersister myNCubePersister)
     {
         validate(appId);        
         
         List<NCube> ncubes = myNCubePersister.findAllNCubes(appId);
         
         for (NCube ncube : ncubes)
+        {
             addCube(ncube, appId);
+        }
     }
     
     public static void createCube(NCube ncube)
@@ -1326,7 +1285,7 @@ public class NCubeManager
         createCube(ncube, nCubePersister);
     }
 
-    public static void createCube(NCube ncube, NCubePersister myNCubePersister)
+    static void createCube(NCube ncube, NCubePersister myNCubePersister)
     {
         ApplicationID appId = ncube.getApplicationID();
         validate(appId);        
@@ -1349,7 +1308,7 @@ public class NCubeManager
         }
     }
 
-    private static void validate(ApplicationID appId)
+    static void validate(ApplicationID appId)
     {
         if (appId == null)
             throw new IllegalArgumentException("ApplicationID can not be null. Please check input ApplicationID argument or input NCube argument");

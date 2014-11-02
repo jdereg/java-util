@@ -210,6 +210,38 @@ public class NCubeJdbcPersister implements NCubePersister
 
     }
 
+    public String getTestData(ApplicationID appId, String ncubeName)
+    {
+        Connection connection = getConnection();
+        try (PreparedStatement stmt = connection.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?"))
+        {
+            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
+            // TODO: see if the column exists, store the result for the entire app life cycle.
+            // TODO: If account column does not exist, then account is null.
+            stmt.setString(1, appId.getApp());
+            stmt.setString(2, ncubeName);
+            stmt.setString(3, appId.getVersion());
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next())
+            {
+                byte[] testData = rs.getBytes("test_data_bin");
+                return testData == null ? new String() : new String(testData, "UTF-8");
+            }
+            throw new IllegalArgumentException("No NCube matching passed in parameters.");
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch test data for NCube: " + ncubeName + ", app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
     @Override
     public void setNCubeConnectionProvider(NCubeConnectionProvider nCubeConnectionProvider)
     {            

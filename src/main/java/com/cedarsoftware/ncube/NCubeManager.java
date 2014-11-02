@@ -1145,17 +1145,6 @@ public class NCubeManager
         }
     }
 
-    /**
-     * Get the Test Data associated to the NCube.
-     *
-     * @return String serialized JSON test data.  Use JsonReader to turn it back into
-     * Java objects.
-     */
-    public static String getTestData(ApplicationID appId, String cubeName)
-    {
-        return nCubePersister.getTestData(appId, cubeName);
-    }
-
     private static String getResourceAsString(String name) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
@@ -1308,15 +1297,19 @@ public class NCubeManager
         }
     }
 
+    /**
+     * Get the Test Data associated to the NCube.
+     *
+     * @return String serialized JSON test data.  Use JsonReader to turn it back into
+     * Java objects.
+     */
+    public static String getTestData(ApplicationID appId, String cubeName)
+    {
+        return nCubePersister.getTestData(appId, cubeName);
+    }
+
     static void validate(ApplicationID appId)
     {
-        if (appId == null)
-            throw new IllegalArgumentException("ApplicationID can not be null. Please check input ApplicationID argument or input NCube argument");
-            
-        validateApp(appId.getApp());
-        validateVersion(appId.getVersion());
-        validateStatus(appId.getStatus());
-        
-        //todo validate tenant 10 or less
+        appId.validate();
     }
 }

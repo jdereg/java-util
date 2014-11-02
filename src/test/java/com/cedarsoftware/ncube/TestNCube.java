@@ -5313,6 +5313,55 @@ public class TestNCube
         return ncube;
     }
 
+    @Test
+    public void testValidateCubeNames()
+    {
+        NCube.validateCubeName("This:is.legal#but-hard_to|read");
+        try
+        {
+            NCube.validateCubeName("This:is.not/legal#and-hard_to|read");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+        try
+        {
+            NCube.validateCubeName(" NotValid");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+    }
+
+
+    @Test
+    public void testValidateCubeName() throws Exception
+    {
+        NCube.validateCubeName("Joe");
+        NCube.validateCubeName("Joe.Dirt");
+        NCube.validateCubeName(NCube.validCubeNameChars);
+        try
+        {
+            NCube.validateCubeName("");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+
+        try
+        {
+            NCube.validateCubeName(null);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+
+
+
     static int countMatches(String s, String pattern)
     {
         int lastIndex = 0;

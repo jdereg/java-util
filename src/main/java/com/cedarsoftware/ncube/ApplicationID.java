@@ -190,24 +190,6 @@ public class ApplicationID
         }
     }
 
-    public static void validateCubeName(String cubeName)
-    {
-        if (StringUtilities.isEmpty(cubeName))
-        {
-            throw new IllegalArgumentException("n-cube name cannot be null or empty");
-        }
-
-        Matcher m = Regexes.validCubeName.matcher(cubeName);
-        if (m.find())
-        {
-            if (cubeName.equals(m.group(0)))
-            {
-                return;
-            }
-        }
-        throw new IllegalArgumentException("n-cube name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
-    }
-
     public static void validateStatus(String status)
     {
         if (status == null) {

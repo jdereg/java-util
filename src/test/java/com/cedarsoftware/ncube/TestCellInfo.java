@@ -1,5 +1,8 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
 import org.junit.Test;
 
 import java.math.BigDecimal;
@@ -8,7 +11,9 @@ import java.util.Calendar;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by kpartlow on 9/23/2014.
@@ -25,6 +30,11 @@ public class TestCellInfo
 
         assertEquals("4.56", CellInfo.formatForEditing(new BigDecimal("4.56000")));
         assertEquals("4.56", CellInfo.formatForEditing(new BigDecimal("4.56")));
+
+        Calendar c = Calendar.getInstance();
+        c.set(2005, 10, 21, 12, 15, 19);
+        assertEquals("\"2005-11-21 12:15:19\"", CellInfo.formatForEditing(c.getTime()));
+
     }
 
     @Test
@@ -35,6 +45,10 @@ public class TestCellInfo
         assertEquals("4.56", CellInfo.formatForEditing(new BigDecimal("4.5600")));
         assertEquals("4", CellInfo.formatForEditing(new BigDecimal("4.00")));
         assertEquals("4", CellInfo.formatForEditing(new BigDecimal("4")));
+
+        assertEquals("4.56", CellInfo.formatForDisplay(new BigDecimal("4.5600")));
+        assertEquals("4", CellInfo.formatForDisplay(new BigDecimal("4.00")));
+        assertEquals("4", CellInfo.formatForDisplay(new BigDecimal("4")));
     }
 
     @Test
@@ -62,6 +76,46 @@ public class TestCellInfo
         Calendar c = Calendar.getInstance();
         c.set(Calendar.MILLISECOND, 0);
         performRecreateAssertion(c.getTime());
+    }
+
+    @Test
+    public void testBooleanValue() {
+        assertTrue(CellInfo.booleanValue("true"));
+        assertFalse(CellInfo.booleanValue("false"));
+    }
+
+    @Test
+    public void testConstructor() {
+        CellInfo info = new CellInfo(new Point2D(5.0, 6.0));
+        assertEquals(CellTypes.Point2D.desc(), info.dataType);
+
+        info = new CellInfo(new Point3D(5.0, 6.0, 7.0));
+        assertEquals(CellTypes.Point3D.desc(), info.dataType);
+
+        info = new CellInfo(new LatLon(5.5, 5.9));
+        assertEquals(CellTypes.LatLon.desc(), info.dataType);
+
+        info = new CellInfo(new Range(5.5, 5.9));
+        assertNull(info.dataType);
+        assertFalse(info.isCached);
+        assertFalse(info.isUrl);
+
+        RangeSet set = new RangeSet();
+        set.add(new Range(0, 5));
+        set.add(new Range(10, 20));
+        set.add(50);
+        info = new CellInfo(set);
+        assertNull(info.dataType);
+        assertFalse(info.isUrl);
+    }
+
+    @Test
+    public void testConstructorWithUnrecognizedType() {
+        try {
+            new CellInfo(new UnrecognizedConstructorObject());
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Unknown cell value type"));
+        }
     }
 
     @Test
@@ -98,6 +152,9 @@ public class TestCellInfo
 
     public void performArrayRecreateAssertion(byte[] o) {
         assertArrayEquals(o, (byte[])new CellInfo(o).recreate());
+    }
+
+    public static class UnrecognizedConstructorObject {
     }
 
 }

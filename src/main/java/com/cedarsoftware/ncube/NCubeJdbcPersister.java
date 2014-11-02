@@ -17,7 +17,7 @@ import java.util.List;
 public class NCubeJdbcPersister
 {
     private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);
-    
+
     public void createCube(Connection c, ApplicationID id, NCube ncube)
     {
         if (doesCubeExist(c, id, ncube.getName())) {
@@ -668,11 +668,6 @@ public class NCubeJdbcPersister
      */
     public boolean doesCubeExist(Connection c, ApplicationID id, String name)
     {
-        if (name == null)
-        {
-            throw new NullPointerException("n-cube name cannot be null to check for existence");
-        }
-
         String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? and n_cube_nm = ?";
 
         try (PreparedStatement ps = c.prepareStatement(statement))

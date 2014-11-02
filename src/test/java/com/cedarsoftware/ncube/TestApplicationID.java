@@ -193,53 +193,6 @@ public class TestApplicationID
     }
 
     @Test
-    public void testValidateCubeNames()
-    {
-        ApplicationID.validateCubeName("This:is.legal#but-hard_to|read");
-        try
-        {
-            ApplicationID.validateCubeName("This:is.not/legal#and-hard_to|read");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        {
-        }
-        try
-        {
-            ApplicationID.validateCubeName(" NotValid");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        {
-        }
-    }
-
-
-    @Test
-    public void testValidateCubeName() throws Exception
-    {
-        ApplicationID.validateCubeName("Joe");
-        ApplicationID.validateCubeName("Joe.Dirt");
-        ApplicationID.validateCubeName(NCube.validCubeNameChars);
-        try
-        {
-            ApplicationID.validateCubeName("");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-
-        try
-        {
-            ApplicationID.validateCubeName(null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-    }
-
-
-    @Test
     public void testIsSnapshotOrRelease() {
         ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         assertTrue(snapshot.isSnapshot());

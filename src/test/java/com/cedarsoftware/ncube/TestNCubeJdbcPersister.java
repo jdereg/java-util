@@ -236,17 +236,6 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testDoesCubeExistWithNullParameter() throws Exception {
-        try
-        {
-            new NCubeJdbcPersister().doesCubeExist(null, defaultSnapshotApp, null);
-            fail();
-        } catch(NullPointerException e) {
-            assertEquals("n-cube name cannot be null to check for existence", e.getMessage());
-        }
-    }
-
-    @Test
     public void testDoReleaseCubesExist() throws Exception {
         Connection c = getConnectionThatThrowsSQLException();
         try

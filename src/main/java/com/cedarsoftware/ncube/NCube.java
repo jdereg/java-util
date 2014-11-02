@@ -264,7 +264,7 @@ public class NCube<T>
     {
         if (name != null)
         {   // If name is null, likely being instantiated via serialization
-            ApplicationID.validateCubeName(name);
+            validateCubeName(name);
         }
         this.name = name;
     }
@@ -2470,5 +2470,23 @@ public class NCube<T>
     public void setTestData(String testData)
     {
         this.testData = testData;
+    }
+
+    public static void validateCubeName(String cubeName)
+    {
+        if (StringUtilities.isEmpty(cubeName))
+        {
+            throw new IllegalArgumentException("n-cube name cannot be null or empty");
+        }
+
+        Matcher m = Regexes.validCubeName.matcher(cubeName);
+        if (m.find())
+        {
+            if (cubeName.equals(m.group(0)))
+            {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("n-cube name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 }

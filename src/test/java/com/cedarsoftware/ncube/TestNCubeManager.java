@@ -135,6 +135,8 @@ public class TestNCubeManager
         NCubeManager.updateTestData(id, ncube.getName(), JsonWriter.objectToJson(coord));
         NCubeManager.updateNotes(id, ncube.getName(), "notes follow");
 
+        assertTrue(NCubeManager.doesCubeExist(id, name1));
+
         ncube = TestNCube.getTestNCube3D_Boolean();
         String name2 = ncube.getName();
         NCubeManager.createCube(id, ncube);
@@ -152,10 +154,35 @@ public class TestNCubeManager
         assertNull(NCubeManager.getCube(name1, id));
         assertNull(NCubeManager.getCube(name2, id));
 
-        //NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
-        //NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
+        NCubeManager.deleteCube(id, name1, true);
+        NCubeManager.deleteCube(id, name2, true);
+        assertFalse(NCubeManager.doesCubeExist(id, name1));
+        assertFalse(NCubeManager.doesCubeExist(id, name2));
     }
 
+    @Test
+    public void testDoesCubeExistInvalidId() {
+        try
+        {
+            NCubeManager.doesCubeExist(defaultSnapshotApp, null);
+            fail();
+        } catch(IllegalArgumentException e) {
+            assertEquals("n-cube name cannot be null or empty", e.getMessage());
+        }
+
+    }
+
+    @Test
+    public void testDoesCubeExistInvalidName() {
+        try
+        {
+            NCubeManager.doesCubeExist(null, "foo");
+            fail();
+        } catch(IllegalArgumentException e) {
+            assertEquals("ApplicationId cannot be null", e.getMessage());
+        }
+
+    }
     //This exception is impossible to hit without mocking since we prohibit you on createCube() from
     //adding in a second duplicate cube with all the same parameters.
     @Test

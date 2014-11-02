@@ -69,6 +69,21 @@ public class TestAxis
         assertTrue("bar".equals(axis.getName()));
     }
 
+    @Test
+    public void testRemoveMetaPropertyWhenMetaPropertiesAreNull()
+    {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
+        assertNull(axis.removeMetaProperty("foo"));
+    }
+
+    @Test
+    public void testGetMetaPropertyWhenMetaPropertiesAreNull()
+    {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
+        assertNull(axis.getMetaProperty("foo"));
+    }
+
+
     @Test(expected=IllegalArgumentException.class)
     public void testConvertStringToColumnValueWithEmptyString()
     {

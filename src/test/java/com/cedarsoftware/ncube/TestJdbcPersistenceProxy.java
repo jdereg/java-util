@@ -3,8 +3,10 @@ package com.cedarsoftware.ncube;
 import org.junit.Test;
 
 import java.lang.reflect.InvocationHandler;
+import java.sql.Connection;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -42,7 +44,7 @@ public class TestJdbcPersistenceProxy extends TestAbstractJdbcPersistenceProxy
 
 
     @Test
-    public void testConstructor() {
+    public void testConstructor() throws Exception {
         try {
             new JdbcPersistenceProxy("org.does.not.exist", "jdbc:hsqldb:mem:testdb", "SA", "", FooService.class, new JdbcFooService());
         } catch (RuntimeException e) {
@@ -67,5 +69,10 @@ public class TestJdbcPersistenceProxy extends TestAbstractJdbcPersistenceProxy
         } catch (NullPointerException e) {
             assertEquals("database password cannot be null...", e.getMessage());
         }
+
+            JdbcPersistenceProxy proxy = new JdbcPersistenceProxy("org.hsqldb.jdbc.JDBCDriver", "jdbc:hsqldb:mem:testdb", "SA", "", FooService.class, new JdbcFooService());
+            try (Connection c = proxy.getConnection()) {
+                assertNotNull(c);
+            }
     }
 }

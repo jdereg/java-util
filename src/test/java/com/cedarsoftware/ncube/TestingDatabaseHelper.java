@@ -55,6 +55,23 @@ public class TestingDatabaseHelper
         return createJdbcProxy(db, NCubePersister.class, new NCubeJdbcPersister());
     }
 
+    public static NCubePersister getJdbcPersister(int db) throws Exception
+    {
+        if (db == HSQLDB) {
+            return new JdbcPersister(null, "jdbc:hsqldb:mem:testdb", "sa", "");
+        }
+
+        if (db == MYSQL) {
+            return new JdbcPersister(null, "jdbc:mysql://127.0.0.1:3306/ncube", "ncube", "ncube");
+        }
+
+        if (db == ORACLE) {
+            return new JdbcPersister("oracle.jdbc.driver.OracleDriver", "jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
+        }
+
+        throw new IllegalArgumentException("Unknown Database:  " + db);
+    }
+
     public static TestingDatabaseManager getTestingDatabaseManager(int db) throws Exception
     {
         return createJdbcProxy(db, TestingDatabaseManager.class, getProxyInstance(db));

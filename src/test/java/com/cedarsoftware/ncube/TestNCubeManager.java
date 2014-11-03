@@ -178,8 +178,11 @@ public class TestNCubeManager
         {
             NCubeManager.doesCubeExist(null, "foo");
             fail();
-        } catch(IllegalArgumentException e) {
-            assertEquals("ApplicationId cannot be null", e.getMessage());
+        }
+        catch(IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("cannot"));
+            assertTrue(e.getMessage().contains("null"));
         }
 
     }
@@ -723,8 +726,10 @@ public class TestNCubeManager
             NCubeManager.loadCubes(null);
             fail();
         }
-        catch(IllegalArgumentException e) {
-            assertEquals("ApplicationId cannot be null", e.getMessage());
+        catch(IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("cannot"));
+            assertTrue(e.getMessage().contains("null"));
         }
     }
 

@@ -171,6 +171,14 @@ public class ApplicationID
         return new ApplicationID(account, app, version, ReleaseStatus.RELEASE.name());
     }
 
+    public void validate()
+    {
+        validateTenant(account);
+        validateApp(app);
+        validateVersion(version);
+        validateStatus(status);
+    }
+
     public void validateIsSnapshot()
     {
         if (!isSnapshot())

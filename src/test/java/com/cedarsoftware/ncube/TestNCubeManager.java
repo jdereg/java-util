@@ -45,7 +45,7 @@ import static org.mockito.Mockito.mock;
 public class TestNCubeManager
 {
 
-    private int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private static int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
     private TestingDatabaseManager _manager;
 
     static final String APP_ID = "ncube.test";
@@ -55,8 +55,8 @@ public class TestNCubeManager
     @BeforeClass
     public static void init() throws Exception
     {
-        setNCubePersister();
         TestNCube.initialize();
+        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister(test_db));
     }
 
 
@@ -65,7 +65,6 @@ public class TestNCubeManager
     {
         _manager = TestingDatabaseHelper.getTestingDatabaseManager(test_db);
         _manager.setUp();
-        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister(test_db));
     }
 
     @After
@@ -434,14 +433,10 @@ public class TestNCubeManager
 
         NCubeManager.updateTestData(newId, "test.ValidTrailorConfigs", null);
         String testData = NCubeManager.getTestData(newId, "test.ValidTrailorConfigs");
-        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        String testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
         assertTrue("".equals(testData));
 
         NCubeManager.updateTestData(newId, "test.ValidTrailorConfigs", "This is JSON data");
         testData = NCubeManager.getTestData(newId, "test.ValidTrailorConfigs");
-        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", "This is JSON data");
-        testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube

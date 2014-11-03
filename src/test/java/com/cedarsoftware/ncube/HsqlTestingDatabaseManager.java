@@ -7,10 +7,17 @@ import java.sql.Statement;
 /**
  * Created by kpartlow on 10/28/2014.
  */
-public class HsqlTestingDatabaseManager
+public class HsqlTestingDatabaseManager implements TestingDatabaseManager
 {
-    public void setUp(Connection c) throws SQLException
+    JdbcConnectionProvider provider;
+
+    public HsqlTestingDatabaseManager(JdbcConnectionProvider p) {
+        provider = p;
+    }
+
+    public void setUp() throws SQLException
     {
+        Connection c = provider.getConnection();
         try (Statement s = c.createStatement())
         {
             s.execute("CREATE TABLE n_cube ( " +
@@ -35,12 +42,17 @@ public class HsqlTestingDatabaseManager
                     "PRIMARY KEY (n_cube_id), " +
                     "UNIQUE (tenant_cd, n_cube_nm, version_no_cd, app_cd, status_cd, revision_number) " +
                     ");");
+        } finally {
+            provider.releaseConnection(c);
         }
     }
 
-    public void tearDown(Connection c) throws SQLException {
+    public void tearDown() throws SQLException {
+        Connection c = provider.getConnection();
         try (Statement s = c.createStatement()) {
             s.execute("DROP TABLE n_cube;");
+        } finally {
+            provider.releaseConnection(c);
         }
     }
 }

@@ -7,11 +7,18 @@ import java.sql.Statement;
 /**
  * Created by kpartlow on 10/28/2014.
  */
-public class MySqlTestingDatabaseManager
+public class MySqlTestingDatabaseManager implements TestingDatabaseManager
 {
-    public void setUp(Connection c) throws SQLException {
+    private JdbcConnectionProvider provider;
+    public MySqlTestingDatabaseManager(JdbcConnectionProvider p) {
+        provider = p;
+    }
+
+    public void setUp() throws SQLException {
+        Connection c = provider.getConnection();
         try (Statement s = c.createStatement())
         {
+
             s.execute("        drop table if exists `ncube`.n_cube;\n" +
                     "        CREATE TABLE `ncube`.n_cube (\n" +
                     "            n_cube_id bigint NOT NULL,\n" +
@@ -43,10 +50,12 @@ public class MySqlTestingDatabaseManager
                     "        SET NEW.sys_effective_dt = NOW();\n" +
                     "        END ;;\n" +
                     "        DELIMITER ;\n");
+        } finally {
+            provider.releaseConnection(c);
         }
     }
 
-    public void tearDown(Connection c) throws SQLException {
+    public void tearDown() throws SQLException {
         // don't accidentally erase your MySql database.
     }
 }

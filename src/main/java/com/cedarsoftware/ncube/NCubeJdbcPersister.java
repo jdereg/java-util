@@ -1,11 +1,9 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UniqueIdGenerator;
-import com.cedarsoftware.util.io.JsonReader;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,10 +12,29 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Class used to carry the NCube meta-information
+ * to the client.
+ *
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br/>
+ *         Copyright (c) Cedar Software LLC
+ *         <br/><br/>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br/><br/>
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <br/><br/>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
+ */
 public class NCubeJdbcPersister
 {
     private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);
-    private JdbcConnectionProvider _provider;
 
     public void createCube(Connection c, ApplicationID id, NCube ncube)
     {
@@ -101,9 +118,9 @@ public class NCubeJdbcPersister
         try (PreparedStatement stmt = c.prepareStatement(query))
         {
             NCube ncube = null;
-            
+
             java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
-            
+
             //todo - remove sys effective date and expiration date
             stmt.setString(1, cubeName);
             stmt.setString(2, appId.getApp());
@@ -116,14 +133,14 @@ public class NCubeJdbcPersister
                 {
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
-                    ncube = ncubeFromJson(json);
+                    ncube = NCubeManager.ncubeFromJson(json);
 
                     if (rs.next())
                     {
                         throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", appId:  " + appId.toString());
-                    }                    
+                    }
                 }
-                
+
                 return ncube;
             }
         }
@@ -194,11 +211,11 @@ public class NCubeJdbcPersister
     }
 
     public List<NCube> loadCubes(Connection c, ApplicationID appId)
-    {        
+    {
         String app = appId.getApp();
         String version = appId.getVersion();
         String status = appId.getStatus();
-        
+
         try (PreparedStatement stmt = c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
         {
             List<NCube> ncubes = new ArrayList<>();
@@ -207,7 +224,7 @@ public class NCubeJdbcPersister
             // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
             // TODO: see if the column exists, store the result for the entire app life cycle.
             // TODO: If account column does not exist, then account is null.
-            
+
             //TODO: remove date params
             stmt.setString(1, app);
             stmt.setDate(2, systemDate);
@@ -222,7 +239,7 @@ public class NCubeJdbcPersister
                 String json = new String(jsonBytes, "UTF-8");
                 try
                 {
-                    NCube ncube = ncubeFromJson(json);
+                    NCube ncube = NCubeManager.ncubeFromJson(json);
                     ncube.setApplicationID(appId);
                     ncubes.add(ncube);
                 }
@@ -231,7 +248,7 @@ public class NCubeJdbcPersister
                     LOG.warn("account: " + appId.getAccount() + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", Failed to load n-cube: " + json.substring(0, 40));
                 }
             }
-            
+
             return ncubes;
         }
         catch (Exception e)
@@ -695,32 +712,6 @@ public class NCubeJdbcPersister
     }
 
     //------------------------- private methods ---------------------------------------
-
-    private NCube ncubeFromJson(String json) throws IOException
-    {
-        try
-        {
-            return NCube.fromSimpleJson(json);
-        }
-        catch (Exception e)
-        {
-            try
-            {   // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
-                NCube ncube = (NCube) JsonReader.jsonToJava(json);
-                List<Axis> axes = ncube.getAxes();
-                for (Axis axis : axes)
-                {
-                    axis.buildScaffolding();
-                }
-                ncube.setMetaProperty("sha1", ncube.sha1());
-                return ncube;
-            }
-            catch (Exception e1)
-            {
-                throw e;
-            }
-        }
-    }
 
     /**
      * Return an array [] of Strings containing all unique App names.

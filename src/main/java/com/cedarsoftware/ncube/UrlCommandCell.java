@@ -70,7 +70,7 @@ public abstract class UrlCommandCell implements CommandCell
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
 
 
-    //TODO  These are really not needed and should be set for the server/environment with the following -D options
+    //TODO  These are really not needed and should be set for the whole server/environment with the following -D options
     // or could be set as environment variables
     // http.proxyHost
     // http.proxyPort (default: 80)

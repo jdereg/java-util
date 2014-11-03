@@ -44,7 +44,7 @@ public class TestAdvice
     @After
     public void tearDown() throws Exception
     {
-        NCubeManager.clearCubeList();
+        TestNCube.tearDown();
     }
 
     @Test

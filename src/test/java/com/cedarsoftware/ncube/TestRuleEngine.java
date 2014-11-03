@@ -45,7 +45,7 @@ public class TestRuleEngine
     @After
     public void tearDown() throws Exception
     {
-        NCubeManager.clearCubeList();
+        TestNCube.tearDown();
     }
 
     @Test

@@ -9,12 +9,12 @@ import java.util.Map;
 /**
  * Created by kpartlow on 1/20/14.
  */
-public class NCubeTester {
-
+public class NCubeTester
+{
     @After
     public void tearDown() throws Exception
     {
-        NCubeManager.clearCubeList();
+        TestNCube.tearDown();
     }
 
     public Map getCprMap(String prop, String bu, String env) {

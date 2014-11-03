@@ -56,7 +56,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NCubeManager
 {
-    private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
+    private static final Map<String, NCube> ncubeCache = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
@@ -85,7 +85,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         Set<String> result = new TreeSet<>();
-        Collection<NCube> cubes = cubeList.values();
+        Collection<NCube> cubes = ncubeCache.values();
 
         for (NCube ncube : cubes)
         {
@@ -104,25 +104,27 @@ public class NCubeManager
     public static NCube getCube(String name, ApplicationID appId)
     {
         validateAppId(appId);
-        return cubeList.get(appId.getAppStr(name));
+        return ncubeCache.get(appId.getAppStr(name));
     }
 
     /**
      * Add to the classloader's classpath for the given ApplicationID.
 s    */
-    public static void addBaseResourceUrls(List<String> urls, String appStr)
+    public static void addBaseResourceUrls(List<String> urls, ApplicationID appId)
     {
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appStr);
+        validateAppId(appId);
+        final String cacheKey = appId.getAppStr("");
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId.getAppStr(""));
 
         if (urlClassLoader == null)
         {
-            LOG.info("Creating ClassLoader, n-cube version: " + appStr + ", urls: " + urls);
+            LOG.info("Creating ClassLoader, app: " + cacheKey + ", urls: " + urls);
             urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appStr, urlClassLoader);
+            urlClassLoaders.put(cacheKey, urlClassLoader);
         }
         else
         {
-            LOG.info("Adding resource URLs, n-cube version: " + appStr + ", urls: " + urls);
+            LOG.info("Adding resource URLs, app: " + cacheKey + ", urls: " + urls);
         }
 
         addUrlsToClassLoader(urls, urlClassLoader);
@@ -162,7 +164,7 @@ s    */
     public static void addCube(NCube ncube, ApplicationID appId)
     {
         validateAppId(appId);
-        cubeList.put(appId.getAppStr(ncube.getName()), ncube);
+        ncubeCache.put(appId.getAppStr(ncube.getName()), ncube);
 
         for (Map.Entry<String, Map<String, Advice>> entry : advices.entrySet())
         {
@@ -202,17 +204,21 @@ s    */
      * loaded (cached) in memory.  A copy of the internal cache
      * is returned.
      */
-    public static Map<String, NCube> getCachedNCubes()
+    public static Map<String, NCube> getCachedNCubes(ApplicationID appId)
     {
-        return new TreeMap<>(cubeList);
+        validateAppId(appId);
+        // TODO: Add appId cacheKey to caches
+        return new TreeMap<>(ncubeCache);
     }
 
     /**
      * Used for testing.
      */
-    public static void clearCubeList()
+    public static void clearCubeList(ApplicationID appId)
     {
-        cubeList.clear();
+        // TODO: Add appId as appropriate cache keys
+        validateAppId(appId);
+        ncubeCache.clear();
         GroovyBase.clearCache();
         NCubeGroovyController.clearCache();
         for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
@@ -238,7 +244,7 @@ s    */
         current.put(advice.getName(), advice);
         String regex = StringUtilities.wildcardToRegexString(wildcard);
 
-        for (NCube ncube : cubeList.values())
+        for (NCube ncube : ncubeCache.values())
         {
             Axis axis = ncube.getAxis("method");
             if (axis != null)
@@ -415,8 +421,8 @@ s    */
         boolean result = nCubePersister.renameCube(id, ncube, newName);
 
         // Any user of these old IDs will get the default (null) account
-        cubeList.remove(id.getAppStr(oldName));
-        cubeList.put(id.getAppStr(newName), ncube);
+        ncubeCache.remove(id.getAppStr(oldName));
+        ncubeCache.put(id.getAppStr(newName), ncube);
         return result;
     }
 
@@ -433,7 +439,7 @@ s    */
         if (nCubePersister.deleteCube(id, cubeName, false))
         {
             // Any user of these old APIs will get the default (null) account
-            cubeList.remove(id.getAppStr(cubeName));
+            ncubeCache.remove(id.getAppStr(cubeName));
             return true;
         }
         return false;
@@ -447,7 +453,7 @@ s    */
         if (nCubePersister.deleteCube(id, cubeName, allowDelete))
         {
             // Any user of these old APIs will get the default (null) account
-            cubeList.remove(id.getAppStr(cubeName));
+            ncubeCache.remove(id.getAppStr(cubeName));
             return true;
         }
         return false;

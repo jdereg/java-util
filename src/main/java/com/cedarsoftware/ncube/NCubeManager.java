@@ -60,11 +60,17 @@ public class NCubeManager
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static NCubePersister nCubePersister;
 
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
         urlClassLoaders.put(appId.getAppStr(""), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+    }
+
+    public static void setNCubePersister(NCubePersister nCubePersister)
+    {
+        NCubeManager.nCubePersister = nCubePersister;
     }
 
     public static Set<String> getCubeNames(ApplicationID appId)
@@ -256,17 +262,15 @@ public class NCubeManager
         }
     }
 
-
-
-
     public static void validateTestData(String testData)
     {
-
     }
 
-    public static boolean doesCubeExist(ApplicationID id, String name) {
+    public static boolean doesCubeExist(ApplicationID id, String name)
+    {
         return doesCubeExist(nCubePersister, id, name);
     }
+
     /**
      * Check for existence of a cube in the database
      *
@@ -276,10 +280,8 @@ public class NCubeManager
     {
         validateId(id);
         NCube.validateCubeName(name);
-
         return persister.doesCubeExist(id, name);
     }
-
 
     /**
      * Retrieve all cube names that are deeply referenced by ApplicationID + n-cube name.
@@ -307,29 +309,26 @@ public class NCubeManager
         }
     }
 
-    public static Object[] getNCubes(ApplicationID id, String sqlLike) {
-        return getNCubes(nCubePersister, id, sqlLike);
+    /**
+     * Get Object[] of n-cube names for the given ApplicationID, filtered by the sqlLike clause.
+     */
+    public static Object[] getNCubes(ApplicationID id, String sqlLike)
+    {
+        validateId(id);
+        return nCubePersister.getNCubes(id, sqlLike);
     }
 
     /**
-     * Retrieve all n-cubes that have a name that matches the SQL like statement, within the specified app, status,
-     * version, and system date.
+     * Duplicate the given n-cube specified by oldId and oldName to new ApplicationID and name,
      */
-    static Object[] getNCubes(NCubePersister persister, ApplicationID id, String sqlLike)
+    public static void duplicate(ApplicationID oldId, ApplicationID newId, String oldName, String newName)
     {
-        validateId(id);
-        return persister.getNCubes(id, sqlLike);
-    }
-
-
-    public static void duplicate(ApplicationID oldId, ApplicationID newId, String oldName, String newName) {
         duplicate(nCubePersister, oldId, newId, oldName, newName);
     }
+
     /**
      * Duplicate the specified n-cube, given it the new name, and the same app, version, status as the source n-cube.
      */
-    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
-    //TODO: replace with new api
     static void duplicate(NCubePersister persister, ApplicationID oldId, ApplicationID newId, String oldName, String newName)
     {
         NCube ncube = getCube(oldName, oldId);
@@ -347,26 +346,26 @@ public class NCubeManager
      */
     public static Object[] getAppNames()
     {
-        return getAppNames(nCubePersister);
+        return nCubePersister.getAppNames();
     }
 
-    public static Object[] getAppNames(NCubePersister persister)
+    public static Object[] getAppVersions(ApplicationID id)
     {
-        return persister.getAppNames();
-    }
-
-    public static Object[] getAppVersions(ApplicationID id) {
         return getAppVersions(nCubePersister, id);
     }
 
-    public static void validateId(ApplicationID id) {
-        if (id == null) {
+    public static void validateId(ApplicationID id)
+    {
+        if (id == null)
+        {
             throw new IllegalArgumentException("ApplicationId cannot be null");
         }
     }
 
-    public static void validateCube(NCube cube) {
-        if (cube == null) {
+    public static void validateCube(NCube cube)
+    {
+        if (cube == null)
+        {
             throw new IllegalArgumentException("NCube cannot be null");
         }
     }
@@ -374,7 +373,7 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public static Object[] getAppVersions(NCubePersister persister, ApplicationID id)
+    static Object[] getAppVersions(NCubePersister persister, ApplicationID id)
     {
         validateId(id);
         return persister.getAppVersions(id);
@@ -386,62 +385,33 @@ public class NCubeManager
      * @param ncube      NCube to be updated.
      * @return boolean true on success, false otherwise
      */
-    public static boolean updateCube(ApplicationID id, NCube ncube) {
-        return updateCube(nCubePersister, id, ncube);
-    }
-
-    /**
-     * Update the passed in NCube.  Only SNAPSHOT ncubes can be updated.
-     *
-     * @param ncube      NCube to be updated.
-     * @return boolean true on success, false otherwise
-     */
-    static boolean updateCube(NCubePersister persister, ApplicationID id, NCube ncube)
+    public static boolean updateCube(ApplicationID id, NCube ncube)
     {
         validateId(id);
         validateCube(ncube);
 
         synchronized (cubeList)
         {
-            persister.updateCube(id, ncube);
+            nCubePersister.updateCube(id, ncube);
         }
 
         return true;
     }
 
-
-    public static int releaseCubes(ApplicationID id) {
-        return releaseCubes(nCubePersister, id);
-    }
     /**
-     * Move ncubes matching the passed in version and APP_CD from SNAPSHOT to RELEASE
-     * state. All ncubes move version at the same time.  This is by design so that the
-     * cube join commands do not need to mess with determining what ncube versions
-     * they join with.
-     *
-     * @return int count of ncubes that were released
+     * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
-    public static int releaseCubes(NCubePersister persister, ApplicationID id)
+    public static int releaseCubes(ApplicationID id)
     {
         validateId(id);
 
         synchronized (cubeList)
         {
-            return persister.releaseCubes(id);
+            return nCubePersister.releaseCubes(id);
         }
     }
 
-    public static int createSnapshotCubes(ApplicationID id, String newVersion) {
-        return createSnapshotCubes(nCubePersister, id, newVersion);
-    }
-    /**
-     * This API creates a SNAPSHOT set of cubes by copying all of
-     * the RELEASE ncubes that match the oldVersion and app to
-     * the new version in SNAPSHOT mode.  Basically, it duplicates
-     * an entire set of NCubes and places a new version label on them,
-     * in SNAPSHOT status.
-     */
-    public static int createSnapshotCubes(NCubePersister persister, ApplicationID id, String newVersion)
+    public static int createSnapshotCubes(ApplicationID id, String newVersion)
     {
         ApplicationID.validateVersion(newVersion);
         validateId(id);
@@ -453,25 +423,17 @@ public class NCubeManager
 
         synchronized (cubeList)
         {
-            return persister.createSnapshotVersion(id, newVersion);
+            return nCubePersister.createSnapshotVersion(id, newVersion);
         }
     }
 
     public static void changeVersionValue(ApplicationID id, String newVersion) {
-        changeVersionValue(nCubePersister, id, newVersion);
-    }
-
-    /**
-     * Change the SNAPSHOT version value.
-     */
-    public static void changeVersionValue(NCubePersister persister, ApplicationID id, String newVersion)
-    {
         validateId(id);
         ApplicationID.validateVersion(newVersion);
 
         synchronized (cubeList)
         {
-            persister.changeVersionValue(id, newVersion);
+            nCubePersister.changeVersionValue(id, newVersion);
 
             //  TODO: we should remove old versioned cubes from the cache here since this is not additive
             ApplicationID newId = id.createNewSnapshotId(newVersion);
@@ -479,11 +441,7 @@ public class NCubeManager
         }
     }
 
-    public static boolean renameCube(ApplicationID id, String oldName, String newName) {
-        return renameCube(nCubePersister, id, oldName, newName);
-    }
-
-    public static boolean renameCube(NCubePersister persister, ApplicationID id, String oldName, String newName)
+    public static boolean renameCube(ApplicationID id, String oldName, String newName)
     {
         validateId(id);
         ApplicationID.validateVersion(id.getVersion());
@@ -503,7 +461,7 @@ public class NCubeManager
         synchronized (cubeList)
         {
 
-            boolean result = persister.renameCube(id, ncube, newName);
+            boolean result = nCubePersister.renameCube(id, ncube, newName);
 
             // Any user of these old IDs will get the default (null) account
             cubeList.remove(id.getAppStr(oldName));
@@ -517,22 +475,30 @@ public class NCubeManager
      *
      * @param cubeName   NCube to be deleted
      */
-    public static boolean deleteCube(ApplicationID id, String cubeName) {
-        return deleteCube(nCubePersister, id, cubeName, false);
-    }
-
-    public static boolean deleteCube(ApplicationID id, String cubeName, boolean allowDelete) {
-        return deleteCube(nCubePersister, id, cubeName, allowDelete);
-    }
-
-    static boolean deleteCube(NCubePersister persister, ApplicationID id, String cubeName, boolean allowDelete)
+    public static boolean deleteCube(ApplicationID id, String cubeName)
     {
         validateId(id);
         NCube.validateCubeName(cubeName);
 
         synchronized (cubeList)
         {
-            if (persister.deleteCube(id, cubeName, allowDelete)) {
+            if (nCubePersister.deleteCube(id, cubeName, false)) {
+                // Any user of these old APIs will get the default (null) account
+                cubeList.remove(id.getAppStr(cubeName));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean deleteCube(ApplicationID id, String cubeName, boolean allowDelete)
+    {
+        validateId(id);
+        NCube.validateCubeName(cubeName);
+
+        synchronized (cubeList)
+        {
+            if (nCubePersister.deleteCube(id, cubeName, allowDelete)) {
                 // Any user of these old APIs will get the default (null) account
                 cubeList.remove(id.getAppStr(cubeName));
                 return true;
@@ -546,16 +512,14 @@ public class NCubeManager
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateNotes(ApplicationID id, String cubeName, String notes) { return updateNotes(nCubePersister, id, cubeName, notes); }
-
-    public static boolean updateNotes(NCubePersister persister, ApplicationID id, String cubeName, String notes)
+    public static boolean updateNotes(ApplicationID id, String cubeName, String notes)
     {
         validateId(id);
         NCube.validateCubeName(cubeName);
 
         synchronized (cubeList)
         {
-            persister.updateNotes(id, cubeName, notes);
+            nCubePersister.updateNotes(id, cubeName, notes);
         }
         return true;
     }
@@ -565,18 +529,11 @@ public class NCubeManager
      *
      * @return String notes.
      */
-
     public static String getNotes(ApplicationID id, String cubeName)
-    {
-        return getNotes(nCubePersister, id, cubeName);
-    }
-
-    static String getNotes(NCubePersister persister, ApplicationID id, String cubeName)
     {
         validateId(id);
         NCube.validateCubeName(cubeName);
-
-        return persister.getNotes(id, cubeName);
+        return nCubePersister.getNotes(id, cubeName);
     }
 
     /**
@@ -586,38 +543,21 @@ public class NCubeManager
      */
     public static boolean updateTestData(ApplicationID id, String cubeName, String testData)
     {
-        return updateTestData(nCubePersister, id, cubeName, testData);
-    }
-
-    public static boolean updateTestData(NCubePersister persister, ApplicationID id, String cubeName, String testData)
-    {
         validateId(id);
         validateTestData(testData);
         NCube.validateCubeName(cubeName);
 
         synchronized (cubeList)
         {
-            return persister.updateTestData(id, cubeName, testData);
+            return nCubePersister.updateTestData(id, cubeName, testData);
         }
     }
 
     public static String getTestData(ApplicationID id, String cubeName)
     {
-        return getTestData(nCubePersister, id, cubeName);
-    }
-
-    /**
-     * Get the Test Data associated to the NCube.
-     *
-     * @return String serialized JSON test data.  Use JsonReader to turn it back into
-     * Java objects.
-     */
-    public static String getTestData(NCubePersister persister, ApplicationID id, String cubeName)
-    {
         validateId(id);
         NCube.validateCubeName(cubeName);
-
-        return persister.getTestData(id, cubeName);
+        return nCubePersister.getTestData(id, cubeName);
     }
 
     private static String getResourceAsString(String name) throws IOException
@@ -718,15 +658,6 @@ public class NCubeManager
         }
     }
 
-
-    //----------------------new api's that take persistence connection provider to replace connection on param list-----------------------------
-
-    private static NCubePersister nCubePersister;
-    public static void setNCubePersister(NCubePersister nCubePersister)
-    {
-        NCubeManager.nCubePersister = nCubePersister;
-    }
-
     /**
      * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
      */
@@ -755,7 +686,6 @@ public class NCubeManager
         createCube(nCubePersister, id, ncube);
     }
 
-
     /**
      * Persist the passed in NCube
      *
@@ -779,6 +709,4 @@ public class NCubeManager
             addCube(ncube, id);
         }
     }
-
-
 }

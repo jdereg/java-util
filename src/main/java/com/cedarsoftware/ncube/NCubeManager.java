@@ -114,7 +114,7 @@ s    */
     {
         validateAppId(appId);
         final String cacheKey = appId.getAppStr("");
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId.getAppStr(""));
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(cacheKey);
 
         if (urlClassLoader == null)
         {
@@ -158,7 +158,7 @@ s    */
     }
 
     /**
-     * Add a cube to the internal map of available cubes.
+     * Add a cube to the internal cache of available cubes.
      * @param ncube NCube to add to the list.
      */
     public static void addCube(NCube ncube, ApplicationID appId)
@@ -404,25 +404,25 @@ s    */
         loadCubes(newId);
     }
 
-    public static boolean renameCube(ApplicationID id, String oldName, String newName)
+    public static boolean renameCube(ApplicationID appId, String oldName, String newName)
     {
-        validateAppId(id);
+        validateAppId(appId);
         NCube.validateCubeName(oldName);
         NCube.validateCubeName(newName);
 
         if (oldName.equalsIgnoreCase(newName))
         {
-            throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName);
+            throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName + ", app: " + appId);
         }
 
         //  assumes the cube is already loaded
-        NCube ncube = getCube(oldName, id);
+        NCube ncube = getCube(oldName, appId);
 
-        boolean result = nCubePersister.renameCube(id, ncube, newName);
+        boolean result = nCubePersister.renameCube(appId, ncube, newName);
 
         // Any user of these old IDs will get the default (null) account
-        ncubeCache.remove(id.getAppStr(oldName));
-        ncubeCache.put(id.getAppStr(newName), ncube);
+        ncubeCache.remove(appId.getAppStr(oldName));
+        ncubeCache.put(appId.getAppStr(newName), ncube);
         return result;
     }
 
@@ -431,15 +431,15 @@ s    */
      *
      * @param cubeName   NCube to be deleted
      */
-    public static boolean deleteCube(ApplicationID id, String cubeName)
+    public static boolean deleteCube(ApplicationID appId, String cubeName)
     {
-        validateAppId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
 
-        if (nCubePersister.deleteCube(id, cubeName, false))
+        if (nCubePersister.deleteCube(appId, cubeName, false))
         {
             // Any user of these old APIs will get the default (null) account
-            ncubeCache.remove(id.getAppStr(cubeName));
+            ncubeCache.remove(appId.getAppStr(cubeName));
             return true;
         }
         return false;
@@ -464,11 +464,11 @@ s    */
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateNotes(ApplicationID id, String cubeName, String notes)
+    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     {
-        validateAppId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        nCubePersister.updateNotes(id, cubeName, notes);
+        nCubePersister.updateNotes(appId, cubeName, notes);
         return true;
     }
 
@@ -477,11 +477,11 @@ s    */
      *
      * @return String notes.
      */
-    public static String getNotes(ApplicationID id, String cubeName)
+    public static String getNotes(ApplicationID appId, String cubeName)
     {
-        validateAppId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.getNotes(id, cubeName);
+        return nCubePersister.getNotes(appId, cubeName);
     }
 
     /**
@@ -489,19 +489,19 @@ s    */
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateTestData(ApplicationID id, String cubeName, String testData)
+    public static boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
-        validateAppId(id);
+        validateAppId(appId);
         validateTestData(testData);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.updateTestData(id, cubeName, testData);
+        return nCubePersister.updateTestData(appId, cubeName, testData);
     }
 
-    public static String getTestData(ApplicationID id, String cubeName)
+    public static String getTestData(ApplicationID appId, String cubeName)
     {
-        validateAppId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.getTestData(id, cubeName);
+        return nCubePersister.getTestData(appId, cubeName);
     }
 
     /**
@@ -518,18 +518,18 @@ s    */
         }
     }
 
-    public static void createCube(ApplicationID id, NCube ncube)
+    public static void createCube(ApplicationID appId, NCube ncube)
     {
         if (ncube == null)
         {
             throw new IllegalArgumentException("NCube cannot be null when creating a new n-cube");
         }
 
-        validateAppId(id);
+        validateAppId(appId);
         NCube.validateCubeName(ncube.getName());
-        nCubePersister.createCube(id, ncube);
-        ncube.setApplicationID(id);
-        addCube(ncube, id);
+        nCubePersister.createCube(appId, ncube);
+        ncube.setApplicationID(appId);
+        addCube(ncube, appId);
     }
 
     // --------------------------------------- Resource APIs -----------------------------------------------------------

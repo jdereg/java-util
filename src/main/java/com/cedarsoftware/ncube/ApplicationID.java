@@ -140,11 +140,13 @@ public class ApplicationID
         return getAppStr("");
     }
 
-    public boolean isSnapshot() {
+    public boolean isSnapshot()
+    {
         return ReleaseStatus.SNAPSHOT.name().equals(status);
     }
 
-    public boolean isRelease() {
+    public boolean isRelease()
+    {
         return ReleaseStatus.RELEASE.name().equals(status);
     }
 
@@ -153,7 +155,8 @@ public class ApplicationID
      * @param version new version.
      * @return a new ApplicationId that is a snapshot of the new version passed in.
      */
-    public ApplicationID createNewSnapshotId(String version) {
+    public ApplicationID createNewSnapshotId(String version)
+    {
         //  In the Change Version the status was always SNAPSHOT when creating a new version.
         //  That is why we hardcode this to snapshot here.
         return new ApplicationID(account, app, version, ReleaseStatus.SNAPSHOT.name());
@@ -163,18 +166,21 @@ public class ApplicationID
      * Creates a new RELEASE version of this application id.
      * @return A release version of this application id.
      */
-    public ApplicationID createReleaseId() {
+    public ApplicationID createReleaseId()
+    {
         return new ApplicationID(account, app, version, ReleaseStatus.RELEASE.name());
     }
 
-    public void validateIsSnapshot() {
-        if (!isSnapshot()) {
+    public void validateIsSnapshot()
+    {
+        if (!isSnapshot())
+        {
             throw new IllegalStateException("Application ID must be " + ReleaseStatus.SNAPSHOT.name());
         }
     }
 
-    public static void validateTenant(String tenant) {
-        //TODO:  Is there more validation we can do here?
+    public static void validateTenant(String tenant)
+    {
         if (StringUtilities.isEmpty(tenant))
         {
             throw new IllegalArgumentException("Tenant cannot be null or empty");
@@ -183,7 +189,6 @@ public class ApplicationID
 
     public static void validateApp(String app)
     {
-        //TODO:  Is there more validation we can do here?
         if (StringUtilities.isEmpty(app))
         {
             throw new IllegalArgumentException("App cannot be null or empty");
@@ -210,6 +215,6 @@ public class ApplicationID
         {
             return;
         }
-        throw new IllegalArgumentException("n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
+        throw new IllegalArgumentException("Invalid version: '" + version + "'. n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
     }
 }

@@ -60,11 +60,17 @@ public class NCubeManager
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static NCubePersister nCubePersister;
 
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
         urlClassLoaders.put(appId.getAppStr(""), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+    }
+
+    public static void setNCubePersister(NCubePersister nCubePersister)
+    {
+        NCubeManager.nCubePersister = nCubePersister;
     }
 
     public static Set<String> getCubeNames(ApplicationID appId)
@@ -762,6 +768,7 @@ public class NCubeManager
      * @param ncube      NCube to be persisted
      */
     static void createCube(NCubePersister persister, ApplicationID id, NCube ncube)
+    static void createCube(NCube ncube, NCubePersister myNCubePersister)
     {
         validateId(id);
 

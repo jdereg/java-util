@@ -55,6 +55,7 @@ public class TestNCubeManager
     @BeforeClass
     public static void init() throws Exception
     {
+        setNCubePersister();
         TestNCube.initialize();
     }
 
@@ -433,10 +434,14 @@ public class TestNCubeManager
 
         NCubeManager.updateTestData(newId, "test.ValidTrailorConfigs", null);
         String testData = NCubeManager.getTestData(newId, "test.ValidTrailorConfigs");
+        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
+        String testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
         assertTrue("".equals(testData));
 
         NCubeManager.updateTestData(newId, "test.ValidTrailorConfigs", "This is JSON data");
         testData = NCubeManager.getTestData(newId, "test.ValidTrailorConfigs");
+        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", "This is JSON data");
+        testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube

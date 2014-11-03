@@ -65,7 +65,7 @@ public class NCubeManager
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        urlClassLoaders.put(appId.getAppStr(""), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+        urlClassLoaders.put(appId.cacheKey(""), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
     }
 
     /**
@@ -104,7 +104,7 @@ public class NCubeManager
     public static NCube getCube(String name, ApplicationID appId)
     {
         validateAppId(appId);
-        return ncubeCache.get(appId.getAppStr(name));
+        return ncubeCache.get(appId.cacheKey(name));
     }
 
     /**
@@ -113,7 +113,7 @@ s    */
     public static void addBaseResourceUrls(List<String> urls, ApplicationID appId)
     {
         validateAppId(appId);
-        final String cacheKey = appId.getAppStr("");
+        final String cacheKey = appId.cacheKey("");
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(cacheKey);
 
         if (urlClassLoader == null)
@@ -164,7 +164,7 @@ s    */
     public static void addCube(NCube ncube, ApplicationID appId)
     {
         validateAppId(appId);
-        ncubeCache.put(appId.getAppStr(ncube.getName()), ncube);
+        ncubeCache.put(appId.cacheKey(ncube.getName()), ncube);
 
         for (Map.Entry<String, Map<String, Advice>> entry : advices.entrySet())
         {
@@ -421,8 +421,8 @@ s    */
         boolean result = nCubePersister.renameCube(appId, ncube, newName);
 
         // Any user of these old IDs will get the default (null) account
-        ncubeCache.remove(appId.getAppStr(oldName));
-        ncubeCache.put(appId.getAppStr(newName), ncube);
+        ncubeCache.remove(appId.cacheKey(oldName));
+        ncubeCache.put(appId.cacheKey(newName), ncube);
         return result;
     }
 
@@ -439,7 +439,7 @@ s    */
         if (nCubePersister.deleteCube(appId, cubeName, false))
         {
             // Any user of these old APIs will get the default (null) account
-            ncubeCache.remove(appId.getAppStr(cubeName));
+            ncubeCache.remove(appId.cacheKey(cubeName));
             return true;
         }
         return false;
@@ -453,7 +453,7 @@ s    */
         if (nCubePersister.deleteCube(id, cubeName, allowDelete))
         {
             // Any user of these old APIs will get the default (null) account
-            ncubeCache.remove(id.getAppStr(cubeName));
+            ncubeCache.remove(id.cacheKey(cubeName));
             return true;
         }
         return false;

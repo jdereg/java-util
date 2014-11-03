@@ -287,7 +287,7 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {   // Relative URL
-                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID().getAppStr(""));
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID().cacheKey(""));
                 if (loader == null)
                 {
                     // TODO: Make attempt to load them from sys.classpath

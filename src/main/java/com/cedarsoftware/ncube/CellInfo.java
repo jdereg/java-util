@@ -240,7 +240,7 @@ public class CellInfo
         }
         else
         {
-            throw new IllegalStateException("Unknown cell value type, value: " + cell.toString() + ", class: " + cell.getClass().getName());
+            throw new IllegalArgumentException("Unknown cell value type, value: " + cell.toString() + ", class: " + cell.getClass().getName());
         }
     }
 
@@ -638,10 +638,6 @@ public class CellInfo
             if (s.contains("."))
             {
                 String[] pieces = DECIMAL_REGEX.split(s);
-                if (pieces.length != 2)
-                {
-                    throw new IllegalArgumentException("Invalid value for BigDecimal: " + val);
-                }
                 return new DecimalFormat("#,##0").format(new BigInteger(pieces[0])) + "." + pieces[1];
             }
             else

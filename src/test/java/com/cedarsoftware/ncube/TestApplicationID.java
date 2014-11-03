@@ -5,7 +5,9 @@ import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -189,4 +191,188 @@ public class TestApplicationID
         ApplicationID appId2 = (ApplicationID) JsonReader.jsonToJava(json);
         assertEquals(appId1, appId2);
     }
+
+    @Test
+    public void testIsSnapshotOrRelease() {
+        ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        assertTrue(snapshot.isSnapshot());
+        assertFalse(snapshot.isRelease());
+        ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
+        assertFalse(releaseId.isSnapshot());
+        assertTrue(releaseId.isRelease());
+    }
+
+    @Test
+    public void testValidateSnapshot() {
+        ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        snapshot.validateIsSnapshot();
+
+        ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
+        try
+        {
+            releaseId.validateIsSnapshot();
+        } catch (IllegalStateException e) {
+            assertEquals("Application ID must be SNAPSHOT", e.getMessage());
+        }
+    }
+
+    @Test
+    public void testCreateReleaseId() {
+        ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        snapshot.validateIsSnapshot();
+
+
+        ApplicationID releaseId = snapshot.createReleaseId();
+        assertEquals(snapshot.getAccount(), releaseId.getAccount());
+        assertEquals(snapshot.getApp(), releaseId.getApp());
+        assertEquals(snapshot.getVersion(), releaseId.getVersion());
+        assertEquals(ReleaseStatus.RELEASE.name(), releaseId.getStatus());
+    }
+
+    @Test
+    public void testCreateNewSnapshotId() {
+        ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
+
+        ApplicationID snapshotId = releaseId.createNewSnapshotId("1.1.0");
+        assertEquals(releaseId.getAccount(), snapshotId.getAccount());
+        assertEquals(releaseId.getApp(), snapshotId.getApp());
+        assertEquals("1.1.0", snapshotId.getVersion());
+        assertEquals(ReleaseStatus.SNAPSHOT.name(), snapshotId.getStatus());
+    }
+
+    @Test
+    public void testValidateStatus() throws Exception
+    {
+        ApplicationID.validateStatus(ReleaseStatus.SNAPSHOT.name());
+        ApplicationID.validateStatus(ReleaseStatus.RELEASE.name());
+        try
+        {
+            ApplicationID.validateStatus("fubar");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+
+    @Test
+    public void testValidateIsSnapshot() {
+        ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        snapshot.validateIsSnapshot();
+
+        ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
+        try
+        {
+            releaseId.validateIsSnapshot();
+        } catch (IllegalStateException e) {
+            assertEquals("Application ID must be SNAPSHOT", e.getMessage());
+        }
+
+    }
+
+    @Test
+    public void testValidateTenant()
+    {
+        String msg = "Tenant cannot be null or empty";
+        ApplicationID.validateTenant("foo");
+        try
+        {
+            ApplicationID.validateTenant(null);
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(msg, e.getMessage());
+        }
+
+        try
+        {
+            ApplicationID.validateTenant("");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(msg, e.getMessage());
+        }
+    }
+
+    @Test
+    public void testValidateApp()
+    {
+        String msg = "App cannot be null or empty";
+        ApplicationID.validateApp("foo");
+        try
+        {
+            ApplicationID.validateApp(null);
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(msg, e.getMessage());
+        }
+
+        try
+        {
+            ApplicationID.validateApp("");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(msg, e.getMessage());
+        }
+    }
+
+    @Test
+    public void testValidateVersionNumbers()
+    {
+        String nullMessage = "n-cube version cannot be null or empty";
+
+        ApplicationID.validateVersion("0.0.0");
+        ApplicationID.validateVersion("9.9.9");
+        ApplicationID.validateVersion("9999.99999.9999");
+        try
+        {
+            ApplicationID.validateVersion(null);
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(nullMessage, e.getMessage());
+        }
+        try
+        {
+            ApplicationID.validateVersion("");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(nullMessage, e.getMessage());
+        }
+        try
+        {
+            ApplicationID.validateVersion("0.1.a");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+        try
+        {
+            ApplicationID.validateVersion("0.1.0.1");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+        try
+        {
+            ApplicationID.validateVersion("0.1");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+    }
+
+
 }

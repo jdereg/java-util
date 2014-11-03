@@ -1,5 +1,8 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.StringUtilities;
+
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -34,7 +37,7 @@ public class ApplicationID
     private final String version;
     private final String status;
 
-    // For serialization support
+    // For serialization support only
     private ApplicationID()
     {
         account = DEFAULT_TENANT;
@@ -45,11 +48,15 @@ public class ApplicationID
 
     public ApplicationID(String account, String app, String version, String status)
     {
+        validateTenant(account);
+        validateApp(app);
+        validateVersion(version);
+        validateStatus(status);
+
         this.account = account;
         this.app = app;
         this.version = version;
         this.status = status;
-        validate();
     }
 
     public String getAccount()
@@ -72,34 +79,6 @@ public class ApplicationID
         return status;
     }
 
-    public void validate()
-    {
-        if (account == null)
-        {
-            throw new IllegalArgumentException("Account (tenant) cannot be null in ApplicationID constructor");
-        }
-        if (app == null)
-        {
-            throw new IllegalArgumentException("Application name cannot be null in ApplicationID constructor");
-        }
-        if (version == null)
-        {
-            throw new IllegalArgumentException("Version cannot be null in ApplicationID constructor");
-        }
-        if (status == null)
-        {
-            throw new IllegalArgumentException("Status cannot be null in ApplicationID constructor");
-        }
-        if (!versionPattern.matcher(version).find())
-        {
-            throw new IllegalArgumentException("version must be in the form of x.y.z where x, y, and z are 0 or greater integers.");
-        }
-        if (!status.equals(ReleaseStatus.RELEASE.name()) && !status.equals(ReleaseStatus.SNAPSHOT.name()))
-        {
-            throw new IllegalArgumentException("Status must be " + ReleaseStatus.SNAPSHOT.name() + " or " + ReleaseStatus.RELEASE.name());
-        }
-    }
-
     public String getAppStr(String name)
     {
         StringBuilder s = new StringBuilder();
@@ -119,6 +98,7 @@ public class ApplicationID
         {
             return true;
         }
+
         if (!(o instanceof ApplicationID))
         {
             return false;
@@ -158,5 +138,78 @@ public class ApplicationID
     public String toString()
     {
         return getAppStr("");
+    }
+
+    public boolean isSnapshot() {
+        return ReleaseStatus.SNAPSHOT.name().equals(status);
+    }
+
+    public boolean isRelease() {
+        return ReleaseStatus.RELEASE.name().equals(status);
+    }
+
+    /**
+     * Creates a new SNAPSHOT version of this application id.
+     * @param version new version.
+     * @return a new ApplicationId that is a snapshot of the new version passed in.
+     */
+    public ApplicationID createNewSnapshotId(String version) {
+        //  In the Change Version the status was always SNAPSHOT when creating a new version.
+        //  That is why we hardcode this to snapshot here.
+        return new ApplicationID(account, app, version, ReleaseStatus.SNAPSHOT.name());
+    }
+
+    /**
+     * Creates a new RELEASE version of this application id.
+     * @return A release version of this application id.
+     */
+    public ApplicationID createReleaseId() {
+        return new ApplicationID(account, app, version, ReleaseStatus.RELEASE.name());
+    }
+
+    public void validateIsSnapshot() {
+        if (!isSnapshot()) {
+            throw new IllegalStateException("Application ID must be " + ReleaseStatus.SNAPSHOT.name());
+        }
+    }
+
+    public static void validateTenant(String tenant) {
+        //TODO:  Is there more validation we can do here?
+        if (StringUtilities.isEmpty(tenant))
+        {
+            throw new IllegalArgumentException("Tenant cannot be null or empty");
+        }
+    }
+
+    public static void validateApp(String app)
+    {
+        //TODO:  Is there more validation we can do here?
+        if (StringUtilities.isEmpty(app))
+        {
+            throw new IllegalArgumentException("App cannot be null or empty");
+        }
+    }
+
+    public static void validateStatus(String status)
+    {
+        if (status == null) {
+            throw new IllegalArgumentException("status name cannot be null");
+        }
+        ReleaseStatus.valueOf(status);
+    }
+
+    public static void validateVersion(String version)
+    {
+        if (StringUtilities.isEmpty(version))
+        {
+            throw new IllegalArgumentException("n-cube version cannot be null or empty");
+        }
+
+        Matcher m = Regexes.validVersion.matcher(version);
+        if (m.find())
+        {
+            return;
+        }
+        throw new IllegalArgumentException("n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
     }
 }

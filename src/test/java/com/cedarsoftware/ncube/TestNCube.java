@@ -4057,60 +4057,6 @@ public class TestNCube
     }
 
     @Test
-    public void testValidCubeNames()
-    {
-        NCubeManager.validateCubeName("This:is.legal#but-hard_to|read");
-        try
-        {
-            NCubeManager.validateCubeName("This:is.not/legal#and-hard_to|read");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-        }
-        try
-        {
-            NCubeManager.validateCubeName(" NotValid");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-        }
-    }
-
-    @Test
-    public void testValidVersionNumbers()
-    {
-        NCubeManager.validateVersion("0.0.0");
-        NCubeManager.validateVersion("9.9.9");
-        NCubeManager.validateVersion("9999.99999.9999");
-        try
-        {
-            NCubeManager.validateVersion("0.1.a");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-        }
-        try
-        {
-            NCubeManager.validateVersion("0.1.0.1");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-        }
-        try
-        {
-            NCubeManager.validateVersion("0.1");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-        }
-    }
-
-    @Test
     public void testDuplicateEqualsAndHashCode()
     {
         simpleJsonCompare("2DSimpleJson.json");
@@ -5366,6 +5312,55 @@ public class TestNCube
 
         return ncube;
     }
+
+    @Test
+    public void testValidateCubeNames()
+    {
+        NCube.validateCubeName("This:is.legal#but-hard_to|read");
+        try
+        {
+            NCube.validateCubeName("This:is.not/legal#and-hard_to|read");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+        try
+        {
+            NCube.validateCubeName(" NotValid");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+    }
+
+
+    @Test
+    public void testValidateCubeName() throws Exception
+    {
+        NCube.validateCubeName("Joe");
+        NCube.validateCubeName("Joe.Dirt");
+        NCube.validateCubeName(NCube.validCubeNameChars);
+        try
+        {
+            NCube.validateCubeName("");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+
+        try
+        {
+            NCube.validateCubeName(null);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+
+
 
     static int countMatches(String s, String pattern)
     {

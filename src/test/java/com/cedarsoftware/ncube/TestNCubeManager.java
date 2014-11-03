@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -8,13 +7,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,10 +21,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * NCubeManager Tests
@@ -54,17 +44,17 @@ import static org.mockito.Mockito.when;
  */
 public class TestNCubeManager
 {
-    private static int MYSQL = 1;
-    private static int HSQLDB = 2;
-    private static int ORACLE = 3;
 
-    private int test_db = HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private TestingDatabaseManager _manager;
+
     static final String APP_ID = "ncube.test";
+
+    private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
 
     @BeforeClass
     public static void init() throws Exception
     {
-        setNCubePersister();
         TestNCube.initialize();
     }
 
@@ -72,149 +62,25 @@ public class TestNCubeManager
     @Before
     public void setUp() throws Exception
     {
-        prepareSchema();
-    }
-
-    private void prepareSchema() throws Exception
-    {
-        if (test_db == HSQLDB)
-        {
-            Connection conn = getConnection();
-            // Using HSQLDB syntax.
-            Statement stmt = conn.createStatement();
-            stmt.execute("CREATE TABLE n_cube ( " +
-                    "n_cube_id bigint NOT NULL, " +
-                    "n_cube_nm VARCHAR(100) NOT NULL, " +
-                    "tenant_cd CHAR(10), " +
-                    "cube_value_bin varbinary(999999), " +
-                    "create_dt DATE NOT NULL, " +
-                    "update_dt DATE DEFAULT NULL, " +
-                    "create_hid VARCHAR(20), " +
-                    "update_hid VARCHAR(20), " +
-                    "version_no_cd VARCHAR(16) DEFAULT '0.1.0' NOT NULL, " +
-                    "status_cd VARCHAR(16) DEFAULT 'SNAPSHOT' NOT NULL, " +
-                    "sys_effective_dt DATE DEFAULT SYSDATE NOT NULL, " +
-                    "sys_expiration_dt DATE, " +
-                    "business_effective_dt DATE DEFAULT SYSDATE, " +
-                    "business_expiration_dt DATE, " +
-                    "app_cd VARCHAR(20), " +
-                    "test_data_bin varbinary(999999), " +
-                    "notes_bin varbinary(999999), " +
-                    "revision_number bigint, " +
-                    "PRIMARY KEY (n_cube_id), " +
-                    "UNIQUE (tenant_cd, n_cube_nm, version_no_cd, app_cd, status_cd, revision_number) " +
-                    ");");
-            stmt.close();
-            conn.close();
-        }
-        else if (test_db == MYSQL)
-        {
-        /*  Schema for MYSQL
-
-        drop table if exists `ncube`.n_cube;
-CREATE TABLE `ncube`.n_cube (
-n_cube_id bigint NOT NULL,
-n_cube_nm varchar(100) NOT NULL,
-tenant_cd char(10),
-cube_value_bin longtext,
-create_dt date NOT NULL,
-update_dt date DEFAULT NULL,
-create_hid varchar(20),
-update_hid varchar(20),
-version_no_cd varchar(16) NOT NULL,
-status_cd varchar(16) DEFAULT 'SNAPSHOT' NOT NULL,
-sys_effective_dt date,
-sys_expiration_dt date,
-business_effective_dt date,
-business_expiration_dt date,
-app_cd varchar(20),
-test_data_bin longtext,
-notes_bin longtext,
-revision_number bigint,
-PRIMARY KEY (n_cube_id),
-UNIQUE (tenant_cd, n_cube_nm, version_no_cd, app_cd, status_cd, revision_number)
-);
-
-drop trigger if exists `ncube`.sysEffDateTrigger;
-DELIMITER ;;
-CREATE trigger `ncube`.sysEffDateTrigger BEFORE INSERT ON `ncube`.n_cube
-FOR EACH ROW
-BEGIN
-    SET NEW.sys_effective_dt = NOW();
-END ;;
-DELIMITER ;
-         */}
+        _manager = TestingDatabaseHelper.getTestingDatabaseManager(test_db);
+        _manager.setUp();
+        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister(test_db));
     }
 
     @After
     public void tearDown() throws Exception
     {
+        _manager.tearDown();
+        _manager = null;
         initManager();
-        if (test_db == HSQLDB)
-        {
-            Connection conn = getConnection();
-            Statement stmt = conn.createStatement();
-            stmt.execute("DROP TABLE n_cube;");
-            stmt.close();
-            conn.close();
-        }
     }
+
 
     public static void initManager() throws Exception
     {
         NCubeManager.clearCubeList();
     }
 
-    private Connection getConnection() throws Exception
-    {
-        Connection conn = null;
-        if (test_db == MYSQL)
-        {
-            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
-        }
-        else if (test_db == HSQLDB)
-        {
-            conn = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "sa", "");
-        }
-        else if (test_db == ORACLE)
-        {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            conn = DriverManager.getConnection("jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
-        }
-        return conn;
-    }
-
-    private Connection getJdbcConnection() throws Exception
-    {
-        Connection conn = null;
-        if (test_db == MYSQL)
-        {
-            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
-        }
-        else if (test_db == HSQLDB)
-        {
-            conn = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "sa", "");
-        }
-        else if (test_db == ORACLE)
-        {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            conn = DriverManager.getConnection("jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
-        }
-        return conn;
-    }
-
-    private void closeJdbcConnection(Connection connection)
-    {
-        try
-        {
-            if (connection != null)
-                connection.close();
-        }
-        catch (SQLException e)
-        {
-            e.printStackTrace();
-        }
-    }
 
     private NCube createCube() throws Exception
     {
@@ -235,50 +101,12 @@ DELIMITER ;
         ncube.setCell(1.8, coord);
 
         String version = "0.1.0";
-        NCubeManager.createCube(getConnection(), APP_ID, ncube, version);
-        NCubeManager.updateTestData(getConnection(), APP_ID, ncube.getName(), version, JsonWriter.objectToJson(coord));
-        NCubeManager.updateNotes(getConnection(), APP_ID, ncube.getName(), version, "notes follow");
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube);
+        NCubeManager.updateTestData(defaultSnapshotApp, ncube.getName(), JsonWriter.objectToJson(coord));
+        NCubeManager.updateNotes(defaultSnapshotApp, ncube.getName(), "notes follow");
         return ncube;
     }
-
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
-    @Test
-    public void testUpdateNotesWithDuplicateCubeUpdated() throws Exception {
-        Connection c = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenReturn(ps);
-        when(ps.executeUpdate()).thenReturn(2);
-        when(c.isValid(anyInt())).thenReturn(true);
-
-        try
-        {
-            NCubeManager.updateNotes(c, APP_ID, "foo", "0.1.0", "notes");
-            fail();
-        } catch(IllegalStateException e) {
-        }
-    }
-
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
-    @Test
-    public void testUpdateNotesWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement("UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?")).thenThrow(SQLException.class);
-        when(ps.executeUpdate()).thenReturn(2);
-        when(c.isValid(anyInt())).thenReturn(true);
-        try
-        {
-            NCubeManager.updateNotes(c, APP_ID, "foo", "0.1.0", "notes");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
 
     @Test
     public void testLoadCubes() throws Exception
@@ -301,47 +129,60 @@ DELIMITER ;
 
         String version = "0.1.0";
         String name1 = ncube.getName();
-        NCubeManager.createCube(getConnection(), APP_ID, ncube, version);
-        NCubeManager.updateTestData(getConnection(), APP_ID, ncube.getName(), version, JsonWriter.objectToJson(coord));
-        NCubeManager.updateNotes(getConnection(), APP_ID, ncube.getName(), version, "notes follow");
+
+        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.createCube(id, ncube);
+        NCubeManager.updateTestData(id, ncube.getName(), JsonWriter.objectToJson(coord));
+        NCubeManager.updateNotes(id, ncube.getName(), "notes follow");
+
+        assertTrue(NCubeManager.doesCubeExist(id, name1));
 
         ncube = TestNCube.getTestNCube3D_Boolean();
         String name2 = ncube.getName();
-        NCubeManager.createCube(getConnection(), APP_ID, ncube, version);
+        NCubeManager.createCube(id, ncube);
 
         NCubeManager.clearCubeList();
-        NCubeManager.loadCubes(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name()));
+        NCubeManager.loadCubes(id);
 
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-        NCube ncube1 = NCubeManager.getCube(name1, appId);
-        NCube ncube2 = NCubeManager.getCube(name2, appId);
+        NCube ncube1 = NCubeManager.getCube(name1, id);
+        NCube ncube2 = NCubeManager.getCube(name2, id);
         assertNotNull(ncube1);
         assertNotNull(ncube2);
         assertEquals(name1, ncube1.getName());
         assertEquals(name2, ncube2.getName());
         NCubeManager.clearCubeList();
-        assertNull(NCubeManager.getCube(name1, appId));
-        assertNull(NCubeManager.getCube(name2, appId));
+        assertNull(NCubeManager.getCube(name1, id));
+        assertNull(NCubeManager.getCube(name2, id));
 
-        NCubeManager.deleteCube(getConnection(), APP_ID, name1, version, true);
-        NCubeManager.deleteCube(getConnection(), APP_ID, name2, version, true);
+        NCubeManager.deleteCube(id, name1, true);
+        NCubeManager.deleteCube(id, name2, true);
+        assertFalse(NCubeManager.doesCubeExist(id, name1));
+        assertFalse(NCubeManager.doesCubeExist(id, name2));
     }
 
-//    @Test
-//    public void testLoadCubesException() throws Exception {
-//        Connection c = mock(Connection.class);
-//        when(c.isValid(anyInt())).thenReturn(true);
-//        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-//
-//        try
-//        {
-//            NCubeManager.loadCubes(new ApplicationID(null, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name()));
-//            fail();
-//        } catch(RuntimeException e) {
-//            assertEquals(SQLException.class, e.getCause().getClass());
-//        }
-//    }
+    @Test
+    public void testDoesCubeExistInvalidId() {
+        try
+        {
+            NCubeManager.doesCubeExist(defaultSnapshotApp, null);
+            fail();
+        } catch(IllegalArgumentException e) {
+            assertEquals("n-cube name cannot be null or empty", e.getMessage());
+        }
 
+    }
+
+    @Test
+    public void testDoesCubeExistInvalidName() {
+        try
+        {
+            NCubeManager.doesCubeExist(null, "foo");
+            fail();
+        } catch(IllegalArgumentException e) {
+            assertEquals("ApplicationId cannot be null", e.getMessage());
+        }
+
+    }
     //This exception is impossible to hit without mocking since we prohibit you on createCube() from
     //adding in a second duplicate cube with all the same parameters.
     @Test
@@ -349,333 +190,33 @@ DELIMITER ;
         try
         {
             Set<String> set = new HashSet<>();
-            NCubeManager.getReferencedCubeNames(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name()), "AnyCube", set);
+            NCubeManager.getReferencedCubeNames(defaultSnapshotApp, "AnyCube", set);
             fail();
         } catch(IllegalArgumentException e) {
             assertNull(e.getCause());
         }
     }
 
-    @Test
-    public void testGetAppNamesWithException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getAppNames(c, new Date());
-            fail();
-        } catch (RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-
-        //  Test with null date, too.  Auto creates current date.
-        try
-        {
-            NCubeManager.getAppNames(c, null);
-            fail();
-        } catch (RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testGetNCubesWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getNCubes(c, "test", "0.1.0", ReleaseStatus.RELEASE.name(), null, null);
-            fail();
-        } catch (RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testUpdateCubeWithSqlException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-
-        try
-        {
-            NCubeManager.updateCube(c, APP_ID, ncube, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testCreateCubeWithWrongUpdateCount() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?", false);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenReturn(ps);
-        when(ps.executeUpdate()).thenReturn(0);
-        try
-        {
-            NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertNull(e.getCause());
-        }
-    }
-
-    @Test
-    public void testUpdateCubeWithWrongUpdateCount() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement(anyString())).thenReturn(ps);
-        when(ps.executeUpdate()).thenReturn(0);
-        try
-        {
-            NCubeManager.updateCube(c, APP_ID, ncube, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertNull(e.getCause());
-        }
-    }
-
-    @Test
-    public void testGetNotesWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getNotes(c, APP_ID, "foo", "0.1.0", null);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testGetTestDataWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name()), "foo");
-            fail();
-        }
-        catch(Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
-
-    @Test
-    public void testUpdateTestDataWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    //  Impossible to test without mocks
-    @Test
-    public void testUpdateTestDataWithDuplicateCubes() throws Exception {
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenReturn(ps);
-        when(ps.executeUpdate()).thenReturn(2);
-
-        try
-        {
-            NCubeManager.updateTestData(c, APP_ID, "foo", "0.1.0", "foo");
-            fail();
-        } catch(IllegalStateException e) {
-        }
-    }
-
-    @Test
-    public void testGetAppVersionsWithSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.getAppVersions(c, APP_ID, ReleaseStatus.RELEASE.name(), null);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testCreateCubeWithSqlException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND n_cube_nm = ?", false);
-        when(c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, sys_effective_dt) VALUES (?, ?, ?, ?, ?, ?, ?)")).thenThrow(SQLException.class);
-
-        try
-        {
-            NCubeManager.createCube(c, APP_ID, ncube, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testReleaseCubesWithCubeThatExistsAlready() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
-
-        try
-        {
-            NCubeManager.releaseCubes(c, APP_ID, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-        }
-    }
-
-    @Test
-    public void testReleaseCubesWithCubeWithSqlException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
-
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.releaseCubes(c, APP_ID, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-        }
-    }
-
-    @Test
-    public void testChangeVersionWhenCubeAlreadyExists() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
-        try
-        {
-            NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
-            fail();
-        } catch(RuntimeException e) {
-            assertNull(e.getCause());
-        }
-    }
-
-    @Test
-    public void testChangeVersionValueWithCubeWithSqlException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", false);
-        when(c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.changeVersionValue(c, APP_ID, "0.1.0", "1.1.1");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    private Connection getMockConnectionWithExistenceCheck(String query, boolean ret) throws SQLException
-    {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement(query)).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(ret);
-        return c;
-    }
-
-    @Test
-    public void testDeleteCubeWithSQLException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.deleteCube(c, APP_ID, "foo", "0.1.0", true);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    @Test
-    public void testRenameCubeThatThrowsSQLEXception() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
 
     @Test
     public void testRenameWithMatchingNames() throws Exception {
         Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
         try
         {
-            NCubeManager.renameCube(c, "foo", "foo", APP_ID, "0.1.0");
+            NCubeManager.renameCube(defaultSnapshotApp, "foo", "foo");
             fail();
         } catch(IllegalArgumentException e) {
             assertNull(e.getCause());
         }
     }
 
-    // TODO: Ken, this test needs updated now that renameCube renames the JSON n-cube
-//    @Test
-//    public void testRenameCubeThatDoesNotExists() throws Exception
-//    {
-//        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-//
-//        Connection c = getMockConnectionWithExistenceCheck("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND status_cd = ?", true);
-//
-//        PreparedStatement ps = mock(PreparedStatement.class);
-//        when(c.prepareStatement("UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT + "'")).thenReturn(ps);
-//        when(ps.executeUpdate()).thenReturn(0);
-//        try
-//        {
-//            NCubeManager.renameCube(c, "foo", "bar", APP_ID, "0.1.0");
-//            fail();
-//        }
-//        catch(IllegalArgumentException ignored) { }
-//    }
-
     @Test
     public void testBadCommandCellCommandWithJdbc() throws Exception
     {
-        setNCubePersister();
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        //setNCubePersister();
         NCube<Object> continentCounty = new NCube<>("test.ContinentCountries");
-        continentCounty.setApplicationID(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name()));
-        NCubeManager.addCube(continentCounty, continentCounty.getApplicationID());
+        continentCounty.setApplicationID(defaultSnapshotApp);
+        NCubeManager.addCube(continentCounty, defaultSnapshotApp);
         continentCounty.addAxis(TestNCube.getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -684,13 +225,13 @@ DELIMITER ;
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<>("test.Provinces");
-        canada.setApplicationID(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name()));
-        NCubeManager.addCube(canada, canada.getApplicationID());
+        canada.setApplicationID(defaultSnapshotApp);
+        NCubeManager.addCube(canada, defaultSnapshotApp);
         canada.addAxis(TestNCube.getProvincesAxis());
 
         NCube<Object> usa = new NCube<>("test.States");
-        usa.setApplicationID(appId);
-        NCubeManager.addCube(usa, usa.getApplicationID());
+        usa.setApplicationID(defaultSnapshotApp);
+        NCubeManager.addCube(usa, defaultSnapshotApp);
         usa.addAxis(TestNCube.getStatesAxis());
 
         Map coord1 = new HashMap();
@@ -720,23 +261,23 @@ DELIMITER ;
         {
         }
 
-        Connection conn = getConnection();
-        NCubeManager.createCube(conn, APP_ID, continentCounty, "1.0.0");
-        NCubeManager.createCube(conn, APP_ID, usa, "1.0.0");
-        NCubeManager.createCube(conn, APP_ID, canada, "1.0.0");
+        NCubeManager.createCube(defaultSnapshotApp, continentCounty);
+        NCubeManager.createCube(defaultSnapshotApp, usa);
+        NCubeManager.createCube(defaultSnapshotApp, canada);
 
         assertTrue(NCubeManager.getCachedNCubes().size() == 3);
         initManager();
-        NCubeManager.loadCubes(appId);
-        NCube test = NCubeManager.getCube("test.ContinentCountries", new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name()));
+        NCubeManager.loadCubes(defaultSnapshotApp);
+        NCube test = NCubeManager.getCube("test.ContinentCountries", defaultSnapshotApp);
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
-        NCubeManager.deleteCube(conn, APP_ID, "test.ContinentCountries", "1.0.0", false);
-        NCubeManager.deleteCube(conn, APP_ID, "test.States", "1.0.0", false);
-        NCubeManager.deleteCube(conn, APP_ID, "test.Provinces", "1.0.0", false);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.ContinentCountries", false);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.States", false);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.Provinces", false);
         assertTrue(NCubeManager.getCachedNCubes().size() == 0);
-        conn.close();
     }
+
+
 
     @Test
     public void testGetReferencedCubeNames() throws Exception
@@ -745,26 +286,26 @@ DELIMITER ;
         NCube n2 = NCubeManager.getNCubeFromResource("template2.json");
 
         String ver = "1.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, n1, ver);
-        NCubeManager.createCube(getConnection(), APP_ID, n2, ver);
+        NCubeManager.createCube(defaultSnapshotApp, n1);
+        NCubeManager.createCube(defaultSnapshotApp, n2);
 
         Set refs = new TreeSet();
-        NCubeManager.getReferencedCubeNames(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ver, ReleaseStatus.SNAPSHOT.name()), n1.getName(), refs);
+        NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n1.getName(), refs);
 
         assertEquals(1, refs.size());
         assertTrue(refs.contains("Template2Cube"));
 
         refs.clear();
-        NCubeManager.getReferencedCubeNames(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ver, ReleaseStatus.SNAPSHOT.name()), n2.getName(), refs);
+        NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n2.getName(), refs);
         assertEquals(1, refs.size());
         assertTrue(refs.contains("Template1Cube"));
 
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), ver, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n2.getName(), ver, true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n2.getName(), true));
 
         try
         {
-            NCubeManager.getReferencedCubeNames(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ver, ReleaseStatus.SNAPSHOT.name()), n2.getName(), null);
+            NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n2.getName(), null);
             fail();
         } catch (IllegalArgumentException e) {
 
@@ -776,24 +317,26 @@ DELIMITER ;
     {
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
         String ver = "1.1.1";
-        Connection conn = getConnection();
-        NCubeManager.createCube(conn, APP_ID, n1, ver);
-        NCubeManager.duplicate(conn, n1.getName(), n1.getName(), APP_ID, APP_ID, "1.1.2", ver, ReleaseStatus.SNAPSHOT.name(), null);
-        NCube n2 = NCubeManager.getCube(n1.getName(), new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ver, ReleaseStatus.SNAPSHOT.name()));
+        NCubeManager.createCube(defaultSnapshotApp, n1);
+        ApplicationID newId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.1.2", ReleaseStatus.SNAPSHOT.name());
 
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), ver, true));
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n2.getName(), "1.1.2", true));
+        NCubeManager.duplicate(defaultSnapshotApp, newId, n1.getName(), n1.getName());
+        NCube n2 = NCubeManager.getCube(n1.getName(), defaultSnapshotApp);
+
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true));
+        assertTrue(NCubeManager.deleteCube(newId, n2.getName(), true));
         assertTrue(n1.equals(n2));
     }
+
 
     @Test
     public void testGetAppNames() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
-        String version = "1.1.99";
-        NCubeManager.createCube(getConnection(), APP_ID, n1, version);
+        String version = "1.0.0";
+        NCubeManager.createCube(defaultSnapshotApp, n1);
 
-        Object[] names = NCubeManager.getAppNames(getConnection(), null);
+        Object[] names = NCubeManager.getAppNames();
         boolean foundName = false;
         for (Object name : names)
         {
@@ -804,7 +347,7 @@ DELIMITER ;
             }
         }
 
-        Object[] vers = NCubeManager.getAppVersions(getConnection(), APP_ID, ReleaseStatus.SNAPSHOT.name(), null);
+        Object[] vers = NCubeManager.getAppVersions(defaultSnapshotApp);
         boolean foundVer = false;
         for (Object ver : vers)
         {
@@ -815,102 +358,36 @@ DELIMITER ;
             }
         }
 
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, n1.getName(), version, true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true));
         assertTrue(foundName);
         assertTrue(foundVer);
     }
 
+
     @Test
     public void testChangeVersionValue() throws Exception {
-        Connection conn = getConnection();
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
-        String version = "1.1.99";
-        NCubeManager.createCube(conn, APP_ID, n1, version);
+        ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("1.1.20");
 
-        NCubeManager.changeVersionValue(conn, APP_ID, version, "1.1.20");
+        assertNull(NCubeManager.getCube("idTest", defaultSnapshotApp));
+        assertNull(NCubeManager.getCube("idTest", newId));
+        NCubeManager.createCube(defaultSnapshotApp, n1);
 
-        //commenting this code until new api with ncube persister is ready.
-//        NCube n2 = NCubeManager.getCube(n1.getName(), new ApplicationID(null, APP_ID, "1.1.20", n1.getApplicationID().getStatus()));
-//
-//        try
-//        {
-//            NCubeManager.changeVersionValue(conn, APP_ID, version, "1.1.20");
-//            fail();
-//        } catch (IllegalStateException e) {
-//
-//        }
-//
-//        assertTrue(NCubeManager.deleteCube(conn, APP_ID, n1.getName(), "1.1.20", true));
-//        assertEquals(n1, n2);
+
+        assertNotNull(NCubeManager.getCube("idTest", defaultSnapshotApp));
+        assertNull(NCubeManager.getCube("idTest", newId));
+        NCubeManager.changeVersionValue(defaultSnapshotApp, "1.1.20");
+
+        //  When we remove cubes from the cache on renamed this test will fail
+        assertNotNull(NCubeManager.getCube("idTest", defaultSnapshotApp));
+        assertNotNull(NCubeManager.getCube("idTest", newId));
+
+        NCube n2 = NCubeManager.getCube("idTest", newId);
+        assertEquals(n1, n2);
+
+        assertTrue(NCubeManager.deleteCube(newId, n1.getName(), true));
     }
 
-    @Test
-    public void testDbApis() throws Exception
-    {
-        Connection conn = getConnection();
-        String name = "test.NCube" + System.currentTimeMillis();
-
-        NCube<String> ncube = new NCube<>(name);
-        ncube.addAxis(TestNCube.getStatesAxis());
-        ncube.addAxis(TestNCube.getFullGenderAxis());
-
-        Map coord = new HashMap();
-        coord.put("State", "OH");
-        coord.put("Gender", "Male");
-        ncube.setCell("John", coord);
-
-        coord.put("State", "OH");
-        coord.put("Gender", "Female");
-        ncube.setCell("Alexa", coord);
-
-        String version = "0.1.0";
-
-        assertFalse(NCubeManager.doesCubeExist(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
-
-        NCubeManager.createCube(conn, APP_ID, ncube, version);
-
-        assertTrue(NCubeManager.doesCubeExist(conn, APP_ID, name, version, ReleaseStatus.SNAPSHOT.name(), new Date()));
-
-//        NCubeJdbcConnectionProvider nCubeJdbcConnectionProvider = new NCubeJdbcConnectionProvider(getJdbcConnection());
-//        ApplicationID appId = new ApplicationID(null, APP_ID, version, ReleaseStatus.SNAPSHOT.name());
-//        assertTrue(NCubeManager.doesCubeExist(nCubeJdbcConnectionProvider, appId, name));
-//        nCubeJdbcConnectionProvider.commitTransaction();
-
-        NCube<String> cube = (NCube<String>) NCubeManager.getCube(name, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name()));
-
-        cube.removeMetaProperty("sha1");
-        ncube.removeMetaProperty("sha1");
-        assertTrue(DeepEquals.deepEquals(ncube, cube));
-
-        ncube.setCell("Lija", coord);
-        NCubeManager.updateCube(getConnection(), APP_ID, ncube, version);
-        assertTrue(1 == NCubeManager.releaseCubes(conn, APP_ID, version));
-
-        cube = (NCube<String>) NCubeManager.getCube(name, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name()));
-        assertTrue("Lija".equals(cube.getCell(coord)));
-
-        assertFalse(NCubeManager.deleteCube(conn, APP_ID, name, version, false));
-        assertTrue(NCubeManager.deleteCube(conn, APP_ID, name, version, true));
-        cube = NCubeManager.getCube(name, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name()));
-        assertNull(cube);
-
-        conn.close();
-    }
-
-    @Test
-    public void testDoesCubeExistWithException() throws Exception {
-        Connection c = mock(Connection.class);
-        when(c.isValid(anyInt())).thenReturn(true);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement(anyString())).thenThrow(SQLException.class);
-        try
-        {
-            NCubeManager.doesCubeExist(c, APP_ID, "name", "0.1.0", ReleaseStatus.SNAPSHOT.name(), null);
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
 
 
     @Test
@@ -920,10 +397,10 @@ DELIMITER ;
         NCube ncube2 = TestNCube.getTestNCube2D(true);
 
         String version = "0.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, ncube1, version);
-        NCubeManager.createCube(getConnection(), APP_ID, ncube2, version);
+        NCubeManager.createCube(defaultSnapshotApp, ncube1);
+        NCubeManager.createCube(defaultSnapshotApp, ncube2);
 
-        Object[] cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, ReleaseStatus.SNAPSHOT.name(), "test.%", new Date());
+        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
 
         assertTrue(cubeList != null);
         assertTrue(cubeList.length == 2);
@@ -932,50 +409,53 @@ DELIMITER ;
         assertTrue(ncube2.getNumDimensions() == 2);
 
         ncube1.deleteAxis("bu");
-        NCubeManager.updateCube(getConnection(), APP_ID, ncube1, version);
-        NCube cube1 = NCubeManager.getCube("test.ValidTrailorConfigs", new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.1", ReleaseStatus.SNAPSHOT.name()));
+        NCubeManager.updateCube(defaultSnapshotApp, ncube1);
+        NCube cube1 = NCubeManager.getCube("test.ValidTrailorConfigs", defaultSnapshotApp);
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(2 == NCubeManager.releaseCubes(getConnection(), APP_ID, version));
+        assertTrue(2 == NCubeManager.releaseCubes(defaultSnapshotApp));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
-        NCubeManager.createSnapshotCubes(getConnection(), APP_ID, version, "0.2.0");
+        NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.2.0");
 
-        String notes1 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        String notes2 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
+        ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.2.0");
 
-        NCubeManager.updateNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
-        notes1 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
+        String notes1 = NCubeManager.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs");
+        String notes2 = NCubeManager.getNotes(newId, "test.ValidTrailorConfigs");
+
+        NCubeManager.updateNotes(defaultSnapshotApp, "test.ValidTrailorConfigs", null);
+        notes1 = NCubeManager.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue("".equals(notes1));
 
-        NCubeManager.updateNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", "Trailer Config Notes");
-        notes1 = NCubeManager.getNotes(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.1.1", null);
+        NCubeManager.updateNotes(defaultSnapshotApp, "test.ValidTrailorConfigs", "Trailer Config Notes");
+        notes1 = NCubeManager.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue("Trailer Config Notes".equals(notes1));
 
-        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", null);
-        String testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
+        NCubeManager.updateTestData(newId, "test.ValidTrailorConfigs", null);
+        String testData = NCubeManager.getTestData(newId, "test.ValidTrailorConfigs");
         assertTrue("".equals(testData));
 
-        NCubeManager.updateTestData(getConnection(), APP_ID, "test.ValidTrailorConfigs", "0.2.0", "This is JSON data");
-        testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.2.0", ReleaseStatus.SNAPSHOT.name()), "test.ValidTrailorConfigs");
+        NCubeManager.updateTestData(newId, "test.ValidTrailorConfigs", "This is JSON data");
+        testData = NCubeManager.getTestData(newId, "test.ValidTrailorConfigs");
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
-        assertFalse(NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), version, false));
-        assertFalse(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, false));
+        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), false));
+        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), false));
 
         // Delete ncubes using 'true' to allow the test to delete a released ncube.
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), version, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), true));
 
         // Delete new SNAPSHOT cubes
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), "0.2.0", false));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), "0.2.0", false));
+        assertTrue(NCubeManager.deleteCube(newId, ncube1.getName(),  false));
+        assertTrue(NCubeManager.deleteCube(newId, ncube2.getName(), false));
 
         // Ensure that all test ncubes are deleted
-        cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, ReleaseStatus.RELEASE.name(), "test.%", new Date());
+        cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
         assertTrue(cubeList.length == 0);
     }
+
 
     @Test
     public void testRenameNCube() throws Exception
@@ -983,15 +463,13 @@ DELIMITER ;
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
         NCube ncube2 = TestNCube.getTestNCube2D(true);
 
-        String version = "0.1.1";
-        NCubeManager.createCube(getConnection(), APP_ID, ncube1, version);
-        NCubeManager.createCube(getConnection(), APP_ID, ncube2, version);
+        NCubeManager.createCube(defaultSnapshotApp, ncube1);
+        NCubeManager.createCube(defaultSnapshotApp, ncube2);
 
-        NCubeManager.renameCube(getConnection(), ncube1.getName(), "test.Floppy", APP_ID, version);
+        NCubeManager.renameCube(defaultSnapshotApp, ncube1.getName(), "test.Floppy");
 
-        Object[] cubeList = NCubeManager.getNCubes(getConnection(), APP_ID, version, ReleaseStatus.SNAPSHOT.name(), "test.%", new Date());
+        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
 
-        assertTrue(cubeList != null);
         assertTrue(cubeList.length == 2);
 
         NCubeInfoDto nc1 = (NCubeInfoDto) cubeList[0];
@@ -1000,23 +478,33 @@ DELIMITER ;
         assertTrue(nc1.name.equals("test.Floppy") || nc2.name.equals("test.Floppy"));
         assertFalse(nc1.name.equals("test.Floppy") && nc2.name.equals("test.Floppy"));
 
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, "test.Floppy", version, true));
-        assertTrue(NCubeManager.deleteCube(getConnection(), APP_ID, ncube2.getName(), version, true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true));
     }
+
 
     @Test
     public void testNCubeManagerGetCubes() throws Exception
     {
+        NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
+        NCube ncube2 = TestNCube.getTestNCube2D(true);
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube1);
+        NCubeManager.createCube(defaultSnapshotApp, ncube2);
+
         // This proves that null is turned into '%' (no exception thrown)
-        NCubeManager.getNCubes(getConnection(), APP_ID, "0.0.1", ReleaseStatus.SNAPSHOT.name(), null, new Date());
+        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, null);
+
+        assertEquals(2, cubeList.length);
     }
+
 
     @Test
     public void testNCubeManagerUpdateCube() throws Exception
     {
         try
         {
-            NCubeManager.updateCube(getConnection(), "DASHBOARD", null, "0.1.0");
+            NCubeManager.updateCube(defaultSnapshotApp, null);
             fail("should not make it here");
         }
         catch (Exception e)
@@ -1027,198 +515,130 @@ DELIMITER ;
         NCube testCube = TestNCube.getTestNCube2D(false);
         try
         {
-            NCubeManager.updateCube(getConnection(), "DASHBOARD", testCube, null);
+            ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+            NCubeManager.updateCube(id, testCube);
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalStateException e)
         {
-            assertTrue(e instanceof IllegalArgumentException);
+            assertEquals("Only one (1) row should be updated.", e.getMessage());
         }
     }
 
     @Test
     public void testNCubeManagerCreateCubes() throws Exception
     {
+        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
         try
         {
-            NCubeManager.createCube(getConnection(), "DASHBOARD", null, "0.1.0");
+            NCubeManager.createCube(id, null);
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalArgumentException e)
         {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        NCube testCube = TestNCube.getTestNCube2D(false);
-        try
-        {
-            NCubeManager.createCube(getConnection(), "DASHBOARD", testCube, null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
+            assertEquals("NCube cannot be null when creating a new n-cube", e.getMessage());
         }
 
         NCube ncube1 = createCube();
         try
         {
-            NCube ncube2 = createCube();
+            createCube();
             fail("Should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalStateException e)
         {
-            assertTrue(e instanceof IllegalStateException);
+            assertTrue(e.getMessage().contains("Cube already exists"));
         }
 
-        NCubeManager.deleteCube(getConnection(), APP_ID, ncube1.getName(), "0.1.0", true);
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true);
     }
 
-    @Test
-    public void testNCubeManagerReleaseCubes() throws Exception
-    {
-        try
-        {
-            NCubeManager.releaseCubes(getConnection(), null, "0.1.0");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-    }
 
     @Test
     public void testNCubeManagerCreateSnapshots() throws Exception
     {
         try
         {
-            NCubeManager.createSnapshotCubes(null, "DASHBOARD", "0.1.0", "0.1.0");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException ignore)
-        {
-        }
-
-        try
-        {
-            NCubeManager.createSnapshotCubes(getConnection(), "DASHBOARD", "0.1.0", "0.1.0");
+            NCubeManager.createSnapshotCubes(defaultSnapshotApp, "1.0.0");
             fail("versions are not allowed to match");
         }
         catch (IllegalArgumentException ignore)
         {
+            assertTrue(ignore.getMessage().contains("cannot be the same as the RELEASE version."));
         }
 
         try
         {
             NCube ncube2 = createCube();
-            NCubeManager.releaseCubes(getConnection(), APP_ID, "0.1.0");
-            NCubeManager.createSnapshotCubes(getConnection(), APP_ID, "0.1.0", "0.1.1");
-            NCubeManager.createSnapshotCubes(getConnection(), APP_ID, "0.1.0", "0.1.1");
+            NCubeManager.releaseCubes(defaultSnapshotApp);
+            NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
+            NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
             fail("should not make it here");
         }
         catch (IllegalStateException ignore)
         {
         }
-
-
-        try
-        {
-
-            Connection c = mock(Connection.class);
-            when(c.isValid(anyInt())).thenReturn(true);
-
-            PreparedStatement psVerify = mock(PreparedStatement.class);
-            ResultSet rsVerify = mock(ResultSet.class);
-
-            when(c.prepareStatement("SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?  AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?)")).thenReturn(psVerify);
-            when(psVerify.executeQuery()).thenReturn(rsVerify);
-            when(rsVerify.next()).thenReturn(false);
-
-
-            when(c.prepareStatement("SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
-                    "FROM n_cube\n" +
-                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?")).thenThrow(SQLException.class);
-
-            NCubeManager.createSnapshotCubes(c, APP_ID, "0.1.0", "0.1.1");
-            fail("should not make it here");
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-
     }
+
 
     @Test
     public void testNCubeManagerDelete() throws Exception
     {
-        try
-        {
-            NCubeManager.deleteCube(null, "DASHBOARD", "DashboardRoles", "0.1.0", true);
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        {
-        }
+        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
+        assertFalse(NCubeManager.deleteCube(id, "DashboardRoles", true));
     }
 
     @Test
-    public void testNCubeManagerNotesData() throws Exception
+    public void testNotes() throws Exception
     {
+        //ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
+
         try
         {
-            NCubeManager.getNotes(null, "DASHBOARD", "DashboardRoles", "0.1.0", null);
+            NCubeManager.getNotes(defaultSnapshotApp, "DashboardRoles");
             fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
+            assertTrue(e.getMessage().contains("No NCube matching passed in parameters"));
         }
 
         createCube();
-        String notes = NCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", null);
+        String notes = NCubeManager.getNotes(defaultSnapshotApp, "test.Age-Gender");
         assertNotNull(notes);
         assertTrue(notes.length() > 0);
 
         try
         {
-            NCubeManager.updateNotes(getConnection(), APP_ID, "test.funky", "0.1.0", null);
+            NCubeManager.updateNotes(defaultSnapshotApp, "test.funky", null);
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalStateException e)
         {
-            assertTrue(e instanceof IllegalStateException);
+            assertTrue(e.getMessage().contains("No NCube matching"));
         }
 
         try
         {
-            NCubeManager.updateNotes(getConnection(), null, "test.funky", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            NCubeManager.getNotes(getConnection(), APP_ID, "test.Age-Gender", "0.1.1", null);
+            ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.1.1");
+            NCubeManager.getNotes(newId, "test.Age-Gender");
             fail("Should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalArgumentException e)
         {
-            assertTrue(e instanceof IllegalArgumentException);
+            assertTrue(e.getMessage().startsWith("No NCube matching"));
         }
 
-        NCubeManager.deleteCube(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", true);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true);
     }
+
 
     @Test
     public void testNCubeManagerTestData() throws Exception
     {
         try
         {
-            NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name()), "DashboardRoles");
+            NCubeManager.getTestData(defaultSnapshotApp, "DashboardRoles");
             fail("should not make it here");
         }
         catch (Exception e)
@@ -1227,42 +647,34 @@ DELIMITER ;
         }
 
         createCube();
-        String testData = NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.0", ReleaseStatus.SNAPSHOT.name()), "test.Age-Gender");
+        String testData = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
         assertNotNull(testData);
         assertTrue(testData.length() > 0);
 
         try
         {
-            NCubeManager.updateTestData(getConnection(), APP_ID, "test.funky", "0.1.0", null);
+            NCubeManager.updateTestData(defaultSnapshotApp, "test.funky", null);
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (IllegalStateException e)
         {
-            assertTrue(e instanceof IllegalStateException);
+            assertTrue(e.getMessage().startsWith("No NCube matching app"));
         }
 
+        ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.1.1");
         try
         {
-            NCubeManager.updateTestData(getConnection(), null, "test.funky", "0.1.0", null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e instanceof IllegalArgumentException);
-        }
-
-        try
-        {
-            NCubeManager.getTestData(new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "0.1.1", ReleaseStatus.SNAPSHOT.name()), "test.Age-Gender");
+            NCubeManager.getTestData(newId, "test.Age-Gender");
             fail("Should not make it here");
         }
         catch (Exception e)
         {
-            assertTrue(e instanceof IllegalArgumentException);
+            assertTrue(e.getMessage().startsWith("No NCube matching passed"));
         }
 
-        NCubeManager.deleteCube(getConnection(), APP_ID, "test.Age-Gender", "0.1.0", true);
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender"));
     }
+
 
     @Test
     public void testEmptyNCubeMetaProps() throws Exception
@@ -1282,7 +694,7 @@ DELIMITER ;
                 assertTrue(column.getMetaProperties().size() == 0);
             }
         }
-        NCubeManager.deleteCube(getConnection(), APP_ID, ncube.getName(), "0.1.0", true);
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube.getName(), true);
     }
 
     @Test
@@ -1301,42 +713,21 @@ DELIMITER ;
         { }
     }
 
-    @Test
-    public void testValidateCubeName() throws Exception
-    {
-        NCubeManager.validateCubeName("Joe");
-        NCubeManager.validateCubeName("Joe.Dirt");
-        NCubeManager.validateCubeName(NCube.validCubeNameChars);
-        try
-        {
-            NCubeManager.validateCubeName("");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
 
-        try
-        {
-            NCubeManager.validateCubeName(null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-    }
 
     @Test
-    public void testValidateStatus() throws Exception
+    public void testLoadCubesWithNullApplicationID() throws Exception
     {
-        NCubeManager.validateStatus(ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.validateStatus(ReleaseStatus.RELEASE.name());
         try
         {
-            NCubeManager.validateStatus("fubar");
-            fail("should not make it here");
+            NCubeManager.loadCubes(null);
+            fail();
         }
-        catch (Exception e)
-        { }
+        catch(IllegalArgumentException e) {
+            assertEquals("ApplicationId cannot be null", e.getMessage());
+        }
     }
+
 
     @Test(expected=RuntimeException.class)
     public void testGetNCubesFromResourceException() throws Exception
@@ -1344,12 +735,4 @@ DELIMITER ;
         NCubeManager.getNCubesFromResource(null);
     }
 
-    private static void setNCubePersister()
-    {
-        NCubeConnectionProvider nCubeConnectionProvider = new NCubeJdbcConnectionProvider("org.hsqldb.jdbc.JDBCDriver","jdbc:hsqldb:mem:testdb","sa","");
-        NCubePersister nCubePersister = new NCubeJdbcPersister();
-        nCubePersister.setNCubeConnectionProvider(nCubeConnectionProvider);
-
-        NCubeManager.setNCubePersister(nCubePersister);
-    }
 }

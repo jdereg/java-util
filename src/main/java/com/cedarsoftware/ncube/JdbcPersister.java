@@ -1,140 +1,33 @@
 package com.cedarsoftware.ncube;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 
 public class JdbcPersister implements NCubePersister
 {
-    private DataSource dataSource;
-
-    private String databaseUrl;
-    private String username;
-    private String password;
-
     private NCubeJdbcPersister persister = new NCubeJdbcPersister();
+    private JdbcConnectionProvider provider;
 
-    /**
-     * Constructs a new NCubeJdbcConnectionProvider with an initialized Datasource.
-     */
-    public JdbcPersister(DataSource datasource)
+    public JdbcPersister(JdbcConnectionProvider provider)
     {
-        if (datasource == null) {
-            throw new NullPointerException("datasource cannot be null");
-        }
-        this.dataSource = datasource;
+        this.provider = provider;
     }
 
-    /**
-     * Constructs a new NCubeJdbcConnectionProvider with the input parameters needed to create a single database connection.
-     *
-     * @param driverClass - name of the database driver class
-     * @param databaseUrl - database connection url
-     * @param username - username of the account to be used to log into the database
-     * @param password - password for the account to be used to log into the database
-     * @throws java.lang.IllegalArgumentException - if connection is not a valid connection
-     */
-    public JdbcPersister(String driverClass, String databaseUrl, String username, String password)
+    private Connection getConnection()
     {
-        if (driverClass != null)
-        {
-            try
-            {
-                Class.forName(driverClass);
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException("Unable to locate driver class: " + driverClass, e);
-            }
-        }
-
-        if (databaseUrl == null) {
-            throw new NullPointerException("database url cannot be null...");
-        }
-
-        if (username == null) {
-            throw new NullPointerException("database user cannot be null...");
-        }
-
-        if (password == null) {
-            throw new NullPointerException("database password cannot be null...");
-        }
-
-        this.databaseUrl = databaseUrl;
-        this.username = username;
-        this.password = password;
-
+        return provider.getConnection(dataSource);
     }
 
-    public Connection getConnection() throws SQLException {
-        if (dataSource == null) {
-            return DriverManager.getConnection(databaseUrl, username, password);
-        }
-
-        return dataSource.getConnection();
+    private void releaseConnection(Connection c) {
+        provider.releaseConnection(c);
     }
 
-    public Connection beginTransaction()
-    {
-        try
-        {
-            Connection connection = getConnection();
-            connection.setAutoCommit(false);
-            return connection;
-        }
-        catch (SQLException e)
-        {
-            //todo - log connection that is in auto-commit mode
-            throw new RuntimeException("Unable to begin transaction...", e);
-        }
-    }
-
-    /**
-     * @throws java.lang.IllegalStateException - when current connection is not valid
-     */
-    public void commitTransaction(Connection connection)
-    {
-        if (connection == null)
-        {
-            throw new IllegalArgumentException("Unable to commit transaction.  Connection is null.");
-        }
-
-        try
-        {
-            connection.commit();
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeException("Unable to commit active transaction...", e);
-        }
-    }
-
-    /**
-     * @throws java.lang.IllegalStateException - when current connection is not valid
-     */
-    public void rollbackTransaction(Connection connection)
-    {
-        if (connection == null)
-        {
-            throw new IllegalArgumentException("Unable to rollback transaction. Connection is null.");
-        }
-
-        try
-        {
-            connection.rollback();
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeException("Unable to rollback active transaction...", e);
-        }
-    }
 
     @Override
     public void createCube(ApplicationID id, NCube cube)
     {
-        try (Connection c = beginTransaction())
+        try (Connection c = getTransaction())
         {
             try
             {

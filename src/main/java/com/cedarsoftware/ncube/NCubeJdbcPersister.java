@@ -17,6 +17,7 @@ import java.util.List;
 public class NCubeJdbcPersister
 {
     private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);
+    private JdbcConnectionProvider _provider;
 
     public void createCube(Connection c, ApplicationID id, NCube ncube)
     {

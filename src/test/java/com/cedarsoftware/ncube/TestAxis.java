@@ -45,7 +45,7 @@ public class TestAxis
     @After
     public void tearDown() throws Exception
     {
-        NCubeManager.clearCubeList();
+        TestNCube.tearDown();
     }
 
     private static boolean isValidPoint(Axis axis, Comparable value)

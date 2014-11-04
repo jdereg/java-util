@@ -56,7 +56,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NCubeManager
 {
-    private static final Map<String, NCube> cubeList = new ConcurrentHashMap<>();
+    private static final Map<String, NCube> ncubeCache = new ConcurrentHashMap<>();
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
@@ -83,8 +83,9 @@ public class NCubeManager
      */
     public static Set<String> getCubeNames(ApplicationID appId)
     {
+        validateAppId(appId);
         Set<String> result = new TreeSet<>();
-        Collection<NCube> cubes = cubeList.values();
+        Collection<NCube> cubes = ncubeCache.values();
 
         for (NCube ncube : cubes)
         {
@@ -102,25 +103,28 @@ public class NCubeManager
      */
     public static NCube getCube(String name, ApplicationID appId)
     {
-        return cubeList.get(appId.getAppStr(name));
+        validateAppId(appId);
+        return ncubeCache.get(appId.getAppStr(name));
     }
 
     /**
      * Add to the classloader's classpath for the given ApplicationID.
 s    */
-    public static void addBaseResourceUrls(List<String> urls, String appStr)
+    public static void addBaseResourceUrls(List<String> urls, ApplicationID appId)
     {
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appStr);
+        validateAppId(appId);
+        final String cacheKey = appId.getAppStr("");
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(cacheKey);
 
         if (urlClassLoader == null)
         {
-            LOG.info("Creating ClassLoader, n-cube version: " + appStr + ", urls: " + urls);
+            LOG.info("Creating ClassLoader, app: " + cacheKey + ", urls: " + urls);
             urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appStr, urlClassLoader);
+            urlClassLoaders.put(cacheKey, urlClassLoader);
         }
         else
         {
-            LOG.info("Adding resource URLs, n-cube version: " + appStr + ", urls: " + urls);
+            LOG.info("Adding resource URLs, app: " + cacheKey + ", urls: " + urls);
         }
 
         addUrlsToClassLoader(urls, urlClassLoader);
@@ -154,12 +158,13 @@ s    */
     }
 
     /**
-     * Add a cube to the internal map of available cubes.
+     * Add a cube to the internal cache of available cubes.
      * @param ncube NCube to add to the list.
      */
     public static void addCube(NCube ncube, ApplicationID appId)
     {
-        cubeList.put(appId.getAppStr(ncube.getName()), ncube);
+        validateAppId(appId);
+        ncubeCache.put(appId.getAppStr(ncube.getName()), ncube);
 
         for (Map.Entry<String, Map<String, Advice>> entry : advices.entrySet())
         {
@@ -199,17 +204,21 @@ s    */
      * loaded (cached) in memory.  A copy of the internal cache
      * is returned.
      */
-    public static Map<String, NCube> getCachedNCubes()
+    public static Map<String, NCube> getCachedNCubes(ApplicationID appId)
     {
-        return new TreeMap<>(cubeList);
+        validateAppId(appId);
+        // TODO: Add appId cacheKey to caches
+        return new TreeMap<>(ncubeCache);
     }
 
     /**
      * Used for testing.
      */
-    public static void clearCubeList()
+    public static void clearCubeList(ApplicationID appId)
     {
-        cubeList.clear();
+        // TODO: Add appId as appropriate cache keys
+        validateAppId(appId);
+        ncubeCache.clear();
         GroovyBase.clearCache();
         NCubeGroovyController.clearCache();
         for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
@@ -235,7 +244,7 @@ s    */
         current.put(advice.getName(), advice);
         String regex = StringUtilities.wildcardToRegexString(wildcard);
 
-        for (NCube ncube : cubeList.values())
+        for (NCube ncube : ncubeCache.values())
         {
             Axis axis = ncube.getAxis("method");
             if (axis != null)
@@ -273,12 +282,11 @@ s    */
      * checks the persistent storage.
      * @return true if the n-cube exists, false otherwise.
      */
-    public static boolean doesCubeExist(ApplicationID id, String name)
+    public static boolean doesCubeExist(ApplicationID appId, String name)
     {
-        validateId(id);
+        validateAppId(appId);
         NCube.validateCubeName(name);
-
-        return nCubePersister.doesCubeExist(id, name);
+        return nCubePersister.doesCubeExist(appId, name);
     }
 
     /**
@@ -310,24 +318,24 @@ s    */
     /**
      * Get Object[] of n-cube names for the given ApplicationID, filtered by the sqlLike clause.
      */
-    public static Object[] getNCubes(ApplicationID id, String sqlLike)
+    public static Object[] getNCubes(ApplicationID appId, String sqlLike)
     {
-        validateId(id);
-        return nCubePersister.getNCubes(id, sqlLike);
+        validateAppId(appId);
+        return nCubePersister.getNCubes(appId, sqlLike);
     }
 
     /**
-     * Duplicate the given n-cube specified by oldId and oldName to new ApplicationID and name,
+     * Duplicate the given n-cube specified by oldAppId and oldName to new ApplicationID and name,
      */
-    public static void duplicate(ApplicationID oldId, ApplicationID newId, String oldName, String newName)
+    public static void duplicate(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName)
     {
-        NCube ncube = getCube(oldName, oldId);
+        NCube ncube = getCube(oldName, oldAppId);
         NCube copy = ncube.duplicate(newName);
-        nCubePersister.createCube(newId, copy);
-        String json = nCubePersister.getTestData(oldId, oldName);
-        nCubePersister.updateTestData(newId, newName, json);
-        String notes = nCubePersister.getNotes(oldId, oldName);
-        nCubePersister.updateNotes(newId, newName, notes);
+        nCubePersister.createCube(newAppId, copy);
+        String json = nCubePersister.getTestData(oldAppId, oldName);
+        nCubePersister.updateTestData(newAppId, newName, json);
+        String notes = nCubePersister.getNotes(oldAppId, oldName);
+        nCubePersister.updateNotes(newAppId, newName, notes);
     }
 
     /**
@@ -342,34 +350,10 @@ s    */
      * Get all of the versions that exist for the given ApplicationID (account and app).
      * @return Object[] of String version numbers.
      */
-    public static Object[] getAppVersions(ApplicationID id)
+    public static Object[] getAppVersions(ApplicationID appId)
     {
-        return getAppVersions(nCubePersister, id);
-    }
-
-    static void validateId(ApplicationID id)
-    {
-        if (id == null)
-        {
-            throw new IllegalArgumentException("ApplicationId cannot be null");
-        }
-    }
-
-    static void validateCube(NCube cube)
-    {
-        if (cube == null)
-        {
-            throw new IllegalArgumentException("NCube cannot be null");
-        }
-    }
-
-    /**
-     * Return an array [] of Strings containing all unique App names.
-     */
-    static Object[] getAppVersions(NCubePersister persister, ApplicationID id)
-    {
-        validateId(id);
-        return persister.getAppVersions(id);
+        validateAppId(appId);
+        return nCubePersister.getAppVersions(appId);
     }
 
     /**
@@ -378,75 +362,67 @@ s    */
      * @param ncube      NCube to be updated.
      * @return boolean true on success, false otherwise
      */
-    public static boolean updateCube(ApplicationID id, NCube ncube)
+    public static boolean updateCube(ApplicationID appId, NCube ncube)
     {
-        validateId(id);
+        validateAppId(appId);
         validateCube(ncube);
-
-        synchronized (cubeList)
-        {
-            nCubePersister.updateCube(id, ncube);
-        }
-
+        nCubePersister.updateCube(appId, ncube);
         return true;
     }
 
     /**
      * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
-    public static int releaseCubes(ApplicationID id)
+    public static int releaseCubes(ApplicationID appId)
     {
-        validateId(id);
-        return nCubePersister.releaseCubes(id);
+        validateAppId(appId);
+        return nCubePersister.releaseCubes(appId);
     }
 
-    public static int createSnapshotCubes(ApplicationID id, String newVersion)
+    public static int createSnapshotCubes(ApplicationID appId, String newVersion)
     {
+        validateAppId(appId);
         ApplicationID.validateVersion(newVersion);
-        validateId(id);
 
-        if (id.getVersion().equals(newVersion))
+        if (appId.getVersion().equals(newVersion))
         {
             throw new IllegalArgumentException("New SNAPSHOT version " + newVersion + " cannot be the same as the RELEASE version.");
         }
 
-        return nCubePersister.createSnapshotVersion(id, newVersion);
+        return nCubePersister.createSnapshotVersion(appId, newVersion);
     }
 
-    public static void changeVersionValue(ApplicationID id, String newVersion)
+    public static void changeVersionValue(ApplicationID appId, String newVersion)
     {
-        validateId(id);
+        validateAppId(appId);
         ApplicationID.validateVersion(newVersion);
 
-        nCubePersister.changeVersionValue(id, newVersion);
+        nCubePersister.changeVersionValue(appId, newVersion);
 
         //  TODO: we should remove old versioned cubes from the cache here since this is not additive
-        ApplicationID newId = id.createNewSnapshotId(newVersion);
+        ApplicationID newId = appId.createNewSnapshotId(newVersion);
         loadCubes(newId);
     }
 
-    public static boolean renameCube(ApplicationID id, String oldName, String newName)
+    public static boolean renameCube(ApplicationID appId, String oldName, String newName)
     {
-        validateId(id);
-        ApplicationID.validateVersion(id.getVersion());
+        validateAppId(appId);
         NCube.validateCubeName(oldName);
         NCube.validateCubeName(newName);
 
-        id.validateIsSnapshot();
-
         if (oldName.equalsIgnoreCase(newName))
         {
-            throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName);
+            throw new IllegalArgumentException("Old name cannot be the same as the new name, name: " + oldName + ", app: " + appId);
         }
 
         //  assumes the cube is already loaded
-        NCube ncube = getCube(oldName, id);
+        NCube ncube = getCube(oldName, appId);
 
-        boolean result = nCubePersister.renameCube(id, ncube, newName);
+        boolean result = nCubePersister.renameCube(appId, ncube, newName);
 
         // Any user of these old IDs will get the default (null) account
-        cubeList.remove(id.getAppStr(oldName));
-        cubeList.put(id.getAppStr(newName), ncube);
+        ncubeCache.remove(appId.getAppStr(oldName));
+        ncubeCache.put(appId.getAppStr(newName), ncube);
         return result;
     }
 
@@ -455,15 +431,15 @@ s    */
      *
      * @param cubeName   NCube to be deleted
      */
-    public static boolean deleteCube(ApplicationID id, String cubeName)
+    public static boolean deleteCube(ApplicationID appId, String cubeName)
     {
-        validateId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
 
-        if (nCubePersister.deleteCube(id, cubeName, false))
+        if (nCubePersister.deleteCube(appId, cubeName, false))
         {
             // Any user of these old APIs will get the default (null) account
-            cubeList.remove(id.getAppStr(cubeName));
+            ncubeCache.remove(appId.getAppStr(cubeName));
             return true;
         }
         return false;
@@ -471,12 +447,13 @@ s    */
 
     static boolean deleteCube(ApplicationID id, String cubeName, boolean allowDelete)
     {
-        validateId(id);
+        validateAppId(id);
         NCube.validateCubeName(cubeName);
 
-        if (nCubePersister.deleteCube(id, cubeName, allowDelete)) {
+        if (nCubePersister.deleteCube(id, cubeName, allowDelete))
+        {
             // Any user of these old APIs will get the default (null) account
-            cubeList.remove(id.getAppStr(cubeName));
+            ncubeCache.remove(id.getAppStr(cubeName));
             return true;
         }
         return false;
@@ -487,11 +464,11 @@ s    */
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateNotes(ApplicationID id, String cubeName, String notes)
+    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     {
-        validateId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        nCubePersister.updateNotes(id, cubeName, notes);
+        nCubePersister.updateNotes(appId, cubeName, notes);
         return true;
     }
 
@@ -500,11 +477,11 @@ s    */
      *
      * @return String notes.
      */
-    public static String getNotes(ApplicationID id, String cubeName)
+    public static String getNotes(ApplicationID appId, String cubeName)
     {
-        validateId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.getNotes(id, cubeName);
+        return nCubePersister.getNotes(appId, cubeName);
     }
 
     /**
@@ -512,19 +489,19 @@ s    */
      *
      * @return true if the update succeeds, false otherwise
      */
-    public static boolean updateTestData(ApplicationID id, String cubeName, String testData)
+    public static boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
-        validateId(id);
+        validateAppId(appId);
         validateTestData(testData);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.updateTestData(id, cubeName, testData);
+        return nCubePersister.updateTestData(appId, cubeName, testData);
     }
 
-    public static String getTestData(ApplicationID id, String cubeName)
+    public static String getTestData(ApplicationID appId, String cubeName)
     {
-        validateId(id);
+        validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.getTestData(id, cubeName);
+        return nCubePersister.getTestData(appId, cubeName);
     }
 
     /**
@@ -532,17 +509,8 @@ s    */
      */
     public static void loadCubes(ApplicationID appId)
     {
-        loadCubes(nCubePersister, appId);
-    }
-
-    /**
-     * Load all n-cubes into NCubeManager's internal cache for a given app, version, status, and sysDate.
-     */
-    public static void loadCubes(NCubePersister persister, ApplicationID appId)
-    {
-        validateId(appId);
-
-        List<NCube> ncubes = persister.loadCubes(appId);
+        validateAppId(appId);
+        List<NCube> ncubes = nCubePersister.loadCubes(appId);
 
         for (NCube ncube : ncubes)
         {
@@ -550,33 +518,18 @@ s    */
         }
     }
 
-    public static void createCube(ApplicationID id, NCube ncube)
+    public static void createCube(ApplicationID appId, NCube ncube)
     {
-        createCube(nCubePersister, id, ncube);
-    }
-
-    /**
-     * Persist the passed in NCube
-     *
-     * @param ncube      NCube to be persisted
-     */
-    static void createCube(NCubePersister persister, ApplicationID id, NCube ncube)
-    {
-        validateId(id);
-
         if (ncube == null)
         {
             throw new IllegalArgumentException("NCube cannot be null when creating a new n-cube");
         }
 
+        validateAppId(appId);
         NCube.validateCubeName(ncube.getName());
-
-        synchronized (cubeList)
-        {
-            persister.createCube(id, ncube);
-            ncube.setApplicationID(id);
-            addCube(ncube, id);
-        }
+        nCubePersister.createCube(appId, ncube);
+        ncube.setApplicationID(appId);
+        addCube(ncube, appId);
     }
 
     // --------------------------------------- Resource APIs -----------------------------------------------------------
@@ -675,6 +628,23 @@ s    */
             {
                 throw e;
             }
+        }
+    }
+
+    static void validateAppId(ApplicationID appId)
+    {
+        if (appId == null)
+        {
+            throw new IllegalArgumentException("ApplicationID cannot be null");
+        }
+        appId.validate();
+    }
+
+    static void validateCube(NCube cube)
+    {
+        if (cube == null)
+        {
+            throw new IllegalArgumentException("NCube cannot be null");
         }
     }
 }

@@ -6,7 +6,7 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -73,17 +73,20 @@ public class TestNCube
             urls.add("http://www.cedarsoftware.com");
 
             ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.addBaseResourceUrls(urls, appId1.getAppStr(""));
+            NCubeManager.addBaseResourceUrls(urls, appId1);
             ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.addBaseResourceUrls(urls, appId2.getAppStr(""));
+            NCubeManager.addBaseResourceUrls(urls, appId2);
             _classLoaderInitialize = false;
         }
     }
 
-    @After
-    public void tearDown() throws Exception
+    @AfterClass
+    public static void tearDown() throws Exception
     {
-        NCubeManager.clearCubeList();
+        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.clearCubeList(appId1);
+        NCubeManager.clearCubeList(appId2);
     }
 
     @Test
@@ -4661,9 +4664,9 @@ public class TestNCube
         urls.add("http://www.cedarsoftware.com");
 
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1.getAppStr(""));
+        NCubeManager.addBaseResourceUrls(urls, appId1);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2.getAppStr(""));
+        NCubeManager.addBaseResourceUrls(urls, appId2);
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -4682,9 +4685,9 @@ public class TestNCube
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1.getAppStr(""));
+        NCubeManager.addBaseResourceUrls(urls, appId1);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2.getAppStr(""));
+        NCubeManager.addBaseResourceUrls(urls, appId2);
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
@@ -4698,7 +4701,8 @@ public class TestNCube
         Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
 
-        NCubeManager.clearCubeList();
+        NCubeManager.clearCubeList(appId1);
+        NCubeManager.clearCubeList(appId2);
         fo = new FileOutputStream(base + "Abc.groovy");
         code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 20 } }";
         fo.write(code.getBytes());

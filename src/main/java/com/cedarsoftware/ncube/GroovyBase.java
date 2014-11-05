@@ -40,8 +40,8 @@ public abstract class GroovyBase extends UrlCommandCell
 {
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
-    static final Map<ApplicationID, Map<String, Method>> initMethodMap = new ConcurrentHashMap<>();
-    static final Map<ApplicationID, Map<String, Method>> runMethodMap = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Method>> initMethodCache = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
 
     public GroovyBase(String cmd, String url)
     {
@@ -107,17 +107,17 @@ public abstract class GroovyBase extends UrlCommandCell
 
     private static Map<String, Method> getInitMethodCache(ApplicationID appId)
     {
-        Map<String, Method> initMethodMap = GroovyBase.initMethodMap.get(appId);
+        Map<String, Method> initMethodMap = initMethodCache.get(appId);
 
         if (initMethodMap == null)
         {
-            synchronized (GroovyBase.initMethodMap)
+            synchronized (initMethodCache)
             {
-                initMethodMap = GroovyBase.initMethodMap.get(appId);
+                initMethodMap = initMethodCache.get(appId);
                 if (initMethodMap == null)
                 {
                     initMethodMap = new ConcurrentHashMap<>();
-                    GroovyBase.initMethodMap.put(appId, initMethodMap);
+                    initMethodCache.put(appId, initMethodMap);
                 }
             }
         }
@@ -126,17 +126,17 @@ public abstract class GroovyBase extends UrlCommandCell
 
     private static Map<String, Method> getRunMethodCache(ApplicationID appId)
     {
-        Map<String, Method> runMethodMap = GroovyBase.runMethodMap.get(appId);
+        Map<String, Method> runMethodMap = runMethodCache.get(appId);
 
         if (runMethodMap == null)
         {
-            synchronized (GroovyBase.runMethodMap)
+            synchronized (runMethodCache)
             {
-                runMethodMap = GroovyBase.runMethodMap.get(appId);
+                runMethodMap = runMethodCache.get(appId);
                 if (runMethodMap == null)
                 {
                     runMethodMap = new ConcurrentHashMap<>();
-                    GroovyBase.runMethodMap.put(appId, runMethodMap);
+                    runMethodCache.put(appId, runMethodMap);
                 }
             }
         }

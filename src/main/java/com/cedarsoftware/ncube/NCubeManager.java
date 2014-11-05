@@ -284,7 +284,7 @@ s    */
 
         if (ncubes == null)
         {
-            synchronized (appId.cacheKey().intern())
+            synchronized (ncubeCache)
             {
                 ncubes = ncubeCache.get(appId);
                 if (ncubes == null)
@@ -355,7 +355,7 @@ s    */
         Map<String, Advice> current = advices.get(appId);
         if (current == null)
         {
-            synchronized (appId.cacheKey().intern())
+            synchronized (advices)
             {
                 current = new ConcurrentHashMap<>();
                 advices.put(appId, current);

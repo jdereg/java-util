@@ -9,7 +9,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -32,6 +31,8 @@ import java.util.List;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+
+//TODO: Need to add username to all mutable queries (ones that do UPDATEs or INSERTs)
 public class NCubeJdbcPersister
 {
     private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);
@@ -74,21 +75,17 @@ public class NCubeJdbcPersister
         }
     }
 
-
-
     public void updateCube(Connection connection, ApplicationID appId, NCube cube)
     {
-        try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ?"))
+        try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setBytes(1, cube.toFormattedJson().getBytes("UTF-8"));
             stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
             stmt.setString(3, appId.getApp());
             stmt.setString(4, cube.getName());
             stmt.setString(5, appId.getVersion());
             stmt.setString(6, ReleaseStatus.SNAPSHOT.name());
+            stmt.setString(7, appId.getAccount());
 
             int count = stmt.executeUpdate();
             if (count != 1)
@@ -102,29 +99,25 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to update cube: " + cube.getName() + ", app: " + appId.getApp();
+            String s = "Unable to update cube: " + cube.getName() + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
 
     }
 
-
     public NCube findCube(Connection c, ApplicationID appId, String cubeName)
     {
-        String query = "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?";
+        String query = "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?";
 
         try (PreparedStatement stmt = c.prepareStatement(query))
         {
             NCube ncube = null;
-
-            java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
-
-            //todo - remove sys effective date and expiration date
             stmt.setString(1, cubeName);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
+            stmt.setString(5, appId.getAccount());
 
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -136,7 +129,7 @@ public class NCubeJdbcPersister
 
                     if (rs.next())
                     {
-                        throw new IllegalStateException("More than one NCube matching name: " + ncube.getName() + ", appId:  " + appId.toString());
+                        throw new IllegalStateException("More than one cube matching name: " + ncube.getName() + ", appId:  " + appId);
                     }
                 }
 
@@ -149,37 +142,33 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load nNCube: " + cubeName + ", app: " + appId.toString();
+            String s = "Unable to load cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
     }
 
-    public Object[] getNCubes(Connection c, ApplicationID appId, String sqlLike) {
+    public Object[] getNCubes(Connection c, ApplicationID appId, String sqlLike)
+    {
         if (sqlLike == null)
         {
             sqlLike = "%";
         }
 
         try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, update_dt, " +
-                "create_hid, update_hid FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
+                "create_hid, update_hid FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, sqlLike);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
+            stmt.setString(5, appId.getAccount());
 
             ResultSet rs = stmt.executeQuery();
-            List<NCubeInfoDto> records = new ArrayList<NCubeInfoDto>();
+            List<NCubeInfoDto> records = new ArrayList<>();
 
             while (rs.next())
             {
-                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-                // TODO: see if the column exists, store the result for the entire app life cycle.
-                // TODO: If account column does not exist, then account is null.
                 NCubeInfoDto dto = new NCubeInfoDto();
                 dto.id = Long.toString(rs.getLong("n_cube_id"));
                 dto.name = rs.getString("n_cube_nm");
@@ -198,7 +187,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch NCubes matching '" + sqlLike + "' from database";
+            String s = "Unable to fetch cubes matching '" + sqlLike + "' from database for app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -207,25 +196,14 @@ public class NCubeJdbcPersister
 
     public List<NCube> loadCubes(Connection c, ApplicationID appId)
     {
-        String app = appId.getApp();
-        String version = appId.getVersion();
-        String status = appId.getStatus();
-
-        try (PreparedStatement stmt = c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND sys_effective_dt <= ? AND (sys_expiration_dt IS NULL OR sys_expiration_dt >= ?) AND version_no_cd = ? AND status_cd = ?"))
+        try (PreparedStatement stmt = c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"))
         {
             List<NCube> ncubes = new ArrayList<>();
-            java.sql.Date systemDate = new java.sql.Date(new Date().getTime());
 
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
-
-            //TODO: remove date params
-            stmt.setString(1, app);
-            stmt.setDate(2, systemDate);
-            stmt.setDate(3, systemDate);
-            stmt.setString(4, version);
-            stmt.setString(5, status);
+            stmt.setString(1, appId.getApp());
+            stmt.setString(2, appId.getVersion());
+            stmt.setString(3, appId.getStatus());
+            stmt.setString(4, appId.getAccount());
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next())
@@ -240,7 +218,12 @@ public class NCubeJdbcPersister
                 }
                 catch (Exception e)
                 {
-                    LOG.warn("account: " + appId.getAccount() + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + ", Failed to load n-cube: " + json.substring(0, 40));
+                    int len = 60;
+                    if (json.length() <= len)
+                    {
+                        len = json.length() - 1;
+                    }
+                    LOG.warn("app: " + appId + ", failed to load cube: " + json.substring(0, len));
                 }
             }
 
@@ -248,7 +231,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load n-cubes, app: " + app + ", version: " + version + ", status: " + status + " from database";
+            String s = "Unable to load cubes, app: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -278,35 +261,32 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to delete NCube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion() + " from database";
+            String s = "Unable to delete cube: " + cubeName + ", app: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-
     }
 
     public boolean updateNotes(Connection c, ApplicationID appId, String cubeName, String notes)
     {
-        String statement = "UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?";
+        String statement = "UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = ?";
 
         try (PreparedStatement stmt = c.prepareStatement(statement))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setBytes(1, notes == null ? null : notes.getBytes("UTF-8"));
             stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
             stmt.setString(3, appId.getApp());
             stmt.setString(4, cubeName);
             stmt.setString(5, appId.getVersion());
+            stmt.setString(6, appId.getAccount());
             int count = stmt.executeUpdate();
             if (count > 1)
             {
-                throw new IllegalStateException("Only one (1) row's notes should be updated.");
+                throw new IllegalStateException("Cannot update notes, only one (1) row's notes should be updated, count: " + count + ", cube: " + cubeName + ", app: " + appId);
             }
             if (count == 0)
             {
-                throw new IllegalStateException("No NCube matching app: " + appId.getApp() + ", name: " + cubeName + ", version: " + appId.getVersion());
+                throw new IllegalStateException("Cannot update notes, no cube matches app: " + appId + ", name: " + cubeName);
             }
             return true;
         }
@@ -316,7 +296,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to update notes for NCube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion();
+            String s = "Unable to update notes for cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -324,14 +304,12 @@ public class NCubeJdbcPersister
 
     public String getNotes(Connection c, ApplicationID appId, String cubeName)
     {
-        try (PreparedStatement stmt = c.prepareStatement("SELECT notes_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?"))
+        try (PreparedStatement stmt = c.prepareStatement("SELECT notes_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, appId.getApp());
             stmt.setString(2, cubeName);
             stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getAccount());
             try (ResultSet rs = stmt.executeQuery())
             {
                 if (rs.next())
@@ -340,7 +318,7 @@ public class NCubeJdbcPersister
                     return new String(notes == null ? "".getBytes() : notes, "UTF-8");
                 }
             }
-            throw new IllegalArgumentException("No NCube matching passed in parameters.");
+            throw new IllegalArgumentException("Could not fetch notes, no cube: " + cubeName + " in app: " + appId);
         }
         catch (IllegalArgumentException e)
         {
@@ -348,7 +326,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch notes for NCube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion();
+            String s = "Unable to fetch notes for cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -362,30 +340,26 @@ public class NCubeJdbcPersister
             ApplicationID newId = appId.createNewSnapshotId(newVersion);
             if (doCubesExist(c, newId))
             {
-                throw new IllegalStateException("New SNAPSHOT Version specified (" + newVersion + ") matches an existing version.  Specify new SNAPSHOT version that does not exist.");
+                throw new IllegalStateException("New SNAPSHOT Version specified (" + newVersion + ") matches an existing version.  Specify new SNAPSHOT version that does not exist, app: " + appId);
             }
 
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             try (PreparedStatement select = c.prepareStatement(
-                    "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin\n" +
+                    "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd\n" +
                             "FROM n_cube\n" +
-                            "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"
+                            "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"
             ))
             {
 
                 select.setString(1, appId.getApp());
                 select.setString(2, appId.getVersion());
                 select.setString(3, ReleaseStatus.RELEASE.name());
-
+                select.setString(4, appId.getAccount());
 
                 try (ResultSet rs = select.executeQuery())
                 {
-
                     try (PreparedStatement insert = c.prepareStatement(
-                            "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, sys_effective_dt, sys_expiration_dt, business_effective_dt, business_expiration_dt, app_cd, test_data_bin, notes_bin)\n" +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                            "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd)\n" +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     ))
                     {
                         int count = 0;
@@ -393,10 +367,6 @@ public class NCubeJdbcPersister
                         while (rs.next())
                         {
                             count++;
-                            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-                            // TODO: see if the column exists, store the result for the entire app life cycle.
-                            // TODO: If account column does not exist, then account is null.
-
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
                             insert.setString(2, rs.getString("n_cube_nm"));
                             insert.setBytes(3, rs.getBytes("cube_value_bin"));
@@ -406,13 +376,10 @@ public class NCubeJdbcPersister
                             insert.setString(7, rs.getString("update_hid"));
                             insert.setString(8, newVersion);
                             insert.setString(9, ReleaseStatus.SNAPSHOT.name());
-                            insert.setDate(10, rs.getDate("sys_effective_dt"));
-                            insert.setDate(11, rs.getDate("sys_expiration_dt"));
-                            insert.setDate(12, rs.getDate("business_effective_dt"));
-                            insert.setDate(13, rs.getDate("business_expiration_dt"));
-                            insert.setString(14, rs.getString("app_cd"));
-                            insert.setBytes(15, rs.getBytes("test_data_bin"));
-                            insert.setBytes(16, rs.getBytes("notes_bin"));
+                            insert.setString(10, rs.getString("app_cd"));
+                            insert.setBytes(11, rs.getBytes("test_data_bin"));
+                            insert.setBytes(12, rs.getBytes("notes_bin"));
+                            insert.setString(13, rs.getString("tenant_cd"));
                             insert.executeUpdate();
                         }
                         return count;
@@ -426,38 +393,35 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to create SNAPSHOT NCubes for app: " + appId.getApp() + ", version: " + newVersion + ", due to an error: " + e.getMessage();
+            String s = "Unable to create SNAPSHOT cubes for app: " + appId + ", new version: " + newVersion + ", due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
     }
 
-
     public int releaseCubes(Connection c, ApplicationID appId)
     {
         if (doReleaseCubesExist(c, appId))
         {
-            throw new IllegalStateException("A RELEASE version " + appId.getVersion() + " already exists. Have system admin renumber your SNAPSHOT version.");
+            throw new IllegalStateException("A RELEASE version " + appId.getVersion() + " already exists. Have system admin renumber your SNAPSHOT version, app: " + appId);
         }
 
         try
         {
-            try (PreparedStatement statement = c.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
+            try (PreparedStatement statement = c.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"))
             {
-                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-                // TODO: see if the column exists, store the result for the entire app life cycle.
-                // TODO: If account column does not exist, then account is null.
                 statement.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                 statement.setString(2, ReleaseStatus.RELEASE.name());
                 statement.setString(3, appId.getApp());
                 statement.setString(4, appId.getVersion());
                 statement.setString(5, ReleaseStatus.SNAPSHOT.name());
+                statement.setString(6, appId.getAccount());
                 return statement.executeUpdate();
             }
         }
         catch (Exception e)
         {
-            String s = "Unable to release NCubes for app: " + appId.getApp() + ", version: " + appId.getVersion() + ", due to an error: " + e.getMessage();
+            String s = "Unable to release cubes for app: " + appId.getApp() + ", due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -467,26 +431,24 @@ public class NCubeJdbcPersister
     {
         if (doCubesExist(c, appId.createNewSnapshotId(newVersion)))
         {
-            throw new IllegalStateException("RELEASE n-cubes found with version " + newVersion + ".  Choose a different SNAPSHOT version.");
+            throw new IllegalStateException("RELEASE n-cubes found with version " + newVersion + ".  Choose a different SNAPSHOT version, app: " + appId);
         }
 
         try
         {
-            try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?"))
+            try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"))
             {
-                // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-                // TODO: see if the column exists, store the result for the entire app life cycle.
-                // TODO: If account column does not exist, then account is null.
                 ps.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                 ps.setString(2, newVersion);
                 ps.setString(3, appId.getApp());
                 ps.setString(4, appId.getVersion());
                 ps.setString(5, ReleaseStatus.SNAPSHOT.name());
+                ps.setString(6, appId.getAccount());
 
                 int count = ps.executeUpdate();
                 if (count < 1)
                 {
-                    throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + appId.getVersion() + ", therefore nothing changed.");
+                    throw new IllegalStateException("No SNAPSHOT n-cubes found with version " + appId.getVersion() + ", therefore nothing changed, app: " + appId);
                 }
                 return count;
             }
@@ -497,7 +459,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to change SNAPSHOT version from " + appId.getVersion() + " to " + newVersion + " for app: " + appId.getApp() + ", due to an error: " + e.getMessage();
+            String s = "Unable to change SNAPSHOT version from " + appId.getVersion() + " to " + newVersion + " for app: " + appId + ", due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -505,14 +467,12 @@ public class NCubeJdbcPersister
 
     public String getTestData(Connection c, ApplicationID appId, String cubeName)
     {
-        try (PreparedStatement stmt = c.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?"))
+        try (PreparedStatement stmt = c.prepareStatement("SELECT test_data_bin FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, appId.getApp());
             stmt.setString(2, cubeName);
             stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getAccount());
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next())
@@ -520,7 +480,7 @@ public class NCubeJdbcPersister
                 byte[] testData = rs.getBytes("test_data_bin");
                 return testData == null ? new String() : new String(testData, "UTF-8");
             }
-            throw new IllegalArgumentException("No NCube matching passed in parameters.");
+            throw new IllegalArgumentException("No cube: " + cubeName + ", app: " + appId + " matches passed in parameters.");
         }
         catch (IllegalArgumentException e)
         {
@@ -528,7 +488,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch test data for NCube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion();
+            String s = "Unable to fetch test data for cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -536,25 +496,23 @@ public class NCubeJdbcPersister
 
     public boolean updateTestData(Connection c, ApplicationID appId, String cubeName, String testData)
     {
-        try (PreparedStatement stmt = c.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ?"))
+        try (PreparedStatement stmt = c.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setBytes(1, testData == null ? null : testData.getBytes("UTF-8"));
             stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
             stmt.setString(3, appId.getApp());
             stmt.setString(4, cubeName);
             stmt.setString(5, appId.getVersion());
             stmt.setString(6, ReleaseStatus.SNAPSHOT.name());
+            stmt.setString(7, appId.getAccount());
             int count = stmt.executeUpdate();
             if (count > 1)
             {
-                throw new IllegalStateException("Only one (1) row's test data should be updated.");
+                throw new IllegalStateException("Error updating test data, only one (1) row's test data should be updated, cube: " + cubeName + ", app: " + appId);
             }
             if (count == 0)
             {
-                throw new IllegalStateException("No NCube matching app: " + appId.getApp() + ", name: " + cubeName + ", version: " + appId.getVersion());
+                throw new IllegalStateException("Error updating test data, no cube matching app: " + appId + ", name: " + cubeName);
             }
             return true;
         }
@@ -564,7 +522,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to update test data for NCube: " + cubeName + ", app: " + appId.getApp() + ", version: " + appId.getVersion();
+            String s = "Unable to update test data for NCube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

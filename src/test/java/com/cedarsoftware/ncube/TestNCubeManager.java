@@ -340,14 +340,14 @@ public class TestNCubeManager
 
 
     @Test
-    public void testChangeVersionValue() throws Exception {
+    public void testChangeVersionValue() throws Exception
+    {
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
         ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("1.1.20");
 
         assertNull(NCubeManager.getCube(defaultSnapshotApp, "idTest"));
         assertNull(NCubeManager.getCube(newId, "idTest"));
         NCubeManager.createCube(defaultSnapshotApp, n1);
-
 
         assertNotNull(NCubeManager.getCube(defaultSnapshotApp, "idTest"));
         assertNull(NCubeManager.getCube(newId, "idTest"));
@@ -559,8 +559,6 @@ public class TestNCubeManager
     @Test
     public void testNotes() throws Exception
     {
-        //ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
-
         try
         {
             NCubeManager.getNotes(defaultSnapshotApp, "DashboardRoles");
@@ -568,7 +566,9 @@ public class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().contains("No NCube matching passed in parameters"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("fetch"));
+            assertTrue(e.getMessage().contains("notes"));
         }
 
         createCube();
@@ -583,7 +583,7 @@ public class TestNCubeManager
         }
         catch (IllegalStateException e)
         {
-            assertTrue(e.getMessage().contains("No NCube matching"));
+            assertTrue(e.getMessage().contains("no cube match"));
         }
 
         try
@@ -594,7 +594,9 @@ public class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().startsWith("No NCube matching"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("fetch"));
+            assertTrue(e.getMessage().contains("notes"));
         }
 
         NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true);
@@ -626,7 +628,9 @@ public class TestNCubeManager
         }
         catch (IllegalStateException e)
         {
-            assertTrue(e.getMessage().startsWith("No NCube matching app"));
+            assertTrue(e.getMessage().contains("no"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("match"));
         }
 
         ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.1.1");
@@ -637,7 +641,9 @@ public class TestNCubeManager
         }
         catch (Exception e)
         {
-            assertTrue(e.getMessage().startsWith("No NCube matching passed"));
+            assertTrue(e.getMessage().contains("no"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("match"));
         }
 
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender"));
@@ -690,7 +696,7 @@ public class TestNCubeManager
             NCubeManager.loadCubes(null);
             fail();
         }
-        catch(NullPointerException ignored)
+        catch(Exception ignored)
         { }
     }
 

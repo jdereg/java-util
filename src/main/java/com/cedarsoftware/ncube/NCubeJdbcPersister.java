@@ -594,16 +594,14 @@ public class NCubeJdbcPersister
 
     public boolean doReleaseCubesExist(Connection c, ApplicationID appId)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ?";
+        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = ?";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             ps.setString(1, appId.getApp());
             ps.setString(2, appId.getVersion());
             ps.setString(3, ReleaseStatus.RELEASE.name());
+            ps.setString(4, appId.getAccount());
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -612,11 +610,10 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Error finding cubes:  " + appId.toString();
+            String s = "Error checking for release cubes:  " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-
     }
 
     /**
@@ -629,17 +626,15 @@ public class NCubeJdbcPersister
      */
     public boolean doesCubeExist(Connection c, ApplicationID appId, String name)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? and n_cube_nm = ?";
+        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND n_cube_nm = ? AND tenant_cd = ?";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             ps.setString(1, appId.getApp());
             ps.setString(2, appId.getVersion());
             ps.setString(3, appId.getStatus());
             ps.setString(4, name);
+            ps.setString(5, appId.getAccount());
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -648,7 +643,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Error finding cube:  " + name + " : " + appId.toString();
+            String s = "Error checking for cube:  " + name + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -665,9 +660,6 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, account);
             ResultSet rs = stmt.executeQuery();
             List<String> records = new ArrayList<>();
@@ -689,16 +681,14 @@ public class NCubeJdbcPersister
 
     public Object[] getAppVersions(Connection connection, ApplicationID appId)
     {
-        try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? and status_cd = ?"))
+        try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? AND status_cd = ? AND tenant_cd = ?"))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             stmt.setString(1, appId.getApp());
             stmt.setString(2, appId.getStatus());
+            stmt.setString(3, appId.getAccount());
 
             ResultSet rs = stmt.executeQuery();
-            List<String> records = new ArrayList<String>();
+            List<String> records = new ArrayList<>();
 
             while (rs.next())
             {
@@ -709,7 +699,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all ncube app versions from database";
+            String s = "Unable to fetch all cubes for app: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

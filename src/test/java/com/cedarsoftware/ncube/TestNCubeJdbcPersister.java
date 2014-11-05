@@ -138,13 +138,16 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testGetAppNamesWithSQLException() throws Exception {
+    public void testGetAppNamesWithSQLException() throws Exception
+    {
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
             new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp.getAccount());
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
@@ -223,28 +226,38 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testDoesCubeExistWithSQLException() throws Exception {
+    public void testDoesCubeExistWithSQLException() throws Exception
+    {
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
             new NCubeJdbcPersister().doesCubeExist(c, defaultSnapshotApp, "name");
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("Error finding cube"));
+            assertTrue(e.getMessage().contains("rror"));
+            assertTrue(e.getMessage().contains("check"));
+            assertTrue(e.getMessage().contains("cube"));
         }
     }
 
     @Test
-    public void testDoReleaseCubesExist() throws Exception {
+    public void testDoReleaseCubesExist() throws Exception
+    {
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
             new NCubeJdbcPersister().doReleaseCubesExist(c, defaultSnapshotApp);
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("Error finding cubes"));
+            assertTrue(e.getMessage().contains("rror"));
+            assertTrue(e.getMessage().contains("release"));
+            assertTrue(e.getMessage().contains("cube"));
         }
     }
 

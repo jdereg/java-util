@@ -33,6 +33,7 @@ import java.util.List;
  */
 
 //TODO: Need to add username to all mutable queries (ones that do UPDATEs or INSERTs)
+//TODO: Get revision_number support completed.
 public class NCubeJdbcPersister
 {
     private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);

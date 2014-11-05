@@ -3,7 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnRouter;
 import com.cedarsoftware.ncube.util.CdnRoutingProvider;
 import org.junit.After;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -28,16 +28,16 @@ import static org.mockito.Mockito.when;
 
 public class TestCdnRouter
 {
-    @BeforeClass
-    public static void initialize()
+    @Before
+    public void setUp() throws Exception
     {
-         TestNCube.initialize();
+        TestingDatabaseHelper.setupDatabase();
     }
 
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test
@@ -135,7 +135,7 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        setCdnRoutingProvider("foo", ApplicationID.DEFAULT_VERSION, true);
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, "foo", ReleaseStatus.SNAPSHOT.name(), true);
 
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         new CdnRouter().route(request, response);
@@ -161,7 +161,7 @@ public class TestCdnRouter
         setDefaultCdnRoutingProvider();
 
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.getUrlClassLoader(appId.cacheKey(""));
+        NCubeManager.getUrlClassLoader(appId);
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();
@@ -186,7 +186,7 @@ public class TestCdnRouter
         when(response.getOutputStream()).thenReturn(out);
         when(request.getInputStream()).thenReturn(in);
 
-        setCdnRoutingProvider(null, "file", true);
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, null, ReleaseStatus.SNAPSHOT.name(), true);
 
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
@@ -194,14 +194,17 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
     }
 
-    private static void setCdnRoutingProvider(final String cubeName, final String version, final boolean isAuthorized)
+    private static void setCdnRoutingProvider(final String account, final String app, final String version, final String cubeName, final String status, final boolean isAuthorized)
     {
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()
         {
             public void setupCoordinate(Map coord)
             {
+                coord.put(CdnRouter.ACCOUNT, account);
+                coord.put(CdnRouter.APP, app);
                 coord.put(CdnRouter.CUBE_NAME, cubeName);
                 coord.put(CdnRouter.CUBE_VERSION, version);
+                coord.put(CdnRouter.STATUS, status);
             }
 
             public boolean isAuthorized(String type)
@@ -213,7 +216,7 @@ public class TestCdnRouter
 
     private static void setDefaultCdnRoutingProvider()
     {
-        setCdnRoutingProvider("CdnRouterTest", ApplicationID.DEFAULT_VERSION, true);
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, "CdnRouterTest", ReleaseStatus.SNAPSHOT.name(), true);
     }
 
     @Test
@@ -225,7 +228,7 @@ public class TestCdnRouter
         when(request.getServletPath()).thenReturn("/dyn/view/index");
         when(request.getRequestURL()).thenReturn(new StringBuffer("http://www.foo.com/dyn/view/index"));
 
-        setCdnRoutingProvider("CdnRouterTest", ApplicationID.DEFAULT_VERSION, false);
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, "CdnRouterTest", ReleaseStatus.SNAPSHOT.name(), false);
 
         new CdnRouter().route(request, response);
         verify(response, times(1)).sendError(401, "CdnRouter - Unauthorized access, request: http://www.foo.com/dyn/view/index");

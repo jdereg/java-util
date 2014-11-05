@@ -29,32 +29,26 @@ import static org.mockito.Mockito.when;
  */
 public class TestNCubeJdbcPersister
 {
-    private int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
-
     static final String APP_ID = "ncube.test";
     private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-
-    TestingDatabaseManager manager;
 
     @Before
     public void setUp() throws Exception
     {
-        manager = TestingDatabaseHelper.getTestingDatabaseManager(test_db);
-        manager.setUp();
+        TestingDatabaseHelper.setupDatabase();
     }
 
     @After
     public void tearDown() throws Exception
     {
-        manager.tearDown();
-        manager = null;
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
 
     @Test
     public void testDbApis() throws Exception
     {
-        NCubePersister persister = TestingDatabaseHelper.getPersister(test_db);
+        NCubePersister persister = TestingDatabaseHelper.getPersister();
 
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
         NCube ncube2 = TestNCube.getTestNCube2D(true);
@@ -149,7 +143,7 @@ public class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            new NCubeJdbcPersister().getAppNames(c);
+            new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp.getAccount());
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
@@ -539,13 +533,12 @@ public class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(false);
         when(ps.executeUpdate()).thenReturn(0);
 
-
         try
         {
             new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
             fail();
         } catch(IllegalStateException e) {
-            assertTrue(e.getMessage().startsWith("error inserting new NCube"));
+            assertTrue(e.getMessage().contains("error inserting"));
         }
     }
 

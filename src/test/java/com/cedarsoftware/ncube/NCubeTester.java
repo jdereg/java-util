@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UrlUtilities;
 import org.junit.After;
+import org.junit.Before;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,10 +12,16 @@ import java.util.Map;
  */
 public class NCubeTester
 {
+    @Before
+    public void setUp() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     public Map getCprMap(String prop, String bu, String env) {

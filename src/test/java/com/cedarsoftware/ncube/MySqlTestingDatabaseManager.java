@@ -40,7 +40,7 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
                     "            notes_bin longtext,\n" +
                     "            revision_number bigint,\n" +
                     "            PRIMARY KEY (n_cube_id),\n" +
-                    "            UNIQUE (tenant_cd, n_cube_nm, version_no_cd, app_cd, status_cd, revision_number)\n" +
+                    "            UNIQUE (tenant_cd, app_cd, n_cube_nm, version_no_cd, revision_number)\n" +
                     "        );\n" +
                     "        drop trigger if exists `ncube`.sysEffDateTrigger;\n" +
                     "        DELIMITER ;;\n" +

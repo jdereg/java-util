@@ -75,6 +75,11 @@ public class ApplicationID
         return status;
     }
 
+    public String cacheKey()
+    {
+        return cacheKey("");
+    }
+
     public String cacheKey(String name)
     {
         StringBuilder s = new StringBuilder();
@@ -102,11 +107,11 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        if (!account.equals(that.account))
+        if (!account.equalsIgnoreCase(that.account))
         {
             return false;
         }
-        if (!app.equals(that.app))
+        if (!app.equalsIgnoreCase(that.app))
         {
             return false;
         }
@@ -124,8 +129,8 @@ public class ApplicationID
 
     public int hashCode()
     {
-        int result = account.hashCode();
-        result = 31 * result + app.hashCode();
+        int result = account.toLowerCase().hashCode();
+        result = 31 * result + app.toLowerCase().hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.hashCode();
         return result;
@@ -133,7 +138,7 @@ public class ApplicationID
 
     public String toString()
     {
-        return cacheKey("");
+        return cacheKey();
     }
 
     public boolean isSnapshot()

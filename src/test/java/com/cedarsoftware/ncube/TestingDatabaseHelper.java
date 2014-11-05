@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by kpartlow on 10/28/2014.
@@ -11,49 +13,51 @@ public class TestingDatabaseHelper
     public static int HSQLDB = 2;
     public static int ORACLE = 3;
 
-    private static Object getProxyInstance(int db) throws Exception
+    public static int test_db = HSQLDB;
+
+    private static Object getProxyInstance() throws Exception
     {
-        if (db == HSQLDB) {
+        if (test_db == HSQLDB) {
             return HsqlTestingDatabaseManager.class.newInstance();
         }
 
-        if (db == MYSQL) {
+        if (test_db == MYSQL) {
             return MySqlTestingDatabaseManager.class.newInstance();
         }
 
-        throw new IllegalArgumentException("Unknown Database:  " + db);
+        throw new IllegalArgumentException("Unknown Database:  " + test_db);
     }
 
-    public static NCubePersister getPersister(int db) throws Exception
+    public static NCubePersister getPersister() throws Exception
     {
-        return new NCubeJdbcPersisterAdapter(createJdbcConnectionProvider(db));
+        return new NCubeJdbcPersisterAdapter(createJdbcConnectionProvider());
     }
 
-    public static JdbcConnectionProvider createJdbcConnectionProvider(int db) throws Exception
+    public static JdbcConnectionProvider createJdbcConnectionProvider() throws Exception
     {
-        if (db == HSQLDB) {
+        if (test_db == HSQLDB) {
             return new TestingConnectionProvider(null, "jdbc:hsqldb:mem:testdb", "sa", "");
         }
 
-        if (db == MYSQL) {
+        if (test_db == MYSQL) {
             return new TestingConnectionProvider(null, "jdbc:mysql://127.0.0.1:3306/ncube?autoCommit=true", "ncube", "ncube");
         }
 
-        if (db == ORACLE) {
+        if (test_db == ORACLE) {
             return new TestingConnectionProvider("oracle.jdbc.driver.OracleDriver", "jdbc:oracle:thin:@cvgli59.td.afg:1526:uwdeskd", "ra_desktop", "p0rtal");
         }
 
-        throw new IllegalArgumentException("Unknown Database:  " + db);
+        throw new IllegalArgumentException("Unknown Database:  " + test_db);
     }
 
-    public static TestingDatabaseManager getTestingDatabaseManager(int db) throws Exception
+    public static TestingDatabaseManager getTestingDatabaseManager() throws Exception
     {
-        if (db == HSQLDB) {
-            return new HsqlTestingDatabaseManager(createJdbcConnectionProvider(db));
+        if (test_db == HSQLDB) {
+            return new HsqlTestingDatabaseManager(createJdbcConnectionProvider());
         }
 
-        if (db == MYSQL) {
-            return new MySqlTestingDatabaseManager(createJdbcConnectionProvider(db));
+        if (test_db == MYSQL) {
+            return new MySqlTestingDatabaseManager(createJdbcConnectionProvider());
         }
 
         //  Don't manager tables for Oracle
@@ -69,5 +73,25 @@ public class TestingDatabaseHelper
             {
             }
         };
+    }
+
+    public static void setupDatabase() throws Exception
+    {
+        getTestingDatabaseManager().setUp();
+        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister());
+
+        List<String> urls = new ArrayList<>();
+        urls.add("http://www.cedarsoftware.com");
+
+        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.addBaseResourceUrls(urls, appId1);
+        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        NCubeManager.addBaseResourceUrls(urls, appId2);
+    }
+
+    public static void tearDownDatabase() throws Exception
+    {
+        getTestingDatabaseManager().tearDown();
+        NCubeManager.clearCubeList();
     }
 }

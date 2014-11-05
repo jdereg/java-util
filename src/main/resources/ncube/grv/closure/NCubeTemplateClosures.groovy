@@ -5,7 +5,7 @@ import com.cedarsoftware.ncube.exception.RuleStop
 def getRelativeCubeCell =
         { name, coord ->
             input.putAll(coord);
-            def cube = NCubeManager.getCube(name, ncube.getApplicationID())
+            def cube = NCubeManager.getCube(ncube.getApplicationID(), name)
             if (cube == null)
             {
                 throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString());
@@ -21,7 +21,7 @@ def getRelativeCell =
 
 def getFixedCubeCell =
         { name, coord ->
-            def cube = NCubeManager.getCube(name, ncube.getApplicationID())
+            def cube = NCubeManager.getCube(ncube.getApplicationID(), name)
             if (cube == null)
             {
                 throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString());

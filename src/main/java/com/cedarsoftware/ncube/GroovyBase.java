@@ -40,8 +40,8 @@ public abstract class GroovyBase extends UrlCommandCell
 {
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
-    static final Map<String, Method> initMethodMap = new ConcurrentHashMap<>();
-    static final Map<String, Method> methodMap = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Method>> initMethodMap = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Method>> runMethodMap = new ConcurrentHashMap<>();
 
     public GroovyBase(String cmd, String url)
     {
@@ -57,20 +57,14 @@ public abstract class GroovyBase extends UrlCommandCell
         Map<String, Class> compiledMap = getCompiledClassesCache(appId);
         compiledMap.clear();
 
-        synchronized (constructorCache)
-        {
-            constructorCache.clear();  // free up stored references to Compiled Constructors
-        }
+        Map<String, Constructor> constructorMap = getConstructorCache(appId);
+        constructorMap.clear();
 
-        synchronized (methodMap)
-        {
-            methodMap.clear(); // free up stored references to Compiled Methods
-        }
+        Map<String, Method> initMethodMap = getInitMethodCache(appId);
+        initMethodMap.clear();
 
-        synchronized (initMethodMap)
-        {
-            initMethodMap.clear();  // free up stored references to NCubeGroovyExpression.init() methods
-        }
+        Map<String, Method> runMethodMap = getRunMethodCache(appId);
+        runMethodMap.clear();
     }
 
     private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)
@@ -109,6 +103,44 @@ public abstract class GroovyBase extends UrlCommandCell
             }
         }
         return classesMap;
+    }
+
+    private static Map<String, Method> getInitMethodCache(ApplicationID appId)
+    {
+        Map<String, Method> initMethodMap = GroovyBase.initMethodMap.get(appId);
+
+        if (initMethodMap == null)
+        {
+            synchronized (GroovyBase.initMethodMap)
+            {
+                initMethodMap = GroovyBase.initMethodMap.get(appId);
+                if (initMethodMap == null)
+                {
+                    initMethodMap = new ConcurrentHashMap<>();
+                    GroovyBase.initMethodMap.put(appId, initMethodMap);
+                }
+            }
+        }
+        return initMethodMap;
+    }
+
+    private static Map<String, Method> getRunMethodCache(ApplicationID appId)
+    {
+        Map<String, Method> runMethodMap = GroovyBase.runMethodMap.get(appId);
+
+        if (runMethodMap == null)
+        {
+            synchronized (GroovyBase.runMethodMap)
+            {
+                runMethodMap = GroovyBase.runMethodMap.get(appId);
+                if (runMethodMap == null)
+                {
+                    runMethodMap = new ConcurrentHashMap<>();
+                    GroovyBase.runMethodMap.put(appId, runMethodMap);
+                }
+            }
+        }
+        return runMethodMap;
     }
 
     protected Object executeInternal(Object data, Map args)
@@ -161,36 +193,23 @@ public abstract class GroovyBase extends UrlCommandCell
 
         // Step 2: Call the inherited 'init(Map args)' method.  This technique saves the subclasses from having
         // to implement a duplicate constructor that routes the Map up (Constructors are not inherited).
+        Map<String, Method> initMethodMap = getInitMethodCache(cube.getApplicationID());
         Method initMethod = initMethodMap.get(cmdHash);
         if (initMethod == null)
         {
-            synchronized (initMethodMap)
-            {
-                initMethod = initMethodMap.get(cmdHash);
-                if (initMethod == null)
-                {
-                    initMethod = getRunnableCode().getMethod("init", Map.class);
-                    initMethodMap.put(cmdHash, initMethod);
-                }
-            }
+            initMethod = getRunnableCode().getMethod("init", Map.class);
+            initMethodMap.put(cmdHash, initMethod);
         }
 
         initMethod.invoke(instance, args);
 
         // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method
-        Method runMethod = methodMap.get(cmdHash);
-
+        Map<String, Method> runMethodMap = getRunMethodCache(cube.getApplicationID());
+        Method runMethod = runMethodMap.get(cmdHash);
         if (runMethod == null)
         {
-            synchronized (methodMap)
-            {
-                runMethod = methodMap.get(cmdHash);
-                if (runMethod == null)
-                {
-                    runMethod = getRunMethod();
-                    methodMap.put(cmdHash, runMethod);
-                }
-            }
+            runMethod = getRunMethod();
+            runMethodMap.put(cmdHash, runMethod);
         }
 
         return invokeRunMethod(runMethod, instance, args, cmdHash);

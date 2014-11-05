@@ -6,9 +6,9 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -62,38 +62,24 @@ import static org.junit.Assert.fail;
 public class TestNCube
 {
     private static final boolean _debug = false;
-    public static volatile boolean _classLoaderInitialize = true;
 
-    @BeforeClass
-    public static void initialize()
+    @Before
+    public void setUp() throws Exception
     {
-        if (_classLoaderInitialize)
-        {
-            List<String> urls = new ArrayList<>();
-            urls.add("http://www.cedarsoftware.com");
-
-            ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.addBaseResourceUrls(urls, appId1);
-            ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.addBaseResourceUrls(urls, appId2);
-            _classLoaderInitialize = false;
-        }
+        TestingDatabaseHelper.setupDatabase();
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception
+    @After
+    public void tearDown() throws Exception
     {
-        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.clearCubeList(appId1);
-        NCubeManager.clearCubeList(appId2);
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test
     public void testPopulateProductLineCube() throws Exception
     {
         NCube<Object> ncube = new NCube<>("ProductLine");
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Axis prodLine = new Axis("PROD_LINE", AxisType.DISCRETE, AxisValueType.STRING, false);
         prodLine.addColumn("CommAuto");
@@ -106,7 +92,7 @@ public class TestNCube
         ncube.addAxis(bu);
 
         NCube<String> commAuto = new NCube<>("CommAuto");
-        NCubeManager.addCube(commAuto, commAuto.getApplicationID());
+        NCubeManager.addCube(commAuto.getApplicationID(), commAuto);
         Axis caAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         caAttr.addColumn("busType");
         caAttr.addColumn("riskType");
@@ -115,7 +101,7 @@ public class TestNCube
         commAuto.addAxis(caAttr);
 
         NCube<String> commGL = new NCube<>("CommGL");
-        NCubeManager.addCube(commGL, commGL.getApplicationID());
+        NCubeManager.addCube(commGL.getApplicationID(), commGL);
         Axis glAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         glAttr.addColumn("busType");
         glAttr.addColumn("riskType");
@@ -124,7 +110,7 @@ public class TestNCube
         commGL.addAxis(glAttr);
 
         NCube<String> commIM = new NCube<>("CommIM");
-        NCubeManager.addCube(commIM, commIM.getApplicationID());
+        NCubeManager.addCube(commIM.getApplicationID(), commIM);
         Axis imAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         imAttr.addColumn("busType");
         imAttr.addColumn("riskType");
@@ -134,7 +120,7 @@ public class TestNCube
         commIM.addAxis(imAttr);
 
         NCube<String> commSBP = new NCube<>("SBPProperty");
-        NCubeManager.addCube(commSBP, commSBP.getApplicationID());
+        NCubeManager.addCube(commSBP.getApplicationID(), commSBP);
         Axis sbpAttr = new Axis("Attribute", AxisType.DISCRETE, AxisValueType.STRING, false);
         sbpAttr.addColumn("busType");
         sbpAttr.addColumn("riskType");
@@ -1340,7 +1326,7 @@ public class TestNCube
     public void testCommandCellLookup()
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries");
-        NCubeManager.addCube(continentCounty, continentCounty.getApplicationID());
+        NCubeManager.addCube(continentCounty.getApplicationID(), continentCounty);
         continentCounty.addAxis(getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1348,11 +1334,11 @@ public class TestNCube
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<Object>("Provinces");
-        NCubeManager.addCube(canada, canada.getApplicationID());
+        NCubeManager.addCube(canada.getApplicationID(), canada);
         canada.addAxis(getProvincesAxis());
 
         NCube<Object> usa = new NCube<Object>("States");
-        NCubeManager.addCube(usa, usa.getApplicationID());
+        NCubeManager.addCube(usa.getApplicationID(), usa);
         usa.addAxis(getStatesAxis());
 
         Map<String, Object> coord1 = new HashMap<String, Object>();
@@ -1380,7 +1366,7 @@ public class TestNCube
     public void testBadCommandCellLookup()
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries");
-        NCubeManager.addCube(continentCounty, continentCounty.getApplicationID());
+        NCubeManager.addCube(continentCounty.getApplicationID(), continentCounty);
         continentCounty.addAxis(getContinentAxis());
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true);
         countries.addColumn("Canada");
@@ -1388,11 +1374,11 @@ public class TestNCube
         continentCounty.addAxis(countries);
 
         NCube<Object> canada = new NCube<Object>("Provinces");
-        NCubeManager.addCube(canada, canada.getApplicationID());
+        NCubeManager.addCube(canada.getApplicationID(), canada);
         canada.addAxis(getProvincesAxis());
 
         NCube<Object> usa = new NCube<Object>("States");
-        NCubeManager.addCube(usa, usa.getApplicationID());
+        NCubeManager.addCube(usa.getApplicationID(), usa);
         usa.addAxis(getStatesAxis());
 
         Map<String, Object> coord1 = new HashMap<String, Object>();
@@ -2737,8 +2723,8 @@ public class TestNCube
         naCountries.addAxis(country);
 
         naCountries.setCell(new GroovyExpression("$UsaStates(input)", null), coord);
-        NCubeManager.addCube(continents, continents.getApplicationID());
-        NCubeManager.addCube(naCountries, naCountries.getApplicationID());
+        NCubeManager.addCube(continents.getApplicationID(), continents);
+        NCubeManager.addCube(naCountries.getApplicationID(), naCountries);
 
         try
         {
@@ -3044,7 +3030,7 @@ public class TestNCube
         axis.addColumn("bad");
         axis.addColumn("scalar");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3076,7 +3062,7 @@ public class TestNCube
         axis.addColumn("bad");
         axis.addColumn("scalar");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map input = new HashMap();
         input.put("type", "bad");
@@ -3104,7 +3090,7 @@ public class TestNCube
         axis.addColumn("bad");
         axis.addColumn("property");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3136,7 +3122,7 @@ public class TestNCube
         axis.addColumn(35);
         axis.addColumn(45);
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("age", 25);
@@ -3157,7 +3143,7 @@ public class TestNCube
         axis.addColumn("bar");
         axis.addColumn("baz");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("method", "doIt");
@@ -3195,7 +3181,7 @@ public class TestNCube
         axis.addColumn(35);
         axis.addColumn(45);
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("age", 25);
@@ -3238,7 +3224,7 @@ public class TestNCube
         axis.addColumn(35);
         axis.addColumn(45);
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         // Bad command (CommandCell not GroovyProg used)
         Map coord = new HashMap();
@@ -3337,7 +3323,7 @@ public class TestNCube
         axis.addColumn("good");
         axis.addColumn("bad");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         // Illustrates that return is optional in expressions
         Map coord = new HashMap();
@@ -3369,7 +3355,7 @@ public class TestNCube
         axis.addColumn("alpha");
         axis.addColumn("beta");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3400,7 +3386,7 @@ public class TestNCube
         axis.addColumn("alpha");
         axis.addColumn("beta");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3436,7 +3422,7 @@ public class TestNCube
         axis.addColumn("good");
         axis.addColumn("bad");
         ncube.addAxis(axis);
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
 
         Map coord = new HashMap();
         coord.put("type", "good");
@@ -3449,7 +3435,7 @@ public class TestNCube
         axis.addColumn("OH");
         axis.addColumn("TX");
         cube2.addAxis(axis);
-        NCubeManager.addCube(cube2, cube2.getApplicationID());
+        NCubeManager.addCube(cube2.getApplicationID(), cube2);
 
         coord.clear();
         coord.put("type", "good");
@@ -3709,7 +3695,7 @@ public class TestNCube
     public void testAtCommand() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testAtCommand.json");
-        NCubeManager.addCube(ncube, ncube.getApplicationID());
+        NCubeManager.addCube(ncube.getApplicationID(), ncube);
         Map coord = new CaseInsensitiveMap();
         coord.put("Bu", "PIM");
         coord.put("State", "GA");
@@ -4664,9 +4650,9 @@ public class TestNCube
         urls.add("http://www.cedarsoftware.com");
 
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1);
+        NCubeManager.addBaseResourceUrls(appId1, urls);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2);
+        NCubeManager.addBaseResourceUrls(appId2, urls);
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -4685,9 +4671,9 @@ public class TestNCube
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1);
+        NCubeManager.addBaseResourceUrls(appId1, urls);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2);
+        NCubeManager.addBaseResourceUrls(appId2, urls);
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
@@ -4701,8 +4687,8 @@ public class TestNCube
         Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
 
-        NCubeManager.clearCubeList(appId1);
-        NCubeManager.clearCubeList(appId2);
+        NCubeManager.clearCache(appId1);
+        NCubeManager.clearCache(appId2);
         fo = new FileOutputStream(base + "Abc.groovy");
         code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 20 } }";
         fo.write(code.getBytes());

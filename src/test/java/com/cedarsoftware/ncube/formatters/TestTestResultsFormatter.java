@@ -6,9 +6,9 @@ import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.ncube.StringValuePair;
-import com.cedarsoftware.ncube.TestNCube;
+import com.cedarsoftware.ncube.TestingDatabaseHelper;
 import org.junit.After;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -24,16 +24,16 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestTestResultsFormatter
 {
-    @BeforeClass
-    public static void init() throws Exception
+    @Before
+    public void init() throws Exception
     {
-        TestNCube.initialize();
+        TestingDatabaseHelper.setupDatabase();
     }
 
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test

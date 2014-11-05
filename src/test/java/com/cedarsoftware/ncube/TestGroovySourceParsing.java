@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Set;
@@ -29,10 +30,16 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestGroovySourceParsing
 {
+    @Before
+    public void setUp() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test

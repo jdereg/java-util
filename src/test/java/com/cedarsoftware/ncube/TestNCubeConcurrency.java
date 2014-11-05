@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.powermock.core.IdentityHashSet;
 
@@ -18,9 +19,14 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestNCubeConcurrency
 {
-    @BeforeClass
-    public static void initialize() {
-        TestNCube.initialize();
+    @Before
+    public void initialize() throws Exception {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
+    @After
+    public void tearDown() throws Exception  {
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test

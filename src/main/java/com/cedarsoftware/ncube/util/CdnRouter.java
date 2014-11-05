@@ -4,7 +4,6 @@ import com.cedarsoftware.ncube.ApplicationID;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.Regexes;
-import com.cedarsoftware.ncube.ReleaseStatus;
 import com.cedarsoftware.util.StringUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -38,6 +37,9 @@ public class CdnRouter
 {
     private static CdnRoutingProvider provider;
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
+    public static final String ACCOUNT = "router.account";
+    public static final String APP = "router.app";
+    public static final String STATUS = "router.status";
     public static final String CUBE_NAME = "router.cubeName";
     public static final String CUBE_VERSION = "router.version";
     public static final String CONTENT_TYPE = "content.type";
@@ -88,8 +90,11 @@ public class CdnRouter
             Map coord = new HashMap();
             provider.setupCoordinate(coord);
 
+            String account = (String) coord.get(ACCOUNT);
+            String app = (String) coord.get(APP);
             String cubeName = (String) coord.get(CUBE_NAME);
             String version = (String) coord.get(CUBE_VERSION);
+            String status = (String) coord.get(STATUS);
             if (StringUtilities.isEmpty(cubeName) || StringUtilities.isEmpty(version))
             {
                 String msg = "CdnRouter - CdnRoutingProvider did not set up '" + CUBE_NAME + "' or '" + CUBE_VERSION + "' in the Map coordinate.";
@@ -102,9 +107,9 @@ public class CdnRouter
             coord.put(HTTP_REQUEST, request);
             coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
-            // TODO: MUST send account, app, and status so that the router knows what cube to get.
-            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, version, ReleaseStatus.SNAPSHOT.name());
-            NCube routingCube = NCubeManager.getCube(cubeName, appId);
+
+            ApplicationID appId = new ApplicationID(account, app, version, status);
+            NCube routingCube = NCubeManager.getCube(appId, cubeName);
             if (routingCube == null)
             {
                 throw new IllegalStateException("In order to use the n-cube CDN routing capabilities, " +

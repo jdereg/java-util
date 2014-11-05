@@ -38,10 +38,10 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
-    static final Map<String, Class>  compiledClasses = new ConcurrentHashMap<>();
-    static final Map<String, Constructor> constructorMap = new ConcurrentHashMap<>();
-    static final Map<String, Method> initMethodMap = new ConcurrentHashMap<>();
-    static final Map<String, Method> methodMap = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Method>> initMethodCache = new ConcurrentHashMap<>();
+    static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
 
     public GroovyBase(String cmd, String url)
     {
@@ -52,27 +52,95 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract String getMethodToExecute(Map args);
 
-    static void clearCache()
+    static void clearCache(ApplicationID appId)
     {
-        synchronized(compiledClasses)
-        {
-            compiledClasses.clear(); // Free up stored references to Compiled Classes
-        }
+        Map<String, Class> compiledMap = getCompiledClassesCache(appId);
+        compiledMap.clear();
 
-        synchronized (constructorMap)
-        {
-            constructorMap.clear();  // free up stored references to Compiled Constructors
-        }
+        Map<String, Constructor> constructorMap = getConstructorCache(appId);
+        constructorMap.clear();
 
-        synchronized (methodMap)
-        {
-            methodMap.clear(); // free up stored references to Compiled Methods
-        }
+        Map<String, Method> initMethodMap = getInitMethodCache(appId);
+        initMethodMap.clear();
 
-        synchronized (initMethodMap)
+        Map<String, Method> runMethodMap = getRunMethodCache(appId);
+        runMethodMap.clear();
+    }
+
+    private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)
+    {
+        Map<String, Class> classesMap = compiledClasses.get(appId);
+
+        if (classesMap == null)
         {
-            initMethodMap.clear();  // free up stored references to NCubeGroovyExpression.init() methods
+            synchronized (compiledClasses)
+            {
+                classesMap = compiledClasses.get(appId);
+                if (classesMap == null)
+                {
+                    classesMap = new ConcurrentHashMap<>();
+                    compiledClasses.put(appId, classesMap);
+                }
+            }
         }
+        return classesMap;
+    }
+
+    private static Map<String, Constructor> getConstructorCache(ApplicationID appId)
+    {
+        Map<String, Constructor> classesMap = constructorCache.get(appId);
+
+        if (classesMap == null)
+        {
+            synchronized (constructorCache)
+            {
+                classesMap = constructorCache.get(appId);
+                if (classesMap == null)
+                {
+                    classesMap = new ConcurrentHashMap<>();
+                    constructorCache.put(appId, classesMap);
+                }
+            }
+        }
+        return classesMap;
+    }
+
+    private static Map<String, Method> getInitMethodCache(ApplicationID appId)
+    {
+        Map<String, Method> initMethodMap = initMethodCache.get(appId);
+
+        if (initMethodMap == null)
+        {
+            synchronized (initMethodCache)
+            {
+                initMethodMap = initMethodCache.get(appId);
+                if (initMethodMap == null)
+                {
+                    initMethodMap = new ConcurrentHashMap<>();
+                    initMethodCache.put(appId, initMethodMap);
+                }
+            }
+        }
+        return initMethodMap;
+    }
+
+    private static Map<String, Method> getRunMethodCache(ApplicationID appId)
+    {
+        Map<String, Method> runMethodMap = runMethodCache.get(appId);
+
+        if (runMethodMap == null)
+        {
+            synchronized (runMethodCache)
+            {
+                runMethodMap = runMethodCache.get(appId);
+                if (runMethodMap == null)
+                {
+                    runMethodMap = new ConcurrentHashMap<>();
+                    runMethodCache.put(appId, runMethodMap);
+                }
+            }
+        }
+        return runMethodMap;
     }
 
     protected Object executeInternal(Object data, Map args)
@@ -110,55 +178,38 @@ public abstract class GroovyBase extends UrlCommandCell
      */
     protected Object executeGroovy(final Map args, final String cmdHash) throws Exception
     {
+        NCube cube = getNCube(args);
+        Map<String, Constructor> constructorMap = getConstructorCache(cube.getApplicationID());
+
         // Step 1: Construct the object (use default constructor)
         Constructor c = constructorMap.get(cmdHash);
         if (c == null)
         {
-            synchronized (constructorMap)
-            {
-                c = constructorMap.get(cmdHash);
-                if (c == null)
-                {
-                    c = getRunnableCode().getConstructor();
-                    constructorMap.put(cmdHash, c);
-                }
-            }
+            c = getRunnableCode().getConstructor();
+            constructorMap.put(cmdHash, c);
         }
 
         final Object instance = c.newInstance();
 
         // Step 2: Call the inherited 'init(Map args)' method.  This technique saves the subclasses from having
         // to implement a duplicate constructor that routes the Map up (Constructors are not inherited).
+        Map<String, Method> initMethodMap = getInitMethodCache(cube.getApplicationID());
         Method initMethod = initMethodMap.get(cmdHash);
         if (initMethod == null)
         {
-            synchronized (initMethodMap)
-            {
-                initMethod = initMethodMap.get(cmdHash);
-                if (initMethod == null)
-                {
-                    initMethod = getRunnableCode().getMethod("init", Map.class);
-                    initMethodMap.put(cmdHash, initMethod);
-                }
-            }
+            initMethod = getRunnableCode().getMethod("init", Map.class);
+            initMethodMap.put(cmdHash, initMethod);
         }
 
         initMethod.invoke(instance, args);
 
         // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method
-        Method runMethod = methodMap.get(cmdHash);
-
+        Map<String, Method> runMethodMap = getRunMethodCache(cube.getApplicationID());
+        Method runMethod = runMethodMap.get(cmdHash);
         if (runMethod == null)
         {
-            synchronized (methodMap)
-            {
-                runMethod = methodMap.get(cmdHash);
-                if (runMethod == null)
-                {
-                    runMethod = getRunMethod();
-                    methodMap.put(cmdHash, runMethod);
-                }
-            }
+            runMethod = getRunMethod();
+            runMethodMap.put(cmdHash, runMethod);
         }
 
         return invokeRunMethod(runMethod, instance, args, cmdHash);
@@ -195,25 +246,19 @@ public abstract class GroovyBase extends UrlCommandCell
             cmdHash = getCmdHash(getUrl());
         }
 
-        if (compiledClasses.containsKey(cmdHash))
+        NCube cube = getNCube(ctx);
+        Map<String, Class> compiledMap = getCompiledClassesCache(cube.getApplicationID());
+        if (compiledMap.containsKey(cmdHash))
         {   // Already been compiled, re-use class
-            setRunnableCode(compiledClasses.get(cmdHash));
+            setRunnableCode(compiledMap.get(cmdHash));
             return;
         }
 
-        NCube cube = getNCube(ctx);
         try
         {
-            synchronized(cmdHash.intern())
-            {
-                if (!compiledClasses.containsKey(cmdHash))
-                {   // in case two threads accessed cell with code at the same time, only compile and store the
-                    // code once.
-                    Class groovyCode = compile(cube, cmdHash);
-                    setRunnableCode(groovyCode);
-                    compiledClasses.put(cmdHash, getRunnableCode());
-                }
-            }
+            Class groovyCode = compile(cube, cmdHash);
+            setRunnableCode(groovyCode);
+            compiledMap.put(cmdHash, getRunnableCode());
         }
         catch (Exception e)
         {
@@ -226,7 +271,7 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
-        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID().getAppStr(""));
+        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID());
 
         if (urlLoader == null)
         {

@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigDecimal;
@@ -42,10 +43,16 @@ import static org.junit.Assert.fail;
  */
 public class TestRuleEngine
 {
+    @Before
+    public void setUp() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test
@@ -720,7 +727,7 @@ public class TestRuleEngine
     public void testNCubeGroovyExpressionAPIs()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("expressionTests.json");
-        NCube ncube1 = NCubeManager.getNCubeFromResource("months.json");
+        NCubeManager.getNCubeFromResource("months.json");
 
         Map input = new HashMap();
         Map output = new LinkedHashMap();

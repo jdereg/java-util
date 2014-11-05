@@ -1545,7 +1545,7 @@ public class NCube<T>
                 // and NCubeManager.getCube('name').  Each of these n-cubes needs to be checked.
                 for (final String ncube : getReferencedCubeNames())
                 {
-                    NCube refCube = NCubeManager.getCube(ncube, appId);
+                    NCube refCube = NCubeManager.getCube(appId, ncube);
                     if (refCube == null)
                     {
                         throw new IllegalStateException("Attempting to get required scope, but NCube '" + ncube + "' is not loaded into NCubeManager.  Use NCubeManager.loadCubes() at application start.");

@@ -48,15 +48,11 @@ public class ApplicationID
 
     public ApplicationID(String account, String app, String version, String status)
     {
-        validateTenant(account);
-        validateApp(app);
-        validateVersion(version);
-        validateStatus(status);
-
         this.account = account;
         this.app = app;
         this.version = version;
         this.status = status;
+        validate();
     }
 
     public String getAccount()
@@ -79,7 +75,12 @@ public class ApplicationID
         return status;
     }
 
-    public String getAppStr(String name)
+    public String cacheKey()
+    {
+        return cacheKey("");
+    }
+
+    public String cacheKey(String name)
     {
         StringBuilder s = new StringBuilder();
         s.append(account);
@@ -106,11 +107,11 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        if (!account.equals(that.account))
+        if (!account.equalsIgnoreCase(that.account))
         {
             return false;
         }
-        if (!app.equals(that.app))
+        if (!app.equalsIgnoreCase(that.app))
         {
             return false;
         }
@@ -128,8 +129,8 @@ public class ApplicationID
 
     public int hashCode()
     {
-        int result = account.hashCode();
-        result = 31 * result + app.hashCode();
+        int result = account.toLowerCase().hashCode();
+        result = 31 * result + app.toLowerCase().hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.hashCode();
         return result;
@@ -137,7 +138,7 @@ public class ApplicationID
 
     public String toString()
     {
-        return getAppStr("");
+        return cacheKey();
     }
 
     public boolean isSnapshot()
@@ -162,29 +163,12 @@ public class ApplicationID
         return new ApplicationID(account, app, version, ReleaseStatus.SNAPSHOT.name());
     }
 
-    /**
-     * Creates a new RELEASE version of this application id.
-     * @return A release version of this application id.
-     */
-    public ApplicationID createReleaseId()
-    {
-        return new ApplicationID(account, app, version, ReleaseStatus.RELEASE.name());
-    }
-
     public void validate()
     {
         validateTenant(account);
         validateApp(app);
         validateVersion(version);
         validateStatus(status);
-    }
-
-    public void validateIsSnapshot()
-    {
-        if (!isSnapshot())
-        {
-            throw new IllegalStateException("Application ID must be " + ReleaseStatus.SNAPSHOT.name());
-        }
     }
 
     public static void validateTenant(String tenant)

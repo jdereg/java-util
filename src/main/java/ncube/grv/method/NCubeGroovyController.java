@@ -1,6 +1,7 @@
 package ncube.grv.method;
 
 import com.cedarsoftware.ncube.Advice;
+import com.cedarsoftware.ncube.ApplicationID;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Method;
@@ -31,15 +32,37 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NCubeGroovyController extends NCubeGroovyExpression
 {
     // Cache reflective method look ups
-    private static final Map<String, Method> methodCache = new ConcurrentHashMap<>();
+    private static final Map<ApplicationID, Map<String, Method>> methodCache = new ConcurrentHashMap<>();
 
-    public static void clearCache()
+    public static void clearCache(ApplicationID appId)
     {
-        synchronized (methodCache)
-        {
-            methodCache.clear();
-        }
+        Map<String, Method> methodMap = getMethodCache(appId);
+        methodMap.clear();
     }
+
+    /**
+     * Fetch the Map of n-cubes for the given ApplicationID.  If no
+     * cache yet exists, a new empty cache is added.
+     */
+    private static Map<String, Method> getMethodCache(ApplicationID appId)
+    {
+        Map<String, Method> methodMap = methodCache.get(appId);
+
+        if (methodMap == null)
+        {
+            synchronized (methodCache)
+            {
+                methodMap = methodCache.get(appId);
+                if (methodMap == null)
+                {
+                    methodMap = new ConcurrentHashMap<>();
+                    methodCache.put(appId, methodMap);
+                }
+            }
+        }
+        return methodMap;
+    }
+
     /**
      * Run the groovy method named by the column on the 'method' axis.
      * @param signature String SHA1 of the source file.  This is used to
@@ -51,19 +74,13 @@ public class NCubeGroovyController extends NCubeGroovyExpression
     {
         String methodName = (String) input.get("method");
         String methodKey = methodName + '.' + signature;
-        Method method = methodCache.get(methodKey);
+        Map<String, Method> methodMap = getMethodCache(ncube.getApplicationID());
+        Method method = methodMap.get(methodKey);
 
         if (method == null)
         {
-            synchronized (methodCache)
-            {
-                method = methodCache.get(methodKey);
-                if (method == null)
-                {
-                    method = getClass().getMethod(methodName);
-                    methodCache.put(methodKey, method);
-                }
-            }
+            method = getClass().getMethod(methodName);
+            methodMap.put(methodKey, method);
         }
 
         // If 'around' Advice has been added to n-cube, invoke it before calling Groovy method

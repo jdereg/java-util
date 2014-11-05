@@ -5,6 +5,7 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigDecimal;
@@ -42,10 +43,16 @@ import static org.junit.Assert.fail;
  */
 public class TestAxis
 {
+    @Before
+    public void setUp() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     private static boolean isValidPoint(Axis axis, Comparable value)

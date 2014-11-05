@@ -24,7 +24,7 @@ import java.util.List;
  */
 public interface NCubePersister
 {
-    void createCube(ApplicationID id, NCube cube);
+    void createCube(ApplicationID appId, NCube cube);
     
     void updateCube(ApplicationID appId, NCube cube);
 
@@ -32,25 +32,25 @@ public interface NCubePersister
     //NCube findCube(ApplicationID appId, String name);
     
     List<NCube> loadCubes(ApplicationID appId);
-    Object[] getNCubes(ApplicationID appId, String sqlLike);
+    Object[] getNCubes(ApplicationID appId, String pattern);
 
     NCube findCube(ApplicationID appId, String ncubeName);
 
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete);
-    boolean doesCubeExist(ApplicationID id, String name);
+    boolean doesCubeExist(ApplicationID appId, String name);
 
-    Object[] getAppNames();
-    Object[] getAppVersions(ApplicationID id);
+    Object[] getAppNames(String account);
+    Object[] getAppVersions(ApplicationID appId);
 
-    boolean updateNotes(ApplicationID id, String cubeName, String notes);
-    String getNotes(ApplicationID id, String cubeName);
+    boolean updateNotes(ApplicationID appId, String cubeName, String notes);
+    String getNotes(ApplicationID appId, String cubeName);
 
-    int createSnapshotVersion(ApplicationID id, String newVersion);
-    int changeVersionValue(ApplicationID id, String newVersion);
-    int releaseCubes(ApplicationID id);
+    int createSnapshotVersion(ApplicationID appId, String newVersion);
+    int changeVersionValue(ApplicationID appId, String newVersion);
+    int releaseCubes(ApplicationID appId);
 
-    boolean renameCube(ApplicationID id, NCube oldCube, String newName);
+    boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 
-    boolean updateTestData(ApplicationID id, String cubeName, String testData);
-    String getTestData(ApplicationID id, String cubeName);
+    boolean updateTestData(ApplicationID appId, String cubeName, String testData);
+    String getTestData(ApplicationID appId, String cubeName);
 }

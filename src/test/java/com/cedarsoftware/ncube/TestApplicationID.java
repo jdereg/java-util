@@ -131,7 +131,7 @@ public class TestApplicationID
     public void testAppKey()
     {
         ApplicationID appId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        assertEquals("sears/inventory/1.0.0/", appId.getAppStr(""));
+        assertEquals("sears/inventory/1.0.0/", appId.cacheKey(""));
         assertEquals("sears/inventory/1.0.0/", appId.toString());
     }
 
@@ -141,28 +141,28 @@ public class TestApplicationID
         ApplicationID appId1 = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         ApplicationID appId2 = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
 
-        assertEquals(appId1.getAppStr(""), appId2.getAppStr(""));
+        assertEquals(appId1.cacheKey(""), appId2.cacheKey(""));
         assertNotEquals(appId1, appId2);
         assertNotEquals(appId1.hashCode(), appId2.hashCode());
 
         appId1 = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         appId2 = new ApplicationID("Sears", "Inventory", "1.0.1", ReleaseStatus.SNAPSHOT.name());
 
-        assertNotEquals(appId1.getAppStr(""), appId2.getAppStr(""));
+        assertNotEquals(appId1.cacheKey(""), appId2.cacheKey(""));
         assertNotEquals(appId1, appId2);
         assertNotEquals(appId1.hashCode(), appId2.hashCode());
 
         appId1 = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         appId2 = new ApplicationID("Sears", "Inventori", "1.0.0", ReleaseStatus.SNAPSHOT.name());
 
-        assertNotEquals(appId1.getAppStr(""), appId2.getAppStr(""));
+        assertNotEquals(appId1.cacheKey(""), appId2.cacheKey(""));
         assertNotEquals(appId1, appId2);
         assertNotEquals(appId1.hashCode(), appId2.hashCode());
 
         appId1 = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
         appId2 = new ApplicationID("Pears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
 
-        assertNotEquals(appId1.getAppStr(""), appId2.getAppStr(""));
+        assertNotEquals(appId1.cacheKey(""), appId2.cacheKey(""));
         assertNotEquals(appId1, appId2);
         assertNotEquals(appId1.hashCode(), appId2.hashCode());
 
@@ -179,7 +179,7 @@ public class TestApplicationID
     public void testAppStrSameAsToString()
     {
         ApplicationID appId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        assertEquals(appId.toString(), appId.getAppStr(""));
+        assertEquals(appId.toString(), appId.cacheKey(""));
     }
 
     // Want to know if this assumption ever changes
@@ -205,12 +205,12 @@ public class TestApplicationID
     @Test
     public void testValidateSnapshot() {
         ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        snapshot.validateIsSnapshot();
+        snapshot.validate();
 
         ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
         try
         {
-            releaseId.validateIsSnapshot();
+            releaseId.validate();
         } catch (IllegalStateException e) {
             assertEquals("Application ID must be SNAPSHOT", e.getMessage());
         }
@@ -219,10 +219,9 @@ public class TestApplicationID
     @Test
     public void testCreateReleaseId() {
         ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        snapshot.validateIsSnapshot();
+        snapshot.validate();
 
-
-        ApplicationID releaseId = snapshot.createReleaseId();
+        ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
         assertEquals(snapshot.getAccount(), releaseId.getAccount());
         assertEquals(snapshot.getApp(), releaseId.getApp());
         assertEquals(snapshot.getVersion(), releaseId.getVersion());
@@ -258,12 +257,12 @@ public class TestApplicationID
     @Test
     public void testValidateIsSnapshot() {
         ApplicationID snapshot = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        snapshot.validateIsSnapshot();
+        snapshot.validate();
 
         ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
         try
         {
-            releaseId.validateIsSnapshot();
+            releaseId.validate();
         } catch (IllegalStateException e) {
             assertEquals("Application ID must be SNAPSHOT", e.getMessage());
         }

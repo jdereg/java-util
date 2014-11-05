@@ -1,7 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import org.junit.After;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Method;
@@ -35,27 +35,29 @@ import static org.junit.Assert.fail;
  */
 public class TestAdvice
 {
-    @BeforeClass
-    public static void init() throws Exception
+    @Before
+    public void setUp() throws Exception
     {
-        TestNCube.initialize();
+        TestingDatabaseHelper.setupDatabase();
     }
 
     @After
     public void tearDown() throws Exception
     {
-        TestNCube.tearDown();
+        TestingDatabaseHelper.tearDownDatabase();
     }
 
     @Test
     public void testExpression()
     {
-        NCubeManager.getNCubeFromResource("urlPieces.json");
+        NCube ncube2 = NCubeManager.getNCubeFromResource("urlPieces.json");
         NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube);
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube2);
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice("*", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*", new Advice()
         {
             public String getName()
             {
@@ -76,7 +78,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice("*", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*", new Advice()
         {
             public String getName()
             {
@@ -115,7 +117,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + ".*()", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, ncube.getName() + ".*()", new Advice()
         {
             public String getName()
             {
@@ -185,8 +187,6 @@ public class TestAdvice
         ncube.getCell(coord, output);
         assertTrue(output.containsKey("before"));
         assertTrue(output.containsKey("after"));
-
-        ncube.clearAdvices();
     }
 
     @Test
@@ -196,7 +196,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + ".ba*()", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, ncube.getName() + ".ba*()", new Advice()
         {
             public String getName()
             {
@@ -298,7 +298,7 @@ public class TestAdvice
     {
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice("*.ba*()", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, "*.ba*()", new Advice()
         {
             public String getName()
             {
@@ -393,8 +393,6 @@ public class TestAdvice
         // Controller method Qux calls baz directly which is NOT intercepted
         assertFalse(output.containsKey("before"));
         assertFalse(output.containsKey("after"));
-
-        ncube.clearAdvices();
     }
 
     @Test
@@ -404,7 +402,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + "*", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, ncube.getName() + "*", new Advice()
         {
             public String getName()
             {
@@ -434,10 +432,11 @@ public class TestAdvice
     public void testMultiAdvice()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube);
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.getName() + "*()", new Advice()
         {
             public String getName()
             {
@@ -458,7 +457,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ncube.getName() + "*()", new Advice()
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.getName() + "*()", new Advice()
         {
             public String getName()
             {

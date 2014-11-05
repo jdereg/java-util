@@ -55,7 +55,7 @@ public class NCubeGroovyExpression
      */
     public NCube getCube(String name)
     {
-        NCube cube = NCubeManager.getCube(name, ncube.getApplicationID());
+        NCube cube = NCubeManager.getCube(ncube.getApplicationID(), name);
         if (cube == null)
         {
             throw new IllegalArgumentException("n-cube: " + name + " not loaded into NCubeManager, make sure to load all n-cubes first.");

@@ -287,7 +287,7 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {   // Relative URL
-                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID().getAppStr(""));
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID());
                 if (loader == null)
                 {
                     // TODO: Make attempt to load them from sys.classpath
@@ -336,7 +336,7 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 expandedUrl.append(url.substring(last, m.start()));
                 String cubeName = m.group(2);
-                NCube refCube = NCubeManager.getCube(cubeName, ncube.getApplicationID());
+                NCube refCube = NCubeManager.getCube(ncube.getApplicationID(), cubeName);
                 if (refCube == null)
                 {
                     throw new IllegalStateException("Reference to not-loaded NCube '" + cubeName + "', from NCube '" + ncube.getName() + "', url: " + url);

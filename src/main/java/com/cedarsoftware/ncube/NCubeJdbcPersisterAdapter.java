@@ -30,16 +30,15 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
 
     public NCubeJdbcPersisterAdapter(JdbcConnectionProvider provider)
     {
-        this.connectionProvider = provider;
+        connectionProvider = provider;
     }
 
-    @Override
-    public void createCube(ApplicationID id, NCube cube)
+    public void createCube(ApplicationID appId, NCube cube)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            persister.createCube(c, id, cube);
+            persister.createCube(c, appId, cube);
         }
         finally
         {
@@ -47,7 +46,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
     public void updateCube(ApplicationID appId, NCube cube)
     {
         Connection c = connectionProvider.getConnection();
@@ -61,7 +59,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
     public List<NCube> loadCubes(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
@@ -75,7 +72,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
     public Object[] getNCubes(ApplicationID appId, String sqlLike)
     {
         Connection c = connectionProvider.getConnection();
@@ -89,7 +85,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
     public NCube findCube(ApplicationID appId, String ncubeName)
     {
         Connection c = connectionProvider.getConnection();
@@ -103,7 +98,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
     public boolean deleteCube(ApplicationID appId, String name, boolean allowDelete)
     {
         Connection c = connectionProvider.getConnection();
@@ -117,13 +111,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public boolean doesCubeExist(ApplicationID id, String name)
+    public boolean doesCubeExist(ApplicationID appId, String name)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.doesCubeExist(c, id, name);
+            return persister.doesCubeExist(c, appId, name);
         }
         finally
         {
@@ -131,13 +124,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public Object[] getAppNames()
+    public Object[] getAppNames(String account)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getAppNames(c);
+            return persister.getAppNames(c, account);
         }
         finally
         {
@@ -145,13 +137,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public Object[] getAppVersions(ApplicationID id)
+    public Object[] getAppVersions(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getAppVersions(c, id);
+            return persister.getAppVersions(c, appId);
         }
         finally
         {
@@ -159,13 +150,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public boolean updateNotes(ApplicationID id, String cubeName, String notes)
+    public boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateNotes(c, id, cubeName, notes);
+            return persister.updateNotes(c, appId, cubeName, notes);
         }
         finally
         {
@@ -173,13 +163,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public String getNotes(ApplicationID id, String cubeName)
+    public String getNotes(ApplicationID appId, String cubeName)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getNotes(c, id, cubeName);
+            return persister.getNotes(c, appId, cubeName);
         }
         finally
         {
@@ -187,13 +176,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public int createSnapshotVersion(ApplicationID id, String newVersion)
+    public int createSnapshotVersion(ApplicationID appId, String newVersion)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.createSnapshotVersion(c, id, newVersion);
+            return persister.createSnapshotVersion(c, appId, newVersion);
         }
         finally
         {
@@ -201,13 +189,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public int changeVersionValue(ApplicationID id, String newVersion)
+    public int changeVersionValue(ApplicationID appId, String newVersion)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.changeVersionValue(c, id, newVersion);
+            return persister.changeVersionValue(c, appId, newVersion);
         }
         finally
         {
@@ -215,13 +202,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public int releaseCubes(ApplicationID id)
+    public int releaseCubes(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.releaseCubes(c, id);
+            return persister.releaseCubes(c, appId);
         }
         finally
         {
@@ -229,13 +215,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public boolean renameCube(ApplicationID id, NCube oldCube, String newName)
+    public boolean renameCube(ApplicationID appId, NCube oldCube, String newName)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.renameCube(c, id, oldCube, newName);
+            return persister.renameCube(c, appId, oldCube, newName);
         }
         finally
         {
@@ -243,13 +228,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public boolean updateTestData(ApplicationID id, String cubeName, String testData)
+    public boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateTestData(c, id, cubeName, testData);
+            return persister.updateTestData(c, appId, cubeName, testData);
         }
         finally
         {
@@ -257,13 +241,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    @Override
-    public String getTestData(ApplicationID id, String cubeName)
+    public String getTestData(ApplicationID appId, String cubeName)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getTestData(c, id, cubeName);
+            return persister.getTestData(c, appId, cubeName);
         }
         finally
         {

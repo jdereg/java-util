@@ -52,7 +52,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract String getMethodToExecute(Map args);
 
-    static void clearCache()
+    static void clearCache(ApplicationID appId)
     {
         synchronized(compiledClasses)
         {

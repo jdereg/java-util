@@ -1,6 +1,7 @@
 package ncube.grv.method;
 
 import com.cedarsoftware.ncube.Advice;
+import com.cedarsoftware.ncube.ApplicationID;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Method;
@@ -33,7 +34,7 @@ public class NCubeGroovyController extends NCubeGroovyExpression
     // Cache reflective method look ups
     private static final Map<String, Method> methodCache = new ConcurrentHashMap<>();
 
-    public static void clearCache()
+    public static void clearCache(ApplicationID appId)
     {
         synchronized (methodCache)
         {

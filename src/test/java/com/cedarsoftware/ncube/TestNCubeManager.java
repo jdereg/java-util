@@ -115,7 +115,7 @@ public class TestNCubeManager
         String name2 = ncube.getName();
         NCubeManager.createCube(appId, ncube);
 
-        NCubeManager.clearCubeList(appId);
+        NCubeManager.clearCache(appId);
         NCubeManager.loadCubes(appId);
 
         NCube ncube1 = NCubeManager.getCube(appId, name1);
@@ -126,7 +126,7 @@ public class TestNCubeManager
         assertEquals(name2, ncube2.getName());
         assertTrue(NCubeManager.isCubeCached(appId, name1));
         assertTrue(NCubeManager.isCubeCached(appId, name2));
-        NCubeManager.clearCubeList(appId);
+        NCubeManager.clearCache(appId);
         assertFalse(NCubeManager.isCubeCached(appId, name1));
         assertFalse(NCubeManager.isCubeCached(appId, name2));
 

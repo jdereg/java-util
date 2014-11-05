@@ -297,7 +297,7 @@ s    */
         return ncubes;
     }
 
-    public static void clearCubeList(ApplicationID appId)
+    public static void clearCache(ApplicationID appId)
     {
         validateAppId(appId);
 
@@ -314,9 +314,9 @@ s    */
         {
             adviceCache.clear();
         }
-        // TODO: Fix these caches
-        GroovyBase.clearCache();
-        NCubeGroovyController.clearCache();
+
+        GroovyBase.clearCache(appId);
+        NCubeGroovyController.clearCache(appId);
 
         // Clear ClassLoader cache
         GroovyClassLoader classLoader = urlClassLoaders.get(appId);
@@ -332,6 +332,8 @@ s    */
         for (ApplicationID appId : ncubeCache.keySet())
         {
             ncubeCache.get(appId).clear();
+            GroovyBase.clearCache(appId);
+            NCubeGroovyController.clearCache(appId);
         }
 
         for (ApplicationID appId : advices.keySet())
@@ -521,7 +523,7 @@ s    */
         validateAppId(appId);
         ApplicationID.validateVersion(newVersion);
         nCubePersister.changeVersionValue(appId, newVersion);
-        ncubeCache.remove(appId);
+        clearCache(appId);
     }
 
     public static boolean renameCube(ApplicationID appId, String oldName, String newName)

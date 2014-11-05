@@ -4687,8 +4687,8 @@ public class TestNCube
         Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
 
-        NCubeManager.clearCubeList(appId1);
-        NCubeManager.clearCubeList(appId2);
+        NCubeManager.clearCache(appId1);
+        NCubeManager.clearCache(appId2);
         fo = new FileOutputStream(base + "Abc.groovy");
         code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 20 } }";
         fo.write(code.getBytes());

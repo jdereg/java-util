@@ -83,6 +83,11 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testLoadCubesWithSysClassPath() {
+        throw new RuntimeException();
+    }
+
+    @Test
     public void testLoadCubes() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);

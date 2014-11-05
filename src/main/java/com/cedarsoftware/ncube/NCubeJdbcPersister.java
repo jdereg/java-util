@@ -165,24 +165,25 @@ public class NCubeJdbcPersister
             stmt.setString(4, appId.getStatus());
             stmt.setString(5, appId.getAccount());
 
-            ResultSet rs = stmt.executeQuery();
             List<NCubeInfoDto> records = new ArrayList<>();
-
-            while (rs.next())
+            try (ResultSet rs = stmt.executeQuery())
             {
-                NCubeInfoDto dto = new NCubeInfoDto();
-                dto.id = Long.toString(rs.getLong("n_cube_id"));
-                dto.name = rs.getString("n_cube_nm");
-                byte[] notes = rs.getBytes("notes_bin");
-                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-                dto.version = rs.getString("version_no_cd");
-                dto.status = rs.getString("status_cd");
-                dto.app = rs.getString("app_cd");
-                dto.createDate = rs.getDate("create_dt");
-                dto.updateDate = rs.getDate("update_dt");
-                dto.createHid = rs.getString("create_hid");
-                dto.updateHid = rs.getString("update_hid");
-                records.add(dto);
+                while (rs.next())
+                {
+                    NCubeInfoDto dto = new NCubeInfoDto();
+                    dto.id = Long.toString(rs.getLong("n_cube_id"));
+                    dto.name = rs.getString("n_cube_nm");
+                    byte[] notes = rs.getBytes("notes_bin");
+                    dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                    dto.version = rs.getString("version_no_cd");
+                    dto.status = rs.getString("status_cd");
+                    dto.app = rs.getString("app_cd");
+                    dto.createDate = rs.getDate("create_dt");
+                    dto.updateDate = rs.getDate("update_dt");
+                    dto.createHid = rs.getString("create_hid");
+                    dto.updateHid = rs.getString("update_hid");
+                    records.add(dto);
+                }
             }
             return records.toArray();
         }
@@ -205,26 +206,27 @@ public class NCubeJdbcPersister
             stmt.setString(2, appId.getVersion());
             stmt.setString(3, appId.getStatus());
             stmt.setString(4, appId.getAccount());
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next())
+            try (ResultSet rs = stmt.executeQuery())
             {
-                byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                String json = new String(jsonBytes, "UTF-8");
-                try
+                while (rs.next())
                 {
-                    NCube ncube = NCubeManager.ncubeFromJson(json);
-                    ncube.setApplicationID(appId);
-                    ncubes.add(ncube);
-                }
-                catch (Exception e)
-                {
-                    int len = 60;
-                    if (json.length() <= len)
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    try
                     {
-                        len = json.length() - 1;
+                        NCube ncube = NCubeManager.ncubeFromJson(json);
+                        ncube.setApplicationID(appId);
+                        ncubes.add(ncube);
                     }
-                    LOG.warn("app: " + appId + ", failed to load cube: " + json.substring(0, len));
+                    catch (Exception e)
+                    {
+                        int len = 60;
+                        if (json.length() <= len)
+                        {
+                            len = json.length() - 1;
+                        }
+                        LOG.warn("app: " + appId + ", failed to load cube: " + json.substring(0, len));
+                    }
                 }
             }
 
@@ -472,12 +474,13 @@ public class NCubeJdbcPersister
             stmt.setString(2, cubeName);
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getAccount());
-            ResultSet rs = stmt.executeQuery();
 
-            if (rs.next())
-            {
-                byte[] testData = rs.getBytes("test_data_bin");
-                return testData == null ? new String() : new String(testData, "UTF-8");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next())
+                {
+                    byte[] testData = rs.getBytes("test_data_bin");
+                    return testData == null ? new String() : new String(testData, "UTF-8");
+                }
             }
             throw new IllegalArgumentException("No cube: " + cubeName + ", app: " + appId + " matches passed in parameters.");
         }
@@ -648,22 +651,22 @@ public class NCubeJdbcPersister
         }
     }
 
-    //------------------------- private methods ---------------------------------------
-
     /**
      * Return an array [] of Strings containing all unique App names.
      */
     public Object[] getAppNames(Connection connection, String account)
     {
-        try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = ?"))
+        try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE app_cd = ?"))
         {
-            stmt.setString(1, account);
-            ResultSet rs = stmt.executeQuery();
+            stmt.setString(1, "NCE");
             List<String> records = new ArrayList<>();
 
-            while (rs.next())
-            {
-                records.add(rs.getString(1));
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                while (rs.next())
+                {
+                    records.add(rs.getString(1));
+                }
             }
             Collections.sort(records);
             return records.toArray();
@@ -684,13 +687,15 @@ public class NCubeJdbcPersister
             stmt.setString(2, appId.getStatus());
             stmt.setString(3, appId.getAccount());
 
-            ResultSet rs = stmt.executeQuery();
             List<String> records = new ArrayList<>();
-
-            while (rs.next())
+            try (ResultSet rs = stmt.executeQuery())
             {
-                records.add(rs.getString(1));
+                while (rs.next())
+                {
+                    records.add(rs.getString(1));
+                }
             }
+
             Collections.sort(records);  // May need to enhance to ensure 2.19.1 comes after 2.2.1
             return records.toArray();
         }

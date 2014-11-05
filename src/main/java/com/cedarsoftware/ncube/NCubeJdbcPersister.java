@@ -240,21 +240,19 @@ public class NCubeJdbcPersister
     public boolean deleteCube(Connection c, ApplicationID appId, String cubeName, boolean allowDelete)
     {
         String statement = allowDelete ?
-                "DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ?" :
-                "DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ?";
+                "DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = ?" :
+                "DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = ? AND status_cd = ?";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             ps.setString(1, appId.getApp());
             ps.setString(2, cubeName);
             ps.setString(3, appId.getVersion());
+            ps.setString(4, appId.getAccount());
 
             if (!allowDelete)
             {
-                ps.setString(4, ReleaseStatus.SNAPSHOT.name());
+                ps.setString(5, ReleaseStatus.SNAPSHOT.name());
             }
 
             return ps.executeUpdate() == 1;
@@ -654,8 +652,6 @@ public class NCubeJdbcPersister
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    // TODO: Mark API as @Deprecated when this API is available with ApplicationID as a parameter
-    //todo replace with new api
     public Object[] getAppNames(Connection connection, String account)
     {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = ?"))
@@ -673,7 +669,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all ncube app names from database";
+            String s = "Unable to fetch all app names from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -699,7 +695,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all cubes for app: " + appId + " from database";
+            String s = "Unable to fetch all versions for app: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

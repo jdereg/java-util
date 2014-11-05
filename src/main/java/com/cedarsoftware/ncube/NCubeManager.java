@@ -308,15 +308,15 @@ s    */
             appCache.clear();
         }
 
+        GroovyBase.clearCache(appId);
+        NCubeGroovyController.clearCache(appId);
+
         // Clear Advice cache
         Map<String, Advice> adviceCache = advices.get(appId);
         if (adviceCache != null)
         {
             adviceCache.clear();
         }
-
-        GroovyBase.clearCache(appId);
-        NCubeGroovyController.clearCache(appId);
 
         // Clear ClassLoader cache
         GroovyClassLoader classLoader = urlClassLoaders.get(appId);
@@ -328,7 +328,6 @@ s    */
 
     static void clearCache()
     {
-        // TODO: Clear GroovyBase and GroovyController
         for (ApplicationID appId : ncubeCache.keySet())
         {
             ncubeCache.get(appId).clear();

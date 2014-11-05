@@ -45,7 +45,7 @@ import static org.mockito.Mockito.mock;
 public class TestNCubeManager
 {
 
-    private int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
+    private static int test_db = TestingDatabaseHelper.HSQLDB;            // CHANGE to suit test needs (should be HSQLDB for normal JUnit testing)
     private TestingDatabaseManager _manager;
 
     static final String APP_ID = "ncube.test";
@@ -56,6 +56,7 @@ public class TestNCubeManager
     public static void init() throws Exception
     {
         TestNCube.initialize();
+        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister(test_db));
     }
 
 
@@ -64,7 +65,6 @@ public class TestNCubeManager
     {
         _manager = TestingDatabaseHelper.getTestingDatabaseManager(test_db);
         _manager.setUp();
-        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister(test_db));
     }
 
     @After

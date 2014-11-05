@@ -40,7 +40,7 @@ public class NCubeJdbcPersister
     {
         if (doesCubeExist(c, appId, ncube.getName()))
         {
-            throw new IllegalStateException("Cube already exists:  " + ncube.getName() + " " + appId);
+            throw new IllegalStateException("Cube: " + ncube.getName() + " already exists in app: " + appId);
         }
 
         try

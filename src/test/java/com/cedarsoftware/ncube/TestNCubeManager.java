@@ -489,7 +489,8 @@ public class TestNCubeManager
         }
         catch (IllegalStateException e)
         {
-            assertEquals("Only one (1) row should be updated.", e.getMessage());
+            assertTrue(e.getMessage().contains("error updating"));
+            assertTrue(e.getMessage().contains("rows updated"));
         }
     }
 
@@ -515,7 +516,8 @@ public class TestNCubeManager
         }
         catch (IllegalStateException e)
         {
-            assertTrue(e.getMessage().contains("Cube already exists"));
+            assertTrue(e.getMessage().contains("ube"));
+            assertTrue(e.getMessage().contains("already exists"));
         }
 
         NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true);

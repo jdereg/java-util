@@ -179,16 +179,20 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testUpdateCubeWithSqlException() throws Exception {
+    public void testUpdateCubeWithSqlException() throws Exception
+    {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
             new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube);
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().startsWith("Unable to update NCube"));
+            assertTrue(e.getMessage().contains("Unable to update"));
+            assertTrue(e.getMessage().contains("ube"));
         }
     }
 
@@ -494,21 +498,25 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testCreateCubeWithSqlException() throws Exception {
+    public void testCreateCubeWithSqlException() throws Exception
+    {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false);
         try
         {
             new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().startsWith("Unable to create"));
+            assertTrue(e.getMessage().startsWith("Unable to insert"));
         }
     }
 
     @Test
-    public void testCreateCubeWhenOneAlreadyExists() throws Exception {
+    public void testCreateCubeWhenOneAlreadyExists() throws Exception
+    {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true);
 
@@ -516,8 +524,11 @@ public class TestNCubeJdbcPersister
         {
             new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
             fail();
-        } catch(IllegalStateException e) {
-            assertTrue(e.getMessage().startsWith("Cube already exists"));
+        }
+        catch(IllegalStateException e)
+        {
+            assertTrue(e.getMessage().contains("ube"));
+            assertTrue(e.getMessage().contains("already exists"));
         }
     }
 
@@ -569,7 +580,8 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testCreateCubeWithWrongUpdateCount() throws Exception {
+    public void testCreateCubeWithWrongUpdateCount() throws Exception
+    {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
         Connection c = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
@@ -582,13 +594,17 @@ public class TestNCubeJdbcPersister
         {
             new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
             fail();
-        } catch(RuntimeException e) {
-            assertTrue(e.getMessage().contains("Unable to create NCube"));
+        }
+        catch(RuntimeException e)
+        {
+            assertTrue(e.getMessage().contains("ube"));
+            assertTrue(e.getMessage().contains("Unable to insert"));
         }
     }
 
     @Test
-    public void testUpdateCubeWithWrongUpdateCount() throws Exception {
+    public void testUpdateCubeWithWrongUpdateCount() throws Exception
+    {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
         Connection c = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
@@ -598,8 +614,12 @@ public class TestNCubeJdbcPersister
         {
             new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube);
             fail();
-        } catch(IllegalStateException e) {
-            assertEquals("Only one (1) row should be updated.", e.getMessage());
+        }
+        catch(IllegalStateException e)
+        {
+            assertTrue(e.getMessage().contains("error"));
+            assertTrue(e.getMessage().contains("updat"));
+            assertTrue(e.getMessage().contains("should be 1"));
         }
     }
 

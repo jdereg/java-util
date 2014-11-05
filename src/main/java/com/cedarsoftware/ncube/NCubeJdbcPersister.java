@@ -528,19 +528,16 @@ public class NCubeJdbcPersister
         }
     }
 
-    public boolean renameCube(Connection c, ApplicationID appId, NCube cube, String newName) {
-
+    public boolean renameCube(Connection c, ApplicationID appId, NCube cube, String newName)
+    {
         //  Save in case exception happens and we have to reset proper name on the cube.
         String oldName = cube.getName();
 
-        try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "'"))
+        try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "' AND tenant_cd = ?"))
         {
             //  We have to set the new  name on the cube toFormatJson with the proper name on it.
             cube.name = newName;
 
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             ps.setString(1, newName);
             //John, is there any way to keep from having to reformat the whole cube when its name changes
             //Is this just because of loading a cube from disk?
@@ -548,10 +545,11 @@ public class NCubeJdbcPersister
             ps.setString(3, appId.getApp());
             ps.setString(4, appId.getVersion());
             ps.setString(5, oldName);
+            ps.setString(6, appId.getAccount());
             int count = ps.executeUpdate();
             if (count < 1)
             {
-                throw new IllegalArgumentException("No n-cube found to rename, for app:" + appId.getApp() + ", version: " + appId.getVersion() + ", original name: " + oldName);
+                throw new IllegalArgumentException("Rename cube failed, no cube found to rename, for app:" + appId + ", original name: " + oldName + ", new name: " + newName);
             }
 
             return true;
@@ -564,7 +562,7 @@ public class NCubeJdbcPersister
         catch (Exception e)
         {
             cube.name = oldName;
-            String s = "Unable to rename n-cube due to an error: " + e.getMessage();
+            String s = "Unable to rename cube: " + oldName + ", app: " + appId + ", new name: " + newName + " due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -573,15 +571,13 @@ public class NCubeJdbcPersister
 
     public boolean doCubesExist(Connection c, ApplicationID appId)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ?";
+        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = ?";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {
-            // TODO: Need to set account column from appId, -if- it exists.  Need to run a check to
-            // TODO: see if the column exists, store the result for the entire app life cycle.
-            // TODO: If account column does not exist, then account is null.
             ps.setString(1, appId.getApp());
             ps.setString(2, appId.getVersion());
+            ps.setString(3, appId.getAccount());
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -590,11 +586,10 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Error finding cubes:  " + appId.toString();
+            String s = "Error checking for existing cubes:  " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-
     }
 
     public boolean doReleaseCubesExist(Connection c, ApplicationID appId)

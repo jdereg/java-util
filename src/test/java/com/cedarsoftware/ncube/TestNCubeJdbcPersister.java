@@ -331,8 +331,11 @@ public class TestNCubeJdbcPersister
             new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, ncube, "bar");
             fail();
         }
-        catch(IllegalArgumentException e) {
-            assertTrue(e.getMessage().startsWith("No n-cube found to rename"));
+        catch(IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("no"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("found"));
         }
     }
 

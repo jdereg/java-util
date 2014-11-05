@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -21,10 +22,12 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +64,8 @@ public class NCubeManager
     private static final Map<String, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
+
+    private static final String CLASSPATH_CUBE = "sys.classpath";
 
     static
     {
@@ -516,6 +521,37 @@ s    */
         {
             addCube(ncube, appId);
         }
+
+        resolveClassPath(appId);
+    }
+
+    public static void resolveClassPath(ApplicationID appId) {
+
+        Map map = new HashMap();
+        map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
+        map.put("useranem", System.getProperty("user.name"));
+
+        NCube cube = getCube(CLASSPATH_CUBE, appId);
+        String url = (String)cube.getCell(map);
+
+        if (StringUtilities.isEmpty(url)) {
+            throw new IllegalStateException("sys.classpath cube is not setup for this application:  " + appId);
+        }
+
+        StringTokenizer token = new StringTokenizer(url, ";,| ");
+        List<String> list = new ArrayList();
+        while (token.hasMoreTokens()) {
+            String elem = token.nextToken();
+            try
+            {
+                URL u = new URL(elem);
+                list.add(elem);
+            } catch (Exception e) {
+                //TODO:  do we want to throw an exception or just not add this url into the path?
+                throw new IllegalArgumentException("Invalid url (" + elem + ") in sys.classpath:  " + appId);
+            }
+        }
+        addBaseResourceUrls(list, appId);
     }
 
     public static void createCube(ApplicationID appId, NCube ncube)

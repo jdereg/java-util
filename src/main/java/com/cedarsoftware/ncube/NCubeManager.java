@@ -129,7 +129,7 @@ public class NCubeManager
     }
 
     /**
-     * @return Map<String, NCube> of all NCubes for the given ApplicationID.
+     * @return Set<NCube> of all NCubes for the given ApplicationID.
      * If no cubes are loaded, then it will load them first and then return
      * the list.
      */
@@ -328,21 +328,21 @@ s    */
 
     static void clearCache()
     {
-        for (ApplicationID appId : ncubeCache.keySet())
+        for (Map.Entry<ApplicationID, Map<String, NCube>> applicationIDMapEntry : ncubeCache.entrySet())
         {
-            ncubeCache.get(appId).clear();
-            GroovyBase.clearCache(appId);
-            NCubeGroovyController.clearCache(appId);
+            applicationIDMapEntry.getValue().clear();
+            GroovyBase.clearCache(applicationIDMapEntry.getKey());
+            NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
         }
 
-        for (ApplicationID appId : advices.keySet())
+        for (Map.Entry<ApplicationID, Map<String, Advice>> applicationIDMapEntry : advices.entrySet())
         {
-            advices.get(appId).clear();
+            applicationIDMapEntry.getValue().clear();
         }
 
-        for (ApplicationID appId : advices.keySet())
+        for (Map.Entry<ApplicationID, GroovyClassLoader> applicationIDGroovyClassLoaderEntry : urlClassLoaders.entrySet())
         {
-            urlClassLoaders.get(appId).clearCache();
+            applicationIDGroovyClassLoaderEntry.getValue().clearCache();
         }
     }
 

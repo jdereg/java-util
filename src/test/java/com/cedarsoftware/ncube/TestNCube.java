@@ -4650,9 +4650,9 @@ public class TestNCube
         urls.add("http://www.cedarsoftware.com");
 
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1);
+        NCubeManager.addBaseResourceUrls(appId1, urls);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2);
+        NCubeManager.addBaseResourceUrls(appId2, urls);
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -4671,9 +4671,9 @@ public class TestNCube
         urls.add(url);
         urls.add("http://www.cedarsoftware.com");
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1);
+        NCubeManager.addBaseResourceUrls(appId1, urls);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2);
+        NCubeManager.addBaseResourceUrls(appId2, urls);
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";

@@ -57,15 +57,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NCubeManager
 {
     private static final Map<ApplicationID, Map<String, NCube>> ncubeCache = new ConcurrentHashMap<>();
-    private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
-    private static final Map<String, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
+    private static final Log LOG = LogFactory.getLog(NCubeManager.class);
 
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        urlClassLoaders.put(appId.cacheKey(), new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+        urlClassLoaders.put(appId, new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
     }
 
     /**
@@ -183,21 +183,20 @@ public class NCubeManager
     /**
      * Add to the classloader's classpath for the given ApplicationID.
 s    */
-    public static void addBaseResourceUrls(List<String> urls, ApplicationID appId)
+    public static void addBaseResourceUrls(ApplicationID appId, List<String> urls)
     {
         validateAppId(appId);
-        final String cacheKey = appId.cacheKey();
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(cacheKey);
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
 
         if (urlClassLoader == null)
         {
-//            LOG.info("Creating ClassLoader, app: " + cacheKey + ", urls: " + urls);
+            LOG.debug("Creating ClassLoader, app: " + appId + ", urls: " + urls);
             urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(cacheKey, urlClassLoader);
+            urlClassLoaders.put(appId, urlClassLoader);
         }
         else
         {
-//            LOG.info("Adding resource URLs, app: " + cacheKey + ", urls: " + urls);
+            LOG.debug("Adding resource URLs, app: " + appId + ", urls: " + urls);
         }
 
         addUrlsToClassLoader(urls, urlClassLoader);
@@ -228,7 +227,7 @@ s    */
     public static URLClassLoader getUrlClassLoader(ApplicationID appId)
     {
         validateAppId(appId);
-        return urlClassLoaders.get(appId.cacheKey());
+        return urlClassLoaders.get(appId);
     }
 
     /**
@@ -301,36 +300,49 @@ s    */
     public static void clearCubeList(ApplicationID appId)
     {
         validateAppId(appId);
-        ncubeCache.remove(appId);
 
+        // Clear App cache
+        Map<String, NCube> appCache = ncubeCache.get(appId);
+        if (appCache != null)
+        {
+            appCache.clear();
+        }
+
+        // Clear Advice cache
+        Map<String, Advice> adviceCache = advices.get(appId);
+        if (adviceCache != null)
+        {
+            adviceCache.clear();
+        }
         // TODO: Fix these caches
         GroovyBase.clearCache();
         NCubeGroovyController.clearCache();
 
-        for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
+        // Clear ClassLoader cache
+        GroovyClassLoader classLoader = urlClassLoaders.get(appId);
+        if (classLoader != null)
         {
-            URLClassLoader classLoader = entry.getValue();
-            ((GroovyClassLoader) classLoader).clearCache(); // free up Class cache
+            classLoader.clearCache();
         }
-        advices.clear();
     }
 
-    static void clearCubeList()
+    static void clearCache()
     {
+        // TODO: Clear GroovyBase and GroovyController
         for (ApplicationID appId : ncubeCache.keySet())
         {
-            // TODO: Pass in appId
-            GroovyBase.clearCache();
-            NCubeGroovyController.clearCache();
-
-            for (Map.Entry<String, GroovyClassLoader> entry : urlClassLoaders.entrySet())
-            {
-                URLClassLoader classLoader = entry.getValue();
-                ((GroovyClassLoader) classLoader).clearCache(); // free up Class cache
-            }
-            advices.clear();
+            ncubeCache.get(appId).clear();
         }
-        ncubeCache.clear();
+
+        for (ApplicationID appId : advices.keySet())
+        {
+            advices.get(appId).clear();
+        }
+
+        for (ApplicationID appId : advices.keySet())
+        {
+            urlClassLoaders.get(appId).clearCache();
+        }
     }
 
     /**

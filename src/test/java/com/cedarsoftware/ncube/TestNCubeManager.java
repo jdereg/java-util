@@ -5,7 +5,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,7 +19,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
 
 /**
  * NCubeManager Tests
@@ -60,7 +58,7 @@ public class TestNCubeManager
     }
 
 
-    private NCube createCube() throws Exception
+    private static NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
 
@@ -77,8 +75,6 @@ public class TestNCubeManager
 
         coord.put("gender", "male");
         ncube.setCell(1.8, coord);
-
-        String version = "0.1.0";
 
         NCubeManager.createCube(defaultSnapshotApp, ncube);
         NCubeManager.updateTestData(defaultSnapshotApp, ncube.getName(), JsonWriter.objectToJson(coord));
@@ -182,8 +178,8 @@ public class TestNCubeManager
 
 
     @Test
-    public void testRenameWithMatchingNames() throws Exception {
-        Connection c = mock(Connection.class);
+    public void testRenameWithMatchingNames() throws Exception
+    {
         try
         {
             NCubeManager.renameCube(defaultSnapshotApp, "foo", "foo");
@@ -240,16 +236,15 @@ public class TestNCubeManager
             assertTrue((Double) continentCounty.getCell(coord2) == 0.78);
             fail("should throw exception");
         }
-        catch (Exception expected)
-        {
-        }
+        catch (Exception ignored)
+        { }
 
         NCubeManager.createCube(defaultSnapshotApp, continentCounty);
         NCubeManager.createCube(defaultSnapshotApp, usa);
         NCubeManager.createCube(defaultSnapshotApp, canada);
 
         assertTrue(NCubeManager.getCubes(defaultSnapshotApp).size() == 3);
-        NCubeManager.clearCubeList();
+        NCubeManager.clearCache();
         NCubeManager.loadCubes(defaultSnapshotApp);
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);
@@ -266,7 +261,6 @@ public class TestNCubeManager
         NCube n1 = NCubeManager.getNCubeFromResource("template1.json");
         NCube n2 = NCubeManager.getNCubeFromResource("template2.json");
 
-        String ver = "1.1.1";
         NCubeManager.createCube(defaultSnapshotApp, n1);
         NCubeManager.createCube(defaultSnapshotApp, n2);
 
@@ -288,9 +282,9 @@ public class TestNCubeManager
         {
             NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n2.getName(), null);
             fail();
-        } catch (IllegalArgumentException e) {
-
         }
+        catch (IllegalArgumentException ignored)
+        { }
     }
 
     @Test
@@ -373,7 +367,6 @@ public class TestNCubeManager
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
         NCube ncube2 = TestNCube.getTestNCube2D(true);
 
-        String version = "0.1.1";
         NCubeManager.createCube(defaultSnapshotApp, ncube1);
         NCubeManager.createCube(defaultSnapshotApp, ncube2);
 
@@ -398,7 +391,7 @@ public class TestNCubeManager
         ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.2.0");
 
         String notes1 = NCubeManager.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs");
-        String notes2 = NCubeManager.getNotes(newId, "test.ValidTrailorConfigs");
+        NCubeManager.getNotes(newId, "test.ValidTrailorConfigs");
 
         NCubeManager.updateNotes(defaultSnapshotApp, "test.ValidTrailorConfigs", null);
         notes1 = NCubeManager.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs");
@@ -433,7 +426,6 @@ public class TestNCubeManager
         assertTrue(cubeList.length == 0);
     }
 
-
     @Test
     public void testRenameNCube() throws Exception
     {
@@ -458,7 +450,6 @@ public class TestNCubeManager
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true));
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true));
     }
-
 
     @Test
     public void testNCubeManagerGetCubes() throws Exception
@@ -530,7 +521,6 @@ public class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true);
     }
 
-
     @Test
     public void testNCubeManagerCreateSnapshots() throws Exception
     {
@@ -546,7 +536,7 @@ public class TestNCubeManager
 
         try
         {
-            NCube ncube2 = createCube();
+            createCube();
             NCubeManager.releaseCubes(defaultSnapshotApp);
             NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
             NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
@@ -556,7 +546,6 @@ public class TestNCubeManager
         {
         }
     }
-
 
     @Test
     public void testNCubeManagerDelete() throws Exception
@@ -683,10 +672,23 @@ public class TestNCubeManager
         try
         {
             ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2", ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.addBaseResourceUrls(urls, appId);
+            NCubeManager.addBaseResourceUrls(appId, urls);
             fail("Should not make it here");
         }
-        catch (Exception expected)
+        catch (Exception ignored)
+        { }
+    }
+
+    @Test
+    public void testLoadCubesWithNullApplicationID() throws Exception
+    {
+        try
+        {
+            // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
+            NCubeManager.loadCubes(null);
+            fail();
+        }
+        catch(NullPointerException ignored)
         { }
     }
 

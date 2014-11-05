@@ -84,14 +84,14 @@ public class TestingDatabaseHelper
         urls.add("http://www.cedarsoftware.com");
 
         ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId1);
+        NCubeManager.addBaseResourceUrls(appId1, urls);
         ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(urls, appId2);
+        NCubeManager.addBaseResourceUrls(appId2, urls);
     }
 
     public static void tearDownDatabase() throws Exception
     {
         getTestingDatabaseManager().tearDown();
-        NCubeManager.clearCubeList();
+        NCubeManager.clearCache();
     }
 }

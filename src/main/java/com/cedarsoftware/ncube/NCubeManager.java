@@ -495,7 +495,7 @@ s    */
         validateCube(ncube);
         nCubePersister.updateCube(appId, ncube);
         Map<String, NCube> appCache = getCacheForApp(appId);
-        appCache.remove(ncube.getName());
+        appCache.remove(ncube.getName().toLowerCase());
         return true;
     }
 
@@ -656,7 +656,7 @@ s    */
 
         Map map = new HashMap();
         map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
-        map.put("useranem", System.getProperty("user.name"));
+        map.put("username", System.getProperty("user.name"));
 
         NCube cube = getCube(zeroAppId, CLASSPATH_CUBE);
 
@@ -683,7 +683,7 @@ s    */
             } catch (Exception e) {
                 //TODO:  Do we need to test each url to make sure it is valid?  They could be invalid
                 //TODO:  even though a subpath resouce could still be valid.
-                LOG.debug("Invalid url in sys.Classpath cube  " + appId);
+                LOG.debug("Invalid url: " + u + " in sys.classpath app: " + appId);
             }
         }
         addUrlsToClassLoader(urls, urlClassLoader);

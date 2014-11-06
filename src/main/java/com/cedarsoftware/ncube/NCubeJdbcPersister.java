@@ -78,7 +78,7 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube)
     {
-        try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
+        try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, create_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
         {
             stmt.setBytes(1, cube.toFormattedJson().getBytes("UTF-8"));
             stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
@@ -156,8 +156,8 @@ public class NCubeJdbcPersister
             sqlLike = "%";
         }
 
-        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, update_dt, " +
-                "create_hid, update_hid FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
+        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, " +
+                "create_hid FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
         {
             stmt.setString(1, sqlLike);
             stmt.setString(2, appId.getApp());
@@ -179,9 +179,7 @@ public class NCubeJdbcPersister
                     dto.status = rs.getString("status_cd");
                     dto.app = rs.getString("app_cd");
                     dto.createDate = rs.getDate("create_dt");
-                    dto.updateDate = rs.getDate("update_dt");
                     dto.createHid = rs.getString("create_hid");
-                    dto.updateHid = rs.getString("update_hid");
                     records.add(dto);
                 }
             }
@@ -270,16 +268,15 @@ public class NCubeJdbcPersister
 
     public boolean updateNotes(Connection c, ApplicationID appId, String cubeName, String notes)
     {
-        String statement = "UPDATE n_cube SET notes_bin = ?, update_dt = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10)";
+        String statement = "UPDATE n_cube SET notes_bin = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10)";
 
         try (PreparedStatement stmt = c.prepareStatement(statement))
         {
             stmt.setBytes(1, notes == null ? null : notes.getBytes("UTF-8"));
-            stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
-            stmt.setString(3, appId.getApp());
-            stmt.setString(4, cubeName);
-            stmt.setString(5, appId.getVersion());
-            stmt.setString(6, appId.getAccount());
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, cubeName);
+            stmt.setString(4, appId.getVersion());
+            stmt.setString(5, appId.getAccount());
             int count = stmt.executeUpdate();
             if (count > 1)
             {
@@ -345,7 +342,7 @@ public class NCubeJdbcPersister
             }
 
             try (PreparedStatement select = c.prepareStatement(
-                    "SELECT n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd\n" +
+                    "SELECT n_cube_nm, cube_value_bin, create_dt, create_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd\n" +
                             "FROM n_cube\n" +
                             "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"
             ))
@@ -359,8 +356,8 @@ public class NCubeJdbcPersister
                 try (ResultSet rs = select.executeQuery())
                 {
                     try (PreparedStatement insert = c.prepareStatement(
-                            "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, update_dt, create_hid, update_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd)\n" +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                            "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, create_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd)\n" +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     ))
                     {
                         int count = 0;
@@ -372,15 +369,13 @@ public class NCubeJdbcPersister
                             insert.setString(2, rs.getString("n_cube_nm"));
                             insert.setBytes(3, rs.getBytes("cube_value_bin"));
                             insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-                            insert.setDate(5, new java.sql.Date(System.currentTimeMillis()));
-                            insert.setString(6, rs.getString("create_hid"));
-                            insert.setString(7, rs.getString("update_hid"));
-                            insert.setString(8, newVersion);
-                            insert.setString(9, ReleaseStatus.SNAPSHOT.name());
-                            insert.setString(10, rs.getString("app_cd"));
-                            insert.setBytes(11, rs.getBytes("test_data_bin"));
-                            insert.setBytes(12, rs.getBytes("notes_bin"));
-                            insert.setString(13, rs.getString("tenant_cd"));
+                            insert.setString(5, rs.getString("create_hid"));
+                            insert.setString(6, newVersion);
+                            insert.setString(7, ReleaseStatus.SNAPSHOT.name());
+                            insert.setString(8, rs.getString("app_cd"));
+                            insert.setBytes(9, rs.getBytes("test_data_bin"));
+                            insert.setBytes(10, rs.getBytes("notes_bin"));
+                            insert.setString(11, rs.getString("tenant_cd"));
                             insert.executeUpdate();
                         }
                         return count;
@@ -409,7 +404,7 @@ public class NCubeJdbcPersister
 
         try
         {
-            try (PreparedStatement statement = c.prepareStatement("UPDATE n_cube SET update_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
+            try (PreparedStatement statement = c.prepareStatement("UPDATE n_cube SET create_dt = ?, status_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
             {
                 statement.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                 statement.setString(2, ReleaseStatus.RELEASE.name());
@@ -437,14 +432,13 @@ public class NCubeJdbcPersister
 
         try
         {
-            try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET update_dt = ?, version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
+            try (PreparedStatement ps = c.prepareStatement("UPDATE n_cube SET version_no_cd = ? WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
             {
-                ps.setDate(1, new java.sql.Date(System.currentTimeMillis()));
-                ps.setString(2, newVersion);
-                ps.setString(3, appId.getApp());
-                ps.setString(4, appId.getVersion());
-                ps.setString(5, ReleaseStatus.SNAPSHOT.name());
-                ps.setString(6, appId.getAccount());
+                ps.setString(1, newVersion);
+                ps.setString(2, appId.getApp());
+                ps.setString(3, appId.getVersion());
+                ps.setString(4, ReleaseStatus.SNAPSHOT.name());
+                ps.setString(5, appId.getAccount());
 
                 int count = ps.executeUpdate();
                 if (count < 1)
@@ -498,15 +492,14 @@ public class NCubeJdbcPersister
 
     public boolean updateTestData(Connection c, ApplicationID appId, String cubeName, String testData)
     {
-        try (PreparedStatement stmt = c.prepareStatement("UPDATE n_cube SET test_data_bin=?, update_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
+        try (PreparedStatement stmt = c.prepareStatement("UPDATE n_cube SET test_data_bin=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
         {
             stmt.setBytes(1, testData == null ? null : testData.getBytes("UTF-8"));
-            stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
-            stmt.setString(3, appId.getApp());
-            stmt.setString(4, cubeName);
-            stmt.setString(5, appId.getVersion());
-            stmt.setString(6, ReleaseStatus.SNAPSHOT.name());
-            stmt.setString(7, appId.getAccount());
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, cubeName);
+            stmt.setString(4, appId.getVersion());
+            stmt.setString(5, ReleaseStatus.SNAPSHOT.name());
+            stmt.setString(6, appId.getAccount());
             int count = stmt.executeUpdate();
             if (count > 1)
             {

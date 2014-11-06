@@ -26,18 +26,12 @@ public class NCubeInfoDto
 {
 	public String id;
 	public Date createDate;
-	public Date updateDate;
 	public String createHid;
-	public String updateHid;
 	public String name;
 	public String version;
 	public String status;
 	public String notes;
 	public String app;
-	public Date sysEffDate;
-	public Date sysEndDate;
-	public Date bizEffDate;
-	public Date bizExpDate;
 	// public String cubeJsonData;  // Loaded separately
 	// public String testJsonData;  // Loaded separately
 }

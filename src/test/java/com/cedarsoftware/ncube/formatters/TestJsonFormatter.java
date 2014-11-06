@@ -124,9 +124,17 @@ public class TestJsonFormatter
     @Test
     public void testWriteObjectException() throws Exception
     {
+        //TODO correct assertion here
         JsonFormatter formatter = new JsonFormatter();
         formatter.writeObjectValue(null);
     }
+
+//    @Test
+//    public void testWriteObjectArray() throws Exception
+//    {
+//        JsonFormatter formatter = new JsonFormatter();
+//        formatter.writeObjectValue(null);
+//    }
 
     public List<String> getAllTestFiles()
     {

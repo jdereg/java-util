@@ -84,6 +84,39 @@ public class TestAxis
     }
 
     @Test
+    public void testRemoveMetaProperty() {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
+
+        Map map = new HashMap();
+        map.put("foo", "bar");
+        map.put("bar", "baz");
+        axis.addMetaProperties(map);
+
+        assertEquals("bar", axis.getMetaProperty("foo"));
+        assertEquals("bar", axis.removeMetaProperty("foo"));
+        assertNull(axis.getMetaProperty("foo"));
+    }
+
+    @Test
+    public void testClearMetaProperties() {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
+
+        Map map = new HashMap();
+        map.put("foo", "bar");
+        map.put("bar", "baz");
+        axis.addMetaProperties(map);
+
+        assertEquals("bar", axis.getMetaProperty("foo"));
+        assertEquals("baz", axis.getMetaProperty("bar"));
+
+        axis.clearMetaProperties();
+
+        assertNull(axis.getMetaProperty("foo"));
+        assertNull(axis.getMetaProperty("bar"));
+        assertNull(axis.removeMetaProperty("foo"));
+    }
+
+    @Test
     public void testGetMetaPropertyWhenMetaPropertiesAreNull()
     {
         Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);

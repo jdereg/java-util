@@ -26,15 +26,10 @@ public class HsqlTestingDatabaseManager implements TestingDatabaseManager
                     "tenant_cd CHAR(10), " +
                     "cube_value_bin varbinary(999999), " +
                     "create_dt DATE NOT NULL, " +
-                    "update_dt DATE DEFAULT NULL, " +
                     "create_hid VARCHAR(20), " +
                     "update_hid VARCHAR(20), " +
                     "version_no_cd VARCHAR(16) DEFAULT '0.1.0' NOT NULL, " +
                     "status_cd VARCHAR(16) DEFAULT 'SNAPSHOT' NOT NULL, " +
-                    "sys_effective_dt DATE DEFAULT SYSDATE NOT NULL, " +
-                    "sys_expiration_dt DATE, " +
-                    "business_effective_dt DATE DEFAULT SYSDATE, " +
-                    "business_expiration_dt DATE, " +
                     "app_cd VARCHAR(20), " +
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +

@@ -82,6 +82,16 @@ public class TestNCubeManager
         return ncube;
     }
 
+//TODO:  Add in sys.classpath tests
+/*
+    @Test
+    public void testLoadCubesWithSysClassPath() {
+        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube);
+
+    }
+*/
     @Test
     public void testLoadCubes() throws Exception
     {

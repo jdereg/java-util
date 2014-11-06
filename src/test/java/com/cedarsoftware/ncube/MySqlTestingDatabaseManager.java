@@ -26,15 +26,10 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
                     "            tenant_cd char(10),\n" +
                     "            cube_value_bin longtext,\n" +
                     "            create_dt date NOT NULL,\n" +
-                    "            update_dt date DEFAULT NULL,\n" +
                     "            create_hid varchar(20),\n" +
                     "            update_hid varchar(20),\n" +
                     "            version_no_cd varchar(16) NOT NULL,\n" +
                     "        status_cd varchar(16) DEFAULT 'SNAPSHOT' NOT NULL,\n" +
-                    "        sys_effective_dt date,\n" +
-                    "        sys_expiration_dt date,\n" +
-                    "        business_effective_dt date,\n" +
-                    "        business_expiration_dt date,\n" +
                     "        app_cd varchar(20),\n" +
                     "            test_data_bin longtext,\n" +
                     "            notes_bin longtext,\n" +

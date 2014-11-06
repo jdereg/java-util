@@ -62,6 +62,8 @@ public class NCubeManager
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
 
+    private static final String CLASSPATH_CUBE = "sys.classpath";
+
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
@@ -492,6 +494,8 @@ s    */
         validateAppId(appId);
         validateCube(ncube);
         nCubePersister.updateCube(appId, ncube);
+        Map<String, NCube> appCache = getCacheForApp(appId);
+        appCache.remove(ncube.getName());
         return true;
     }
 
@@ -629,7 +633,62 @@ s    */
         {
             addCube(appId, ncube);
         }
+
+        //resolveClassPath(appId);
     }
+
+    /*
+    public static void resolveClassPath(ApplicationID appId) {
+        //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
+        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
+
+        if (urlClassLoader == null)
+        {
+            //urlclassloader didn't exist
+            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+            urlClassLoaders.put(appId, urlClassLoader);
+        }
+        else if (urlClassLoader.getURLs().length < 1)
+        {
+            //  urlclassloader exists and has been setup already.
+            return;
+        }
+
+        Map map = new HashMap();
+        map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
+        map.put("useranem", System.getProperty("user.name"));
+
+        NCube cube = getCube(zeroAppId, CLASSPATH_CUBE);
+
+        if (cube == null) {
+            LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
+            return;
+        }
+
+        String url = (String)cube.getCell(map);
+
+        if (StringUtilities.isEmpty(url)) {
+            LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
+            return;
+        }
+
+        StringTokenizer token = new StringTokenizer(url, ";,| ");
+        List<String> urls = new ArrayList();
+        while (token.hasMoreTokens()) {
+            String elem = token.nextToken();
+            try
+            {
+                URL u = new URL(elem);
+                urls.add(elem);
+            } catch (Exception e) {
+                //TODO:  Do we need to test each url to make sure it is valid?  They could be invalid
+                //TODO:  even though a subpath resouce could still be valid.
+                LOG.debug("Invalid url in sys.Classpath cube  " + appId);
+            }
+        }
+        addUrlsToClassLoader(urls, urlClassLoader);
+    }
+    */
 
     public static void createCube(ApplicationID appId, NCube ncube)
     {

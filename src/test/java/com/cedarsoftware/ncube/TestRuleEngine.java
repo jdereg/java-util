@@ -143,6 +143,19 @@ public class TestRuleEngine
         assertEquals(new BigDecimal("119.0"), output.get("premium"));
     }
 
+    // This test also tests ID-based ncube's specified in simple JSON format
+    @Test
+    public void testExpressionValue() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
+        Axis cond = ncube.getAxis("condition");
+        assertTrue(cond.getColumns().get(0).getId() != 1);
+        Axis state = ncube.getAxis("state");
+        assertTrue(state.getColumns().get(0).getId() != 10);
+
+        assertEquals("foo", state.standardizeColumnValue("foo"));
+    }
+
     // This test ensures that identical expressions result in a single dynamic Groovy class being generated for them.
     @Test
     public void testDuplicateExpression() throws Exception

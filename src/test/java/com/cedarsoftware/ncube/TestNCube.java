@@ -5270,6 +5270,24 @@ public class TestNCube
         return ncube;
     }
 
+    static NCube getSysClassPathCube(boolean defCol)
+    {
+        NCube<Double> ncube = new NCube<Double>("sys.classpath");
+        Axis axis1 = getGenderAxis(defCol);
+
+        Axis axis2 = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, defCol);
+        axis2.addColumn(new Range(0, 18));
+        axis2.addColumn(new Range(18, 30));
+        axis2.addColumn(new Range(30, 40));
+        axis2.addColumn(new Range(40, 65));
+        axis2.addColumn(new Range(65, 80));
+
+        ncube.addAxis(axis1);
+        ncube.addAxis(axis2);
+
+        return ncube;
+    }
+
     static NCube getTestNCube3D_Boolean()
     {
         NCube<Boolean> ncube = new NCube<Boolean>("test.ValidTrailorConfigs");

@@ -494,6 +494,8 @@ s    */
         validateAppId(appId);
         validateCube(ncube);
         nCubePersister.updateCube(appId, ncube);
+        Map<String, NCube> appCache = getCacheForApp(appId);
+        appCache.remove(ncube.getName());
         return true;
     }
 

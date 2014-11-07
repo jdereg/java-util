@@ -13,7 +13,7 @@ public class TestingDatabaseHelper
     public static int HSQL = 2;
     public static int ORACLE = 3;
 
-    public static int test_db = MYSQL;
+    public static int test_db = HSQL;
 
     private static Object getProxyInstance() throws Exception
     {

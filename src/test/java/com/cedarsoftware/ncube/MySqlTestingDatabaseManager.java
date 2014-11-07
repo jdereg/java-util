@@ -35,7 +35,7 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
                     "                                app_cd varchar(20),\n" +
                     "                                test_data_bin longtext,\n" +
                     "                                notes_bin longtext,\n" +
-                    "                                revision_number bigint DEFAULT '1' NOT NULL,\n" +
+                    "                                revision_number bigint DEFAULT '0' NOT NULL,\n" +
                     "                                PRIMARY KEY (n_cube_id),\n" +
                     "                                UNIQUE (tenant_cd, app_cd, n_cube_nm, version_no_cd, revision_number)\n" +
                     "                            );");

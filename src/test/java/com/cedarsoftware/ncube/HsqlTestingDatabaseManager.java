@@ -32,7 +32,7 @@ public class HsqlTestingDatabaseManager implements TestingDatabaseManager
                     "app_cd VARCHAR(20), " +
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +
-                    "revision_number bigint DEFAULT '1' NOT NULL, " +
+                    "revision_number bigint DEFAULT '0' NOT NULL, " +
                     "PRIMARY KEY (n_cube_id), " +
                     "UNIQUE (tenant_cd, app_cd, n_cube_nm, version_no_cd, revision_number) " +
                     ");");

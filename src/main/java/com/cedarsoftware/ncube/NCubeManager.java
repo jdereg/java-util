@@ -454,13 +454,13 @@ s    */
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public static Object[] getAppNames(String account)
+    public static Object[] getAppNames(String tenant)
     {
-        return nCubePersister.getAppNames(account);
+        return nCubePersister.getAppNames(tenant);
     }
 
     /**
-     * Get all of the versions that exist for the given ApplicationID (account and app).
+     * Get all of the versions that exist for the given ApplicationID (tenant and app).
      * @return Object[] of String version numbers.
      */
     public static Object[] getAppVersions(ApplicationID appId)
@@ -757,7 +757,6 @@ s    */
                 JsonObject ncube = (JsonObject) cube;
                 String json = JsonWriter.objectToJson(ncube);
                 NCube nCube = NCube.fromSimpleJson(json);
-                // account: null, app: null, version: "file"
                 addCube(nCube.getApplicationID(), nCube);
                 lastSuccessful = nCube.getName();
                 cubeList.add(nCube);

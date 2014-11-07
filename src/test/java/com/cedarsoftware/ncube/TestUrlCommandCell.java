@@ -113,7 +113,7 @@ public class TestUrlCommandCell
 
         // Cause null urlLoader (it won't find URLs in NCubeManager for version 9.8.7)
         coord.put("content.name", "file");
-        cube.setApplicationID(new ApplicationID(cube.getApplicationID().getAccount(), cube.getApplicationID().getApp(), "9.8.7", cube.getApplicationID().getStatus()));
+        cube.setApplicationID(new ApplicationID(cube.getApplicationID().getTenant(), cube.getApplicationID().getApp(), "9.8.7", cube.getApplicationID().getStatus()));
         try
         {
             cube.getCell(coord);

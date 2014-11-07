@@ -145,7 +145,7 @@ public class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp.getAccount());
+            new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp.getTenant());
             fail();
         }
         catch(RuntimeException e)

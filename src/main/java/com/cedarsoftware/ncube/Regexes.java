@@ -29,8 +29,9 @@ public interface Regexes
     Pattern scripletPattern = Pattern.compile("<%(.*?)%>");
     Pattern velocityPattern = Pattern.compile("[$][{](.*?)[}]");
 
+    Pattern validTenantName = Pattern.compile("^[0-9A-Za-z-]+$");
+    Pattern validVersion = Pattern.compile("^\\d+\\.\\d+\\.\\d+$");
     Pattern validCubeName = Pattern.compile("[" + NCube.validCubeNameChars + "]+");
-    Pattern validVersion = Pattern.compile("^(\\d+\\.)(\\d+\\.)(\\*|\\d+)$");
 
     Pattern valid2Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");
     Pattern valid3Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");

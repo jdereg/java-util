@@ -55,7 +55,7 @@ public class NCubeJdbcPersister
                 insert.setString(5, appId.getVersion());
                 java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
                 insert.setDate(6, now);
-                insert.setString(7, appId.getAccount());
+                insert.setString(7, appId.getTenant());
                 int rowCount = insert.executeUpdate();
                 if (rowCount != 1)
                 {
@@ -85,7 +85,7 @@ public class NCubeJdbcPersister
             stmt.setString(4, cube.getName());
             stmt.setString(5, appId.getVersion());
             stmt.setString(6, ReleaseStatus.SNAPSHOT.name());
-            stmt.setString(7, appId.getAccount());
+            stmt.setString(7, appId.getTenant());
 
             int count = stmt.executeUpdate();
             if (count != 1)
@@ -117,7 +117,7 @@ public class NCubeJdbcPersister
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
-            stmt.setString(5, appId.getAccount());
+            stmt.setString(5, appId.getTenant());
 
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -162,7 +162,7 @@ public class NCubeJdbcPersister
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
-            stmt.setString(5, appId.getAccount());
+            stmt.setString(5, appId.getTenant());
 
             List<NCubeInfoDto> records = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery())
@@ -202,7 +202,7 @@ public class NCubeJdbcPersister
             stmt.setString(1, appId.getApp());
             stmt.setString(2, appId.getVersion());
             stmt.setString(3, appId.getStatus());
-            stmt.setString(4, appId.getAccount());
+            stmt.setString(4, appId.getTenant());
             try (ResultSet rs = stmt.executeQuery())
             {
                 while (rs.next())
@@ -248,7 +248,7 @@ public class NCubeJdbcPersister
             ps.setString(1, appId.getApp());
             ps.setString(2, cubeName);
             ps.setString(3, appId.getVersion());
-            ps.setString(4, appId.getAccount());
+            ps.setString(4, appId.getTenant());
 
             if (!allowDelete)
             {
@@ -275,7 +275,7 @@ public class NCubeJdbcPersister
             stmt.setString(2, appId.getApp());
             stmt.setString(3, cubeName);
             stmt.setString(4, appId.getVersion());
-            stmt.setString(5, appId.getAccount());
+            stmt.setString(5, appId.getTenant());
             int count = stmt.executeUpdate();
             if (count > 1)
             {
@@ -306,7 +306,7 @@ public class NCubeJdbcPersister
             stmt.setString(1, appId.getApp());
             stmt.setString(2, cubeName);
             stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getAccount());
+            stmt.setString(4, appId.getTenant());
             try (ResultSet rs = stmt.executeQuery())
             {
                 if (rs.next())
@@ -350,7 +350,7 @@ public class NCubeJdbcPersister
                 select.setString(1, appId.getApp());
                 select.setString(2, appId.getVersion());
                 select.setString(3, ReleaseStatus.RELEASE.name());
-                select.setString(4, appId.getAccount());
+                select.setString(4, appId.getTenant());
 
                 try (ResultSet rs = select.executeQuery())
                 {
@@ -410,7 +410,7 @@ public class NCubeJdbcPersister
                 statement.setString(3, appId.getApp());
                 statement.setString(4, appId.getVersion());
                 statement.setString(5, ReleaseStatus.SNAPSHOT.name());
-                statement.setString(6, appId.getAccount());
+                statement.setString(6, appId.getTenant());
                 return statement.executeUpdate();
             }
         }
@@ -437,7 +437,7 @@ public class NCubeJdbcPersister
                 ps.setString(2, appId.getApp());
                 ps.setString(3, appId.getVersion());
                 ps.setString(4, ReleaseStatus.SNAPSHOT.name());
-                ps.setString(5, appId.getAccount());
+                ps.setString(5, appId.getTenant());
 
                 int count = ps.executeUpdate();
                 if (count < 1)
@@ -466,7 +466,7 @@ public class NCubeJdbcPersister
             stmt.setString(1, appId.getApp());
             stmt.setString(2, cubeName);
             stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getAccount());
+            stmt.setString(4, appId.getTenant());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next())
@@ -498,7 +498,7 @@ public class NCubeJdbcPersister
             stmt.setString(3, cubeName);
             stmt.setString(4, appId.getVersion());
             stmt.setString(5, ReleaseStatus.SNAPSHOT.name());
-            stmt.setString(6, appId.getAccount());
+            stmt.setString(6, appId.getTenant());
             int count = stmt.executeUpdate();
             if (count > 1)
             {
@@ -539,7 +539,7 @@ public class NCubeJdbcPersister
             ps.setString(3, appId.getApp());
             ps.setString(4, appId.getVersion());
             ps.setString(5, oldName);
-            ps.setString(6, appId.getAccount());
+            ps.setString(6, appId.getTenant());
             int count = ps.executeUpdate();
             if (count < 1)
             {
@@ -571,7 +571,7 @@ public class NCubeJdbcPersister
         {
             ps.setString(1, appId.getApp());
             ps.setString(2, appId.getVersion());
-            ps.setString(3, appId.getAccount());
+            ps.setString(3, appId.getTenant());
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -595,7 +595,7 @@ public class NCubeJdbcPersister
             ps.setString(1, appId.getApp());
             ps.setString(2, appId.getVersion());
             ps.setString(3, ReleaseStatus.RELEASE.name());
-            ps.setString(4, appId.getAccount());
+            ps.setString(4, appId.getTenant());
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -628,7 +628,7 @@ public class NCubeJdbcPersister
             ps.setString(2, appId.getVersion());
             ps.setString(3, appId.getStatus());
             ps.setString(4, name);
-            ps.setString(5, appId.getAccount());
+            ps.setString(5, appId.getTenant());
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -679,7 +679,7 @@ public class NCubeJdbcPersister
         {
             stmt.setString(1, appId.getApp());
             stmt.setString(2, appId.getStatus());
-            stmt.setString(3, appId.getAccount());
+            stmt.setString(3, appId.getTenant());
 
             List<String> records = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery())

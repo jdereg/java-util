@@ -121,7 +121,7 @@ public class TestApplicationID
     public void testApplicationIDConstructorAndGetters()
     {
         ApplicationID appId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        assertEquals("Sears", appId.getAccount());
+        assertEquals("Sears", appId.getTenant());
         assertEquals("Inventory", appId.getApp());
         assertEquals("1.0.0", appId.getVersion());
         assertEquals("SNAPSHOT", appId.getStatus());
@@ -222,7 +222,7 @@ public class TestApplicationID
         snapshot.validate();
 
         ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
-        assertEquals(snapshot.getAccount(), releaseId.getAccount());
+        assertEquals(snapshot.getTenant(), releaseId.getTenant());
         assertEquals(snapshot.getApp(), releaseId.getApp());
         assertEquals(snapshot.getVersion(), releaseId.getVersion());
         assertEquals(ReleaseStatus.RELEASE.name(), releaseId.getStatus());
@@ -233,7 +233,7 @@ public class TestApplicationID
         ApplicationID releaseId = new ApplicationID("Sears", "Inventory", "1.0.0", ReleaseStatus.RELEASE.name());
 
         ApplicationID snapshotId = releaseId.createNewSnapshotId("1.1.0");
-        assertEquals(releaseId.getAccount(), snapshotId.getAccount());
+        assertEquals(releaseId.getTenant(), snapshotId.getTenant());
         assertEquals(releaseId.getApp(), snapshotId.getApp());
         assertEquals("1.1.0", snapshotId.getVersion());
         assertEquals(ReleaseStatus.SNAPSHOT.name(), snapshotId.getStatus());
@@ -281,7 +281,9 @@ public class TestApplicationID
         }
         catch (IllegalArgumentException e)
         {
-            assertEquals(msg, e.getMessage());
+            assertTrue(e.getMessage().contains("nvalid"));
+            assertTrue(e.getMessage().contains("tenant"));
+            assertTrue(e.getMessage().contains("must"));
         }
 
         try
@@ -291,7 +293,9 @@ public class TestApplicationID
         }
         catch (IllegalArgumentException e)
         {
-            assertEquals(msg, e.getMessage());
+            assertTrue(e.getMessage().contains("nvalid"));
+            assertTrue(e.getMessage().contains("tenant"));
+            assertTrue(e.getMessage().contains("must"));
         }
     }
 

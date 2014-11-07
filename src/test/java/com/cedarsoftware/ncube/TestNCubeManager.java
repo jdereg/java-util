@@ -321,7 +321,7 @@ public class TestNCubeManager
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID);
 
-        Object[] names = NCubeManager.getAppNames(defaultSnapshotApp.getAccount());
+        Object[] names = NCubeManager.getAppNames(defaultSnapshotApp.getTenant());
         boolean foundName = false;
         for (Object name : names)
         {

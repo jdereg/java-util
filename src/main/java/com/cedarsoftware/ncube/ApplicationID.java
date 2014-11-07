@@ -3,10 +3,9 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.StringUtilities;
 
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * This class binds together Account, App, and version.  These fields together
+ * This class binds together Tenant, App, and version.  These fields together
  * completely identify the application (and version) that a given n-cube belongs
  * to.
  *
@@ -31,8 +30,7 @@ public class ApplicationID
     public static final String DEFAULT_TENANT = "NONE";
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
-    private static final Pattern versionPattern = Pattern.compile("^\\d+\\.\\d+\\.\\d+$");
-    private final String account;
+    private final String tenant;
     private final String app;
     private final String version;
     private final String status;
@@ -40,24 +38,24 @@ public class ApplicationID
     // For serialization support only
     private ApplicationID()
     {
-        account = DEFAULT_TENANT;
+        tenant = DEFAULT_TENANT;
         app = DEFAULT_APP;
         version = DEFAULT_VERSION;
         status = ReleaseStatus.SNAPSHOT.name();
     }
 
-    public ApplicationID(String account, String app, String version, String status)
+    public ApplicationID(String tenant, String app, String version, String status)
     {
-        this.account = account;
+        this.tenant = tenant;
         this.app = app;
         this.version = version;
         this.status = status;
         validate();
     }
 
-    public String getAccount()
+    public String getTenant()
     {
-        return account;
+        return tenant;
     }
 
     public String getApp()
@@ -83,7 +81,7 @@ public class ApplicationID
     public String cacheKey(String name)
     {
         StringBuilder s = new StringBuilder();
-        s.append(account);
+        s.append(tenant);
         s.append('/');
         s.append(app);
         s.append('/');
@@ -107,7 +105,7 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        if (!account.equalsIgnoreCase(that.account))
+        if (!tenant.equalsIgnoreCase(that.tenant))
         {
             return false;
         }
@@ -129,7 +127,7 @@ public class ApplicationID
 
     public int hashCode()
     {
-        int result = account.toLowerCase().hashCode();
+        int result = tenant.toLowerCase().hashCode();
         result = 31 * result + app.toLowerCase().hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.hashCode();
@@ -160,36 +158,42 @@ public class ApplicationID
     {
         //  In the Change Version the status was always SNAPSHOT when creating a new version.
         //  That is why we hardcode this to snapshot here.
-        return new ApplicationID(account, app, version, ReleaseStatus.SNAPSHOT.name());
+        return new ApplicationID(tenant, app, version, ReleaseStatus.SNAPSHOT.name());
     }
 
     public void validate()
     {
-        validateTenant(account);
+        validateTenant(tenant);
         validateApp(app);
         validateVersion(version);
         validateStatus(status);
     }
 
-    public static void validateTenant(String tenant)
+    static void validateTenant(String tenant)
     {
-        if (StringUtilities.isEmpty(tenant))
+        if (StringUtilities.hasContent(tenant))
         {
-            throw new IllegalArgumentException("Tenant cannot be null or empty");
+            Matcher m = Regexes.validTenantName.matcher(tenant);
+            if (m.find() && tenant.length() <= 10)
+            {
+                return;
+            }
         }
+        throw new IllegalArgumentException("Invalid tenant string: '" + tenant + "'. Tenant must contain only A-Z, a-z, or 0-9 and dash (-). From 1 to 10 characters max.");
     }
 
-    public static void validateApp(String app)
+    static void validateApp(String appName)
     {
-        if (StringUtilities.isEmpty(app))
+        if (StringUtilities.isEmpty(appName))
         {
             throw new IllegalArgumentException("App cannot be null or empty");
         }
     }
 
-    public static void validateStatus(String status)
+    static void validateStatus(String status)
     {
-        if (status == null) {
+        if (status == null)
+        {
             throw new IllegalArgumentException("status name cannot be null");
         }
         ReleaseStatus.valueOf(status);

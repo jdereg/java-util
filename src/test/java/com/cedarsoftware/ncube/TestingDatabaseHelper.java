@@ -10,14 +10,14 @@ import java.util.List;
 public class TestingDatabaseHelper
 {
     public static int MYSQL = 1;
-    public static int HSQLDB = 2;
+    public static int HSQL = 2;
     public static int ORACLE = 3;
 
-    public static int test_db = HSQLDB;
+    public static int test_db = MYSQL;
 
     private static Object getProxyInstance() throws Exception
     {
-        if (test_db == HSQLDB) {
+        if (test_db == HSQL) {
             return HsqlTestingDatabaseManager.class.newInstance();
         }
 
@@ -35,7 +35,7 @@ public class TestingDatabaseHelper
 
     public static JdbcConnectionProvider createJdbcConnectionProvider() throws Exception
     {
-        if (test_db == HSQLDB) {
+        if (test_db == HSQL) {
             return new TestingConnectionProvider(null, "jdbc:hsqldb:mem:testdb", "sa", "");
         }
 
@@ -52,7 +52,7 @@ public class TestingDatabaseHelper
 
     public static TestingDatabaseManager getTestingDatabaseManager() throws Exception
     {
-        if (test_db == HSQLDB) {
+        if (test_db == HSQL) {
             return new HsqlTestingDatabaseManager(createJdbcConnectionProvider());
         }
 

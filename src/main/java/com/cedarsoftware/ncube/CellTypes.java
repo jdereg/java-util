@@ -3,9 +3,12 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.StringUtilities;
 
 import java.text.MessageFormat;
 import java.util.Collection;
+import java.util.regex.Matcher;
 
 /**
  * Allowed cell types for n-cube.
@@ -28,36 +31,104 @@ import java.util.Collection;
  */
 public enum CellTypes
 {
-    String("string"),
-    Date("date"),
-    Boolean("boolean"),
-    Byte("byte"),
-    Short("short"),
-    Integer("int"),
-    Long("long"),
-    Float("float"),
-    Double("double"),
-    BigDecimal("bigdec"),
-    BigInteger("bigint"),
-    Binary("binary"),
-    Exp("exp"),
-    Method("method"),
-    Template("template"),
-    LatLon("latlon"),
-    Point2D("point2d"),
-    Point3D("point3d"),
-    Null("null");
+    String("string",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return isUrl ? new StringUrlCmd(value, isCached) : value; }}
+    ),
+    Date("date",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return DateUtilities.parseDate(value); }}
+    ),
+    Boolean("boolean",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Boolean.valueOf(value); }}
+    ),
+    Byte("byte",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Byte.valueOf(value); }}
+    ),
+    Short("short",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Short.valueOf(value); }}
+    ),
+    Integer("int",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Integer.valueOf(value); }}
+    ),
+    Long("long",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Long.valueOf(value); }}
+    ),
+    Float("float",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Float.valueOf(value); }}
+    ),
+    Double("double",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return java.lang.Double.valueOf(value); }}
+    ),
+    BigDecimal("bigdec",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new java.math.BigDecimal(value); }}
+    ),
+    BigInteger("bigint",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new java.math.BigInteger(value); }}
+    ),
+    Binary("binary",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return isUrl ? new BinaryUrlCmd(value, isCached) : StringUtilities.decode(value); }}
+    ),
+    Exp("exp",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyExpression(isUrl ? null : value, isUrl ? value : null); }}
+    ),
+    Method("method",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyMethod(isUrl ? null : value, isUrl ? value : null); }}
+    ),
+    Template("template",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyTemplate(isUrl ? null : value, isUrl ? value : null, isCached); }}
+    ),
+    LatLon("latlon",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) {
+            Matcher m = Regexes.valid2Doubles.matcher(value);
+            if (!m.matches())
+            {
+                throw new IllegalArgumentException(java.lang.String.format("Invalid Lat/Long value (%s)", value));
+            }
+            return new LatLon(java.lang.Double.parseDouble(m.group(1)), java.lang.Double.parseDouble(m.group(2)));
+        }}
+    ),
+    Point2D("point2d",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) {
+            Matcher m = Regexes.valid2Doubles.matcher(value);
+            if (!m.matches())
+            {
+                throw new IllegalArgumentException(java.lang.String.format("Invalid Point2D value (%s)", value));
+            }
+            return new Point2D(java.lang.Double.parseDouble(m.group(1)), java.lang.Double.parseDouble(m.group(2)));
+        }}
+    ),
+    Point3D("point3d",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) {
+            Matcher m = Regexes.valid3Doubles.matcher(value);
+            if (!m.matches())
+            {
+                throw new IllegalArgumentException(java.lang.String.format("Invalid Point3D value (%s)", value));
+            }
+            return new Point3D(java.lang.Double.parseDouble(m.group(1)), java.lang.Double.parseDouble(m.group(2)), java.lang.Double.parseDouble(m.group(3)));
+        }}
+    ),
+    Null("null",
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return null; }}
+    );
 
     private final String desc;
+    private final CellRecreator recreator;
 
-    private CellTypes(String desc)
+    private CellTypes(String desc, CellRecreator recreator)
     {
-        this.desc=desc;
+        this.desc = desc;
+        this.recreator = recreator;
     }
 
     public String desc()
     {
         return desc;
+    }
+
+    public Object recreate(String value, boolean isUrl, boolean isCached) {
+        if (value == null) {
+            return null;
+        }
+        return recreator.recreate(value, isUrl, isCached);
     }
 
     public static CellTypes getTypeFromString(String type)
@@ -215,5 +286,7 @@ public enum CellTypes
         throw new IllegalArgumentException(MessageFormat.format("Unsupported type {0} found in {1}", cell.getClass().getName(), section));
     }
 
-
+    private interface CellRecreator {
+        Object recreate(String value, boolean isUrl, boolean isCached);
+    }
 }

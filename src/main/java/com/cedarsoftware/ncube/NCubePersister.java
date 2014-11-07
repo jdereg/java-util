@@ -24,7 +24,7 @@ import java.util.List;
  */
 public interface NCubePersister
 {
-    void createCube(ApplicationID appId, NCube cube);
+    void createCube(ApplicationID appId, NCube cube, String username);
     
     void updateCube(ApplicationID appId, NCube cube);
 

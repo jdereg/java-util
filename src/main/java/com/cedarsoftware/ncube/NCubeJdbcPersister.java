@@ -38,7 +38,7 @@ public class NCubeJdbcPersister
 {
     private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);
 
-    public void createCube(Connection c, ApplicationID appId, NCube ncube)
+    public void createCube(Connection c, ApplicationID appId, NCube ncube, String username)
     {
         if (doesCubeExist(c, appId, ncube.getName()))
         {

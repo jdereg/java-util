@@ -35,6 +35,8 @@ import static org.junit.Assert.fail;
  */
 public class TestAdvice
 {
+    static final String USER_ID = "jdirt";
+
     @Before
     public void setUp() throws Exception
     {
@@ -52,8 +54,8 @@ public class TestAdvice
     {
         NCube ncube2 = NCubeManager.getNCubeFromResource("urlPieces.json");
         NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json");
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube);
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube2);
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID);
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube2, USER_ID);
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
@@ -432,7 +434,7 @@ public class TestAdvice
     public void testMultiAdvice()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube);
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID);
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.

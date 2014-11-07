@@ -33,12 +33,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         connectionProvider = provider;
     }
 
-    public void createCube(ApplicationID appId, NCube cube)
+    public void createCube(ApplicationID appId, NCube cube, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            persister.createCube(c, appId, cube);
+            persister.createCube(c, appId, cube, username);
         }
         finally
         {

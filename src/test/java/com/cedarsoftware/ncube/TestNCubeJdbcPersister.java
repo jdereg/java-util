@@ -30,6 +30,8 @@ import static org.mockito.Mockito.when;
 public class TestNCubeJdbcPersister
 {
     static final String APP_ID = "ncube.test";
+    static final String USER_ID = "jdirt";
+
     private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
 
     @Before
@@ -53,8 +55,8 @@ public class TestNCubeJdbcPersister
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
         NCube ncube2 = TestNCube.getTestNCube2D(true);
 
-        persister.createCube(defaultSnapshotApp, ncube1);
-        persister.createCube(defaultSnapshotApp, ncube2);
+        persister.createCube(defaultSnapshotApp, ncube1, USER_ID);
+        persister.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
         Object[] cubeList = persister.getNCubes(defaultSnapshotApp, "test.%");
 
@@ -531,7 +533,7 @@ public class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false);
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         }
         catch(RuntimeException e)
@@ -549,7 +551,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         }
         catch(IllegalStateException e)
@@ -573,7 +575,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         } catch(IllegalStateException e) {
             assertTrue(e.getMessage().contains("error inserting"));
@@ -619,7 +621,7 @@ public class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0);
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube);
+            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         }
         catch(RuntimeException e)

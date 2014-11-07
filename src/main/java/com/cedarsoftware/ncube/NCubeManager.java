@@ -442,7 +442,7 @@ s    */
     }
 
     /**
-     * Get Object[] of n-cube names for the given ApplicationID, filtered by the sqlLike clause.
+     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the sqlLike clause.
      */
     public static Object[] getNCubes(ApplicationID appId, String pattern)
     {
@@ -453,12 +453,12 @@ s    */
     /**
      * Duplicate the given n-cube specified by oldAppId and oldName to new ApplicationID and name,
      */
-    public static void duplicate(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName)
+    public static void duplicate(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
     {
         NCube.validateCubeName(newName);
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
-        nCubePersister.createCube(newAppId, copy);
+        nCubePersister.createCube(newAppId, copy, username);
         String json = nCubePersister.getTestData(oldAppId, oldName);
         nCubePersister.updateTestData(newAppId, newName, json);
         String notes = nCubePersister.getNotes(oldAppId, oldName);
@@ -690,11 +690,11 @@ s    */
     }
     */
 
-    public static void createCube(ApplicationID appId, NCube ncube)
+    public static void createCube(ApplicationID appId, NCube ncube, String username)
     {
         validateCube(ncube);
         validateAppId(appId);
-        nCubePersister.createCube(appId, ncube);
+        nCubePersister.createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);
     }

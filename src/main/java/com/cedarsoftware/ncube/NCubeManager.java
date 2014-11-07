@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -12,21 +13,10 @@ import ncube.grv.method.NCubeGroovyController;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -64,6 +54,7 @@ public class NCubeManager
 
     private static final String CLASSPATH_CUBE = "sys.classpath";
 
+    // TODO:  I don't think we need this anymore
     static
     {
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
@@ -635,11 +626,13 @@ s    */
             addCube(appId, ncube);
         }
 
-        //resolveClassPath(appId);
+        //if (!appId.getVersion().equalsIgnoreCase("0.0.0")) {
+        //    resolveClassPath(appId);
+        //}
     }
 
-    /*
-    public static void resolveClassPath(ApplicationID appId) {
+
+    private static void resolveClassPath(ApplicationID appId) {
         //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
 
@@ -649,7 +642,7 @@ s    */
             urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
             urlClassLoaders.put(appId, urlClassLoader);
         }
-        else if (urlClassLoader.getURLs().length < 1)
+        else if (urlClassLoader.getURLs().length > 0)
         {
             //  urlclassloader exists and has been setup already.
             return;
@@ -659,7 +652,9 @@ s    */
         map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
         map.put("username", System.getProperty("user.name"));
 
-        NCube cube = getCube(zeroAppId, CLASSPATH_CUBE);
+
+
+        NCube cube = getCube(appId, CLASSPATH_CUBE);
 
         if (cube == null) {
             LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
@@ -669,7 +664,7 @@ s    */
         String url = (String)cube.getCell(map);
 
         if (StringUtilities.isEmpty(url)) {
-            LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
+            LOG.debug("sys.classpath cube is empty for this application:  " + appId);
             return;
         }
 
@@ -684,12 +679,12 @@ s    */
             } catch (Exception e) {
                 //TODO:  Do we need to test each url to make sure it is valid?  They could be invalid
                 //TODO:  even though a subpath resouce could still be valid.
-                LOG.debug("Invalid url: " + u + " in sys.classpath app: " + appId);
+                LOG.debug("Invalid url: " + elem + " in sys.classpath app: " + appId);
             }
         }
         addUrlsToClassLoader(urls, urlClassLoader);
     }
-    */
+
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
     {

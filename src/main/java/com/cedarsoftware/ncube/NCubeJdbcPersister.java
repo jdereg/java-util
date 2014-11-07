@@ -32,7 +32,6 @@ import java.util.List;
  *         limitations under the License.
  */
 
-//TODO: Need to add username to all mutable queries (ones that do UPDATEs or INSERTs)
 //TODO: Get revision_number support completed.
 public class NCubeJdbcPersister
 {
@@ -76,7 +75,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public void updateCube(Connection connection, ApplicationID appId, NCube cube)
+    public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
         try (PreparedStatement stmt = connection.prepareStatement("UPDATE n_cube SET cube_value_bin=?, create_dt=? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)"))
         {
@@ -395,7 +394,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public int releaseCubes(Connection c, ApplicationID appId)
+    public int releaseCubes(Connection c, ApplicationID appId, String username)
     {
         if (doReleaseCubesExist(c, appId))
         {

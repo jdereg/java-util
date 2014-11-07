@@ -95,9 +95,32 @@ public class CdnRouter
             String cubeName = (String) coord.get(CUBE_NAME);
             String version = (String) coord.get(CUBE_VERSION);
             String status = (String) coord.get(STATUS);
-            if (StringUtilities.isEmpty(cubeName) || StringUtilities.isEmpty(version))
+            String msg = null;
+
+            if (StringUtilities.isEmpty(account))
             {
-                String msg = "CdnRouter - CdnRoutingProvider did not set up '" + CUBE_NAME + "' or '" + CUBE_VERSION + "' in the Map coordinate.";
+                msg = ACCOUNT;
+            }
+            else if (StringUtilities.isEmpty(app))
+            {
+                msg = APP;
+            }
+            else if (StringUtilities.isEmpty(version))
+            {
+                msg = CUBE_VERSION;
+            }
+            else if (StringUtilities.isEmpty(status))
+            {
+                msg = STATUS;
+            }
+            else if (StringUtilities.isEmpty(cubeName))
+            {
+                msg = CUBE_NAME;
+            }
+
+            if (msg != null)
+            {
+                msg = "CdnRouter - CdnRoutingProvider did not set up '" + msg + "' in the Map coordinate.";
                 sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
                 return;
             }

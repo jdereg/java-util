@@ -67,11 +67,11 @@ public class TestNCubeJdbcPersister
         assertTrue(ncube2.getNumDimensions() == 2);
 
         ncube1.deleteAxis("bu");
-        persister.updateCube(defaultSnapshotApp, ncube1);
+        persister.updateCube(defaultSnapshotApp, ncube1, USER_ID);
         NCube cube1 = persister.findCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(2 == persister.releaseCubes(defaultSnapshotApp));
+        assertTrue(2 == persister.releaseCubes(defaultSnapshotApp, USER_ID));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         persister.createSnapshotVersion(defaultSnapshotApp, "0.2.0");
@@ -192,7 +192,7 @@ public class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube);
+            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         }
         catch(RuntimeException e)
@@ -310,7 +310,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp);
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, USER_ID);
             fail();
         } catch(IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));
@@ -323,7 +323,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp);
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, USER_ID);
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
@@ -641,7 +641,7 @@ public class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0);
         try
         {
-            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube);
+            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         }
         catch(IllegalStateException e)
@@ -681,7 +681,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp);
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, USER_ID);
             fail();
         } catch(IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));

@@ -390,11 +390,11 @@ public class TestNCubeManager
         assertTrue(ncube2.getNumDimensions() == 2);
 
         ncube1.deleteAxis("bu");
-        NCubeManager.updateCube(defaultSnapshotApp, ncube1);
+        NCubeManager.updateCube(defaultSnapshotApp, ncube1, USER_ID);
         NCube cube1 = NCubeManager.getCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(2 == NCubeManager.releaseCubes(defaultSnapshotApp));
+        assertTrue(2 == NCubeManager.releaseCubes(defaultSnapshotApp, USER_ID));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.2.0");
@@ -483,7 +483,7 @@ public class TestNCubeManager
     {
         try
         {
-            NCubeManager.updateCube(defaultSnapshotApp, null);
+            NCubeManager.updateCube(defaultSnapshotApp, null, USER_ID);
             fail("should not make it here");
         }
         catch (Exception e)
@@ -495,7 +495,7 @@ public class TestNCubeManager
         try
         {
             ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.updateCube(id, testCube);
+            NCubeManager.updateCube(id, testCube, USER_ID);
             fail("should not make it here");
         }
         catch (IllegalStateException e)
@@ -550,7 +550,7 @@ public class TestNCubeManager
         try
         {
             createCube();
-            NCubeManager.releaseCubes(defaultSnapshotApp);
+            NCubeManager.releaseCubes(defaultSnapshotApp, USER_ID);
             NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
             NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
             fail("should not make it here");

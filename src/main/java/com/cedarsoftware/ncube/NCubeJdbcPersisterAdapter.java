@@ -46,12 +46,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public void updateCube(ApplicationID appId, NCube cube)
+    public void updateCube(ApplicationID appId, NCube cube, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            persister.updateCube(c, appId, cube);
+            persister.updateCube(c, appId, cube, username);
         }
         finally
         {
@@ -202,12 +202,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int releaseCubes(ApplicationID appId)
+    public int releaseCubes(ApplicationID appId, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.releaseCubes(c, appId);
+            return persister.releaseCubes(c, appId, username);
         }
         finally
         {

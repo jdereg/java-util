@@ -191,7 +191,7 @@ public class TestCdnRouter
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
         CdnRouter router = new CdnRouter();
         router.route(request, response);
-        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' or 'router.version' in the Map coordinate.");
+        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' in the Map coordinate.");
     }
 
     private static void setCdnRoutingProvider(final String account, final String app, final String version, final String cubeName, final String status, final boolean isAuthorized)

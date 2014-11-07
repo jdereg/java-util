@@ -442,27 +442,13 @@ s    */
     }
 
     /**
-     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the sqlLike clause.
+     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
+     * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
      */
     public static Object[] getNCubes(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
         return nCubePersister.getNCubes(appId, pattern);
-    }
-
-    /**
-     * Duplicate the given n-cube specified by oldAppId and oldName to new ApplicationID and name,
-     */
-    public static void duplicate(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
-    {
-        NCube.validateCubeName(newName);
-        NCube ncube = getCube(oldAppId, oldName);
-        NCube copy = ncube.duplicate(newName);
-        nCubePersister.createCube(newAppId, copy, username);
-        String json = nCubePersister.getTestData(oldAppId, oldName);
-        nCubePersister.updateTestData(newAppId, newName, json);
-        String notes = nCubePersister.getNotes(oldAppId, oldName);
-        nCubePersister.updateNotes(newAppId, newName, notes);
     }
 
     /**
@@ -484,16 +470,31 @@ s    */
     }
 
     /**
+     * Duplicate the given n-cube specified by oldAppId and oldName to new ApplicationID and name,
+     */
+    public static void duplicate(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
+    {
+        NCube.validateCubeName(newName);
+        NCube ncube = getCube(oldAppId, oldName);
+        NCube copy = ncube.duplicate(newName);
+        nCubePersister.createCube(newAppId, copy, username);
+        String json = nCubePersister.getTestData(oldAppId, oldName);
+        nCubePersister.updateTestData(newAppId, newName, json);
+        String notes = nCubePersister.getNotes(oldAppId, oldName);
+        nCubePersister.updateNotes(newAppId, newName, notes);
+    }
+
+    /**
      * Update the passed in NCube.  Only SNAPSHOT ncubes can be updated.
      *
      * @param ncube      NCube to be updated.
      * @return boolean true on success, false otherwise
      */
-    public static boolean updateCube(ApplicationID appId, NCube ncube)
+    public static boolean updateCube(ApplicationID appId, NCube ncube, String username)
     {
         validateAppId(appId);
         validateCube(ncube);
-        nCubePersister.updateCube(appId, ncube);
+        nCubePersister.updateCube(appId, ncube, username);
         Map<String, NCube> appCache = getCacheForApp(appId);
         appCache.remove(ncube.getName().toLowerCase());
         return true;
@@ -502,10 +503,10 @@ s    */
     /**
      * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
-    public static int releaseCubes(ApplicationID appId)
+    public static int releaseCubes(ApplicationID appId, String username)
     {
         validateAppId(appId);
-        return nCubePersister.releaseCubes(appId);
+        return nCubePersister.releaseCubes(appId, username);
     }
 
     public static int createSnapshotCubes(ApplicationID appId, String newVersion)

@@ -25,12 +25,8 @@ import java.util.List;
 public interface NCubePersister
 {
     void createCube(ApplicationID appId, NCube cube, String username);
-    
-    void updateCube(ApplicationID appId, NCube cube);
+    void updateCube(ApplicationID appId, NCube cube, String username);
 
-    //It doesn't look like findCube is used
-    //NCube findCube(ApplicationID appId, String name);
-    
     List<NCube> loadCubes(ApplicationID appId);
     Object[] getNCubes(ApplicationID appId, String pattern);
 
@@ -47,7 +43,7 @@ public interface NCubePersister
 
     int createSnapshotVersion(ApplicationID appId, String newVersion);
     int changeVersionValue(ApplicationID appId, String newVersion);
-    int releaseCubes(ApplicationID appId);
+    int releaseCubes(ApplicationID appId, String username);
 
     boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 

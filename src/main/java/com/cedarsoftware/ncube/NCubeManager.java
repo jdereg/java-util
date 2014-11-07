@@ -503,10 +503,10 @@ s    */
     /**
      * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
-    public static int releaseCubes(ApplicationID appId, String username)
+    public static int releaseCubes(ApplicationID appId)
     {
         validateAppId(appId);
-        return nCubePersister.releaseCubes(appId, username);
+        return nCubePersister.releaseCubes(appId);
     }
 
     public static int createSnapshotCubes(ApplicationID appId, String newVersion)
@@ -559,17 +559,17 @@ s    */
      *
      * @param cubeName   NCube to be deleted
      */
-    public static boolean deleteCube(ApplicationID appId, String cubeName)
+    public static boolean deleteCube(ApplicationID appId, String cubeName, String username)
     {
-        return deleteCube(appId, cubeName, false);
+        return deleteCube(appId, cubeName, false, username);
     }
 
-    static boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete)
+    static boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete, String username)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
 
-        if (nCubePersister.deleteCube(appId, cubeName, allowDelete))
+        if (nCubePersister.deleteCube(appId, cubeName, allowDelete, username))
         {
             Map<String, NCube> appCache = getCacheForApp(appId);
             appCache.remove(cubeName.toLowerCase());

@@ -32,7 +32,7 @@ public interface NCubePersister
 
     NCube findCube(ApplicationID appId, String ncubeName);
 
-    boolean deleteCube(ApplicationID appId, String name, boolean allowDelete);
+    boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username);
     boolean doesCubeExist(ApplicationID appId, String name);
 
     Object[] getAppNames(String account);
@@ -43,7 +43,7 @@ public interface NCubePersister
 
     int createSnapshotVersion(ApplicationID appId, String newVersion);
     int changeVersionValue(ApplicationID appId, String newVersion);
-    int releaseCubes(ApplicationID appId, String username);
+    int releaseCubes(ApplicationID appId);
 
     boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 

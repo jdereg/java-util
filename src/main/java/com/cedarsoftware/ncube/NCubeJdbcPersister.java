@@ -129,7 +129,7 @@ public class NCubeJdbcPersister
 
                     if (rs.next())
                     {
-                        throw new IllegalStateException("More than one cube matching name: " + ncube.getName() + ", appId:  " + appId);
+                        throw new IllegalStateException("More than one cube matching name: " + ncube.getName() + ", appId: " + appId);
                     }
                 }
 
@@ -237,7 +237,7 @@ public class NCubeJdbcPersister
         }
      }
 
-    public boolean deleteCube(Connection c, ApplicationID appId, String cubeName, boolean allowDelete)
+    public boolean deleteCube(Connection c, ApplicationID appId, String cubeName, boolean allowDelete, String username)
     {
         String statement = allowDelete ?
                 "DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10)" :
@@ -394,7 +394,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public int releaseCubes(Connection c, ApplicationID appId, String username)
+    public int releaseCubes(Connection c, ApplicationID appId)
     {
         if (doReleaseCubesExist(c, appId))
         {
@@ -416,7 +416,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to release cubes for app: " + appId.getApp() + ", due to: " + e.getMessage();
+            String s = "Unable to release cubes for app: " + appId + ", due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

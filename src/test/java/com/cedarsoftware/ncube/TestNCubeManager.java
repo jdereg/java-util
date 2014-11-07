@@ -141,8 +141,8 @@ public class TestNCubeManager
         assertFalse(NCubeManager.isCubeCached(appId, name1));
         assertFalse(NCubeManager.isCubeCached(appId, name2));
 
-        NCubeManager.deleteCube(appId, name1, true);
-        NCubeManager.deleteCube(appId, name2, true);
+        NCubeManager.deleteCube(appId, name1, true, USER_ID);
+        NCubeManager.deleteCube(appId, name2, true, USER_ID);
         assertFalse(NCubeManager.doesCubeExist(appId, name1));
         assertFalse(NCubeManager.doesCubeExist(appId, name2));
     }
@@ -260,9 +260,9 @@ public class TestNCubeManager
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
-        NCubeManager.deleteCube(defaultSnapshotApp, "test.ContinentCountries", false);
-        NCubeManager.deleteCube(defaultSnapshotApp, "test.States", false);
-        NCubeManager.deleteCube(defaultSnapshotApp, "test.Provinces", false);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.ContinentCountries", false, USER_ID);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.States", false, USER_ID);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.Provinces", false, USER_ID);
         assertTrue(NCubeManager.getCubes(defaultSnapshotApp).size() == 0);
     }
 
@@ -286,8 +286,8 @@ public class TestNCubeManager
         assertEquals(1, refs.size());
         assertTrue(refs.contains("Template1Cube"));
 
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true));
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n2.getName(), true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true, USER_ID));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n2.getName(), true, USER_ID));
 
         try
         {
@@ -309,8 +309,8 @@ public class TestNCubeManager
         NCubeManager.duplicate(defaultSnapshotApp, newId, n1.getName(), n1.getName(), USER_ID);
         NCube n2 = NCubeManager.getCube(defaultSnapshotApp, n1.getName());
 
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true));
-        assertTrue(NCubeManager.deleteCube(newId, n2.getName(), true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true, USER_ID));
+        assertTrue(NCubeManager.deleteCube(newId, n2.getName(), true, USER_ID));
         assertTrue(n1.equals(n2));
     }
 
@@ -344,7 +344,7 @@ public class TestNCubeManager
             }
         }
 
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true, USER_ID));
         assertTrue(foundName);
         assertTrue(foundVer);
     }
@@ -369,7 +369,7 @@ public class TestNCubeManager
         NCube n2 = NCubeManager.getCube(newId, "idTest");
         assertEquals(n1, n2);
 
-        assertTrue(NCubeManager.deleteCube(newId, n1.getName(), true));
+        assertTrue(NCubeManager.deleteCube(newId, n1.getName(), true, USER_ID));
     }
 
     @Test
@@ -394,7 +394,7 @@ public class TestNCubeManager
         NCube cube1 = NCubeManager.getCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(2 == NCubeManager.releaseCubes(defaultSnapshotApp, USER_ID));
+        assertTrue(2 == NCubeManager.releaseCubes(defaultSnapshotApp));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.2.0");
@@ -421,16 +421,16 @@ public class TestNCubeManager
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
-        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), false));
-        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), false));
+        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), false, USER_ID));
+        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), false, USER_ID));
 
         // Delete ncubes using 'true' to allow the test to delete a released ncube.
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true));
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), true, USER_ID));
 
         // Delete new SNAPSHOT cubes
-        assertTrue(NCubeManager.deleteCube(newId, ncube1.getName(),  false));
-        assertTrue(NCubeManager.deleteCube(newId, ncube2.getName(), false));
+        assertTrue(NCubeManager.deleteCube(newId, ncube1.getName(),  false, USER_ID));
+        assertTrue(NCubeManager.deleteCube(newId, ncube2.getName(), false, USER_ID));
 
         // Ensure that all test ncubes are deleted
         cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
@@ -458,8 +458,8 @@ public class TestNCubeManager
         assertTrue(nc1.name.equals("test.Floppy") || nc2.name.equals("test.Floppy"));
         assertFalse(nc1.name.equals("test.Floppy") && nc2.name.equals("test.Floppy"));
 
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true));
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true, USER_ID));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
     }
 
     @Test
@@ -531,7 +531,7 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("already exists"));
         }
 
-        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true);
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID);
     }
 
     @Test
@@ -550,7 +550,7 @@ public class TestNCubeManager
         try
         {
             createCube();
-            NCubeManager.releaseCubes(defaultSnapshotApp, USER_ID);
+            NCubeManager.releaseCubes(defaultSnapshotApp);
             NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
             NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.1.1");
             fail("should not make it here");
@@ -564,7 +564,7 @@ public class TestNCubeManager
     public void testNCubeManagerDelete() throws Exception
     {
         ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
-        assertFalse(NCubeManager.deleteCube(id, "DashboardRoles", true));
+        assertFalse(NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID));
     }
 
     @Test
@@ -610,7 +610,7 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("notes"));
         }
 
-        NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true);
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true, USER_ID);
     }
 
 
@@ -657,7 +657,7 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("match"));
         }
 
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender"));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", USER_ID));
     }
 
 
@@ -679,7 +679,7 @@ public class TestNCubeManager
                 assertTrue(column.getMetaProperties().size() == 0);
             }
         }
-        NCubeManager.deleteCube(defaultSnapshotApp, ncube.getName(), true);
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube.getName(), true, USER_ID);
     }
 
     @Test

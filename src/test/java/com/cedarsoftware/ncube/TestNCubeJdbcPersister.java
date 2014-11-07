@@ -71,7 +71,7 @@ public class TestNCubeJdbcPersister
         NCube cube1 = persister.findCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(2 == persister.releaseCubes(defaultSnapshotApp, USER_ID));
+        assertTrue(2 == persister.releaseCubes(defaultSnapshotApp));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         persister.createSnapshotVersion(defaultSnapshotApp, "0.2.0");
@@ -98,16 +98,16 @@ public class TestNCubeJdbcPersister
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
-        assertFalse(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), false));
-        assertFalse(persister.deleteCube(defaultSnapshotApp, ncube2.getName(), false));
+        assertFalse(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), false, USER_ID));
+        assertFalse(persister.deleteCube(defaultSnapshotApp, ncube2.getName(), false, USER_ID));
 
         // Delete ncubes using 'true' to allow the test to delete a released ncube.
-        assertTrue(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), true));
-        assertTrue(persister.deleteCube(defaultSnapshotApp, ncube2.getName(), true));
+        assertTrue(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
+        assertTrue(persister.deleteCube(defaultSnapshotApp, ncube2.getName(), true, USER_ID));
 
         // Delete new SNAPSHOT cubes
-        assertTrue(persister.deleteCube(newId, ncube1.getName(), false));
-        assertTrue(persister.deleteCube(newId, ncube2.getName(), false));
+        assertTrue(persister.deleteCube(newId, ncube1.getName(), false, USER_ID));
+        assertTrue(persister.deleteCube(newId, ncube2.getName(), false, USER_ID));
 
         // Ensure that all test ncubes are deleted
         cubeList = persister.getNCubes(defaultSnapshotApp, "test.%");
@@ -310,7 +310,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, USER_ID);
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp);
             fail();
         } catch(IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));
@@ -323,7 +323,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, USER_ID);
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp);
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
@@ -588,7 +588,7 @@ public class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", true);
+            new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", true, USER_ID);
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
@@ -676,12 +676,12 @@ public class TestNCubeJdbcPersister
 
     @Test
     public void testReleaseCubesWithCubeThatExistsAlready() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        TestNCube.getTestNCube2D(true);
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true);
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, USER_ID);
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp);
             fail();
         } catch(IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));

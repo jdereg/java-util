@@ -98,12 +98,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public boolean deleteCube(ApplicationID appId, String name, boolean allowDelete)
+    public boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.deleteCube(c, appId, name, allowDelete);
+            return persister.deleteCube(c, appId, name, allowDelete, username);
         }
         finally
         {
@@ -202,12 +202,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int releaseCubes(ApplicationID appId, String username)
+    public int releaseCubes(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.releaseCubes(c, appId, username);
+            return persister.releaseCubes(c, appId);
         }
         finally
         {

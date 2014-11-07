@@ -21,8 +21,7 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
         Connection c = provider.getConnection();
         try (Statement s = c.createStatement())
         {
-
-            s.execute("drop table if exists ncube.n_cube");
+//            s.execute("drop table if exists ncube.n_cube");
 
             s.execute("CREATE TABLE `ncube`.n_cube (\n" +
                     "                                n_cube_id bigint NOT NULL,\n" +
@@ -36,7 +35,7 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
                     "                                app_cd varchar(20),\n" +
                     "                                test_data_bin longtext,\n" +
                     "                                notes_bin longtext,\n" +
-                    "                                revision_number bigint DEFAULT '1',\n" +
+                    "                                revision_number bigint DEFAULT '1' NOT NULL,\n" +
                     "                                PRIMARY KEY (n_cube_id),\n" +
                     "                                UNIQUE (tenant_cd, app_cd, n_cube_nm, version_no_cd, revision_number)\n" +
                     "                            );");

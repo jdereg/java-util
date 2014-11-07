@@ -114,8 +114,8 @@ public class NCubeJdbcPersister
             sqlLike = "%";
         }
 
-        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, revision_number " +
-                "create_hid FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')"))
+        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
+                "FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')"))
         {
             stmt.setString(1, sqlLike);
             stmt.setString(2, appId.getApp());

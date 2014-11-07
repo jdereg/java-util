@@ -85,19 +85,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public NCube findCube(ApplicationID appId, String ncubeName)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.findCube(c, appId, ncubeName);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
     public boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username)
     {
         Connection c = connectionProvider.getConnection();

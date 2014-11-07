@@ -30,8 +30,6 @@ public interface NCubePersister
     List<NCube> loadCubes(ApplicationID appId);
     Object[] getNCubes(ApplicationID appId, String pattern);
 
-    NCube findCube(ApplicationID appId, String ncubeName);
-
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username);
     boolean doesCubeExist(ApplicationID appId, String name);
 

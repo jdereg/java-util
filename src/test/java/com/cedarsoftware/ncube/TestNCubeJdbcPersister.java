@@ -1,13 +1,9 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.IOUtilities;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -68,8 +64,6 @@ public class TestNCubeJdbcPersister
 
         ncube1.deleteAxis("bu");
         persister.updateCube(defaultSnapshotApp, ncube1, USER_ID);
-        NCube cube1 = persister.findCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
-        assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
         assertTrue(2 == persister.releaseCubes(defaultSnapshotApp));
 
@@ -153,20 +147,6 @@ public class TestNCubeJdbcPersister
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
-
-    @Test
-    public void testFindCubeWithSQLException() throws Exception {
-        Connection c = getConnectionThatThrowsSQLException();
-        try
-        {
-            new NCubeJdbcPersister().findCube(c, defaultSnapshotApp, "foo");
-            fail();
-        } catch(RuntimeException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-
 
     //  Impossible to test without mocks
     @Test
@@ -351,32 +331,6 @@ public class TestNCubeJdbcPersister
             assertTrue(e.getMessage().contains("no"));
             assertTrue(e.getMessage().contains("cube"));
             assertTrue(e.getMessage().contains("found"));
-        }
-    }
-
-    @Test
-    public void testFindCubeWithDuplicates() throws Exception
-    {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-        URL url = NCubeManager.class.getResource("/idBasedCube.json");
-        IOUtilities.transfer(new File(url.getFile()), out);
-
-        Connection c = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement(anyString())).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(true);
-        when(rs.getBytes("cube_value_bin")).thenReturn(out.toByteArray());
-
-        try
-        {
-            new NCubeJdbcPersister().findCube(c, defaultSnapshotApp, "bar");
-            fail();
-        }
-        catch(IllegalStateException e)
-        {
-            assertTrue(e.getMessage().startsWith("More than one cube matching"));
         }
     }
 

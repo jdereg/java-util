@@ -106,48 +106,6 @@ public class NCubeJdbcPersister
 
     }
 
-    public NCube findCube(Connection c, ApplicationID appId, String cubeName)
-    {
-        String query = "SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10)";
-
-        try (PreparedStatement stmt = c.prepareStatement(query))
-        {
-            NCube ncube = null;
-            stmt.setString(1, cubeName);
-            stmt.setString(2, appId.getApp());
-            stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getStatus());
-            stmt.setString(5, appId.getTenant());
-
-            try (ResultSet rs = stmt.executeQuery())
-            {
-                if (rs.next())
-                {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String json = new String(jsonBytes, "UTF-8");
-                    ncube = NCubeManager.ncubeFromJson(json);
-
-                    if (rs.next())
-                    {
-                        throw new IllegalStateException("More than one cube matching name: " + ncube.getName() + ", appId: " + appId);
-                    }
-                }
-
-                return ncube;
-            }
-        }
-        catch (IllegalStateException e)
-        {
-            throw e;
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to load cube: " + cubeName + ", app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
-    }
-
     public Object[] getNCubes(Connection c, ApplicationID appId, String sqlLike)
     {
         if (sqlLike == null)

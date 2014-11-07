@@ -25,13 +25,15 @@ import java.util.Date;
 public class NCubeInfoDto
 {
 	public String id;
-	public Date createDate;
-	public String createHid;
-	public String name;
+	public String tenant;
+	public String app;
 	public String version;
 	public String status;
+	public String name;
 	public String notes;
-	public String app;
+	public String revision;
+	public Date createDate;
+	public String createHid;
 	// public String cubeJsonData;  // Loaded separately
 	// public String testJsonData;  // Loaded separately
 }

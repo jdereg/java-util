@@ -92,7 +92,7 @@ public class NCubeManager
         Set<String> names = new TreeSet<>();
         if (appCache.isEmpty())
         {   // Get names quickly without hydrating n-cube JSON or Test JSON
-            Object[] cubeInfos = nCubePersister.getNCubes(appId, "%");
+            Object[] cubeInfos = nCubePersister.getNCubes(appId, "");
             for (Object cubeInfo : cubeInfos)
             {
                 NCubeInfoDto info = (NCubeInfoDto) cubeInfo;

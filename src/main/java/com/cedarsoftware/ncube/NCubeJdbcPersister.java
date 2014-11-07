@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -108,12 +109,12 @@ public class NCubeJdbcPersister
 
     public Object[] getNCubes(Connection c, ApplicationID appId, String sqlLike)
     {
-        if (sqlLike == null)
+        if (StringUtilities.isEmpty(sqlLike))
         {
             sqlLike = "%";
         }
 
-        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, " +
+        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, revision_number " +
                 "create_hid FROM n_cube WHERE n_cube_nm LIKE ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')"))
         {
             stmt.setString(1, sqlLike);
@@ -128,6 +129,7 @@ public class NCubeJdbcPersister
                 while (rs.next())
                 {
                     NCubeInfoDto dto = new NCubeInfoDto();
+                    dto.tenant = appId.getTenant();
                     dto.id = Long.toString(rs.getLong("n_cube_id"));
                     dto.name = rs.getString("n_cube_nm");
                     byte[] notes = rs.getBytes("notes_bin");
@@ -137,6 +139,7 @@ public class NCubeJdbcPersister
                     dto.app = rs.getString("app_cd");
                     dto.createDate = rs.getDate("create_dt");
                     dto.createHid = rs.getString("create_hid");
+                    dto.revision = Long.toString(rs.getLong("revision_number"));
                     records.add(dto);
                 }
             }

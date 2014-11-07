@@ -10,11 +10,14 @@ import java.sql.Statement;
 public class MySqlTestingDatabaseManager implements TestingDatabaseManager
 {
     private JdbcConnectionProvider provider;
-    public MySqlTestingDatabaseManager(JdbcConnectionProvider p) {
+
+    public MySqlTestingDatabaseManager(JdbcConnectionProvider p)
+    {
         provider = p;
     }
 
-    public void setUp() throws SQLException {
+    public void setUp() throws SQLException
+    {
         Connection c = provider.getConnection();
         try (Statement s = c.createStatement())
         {
@@ -28,13 +31,12 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
                     "                                cube_value_bin longtext,\n" +
                     "                                create_dt date NOT NULL,\n" +
                     "                                create_hid varchar(20),\n" +
-                    "                                update_hid varchar(20),\n" +
                     "                                version_no_cd varchar(16) NOT NULL,\n" +
-                    "                            status_cd varchar(16) DEFAULT 'SNAPSHOT' NOT NULL,\n" +
-                    "                            app_cd varchar(20),\n" +
+                    "                                status_cd varchar(16) DEFAULT 'SNAPSHOT' NOT NULL,\n" +
+                    "                                app_cd varchar(20),\n" +
                     "                                test_data_bin longtext,\n" +
                     "                                notes_bin longtext,\n" +
-                    "                                revision_number bigint,\n" +
+                    "                                revision_number bigint DEFAULT '1',\n" +
                     "                                PRIMARY KEY (n_cube_id),\n" +
                     "                                UNIQUE (tenant_cd, app_cd, n_cube_nm, version_no_cd, revision_number)\n" +
                     "                            );");

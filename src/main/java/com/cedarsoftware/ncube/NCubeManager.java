@@ -82,20 +82,25 @@ public class NCubeManager
      * Fetch all the n-cube names for the given ApplicationID.  This API
      * will attempt to loadCubes() if there are none loaded for the given
      * ApplicationID.
+     *
      * @return Set<String> n-cube names.  If an empty Set is returned,
      * then there are no persisted n-cubes for the passed in ApplicationID.
      */
+    // TODO: This API could give back a stale answer in a cluster.  May need to make this always hit the database or
+    // offer another API that loads from cache (let caller decide if they want fresh or cached answer).
     public static Set<String> getCubeNames(ApplicationID appId)
     {
         validateAppId(appId);
         Map<String, Object> appCache = getCacheForApp(appId);
         Set<String> names = new TreeSet<>();
+
         if (appCache.isEmpty())
         {   // Get names quickly without hydrating n-cube JSON or Test JSON
-            Object[] cubeInfos = nCubePersister.getNCubes(appId, "");
+            Object[] cubeInfos = nCubePersister.getCubeRecords(appId, "");
             for (Object cubeInfo : cubeInfos)
             {
                 NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+                appCache.put(info.name.toLowerCase(), info);
                 names.add(info.name);
             }
         }
@@ -126,6 +131,7 @@ public class NCubeManager
      * internal cache is checked again.  If the cube is not found, null is
      * returned.
      */
+    // TODO: This API could give back stale data in a clustered environment.
     public static NCube getCube(ApplicationID appId, String name)
     {
         validateAppId(appId);
@@ -138,7 +144,7 @@ public class NCubeManager
             return getCubeFromCache(cubes, key);
         }
 
-        getNCubes(appId, "");
+        getCubeRecords(appId, "");
 
         if (cubes.containsKey(key))
         {
@@ -213,7 +219,7 @@ public class NCubeManager
         Map<String, Object> ncubes = getCacheForApp(appId);
         if (ncubes.isEmpty())
         {
-            getNCubes(appId, "");
+            getCubeRecords(appId, "");
         }
         return ncubes;
     }
@@ -481,10 +487,10 @@ s    */
      * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
      * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
      */
-    public static Object[] getNCubes(ApplicationID appId, String pattern)
+    public static Object[] getCubeRecords(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
-        Object[] cubes = nCubePersister.getNCubes(appId, pattern);
+        Object[] cubes = nCubePersister.getCubeRecords(appId, pattern);
         Map<String, Object> appCache = getCacheForApp(appId);
 
         for (Object cube : cubes)

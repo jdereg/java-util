@@ -127,7 +127,7 @@ public class TestNCubeManager
         NCubeManager.createCube(appId, ncube, USER_ID);
 
         NCubeManager.clearCache(appId);
-        NCubeManager.getNCubes(appId, "");
+        NCubeManager.getCubeRecords(appId, "");
 
         NCube ncube1 = NCubeManager.getCube(appId, name1);
         NCube ncube2 = NCubeManager.getCube(appId, name2);
@@ -256,7 +256,7 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.getCubes(defaultSnapshotApp).size() == 3);
         NCubeManager.clearCache();
-        NCubeManager.getNCubes(defaultSnapshotApp, "");
+        NCubeManager.getCubeRecords(defaultSnapshotApp, "");
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
@@ -381,7 +381,7 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
-        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
+        Object[] cubeList = NCubeManager.getCubeRecords(defaultSnapshotApp, "test.%");
 
         assertTrue(cubeList != null);
         assertTrue(cubeList.length == 2);
@@ -433,7 +433,7 @@ public class TestNCubeManager
         assertTrue(NCubeManager.deleteCube(newId, ncube2.getName(), false, USER_ID));
 
         // Ensure that all test ncubes are deleted
-        cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
+        cubeList = NCubeManager.getCubeRecords(defaultSnapshotApp, "test.%");
         assertTrue(cubeList.length == 0);
     }
 
@@ -448,7 +448,7 @@ public class TestNCubeManager
 
         NCubeManager.renameCube(defaultSnapshotApp, ncube1.getName(), "test.Floppy");
 
-        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
+        Object[] cubeList = NCubeManager.getCubeRecords(defaultSnapshotApp, "test.%");
 
         assertTrue(cubeList.length == 2);
 
@@ -472,7 +472,7 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
         // This proves that null is turned into '%' (no exception thrown)
-        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, null);
+        Object[] cubeList = NCubeManager.getCubeRecords(defaultSnapshotApp, null);
 
         assertEquals(2, cubeList.length);
     }
@@ -704,7 +704,7 @@ public class TestNCubeManager
         try
         {
             // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
-            NCubeManager.getNCubes(null, "");
+            NCubeManager.getCubeRecords(null, "");
             fail();
         }
         catch(Exception ignored)

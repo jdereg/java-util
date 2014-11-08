@@ -107,7 +107,7 @@ public class NCubeJdbcPersister
 
     }
 
-    public Object[] getNCubes(Connection c, ApplicationID appId, String sqlLike)
+    public Object[] getCubeRecords(Connection c, ApplicationID appId, String sqlLike)
     {
         if (StringUtilities.isEmpty(sqlLike))
         {

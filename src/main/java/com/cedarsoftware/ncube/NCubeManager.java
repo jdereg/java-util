@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
@@ -241,7 +242,8 @@ s    */
     private static void applyAdvices(ApplicationID appId, NCube ncube)
     {
         Map<String, Advice> appAdvices = advices.get(appId);
-        if (appAdvices == null || appAdvices.isEmpty())
+
+        if (MapUtilities.isEmpty(appAdvices))
         {
             return;
         }

@@ -1,7 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import java.util.List;
-
 /**
  * Class used to carry the NCube meta-information
  * to the client.
@@ -25,7 +23,6 @@ import java.util.List;
 public interface NCubePersister
 {
     void createCube(ApplicationID appId, NCube cube, String username);
-    List<NCubeInfoDto> loadCubes(ApplicationID appId);
     NCube loadCube(NCubeInfoDto cubeInfo);
     void updateCube(ApplicationID appId, NCube cube, String username);
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username);

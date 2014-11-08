@@ -146,23 +146,6 @@ public class TestNCubeJdbcPersister
         }
     }
 
-    //  Impossible to test without mocks
-    @Test
-    public void testLoadCubesException() throws Exception {
-        Connection c = getConnectionThatThrowsSQLException();
-        try
-        {
-            new NCubeJdbcPersister().loadCubes(c, defaultSnapshotApp);
-            fail();
-        }
-        catch(RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("Unable to load"));
-            assertTrue(e.getMessage().contains("ube"));
-        }
-    }
-
     @Test
     public void testUpdateCubeWithSqlException() throws Exception
     {

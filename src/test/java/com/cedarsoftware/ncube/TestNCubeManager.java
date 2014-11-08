@@ -127,7 +127,7 @@ public class TestNCubeManager
         NCubeManager.createCube(appId, ncube, USER_ID);
 
         NCubeManager.clearCache(appId);
-        NCubeManager.loadCubes(appId);
+        NCubeManager.getNCubes(appId, "");
 
         NCube ncube1 = NCubeManager.getCube(appId, name1);
         NCube ncube2 = NCubeManager.getCube(appId, name2);
@@ -256,7 +256,7 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.getCubes(defaultSnapshotApp).size() == 3);
         NCubeManager.clearCache();
-        NCubeManager.loadCubes(defaultSnapshotApp);
+        NCubeManager.getNCubes(defaultSnapshotApp, "");
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
@@ -704,7 +704,7 @@ public class TestNCubeManager
         try
         {
             // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
-            NCubeManager.loadCubes(null);
+            NCubeManager.getNCubes(null, "");
             fail();
         }
         catch(Exception ignored)

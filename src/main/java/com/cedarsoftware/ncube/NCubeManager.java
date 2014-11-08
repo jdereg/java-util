@@ -138,7 +138,7 @@ public class NCubeManager
             return getCubeFromCache(cubes, key);
         }
 
-        loadCubes(appId);
+        getNCubes(appId, "");
 
         if (cubes.containsKey(key))
         {
@@ -213,7 +213,7 @@ public class NCubeManager
         Map<String, Object> ncubes = getCacheForApp(appId);
         if (ncubes.isEmpty())
         {
-            loadCubes(appId);
+            getNCubes(appId, "");
         }
         return ncubes;
     }
@@ -310,19 +310,6 @@ s    */
                 }
             }
         }
-    }
-
-    /**
-     * Add a cube to the internal cache of available cubes.
-     */
-    public static void addCube(ApplicationID appId, NCubeInfoDto cubeInfo)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeInfo.name);
-        validateAppId(cubeInfo.getApplicationID());
-
-        Map<String, Object> appCache = getCacheForApp(appId);
-        appCache.put(cubeInfo.name.toLowerCase(), cubeInfo);
     }
 
     /**
@@ -497,7 +484,19 @@ s    */
     public static Object[] getNCubes(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
-        return nCubePersister.getNCubes(appId, pattern);
+        Object[] cubes = nCubePersister.getNCubes(appId, pattern);
+        Map<String, Object> appCache = getCacheForApp(appId);
+
+        for (Object cube : cubes)
+        {
+            NCubeInfoDto cubeInfo = (NCubeInfoDto) cube;
+            String key = cubeInfo.name.toLowerCase();
+            if (!appCache.containsKey(key))
+            {
+                appCache.put(key, cubeInfo);
+            }
+        }
+        return cubes;
     }
 
     /**
@@ -670,21 +669,6 @@ s    */
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
         return nCubePersister.getTestData(appId, cubeName);
-    }
-
-    /**
-     * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
-     */
-    static void loadCubes(ApplicationID appId)
-    {
-        List<NCubeInfoDto> ncubes = nCubePersister.loadCubes(appId);
-
-        for (NCubeInfoDto ncube : ncubes)
-        {
-            addCube(appId, ncube);
-        }
-
-        //resolveClassPath(appId);
     }
 
     /*

@@ -151,44 +151,40 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-
     }
 
-    public List<NCube> loadCubes(Connection c, ApplicationID appId)
+    public List<NCubeInfoDto> loadCubes(Connection c, ApplicationID appId)
     {
-        try (PreparedStatement stmt = c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')"))
+        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
+                "FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')"))
         {
-            List<NCube> ncubes = new ArrayList<>();
-
+            List<NCubeInfoDto> cubes = new ArrayList<>();
             stmt.setString(1, appId.getApp());
             stmt.setString(2, appId.getVersion());
             stmt.setString(3, appId.getStatus());
             stmt.setString(4, appId.getTenant());
+
             try (ResultSet rs = stmt.executeQuery())
             {
                 while (rs.next())
                 {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String json = new String(jsonBytes, "UTF-8");
-                    try
-                    {
-                        NCube ncube = NCubeManager.ncubeFromJson(json);
-                        ncube.setApplicationID(appId);
-                        ncubes.add(ncube);
-                    }
-                    catch (Exception e)
-                    {
-                        int len = 60;
-                        if (json.length() <= len)
-                        {
-                            len = json.length() - 1;
-                        }
-                        LOG.warn("app: " + appId + ", failed to load cube: " + json.substring(0, len));
-                    }
+                    NCubeInfoDto dto = new NCubeInfoDto();
+                    dto.tenant = appId.getTenant();
+                    dto.id = Long.toString(rs.getLong("n_cube_id"));
+                    dto.name = rs.getString("n_cube_nm");
+                    byte[] notes = rs.getBytes("notes_bin");
+                    dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                    dto.version = rs.getString("version_no_cd");
+                    dto.status = rs.getString("status_cd");
+                    dto.app = rs.getString("app_cd");
+                    dto.createDate = rs.getDate("create_dt");
+                    dto.createHid = rs.getString("create_hid");
+                    dto.revision = Long.toString(rs.getLong("revision_number"));
+                    cubes.add(dto);
                 }
             }
 
-            return ncubes;
+            return cubes;
         }
         catch (Exception e)
         {

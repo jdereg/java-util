@@ -59,7 +59,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public List<NCube> loadCubes(ApplicationID appId)
+    public List<NCubeInfoDto> loadCubes(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
         try

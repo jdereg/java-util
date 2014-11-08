@@ -8,9 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 
-import static junit.framework.TestCase.assertNotNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -334,21 +332,21 @@ public class TestNCubeJdbcPersister
         }
     }
 
-    @Test
-    public void testLoadCubesWithInvalidCube() throws Exception
-    {
-        Connection c = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        when(c.prepareStatement(anyString())).thenReturn(ps);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(true).thenReturn(false);
-        when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"));
-
-        final List<NCube> nCubes = new NCubeJdbcPersister().loadCubes(c, defaultSnapshotApp);
-        assertNotNull(nCubes);
-        assertEquals(0, nCubes.size());
-    }
+//    @Test
+//    public void testLoadCubesWithInvalidCube() throws Exception
+//    {
+//        Connection c = mock(Connection.class);
+//        ResultSet rs = mock(ResultSet.class);
+//        PreparedStatement ps = mock(PreparedStatement.class);
+//        when(c.prepareStatement(anyString())).thenReturn(ps);
+//        when(ps.executeQuery()).thenReturn(rs);
+//        when(rs.next()).thenReturn(true).thenReturn(false);
+//        when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"));
+//
+//        final List<NCube> nCubes = new NCubeJdbcPersister().loadCubes(c, defaultSnapshotApp);
+//        assertNotNull(nCubes);
+//        assertEquals(0, nCubes.size());
+//    }
 
     @Test
     public void testChangeVersionWithNoUpdate() throws Exception

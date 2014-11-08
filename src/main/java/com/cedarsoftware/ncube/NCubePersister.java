@@ -25,7 +25,7 @@ import java.util.List;
 public interface NCubePersister
 {
     void createCube(ApplicationID appId, NCube cube, String username);
-    List<NCube> loadCubes(ApplicationID appId);
+    List<NCubeInfoDto> loadCubes(ApplicationID appId);
     NCube loadCube(NCubeInfoDto cubeInfo);
     void updateCube(ApplicationID appId, NCube cube, String username);
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username);

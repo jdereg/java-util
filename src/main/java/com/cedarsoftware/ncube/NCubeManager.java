@@ -178,7 +178,7 @@ public class NCubeManager
             }
             else
             {
-                cubes.add(nCubePersister.loadCube((NCubeInfoDto)value));
+                cubes.add(nCubePersister.loadCube((NCubeInfoDto) value));
             }
         }
         Collections.sort(cubes, new Comparator<NCube>()
@@ -310,6 +310,19 @@ s    */
                 }
             }
         }
+    }
+
+    /**
+     * Add a cube to the internal cache of available cubes.
+     */
+    public static void addCube(ApplicationID appId, NCubeInfoDto cubeInfo)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeInfo.name);
+        validateAppId(cubeInfo.getApplicationID());
+
+        Map<String, Object> appCache = getCacheForApp(appId);
+        appCache.put(cubeInfo.name.toLowerCase(), cubeInfo);
     }
 
     /**
@@ -664,9 +677,9 @@ s    */
      */
     static void loadCubes(ApplicationID appId)
     {
-        List<NCube> ncubes = nCubePersister.loadCubes(appId);
+        List<NCubeInfoDto> ncubes = nCubePersister.loadCubes(appId);
 
-        for (NCube ncube : ncubes)
+        for (NCubeInfoDto ncube : ncubes)
         {
             addCube(appId, ncube);
         }

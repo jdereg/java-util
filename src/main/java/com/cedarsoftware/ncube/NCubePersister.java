@@ -25,16 +25,16 @@ import java.util.List;
 public interface NCubePersister
 {
     void createCube(ApplicationID appId, NCube cube, String username);
-    void updateCube(ApplicationID appId, NCube cube, String username);
-
     List<NCube> loadCubes(ApplicationID appId);
-    Object[] getNCubes(ApplicationID appId, String pattern);
-
+    NCube loadCube(NCubeInfoDto cubeInfo);
+    void updateCube(ApplicationID appId, NCube cube, String username);
     boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username);
-    boolean doesCubeExist(ApplicationID appId, String name);
+    boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 
+    Object[] getNCubes(ApplicationID appId, String pattern);
     Object[] getAppNames(String account);
     Object[] getAppVersions(ApplicationID appId);
+    boolean doesCubeExist(ApplicationID appId, String name);
 
     boolean updateNotes(ApplicationID appId, String cubeName, String notes);
     String getNotes(ApplicationID appId, String cubeName);
@@ -42,8 +42,6 @@ public interface NCubePersister
     int createSnapshotVersion(ApplicationID appId, String newVersion);
     int changeVersionValue(ApplicationID appId, String newVersion);
     int releaseCubes(ApplicationID appId);
-
-    boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 
     boolean updateTestData(ApplicationID appId, String cubeName, String testData);
     String getTestData(ApplicationID appId, String cubeName);

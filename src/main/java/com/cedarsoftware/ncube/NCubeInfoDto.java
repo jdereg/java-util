@@ -34,6 +34,16 @@ public class NCubeInfoDto
 	public String revision;
 	public Date createDate;
 	public String createHid;
+
+	public ApplicationID getApplicationID()
+	{
+		return new ApplicationID(tenant, app, version, status);
+	}
+
+	public String toString()
+	{
+		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + revision + ", id=" + id;
+	}
 	// public String cubeJsonData;  // Loaded separately
 	// public String testJsonData;  // Loaded separately
 }

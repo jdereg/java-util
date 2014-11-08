@@ -198,6 +198,41 @@ public class NCubeJdbcPersister
         }
      }
 
+    public NCube loadCube(Connection c, NCubeInfoDto cubeInfo)
+    {
+        try (PreparedStatement stmt = c.prepareStatement("SELECT cube_value_bin FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')"))
+        {
+            stmt.setString(1, cubeInfo.name);
+            stmt.setString(2, cubeInfo.app);
+            stmt.setString(3, cubeInfo.version);
+            stmt.setString(4, cubeInfo.status);
+            stmt.setString(5, cubeInfo.tenant);
+
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    NCube ncube = NCubeManager.ncubeFromJson(json);
+                    ncube.setApplicationID(cubeInfo.getApplicationID());
+                    return ncube;
+                }
+            }
+            throw new IllegalArgumentException("Unable to load cube: " + cubeInfo.name + ", app: " + cubeInfo + " from database");
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to load cube: " + cubeInfo.name + ", app: " + cubeInfo + " from database";
+            LOG.error(s, e);
+            throw new IllegalStateException(s, e);
+        }
+     }
+
     public boolean deleteCube(Connection c, ApplicationID appId, String cubeName, boolean allowDelete, String username)
     {
         String statement = allowDelete ?

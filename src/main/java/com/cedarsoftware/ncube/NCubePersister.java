@@ -29,7 +29,7 @@ public interface NCubePersister
     boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 
     Object[] getCubeRecords(ApplicationID appId, String pattern);
-    Object[] getAppNames(String account);
+    Object[] getAppNames(String tenant);
     Object[] getAppVersions(ApplicationID appId);
     boolean doesCubeExist(ApplicationID appId, String name);
 

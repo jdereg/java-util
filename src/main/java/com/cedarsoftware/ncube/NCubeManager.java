@@ -77,31 +77,26 @@ public class NCubeManager
 
     /**
      * Fetch all the n-cube names for the given ApplicationID.  This API
-     * will attempt to loadCubes() if there are none loaded for the given
-     * ApplicationID.
+     * will load all cube records for the ApplicationID (NCubeInfoDtos),
+     * and then get the names from them.
      *
      * @return Set<String> n-cube names.  If an empty Set is returned,
      * then there are no persisted n-cubes for the passed in ApplicationID.
      */
     public static Set<String> getCubeNames(ApplicationID appId)
     {
-        validateAppId(appId);
-        Map<String, Object> appCache = getCacheForApp(appId);
+        Object[] cubeInfos = getCubeRecordsFromDatabase(appId, "");
         Set<String> names = new TreeSet<>();
 
-        if (appCache.isEmpty())
-        {   // Get names quickly without hydrating n-cube JSON or Test JSON
-            Object[] cubeInfos = nCubePersister.getCubeRecords(appId, "");
-            for (Object cubeInfo : cubeInfos)
-            {
-                NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
-                appCache.put(info.name.toLowerCase(), info);
-                names.add(info.name);
-            }
+        for (Object cubeInfo : cubeInfos)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+            names.add(info.name);
         }
-        else
-        {   // Get names quickly from cache
-            for (Object value : appCache.values())
+
+        if (names.isEmpty())
+        {   // Support tests that load cubes from JSON files...
+            for (Object value : getCacheForApp(appId).values())
             {
                 String name;
                 if (value instanceof NCube)
@@ -135,21 +130,21 @@ public class NCubeManager
 
         if (cubes.containsKey(key))
         {   // pull from cache
-            return getCubeFromCache(cubes, key);
+            return getCubeFromCache(cubes.get(key));
         }
 
-        getCubeRecordsFromDatabase(appId, "");
+        // Deep load the requested cube
+        getCubeRecordsFromDatabase(appId, name);
 
         if (cubes.containsKey(key))
         {
-            return getCubeFromCache(cubes, key);
+            return getCubeFromCache(cubes.get(key));
         }
         return null;
     }
 
-    private static NCube getCubeFromCache(Map<String, Object> cubes, String key)
+    private static NCube getCubeFromCache(Object value)
     {
-        Object value = cubes.get(key);
         if (value instanceof NCube)
         {
             return (NCube)value;
@@ -162,7 +157,7 @@ public class NCubeManager
         }
         else
         {
-            throw new IllegalStateException("Failed to retrieve cube from cache, key: " + key);
+            throw new IllegalStateException("Failed to retrieve cube from cache, value: " + value);
         }
     }
 

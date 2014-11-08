@@ -86,8 +86,6 @@ public class NCubeManager
      * @return Set<String> n-cube names.  If an empty Set is returned,
      * then there are no persisted n-cubes for the passed in ApplicationID.
      */
-    // TODO: This API could give back a stale answer in a cluster.  May need to make this always hit the database or
-    // offer another API that loads from cache (let caller decide if they want fresh or cached answer).
     public static Set<String> getCubeNames(ApplicationID appId)
     {
         validateAppId(appId);
@@ -131,7 +129,6 @@ public class NCubeManager
      * internal cache is checked again.  If the cube is not found, null is
      * returned.
      */
-    // TODO: This API could give back stale data in a clustered environment.
     public static NCube getCube(ApplicationID appId, String name)
     {
         validateAppId(appId);
@@ -171,6 +168,7 @@ public class NCubeManager
      * If no cubes are loaded, then it will load them first and then return
      * the list.
      */
+    // TODO: Get rid of this API asap
     static Set<NCube> getCubes(ApplicationID appId)
     {
         validateAppId(appId);
@@ -214,6 +212,7 @@ public class NCubeManager
      * If no cubes are loaded, then it will load them first and then return
      * the list.
      */
+    // TODO: get ride of this API asap.
     static Map<String, Object> getCubesInternal(ApplicationID appId)
     {
         Map<String, Object> ncubes = getCacheForApp(appId);
@@ -283,6 +282,7 @@ s    */
         validateAppId(appId);
         validateCube(ncube);
 
+        // TODO: Can this be done when the cube is pulled out?
         Map<String, Object> appCache = getCacheForApp(appId);
         appCache.put(ncube.name.toLowerCase(), ncube);
         Map<String, Advice> appAdvices = advices.get(appId);
@@ -406,6 +406,7 @@ s    */
             }
         }
 
+        // Can this be done with the ncube is pulled out of the cache?
         current.put(wildcard, advice);
         String regex = StringUtilities.wildcardToRegexString(wildcard);
         Set<NCube> cubes = getCubes(appId);
@@ -462,14 +463,14 @@ s    */
     {
         if (refs == null)
         {
-            throw new IllegalArgumentException("null passed in for Set to hold referenced n-cube names, app: " + appId + ", n-cube: " + name);
+            throw new IllegalArgumentException("Could not get referenced cube names, null passed in for Set to hold referenced n-cube names, app: " + appId + ", n-cube: " + name);
         }
         validateAppId(appId);
         NCube.validateCubeName(name);
         NCube ncube = getCube(appId, name);
         if (ncube == null)
         {
-            throw new IllegalArgumentException("n-cube: " + name + " does not exist in app: " + appId);
+            throw new IllegalArgumentException("Could not get referenced cube names, n-cube: " + name + " does not exist in app: " + appId);
         }
         Set<String> subCubeList = ncube.getReferencedCubeNames();
         refs.addAll(subCubeList);

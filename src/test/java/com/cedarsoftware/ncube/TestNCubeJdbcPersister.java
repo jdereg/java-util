@@ -335,7 +335,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testChangeVersionWithNoUpdate() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        TestNCube.getTestNCube2D(true);
 
         Connection c = mock(Connection.class);
         ResultSet rs = mock(ResultSet.class);

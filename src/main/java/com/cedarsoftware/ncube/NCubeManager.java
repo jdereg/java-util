@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.io.JsonObject;
@@ -17,6 +18,11 @@ import java.io.*;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -46,12 +52,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NCubeManager
 {
-    private static final Map<ApplicationID, Map<String, NCube>> ncubeCache = new ConcurrentHashMap<>();
+    private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-
     private static final String CLASSPATH_CUBE = "sys.classpath";
 
     // TODO:  I don't think we need this anymore
@@ -71,30 +76,39 @@ public class NCubeManager
 
     /**
      * Fetch all the n-cube names for the given ApplicationID.  This API
-     * will attempt to loadCubes() if there are none loaded for the given
-     * ApplicationID.
+     * will load all cube records for the ApplicationID (NCubeInfoDtos),
+     * and then get the names from them.
+     *
      * @return Set<String> n-cube names.  If an empty Set is returned,
      * then there are no persisted n-cubes for the passed in ApplicationID.
      */
     public static Set<String> getCubeNames(ApplicationID appId)
     {
-        validateAppId(appId);
-        Map<String, NCube> appCache = getCacheForApp(appId);
+        Object[] cubeInfos = getCubeRecordsFromDatabase(appId, "");
         Set<String> names = new TreeSet<>();
-        if (appCache.isEmpty())
-        {   // Get names quickly without hydrating n-cube JSON or Test JSON
-            Object[] cubeInfos = nCubePersister.getNCubes(appId, "");
-            for (Object cubeInfo : cubeInfos)
-            {
-                NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
-                names.add(info.name);
-            }
+
+        for (Object cubeInfo : cubeInfos)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+            names.add(info.name);
         }
-        else
-        {   // Get names quickly from cache
-            for (NCube ncube : appCache.values())
+
+        if (names.isEmpty())
+        {   // Support tests that load cubes from JSON files...
+            for (Object value : getCacheForApp(appId).values())
             {
-                names.add(ncube.name);
+                String name;
+                if (value instanceof NCube)
+                {   // NCube info cache, get name from it.
+                    NCube cube = (NCube) value;
+                    name = cube.name;
+                }
+                else
+                {   // NCubeInfoDto in cache, get name from it
+                    NCubeInfoDto cubeInfo = (NCubeInfoDto) value;
+                    name = cubeInfo.name;
+                }
+                names.add(name);
             }
         }
         return new CaseInsensitiveSet<>(names);
@@ -103,48 +117,48 @@ public class NCubeManager
     /**
      * Fetch an n-cube by name from the given ApplicationID.  If no n-cubes
      * are loaded, then a loadCubes() call is performed and then the
-     * internal cache is checked again.
+     * internal cache is checked again.  If the cube is not found, null is
+     * returned.
      */
     public static NCube getCube(ApplicationID appId, String name)
     {
         validateAppId(appId);
         NCube.validateCubeName(name);
-        Map<String, NCube> cubes = getCacheForApp(appId);
+        Map<String, Object> cubes = getCacheForApp(appId);
         final String key = name.toLowerCase();
+
+        if (cubes.containsKey(key))
+        {   // pull from cache
+            return ensureLoaded(cubes.get(key));
+        }
+
+        // Deep load the requested cube
+        getCubeRecordsFromDatabase(appId, name);
+
         if (cubes.containsKey(key))
         {
-            return cubes.get(key);
+            return ensureLoaded(cubes.get(key));
         }
-        loadCubes(appId);
-        cubes = getCacheForApp(appId);
-        return cubes.containsKey(key) ? cubes.get(key) : null;
-
+        return null;
     }
 
-    /**
-     * @return Set<NCube> of all NCubes for the given ApplicationID.
-     * If no cubes are loaded, then it will load them first and then return
-     * the list.
-     */
-    public static Set<NCube> getCubes(ApplicationID appId)
+    private static NCube ensureLoaded(Object value)
     {
-        validateAppId(appId);
-        Map<String, NCube> ncubes = getCubesInternal(appId);
-        List<NCube> cubes = new ArrayList();
-        for (NCube ncube : ncubes.values())
+        if (value instanceof NCube)
         {
-            cubes.add(ncube);
+            return (NCube)value;
         }
-        Collections.sort(cubes, new Comparator<NCube>()
+        else if (value instanceof NCubeInfoDto)
+        {   // Lazy load cube (make sure to apply any advices to it)
+            NCube cube = nCubePersister.loadCube((NCubeInfoDto) value);
+            applyAdvices(cube.getApplicationID(), cube);
+            return cube;
+        }
+        else
         {
-            public int compare(NCube c1, NCube c2)
-            {
-                return c1.name.compareToIgnoreCase(c2.name);
-            }
-        });
-        return new CaseInsensitiveSet<>(cubes);
+            throw new IllegalStateException("Failed to retrieve cube from cache, value: " + value);
+        }
     }
-
 
     /**
      * Testing API (Cache validation)
@@ -153,24 +167,8 @@ public class NCubeManager
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Map<String, NCube> ncubes = getCacheForApp(appId);
+        Map<String, Object> ncubes = getCacheForApp(appId);
         return ncubes.containsKey(cubeName.toLowerCase());
-    }
-
-    /**
-     * @return Map<String, NCube> of all NCubes for the given ApplicationID.
-     * If no cubes are loaded, then it will load them first and then return
-     * the list.
-     */
-    static Map<String, NCube> getCubesInternal(ApplicationID appId)
-    {
-        Map<String, NCube> ncubes = getCacheForApp(appId);
-        if (ncubes.isEmpty())
-        {
-            loadCubes(appId);
-            ncubes = getCacheForApp(appId);
-        }
-        return ncubes;
     }
 
     /**
@@ -232,36 +230,45 @@ s    */
         validateAppId(appId);
         validateCube(ncube);
 
-        Map<String, NCube> appCache = getCacheForApp(appId);
-        appCache.put(ncube.name.toLowerCase(), ncube);
+        // Add the cube to the cache for this ApplicationID
+        getCacheForApp(appId).put(ncube.name.toLowerCase(), ncube);
+
+        // Apply any matching advices to it
+        applyAdvices(appId, ncube);
+    }
+
+    private static void applyAdvices(ApplicationID appId, NCube ncube)
+    {
         Map<String, Advice> appAdvices = advices.get(appId);
 
-        if (appAdvices != null && !appAdvices.isEmpty())
+        if (MapUtilities.isEmpty(appAdvices))
         {
-            for (Map.Entry<String, Advice> entry : appAdvices.entrySet())
-            {
-                String regex = StringUtilities.wildcardToRegexString(entry.getKey());
-                Advice advice = entry.getValue();
-                Axis axis = ncube.getAxis("method");
-                if (axis != null)
-                {   // Controller methods
-                    for (Column column : axis.getColumnsWithoutDefault())
-                    {
-                        String method = column.getValue().toString();
-                        String classMethod = ncube.getName() + '.' + method + "()";
-                        if (classMethod.matches(regex))
-                        {
-                            ncube.addAdvice(advice, method);
-                        }
-                    }
-                }
-                else
-                {   // Expressions
-                    String classMethod = ncube.getName() + ".run()";
+            return;
+        }
+        for (Map.Entry<String, Advice> entry : appAdvices.entrySet())
+        {
+            String regex = StringUtilities.wildcardToRegexString(entry.getKey());
+            Advice advice = entry.getValue();
+            Axis axis = ncube.getAxis("method");
+
+            if (axis != null)
+            {   // Controller methods
+                for (Column column : axis.getColumnsWithoutDefault())
+                {
+                    String method = column.getValue().toString();
+                    String classMethod = ncube.getName() + '.' + method + "()";
                     if (classMethod.matches(regex))
                     {
-                        ncube.addAdvice(advice, "run");
+                        ncube.addAdvice(advice, method);
                     }
+                }
+            }
+            else
+            {   // Expressions
+                String classMethod = ncube.getName() + ".run()";
+                if (classMethod.matches(regex))
+                {
+                    ncube.addAdvice(advice, "run");
                 }
             }
         }
@@ -271,9 +278,9 @@ s    */
      * Fetch the Map of n-cubes for the given ApplicationID.  If no
      * cache yet exists, a new empty cache is added.
      */
-    private static Map<String, NCube> getCacheForApp(ApplicationID appId)
+    private static Map<String, Object> getCacheForApp(ApplicationID appId)
     {
-        Map<String, NCube> ncubes = ncubeCache.get(appId);
+        Map<String, Object> ncubes = ncubeCache.get(appId);
 
         if (ncubes == null)
         {
@@ -295,7 +302,7 @@ s    */
         validateAppId(appId);
 
         // Clear App cache
-        Map<String, NCube> appCache = ncubeCache.get(appId);
+        Map<String, Object> appCache = ncubeCache.get(appId);
         if (appCache != null)
         {
             appCache.clear();
@@ -321,7 +328,7 @@ s    */
 
     static void clearCache()
     {
-        for (Map.Entry<ApplicationID, Map<String, NCube>> applicationIDMapEntry : ncubeCache.entrySet())
+        for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
         {
             applicationIDMapEntry.getValue().clear();
             GroovyBase.clearCache(applicationIDMapEntry.getKey());
@@ -351,35 +358,42 @@ s    */
             synchronized (advices)
             {
                 current = new ConcurrentHashMap<>();
+                current.put(wildcard, advice);
                 advices.put(appId, current);
             }
         }
 
         current.put(wildcard, advice);
-        String regex = StringUtilities.wildcardToRegexString(wildcard);
-        Set<NCube> cubes = getCubes(appId);
 
-        for (NCube ncube : cubes)
+        // Apply newly added advice to any fully loaded (hydrated) cubes.
+        String regex = StringUtilities.wildcardToRegexString(wildcard);
+        Map<String, Object> cubes = getCacheForApp(appId);
+
+        for (Object value : cubes.values())
         {
-            Axis axis = ncube.getAxis("method");
-            if (axis != null)
-            {   // Controller methods
-                for (Column column : axis.getColumnsWithoutDefault())
-                {
-                    String method = column.getValue().toString();
-                    String classMethod = ncube.getName() + '.' + method + "()";
-                    if (classMethod.matches(regex))
+            if (value instanceof NCube)
+            {   // apply advice to hydrated ncubes
+                NCube ncube = (NCube) value;
+                Axis axis = ncube.getAxis("method");
+                if (axis != null)
+                {   // Controller methods
+                    for (Column column : axis.getColumnsWithoutDefault())
                     {
-                        ncube.addAdvice(advice, method);
+                        String method = column.getValue().toString();
+                        String classMethod = ncube.getName() + '.' + method + "()";
+                        if (classMethod.matches(regex))
+                        {
+                            ncube.addAdvice(advice, method);
+                        }
                     }
                 }
-            }
-            else
-            {   // Expressions
-                String classMethod = ncube.getName() + ".run()";
-                if (classMethod.matches(regex))
-                {
-                    ncube.addAdvice(advice, "run");
+                else
+                {   // Expressions
+                    String classMethod = ncube.getName() + ".run()";
+                    if (classMethod.matches(regex))
+                    {
+                        ncube.addAdvice(advice, "run");
+                    }
                 }
             }
         }
@@ -411,14 +425,14 @@ s    */
     {
         if (refs == null)
         {
-            throw new IllegalArgumentException("null passed in for Set to hold referenced n-cube names, app: " + appId + ", n-cube: " + name);
+            throw new IllegalArgumentException("Could not get referenced cube names, null passed in for Set to hold referenced n-cube names, app: " + appId + ", n-cube: " + name);
         }
         validateAppId(appId);
         NCube.validateCubeName(name);
         NCube ncube = getCube(appId, name);
         if (ncube == null)
         {
-            throw new IllegalArgumentException("n-cube: " + name + " does not exist in app: " + appId);
+            throw new IllegalArgumentException("Could not get referenced cube names, n-cube: " + name + " does not exist in app: " + appId);
         }
         Set<String> subCubeList = ncube.getReferencedCubeNames();
         refs.addAll(subCubeList);
@@ -435,11 +449,26 @@ s    */
     /**
      * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
      * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
+     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
+     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
+     * by an NCube if more than the name is required.
      */
-    public static Object[] getNCubes(ApplicationID appId, String pattern)
+    public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
-        return nCubePersister.getNCubes(appId, pattern);
+        Object[] cubes = nCubePersister.getCubeRecords(appId, pattern);
+        Map<String, Object> appCache = getCacheForApp(appId);
+
+        for (Object cube : cubes)
+        {
+            NCubeInfoDto cubeInfo = (NCubeInfoDto) cube;
+            String key = cubeInfo.name.toLowerCase();
+            if (!appCache.containsKey(key))
+            {
+                appCache.put(key, cubeInfo);
+            }
+        }
+        return cubes;
     }
 
     /**
@@ -473,6 +502,7 @@ s    */
         nCubePersister.updateTestData(newAppId, newName, json);
         String notes = nCubePersister.getNotes(oldAppId, oldName);
         nCubePersister.updateNotes(newAppId, newName, notes);
+        broadcast(newAppId);
     }
 
     /**
@@ -486,8 +516,9 @@ s    */
         validateAppId(appId);
         validateCube(ncube);
         nCubePersister.updateCube(appId, ncube, username);
-        Map<String, NCube> appCache = getCacheForApp(appId);
+        Map<String, Object> appCache = getCacheForApp(appId);
         appCache.remove(ncube.getName().toLowerCase());
+        broadcast(appId);
         return true;
     }
 
@@ -497,7 +528,9 @@ s    */
     public static int releaseCubes(ApplicationID appId)
     {
         validateAppId(appId);
-        return nCubePersister.releaseCubes(appId);
+        int rows = nCubePersister.releaseCubes(appId);
+        broadcast(appId);
+        return rows;
     }
 
     public static int createSnapshotCubes(ApplicationID appId, String newVersion)
@@ -519,6 +552,7 @@ s    */
         ApplicationID.validateVersion(newVersion);
         nCubePersister.changeVersionValue(appId, newVersion);
         clearCache(appId);
+        broadcast(appId);
     }
 
     public static boolean renameCube(ApplicationID appId, String oldName, String newName)
@@ -539,9 +573,10 @@ s    */
         }
 
         boolean result = nCubePersister.renameCube(appId, ncube, newName);
-        Map<String, NCube> appCache = getCacheForApp(appId);
+        Map<String, Object> appCache = getCacheForApp(appId);
         appCache.remove(oldName.toLowerCase());
         appCache.put(newName.toLowerCase(), ncube);
+        broadcast(appId);
         return result;
     }
 
@@ -562,8 +597,9 @@ s    */
 
         if (nCubePersister.deleteCube(appId, cubeName, allowDelete, username))
         {
-            Map<String, NCube> appCache = getCacheForApp(appId);
+            Map<String, Object> appCache = getCacheForApp(appId);
             appCache.remove(cubeName.toLowerCase());
+            broadcast(appId);
             return true;
         }
         return false;
@@ -614,25 +650,8 @@ s    */
         return nCubePersister.getTestData(appId, cubeName);
     }
 
-    /**
-     * Load all n-cubes into NCubeManager's internal cache for a given app, version, and status.
-     */
-    static void loadCubes(ApplicationID appId)
-    {
-        List<NCube> ncubes = nCubePersister.loadCubes(appId);
-
-        for (NCube ncube : ncubes)
-        {
-            addCube(appId, ncube);
-        }
-
-        //if (!appId.getVersion().equalsIgnoreCase("0.0.0")) {
-        //    resolveClassPath(appId);
-        //}
-    }
-
-
-    private static void resolveClassPath(ApplicationID appId) {
+    /*
+    public static void resolveClassPath(ApplicationID appId) {
         //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
 
@@ -684,7 +703,7 @@ s    */
         }
         addUrlsToClassLoader(urls, urlClassLoader);
     }
-
+*/
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
     {
@@ -693,9 +712,10 @@ s    */
         nCubePersister.createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);
+        broadcast(appId);
     }
 
-    // --------------------------------------- Resource APIs -----------------------------------------------------------
+    // ----------------------------------------- Resource APIs ---------------------------------------------------------
     private static String getResourceAsString(String name) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
@@ -810,5 +830,14 @@ s    */
             throw new IllegalArgumentException("NCube cannot be null");
         }
         NCube.validateCubeName(cube.getName());
+    }
+
+    // ---------------------- Broadcast APIs for notifying other services in cluster of cache changes ------------------
+    static void broadcast(ApplicationID appId)
+    {
+        LOG.debug("Clear cache: " + appId);
+        // Write to 'system' tenant, 'NCE' app, version '0.0.0', SNAPSHOT, cube: sys.cache
+        // Separate thread reads from this table every 1 second, for new commands, for
+        // example, clear cache
     }
 }

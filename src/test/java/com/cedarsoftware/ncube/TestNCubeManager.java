@@ -127,7 +127,7 @@ public class TestNCubeManager
         NCubeManager.createCube(appId, ncube, USER_ID);
 
         NCubeManager.clearCache(appId);
-        NCubeManager.loadCubes(appId);
+        NCubeManager.getCubeRecordsFromDatabase(appId, "");
 
         NCube ncube1 = NCubeManager.getCube(appId, name1);
         NCube ncube2 = NCubeManager.getCube(appId, name2);
@@ -254,16 +254,17 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, usa, USER_ID);
         NCubeManager.createCube(defaultSnapshotApp, canada, USER_ID);
 
-        assertTrue(NCubeManager.getCubes(defaultSnapshotApp).size() == 3);
+        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
+
         NCubeManager.clearCache();
-        NCubeManager.loadCubes(defaultSnapshotApp);
+        NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);
 
         NCubeManager.deleteCube(defaultSnapshotApp, "test.ContinentCountries", false, USER_ID);
         NCubeManager.deleteCube(defaultSnapshotApp, "test.States", false, USER_ID);
         NCubeManager.deleteCube(defaultSnapshotApp, "test.Provinces", false, USER_ID);
-        assertTrue(NCubeManager.getCubes(defaultSnapshotApp).size() == 0);
+        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 0);
     }
 
     @Test
@@ -381,7 +382,7 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
-        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
+        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "test.%");
 
         assertTrue(cubeList != null);
         assertTrue(cubeList.length == 2);
@@ -433,7 +434,7 @@ public class TestNCubeManager
         assertTrue(NCubeManager.deleteCube(newId, ncube2.getName(), false, USER_ID));
 
         // Ensure that all test ncubes are deleted
-        cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
+        cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "test.%");
         assertTrue(cubeList.length == 0);
     }
 
@@ -448,7 +449,7 @@ public class TestNCubeManager
 
         NCubeManager.renameCube(defaultSnapshotApp, ncube1.getName(), "test.Floppy");
 
-        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, "test.%");
+        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "test.%");
 
         assertTrue(cubeList.length == 2);
 
@@ -472,7 +473,7 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
         // This proves that null is turned into '%' (no exception thrown)
-        Object[] cubeList = NCubeManager.getNCubes(defaultSnapshotApp, null);
+        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, null);
 
         assertEquals(2, cubeList.length);
     }
@@ -704,7 +705,7 @@ public class TestNCubeManager
         try
         {
             // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
-            NCubeManager.loadCubes(null);
+            NCubeManager.getCubeRecordsFromDatabase(null, "");
             fail();
         }
         catch(Exception ignored)

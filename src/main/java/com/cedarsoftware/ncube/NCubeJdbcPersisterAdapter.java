@@ -1,7 +1,6 @@
 package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
-import java.util.List;
 
 /**
  * This adapter could be replaced by an adapting proxy.  Then you could
@@ -59,12 +58,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public List<NCube> loadCubes(ApplicationID appId)
+    public NCube loadCube(NCubeInfoDto cubeInfo)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.loadCubes(c, appId);
+            return persister.loadCube(c, cubeInfo);
         }
         finally
         {
@@ -72,12 +71,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getNCubes(ApplicationID appId, String sqlLike)
+    public Object[] getCubeRecords(ApplicationID appId, String sqlLike)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getNCubes(c, appId, sqlLike);
+            return persister.getCubeRecords(c, appId, sqlLike);
         }
         finally
         {
@@ -111,12 +110,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getAppNames(String account)
+    public Object[] getAppNames(String tenant)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getAppNames(c, account);
+            return persister.getAppNames(c, tenant);
         }
         finally
         {

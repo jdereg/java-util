@@ -8,11 +8,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 
-import static junit.framework.TestCase.assertNotNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyInt;
@@ -54,7 +53,7 @@ public class TestNCubeJdbcPersister
         persister.createCube(defaultSnapshotApp, ncube1, USER_ID);
         persister.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
-        Object[] cubeList = persister.getNCubes(defaultSnapshotApp, "test.%");
+        Object[] cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%");
 
         assertTrue(cubeList != null);
         assertTrue(cubeList.length == 2);
@@ -104,7 +103,7 @@ public class TestNCubeJdbcPersister
         assertTrue(persister.deleteCube(newId, ncube2.getName(), false, USER_ID));
 
         // Ensure that all test ncubes are deleted
-        cubeList = persister.getNCubes(defaultSnapshotApp, "test.%");
+        cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%");
         assertTrue(cubeList.length == 0);
     }
 
@@ -145,23 +144,6 @@ public class TestNCubeJdbcPersister
         catch(RuntimeException e)
         {
             assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
-
-    //  Impossible to test without mocks
-    @Test
-    public void testLoadCubesException() throws Exception {
-        Connection c = getConnectionThatThrowsSQLException();
-        try
-        {
-            new NCubeJdbcPersister().loadCubes(c, defaultSnapshotApp);
-            fail();
-        }
-        catch(RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("Unable to load"));
-            assertTrue(e.getMessage().contains("ube"));
         }
     }
 
@@ -345,15 +327,15 @@ public class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(true).thenReturn(false);
         when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"));
 
-        final List<NCube> nCubes = new NCubeJdbcPersister().loadCubes(c, defaultSnapshotApp);
+        Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "");
         assertNotNull(nCubes);
-        assertEquals(0, nCubes.size());
+        assertEquals(1, nCubes.length);     // Won't know it fails until getCube() is called.
     }
 
     @Test
     public void testChangeVersionWithNoUpdate() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+        TestNCube.getTestNCube2D(true);
 
         Connection c = mock(Connection.class);
         ResultSet rs = mock(ResultSet.class);
@@ -455,7 +437,7 @@ public class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
-            new NCubeJdbcPersister().getNCubes(c, defaultSnapshotApp, null);
+            new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null);
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());

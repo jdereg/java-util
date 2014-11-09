@@ -131,7 +131,7 @@ public class NCubeManager
 
         if (cubes.containsKey(key))
         {   // pull from cache
-            return getCubeFromCache(cubes.get(key));
+            return ensureLoaded(cubes.get(key));
         }
 
         // Deep load the requested cube
@@ -139,12 +139,12 @@ public class NCubeManager
 
         if (cubes.containsKey(key))
         {
-            return getCubeFromCache(cubes.get(key));
+            return ensureLoaded(cubes.get(key));
         }
         return null;
     }
 
-    private static NCube getCubeFromCache(Object value)
+    private static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)
         {
@@ -715,7 +715,7 @@ s    */
         broadcast(appId);
     }
 
-    // --------------------------------------- Resource APIs -----------------------------------------------------------
+    // ----------------------------------------- Resource APIs ---------------------------------------------------------
     private static String getResourceAsString(String name) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);

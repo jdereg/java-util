@@ -691,12 +691,14 @@ public class TestNCubeManager
         urls.add(url);
         try
         {
-            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2", ReleaseStatus.SNAPSHOT.name());
+            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2.0.0", ReleaseStatus.SNAPSHOT.name());
             NCubeManager.addBaseResourceUrls(appId, urls);
             fail("Should not make it here");
         }
-        catch (Exception ignored)
-        { }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("malformed"));
+        }
     }
 
     @Test

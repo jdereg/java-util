@@ -4764,6 +4764,7 @@ public class TestNCube
     public void testMetaProps()
     {
         NCube ncube = new NCube("dude");
+        assertNull(ncube.removeMetaProperty("test"));
         ncube.setMetaProperty("test", true);
         assertTrue((Boolean) ncube.getMetaProperties().get("test"));
         assertEquals(1, ncube.getMetaProperties().size());

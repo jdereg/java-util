@@ -25,13 +25,17 @@ public interface NCubePersister
     void createCube(ApplicationID appId, NCube cube, String username);
     NCube loadCube(NCubeInfoDto cubeInfo);
     void updateCube(ApplicationID appId, NCube cube, String username);
-    boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username);
+    boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete, String username);
     boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
 
     Object[] getCubeRecords(ApplicationID appId, String pattern);
     Object[] getAppNames(String tenant);
     Object[] getAppVersions(ApplicationID appId);
-    boolean doesCubeExist(ApplicationID appId, String name);
+    boolean doesCubeExist(ApplicationID appId, String cubeName);
+
+    Object[] getDeletedCubeRecords(ApplicationID appId, String pattern);
+    void restoreCube(ApplicationID appId, String cubeName);
+    Object[] getRevisions(ApplicationID appId, String cubeName);
 
     boolean updateNotes(ApplicationID appId, String cubeName, String notes);
     String getNotes(ApplicationID appId, String cubeName);

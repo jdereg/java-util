@@ -143,7 +143,8 @@ public class NCubeJdbcPersister
             sqlLike = "%";
         }
 
-        try (PreparedStatement stmt = c.prepareStatement("SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
+        try (PreparedStatement stmt = c.prepareStatement(
+                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
                 "FROM n_cube " +
                 "WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') " +
                 "ORDER BY n_cube_nm, abs(revision_number) DESC"))
@@ -192,6 +193,121 @@ public class NCubeJdbcPersister
         catch (Exception e)
         {
             String s = "Unable to fetch cubes matching '" + sqlLike + "' from database for app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+    public Object[] getDeletedCubeRecords(Connection c, ApplicationID appId, String sqlLike)
+    {
+        if (StringUtilities.isEmpty(sqlLike))
+        {
+            sqlLike = "%";
+        }
+
+        try (PreparedStatement stmt = c.prepareStatement(
+                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
+                "FROM n_cube " +
+                "WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND revision_number < 0 " +
+                "ORDER BY n_cube_nm, abs(revision_number) DESC"))
+        {
+            stmt.setString(1, sqlLike);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getStatus());
+            stmt.setString(5, appId.getTenant());
+
+            Map<String, NCubeInfoDto> records = new CaseInsensitiveMap<>();
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                Set<String> visited = new CaseInsensitiveSet<>();
+
+                while (rs.next())
+                {
+                    final String name = rs.getString("n_cube_nm");
+                    final long rev = rs.getLong("revision_number");
+                    if (!visited.contains(name))
+                    {
+                        visited.add(name);
+                        if (rev < 0)
+                        {   // Only process deleted cubes (they have negative revision_numbers)
+                            NCubeInfoDto dto = new NCubeInfoDto();
+                            dto.name = name;
+                            dto.tenant = appId.getTenant();
+                            dto.id = Long.toString(rs.getLong("n_cube_id"));
+                            byte[] notes = rs.getBytes("notes_bin");
+                            dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                            dto.version = rs.getString("version_no_cd");
+                            dto.status = rs.getString("status_cd");
+                            dto.app = rs.getString("app_cd");
+                            dto.createDate = rs.getDate("create_dt");
+                            dto.createHid = rs.getString("create_hid");
+                            dto.revision = Long.toString(rs.getLong("revision_number"));
+                            records.put(dto.name, dto);
+                        }
+                    }
+                }
+            }
+            return records.values().toArray();
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch deleted cubes matching '" + sqlLike + "' from database for app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+    public void restoreCube(Connection c, ApplicationID appId, String cubeName)
+    {
+        // TODO: Toggle revision from negative to positive number
+    }
+
+    public Object[] getRevisions(Connection c, ApplicationID appId, String cubeName)
+    {
+        if (!doesCubeExist(c, appId, cubeName))
+        {
+            throw new IllegalArgumentException("Cannot fetch revision history for cube: " + cubeName + " as it does not exist in app: " + appId);
+        }
+        try (PreparedStatement stmt = c.prepareStatement(
+                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
+                "FROM n_cube " +
+                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') " +
+                "ORDER BY abs(revision_number)"))
+        {
+            stmt.setString(1, cubeName);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getStatus());
+            stmt.setString(5, appId.getTenant());
+
+            // Since multiple records will come back when more than one revision exists, we must collapse these
+            // to the initial record (which has the max revision number).
+            List<NCubeInfoDto> records = new ArrayList<>();
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                while (rs.next())
+                {
+                    NCubeInfoDto dto = new NCubeInfoDto();
+                    dto.name = cubeName;
+                    dto.tenant = appId.getTenant();
+                    dto.id = Long.toString(rs.getLong("n_cube_id"));
+                    byte[] notes = rs.getBytes("notes_bin");
+                    dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                    dto.version = rs.getString("version_no_cd");
+                    dto.status = rs.getString("status_cd");
+                    dto.app = rs.getString("app_cd");
+                    dto.createDate = rs.getDate("create_dt");
+                    dto.createHid = rs.getString("create_hid");
+                    dto.revision = Long.toString(rs.getLong("revision_number"));
+                    records.add(dto);
+                }
+            }
+            return records.toArray();
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to get revision history for cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

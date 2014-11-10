@@ -474,6 +474,35 @@ s    */
     }
 
     /**
+     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
+     * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
+     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
+     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
+     * by an NCube if more than the name is required.
+     */
+    public static Object[] getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
+    {
+        validateAppId(appId);
+        Object[] cubes = nCubePersister.getDeletedCubeRecords(appId, pattern);
+        return cubes;
+    }
+
+    public static void restoreCube(ApplicationID appId, String cubeName)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        nCubePersister.restoreCube(appId, cubeName);
+    }
+
+    public static Object[] getRevisionHistory(ApplicationID appId, String cubeName)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        Object[] revisions = nCubePersister.getRevisions(appId, cubeName);
+        return revisions;
+    }
+
+    /**
      * Return an array [] of Strings containing all unique App names.
      */
     public static Object[] getAppNames(String tenant)

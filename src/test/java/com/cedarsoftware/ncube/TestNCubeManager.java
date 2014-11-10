@@ -143,20 +143,29 @@ public class TestNCubeManager
 
         NCubeManager.deleteCube(appId, name1, true, USER_ID);
         NCubeManager.deleteCube(appId, name2, true, USER_ID);
+
+        // Cubes are deleted ('allowDelete' was set to true above)
         assertFalse(NCubeManager.doesCubeExist(appId, name1));
         assertFalse(NCubeManager.doesCubeExist(appId, name2));
+
+        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1);
+        assertEquals(0, cubeInfo.length);
+        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2);
+        assertEquals(0, cubeInfo.length);
     }
 
     @Test
-    public void testDoesCubeExistInvalidId() {
+    public void testDoesCubeExistInvalidId()
+    {
         try
         {
             NCubeManager.doesCubeExist(defaultSnapshotApp, null);
             fail();
-        } catch(IllegalArgumentException e) {
+        }
+        catch(IllegalArgumentException e)
+        {
             assertEquals("n-cube name cannot be null or empty", e.getMessage());
         }
-
     }
 
     @Test
@@ -395,7 +404,7 @@ public class TestNCubeManager
         NCube cube1 = NCubeManager.getCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(2 == NCubeManager.releaseCubes(defaultSnapshotApp));
+        assertTrue(3 == NCubeManager.releaseCubes(defaultSnapshotApp));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.2.0");
@@ -422,12 +431,32 @@ public class TestNCubeManager
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
-        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), false, USER_ID));
-        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), false, USER_ID));
+        try
+        {
+            NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), false, USER_ID);
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("delete"));
+            assertTrue(e.getMessage().contains("nable"));
+            assertTrue(e.getMessage().contains("find"));
+        }
+        try
+        {
+            NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), false, USER_ID);
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("delete"));
+            assertTrue(e.getMessage().contains("nable"));
+            assertTrue(e.getMessage().contains("find"));
+        }
 
         // Delete ncubes using 'true' to allow the test to delete a released ncube.
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
-        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), true, USER_ID));
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID);
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(), true, USER_ID);
 
         // Delete new SNAPSHOT cubes
         assertTrue(NCubeManager.deleteCube(newId, ncube1.getName(),  false, USER_ID));
@@ -499,10 +528,11 @@ public class TestNCubeManager
             NCubeManager.updateCube(id, testCube, USER_ID);
             fail("should not make it here");
         }
-        catch (IllegalStateException e)
+        catch (Exception e)
         {
-            assertTrue(e.getMessage().contains("error updating"));
-            assertTrue(e.getMessage().contains("rows updated"));
+            assertTrue(e.getMessage().contains("rror updating"));
+            assertTrue(e.getMessage().contains("no"));
+            assertTrue(e.getMessage().contains("exist"));
         }
     }
 
@@ -562,10 +592,19 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testNCubeManagerDelete() throws Exception
+    public void testNCubeManagerDeleteNotExistingCube() throws Exception
     {
         ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
-        assertFalse(NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID));
+        try
+        {
+            NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID);
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("delete"));
+            assertTrue(e.getMessage().contains("exist"));
+        }
     }
 
     @Test
@@ -593,9 +632,11 @@ public class TestNCubeManager
             NCubeManager.updateNotes(defaultSnapshotApp, "test.funky", null);
             fail("should not make it here");
         }
-        catch (IllegalStateException e)
+        catch (Exception e)
         {
-            assertTrue(e.getMessage().contains("no cube match"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("update"));
+            assertTrue(e.getMessage().contains("exist"));
         }
 
         try
@@ -638,11 +679,11 @@ public class TestNCubeManager
             NCubeManager.updateTestData(defaultSnapshotApp, "test.funky", null);
             fail("should not make it here");
         }
-        catch (IllegalStateException e)
+        catch (Exception e)
         {
             assertTrue(e.getMessage().contains("no"));
             assertTrue(e.getMessage().contains("cube"));
-            assertTrue(e.getMessage().contains("match"));
+            assertTrue(e.getMessage().contains("exist"));
         }
 
         ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.1.1");
@@ -655,7 +696,7 @@ public class TestNCubeManager
         {
             assertTrue(e.getMessage().contains("no"));
             assertTrue(e.getMessage().contains("cube"));
-            assertTrue(e.getMessage().contains("match"));
+            assertTrue(e.getMessage().contains("exist"));
         }
 
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", USER_ID));

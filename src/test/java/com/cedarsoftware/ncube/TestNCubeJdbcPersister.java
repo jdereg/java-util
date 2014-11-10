@@ -63,8 +63,8 @@ public class TestNCubeJdbcPersister
 
         ncube1.deleteAxis("bu");
         persister.updateCube(defaultSnapshotApp, ncube1, USER_ID);
-
-        assertTrue(2 == persister.releaseCubes(defaultSnapshotApp));
+        int numRelease = persister.releaseCubes(defaultSnapshotApp);
+        assertEquals(3, numRelease);
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         persister.createSnapshotVersion(defaultSnapshotApp, "0.2.0");
@@ -91,8 +91,28 @@ public class TestNCubeJdbcPersister
         assertTrue("This is JSON data".equals(testData));
 
         // Verify that you cannot delete a RELEASE ncube
-        assertFalse(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), false, USER_ID));
-        assertFalse(persister.deleteCube(defaultSnapshotApp, ncube2.getName(), false, USER_ID));
+        try
+        {
+            assertFalse(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), false, USER_ID));
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("delete"));
+            assertTrue(e.getMessage().contains("nable"));
+            assertTrue(e.getMessage().contains("find"));
+        }
+        try
+        {
+            assertFalse(persister.deleteCube(defaultSnapshotApp, ncube2.getName(), false, USER_ID));
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("delete"));
+            assertTrue(e.getMessage().contains("nable"));
+            assertTrue(e.getMessage().contains("find"));
+        }
 
         // Delete ncubes using 'true' to allow the test to delete a released ncube.
         assertTrue(persister.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
@@ -160,7 +180,7 @@ public class TestNCubeJdbcPersister
         catch(RuntimeException e)
         {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("Unable to update"));
+            assertTrue(e.getMessage().contains("nable"));
             assertTrue(e.getMessage().contains("ube"));
         }
     }
@@ -238,19 +258,22 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testUpdateTestDataWithSQLException() throws Exception {
+    public void testUpdateTestDataWithSQLException() throws Exception
+    {
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
             new NCubeJdbcPersister().updateTestData(c, defaultSnapshotApp, "foo", "test data");
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().startsWith("Unable to update test data"));
+            assertTrue(e.getMessage().contains("nable"));
+            assertTrue(e.getMessage().contains("max"));
+            assertTrue(e.getMessage().contains("rev"));
         }
     }
-
-
 
     @Test
     public void testChangeVersionValueWithSqlException() throws Exception {
@@ -302,7 +325,7 @@ public class TestNCubeJdbcPersister
         ResultSet rs = mock(ResultSet.class);
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.prepareStatement(anyString())).thenReturn(ps);
-        when(ps.executeUpdate()).thenReturn(0);
+        when(ps.executeQuery()).thenReturn(rs);
         try
         {
             new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, ncube, "bar");
@@ -310,9 +333,9 @@ public class TestNCubeJdbcPersister
         }
         catch(IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().contains("no"));
-            assertTrue(e.getMessage().contains("cube"));
-            assertTrue(e.getMessage().contains("found"));
+            assertTrue(e.getMessage().contains("rename"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("exist"));
         }
     }
 
@@ -349,8 +372,10 @@ public class TestNCubeJdbcPersister
             new NCubeJdbcPersister().changeVersionValue(c, defaultSnapshotApp, "1.1.1");
             fail();
         }
-        catch(IllegalStateException e) {
-            assertTrue(e.getMessage().contains("nothing changed"));
+        catch(IllegalStateException e)
+        {
+            assertTrue(e.getMessage().contains(" no "));
+            assertTrue(e.getMessage().contains("update"));
         }
     }
 
@@ -365,17 +390,17 @@ public class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.prepareStatement(anyString())).thenReturn(ps);
         when(ps.executeUpdate()).thenReturn(2);
+        when(ps.executeQuery()).thenReturn(rs);
 
         try
         {
             new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes");
             fail();
         }
-        catch(IllegalStateException e)
+        catch(Exception e)
         {
-            assertTrue(e.getMessage().contains("nly one"));
-            assertTrue(e.getMessage().contains("row"));
-            assertTrue(e.getMessage().contains("update"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("exist"));
         }
     }
 
@@ -387,48 +412,54 @@ public class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.prepareStatement(anyString())).thenReturn(ps);
         when(ps.executeUpdate()).thenReturn(0);
+        when(ps.executeQuery()).thenReturn(rs);
 
         try
         {
             new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes");
             fail();
         }
-        catch(IllegalStateException e)
+        catch(Exception e)
         {
-            assertTrue(e.getMessage().contains("no cube match"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("exist"));
         }
     }
 
     //This exception is impossible to hit without mocking since we prohibit you on createCube() from
     //adding in a second duplicate cube with all the same parameters.
     @Test
-    public void testUpdateNotesWithSQLException() throws Exception {
+    public void testUpdateNotesWithSQLException() throws Exception
+    {
         Connection c = getConnectionThatThrowsSQLException();
         try
         {
-
             new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes");
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().startsWith("Unable to update notes"));
+            assertTrue(e.getMessage().contains("nable"));
+            assertTrue(e.getMessage().contains("max"));
+            assertTrue(e.getMessage().contains("rev"));
         }
     }
 
-
-
     @Test
-    public void testCreateSnapshotVersionWithSQLException() throws Exception {
+    public void testCreateSnapshotVersionWithSQLException() throws Exception
+    {
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false);
 
         try
         {
             new NCubeJdbcPersister().createSnapshotVersion(c, defaultSnapshotApp, "1.1.1");
             fail();
-        } catch(RuntimeException e) {
+        }
+        catch(RuntimeException e)
+        {
             assertEquals(SQLException.class, e.getCause().getClass());
             assertTrue(e.getMessage().startsWith("Unable to create SNAPSHOT"));
-
         }
     }
 
@@ -572,19 +603,21 @@ public class TestNCubeJdbcPersister
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
         Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.prepareStatement(anyString())).thenReturn(ps);
         when(ps.executeUpdate()).thenReturn(0);
+        when(ps.executeQuery()).thenReturn(rs);
         try
         {
             new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID);
             fail();
         }
-        catch(IllegalStateException e)
+        catch(Exception e)
         {
-            assertTrue(e.getMessage().contains("error"));
+            assertTrue(e.getMessage().contains("non-exist"));
             assertTrue(e.getMessage().contains("updat"));
-            assertTrue(e.getMessage().contains("should be 1"));
+            assertTrue(e.getMessage().contains("ube"));
         }
     }
 
@@ -592,21 +625,23 @@ public class TestNCubeJdbcPersister
     public void testUpdateTestDataWithDuplicateCubes() throws Exception
     {
         Connection c = mock(Connection.class);
+        ResultSet rs = mock(ResultSet.class);
         PreparedStatement ps = mock(PreparedStatement.class);
         when(c.isValid(anyInt())).thenReturn(true);
         when(c.prepareStatement(anyString())).thenReturn(ps);
         when(ps.executeUpdate()).thenReturn(2);
+        when(ps.executeQuery()).thenReturn(rs);
 
         try
         {
             new NCubeJdbcPersister().updateTestData(c, defaultSnapshotApp, "foo", "foo");
             fail();
         }
-        catch(IllegalStateException e)
+        catch(Exception e)
         {
-            assertTrue(e.getMessage().contains("rror"));
-            assertTrue(e.getMessage().contains("one"));
-            assertTrue(e.getMessage().contains("row"));
+            assertTrue(e.getMessage().contains("test"));
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("exist"));
         }
     }
 
@@ -625,15 +660,19 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
-    public void testChangeVersionWhenCubeAlreadyExists() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+    public void testChangeVersionWhenCubeAlreadyExists() throws Exception
+    {
+        TestNCube.getTestNCube2D(true);
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true);
         try
         {
             new NCubeJdbcPersister().changeVersionValue(c, defaultSnapshotApp, "1.1.1");
             fail();
-        } catch(IllegalStateException e) {
-            assertTrue(e.getMessage().contains("n-cubes found with version"));
+        }
+        catch(IllegalStateException e)
+        {
+            assertTrue(e.getMessage().contains("already"));
+            assertTrue(e.getMessage().contains("exist"));
         }
     }
 }

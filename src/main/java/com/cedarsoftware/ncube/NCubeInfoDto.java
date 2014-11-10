@@ -44,6 +44,4 @@ public class NCubeInfoDto
 	{
 		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + revision + ", id=" + id;
 	}
-	// public String cubeJsonData;  // Loaded separately
-	// public String testJsonData;  // Loaded separately
 }

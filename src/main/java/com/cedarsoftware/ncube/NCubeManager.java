@@ -5,6 +5,7 @@ import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -22,6 +23,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -138,10 +140,14 @@ public class NCubeManager
         // Deep load the requested cube
         getCubeRecordsFromDatabase(appId, name);
 
+
         if (cubes.containsKey(key))
         {
             return ensureLoaded(cubes.get(key));
         }
+
+        resolveClassPath(appId);
+
         return null;
     }
 
@@ -653,7 +659,7 @@ s    */
         return nCubePersister.getTestData(appId, cubeName);
     }
 
-    /*
+
     public static void resolveClassPath(ApplicationID appId) {
         //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
@@ -679,34 +685,16 @@ s    */
         NCube cube = getCube(appId, CLASSPATH_CUBE);
 
         if (cube == null) {
-            LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
+            LOG.debug("no sys.classpath exists for this application:  " + appId);
             return;
         }
 
-        String url = (String)cube.getCell(map);
-
-        if (StringUtilities.isEmpty(url)) {
-            LOG.debug("sys.classpath cube is empty for this application:  " + appId);
-            return;
-        }
-
-        StringTokenizer token = new StringTokenizer(url, ";,| ");
-        List<String> urls = new ArrayList();
-        while (token.hasMoreTokens()) {
-            String elem = token.nextToken();
-            try
-            {
-                URL u = new URL(elem);
-                urls.add(elem);
-            } catch (Exception e) {
-                //TODO:  Do we need to test each url to make sure it is valid?  They could be invalid
-                //TODO:  even though a subpath resouce could still be valid.
-                LOG.debug("Invalid url: " + elem + " in sys.classpath app: " + appId);
-            }
-        }
+        List<String> urls = (List<String>)cube.getCell(map);
         addUrlsToClassLoader(urls, urlClassLoader);
     }
-*/
+
+
+
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
     {

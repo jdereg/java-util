@@ -71,7 +71,10 @@ public class NCube<T>
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
-    private transient ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+
+    //  Sets up the defaultApplicationId for cubes loaded in from disk.
+    private transient ApplicationID appId = ApplicationID.defaultAppId;
+
     public static final String validCubeNameChars = "0-9a-zA-Z:.|#_-";
     private static final String[] emptyStringArray = new String[] {};
     public static final String RULE_EXEC_INFO = "_rule";

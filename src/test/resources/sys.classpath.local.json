@@ -1,0 +1,45 @@
+{
+    "ncube": "sys.classpath.local",
+    "axes": [
+        {
+            "name": "username",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "preferredOrder": 1,
+            "hasDefault": true,
+            "columns": [
+                {
+                    "id": 1000000000002,
+                    "type": "string",
+                    "value": "crowland"
+                },
+                {
+                    "id": 1000000000003,
+                    "type": "string",
+                    "value": "jderegnaucourt"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": [],
+            "type": "string",
+            "value": "file:///C:/Development/Java/Idea/RefApp/"
+        },
+        {
+            "id": [
+                1000000000002
+            ],
+            "type": "string",
+            "value": "file:///Users/crowland/Projects/java-workspace/"
+        },
+        {
+            "id": [
+                1000000000003
+            ],
+            "type": "string",
+            "value": "file:///Users/jderegnaucourt/Development/"
+        }
+    ]
+}

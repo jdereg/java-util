@@ -64,13 +64,6 @@ public class NCubeManager
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final String CLASSPATH_CUBE = "sys.classpath";
 
-    // TODO:  I don't think we need this anymore
-    static
-    {
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        urlClassLoaders.put(appId, new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
-    }
-
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
      */
@@ -183,24 +176,24 @@ public class NCubeManager
     /**
      * Add to the classloader's classpath for the given ApplicationID.
 s    */
-    public static void addBaseResourceUrls(ApplicationID appId, List<String> urls)
-    {
-        validateAppId(appId);
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
-
-        if (urlClassLoader == null)
-        {
-            LOG.debug("Creating ClassLoader, app: " + appId + ", urls: " + urls);
-            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appId, urlClassLoader);
-        }
-        else
-        {
-            LOG.debug("Adding resource URLs, app: " + appId + ", urls: " + urls);
-        }
-
-        addUrlsToClassLoader(urls, urlClassLoader);
-    }
+//    private static void addBaseResourceUrls(ApplicationID appId, List<String> urls)
+//    {
+//        validateAppId(appId);
+//        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
+//
+//        if (urlClassLoader == null)
+//        {
+//            LOG.debug("Creating ClassLoader, app: " + appId + ", urls: " + urls);
+//            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+//            urlClassLoaders.put(appId, urlClassLoader);
+//        }
+//        else
+//        {
+//            LOG.debug("Adding resource URLs, app: " + appId + ", urls: " + urls);
+//        }
+//
+//        addUrlsToClassLoader(urls, urlClassLoader);
+//    }
 
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
@@ -738,13 +731,20 @@ s    */
         return new String(out.toByteArray(), "UTF-8");
     }
 
-    public static NCube getNCubeFromResource(String name)
+    static NCube getNCubeFromResource(String name)
+    {
+        return getNCubeFromResource(ApplicationID.defaultAppId, name);
+    }
+
+    public static NCube getNCubeFromResource(ApplicationID id, String name)
     {
         try
         {
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
-            addCube(ncube.getApplicationID(), ncube);
+            ncube.setApplicationID(id);
+            addCube(id, ncube);
+            resolveClassPath(id);
             return ncube;
         }
         catch (Exception e)

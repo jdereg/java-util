@@ -1,0 +1,20 @@
+{
+    "ncube": "sys.classpath",
+    "axes": [
+        {
+            "name": "environment",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "preferredOrder": 1,
+            "hasDefault": true,
+            "columns": []
+        }
+    ],
+    "cells": [
+        {
+            "id": [],
+            "type": "exp",
+            "value": "['http://www.cedarsoftware.com']"
+        }
+    ]
+}

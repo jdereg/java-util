@@ -119,7 +119,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, ncube.getName() + ".*()", new Advice()
+        NCubeManager.addAdvice(ApplicationID.defaultAppId, ncube.getName() + ".*()", new Advice()
         {
             public String getName()
             {
@@ -198,7 +198,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, ncube.getName() + ".ba*()", new Advice()
+        NCubeManager.addAdvice(ApplicationID.defaultAppId, ncube.getName() + ".ba*()", new Advice()
         {
             public String getName()
             {
@@ -300,7 +300,7 @@ public class TestAdvice
     {
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, "*.ba*()", new Advice()
+        NCubeManager.addAdvice(ApplicationID.defaultAppId, "*.ba*()", new Advice()
         {
             public String getName()
             {
@@ -404,7 +404,7 @@ public class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(TestNCubeManager.defaultFileApp, ncube.getName() + "*", new Advice()
+        NCubeManager.addAdvice(ApplicationID.defaultAppId, ncube.getName() + "*", new Advice()
         {
             public String getName()
             {

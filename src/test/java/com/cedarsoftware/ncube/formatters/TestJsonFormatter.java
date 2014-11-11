@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.ApplicationID;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.TestingDatabaseHelper;
@@ -50,7 +51,7 @@ public class TestJsonFormatter
     public void testConvertArray() throws Exception
     {
         //  Load Arrays Type, write to new formatted type (they'll become Groovy Expressions
-        NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
+        NCube ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "arrays.json");
 
         Map<String, Object> coord = new HashMap<>();
 
@@ -169,7 +170,7 @@ public class TestJsonFormatter
         for (String f : strings)
         {
 //            System.out.println("Starting " + f);
-            NCube ncube = NCubeManager.getNCubeFromResource(f);
+            NCube ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, f);
             String s = ncube.toFormattedJson();
 //            System.out.println(s);
             NCube res = NCube.fromSimpleJson(s);

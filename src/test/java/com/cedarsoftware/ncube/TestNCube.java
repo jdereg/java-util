@@ -15,8 +15,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -3949,7 +3947,7 @@ public class TestNCube
 
     @Test
     public void testClassLoader() {
-        NCube<Object> ncube = NCubeManager.getNCubeFromResource("ncube-class-loader-test.json");
+        NCube ncube = NCubeManager.getNCubeFromResource("ncube-class-loader-test.json");
         Map coord = new HashMap();
 
         coord.put("code", "local");
@@ -4644,15 +4642,19 @@ public class TestNCube
     @Test
     public void testDebugExpression() throws Exception
     {
-        List urls = new ArrayList();
-        URL url = NCubeManager.class.getResource("/");
-        urls.add(url.toString());
-        urls.add("http://www.cedarsoftware.com");
+//        List urls = new ArrayList();
+//        URL url = NCubeManager.class.getResource("/");
+//        urls.add(url.toString());
+//        urls.add("http://www.cedarsoftware.com");
 
-        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(appId1, urls);
-        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(appId2, urls);
+//        NCube classpathCube = NCubeManager.getNCubeFromResource("sys.classpath.testing");
+//        NCubeManager.addCube(new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), cube);
+//        NCubeManager.addCube(new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name()), cube);
+
+//        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+//        NCubeManager.addBaseResourceUrls(appId1, urls);
+//        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
+//        NCubeManager.addBaseResourceUrls(appId2, urls);
 
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
         Map coord = new HashMap();
@@ -4661,41 +4663,53 @@ public class TestNCube
         assertEquals(Math.pow(age, 2), ncube.getCell(coord));
     }
 
+    public static NCube createTempDirClassPathCube() throws Exception
+    {
+        NCube cpCube = new NCube<Double>("sys.classpath");
+
+        Axis axis = new Axis("environment", AxisType.DISCRETE, AxisValueType.STRING, true);
+        cpCube.addAxis(axis);
+
+        String base = System.getProperty("java.io.tmpdir");
+        cpCube.setCell(new GroovyExpression("['" + new File(base).toURI().toURL().toString() + "','http://www.cedarsoftware.com']", null), new HashMap());
+        return cpCube;
+    }
+
     @Test
     public void testReloadGroovyClass() throws Exception
     {
         String base = System.getProperty("java.io.tmpdir");
-        String url = new File(base).toURI().toURL().toString();
 
-        List urls = new ArrayList();
-        urls.add(url);
-        urls.add("http://www.cedarsoftware.com");
-        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(appId1, urls);
-        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(appId2, urls);
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "reloadGroovyTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        NCube cpCube = createTempDirClassPathCube();
+
+        // manually set classpath cube
+        NCubeManager.addCube(appId, cpCube);
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
         fo.write(code.getBytes());
         fo.close();
 
-        NCube ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
+        NCube ncube = NCubeManager.getNCubeFromResource(appId, "testReloadGroovyClass.json");
         Map coord = new HashMap();
         coord.put("state", "OH");
         Map output = new LinkedHashMap();
         Object out = ncube.getCell(coord, output);
         assertEquals(10, out);
 
-        NCubeManager.clearCache(appId1);
-        NCubeManager.clearCache(appId2);
+        NCubeManager.clearCache(appId);
+
+        // add classpath cube back in so everything is found correctly
+        NCubeManager.addCube(appId, cpCube);
+
         fo = new FileOutputStream(base + "Abc.groovy");
         code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 20 } }";
         fo.write(code.getBytes());
         fo.close();
         fo.flush();
 
-        ncube = NCubeManager.getNCubeFromResource("testReloadGroovyClass.json");
+        ncube = NCubeManager.getNCubeFromResource(appId, "testReloadGroovyClass.json");
         out = ncube.getCell(coord, output);
         assertEquals(20, out);
 

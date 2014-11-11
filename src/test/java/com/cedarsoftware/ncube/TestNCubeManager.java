@@ -5,7 +5,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,7 +43,6 @@ public class TestNCubeManager
     static final String APP_ID = "ncube.test";
     static final String USER_ID = "jdirt";
     public static ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
-    public static ApplicationID defaultFileApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
 
     @Before
     public void setUp() throws Exception
@@ -82,16 +80,6 @@ public class TestNCubeManager
         return ncube;
     }
 
-//TODO:  Add in sys.classpath tests
-/*
-    @Test
-    public void testLoadCubesWithSysClassPath() {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-
-        NCubeManager.createCube(defaultSnapshotApp, ncube);
-
-    }
-*/
     @Test
     public void testLoadCubes() throws Exception
     {
@@ -721,23 +709,23 @@ public class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, ncube.getName(), true, USER_ID);
     }
 
-    @Test
-    public void testBadUrlsAddedToClassLoader() throws Exception
-    {
-        String url = "htp://this wont work";
-        List urls = new ArrayList();
-        urls.add(url);
-        try
-        {
-            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2.0.0", ReleaseStatus.SNAPSHOT.name());
-            NCubeManager.addBaseResourceUrls(appId, urls);
-            fail("Should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().contains("malformed"));
-        }
-    }
+//    @Test
+//    public void testBadUrlsAddedToClassLoader() throws Exception
+//    {
+//        String url = "htp://this wont work";
+//        List urls = new ArrayList();
+//        urls.add(url);
+//        try
+//        {
+//            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2.0.0", ReleaseStatus.SNAPSHOT.name());
+//            NCubeManager.addBaseResourceUrls(appId, urls);
+//            fail("Should not make it here");
+//        }
+//        catch (IllegalArgumentException e)
+//        {
+//            assertTrue(e.getMessage().contains("malformed"));
+//        }
+//    }
 
     @Test
     public void testLoadCubesWithNullApplicationID() throws Exception
@@ -812,5 +800,32 @@ public class TestNCubeManager
         assertTrue(cubeInfo.notes.contains("by "));
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+    }
+
+    @Test
+    public void testResolveClassPath() {
+        NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.versions.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        cube = NCubeManager.getNCubeFromResource("sys.classpath.local.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        cube = NCubeManager.getNCubeFromResource("sys.classpath.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        cube = NCubeManager.getNCubeFromResource("sys.classpath.base.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+
+        Map map = new HashMap();
+        map.put("environment", "DEV");
+
+        assertEquals("https://cdn.com/private/ud/ra-resources/1.19.1-SNAPSHOT/", cube.getCell(map));
+        map.put("environment", "CERT");
+        assertEquals("https://cdn.com/private/ud/ra-resources/1.12.0/", cube.getCell(map));
+        map.put("environment", "LOCAL");
+        assertEquals("file:///C:/Development/Java/Idea/RefApp/foo/src/main/", cube.getCell(map));
+        map.put("username", "jderegnaucourt");
+        assertEquals("file:///Users/jderegnaucourt/Development/foo/src/main/", cube.getCell(map));
+
+        cube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
+        List<String> list = (List<String>)cube.getCell(map);
+        assertEquals(3, list.size());
     }
 }

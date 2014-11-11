@@ -1,8 +1,6 @@
 package com.cedarsoftware.ncube;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by kpartlow on 10/28/2014.
@@ -80,14 +78,27 @@ public class TestingDatabaseHelper
         getTestingDatabaseManager().setUp();
         NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister());
 
-        List<String> urls = new ArrayList<>();
-        urls.add("http://www.cedarsoftware.com");
-
-        ApplicationID appId1 = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(appId1, urls);
-        ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "ncube.test", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.addBaseResourceUrls(appId2, urls);
+        setupTestClassPaths();
     }
+
+    public static void setupTestClassPaths() throws Exception
+    {
+        NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, "sys.classpath.tests.json");
+        NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.classpath.tests.json");
+
+        //  This forces the load of the cube in the cache since many tests do not use getCube();
+        //NCubeManager.getCube(TestNCubeManager.defaultSnapshotApp, "sys.classpath");
+        //NCubeManager.getCube(ApplicationId.defaultAppId, "sys.classpath");
+    }
+
+    // TODO:  I don't think we need this anymore
+    //    static
+    //    {
+    //        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+    //        urlClassLoaders.put(appId, new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
+    //    }
+
+
 
     public static void tearDownDatabase() throws Exception
     {

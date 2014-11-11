@@ -88,7 +88,7 @@ public class TestCdnRouter
         CdnRouter router = new CdnRouter();
         router.route(request, response);
 
-        verify(response, times(1)).sendError(500, "n-cube cell URL resolved to null, url: tests/does/not/exist/index.html, ncube: CdnRouterTest, version: " + ApplicationID.DEFAULT_VERSION);
+        verify(response, times(1)).sendError(500, "n-cube cell URL resolved to null, url: tests/does/not/exist/index.html, ncube: CdnRouterTest, appId: " + ApplicationID.defaultAppId);
     }
 
     @Test

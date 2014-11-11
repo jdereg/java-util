@@ -693,23 +693,17 @@ s    */
         //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
 
-        if (urlClassLoader == null)
-        {
-            //urlclassloader didn't exist
-            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appId, urlClassLoader);
-        }
-        else if (urlClassLoader.getURLs().length > 0)
-        {
-            //  urlclassloader exists and has been setup already.
+        if (urlClassLoader != null) {
             return;
         }
+
+        //urlclassloader didn't exist
+        urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+        urlClassLoaders.put(appId, urlClassLoader);
 
         Map map = new HashMap();
         map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
         map.put("username", System.getProperty("user.name"));
-
-
 
         NCube cube = getCube(appId, CLASSPATH_CUBE);
 

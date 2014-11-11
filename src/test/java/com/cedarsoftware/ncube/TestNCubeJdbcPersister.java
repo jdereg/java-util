@@ -335,7 +335,7 @@ public class TestNCubeJdbcPersister
         {
             assertTrue(e.getMessage().contains("rename"));
             assertTrue(e.getMessage().contains("not"));
-            assertTrue(e.getMessage().contains("exist"));
+            assertTrue(e.getMessage().contains("found"));
         }
     }
 

@@ -277,6 +277,7 @@ public class NCubeJdbcPersister
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = NCubeManager.ncubeFromJson(json);
+                    ncube.name = cubeInfo.name;
                     ncube.setApplicationID(cubeInfo.getApplicationID());
                     return ncube;
                 }
@@ -757,22 +758,13 @@ public class NCubeJdbcPersister
     public boolean renameCube(Connection c, ApplicationID appId, NCube cube, String newName)
     {
         String cubeName = cube.getName();
-        Long maxRev = getMaxRevision(c, appId, cubeName);
-        if (maxRev == null)
-        {
-            throw new IllegalArgumentException("Cannot rename cube, cube: " + cubeName + " does not exist in app: " + appId);
-        }
-        if (maxRev < 0)
-        {
-            throw new IllegalArgumentException("Cannot rename cube, cube: " + cubeName + " is deleted in app: " + appId);
-        }
 
         //  Save in case exception happens and we have to reset proper name on the cube.
         String oldName = cube.getName();
 
         try (PreparedStatement ps = c.prepareStatement(
                 "UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? " +
-                "WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "' AND tenant_cd = RPAD(?, 10, ' ') AND revision_number = ?"))
+                "WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "' AND tenant_cd = RPAD(?, 10, ' ')"))
         {
             //  We have to set the new  name on the cube toFormatJson with the proper name on it.
             cube.name = newName;
@@ -783,7 +775,7 @@ public class NCubeJdbcPersister
             ps.setString(4, appId.getVersion());
             ps.setString(5, oldName);
             ps.setString(6, appId.getTenant());
-            ps.setLong(7, maxRev);
+
             int count = ps.executeUpdate();
             if (count < 1)
             {

@@ -308,7 +308,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         if (actualUrl == null)
         {
-            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + url + ", ncube: " + ncube.getName() + ", version: " + ncube.getVersion());
+            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + url + ", ncube: " + ncube.getName() + ", appId: " + ncube.getApplicationID());
         }
         return actualUrl;
     }

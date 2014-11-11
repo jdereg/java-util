@@ -4,11 +4,7 @@ import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * ApplicationID Tests
@@ -41,79 +37,97 @@ public class TestApplicationID
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("Invalid tenant string"));
         }
 
         try
         {
-            new ApplicationID("Macy's", null, "9.9.9", ReleaseStatus.SNAPSHOT.name());
+            new ApplicationID("Macys", null, "9.9.9", ReleaseStatus.SNAPSHOT.name());
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("cannot be null"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", null, ReleaseStatus.SNAPSHOT.name());
+            new ApplicationID("Macys", "Catalog", null, ReleaseStatus.SNAPSHOT.name());
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("cannot be null"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", "1.2.3", null);
+            new ApplicationID("Macys", "Catalog", "1.2.3", null);
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("cannot be null"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", "1.2.a", ReleaseStatus.SNAPSHOT.name());
+            new ApplicationID("Macys", "Catalog", "1.2.a", ReleaseStatus.SNAPSHOT.name());
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
-            System.out.println(ignored);
+            assertTrue(ignored.getMessage().contains("Invalid version"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", "1.2.3.4", ReleaseStatus.SNAPSHOT.name());
+            new ApplicationID("Macys", "Catalog", "1.2.3.4", ReleaseStatus.SNAPSHOT.name());
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("Invalid version"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", "1.2", ReleaseStatus.SNAPSHOT.name());
+            new ApplicationID("Macys", "Catalog", "1.2", ReleaseStatus.SNAPSHOT.name());
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("Invalid version"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", "1.-2.3", ReleaseStatus.SNAPSHOT.name());
+            new ApplicationID("Macys", "Catalog", "1.-2.3", ReleaseStatus.SNAPSHOT.name());
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("Invalid version"));
         }
 
         try
         {
-            new ApplicationID("Macy's", "Catalog", "1.2.3", "CRAPSHOT");
+            new ApplicationID("Macys", "Catalog", "1.2.3", "CRAPSHOT");
             fail("should not make it here");
         }
         catch (Exception ignored)
         {
+            assertTrue(ignored.getMessage().contains("No enum constant"));
+        }
+
+        try
+        {
+            new ApplicationID("Macy's", "Catalog", "1.2.3", "RELEASE");
+            fail("should not make it here");
+        }
+        catch (Exception ignored)
+        {
+            assertTrue(ignored.getMessage().contains("Invalid tenant"));
         }
     }
 

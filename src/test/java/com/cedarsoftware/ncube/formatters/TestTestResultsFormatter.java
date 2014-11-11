@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.ApplicationID;
 import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
@@ -39,7 +40,7 @@ public class TestTestResultsFormatter
     @Test
     public void testResultsFromNCube()
     {
-        NCube<String> ncube = NCubeManager.getNCubeFromResource("idNoValue.json");
+        NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "idNoValue.json");
         Map coord = new HashMap();
         coord.put("age", 18);
         coord.put("state", "OH");
@@ -62,7 +63,7 @@ public class TestTestResultsFormatter
     @Test
     public void testResultsWithOutputAndError() throws Exception
     {
-        NCube<String> ncube = NCubeManager.getNCubeFromResource("idNoValue.json");
+        NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "idNoValue.json");
         Map coord = new HashMap();
         coord.put("age", 18);
         coord.put("state", "OH");

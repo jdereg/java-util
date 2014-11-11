@@ -5,6 +5,7 @@ import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
@@ -22,6 +23,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,12 +63,6 @@ public class NCubeManager
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
     private static final String CLASSPATH_CUBE = "sys.classpath";
-
-    static
-    {
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        urlClassLoaders.put(appId, new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
-    }
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -137,10 +133,14 @@ public class NCubeManager
         // Deep load the requested cube
         getCubeRecordsFromDatabase(appId, name);
 
+
         if (cubes.containsKey(key))
         {
             return ensureLoaded(cubes.get(key));
         }
+
+        resolveClassPath(appId);
+
         return null;
     }
 
@@ -176,24 +176,24 @@ public class NCubeManager
     /**
      * Add to the classloader's classpath for the given ApplicationID.
 s    */
-    public static void addBaseResourceUrls(ApplicationID appId, List<String> urls)
-    {
-        validateAppId(appId);
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
-
-        if (urlClassLoader == null)
-        {
-            LOG.debug("Creating ClassLoader, app: " + appId + ", urls: " + urls);
-            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appId, urlClassLoader);
-        }
-        else
-        {
-            LOG.debug("Adding resource URLs, app: " + appId + ", urls: " + urls);
-        }
-
-        addUrlsToClassLoader(urls, urlClassLoader);
-    }
+//    private static void addBaseResourceUrls(ApplicationID appId, List<String> urls)
+//    {
+//        validateAppId(appId);
+//        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
+//
+//        if (urlClassLoader == null)
+//        {
+//            LOG.debug("Creating ClassLoader, app: " + appId + ", urls: " + urls);
+//            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+//            urlClassLoaders.put(appId, urlClassLoader);
+//        }
+//        else
+//        {
+//            LOG.debug("Adding resource URLs, app: " + appId + ", urls: " + urls);
+//        }
+//
+//        addUrlsToClassLoader(urls, urlClassLoader);
+//    }
 
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
@@ -681,58 +681,36 @@ s    */
         return nCubePersister.getTestData(appId, cubeName);
     }
 
-    /*
+
     public static void resolveClassPath(ApplicationID appId) {
         //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
         GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
 
-        if (urlClassLoader == null)
-        {
-            //urlclassloader didn't exist
-            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appId, urlClassLoader);
-        }
-        else if (urlClassLoader.getURLs().length < 1)
-        {
-            //  urlclassloader exists and has been setup already.
+        if (urlClassLoader != null) {
             return;
         }
+
+        //urlclassloader didn't exist
+        urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+        urlClassLoaders.put(appId, urlClassLoader);
 
         Map map = new HashMap();
         map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
         map.put("username", System.getProperty("user.name"));
 
-        NCube cube = getCube(zeroAppId, CLASSPATH_CUBE);
+        NCube cube = getCube(appId, CLASSPATH_CUBE);
 
         if (cube == null) {
-            LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
+            LOG.debug("no sys.classpath exists for this application:  " + appId);
             return;
         }
 
-        String url = (String)cube.getCell(map);
-
-        if (StringUtilities.isEmpty(url)) {
-            LOG.debug("sys.classpath cube is not setup for this application:  " + appId);
-            return;
-        }
-
-        StringTokenizer token = new StringTokenizer(url, ";,| ");
-        List<String> urls = new ArrayList();
-        while (token.hasMoreTokens()) {
-            String elem = token.nextToken();
-            try
-            {
-                URL u = new URL(elem);
-                urls.add(elem);
-            } catch (Exception e) {
-                //TODO:  Do we need to test each url to make sure it is valid?  They could be invalid
-                //TODO:  even though a subpath resouce could still be valid.
-                LOG.debug("Invalid url: " + u + " in sys.classpath app: " + appId);
-            }
-        }
+        List<String> urls = (List<String>)cube.getCell(map);
         addUrlsToClassLoader(urls, urlClassLoader);
     }
-    */
+
+
+
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
     {
@@ -753,13 +731,20 @@ s    */
         return new String(out.toByteArray(), "UTF-8");
     }
 
-    public static NCube getNCubeFromResource(String name)
+    static NCube getNCubeFromResource(String name)
+    {
+        return getNCubeFromResource(ApplicationID.defaultAppId, name);
+    }
+
+    public static NCube getNCubeFromResource(ApplicationID id, String name)
     {
         try
         {
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
-            addCube(ncube.getApplicationID(), ncube);
+            ncube.setApplicationID(id);
+            addCube(id, ncube);
+            resolveClassPath(id);
             return ncube;
         }
         catch (Exception e)

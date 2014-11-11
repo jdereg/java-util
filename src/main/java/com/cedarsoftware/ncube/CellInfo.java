@@ -246,61 +246,7 @@ public class CellInfo
 
     public Object recreate()
     {
-        if (value == null)
-        {
-            return null;
-        }
-
-        switch (dataType)
-        {
-            case "string":
-                return isUrl ? new StringUrlCmd(value, isCached) : value;
-
-            case "date":
-                return DateUtilities.parseDate(value);
-
-            case "boolean":
-                return Boolean.valueOf(value);
-
-            case "byte":
-                return Byte.valueOf(value);
-
-            case "short":
-                return Short.valueOf(value);
-
-            case "int":
-                return Integer.valueOf(value);
-
-            case "long":
-                return Long.valueOf(value);
-
-            case "float":
-                return Float.valueOf(value);
-
-            case "double":
-                return Double.valueOf(value);
-
-            case "bigdec":
-                return new BigDecimal(value);
-
-            case "bigint":
-                return new BigInteger(value);
-
-            case "binary":
-                return isUrl ? new BinaryUrlCmd(value, isCached) : StringUtilities.decode(value);
-
-            case "exp":
-                return new GroovyExpression(isUrl ? null : value, isUrl ? value : null);
-
-            case "method":
-                return new GroovyMethod(isUrl ? null : value, isUrl ? value : null);
-
-            case "template":
-                return new GroovyTemplate(isUrl ? null : value, isUrl ? value : null, isCached);
-
-            default:
-                return new IllegalArgumentException("Invalid Cell Type Passed in: " + dataType);
-        }
+        return CellTypes.getTypeFromString(dataType).recreate(value, isUrl, isCached);
     }
 
     /**
@@ -555,7 +501,7 @@ public class CellInfo
      * @return Groovy source code equivalent of passed in value.  For example, if a BigInteger is passed in,
      * the value will be return as a String with a "G" at the end.
      */
-    private static String javaToGroovySource(Object o)
+    static String javaToGroovySource(Object o)
     {
         StringBuilder builder = new StringBuilder();
         if (o instanceof String)

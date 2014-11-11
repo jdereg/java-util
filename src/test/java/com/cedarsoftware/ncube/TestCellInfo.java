@@ -3,17 +3,14 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.io.JsonObject;
 import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Calendar;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Created by kpartlow on 9/23/2014.
@@ -34,6 +31,35 @@ public class TestCellInfo
         Calendar c = Calendar.getInstance();
         c.set(2005, 10, 21, 12, 15, 19);
         assertEquals("\"2005-11-21 12:15:19\"", CellInfo.formatForEditing(c.getTime()));
+    }
+
+    @Test
+    public void testCollapseToUISupportedTypes() {
+        CellInfo info = new CellInfo(5);
+        assertEquals(CellTypes.Integer.desc(), info.dataType);
+        info.collapseToUiSupportedTypes();
+        assertEquals(CellTypes.Long.desc(), info.dataType);
+
+        info = new CellInfo(new Short((short)5));
+        assertEquals(CellTypes.Short.desc(), info.dataType);
+        info.collapseToUiSupportedTypes();
+        assertEquals(CellTypes.Long.desc(), info.dataType);
+
+        info = new CellInfo(new Byte((byte)5));
+        assertEquals(CellTypes.Byte.desc(), info.dataType);
+        info.collapseToUiSupportedTypes();
+        assertEquals(CellTypes.Long.desc(), info.dataType);
+
+
+        info = new CellInfo(new Float(5));
+        assertEquals(CellTypes.Float.desc(), info.dataType);
+        info.collapseToUiSupportedTypes();
+        assertEquals(CellTypes.Double.desc(), info.dataType);
+
+        info = new CellInfo(new BigInteger("100", 10));
+        assertEquals(CellTypes.BigInteger.desc(), info.dataType);
+        info.collapseToUiSupportedTypes();
+        assertEquals(CellTypes.BigDecimal.desc(), info.dataType);
 
     }
 
@@ -143,6 +169,22 @@ public class TestCellInfo
     @Test(expected=IllegalArgumentException.class)
     public void testParseJsonValueWithInvalidBoolean() {
         CellInfo.parseJsonValue("boolean", "yes");
+
+    }
+
+    @Test
+    public void testInvalidJsonObjectType() {
+        try {
+            JsonObject o = new JsonObject();
+            Object[] items = new Object[1];
+            items[0] = new CellInfo("string", null, false, false);
+            o.put("@items", items);
+
+            CellInfo.javaToGroovySource(o);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Unknown Groovy Type"));
+        }
 
     }
 

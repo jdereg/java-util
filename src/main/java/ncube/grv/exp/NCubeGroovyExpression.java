@@ -1,9 +1,6 @@
 package ncube.grv.exp;
 
-import com.cedarsoftware.ncube.Axis;
-import com.cedarsoftware.ncube.Column;
-import com.cedarsoftware.ncube.NCube;
-import com.cedarsoftware.ncube.NCubeManager;
+import com.cedarsoftware.ncube.*;
 import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 
@@ -59,6 +56,23 @@ public class NCubeGroovyExpression
         if (cube == null)
         {
             throw new IllegalArgumentException("n-cube: " + name + " not loaded into NCubeManager, make sure to load all n-cubes first.");
+        }
+        return cube;
+    }
+
+    /**
+     * Fetch the named n-cube from the NCubeManager.  It looks at the same
+     * account, app, and version as the running n-cube.
+     * @param name String n-cube name.
+     * @return NCube with the given name.
+     */
+    public NCube getApplicationCube(String name)
+    {
+        ApplicationID appId = ncube.getApplicationID().createNewSnapshotId("0.0.0");
+        NCube cube = NCubeManager.getCube(appId, name);
+        if (cube == null)
+        {
+            throw new IllegalArgumentException("application (0.0.0) n-cube: " + name + " not loaded into NCubeManager, make sure to load all n-cubes first.");
         }
         return cube;
     }

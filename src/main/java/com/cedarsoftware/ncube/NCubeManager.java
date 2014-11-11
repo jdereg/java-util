@@ -173,28 +173,6 @@ public class NCubeManager
         return ncubes.containsKey(cubeName.toLowerCase());
     }
 
-    /**
-     * Add to the classloader's classpath for the given ApplicationID.
-s    */
-//    private static void addBaseResourceUrls(ApplicationID appId, List<String> urls)
-//    {
-//        validateAppId(appId);
-//        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
-//
-//        if (urlClassLoader == null)
-//        {
-//            LOG.debug("Creating ClassLoader, app: " + appId + ", urls: " + urls);
-//            urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-//            urlClassLoaders.put(appId, urlClassLoader);
-//        }
-//        else
-//        {
-//            LOG.debug("Adding resource URLs, app: " + appId + ", urls: " + urls);
-//        }
-//
-//        addUrlsToClassLoader(urls, urlClassLoader);
-//    }
-
     private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
         for (String url : urls)
@@ -690,7 +668,7 @@ s    */
             return;
         }
 
-        //urlclassloader didn't exist
+        // urlclassloader didn't exist
         urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
         urlClassLoaders.put(appId, urlClassLoader);
 
@@ -698,19 +676,16 @@ s    */
         map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
         map.put("username", System.getProperty("user.name"));
 
-        NCube cube = getCube(appId, CLASSPATH_CUBE);
+        NCube cpCube = getCube(appId, CLASSPATH_CUBE);
 
-        if (cube == null) {
+        if (cpCube == null) {
             LOG.debug("no sys.classpath exists for this application:  " + appId);
             return;
         }
 
-        List<String> urls = (List<String>)cube.getCell(map);
+        List<String> urls = (List<String>)cpCube.getCell(map);
         addUrlsToClassLoader(urls, urlClassLoader);
     }
-
-
-
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
     {

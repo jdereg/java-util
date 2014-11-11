@@ -123,23 +123,20 @@ public class NCubeManager
         validateAppId(appId);
         NCube.validateCubeName(name);
         Map<String, Object> cubes = getCacheForApp(appId);
-        final String key = name.toLowerCase();
+        final String lowerCubeName = name.toLowerCase();
 
-        if (cubes.containsKey(key))
+        if (cubes.containsKey(lowerCubeName))
         {   // pull from cache
-            return ensureLoaded(cubes.get(key));
+            return ensureLoaded(cubes.get(lowerCubeName));
         }
 
         // Deep load the requested cube
         getCubeRecordsFromDatabase(appId, name);
 
-
-        if (cubes.containsKey(key))
+        if (cubes.containsKey(lowerCubeName))
         {
-            return ensureLoaded(cubes.get(key));
+            return ensureLoaded(cubes.get(lowerCubeName));
         }
-
-        resolveClassPath(appId);
 
         return null;
     }
@@ -448,6 +445,7 @@ public class NCubeManager
                 appCache.put(key, cubeInfo);
             }
         }
+        resolveClassPath(appId);
         return cubes;
     }
 
@@ -515,7 +513,7 @@ public class NCubeManager
     }
 
     /**
-     * Update the passed in NCube.  Only SNAPSHOT ncubes can be updated.
+     * Update the passed in NCube.  Only SNAPSHOT cubes can be updated.
      *
      * @param ncube      NCube to be updated.
      * @return boolean true on success, false otherwise
@@ -524,9 +522,20 @@ public class NCubeManager
     {
         validateAppId(appId);
         validateCube(ncube);
+        final String cubeName = ncube.name;
         nCubePersister.updateCube(appId, ncube, username);
-        Map<String, Object> appCache = getCacheForApp(appId);
-        appCache.remove(ncube.getName().toLowerCase());
+
+        if (CLASSPATH_CUBE.equalsIgnoreCase(cubeName))
+        {   // If the sys.classpath cube is changed, then the entire class loader must be dropped.  It will be lazily rebuilt.
+            clearCache(appId);
+            urlClassLoaders.remove(appId);
+        }
+        else
+        {
+            Map<String, Object> appCache = getCacheForApp(appId);
+            appCache.remove(ncube.getName().toLowerCase());
+        }
+
         broadcast(appId);
         return true;
     }
@@ -585,6 +594,19 @@ public class NCubeManager
         Map<String, Object> appCache = getCacheForApp(appId);
         appCache.remove(oldName.toLowerCase());
         appCache.put(newName.toLowerCase(), ncube);
+
+        if (CLASSPATH_CUBE.equalsIgnoreCase(oldName) || CLASSPATH_CUBE.equalsIgnoreCase(newName))
+        {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,
+            // then the entire class loader must be dropped (and then lazily rebuilt).
+            clearCache(appId);
+            urlClassLoaders.remove(appId);
+        }
+        else
+        {
+            appCache = getCacheForApp(appId);
+            appCache.remove(ncube.getName().toLowerCase());
+        }
+
         broadcast(appId);
         return result;
     }
@@ -660,31 +682,39 @@ public class NCubeManager
     }
 
 
-    public static void resolveClassPath(ApplicationID appId) {
-        //  Need a default run items in, will be empty unless sys.classpath is set for our appid.
-        GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
-
-        if (urlClassLoader != null) {
+    public static void resolveClassPath(ApplicationID appId)
+    {
+        if (urlClassLoaders.containsKey(appId))
+        {
             return;
         }
 
         // urlclassloader didn't exist
-        urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+        GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
         urlClassLoaders.put(appId, urlClassLoader);
 
         Map map = new HashMap();
-        map.put("env", SystemUtilities.getExternalVariable("ENV_LEVEL"));
+        final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
+        map.put("env", StringUtilities.isEmpty(envLevel) ? "LOCAL" : envLevel);
         map.put("username", System.getProperty("user.name"));
 
         NCube cpCube = getCube(appId, CLASSPATH_CUBE);
 
-        if (cpCube == null) {
+        if (cpCube == null)
+        {
             LOG.debug("no sys.classpath exists for this application:  " + appId);
             return;
         }
 
-        List<String> urls = (List<String>)cpCube.getCell(map);
-        addUrlsToClassLoader(urls, urlClassLoader);
+        try
+        {
+            List<String> urls = (List<String>)cpCube.getCell(map);
+            addUrlsToClassLoader(urls, urlClassLoader);
+        }
+        catch (Exception e)
+        {
+            LOG.warn("Error resolving " + CLASSPATH_CUBE + ". Make sure " + CLASSPATH_CUBE + " is set up correctly.", e);
+        }
     }
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)

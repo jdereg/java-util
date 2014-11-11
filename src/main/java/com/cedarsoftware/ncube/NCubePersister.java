@@ -34,7 +34,7 @@ public interface NCubePersister
     boolean doesCubeExist(ApplicationID appId, String cubeName);
 
     Object[] getDeletedCubeRecords(ApplicationID appId, String pattern);
-    void restoreCube(ApplicationID appId, String cubeName);
+    void restoreCube(ApplicationID appId, String cubeName, String username);
     Object[] getRevisions(ApplicationID appId, String cubeName);
 
     boolean updateNotes(ApplicationID appId, String cubeName, String notes);

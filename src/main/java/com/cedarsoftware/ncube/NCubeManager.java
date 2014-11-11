@@ -487,11 +487,11 @@ s    */
         return cubes;
     }
 
-    public static void restoreCube(ApplicationID appId, String cubeName)
+    public static void restoreCube(ApplicationID appId, String cubeName, String username)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        nCubePersister.restoreCube(appId, cubeName);
+        nCubePersister.restoreCube(appId, cubeName, username);
     }
 
     public static Object[] getRevisionHistory(ApplicationID appId, String cubeName)

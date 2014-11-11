@@ -58,7 +58,6 @@ public class TestNCubeManager
         TestingDatabaseHelper.tearDownDatabase();
     }
 
-
     private static NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -182,6 +181,7 @@ public class TestNCubeManager
         }
 
     }
+
     //This exception is impossible to hit without mocking since we prohibit you on createCube() from
     //adding in a second duplicate cube with all the same parameters.
     @Test
@@ -195,7 +195,6 @@ public class TestNCubeManager
             assertNull(e.getCause());
         }
     }
-
 
     @Test
     public void testRenameWithMatchingNames() throws Exception
@@ -507,7 +506,6 @@ public class TestNCubeManager
         assertEquals(2, cubeList.length);
     }
 
-
     @Test
     public void testNCubeManagerUpdateCube() throws Exception
     {
@@ -655,7 +653,6 @@ public class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true, USER_ID);
     }
 
-
     @Test
     public void testNCubeManagerTestData() throws Exception
     {
@@ -759,4 +756,59 @@ public class TestNCubeManager
         NCubeManager.getNCubesFromResource(null);
     }
 
+    @Test
+    public void testRestoreNonExistingCube() throws Exception
+    {
+        try
+        {
+            NCubeManager.restoreCube(defaultSnapshotApp, "fingers", USER_ID);
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("restore"));
+            assertTrue(e.getMessage().contains("exist"));
+        }
+    }
+
+    @Test
+    public void testRestoreExistingCube() throws Exception
+    {
+        NCube cube = createCube();
+        try
+        {
+            NCubeManager.restoreCube(defaultSnapshotApp, cube.getName(), USER_ID);
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("already"));
+            assertTrue(e.getMessage().contains("restored"));
+        }
+        NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+    }
+
+    @Test
+    public void testRestoreDeletedCube() throws Exception
+    {
+        NCube cube = createCube();
+        Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
+        assertEquals(1, records.length);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
+        assertEquals(0, records.length);
+        assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
+
+        NCubeManager.restoreCube(defaultSnapshotApp, cube.getName(), USER_ID);
+        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
+        assertEquals(1, records.length);
+        NCubeInfoDto cubeInfo = (NCubeInfoDto) records[0];
+        assertTrue(cubeInfo.notes.contains("restored"));
+        assertTrue(cubeInfo.notes.contains("on "));
+        assertTrue(cubeInfo.notes.contains("by "));
+
+        NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+    }
 }

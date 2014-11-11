@@ -614,6 +614,29 @@ public class TestNCube
         assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
     }
 
+
+    @Test
+    public void testIllegalArrayExceptions()
+    {
+        NCube<Object> ncube = getTestNCube2D(true);
+        try
+        {
+            ncube.setCell(new Object[]{}, new HashMap());
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Cannot set"));
+            assertTrue(e.getMessage().contains("array type"));
+        }
+
+        try
+        {
+            ncube.setCellById(new Object[]{}, new HashSet<Long>());
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Cannot set"));
+            assertTrue(e.getMessage().contains("array type"));
+        }
+    }
+
+
     @Test
     public void testDefaultNCubeCellValue()
     {

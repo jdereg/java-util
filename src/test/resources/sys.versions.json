@@ -21,7 +21,7 @@
             ]
         },
         {
-            "name": "environment",
+            "name": "env",
             "type": "DISCRETE",
             "valueType": "STRING",
             "preferredOrder": 1,

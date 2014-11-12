@@ -52,6 +52,7 @@ public class GroovyExpression extends GroovyBase
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder("package ncube.grv.exp\n");
+        groovy.append("import com.cedarsoftware.ncube.ApplicationID\n");
         groovy.append("import com.cedarsoftware.ncube.Axis\n");
         groovy.append("import com.cedarsoftware.ncube.AxisType\n");
         groovy.append("import com.cedarsoftware.ncube.AxisValueType\n");
@@ -83,6 +84,8 @@ public class GroovyExpression extends GroovyBase
         groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("\n}\n}");
         return groovy.toString();
+
+
     }
 
     protected String getMethodToExecute(Map args)

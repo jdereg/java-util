@@ -814,12 +814,12 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
 
         Map map = new HashMap();
-        map.put("environment", "DEV");
+        map.put("env", "DEV");
 
         assertEquals("https://cdn.com/private/ud/ra-resources/1.19.1-SNAPSHOT/", cube.getCell(map));
-        map.put("environment", "CERT");
+        map.put("env", "CERT");
         assertEquals("https://cdn.com/private/ud/ra-resources/1.12.0/", cube.getCell(map));
-        map.put("environment", "LOCAL");
+        map.put("env", "LOCAL");
         assertEquals("file:///C:/Development/Java/Idea/RefApp/foo/src/main/", cube.getCell(map));
         map.put("username", "jderegnaucourt");
         assertEquals("file:///Users/jderegnaucourt/Development/foo/src/main/", cube.getCell(map));

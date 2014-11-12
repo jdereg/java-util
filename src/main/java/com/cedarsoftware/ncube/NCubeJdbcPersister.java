@@ -307,32 +307,18 @@ public class NCubeJdbcPersister
         {
             throw new IllegalArgumentException("Cube: " + cubeName + " is already restored in app: " + appId);
         }
-        String update = "UPDATE n_cube SET revision_number = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND revision_number = ?";
 
-        try (PreparedStatement stmt = c.prepareStatement(update))
+       try
         {
-            stmt.setLong(1, Math.abs(maxRev));
-            stmt.setString(2, appId.getApp());
-            stmt.setString(3, cubeName);
-            stmt.setString(4, appId.getVersion());
-            stmt.setString(5, appId.getTenant());
-            stmt.setLong(6, maxRev);
-            int count = stmt.executeUpdate();
-            if (count > 1)
-            {
-                throw new IllegalStateException("Cannot restore cube, only one (1) should be restored, count: " + count + ", cube: " + cubeName + ", app: " + appId);
-            }
-            if (count == 0)
-            {
-                throw new IllegalStateException("Cannot restore cube, no cube matched app: " + appId + ", name: " + cubeName);
-            }
+            NCubeInfoDto cubeInfo = new NCubeInfoDto();
+            cubeInfo.tenant = appId.getTenant();
+            cubeInfo.name = cubeName;
+            cubeInfo.app = appId.getApp();
+            cubeInfo.version = appId.getVersion();
+            cubeInfo.status = appId.getStatus();
+            cubeInfo.revision = String.valueOf(maxRev);
 
-            Object[] cubeInfo = getCubeRecords(c, appId, cubeName);
-            if (ArrayUtilities.isEmpty(cubeInfo))
-            {
-                throw new IllegalArgumentException("Cannot delete cube: " + cubeName + ", unable to find it in app: " + appId);
-            }
-            NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0]);
+            NCube ncube = loadCube(c, cubeInfo);
             String testData = getTestData(c, appId, cubeName);
 
             String insertSql =

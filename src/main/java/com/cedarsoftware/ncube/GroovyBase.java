@@ -271,6 +271,21 @@ public abstract class GroovyBase extends UrlCommandCell
     {
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
+        if (isUrlUsed && url.endsWith(".groovy"))
+        {
+            // If a class exists already with the same name as the groovy file (substituting slashes for dots),
+            // then attempt to find and return that class without going through the resource location and parsing
+            // code.
+            try
+            {
+                String className = url.substring(0, url.indexOf(".groovy"));
+                className = className.replace('/', '.');
+                return Class.forName(className);
+            }
+            catch (Exception ignored)
+            { }
+        }
+
         GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID());
 
         if (urlLoader == null)

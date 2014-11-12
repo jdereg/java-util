@@ -37,11 +37,11 @@ public class CdnRouter
 {
     private static CdnRoutingProvider provider;
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
-    public static final String ACCOUNT = "router.account";
+    public static final String TENANT = "router.tenant";
     public static final String APP = "router.app";
+    public static final String CUBE_VERSION = "router.version";
     public static final String STATUS = "router.status";
     public static final String CUBE_NAME = "router.cubeName";
-    public static final String CUBE_VERSION = "router.version";
     public static final String CONTENT_TYPE = "content.type";
     public static final String CONTENT_NAME = "content.name";
     public static final String HTTP_REQUEST = "http.request";
@@ -70,8 +70,8 @@ public class CdnRouter
             final String servletPath = request.getServletPath();
             String[] info = getPathComponents(servletPath);
             if (info == null)
-            {
-                String msg = "CdnRouter - Invalid ServletPath (must start with /dyn/) request: " + servletPath;   // Thx Corey Crider
+            {   // Thx Corey Crider
+                String msg = "CdnRouter - Invalid ServletPath request: " + servletPath;
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, msg);
                 return;
             }
@@ -90,16 +90,16 @@ public class CdnRouter
             Map coord = new HashMap();
             provider.setupCoordinate(coord);
 
-            String account = (String) coord.get(ACCOUNT);
+            String tenant = (String) coord.get(TENANT);
             String app = (String) coord.get(APP);
             String cubeName = (String) coord.get(CUBE_NAME);
             String version = (String) coord.get(CUBE_VERSION);
             String status = (String) coord.get(STATUS);
             String msg = null;
 
-            if (StringUtilities.isEmpty(account))
+            if (StringUtilities.isEmpty(tenant))
             {
-                msg = ACCOUNT;
+                msg = TENANT;
             }
             else if (StringUtilities.isEmpty(app))
             {
@@ -131,7 +131,7 @@ public class CdnRouter
             coord.put(HTTP_RESPONSE, response);
             Map output = new HashMap();
 
-            ApplicationID appId = new ApplicationID(account, app, version, status);
+            ApplicationID appId = new ApplicationID(tenant, app, version, status);
             NCube routingCube = NCubeManager.getCube(appId, cubeName);
             if (routingCube == null)
             {

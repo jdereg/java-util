@@ -1724,32 +1724,6 @@ public class NCube<T>
     // Overall cube management APIs
     // ----------------------------
 
-    @Deprecated
-    public String toJson()
-    {
-        try
-        {
-            return JsonWriter.objectToJson(this);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException("error writing NCube '" + name + "' in JSON format", e);
-        }
-    }
-
-    @Deprecated
-    public static NCube fromJson(final String json)
-    {
-        try
-        {
-            return (NCube) JsonReader.jsonToJava(json);
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Error reading NCube from passed in JSON", e);
-        }
-    }
-
     /**
      * Use this API to create NCubes from a simple JSON format.
      *

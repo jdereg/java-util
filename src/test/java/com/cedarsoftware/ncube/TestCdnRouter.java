@@ -102,7 +102,7 @@ public class TestCdnRouter
         setDefaultCdnRoutingProvider();
 
         new CdnRouter().route(request, response);
-        verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath (must start with /dyn/) request: /foo/bar");
+        verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath request: /foo/bar");
     }
 
     @Test
@@ -116,7 +116,7 @@ public class TestCdnRouter
         setDefaultCdnRoutingProvider();
 
         new CdnRouter().route(request, response);
-        verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath (must start with /dyn/) request: null");
+        verify(response, times(1)).sendError(400, "CdnRouter - Invalid ServletPath request: null");
     }
 
     @Test
@@ -200,7 +200,7 @@ public class TestCdnRouter
         {
             public void setupCoordinate(Map coord)
             {
-                coord.put(CdnRouter.ACCOUNT, account);
+                coord.put(CdnRouter.TENANT, account);
                 coord.put(CdnRouter.APP, app);
                 coord.put(CdnRouter.CUBE_NAME, cubeName);
                 coord.put(CdnRouter.CUBE_VERSION, version);

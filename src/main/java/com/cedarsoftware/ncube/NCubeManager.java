@@ -57,6 +57,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NCubeManager
 {
+    private static final String SYS_BOOTSTRAP = "sys.bootstrap";
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
@@ -725,6 +726,20 @@ public class NCubeManager
         ncube.setApplicationID(appId);
         addCube(appId, ncube);
         broadcast(appId);
+    }
+
+    public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
+    {
+        if (coord == null)
+        {
+            coord = new HashMap();
+        }
+        NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
+        if (bootCube == null)
+        {
+            throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
+        }
+        return (ApplicationID) bootCube.getCell(coord);
     }
 
     // ----------------------------------------- Resource APIs ---------------------------------------------------------

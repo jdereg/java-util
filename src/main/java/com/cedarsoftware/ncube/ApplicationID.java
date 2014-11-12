@@ -216,4 +216,9 @@ public class ApplicationID
         }
         throw new IllegalArgumentException("Invalid version: '" + version + "'. n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
     }
+
+    public static ApplicationID getBootVersion(String tenant, String app)
+    {
+        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name());
+    }
 }

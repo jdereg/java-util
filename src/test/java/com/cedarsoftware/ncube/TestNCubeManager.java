@@ -872,6 +872,45 @@ public class TestNCubeManager
 
     @Test
     public void testResolveClassPath() {
+        loadTestClassPathCubes();
+
+        Map map = new HashMap();
+        map.put("env", "DEV");
+
+        NCube baseCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath.base");
+
+        assertEquals("https://cdn.com/private/ud/ra-resources/1.19.1-SNAPSHOT/", baseCube.getCell(map));
+        map.put("env", "CERT");
+        assertEquals("https://cdn.com/private/ud/ra-resources/1.12.0/", baseCube.getCell(map));
+        map.put("env", "LOCAL");
+        assertEquals("file:///C:/Development/Java/Idea/RefApp/foo/src/main/", baseCube.getCell(map));
+        map.put("username", "jderegnaucourt");
+        assertEquals("file:///Users/jderegnaucourt/Development/foo/src/main/", baseCube.getCell(map));
+
+        NCube classPathCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
+        List<String> list = (List<String>)classPathCube.getCell(map);
+        assertEquals(3, list.size());
+    }
+
+    @Test
+    public void testGetApplicationId() {
+        loadTestClassPathCubes();
+        loadTestBootstrapCubes();
+
+        ApplicationID bootAppId = NCubeManager.getApplicationID(defaultSnapshotApp.getTenant(), defaultSnapshotApp.getApp(), null);
+        assertEquals(defaultSnapshotApp, bootAppId);
+
+        Map map = new HashMap();
+        map.put("env", "DEV");
+
+        bootAppId = NCubeManager.getApplicationID(defaultSnapshotApp.getTenant(), defaultSnapshotApp.getApp(), map);
+        assertEquals(defaultSnapshotApp.getTenant(), bootAppId.getTenant());
+        assertEquals(defaultSnapshotApp.getApp(), bootAppId.getApp());
+        assertEquals(defaultSnapshotApp.getVersion(), "1.0.0");
+        assertEquals(defaultSnapshotApp.getStatus(), bootAppId.getStatus());
+    }
+
+    private void loadTestClassPathCubes() {
         NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.versions.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
         cube = NCubeManager.getNCubeFromResource("sys.classpath.local.json");
@@ -880,20 +919,18 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
         cube = NCubeManager.getNCubeFromResource("sys.classpath.base.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
-
-        Map map = new HashMap();
-        map.put("env", "DEV");
-
-        assertEquals("https://cdn.com/private/ud/ra-resources/1.19.1-SNAPSHOT/", cube.getCell(map));
-        map.put("env", "CERT");
-        assertEquals("https://cdn.com/private/ud/ra-resources/1.12.0/", cube.getCell(map));
-        map.put("env", "LOCAL");
-        assertEquals("file:///C:/Development/Java/Idea/RefApp/foo/src/main/", cube.getCell(map));
-        map.put("username", "jderegnaucourt");
-        assertEquals("file:///Users/jderegnaucourt/Development/foo/src/main/", cube.getCell(map));
-
-        cube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
-        List<String> list = (List<String>)cube.getCell(map);
-        assertEquals(3, list.size());
     }
+
+    private void loadTestBootstrapCubes() {
+        ApplicationID appId = defaultSnapshotApp.createNewSnapshotId("0.0.0");
+
+        NCube cube = NCubeManager.getNCubeFromResource(appId, "sys.bootstrap.json");
+        NCubeManager.createCube(appId, cube, USER_ID);
+        cube = NCubeManager.getNCubeFromResource("sys.version.json");
+        NCubeManager.createCube(appId, cube, USER_ID);
+        cube = NCubeManager.getNCubeFromResource("sys.status.json");
+        NCubeManager.createCube(appId, cube, USER_ID);
+    }
+
+
 }

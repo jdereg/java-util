@@ -1,0 +1,20 @@
+{
+    "ncube": "sys.bootstrap",
+    "axes": [
+        {
+            "name": "env",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "preferredOrder": 1,
+            "hasDefault": true,
+            "columns": []
+        }
+    ],
+    "cells": [
+        {
+            "id": [],
+            "type": "exp",
+            "value": "new ApplicationID('NONE', 'ncube.test', @sys.version[:], @sys.status[:])"
+        }
+    ]
+}

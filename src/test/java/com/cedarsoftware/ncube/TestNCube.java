@@ -4714,7 +4714,9 @@ public class TestNCube
         fo.write(code.getBytes());
         fo.close();
 
-        NCube ncube = NCubeManager.getNCubeFromResource(appId, "testReloadGroovyClass.json");
+        NCubeManager.getNCubeFromResource(appId, "testReloadGroovyClass.json");
+        NCube ncube = NCubeManager.getCube(appId, "testReloadGroovy");
+
         Map coord = new HashMap();
         coord.put("state", "OH");
         Map output = new LinkedHashMap();

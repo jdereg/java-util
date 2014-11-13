@@ -85,20 +85,7 @@ public class TestingDatabaseHelper
     {
         NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, "sys.classpath.tests.json");
         NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.classpath.tests.json");
-
-        //  This forces the load of the cube in the cache since many tests do not use getCube();
-        //NCubeManager.getCube(TestNCubeManager.defaultSnapshotApp, "sys.classpath");
-        //NCubeManager.getCube(ApplicationId.defaultAppId, "sys.classpath");
     }
-
-    // TODO:  I don't think we need this anymore
-    //    static
-    //    {
-    //        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-    //        urlClassLoaders.put(appId, new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true));
-    //    }
-
-
 
     public static void tearDownDatabase() throws Exception
     {

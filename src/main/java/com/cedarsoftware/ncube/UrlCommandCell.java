@@ -67,6 +67,7 @@ public abstract class UrlCommandCell implements CommandCell
     private int hash;
     private static final GroovyShell shell = new GroovyShell();
     private static Map<String, String> extToMimeType = new ConcurrentHashMap<>();
+    public static final char EXTENSION_SEPARATOR = '.';
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
 
 
@@ -237,6 +238,11 @@ public abstract class UrlCommandCell implements CommandCell
         return null;
     }
 
+    private static String getExtension(String urlPath) {
+        int index = urlPath == null ? -1 : urlPath.lastIndexOf(EXTENSION_SEPARATOR);
+        return index == -1 ? null : urlPath.substring(index).intern();
+    }
+
     static void addFileHeader(URL actualUrl, HttpServletResponse response)
     {
         if (actualUrl == null)
@@ -244,16 +250,14 @@ public abstract class UrlCommandCell implements CommandCell
             return;
         }
 
-        String url = actualUrl.toString().toLowerCase();
+        String ext = getExtension(actualUrl.toString().toLowerCase());
+        String mime = extToMimeType.get(ext);
 
-        for (Map.Entry<String, String> entry : extToMimeType.entrySet())
-        {
-            if (url.endsWith(entry.getKey()))
-            {
-                response.addHeader("content-type", entry.getValue());
-                break;
-            }
+        if (mime == null) {
+            return;
         }
+
+        response.addHeader("content-type", mime);
     }
 
     protected Object simpleFetch(Map args)

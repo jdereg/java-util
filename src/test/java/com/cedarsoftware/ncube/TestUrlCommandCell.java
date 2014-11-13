@@ -1,6 +1,8 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.util.CdnRouter;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -9,13 +11,16 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +30,18 @@ import static org.mockito.Mockito.when;
  */
 public class TestUrlCommandCell
 {
+    @Before
+    public void setUp() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
+    @After
+    public void tearDown() throws Exception
+    {
+        TestingDatabaseHelper.tearDownDatabase();
+    }
+
     @Test
     public void testCachingInputStreamRead() throws Exception
     {
@@ -174,5 +191,35 @@ public class TestUrlCommandCell
         map.put("input", input);
 
         cell.proxyFetch(map);
+    }
+
+    @Test
+    public void testAddFileHeaderWithNullUrl() throws Exception
+    {
+        // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
+        // being passed in.  Verify the method was never called
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        UrlCommandCell.addFileHeader(null, null);
+        verify(response, never()).addHeader(anyString(), anyString());
+    }
+
+    @Test
+    public void testAddFileHeaderWithExtensionNotFound() throws Exception
+    {
+        // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
+        // being passed in.
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        UrlCommandCell.addFileHeader(new URL("http://www.google.com/index.foo"), response);
+        verify(response, never()).addHeader(anyString(), anyString());
+    }
+
+    @Test
+    public void testAddFileWithNoExtensionAndDotDomainAhead() throws Exception
+    {
+        // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
+        // being passed in.
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        UrlCommandCell.addFileHeader(new URL("http://www.google.com/index"), response);
+        verify(response, never()).addHeader(anyString(), anyString());
     }
 }

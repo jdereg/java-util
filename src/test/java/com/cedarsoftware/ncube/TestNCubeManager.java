@@ -868,7 +868,21 @@ public class TestNCubeManager
         assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
     }
 
+    @Test
+    public void testResolveClasspathWithInvalidUrl() throws Exception {
+        NCube cube = NCubeManager.getNCubeFromResource("sys.classpath.invalid.url.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        createCube();
 
+        // force reload from hsql and reget classpath
+        assertEquals(1, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+
+        NCubeManager.clearCache(defaultSnapshotApp);
+        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp));
+
+        NCubeManager.getCube(defaultSnapshotApp, "test.AgeGender");
+        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+    }
 
     @Test
     public void testResolveClassPath() {

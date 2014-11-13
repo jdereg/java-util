@@ -171,7 +171,7 @@ public class NCubeManager
         return ncubes.containsKey(cubeName.toLowerCase());
     }
 
-    private static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
+    static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
         for (String url : urls)
         {
@@ -302,6 +302,7 @@ public class NCubeManager
         {
             classLoader.clearCache();
         }
+        urlClassLoaders.remove(appId);
     }
 
     static void clearCache()
@@ -683,7 +684,7 @@ public class NCubeManager
     }
 
 
-    public static void resolveClassPath(ApplicationID appId)
+    static void resolveClassPath(ApplicationID appId)
     {
         if (urlClassLoaders.containsKey(appId))
         {

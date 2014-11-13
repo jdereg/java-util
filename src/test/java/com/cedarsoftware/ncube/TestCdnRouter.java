@@ -396,14 +396,6 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(500, "CdnRouter - CdnRoutingProvider has not been set into the CdnRouter.");
     }
 
-    @Test
-    public void testAddFileHeaderErrorHandler() throws Exception
-    {
-        // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
-        // being passed in.
-        UrlCommandCell.addFileHeader(null, null);
-    }
-
     static class DumboOutputStream extends ServletOutputStream
     {
         ByteArrayOutputStream bao = new ByteArrayOutputStream();

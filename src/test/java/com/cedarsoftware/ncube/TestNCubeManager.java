@@ -910,6 +910,16 @@ public class TestNCubeManager
         assertEquals(defaultSnapshotApp.getStatus(), bootAppId.getStatus());
     }
 
+    @Test
+    public void testEnsureLoadedException() {
+        try {
+            NCubeManager.ensureLoaded(null);
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Failed"));
+            assertTrue(e.getMessage().contains("retrieve cube from cache"));
+        }
+    }
+
     private void loadTestClassPathCubes() {
         NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.versions.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
@@ -931,6 +941,8 @@ public class TestNCubeManager
         cube = NCubeManager.getNCubeFromResource("sys.status.json");
         NCubeManager.createCube(appId, cube, USER_ID);
     }
+
+
 
 
 }

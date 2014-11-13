@@ -863,11 +863,9 @@ public class TestNCubeManager
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
 
-//        NCubeInfoDto cubeInfo = (NCubeInfoDto) records[0];
-//        assertTrue(cubeInfo.notes.contains("restored"));
-//        assertTrue(cubeInfo.notes.contains("on "));
-//        assertTrue(cubeInfo.notes.contains("by "));
-
+        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
     }
 
 

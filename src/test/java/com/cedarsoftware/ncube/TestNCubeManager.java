@@ -789,7 +789,12 @@ public class TestNCubeManager
         Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
         assertEquals(1, records.length);
 
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+
         NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+
         records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
         assertEquals(0, records.length);
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
@@ -804,6 +809,68 @@ public class TestNCubeManager
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
     }
+
+    @Test
+    public void testRestoreCubeWithCubeThatDoesNotExist() throws Exception
+    {
+        try
+        {
+            NCubeManager.restoreCube(defaultSnapshotApp, "foo", USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("not restore cube"));
+            assertTrue(e.getMessage().contains("does not exist"));
+        }
+
+    }
+
+    @Test
+    public void testDeleteWithRevisions() throws Exception
+    {
+        NCube cube = createCube();
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, null).length);
+        assertEquals(1, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
+
+        Axis oddAxis = TestNCube.getOddAxis(true);
+        cube.addAxis(oddAxis);
+
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
+        assertEquals(2, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+
+        Axis conAxis = TestNCube.getContinentAxis();
+        cube.addAxis(conAxis);
+
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
+
+        assertEquals(3, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+
+        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(4, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
+        assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
+
+        NCubeManager.restoreCube(defaultSnapshotApp, cube.getName(), USER_ID);
+
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(5, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
+
+//        NCubeInfoDto cubeInfo = (NCubeInfoDto) records[0];
+//        assertTrue(cubeInfo.notes.contains("restored"));
+//        assertTrue(cubeInfo.notes.contains("on "));
+//        assertTrue(cubeInfo.notes.contains("by "));
+
+    }
+
+
 
     @Test
     public void testResolveClassPath() {

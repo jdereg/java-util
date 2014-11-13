@@ -4,7 +4,11 @@ import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * ApplicationID Tests
@@ -391,5 +395,12 @@ public class TestApplicationID
         }
     }
 
-
+    @Test
+    public void testGetBootstrapVersion() {
+        ApplicationID id = ApplicationID.getBootVersion("foo", "bar");
+        assertEquals("foo", id.getTenant());
+        assertEquals("bar", id.getApp());
+        assertEquals("0.0.0", id.getVersion());
+        assertEquals("SNAPSHOT", id.getStatus());
+    }
 }

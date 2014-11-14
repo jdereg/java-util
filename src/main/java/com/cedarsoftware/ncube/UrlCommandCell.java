@@ -4,7 +4,6 @@ import com.cedarsoftware.ncube.util.CdnRouter;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
 import org.apache.commons.logging.Log;
@@ -53,8 +52,6 @@ import java.util.regex.Matcher;
  */
 public abstract class UrlCommandCell implements CommandCell
 {
-    static final String proxyServer;
-    static final int proxyPort;
     private String cmd;
     private transient String cmdHash;
     private volatile transient Class runnableCode = null;
@@ -71,34 +68,8 @@ public abstract class UrlCommandCell implements CommandCell
     private static final Log LOG = LogFactory.getLog(CdnRouter.class);
 
 
-    //TODO  These are really not needed and should be set for the whole server/environment with the following -D options
-    // or could be set as environment variables
-    // http.proxyHost
-    // http.proxyPort (default: 80)
-    // http.nonProxyHosts (should alwasy include localhost)
-    // https.proxyHost
-    // https.proxyPort
-    // Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
     static
     {
-        proxyServer = SystemUtilities.getExternalVariable("http.proxy.host");
-        String port = SystemUtilities.getExternalVariable("http.proxy.port");
-        if (proxyServer != null)
-        {
-            try
-            {
-                proxyPort = Integer.parseInt(port);
-            }
-            catch (Exception e)
-            {
-                throw new IllegalArgumentException("http.proxy.port must be an integer: " + port, e);
-            }
-        }
-        else
-        {
-            proxyPort = 0;
-        }
-
         extToMimeType.put(".css", "text/css");
         extToMimeType.put(".html", "text/html");
         extToMimeType.put(".js", "application/javascript");
@@ -267,8 +238,7 @@ public abstract class UrlCommandCell implements CommandCell
         try
         {
             URL u = getActualUrl(cube);
-            //TODO:  java-util change remove u.toString() when we have a URL version of this call
-            return UrlUtilities.getContentFromUrlAsString(u.toString(), proxyServer, proxyPort, null, null, true);
+            return UrlUtilities.getContentFromUrlAsString(u, true);
         }
         catch (Exception e)
         {

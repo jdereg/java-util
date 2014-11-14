@@ -44,5 +44,11 @@ public class TestInetAddressUtilities
         Assert.assertArrayEquals(bytes, InetAddressUtilities.getIpAddress());
     }
 
+    @Test
+    public void testGetLocalHost() throws Exception {
+        String name = InetAddress.getLocalHost().getHostName();
+        Assert.assertEquals(name, InetAddressUtilities.getHostName());
+    }
+
 
 }

@@ -5,22 +5,17 @@ import org.junit.Test;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.HttpURLConnection;
-import java.net.Proxy;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 
 /**
@@ -75,51 +70,105 @@ public class TestUrlUtilities
     {
         String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
         String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl);
+        String content3 = UrlUtilities.getContentFromUrlAsString(new URL(httpsUrl), true);
+        String content4 = UrlUtilities.getContentFromUrlAsString(new URL(httpsUrl), null, null, true);
+        String content5 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, 0, null, null, true);
+        String content6 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, null, true);
 
         assertTrue(content1.contains(domain));
         assertTrue(content2.contains(domain));
+        assertTrue(content3.contains(domain));
+        assertTrue(content4.contains(domain));
+        assertTrue(content5.contains(domain));
+        assertTrue(content6.contains(domain));
 
         assertEquals(content1, content2);
 
-        String content3 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
-        String content4 = UrlUtilities.getContentFromUrlAsString(httpUrl);
+        String content7 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
+        String content8 = UrlUtilities.getContentFromUrlAsString(httpUrl);
+        String content9 = UrlUtilities.getContentFromUrlAsString(httpUrl, null, 0, null, null, true);
+        String content10 = UrlUtilities.getContentFromUrlAsString(httpUrl, null, null, true);
 
-        assertTrue(content3.equals(_expected));
-        assertTrue(content4.equals(_expected));
-
-        assertEquals(content3, content4);
+        assertEquals(_expected, content7);
+        assertEquals(_expected, content8);
+        assertEquals(_expected, content9);
+        assertEquals(_expected, content10);
     }
 
     @Test
-    public void testGetContentFromUrl()
+    public void testReadErrorResponse() throws Exception {
+        UrlUtilities.readErrorResponse(null);
+
+        HttpURLConnection c1 = mock(HttpURLConnection.class);
+        when(c1.getResponseCode()).thenThrow(new ConnectException());
+        UrlUtilities.readErrorResponse(c1);
+
+        verify(c1, times(1)).getResponseCode();
+
+        HttpURLConnection c2 = mock(HttpURLConnection.class);
+        when(c2.getResponseCode()).thenThrow(new IOException());
+        UrlUtilities.readErrorResponse(c2);
+        verify(c2, times(1)).getResponseCode();
+
+        HttpURLConnection c3 = mock(HttpURLConnection.class);
+        when(c3.getResponseCode()).thenThrow(new RuntimeException());
+        UrlUtilities.readErrorResponse(c3);
+        verify(c3, times(1)).getResponseCode();
+    }
+
+    @Test
+    public void testComparePaths() {
+        assertTrue(UrlUtilities.comparePaths(null, "anytext"));
+        assertTrue(UrlUtilities.comparePaths("/", "anything"));
+        assertTrue(UrlUtilities.comparePaths("/foo", "/foo/notfoo"));
+        assertFalse(UrlUtilities.comparePaths("/foo/", "/bar/"));
+    }
+
+    @Test
+    public void testIsNotExpired() {
+        assertFalse(UrlUtilities.isNotExpired(""));
+    }
+
+    @Test
+    public void testGetContentFromUrlWithMalformedUrl() {
+        assertNull(UrlUtilities.getContentFromUrl("", null, null, true));
+        assertNull(UrlUtilities.getContentFromUrl("", null, null, null, true));
+
+        assertNull(UrlUtilities.getContentFromUrl("www.google.com", "localhost", 80, null, null, true));
+    }
+
+    @Test
+    public void testGetContentFromUrl() throws Exception
     {
-        SSLSocketFactory f = UrlUtilities.buildNaiveSSLSocketFactory();
+        SSLSocketFactory f = UrlUtilities.naiveSSLSocketFactory;
         HostnameVerifier v = UrlUtilities.NAIVE_VERIFIER;
 
         String content1 = new String(UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY));
-        String content2 = new String(UrlUtilities.getContentFromUrl(httpsUrl));
+        String content2 = new String(UrlUtilities.getContentFromUrl(new URL(httpsUrl), null, null, true));
         String content3 = new String(UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY, f, v));
         String content4 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true));
-        String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
+        String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, true));
+        String content6 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
 
         //  Allow for small difference between pages between requests to handle time and hash value changes.
         assertEquals(content1, content2);
         assertEquals(content2, content3);
         assertEquals(content3, content4);
         assertEquals(content4, content5);
-        assertEquals(content5, content1);
+        assertEquals(content5, content6);
+        assertEquals(content6, content1);
 
-            //TODO - add in when we find self-signing site.
-//        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, Proxy.NO_PROXY, null, null));
-//        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, null, Proxy.NO_PROXY, null, null));
-//        assertNull(UrlUtilities.getContentFromUrl(httpsGoogleUrl, null, 0, null, null, false));
+        String content10 = new String(UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null));
+        String content11 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null));
+        String content12 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false));
+        String content13 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, false));
+        String content14 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null));
 
-        String content6 = new String(UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null));
-        String content7 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false));
-        String content8 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null));
-
-        assertEquals(content6, content7);
-        assertEquals(content7, content8);
+        assertEquals(content10, content11);
+        assertEquals(content11, content12);
+        assertEquals(content12, content13);
+        assertEquals(content13, content14);
+        assertEquals(content14, content10);
 
         // 404
         assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-bucks.html", null, null, Proxy.NO_PROXY, null, null));
@@ -160,8 +209,13 @@ public class TestUrlUtilities
     public void testGetConnection() throws Exception
     {
         URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
-        URLConnection c = UrlUtilities.getConnection(u, true, false, false);
+        compareIO(UrlUtilities.getConnection(u, true, false, false));
+        compareIO(UrlUtilities.getConnection(u, null, 0, null, true, false, false, true));
+        compareIO(UrlUtilities.getConnection(u, null, true, false, false, true));
+        compareIO(UrlUtilities.getConnection(u, null, true, false, false, Proxy.NO_PROXY, true));
+    }
 
+    private void compareIO(URLConnection c) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
         InputStream s = c.getInputStream();
         IOUtilities.transfer(s, out);
@@ -179,15 +233,15 @@ public class TestUrlUtilities
         UrlUtilities.disconnect(c);
     }
 
-    @Test
-    public void testGetConnection2() throws Exception
-    {
-        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.yahoo.com"), true, false, false);
-        assertNotNull(c);
-        UrlUtilities.setTimeouts(c, 9000, 10000);
-        c.connect();
-        UrlUtilities.disconnect(c);
-    }
+//    @Test
+//    public void testGetConnection2() throws Exception
+//    {
+//        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.yahoo.com"), true, false, false);
+//        assertNotNull(c);
+//        UrlUtilities.setTimeouts(c, 9000, 10000);
+//        c.connect();
+//        UrlUtilities.disconnect(c);
+//    }
 
     @Test
     public void testCookies2() throws Exception
@@ -217,7 +271,7 @@ public class TestUrlUtilities
     public void testReferer() throws Exception
     {
         UrlUtilities.setReferrer(null);
-        Field f = UrlUtilities.class.getDeclaredField("_referrer");
+        Field f = UrlUtilities.class.getDeclaredField("referrer");
         f.setAccessible(true);
         assertNull(f.get(null));
 

@@ -161,7 +161,7 @@ public class TestUrlUtilities
         String content4 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true));
         String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, true));
         String content6 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
-        String content7 = new String(UrlUtilities.getContentFromUrl(new URL(httpsUrl)));
+        String content7 = new String(UrlUtilities.getContentFromUrl(new URL(httpsUrl), true));
 
         //  Allow for small difference between pages between requests to handle time and hash value changes.
         assertEquals(content1, content2);

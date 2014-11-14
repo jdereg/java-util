@@ -459,9 +459,9 @@ public final class UrlUtilities
      * @param url URL to hit
      * @return byte[] read from URL or null in the case of error.
      */
-    public static byte[] getContentFromUrl(URL url)
+    public static byte[] getContentFromUrl(URL url, boolean allowAllCerts)
     {
-        return getContentFromUrl(url, null, null, true);
+        return getContentFromUrl(url, null, null, allowAllCerts);
     }
 
     /*

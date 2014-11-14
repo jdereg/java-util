@@ -143,7 +143,7 @@ public class NCubeManager
         return null;
     }
 
-    private static NCube ensureLoaded(Object value)
+    static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)
         {

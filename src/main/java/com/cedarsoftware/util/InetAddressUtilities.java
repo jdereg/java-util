@@ -49,4 +49,19 @@ public class InetAddressUtilities
             return new byte[] {0,0,0,0};
         }
     }
+
+    public static String getHostName()
+    {
+        try
+        {
+            return getLocalHost().getHostName();
+        }
+        catch (Exception e)
+        {
+            LOG.warn("Unable to fetch 'hostname'", e);
+            return "localhost";
+        }
+    }
+
+
 }

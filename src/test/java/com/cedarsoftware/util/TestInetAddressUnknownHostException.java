@@ -23,6 +23,7 @@ public class TestInetAddressUnknownHostException
     {
         PowerMockito.stub(PowerMockito.method(InetAddressUtilities.class, "getLocalHost")).toThrow(new UnknownHostException());
         Assert.assertArrayEquals(new byte[] {0,0,0,0}, InetAddressUtilities.getIpAddress());
-        PowerMockito.verifyStatic(Mockito.times(1));
+        Assert.assertEquals("localhost", InetAddressUtilities.getHostName());
+        PowerMockito.verifyStatic(Mockito.times(2));
     }
 }

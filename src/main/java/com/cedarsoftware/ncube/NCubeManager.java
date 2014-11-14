@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.util.CdnClassLoader;
+import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.MapUtilities;
@@ -456,11 +457,26 @@ public class NCubeManager
         return cubes;
     }
 
-    public static void restoreCube(ApplicationID appId, String cubeName, String username)
+    public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
     {
         validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        nCubePersister.restoreCube(appId, cubeName, username);
+        if (ArrayUtilities.isEmpty(cubeNames))
+        {
+            throw new IllegalArgumentException("Empty array of cube names passed to be restored.");
+        }
+
+        for (Object cubeName : cubeNames)
+        {
+            if ((cubeName instanceof String))
+            {
+                NCube.validateCubeName((String)cubeName);
+                nCubePersister.restoreCube(appId, (String)cubeName, username);
+            }
+            else
+            {
+                throw new IllegalArgumentException("Non string name given for cube to restore: " + cubeName);
+            }
+        }
     }
 
     public static Object[] getRevisionHistory(ApplicationID appId, String cubeName)

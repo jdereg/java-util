@@ -761,7 +761,7 @@ public class TestNCubeManager
     {
         try
         {
-            NCubeManager.restoreCube(defaultSnapshotApp, "fingers", USER_ID);
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {"fingers"}, USER_ID);
             fail("should not make it here");
         }
         catch (IllegalArgumentException e)
@@ -778,7 +778,7 @@ public class TestNCubeManager
         NCube cube = createCube();
         try
         {
-            NCubeManager.restoreCube(defaultSnapshotApp, cube.getName(), USER_ID);
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {cube.getName()}, USER_ID);
             fail("should not make it here");
         }
         catch (IllegalArgumentException e)
@@ -806,7 +806,7 @@ public class TestNCubeManager
         assertEquals(0, records.length);
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
 
-        NCubeManager.restoreCube(defaultSnapshotApp, cube.getName(), USER_ID);
+        NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {cube.getName()}, USER_ID);
         records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
         assertEquals(1, records.length);
         NCubeInfoDto cubeInfo = (NCubeInfoDto) records[0];
@@ -822,8 +822,10 @@ public class TestNCubeManager
     {
         try
         {
-            NCubeManager.restoreCube(defaultSnapshotApp, "foo", USER_ID);
-        } catch (IllegalArgumentException e) {
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {"foo"}, USER_ID);
+        }
+        catch (IllegalArgumentException e)
+        {
             assertTrue(e.getMessage().contains("not restore cube"));
             assertTrue(e.getMessage().contains("does not exist"));
         }
@@ -862,7 +864,7 @@ public class TestNCubeManager
         assertEquals(4, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
 
-        NCubeManager.restoreCube(defaultSnapshotApp, cube.getName(), USER_ID);
+        NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {cube.getName()}, USER_ID);
 
         assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);

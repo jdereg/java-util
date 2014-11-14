@@ -94,20 +94,11 @@ public class NCubeManager
 
         if (names.isEmpty())
         {   // Support tests that load cubes from JSON files...
+            // can only be in there as ncubes, not ncubeDtoInfo
             for (Object value : getCacheForApp(appId).values())
             {
-                String name;
-                if (value instanceof NCube)
-                {   // NCube info cache, get name from it.
-                    NCube cube = (NCube) value;
-                    name = cube.name;
-                }
-                else
-                {   // NCubeInfoDto in cache, get name from it
-                    NCubeInfoDto cubeInfo = (NCubeInfoDto) value;
-                    name = cubeInfo.name;
-                }
-                names.add(name);
+                NCube cube = (NCube) value;
+                names.add(((NCube)value).name);
             }
         }
         return new CaseInsensitiveSet<>(names);

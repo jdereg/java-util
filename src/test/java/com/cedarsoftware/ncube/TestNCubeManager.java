@@ -252,7 +252,14 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
 
+        // make sure items aren't in cache for next load from db for next getCubeNames call
+        // during create they got added to database.
         NCubeManager.clearCache();
+
+        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
+
+        NCubeManager.clearCache();
+
         NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);

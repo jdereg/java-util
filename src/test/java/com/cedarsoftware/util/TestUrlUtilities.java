@@ -10,12 +10,24 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.*;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.Proxy;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 
 /**
@@ -149,6 +161,7 @@ public class TestUrlUtilities
         String content4 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true));
         String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, true));
         String content6 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
+        String content7 = new String(UrlUtilities.getContentFromUrl(new URL(httpsUrl)));
 
         //  Allow for small difference between pages between requests to handle time and hash value changes.
         assertEquals(content1, content2);
@@ -156,7 +169,7 @@ public class TestUrlUtilities
         assertEquals(content3, content4);
         assertEquals(content4, content5);
         assertEquals(content5, content6);
-        assertEquals(content6, content1);
+        assertEquals(content6, content7);
 
         String content10 = new String(UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null));
         String content11 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null));
@@ -168,7 +181,6 @@ public class TestUrlUtilities
         assertEquals(content11, content12);
         assertEquals(content12, content13);
         assertEquals(content13, content14);
-        assertEquals(content14, content10);
 
         // 404
         assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-bucks.html", null, null, Proxy.NO_PROXY, null, null));

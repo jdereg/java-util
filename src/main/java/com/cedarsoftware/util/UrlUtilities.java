@@ -3,24 +3,11 @@ package com.cedarsoftware.util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLHandshakeException;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.ConnectException;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
-import java.net.Proxy;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -55,9 +42,11 @@ import java.util.regex.Pattern;
 public final class UrlUtilities
 {
     private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
-    private static String _referrer = null;
-    private static String _userAgent = null;
+    private static String referrer = null;
+    private static String userAgent = null;
+
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
+
     public static final String SET_COOKIE = "Set-Cookie";
     public static final String COOKIE_VALUE_DELIMITER = ";";
     public static final String PATH = "path";
@@ -125,27 +114,17 @@ public final class UrlUtilities
 
     public static void setReferrer(String referrer)
     {
-        _referrer = referrer;
+        UrlUtilities.referrer = referrer;
     }
 
     public static void setUserAgent(String userAgent)
     {
-        _userAgent = userAgent;
+        UrlUtilities.userAgent = userAgent;
     }
 
     public static String getUserAgent()
     {
-        return _userAgent;
-    }
-
-    public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
-    {
-        return getConnection(new URL(url), null, input, output, cache, null, null);
-    }
-
-    public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException
-    {
-        return getConnection(url, null, input, output, cache, null, null);
+        return userAgent;
     }
 
     public static void readErrorResponse(URLConnection c)
@@ -338,7 +317,7 @@ public final class UrlUtilities
         return host;
     }
 
-    private static boolean isNotExpired(String cookieExpires)
+    static boolean isNotExpired(String cookieExpires)
     {
         if (cookieExpires == null)
         {
@@ -356,7 +335,7 @@ public final class UrlUtilities
         }
     }
 
-    private static boolean comparePaths(String cookiePath, String targetPath)
+    static boolean comparePaths(String cookiePath, String targetPath)
     {
         if (cookiePath == null)
         {
@@ -376,24 +355,6 @@ public final class UrlUtilities
     /**
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
-     * byte[].
-     *
-     * @param url URL to hit
-     * @param proxy proxy to use to create connection
-     * @return String read from URL or null in the case of error.
-     *
-     * @deprecated Use getContentFromUrlAsString(String url)
-     */
-    @Deprecated
-    public static String getContentFromUrlAsString(String url, Proxy proxy)
-    {
-        byte[] bytes = getContentFromUrl(url, proxy);
-        return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
      * String.
      *
      * @param url URL to hit
@@ -401,7 +362,37 @@ public final class UrlUtilities
      */
     public static String getContentFromUrlAsString(String url)
     {
-        byte[] bytes = getContentFromUrl(url, null, null, naiveSSLSocketFactory, NAIVE_VERIFIER);
+        return getContentFromUrlAsString(url, null, null, true);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * String.
+     *
+     * @param url URL to hit
+     * @param allowAllCerts true to not verify certificates
+     * @return UTF-8 String read from URL or null in the case of error.
+     */
+    public static String getContentFromUrlAsString(URL url, boolean allowAllCerts)
+    {
+        return getContentFromUrlAsString(url, null, null, allowAllCerts);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * String.
+     *
+     * @param url URL to hit
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param trustAllCerts if true, SSL connection will always be trusted.
+     * @return String of content fetched from URL.
+     */
+    public static String getContentFromUrlAsString(String url, Map inCookies, Map outCookies, boolean trustAllCerts)
+    {
+        byte[] bytes = getContentFromUrl(url, inCookies, outCookies, trustAllCerts);
         return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
     }
 
@@ -411,13 +402,17 @@ public final class UrlUtilities
      * String.
      *
      * @param url URL to hit
-     * @return UTF-8 String read from URL or null in the case of error.
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param trustAllCerts if true, SSL connection will always be trusted.
+     * @return String of content fetched from URL.
      */
-    public static String getContentFromUrlAsString(URL url, boolean ignoreCertErrors)
+    public static String getContentFromUrlAsString(URL url, Map inCookies, Map outCookies, boolean trustAllCerts)
     {
-        byte[] bytes = getContentFromUrl(url, null, null, null, null, null);
+        byte[] bytes = getContentFromUrl(url, inCookies, outCookies, trustAllCerts);
         return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
     }
+
 
     /**
      * Get content from the passed in URL.  This code will open a connection to
@@ -429,95 +424,28 @@ public final class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url)
     {
-        return getContentFromUrl(url, null, null, naiveSSLSocketFactory, NAIVE_VERIFIER);
+        return getContentFromUrl(url, null, null, true);
     }
 
-    /**
+    /*
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
-     *
-     * @param url URL to hit
-     * @param proxy proxy to use to create connection
-     * @return byte[] read from URL or null in the case of error.
-     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String)}
-     */
-    @Deprecated
-    public static byte[] getContentFromUrl(String url, Proxy proxy)
-    {
-        return getContentFromUrl(url, null, null, proxy, naiveSSLSocketFactory, NAIVE_VERIFIER);
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * String.
-     *
-     * @param url URL to hit
-     * @param proxyServer String named of proxy server
-     * @param port port to access proxy server
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
-     * @param ignoreSec if true, SSL connection will always be trusted.
-     * @return String of content fetched from URL.
-     *
-     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrlAsString(String, java.util.Map, java.util.Map, boolean)}
-     */
-    @Deprecated
-    public static String getContentFromUrlAsString(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
-    {
-        byte[] bytes = getContentFromUrl(url, proxyServer, port, inCookies, outCookies, ignoreSec);
-        return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * String.
      *
      * @param url URL to hit
      * @param inCookies Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
      * @param ignoreSec if true, SSL connection will always be trusted.
-     * @return String of content fetched from URL.
-     */
-    public static String getContentFromUrlAsString(String url, Map inCookies, Map outCookies, boolean ignoreSec)
-    {
-        byte[] bytes = getContentFromUrl(url, inCookies, outCookies, ignoreSec);
-        return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * byte[].
-     *
-     * @param url URL to hit
-     * @param proxy Proxy server to create connection (or null if not needed)
-     * @param factory custom SSLSocket factory (or null if not needed)
-     * @param verifier custom Hostnameverifier (or null if not needed)
-     * @return byte[] of content fetched from URL.
-     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String, javax.net.ssl.SSLSocketFactory, javax.net.ssl.HostnameVerifier)}
-     */
-    @Deprecated
-    public static byte[] getContentFromUrl(String url, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier)
-    {
-        return getContentFromUrl(url, null, null, proxy, factory, verifier);
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * byte[].
-     *
-     * @param url URL to hit
-     * @param factory custom SSLSocket factory (or null if not needed)
-     * @param verifier custom Hostnameverifier (or null if not needed)
      * @return byte[] of content fetched from URL.
      */
-    public static byte[] getContentFromUrl(String url, SSLSocketFactory factory, HostnameVerifier verifier)
+    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean allowAllCerts)
     {
-        return getContentFromUrl(url, null, null, factory, verifier);
+        try {
+            return getContentFromUrl(getActualUrl(url),inCookies, outCookies, allowAllCerts);
+        } catch (Exception e) {
+            LOG.warn("Exception occurred fetching content from url: " + url, e);
+            return null;
+        }
     }
 
     /**
@@ -528,13 +456,10 @@ public final class UrlUtilities
      * @param url URL to hit
      * @param inCookies Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
-     * @param proxy Proxy server to create connection (or null if not needed)
+     * @param allowAllCerts override certificate validation?
      * @return byte[] of content fetched from URL.
-     *
-     * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
      */
-    @Deprecated
-    public static byte[] getContentFromUrl(URL url, Map inCookies, Map outCookies, Proxy proxy, boolean allowAllCerts)
+    public static byte[] getContentFromUrl(URL url, Map inCookies, Map outCookies, boolean allowAllCerts)
     {
         URLConnection c = null;
         try
@@ -555,13 +480,13 @@ public final class UrlUtilities
         }
         catch (SSLHandshakeException e)
         {   // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception occurred fetching content from url: " + u, e);
+            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
             return null;
         }
         catch (Exception e)
         {
             readErrorResponse(c);
-            LOG.warn("Exception occurred fetching content from url: " + u, e);
+            LOG.warn("Exception occurred fetching content from url: " + url, e);
             return null;
         }
         finally
@@ -582,117 +507,53 @@ public final class UrlUtilities
      * @param url URL to hit
      * @param inCookies Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
-     * @param proxy Proxy server to create connection (or null if not needed)
-     * @param factory custom SSLSocket factory (or null if not needed)
-     * @param verifier custom Hostnameverifier (or null if not needed)
-     * @return byte[] of content fetched from URL.
-     *
-     * @deprecated Use getContentFromUrl(String url, Map inCookies, Map outCookies, , SSLSocketFactory factory, HostnameVerifier verifier)
-     */
-    @Deprecated
-    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, Proxy proxy, boolean allowAllCerts)
-    {
-        try
-        {
-            return getContentFromUrl(getActualUrl(url), inCookies, outCookies, proxy, allowAllCerts);
-        } catch (MalformedURLException e) {
-            LOG.warn("Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * byte[].
-     *
-     * @param url URL to hit
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
-     * @param factory custom SSLSocket factory (or null if not needed)
-     * @param verifier custom Hostnameverifier (or null if not needed)
      * @return byte[] of content fetched from URL.
      */
     public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies)
     {
-        //This code is currently calling the deprecated call, but when that is just to avoid duplicate code
-        //until we can safely get rid of the deprecated calls.
-        return getContentFromUrl(url, inCookies, outCookies, null);
-    }
-
-    /**
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * byte[].
-     *
-     * @param url URL to hit
-     * @param proxyServer String named of proxy server
-     * @param port port to access proxy server
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
-     * @param ignoreSec if true, SSL connection will always be trusted.
-     * @return byte[] of content fetched from URL.
-     *
-     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String, java.util.Map, java.util.Map, boolean)}
-     */
-    @Deprecated
-    public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
-    {
-        //  if proxy server is passed
-        Proxy proxy = null;
-        if (proxyServer != null)
-        {
-            proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
-        }
-
-        //  If we are trusting all ssl connections\
-        boolean ignore = ignoreSec && url.startsWith("https");
-
-        SSLSocketFactory factory = ignoreSec ? naiveSSLSocketFactory : null;
-        HostnameVerifier verifier = ignoreSec ? NAIVE_VERIFIER : null;
-
-        return getContentFromUrl(url, inCookies, outCookies, proxy, factory, verifier);
-    }
-
-    /*
-     * Get content from the passed in URL.  This code will open a connection to
-     * the passed in server, fetch the requested content, and return it as a
-     * byte[].
-     *
-     * @param url URL to hit
-     * @param proxyServer String named of proxy server
-     * @param port port to access proxy server
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
-     * @param ignoreSec if true, SSL connection will always be trusted.
-     * @return byte[] of content fetched from URL.
-     */
-    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean ignoreSec)
-    {
-        //  This call is calling the deprecated call for now, but that is just to keep from having duplicate code
-        return getContentFromUrl(url, null, 0, inCookies, outCookies, ignoreSec);
+        return getContentFromUrl(url, inCookies, outCookies, true);
     }
 
 
     /**
      *
      * @param url
+     * @param input
+     * @param output
+     * @param cache
+     * @return
+     * @throws IOException
+     */
+    public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
+    {
+        return getConnection(getActualUrl(url), null, input, output, cache, true);
+    }
+
+    /**
+     *
+     * @param url
+     * @param input
+     * @param output
+     * @param cache
+     * @return UrlConnection
+     * @throws IOException
+     */
+    public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException
+    {
+        return getConnection(url, null, input, output, cache, true);
+    }
+
+    /**
+     *  Gets a connection from a url.  All getConnection calls should go through this code.
+     * @param url
      * @param inCookies
      * @param input
      * @param output
      * @param cache
-     * @param proxy
      * @return URLConnection
      * @throws IOException
-     * @deprecated Use getConnection(URL url, Map inCookies, boolean input, boolean output
      */
-    @Deprecated
-    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, Proxy proxy, boolean ignoreCertificates) throws IOException
-    {
-        return getConnection(url, inCookies, input, output, cache, ignoreCertificates);
-    }
-
-    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean ignoreCertificates) throws IOException
+    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) throws IOException
     {
         URLConnection c = url.openConnection();
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
@@ -703,13 +564,13 @@ public final class UrlUtilities
         c.setReadTimeout(220000);
         c.setConnectTimeout(45000);
 
-        if (StringUtilities.hasContent(_referrer))
+        if (StringUtilities.hasContent(referrer))
         {
-            c.setRequestProperty("Referer", _referrer);
+            c.setRequestProperty("Referer", referrer);
         }
-        if (StringUtilities.hasContent(_userAgent))
+        if (StringUtilities.hasContent(userAgent))
         {
-            c.setRequestProperty("User-Agent", _userAgent);
+            c.setRequestProperty("User-Agent", userAgent);
         }
 
         if (c instanceof HttpURLConnection)
@@ -717,7 +578,7 @@ public final class UrlUtilities
             HttpURLConnection.setFollowRedirects(true);
         }
 
-        if (c instanceof HttpsURLConnection && ignoreCertificates)
+        if (c instanceof HttpsURLConnection && allowAllCerts)
         {
             try
             {
@@ -739,9 +600,16 @@ public final class UrlUtilities
 
     private static void setNaiveSSLSocketFactory(HttpsURLConnection sc)
     {
-            sc.setSSLSocketFactory(naiveSSLSocketFactory);
-            sc.setHostnameVerifier(NAIVE_VERIFIER);
+        sc.setSSLSocketFactory(naiveSSLSocketFactory);
+        sc.setHostnameVerifier(NAIVE_VERIFIER);
     }
+
+    public static URL getActualUrl(String url) throws MalformedURLException {
+        Matcher m = resPattern.matcher(url);
+        return m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+    }
+
+    /************************************ DEPRECATED ITEMS ONLY BELOW ******************************************/
 
     /**
      *
@@ -754,8 +622,234 @@ public final class UrlUtilities
         return InetAddressUtilities.getHostName();
     }
 
-    public static URL getActualUrl(String url) throws MalformedURLException {
-        Matcher m = resPattern.matcher(url);
-        return m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+    /**
+     *
+     * @param url
+     * @param inCookies
+     * @param input
+     * @param output
+     * @param cache
+     * @param proxy
+     * @return URLConnection
+     * @throws IOException
+     * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
+     */
+    @Deprecated
+    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, Proxy proxy, boolean allowAllCerts) throws IOException
+    {
+        return getConnection(url, inCookies, input, output, cache, allowAllCerts);
     }
+
+    /**
+     *
+     * @param url
+     * @param server
+     * @param port
+     * @param inCookies
+     * @param input
+     * @param output
+     * @param cache
+     * @param allowAllCerts
+     * @return URLConnection
+     * @throws IOException
+     * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
+     */
+    @Deprecated
+    public static URLConnection getConnection(URL url, String server, int port, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) throws IOException
+    {
+        return getConnection(url, inCookies, input, output, cache, allowAllCerts);
+    }
+
+    /**
+     *
+     * @param url
+     * @param inCookies
+     * @param input
+     * @param output
+     * @param cache
+     * @param proxy
+     * @param factory
+     * @param verifier
+     * @return URLConnection
+     * @throws IOException
+     * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
+     */
+    @Deprecated
+    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier) throws IOException
+    {
+        return getConnection(url, inCookies, input, output, cache, true);
+    }
+
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxy proxy to use to create connection
+     * @return byte[] read from URL or null in the case of error.
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String)}
+     */
+    @Deprecated
+    public static byte[] getContentFromUrl(String url, Proxy proxy)
+    {
+        return getContentFromUrl(url);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxy Proxy server to create connection (or null if not needed)
+     * @param factory custom SSLSocket factory (or null if not needed)
+     * @param verifier custom Hostnameverifier (or null if not needed)
+     * @return byte[] of content fetched from URL.
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String)}
+     */
+    @Deprecated
+    public static byte[] getContentFromUrl(String url, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier)
+    {
+        return getContentFromUrl(url);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param inCookies
+     * @param outCookies
+     * @param proxy Proxy server to create connection (or null if not needed)
+     * @param factory custom SSLSocket factory (or null if not needed)
+     * @param verifier custom Hostnameverifier (or null if not needed)
+     * @return byte[] of content fetched from URL.
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String)}
+     */
+    @Deprecated
+    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier)
+    {
+        return getContentFromUrl(url, inCookies, outCookies, true);
+    }
+
+
+
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxy proxy to use to create connection
+     * @return String read from URL or null in the case of error.
+     *
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String)}
+     */
+    @Deprecated
+    public static String getContentFromUrlAsString(String url, Proxy proxy)
+    {
+        byte[] bytes = getContentFromUrl(url, proxy);
+        return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param proxy Proxy server to create connection (or null if not needed)
+     * @return byte[] of content fetched from URL.
+     *
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String, java.util.Map, java.util.Map, boolean)}
+     */
+    @Deprecated
+    public static byte[] getContentFromUrl(URL url, Map inCookies, Map outCookies, Proxy proxy, boolean allowAllCerts)
+    {
+        return getContentFromUrl(url, inCookies, outCookies, allowAllCerts);
+    }
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param proxy Proxy server to create connection (or null if not needed)
+     * @return byte[] of content fetched from URL.
+     *
+     * @deprecated As of release 1.13.0, replaced by {@link #getConnection(String, boolean, boolean, boolean)}
+     */
+    @Deprecated
+    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, Proxy proxy, boolean allowAllCerts)
+    {
+        try
+        {
+            return getContentFromUrl(getActualUrl(url), inCookies, outCookies, proxy, allowAllCerts);
+        } catch (MalformedURLException e) {
+            LOG.warn("Exception occurred fetching content from url: " + url, e);
+            return null;
+        }
+    }
+
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * byte[].
+     *
+     * @param url URL to hit
+     * @param proxyServer String named of proxy server
+     * @param port port to access proxy server
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param allowAllCerts if true, SSL connection will always be trusted.
+     * @return byte[] of content fetched from URL.
+     *
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String, java.util.Map, java.util.Map, boolean)}
+     */
+    @Deprecated
+    public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean allowAllCerts)
+    {
+        //  if proxy server is passed
+        Proxy proxy = null;
+        if (proxyServer != null)
+        {
+            proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
+        }
+
+        return getContentFromUrl(url, inCookies, outCookies, proxy, allowAllCerts);
+    }
+
+
+    /**
+     * Get content from the passed in URL.  This code will open a connection to
+     * the passed in server, fetch the requested content, and return it as a
+     * String.
+     *
+     * @param url URL to hit
+     * @param proxyServer String named of proxy server
+     * @param port port to access proxy server
+     * @param inCookies Map of session cookies (or null if not needed)
+     * @param outCookies Map of session cookies (or null if not needed)
+     * @param ignoreSec if true, SSL connection will always be trusted.
+     * @return String of content fetched from URL.
+     *
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrlAsString(String, java.util.Map, java.util.Map, boolean)}
+     */
+    @Deprecated
+    public static String getContentFromUrlAsString(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
+    {
+        return getContentFromUrlAsString(url, inCookies, outCookies, ignoreSec);
+    }
+
+
 }

@@ -23,6 +23,17 @@ import java.util.regex.Pattern;
 /**
  * Useful utilities for working with UrlConnections and IO.
  *
+ *  Anyone using the deprecated api calls for proxying to urls should update to use the new suggested calls.
+ *  To let the jvm proxy for you automatically, use the following -D parameters:
+ *
+ *  http.proxyHost
+ *  http.proxyPort (default: 80)
+ *  http.nonProxyHosts (should alwasy include localhost)
+ *  https.proxyHost
+ *  https.proxyPort
+ *
+ *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
  *         <br/>
  *         Copyright (c) Cedar Software LLC
@@ -624,6 +635,14 @@ public final class UrlUtilities
 
     /**
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url
      * @param inCookies
      * @param input
@@ -641,6 +660,14 @@ public final class UrlUtilities
     }
 
     /**
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      *
      * @param url
      * @param server
@@ -662,6 +689,14 @@ public final class UrlUtilities
 
     /**
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url
      * @param inCookies
      * @param input
@@ -682,6 +717,14 @@ public final class UrlUtilities
 
 
     /**
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
@@ -698,6 +741,14 @@ public final class UrlUtilities
     }
 
     /**
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
@@ -720,6 +771,14 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
      * @param inCookies
      * @param outCookies
@@ -743,6 +802,14 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
      * @param proxy proxy to use to create connection
      * @return String read from URL or null in the case of error.
@@ -761,6 +828,14 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
      * @param inCookies Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
@@ -780,6 +855,14 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
      * @param inCookies Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
@@ -806,6 +889,14 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
      * @param proxyServer String named of proxy server
      * @param port port to access proxy server
@@ -835,6 +926,14 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * String.
      *
+     *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
+     *  http.proxyHost
+     *  http.proxyPort (default: 80)
+     *  http.nonProxyHosts (should alwasy include localhost)
+     *  https.proxyHost
+     *  https.proxyPort
+     *
+     *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
      * @param proxyServer String named of proxy server
      * @param port port to access proxy server

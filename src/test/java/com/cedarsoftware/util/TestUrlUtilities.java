@@ -75,19 +75,25 @@ public class TestUrlUtilities
     {
         String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
         String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl);
+        String content3 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, 0, null, null, true);
+        String content4 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, null, true);
 
         assertTrue(content1.contains(domain));
         assertTrue(content2.contains(domain));
+        assertTrue(content3.contains(domain));
+        assertTrue(content4.contains(domain));
 
         assertEquals(content1, content2);
 
-        String content3 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
-        String content4 = UrlUtilities.getContentFromUrlAsString(httpUrl);
+        String content5 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
+        String content6 = UrlUtilities.getContentFromUrlAsString(httpUrl);
+        String content7 = UrlUtilities.getContentFromUrlAsString(httpUrl, null, 0, null, null, true);
+        String content8 = UrlUtilities.getContentFromUrlAsString(httpUrl, null, null, true);
 
-        assertTrue(content3.equals(_expected));
-        assertTrue(content4.equals(_expected));
-
-        assertEquals(content3, content4);
+        assertEquals(_expected, content5);
+        assertEquals(_expected, content6);
+        assertEquals(_expected, content7);
+        assertEquals(_expected, content8);
     }
 
     @Test

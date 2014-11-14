@@ -41,7 +41,7 @@ public class InetAddressUtilities
     public static byte[] getIpAddress() {
         try
         {
-            return getLocalHost().getAddress();
+            return InetAddress.getLocalHost().getAddress();
         }
         catch (Exception e)
         {

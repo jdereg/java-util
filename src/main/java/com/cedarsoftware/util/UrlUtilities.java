@@ -138,12 +138,6 @@ public final class UrlUtilities
         return _userAgent;
     }
 
-    @Deprecated
-    private static void setProperty(String name, String value)
-    {
-        System.setProperty(name, value);
-    }
-
     public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
     {
         return getConnection(new URL(url), input, output, cache);
@@ -454,7 +448,7 @@ public final class UrlUtilities
      * @param url URL to hit
      * @param proxy proxy to use to create connection
      * @return byte[] read from URL or null in the case of error.
-     * @deprecated As of release 2.0, replaced by {@link #getContentFromUrl(String)}
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String)}
      */
     @Deprecated
     public static byte[] getContentFromUrl(String url, Proxy proxy)
@@ -475,7 +469,7 @@ public final class UrlUtilities
      * @param ignoreSec if true, SSL connection will always be trusted.
      * @return String of content fetched from URL.
      *
-     * @deprecated As of release 1.3, replaced by {@link #getContentFromUrlAsString(String, java.util.Map, java.util.Map, boolean)}
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrlAsString(String, java.util.Map, java.util.Map, boolean)}
      */
     @Deprecated
     public static String getContentFromUrlAsString(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
@@ -511,43 +505,12 @@ public final class UrlUtilities
      * @param factory custom SSLSocket factory (or null if not needed)
      * @param verifier custom Hostnameverifier (or null if not needed)
      * @return byte[] of content fetched from URL.
-     * @deprecated As of release 1.3, replaced by {@link #getContentFromUrl(String, javax.net.ssl.SSLSocketFactory, javax.net.ssl.HostnameVerifier)}
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String, javax.net.ssl.SSLSocketFactory, javax.net.ssl.HostnameVerifier)}
      */
     @Deprecated
     public static byte[] getContentFromUrl(String url, Proxy proxy, SSLSocketFactory factory, HostnameVerifier verifier)
     {
-        URLConnection c = null;
-        try
-        {
-            URL u = getActualUrl(url);
-            c = getConnection(u, null, true, false, false, proxy, factory, verifier);
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
-            InputStream stream = IOUtilities.getInputStream(c);
-            IOUtilities.transfer(stream, out);
-            stream.close();
-
-            return out.toByteArray();
-        }
-        catch (SSLHandshakeException e)
-        {
-            // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-        catch (Exception e)
-        {
-            readErrorResponse(c);
-            LOG.warn("Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-        finally
-        {
-            if (c instanceof HttpURLConnection)
-            {
-                disconnect((HttpURLConnection)c);
-            }
-        }
+        return getContentFromUrl(url, null, null, proxy, factory, verifier);
     }
 
     /**
@@ -562,38 +525,7 @@ public final class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url, SSLSocketFactory factory, HostnameVerifier verifier)
     {
-        URLConnection c = null;
-        try
-        {
-            URL u = getActualUrl(url);
-            c = getConnection(u, null, true, false, false, factory, verifier);
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
-            InputStream stream = IOUtilities.getInputStream(c);
-            IOUtilities.transfer(stream, out);
-            stream.close();
-
-            return out.toByteArray();
-        }
-        catch (SSLHandshakeException e)
-        {
-            // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-        catch (Exception e)
-        {
-            readErrorResponse(c);
-            LOG.warn("Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-        finally
-        {
-            if (c instanceof HttpURLConnection)
-            {
-                disconnect((HttpURLConnection)c);
-            }
-        }
+        return getContentFromUrl(url, null, null, factory, verifier);
     }
 
     /**
@@ -717,7 +649,7 @@ public final class UrlUtilities
      * @param ignoreSec if true, SSL connection will always be trusted.
      * @return byte[] of content fetched from URL.
      *
-     * @deprecated As of release 2.0, replaced by {@link #getContentFromUrl(String, java.util.Map, java.util.Map, boolean)}
+     * @deprecated As of release 1.13.0, replaced by {@link #getContentFromUrl(String, java.util.Map, java.util.Map, boolean)}
      */
     @Deprecated
     public static byte[] getContentFromUrl(String url, String proxyServer, int port, Map inCookies, Map outCookies, boolean ignoreSec)
@@ -887,7 +819,7 @@ public final class UrlUtilities
      * @param ignoreSec
      * @return URLConnection
      * @throws IOException
-     * @deprecated As of release 2.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
+     * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
      */
     @Deprecated
     public static URLConnection getConnection(URL url, String proxyServer, int port, Map inCookies, boolean input, boolean output, boolean cache, boolean ignoreSec) throws IOException
@@ -919,7 +851,7 @@ public final class UrlUtilities
     /**
      *
      * @return
-     * @deprecated As of release 2.0, replaced by {@link com.cedarsoftware.util.InetAddressUtilities#getHostName()}
+     * @deprecated As of release 1.13.0, replaced by {@link com.cedarsoftware.util.InetAddressUtilities#getHostName()}
      */
     @Deprecated
     public static String getHostName()

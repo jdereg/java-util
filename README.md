@@ -34,6 +34,8 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.13.0
+ *
 * 1.12.0
  * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
  * All the 1.11.x features rolled up.

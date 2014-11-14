@@ -140,34 +140,12 @@ public final class UrlUtilities
 
     public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
     {
-        return getConnection(new URL(url), input, output, cache);
+        return getConnection(new URL(url), null, input, output, cache, null, null);
     }
 
     public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException
     {
-        URLConnection c = url.openConnection();
-        c.setRequestProperty("Accept-Encoding", "gzip, deflate");
-        if (StringUtilities.hasContent(_referrer))
-        {
-            c.setRequestProperty("Referer", _referrer);
-        }
-        if (StringUtilities.hasContent(_userAgent))
-        {
-            c.setRequestProperty("User-Agent", _userAgent);
-        }
-        c.setAllowUserInteraction(false);
-        c.setDoOutput(output); // true
-        c.setDoInput(input); // true
-        c.setUseCaches(cache);  // false
-
-        setTimeouts(c, 220000, 45000);
-        return c;
-    }
-
-    public static void setTimeouts(URLConnection c, int read, int connect)
-    {
-        c.setReadTimeout(read);
-        c.setConnectTimeout(connect);
+        return getConnection(url, null, input, output, cache, null, null);
     }
 
     public static void readErrorResponse(URLConnection c)
@@ -598,42 +576,9 @@ public final class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, SSLSocketFactory factory, HostnameVerifier verifier)
     {
-        URLConnection c = null;
-        try
-        {
-            URL u = getActualUrl(url);
-            c = getConnection(u, inCookies, true, false, false, factory, verifier);
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
-            InputStream stream = IOUtilities.getInputStream(c);
-            IOUtilities.transfer(stream, out);
-            stream.close();
-
-            if (outCookies != null)
-            {   // [optional] Fetch cookies from server and update outCookie Map (pick up JSESSIONID, other headers)
-                getCookies(c, outCookies);
-            }
-
-            return out.toByteArray();
-        }
-        catch (SSLHandshakeException e)
-        {   // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-        catch (Exception e)
-        {
-            readErrorResponse(c);
-            LOG.warn("Exception occurred fetching content from url: " + url, e);
-            return null;
-        }
-        finally
-        {
-            if (c instanceof HttpURLConnection)
-            {
-                disconnect((HttpURLConnection)c);
-            }
-        }
+        //This code is currently calling the deprecated call, but when that is just to avoid duplicate code
+        //until we can safely get rid of the deprecated calls.
+        return getContentFromUrl(url, inCookies, outCookies, null, factory, verifier);
     }
 
     /**
@@ -685,13 +630,8 @@ public final class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean ignoreSec)
     {
-        //  If we are trusting all ssl connections
-        boolean ignore = ignoreSec && url.startsWith("https");
-
-        SSLSocketFactory factory = ignoreSec ? naiveSSLSocketFactory : null;
-        HostnameVerifier verifier = ignoreSec ? NAIVE_VERIFIER : null;
-
-        return getContentFromUrl(url, inCookies, outCookies, factory, verifier);
+        //  This call is calling the deprecated call for now, but that is just to keep from having duplicate code
+        return getContentFromUrl(url, null, 0, inCookies, outCookies, ignoreSec);
     }
 
 
@@ -712,7 +652,6 @@ public final class UrlUtilities
     @Deprecated
     public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, Proxy proxy, SSLSocketFactory socketFactory, HostnameVerifier verifier) throws IOException
     {
-        //Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
         URLConnection c = (proxy != null) ? url.openConnection(proxy) : url.openConnection();
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
         c.setAllowUserInteraction(false);
@@ -721,6 +660,15 @@ public final class UrlUtilities
         c.setUseCaches(cache);
         c.setReadTimeout(220000);
         c.setConnectTimeout(45000);
+
+        if (StringUtilities.hasContent(_referrer))
+        {
+            c.setRequestProperty("Referer", _referrer);
+        }
+        if (StringUtilities.hasContent(_userAgent))
+        {
+            c.setRequestProperty("User-Agent", _userAgent);
+        }
 
         if (c instanceof HttpURLConnection)
         {   // setFollowRedirects is a static (global) method / setting - resetting it in case other code changed it?
@@ -766,44 +714,7 @@ public final class UrlUtilities
      */
     public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, SSLSocketFactory socketFactory, HostnameVerifier verifier) throws IOException
     {
-        //Proxy proxy = new Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyServer, port));
-        URLConnection c = url.openConnection();
-        c.setRequestProperty("Accept-Encoding", "gzip, deflate");
-        c.setAllowUserInteraction(false);
-        c.setDoOutput(output);
-        c.setDoInput(input);
-        c.setUseCaches(cache);
-        c.setReadTimeout(220000);
-        c.setConnectTimeout(45000);
-
-        if (c instanceof HttpURLConnection)
-        {   // setFollowRedirects is a static (global) method / setting - resetting it in case other code changed it?
-            HttpURLConnection.setFollowRedirects(true);
-        }
-
-        if (c instanceof HttpsURLConnection)
-        {
-            try
-            {
-                HttpsURLConnection sc = (HttpsURLConnection) c;
-                if (socketFactory != null) {
-                    sc.setSSLSocketFactory(socketFactory);
-                }
-                if (verifier != null) {
-                    sc.setHostnameVerifier(verifier);
-                }
-            }
-            catch(Exception e)
-            {
-                LOG.warn("Could not access '" + url.toString() + "'", e);
-            }
-        }
-        // Set cookies in the HTTP header
-        if (inCookies != null)
-        {   // [optional] place cookies (JSESSIONID) into HTTP headers
-            setCookies(c, inCookies);
-        }
-        return c;
+        return getConnection(url, inCookies, input, output, cache, null, socketFactory, verifier);
     }
 
 

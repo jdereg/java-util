@@ -197,15 +197,15 @@ public class TestUrlUtilities
         UrlUtilities.disconnect(c);
     }
 
-    @Test
-    public void testGetConnection2() throws Exception
-    {
-        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.yahoo.com"), true, false, false);
-        assertNotNull(c);
-        UrlUtilities.setTimeouts(c, 9000, 10000);
-        c.connect();
-        UrlUtilities.disconnect(c);
-    }
+//    @Test
+//    public void testGetConnection2() throws Exception
+//    {
+//        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.yahoo.com"), true, false, false);
+//        assertNotNull(c);
+//        UrlUtilities.setTimeouts(c, 9000, 10000);
+//        c.connect();
+//        UrlUtilities.disconnect(c);
+//    }
 
     @Test
     public void testCookies2() throws Exception

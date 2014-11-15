@@ -308,7 +308,7 @@ public class NCubeJdbcPersister
             throw new IllegalArgumentException("Cube: " + cubeName + " is already restored in app: " + appId);
         }
 
-       try
+        try
         {
             NCubeInfoDto cubeInfo = new NCubeInfoDto();
             cubeInfo.tenant = appId.getTenant();

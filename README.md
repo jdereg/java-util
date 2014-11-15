@@ -35,7 +35,7 @@ Including in java-util:
 
 Version History
 * 1.13.0
- *
+ * Removed proxy from calls to URLUtilities.  These should now be done through the JVM.
 * 1.12.0
  * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
  * All the 1.11.x features rolled up.

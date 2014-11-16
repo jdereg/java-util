@@ -767,6 +767,34 @@ public class TestNCubeManager
     @Test
     public void testRestoreCubeWithEmptyArray() throws Exception
     {
+        try {
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[]{}, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Empty array"));
+            assertTrue(e.getMessage().contains("to be restored"));
+        }
+    }
+
+    @Test
+    public void testRestoreCubeWithNullArray() throws Exception
+    {
+        try {
+            NCubeManager.restoreCube(defaultSnapshotApp, null, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Empty array"));
+            assertTrue(e.getMessage().contains("to be restored"));
+        }
+    }
+
+    @Test
+    public void testRestoreCubeWithNonStringArray() throws Exception
+    {
+        try {
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[] { Integer.MAX_VALUE}, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Non string name"));
+            assertTrue(e.getMessage().contains("to restore"));
+        }
     }
 
     @Test

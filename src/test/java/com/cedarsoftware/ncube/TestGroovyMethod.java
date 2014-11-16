@@ -33,8 +33,10 @@ public class TestGroovyMethod
     }
 
     @Test
-    public void testCompile() {
+    public void testConstructionState() {
         GroovyMethod m = new GroovyMethod("cmd", "com/foo/not/found/bar.groovy");
-
+        assertEquals("cmd", m.getCmd());
+        assertEquals("com/foo/not/found/bar.groovy", m.getUrl());
+        assertEquals(true, m.isCacheable());
     }
 }

@@ -765,6 +765,11 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testRestoreCubeWithEmptyArray() throws Exception
+    {
+    }
+
+    @Test
     public void testRestoreNonExistingCube() throws Exception
     {
         try

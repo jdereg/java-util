@@ -605,8 +605,7 @@ public class TestNCubeJdbcPersister
         }
     }
 
-
-    /**  Will finish on thes two later so I can send pull request
+/*
     @Test
     public void testRestoreCubeThatThrowsSQLException() throws Exception {
         Connection c = mock(Connection.class);
@@ -648,8 +647,7 @@ public class TestNCubeJdbcPersister
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
-     **/
-
+*/
     @Test
     public void testCreateCubeWithWrongUpdateCount() throws Exception
     {

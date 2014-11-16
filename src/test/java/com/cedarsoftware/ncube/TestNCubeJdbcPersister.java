@@ -576,6 +576,81 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
+    public void testGetDeletedCubeRecordsThatThrowsSQLException() throws Exception {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().getDeletedCubeRecords(c, defaultSnapshotApp, null);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+    @Test
+    public void testGetRevisionsThatThrowsSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+
+        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenThrow(SQLException.class);
+
+        try
+        {
+            new NCubeJdbcPersister().getRevisions(c, defaultSnapshotApp, "foo");
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+
+    /**  Will finish on this one later
+    @Test
+    public void testRestoreCubeThatThrowsSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+
+        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(ps.executeUpdate()).thenThrow(SQLException.class);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+
+        try
+        {
+            new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+     **/
+
+    @Test
+    public void testDeleteCubeThatThrowsSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(ps.executeUpdate()).thenThrow(new SQLException());
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+
+        try
+        {
+            new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", false, USER_ID);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+        }
+    }
+
+
+    @Test
     public void testCreateCubeWithWrongUpdateCount() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -585,6 +660,7 @@ public class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class);
         when(ps.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(false);
+        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
         when(ps.executeUpdate()).thenReturn(0);
         try
         {

@@ -170,8 +170,6 @@ public class TestNCubeManager
 
     }
 
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
     @Test
     public void testGetReferencedCubesThatLoadsTwoCubes() throws Exception {
         try
@@ -467,6 +465,14 @@ public class TestNCubeManager
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
         NCube ncube2 = TestNCube.getTestNCube2D(true);
 
+        try
+        {
+            NCubeManager.renameCube(defaultSnapshotApp, ncube1.getName(), "foo");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("not rename"));
+            assertTrue(e.getMessage().contains("does not exist"));
+        }
+
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
@@ -487,6 +493,8 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true, USER_ID));
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
+
+        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true, USER_ID));
     }
 
     @Test
@@ -830,6 +838,18 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("does not exist"));
         }
 
+    }
+
+    @Test
+    public void testGetRevisionHistory() throws Exception {
+        try {
+            NCubeManager.getRevisionHistory(defaultSnapshotApp, "foo");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Cannot fetch"));
+            assertTrue(e.getMessage().contains("does not exist"));
+        }
+
+        NCube cube = createCube();
     }
 
     @Test

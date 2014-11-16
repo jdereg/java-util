@@ -39,20 +39,16 @@ public class NCubeJdbcPersister
 
     public void createCube(Connection c, ApplicationID appId, NCube cube, String username)
     {
+        if (doesCubeExist(c, appId, cube.getName())) {
+            throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists in app: " + appId);
+        }
+
         createCube(c, appId, cube, username, 0);
     }
 
     void createCube(Connection c, ApplicationID appId, NCube ncube, String username, long rev)
     {
         final String cubeName = ncube.getName();
-        if (rev < 0)
-        {
-            throw new IllegalArgumentException("Cannot create cube: " + cubeName + " in app: " + appId + ", revision number cannot be negative.");
-        }
-        if (rev == 0 && doesCubeExist(c, appId, cubeName))
-        {
-            throw new IllegalStateException("Cannot create cube: " + cubeName + ".  It already exists in app: " + appId);
-        }
 
         try
         {
@@ -116,12 +112,7 @@ public class NCubeJdbcPersister
 
             try (ResultSet rs = stmt.executeQuery())
             {
-                Long maxRev = null;
-                if (rs.next())
-                {
-                    maxRev = rs.getLong(1);
-                }
-                return maxRev;
+                return rs.next() ? rs.getLong(1) : null;
             }
         }
         catch (Exception e)
@@ -208,10 +199,6 @@ public class NCubeJdbcPersister
 
     public Object[] getRevisions(Connection c, ApplicationID appId, String cubeName)
     {
-        if (!doesCubeExist(c, appId, cubeName))
-        {
-            throw new IllegalArgumentException("Cannot fetch revision history for cube: " + cubeName + " as it does not exist in app: " + appId);
-        }
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
                 "FROM n_cube " +
@@ -222,7 +209,16 @@ public class NCubeJdbcPersister
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
-            return getCubeInfoRecords(appId, stmt);
+
+            Object[] records = getCubeInfoRecords(appId, stmt);
+            if (records.length == 0) {
+                throw new IllegalArgumentException("Cannot fetch revision history for cube:  " + cubeName + " as it does not exist in app:  " + appId);
+            }
+            return records;
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw e;
         }
         catch (Exception e)
         {
@@ -282,11 +278,6 @@ public class NCubeJdbcPersister
                     return ncube;
                 }
             }
-            throw new IllegalArgumentException("Unable to load cube: " + cubeInfo.name + ", app: " + cubeInfo + " from database");
-        }
-        catch (IllegalArgumentException e)
-        {
-            throw e;
         }
         catch (Exception e)
         {
@@ -294,6 +285,8 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }
+
+        throw new IllegalArgumentException("Unable to load cube: " + cubeInfo + " from database");
      }
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
@@ -353,7 +346,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to update notes for cube: " + cubeName + ", app: " + appId;
+            String s = "Unable to restore cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -362,13 +355,10 @@ public class NCubeJdbcPersister
     public boolean deleteCube(Connection c, ApplicationID appId, String cubeName, boolean allowDelete, String username)
     {
         Long maxRev = getMaxRevision(c, appId, cubeName);
-        if (maxRev == null)
+        if (maxRev == null || maxRev < 0)
         {
-            throw new IllegalStateException("Cannot delete cube: " + cubeName + " as cube does not exist in app: " + appId);
-        }
-        if (maxRev < 0)
-        {
-            throw new IllegalStateException("Cannot delete cube: " + cubeName + " as it is already deleted in app: " + appId);
+            // Either cube didn't exist or it is already deleted.
+            return false;
         }
 
         if (allowDelete)
@@ -698,6 +688,7 @@ public class NCubeJdbcPersister
     public boolean updateTestData(Connection c, ApplicationID appId, String cubeName, String testData)
     {
         Long maxRev = getMaxRevision(c, appId, cubeName);
+
         if (maxRev == null)
         {
             throw new IllegalArgumentException("Cannot update test data, cube: " + cubeName + " does not exist in app: " + appId);
@@ -718,16 +709,7 @@ public class NCubeJdbcPersister
             stmt.setString(5, ReleaseStatus.SNAPSHOT.name());
             stmt.setString(6, appId.getTenant());
             stmt.setLong(7, maxRev);
-            int count = stmt.executeUpdate();
-            if (count > 1)
-            {
-                throw new IllegalStateException("Cannot update test data, only one (1) row's test data should be updated, cube: " + cubeName + ", app: " + appId + ", " + count + " rows updated.");
-            }
-            if (count == 0)
-            {
-                throw new IllegalStateException("Cannot updating test data, no cube matching app: " + appId + ", name: " + cubeName);
-            }
-            return true;
+            return stmt.executeUpdate() == 1;
         }
         catch (IllegalStateException e)
         {

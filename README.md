@@ -36,6 +36,7 @@ Including in java-util:
 Version History
 * 1.13.0
  * DateUtilities - Strengthened date parsing 1. Day of week allowed (properly ignored) 2. first (st), second (nd), third (rd), and fourth (th) ... supported. 3. The default toString() standard date / time displayed by the JVM is now supported as a parseable format. 4. Extra whitespace can exist within the date string 5. The date (or date time) is expected to be in isolation. Wwhite space on either end is fine, however, once the date time is parsed from the string, no other content can be left (prevents accidently parsing dates from dates embedded in text).
+ * Removed proxy from calls to URLUtilities.  These are now done through the JVM.
 * 1.12.0
  * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
  * All the 1.11.x features rolled up.

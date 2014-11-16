@@ -170,8 +170,6 @@ public class TestNCubeManager
 
     }
 
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
     @Test
     public void testGetReferencedCubesThatLoadsTwoCubes() throws Exception {
         try
@@ -252,7 +250,14 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
 
+        // make sure items aren't in cache for next load from db for next getCubeNames call
+        // during create they got added to database.
         NCubeManager.clearCache();
+
+        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
+
+        NCubeManager.clearCache();
+
         NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
         NCube test = NCubeManager.getCube(defaultSnapshotApp, "test.ContinentCountries");
         assertTrue((Double) test.getCell(coord1) == 1.0);
@@ -460,6 +465,14 @@ public class TestNCubeManager
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
         NCube ncube2 = TestNCube.getTestNCube2D(true);
 
+        try
+        {
+            NCubeManager.renameCube(defaultSnapshotApp, ncube1.getName(), "foo");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("not rename"));
+            assertTrue(e.getMessage().contains("does not exist"));
+        }
+
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID);
 
@@ -480,6 +493,8 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true, USER_ID));
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
+
+        assertFalse(NCubeManager.deleteCube(defaultSnapshotApp, "test.Floppy", true, USER_ID));
     }
 
     @Test
@@ -826,6 +841,18 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testGetRevisionHistory() throws Exception {
+        try {
+            NCubeManager.getRevisionHistory(defaultSnapshotApp, "foo");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Cannot fetch"));
+            assertTrue(e.getMessage().contains("does not exist"));
+        }
+
+        NCube cube = createCube();
+    }
+
+    @Test
     public void testDeleteWithRevisions() throws Exception
     {
         NCube cube = createCube();
@@ -868,6 +895,22 @@ public class TestNCubeManager
         assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
+    }
+
+    @Test
+    public void testResolveClasspathWithInvalidUrl() throws Exception {
+        NCube cube = NCubeManager.getNCubeFromResource("sys.classpath.invalid.url.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        createCube();
+
+        // force reload from hsql and reget classpath
+        assertEquals(1, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+
+        NCubeManager.clearCache(defaultSnapshotApp);
+        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp));
+
+        NCubeManager.getCube(defaultSnapshotApp, "test.AgeGender");
+        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
     }
 
     @Test

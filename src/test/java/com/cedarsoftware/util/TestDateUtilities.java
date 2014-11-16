@@ -32,6 +32,41 @@ import static org.junit.Assert.fail;
 public class TestDateUtilities
 {
     @Test
+    public void testXmlDates()
+    {
+        String s = "2013-08-30T22:00:01.000";
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
+        Date y = DateUtilities.parseDate(s);
+        assertEquals(c.getTime(), y);
+
+        s = "2013-08-30T22:00:01.000-09:00";
+        c.clear();
+        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
+        y = DateUtilities.parseDate(s);
+        assertEquals(c.getTime(), y);
+
+        s = "2013-08-30T22:00:01.000+02:00";
+        c.clear();
+        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
+        y = DateUtilities.parseDate(s);
+        assertEquals(c.getTime(), y);
+
+        s = "2013-08-30T22:00:01.000+02:00";
+        c.clear();
+        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
+        y = DateUtilities.parseDate(s);
+        assertEquals(c.getTime(), y);
+
+        s = "2013-08-30T22:00:01.000Z";
+        c.clear();
+        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
+        y = DateUtilities.parseDate(s);
+        assertEquals(c.getTime(), y);
+    }
+
+    @Test
     public void testConstructorIsPrivate() throws Exception
     {
         Class c = DateUtilities.class;

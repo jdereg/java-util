@@ -36,9 +36,9 @@ public final class DateUtilities
     private static final Pattern datePattern4 = Pattern.compile("(\\d{1,2})(st|nd|rd|th|)[ ]*[,]?[ ]*" + mos + "[ ]*[,]?[ ]*(\\d{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern datePattern5 = Pattern.compile("(\\d{4})[ ]*[,]?[ ]*" + mos + "[ ]*[,]?[ ]*(\\d{1,2})(st|nd|rd|th|)", Pattern.CASE_INSENSITIVE);
     private static final Pattern datePattern6 = Pattern.compile(days+"[ ]+" + mos + "[ ]+(\\d{1,2})[ ]+(\\d{2}:\\d{2}:\\d{2})[ ]+[A-Z]{1,3}\\s+(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})[.](\\d{1,3})");
-    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})");
-    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})");
+    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})[.](\\d{1,15})([+-](\\d{2})[:]?(\\d{2})|Z)?");
+    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})([+-](\\d{2})[:]?(\\d{2})|Z)?");
+    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})([+-](\\d{2})[:]?(\\d{2})|Z)?");
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
     private static final Map<String, String> months = new LinkedHashMap<String, String>();
 
@@ -162,20 +162,52 @@ public final class DateUtilities
         }
 
         // Determine which date pattern (Matcher) to use
+        String hour = null, min = null, sec = "00", milli = "0", tz = null;
         remains = remains.trim();
         matcher = timePattern1.matcher(remains);
-        if (!matcher.find())
+        if (matcher.find())
+        {
+            hour = matcher.group(1);
+            min = matcher.group(2);
+            sec = matcher.group(3);
+            milli = matcher.group(4);
+            if (matcher.groupCount() > 4)
+            {
+                tz = matcher.group(5);
+            }
+        }
+        else
         {
             matcher = timePattern2.matcher(remains);
-            if (!matcher.find())
+            if (matcher.find())
+            {
+                hour = matcher.group(1);
+                min = matcher.group(2);
+                sec = matcher.group(3);
+                if (matcher.groupCount() > 3)
+                {
+                    tz = matcher.group(4);
+                }
+            }
+            else
             {
                 matcher = timePattern3.matcher(remains);
-                if (!matcher.find())
+                if (matcher.find())
+                {
+                    hour = matcher.group(1);
+                    min = matcher.group(2);
+                    if (matcher.groupCount() > 2)
+                    {
+                        tz = matcher.group(3);
+                    }
+                }
+                else
                 {
                     matcher = null;
                 }
             }
         }
+
         if (matcher != null)
         {
             remains = matcher.replaceFirst("");
@@ -193,7 +225,7 @@ public final class DateUtilities
         if (StringUtilities.length(remains) > 0)
         {
             remains = remains.trim();
-            if (!remains.equals(","))
+            if (!remains.equals(",") && (!remains.equals("T")))
             {
                 error("Issue parsing data/time, other characters present: " + remains);
             }
@@ -222,19 +254,6 @@ public final class DateUtilities
         }
         else
         {
-            String hour = matcher.group(1);
-            String min = matcher.group(2);
-            String sec = "0";
-            String milli = "0";
-            if (matcher.groupCount() > 2)
-            {
-                sec = matcher.group(3);
-            }
-            if (matcher.groupCount() > 3)
-            {
-                milli = matcher.group(4);
-            }
-
             // Regex prevents these from ever failing to parse.
             int h = Integer.parseInt(hour);
             int mn = Integer.parseInt(min);

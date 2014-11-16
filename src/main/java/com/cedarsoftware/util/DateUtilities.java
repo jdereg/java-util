@@ -28,15 +28,18 @@ import java.util.regex.Pattern;
  */
 public final class DateUtilities
 {
+    private static final String days = "(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)"; // longer before shorter matters
     private static final String mos = "(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)";
-    private static final Pattern datePattern1 = Pattern.compile("(\\d{4})[\\./-](\\d{1,2})[\\./-](\\d{1,2})");
-    private static final Pattern datePattern2 = Pattern.compile("(\\d{1,2})[\\./-](\\d{1,2})[\\./-](\\d{4})");
-    private static final Pattern datePattern3 = Pattern.compile(mos + "[ ,]+(\\d{1,2})[ ,]+(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern4 = Pattern.compile("(\\d{1,2})[ ,]" + mos + "[ ,]+(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern5 = Pattern.compile("(\\d{4})[ ,]" + mos + "[ ,]+(\\d{1,2})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:\\.](\\d{2})[:\\.](\\d{2})[\\.](\\d{1,3})");
-    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:\\.](\\d{2})[:\\.](\\d{2})");
-    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:\\.](\\d{2})");
+    private static final Pattern datePattern1 = Pattern.compile("(\\d{4})[./-](\\d{1,2})[./-](\\d{1,2})");
+    private static final Pattern datePattern2 = Pattern.compile("(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4})");
+    private static final Pattern datePattern3 = Pattern.compile(mos + "[ ]*[,]?[ ]*(\\d{1,2})(st|nd|rd|th|)[ ]*[,]?[ ]*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern4 = Pattern.compile("(\\d{1,2})(st|nd|rd|th|)[ ]*[,]?[ ]*" + mos + "[ ]*[,]?[ ]*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern5 = Pattern.compile("(\\d{4})[ ]*[,]?[ ]*" + mos + "[ ]*[,]?[ ]*(\\d{1,2})(st|nd|rd|th|)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern6 = Pattern.compile(days+"[ ]+" + mos + "[ ]+(\\d{1,2})[ ]+(\\d{2}:\\d{2}:\\d{2})[ ]+[A-Z]{1,3}\\s+(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})[.](\\d{1,3})");
+    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})");
+    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})");
+    private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
     private static final Map<String, String> months = new LinkedHashMap<String, String>();
 
     static
@@ -87,13 +90,14 @@ public final class DateUtilities
         // Determine which date pattern (Matcher) to use
         Matcher matcher = datePattern1.matcher(dateStr);
 
-        String year, month = null, day, mon = null;
+        String year, month = null, day, mon = null, remains;
 
         if (matcher.find())
         {
             year = matcher.group(1);
             month = matcher.group(2);
             day = matcher.group(3);
+            remains = matcher.replaceFirst("");
         }
         else
         {
@@ -103,6 +107,7 @@ public final class DateUtilities
                 month = matcher.group(1);
                 day = matcher.group(2);
                 year = matcher.group(3);
+                remains = matcher.replaceFirst("");
             }
             else
             {
@@ -111,7 +116,8 @@ public final class DateUtilities
                 {
                     mon = matcher.group(1);
                     day = matcher.group(2);
-                    year = matcher.group(3);
+                    year = matcher.group(4);
+                    remains = matcher.replaceFirst("");
                 }
                 else
                 {
@@ -119,19 +125,32 @@ public final class DateUtilities
                     if (matcher.find())
                     {
                         day = matcher.group(1);
-                        mon = matcher.group(2);
-                        year = matcher.group(3);
+                        mon = matcher.group(3);
+                        year = matcher.group(4);
+                        remains = matcher.replaceFirst("");
                     }
                     else
                     {
                         matcher = datePattern5.matcher(dateStr);
-                        if (!matcher.find())
+                        if (matcher.find())
                         {
-                            error("Unable to parse: " + dateStr);
+                            year = matcher.group(1);
+                            mon = matcher.group(2);
+                            day = matcher.group(3);
+                            remains = matcher.replaceFirst("");
                         }
-                        year = matcher.group(1);
-                        mon = matcher.group(2);
-                        day = matcher.group(3);
+                        else
+                        {
+                            matcher = datePattern6.matcher(dateStr);
+                            if (!matcher.find())
+                            {
+                                error("Unable to parse: " + dateStr);
+                            }
+                            year = matcher.group(5);
+                            mon = matcher.group(2);
+                            day = matcher.group(3);
+                            remains = matcher.group(4);
+                        }
                     }
                 }
             }
@@ -143,17 +162,40 @@ public final class DateUtilities
         }
 
         // Determine which date pattern (Matcher) to use
-        matcher = timePattern1.matcher(dateStr);
+        remains = remains.trim();
+        matcher = timePattern1.matcher(remains);
         if (!matcher.find())
         {
-            matcher = timePattern2.matcher(dateStr);
+            matcher = timePattern2.matcher(remains);
             if (!matcher.find())
             {
-                matcher = timePattern3.matcher(dateStr);
+                matcher = timePattern3.matcher(remains);
                 if (!matcher.find())
                 {
                     matcher = null;
                 }
+            }
+        }
+        if (matcher != null)
+        {
+            remains = matcher.replaceFirst("");
+        }
+
+        // Clear out day of week (mon, tue, wed, ...)
+        if (StringUtilities.length(remains) > 0)
+        {
+            Matcher dayMatcher = dayPattern.matcher(remains);
+            if (dayMatcher.find())
+            {
+                remains = dayMatcher.replaceFirst("").trim();
+            }
+        }
+        if (StringUtilities.length(remains) > 0)
+        {
+            remains = remains.trim();
+            if (!remains.equals(","))
+            {
+                error("Issue parsing data/time, other characters present: " + remains);
             }
         }
 

@@ -32,7 +32,8 @@ import static org.junit.Assert.fail;
 public class TestDateUtilities
 {
     @Test
-    public void testConstructorIsPrivate() throws Exception {
+    public void testConstructorIsPrivate() throws Exception
+    {
         Class c = DateUtilities.class;
         Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
@@ -163,6 +164,218 @@ public class TestDateUtilities
     }
 
     @Test
+    public void testDayOfWeek()
+    {
+        DateUtilities.parseDate("thu, Dec 25, 2014");
+        DateUtilities.parseDate("thur, Dec 25, 2014");
+        DateUtilities.parseDate("thursday, December 25, 2014");
+
+        DateUtilities.parseDate("Dec 25, 2014 thu");
+        DateUtilities.parseDate("Dec 25, 2014 thur");
+        DateUtilities.parseDate("Dec 25, 2014 thursday");
+
+        DateUtilities.parseDate("thu Dec 25, 2014");
+        DateUtilities.parseDate("thur Dec 25, 2014");
+        DateUtilities.parseDate("thursday December 25, 2014");
+
+        DateUtilities.parseDate(" thu, Dec 25, 2014 ");
+        DateUtilities.parseDate(" thur, Dec 25, 2014 ");
+        DateUtilities.parseDate(" thursday, Dec 25, 2014 ");
+
+        DateUtilities.parseDate(" thu Dec 25, 2014 ");
+        DateUtilities.parseDate(" thur Dec 25, 2014 ");
+        DateUtilities.parseDate(" thursday Dec 25, 2014 ");
+
+        DateUtilities.parseDate(" Dec 25, 2014, thu ");
+        DateUtilities.parseDate(" Dec 25, 2014, thur ");
+        DateUtilities.parseDate(" Dec 25, 2014, thursday ");
+
+        try
+        {
+            DateUtilities.parseDate("text Dec 25, 2014");
+            fail();
+        }
+        catch (Exception ignored)
+        { }
+
+        try
+        {
+            DateUtilities.parseDate("Dec 25, 2014 text");
+            fail();
+        }
+        catch (Exception ignored)
+        { }
+    }
+
+    @Test
+    public void testDaySuffixesLower()
+    {
+        Date x = DateUtilities.parseDate("January 21st, 1994");
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("January 22nd 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("Jan 23rd 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("June 24th, 1994");
+        c.clear();
+        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("21st January, 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("22nd January 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("23rd Jan 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("24th June, 1994");
+        c.clear();
+        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("24th, June, 1994");
+        c.clear();
+        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+        assertEquals(x, c.getTime());
+    }
+
+    @Test
+    public void testDaySuffixesUpper()
+    {
+        Date x = DateUtilities.parseDate("January 21ST, 1994");
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("January 22ND 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("Jan 23RD 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("June 24TH, 1994");
+        c.clear();
+        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("21ST January, 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("22ND January 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("23RD Jan 1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("24TH June, 1994");
+        c.clear();
+        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("24TH, June, 1994");
+        c.clear();
+        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+        assertEquals(x, c.getTime());
+    }
+
+    @Test
+    public void testWeirdSpacing()
+    {
+        Date x = DateUtilities.parseDate("January    21ST  ,   1994");
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("January    22ND    1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("January    22ND    1994   Wed");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate(" Wednesday January    22ND    1994  ");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("22ND    January    1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("22ND    January  ,  1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("22ND  ,  Jan  ,  1994");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("1994 ,  Jan    22ND");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("1994  ,  January  ,  22nd");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("1994 ,  Jan    22ND Wed");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("Wed 1994  ,  January  ,  22nd");
+        c.clear();
+        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+        assertEquals(x, c.getTime());
+    }
+
+    @Test
+    public void testDateToStringFormat()
+    {
+        Date x = new Date();
+        Date y = DateUtilities.parseDate(x.toString());
+        assertEquals(x.toString(), y.toString());
+    }
+
+    @Test
     public void testParseErrors()
     {
         try
@@ -170,7 +383,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("2014-11-j 16:43:27.123");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -179,7 +392,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("2014-6-10 24:43:27.123");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -188,7 +401,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("2014-6-10 23:61:27.123");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -197,7 +410,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("2014-6-10 23:00:75.123");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception igored)
         {
         }
 
@@ -206,7 +419,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("27 Jume 2014");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -215,7 +428,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("13/01/2014");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -224,7 +437,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("00/01/2014");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -233,7 +446,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("12/32/2014");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
 
@@ -242,7 +455,7 @@ public class TestDateUtilities
             DateUtilities.parseDate("12/00/2014");
             fail("should not make it here");
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
         }
     }

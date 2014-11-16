@@ -152,7 +152,8 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testProxyFetchSocketTimeoutWithResponseSendErrorIssue() throws Exception {
+    public void testProxyFetchSocketTimeoutWithResponseSendErrorIssue() throws Exception
+    {
         UrlCommandCell cell = new StringUrlCmd("http://www.cedarsoftware.com", false);
 
         NCube ncube = Mockito.mock(NCube.class);

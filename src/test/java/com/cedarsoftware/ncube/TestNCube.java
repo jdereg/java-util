@@ -5014,6 +5014,16 @@ public class TestNCube
         assertNotEquals(sha1_a, sha1_b);
     }
 
+    @Test
+    public void testAbsoluteHttpUrlToGroovy()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("urlContent.json");
+        Map coord = new HashMap();
+        coord.put("sites", "AbsoluteHttpUrl");
+        String s = (String) cube.getCell(coord);
+        assertEquals("Hello, world.", s);
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 
@@ -5369,18 +5379,15 @@ public class TestNCube
             fail("should not make it here");
         }
         catch (IllegalArgumentException e)
-        {
-        }
+        { }
         try
         {
             NCube.validateCubeName(" NotValid");
             fail("should not make it here");
         }
         catch (IllegalArgumentException e)
-        {
-        }
+        { }
     }
-
 
     @Test
     public void testValidateCubeName() throws Exception
@@ -5404,9 +5411,6 @@ public class TestNCube
         catch (Exception e)
         { }
     }
-
-
-
 
     static int countMatches(String s, String pattern)
     {

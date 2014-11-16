@@ -74,6 +74,15 @@ public class NCubeManager
         nCubePersister = persister;
     }
 
+    public static NCubePersister getPersister()
+    {
+        if (nCubePersister == null)
+        {
+            throw new IllegalStateException("Persister not set into NCubeManager.");
+        }
+        return nCubePersister;
+    }
+
     /**
      * Fetch all the n-cube names for the given ApplicationID.  This API
      * will load all cube records for the ApplicationID (NCubeInfoDtos),
@@ -151,7 +160,7 @@ public class NCubeManager
         }
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
-            NCube cube = nCubePersister.loadCube((NCubeInfoDto) value);
+            NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
             return cube;
         }
@@ -394,7 +403,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         NCube.validateCubeName(name);
-        return nCubePersister.doesCubeExist(appId, name);
+        return getPersister().doesCubeExist(appId, name);
     }
 
     /**
@@ -435,7 +444,7 @@ public class NCubeManager
     public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
-        Object[] cubes = nCubePersister.getCubeRecords(appId, pattern);
+        Object[] cubes = getPersister().getCubeRecords(appId, pattern);
         Map<String, Object> appCache = getCacheForApp(appId);
 
         for (Object cube : cubes)
@@ -461,7 +470,7 @@ public class NCubeManager
     public static Object[] getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
-        Object[] cubes = nCubePersister.getDeletedCubeRecords(appId, pattern);
+        Object[] cubes = getPersister().getDeletedCubeRecords(appId, pattern);
         return cubes;
     }
 
@@ -478,7 +487,7 @@ public class NCubeManager
             if ((cubeName instanceof String))
             {
                 NCube.validateCubeName((String)cubeName);
-                nCubePersister.restoreCube(appId, (String)cubeName, username);
+                getPersister().restoreCube(appId, (String) cubeName, username);
             }
             else
             {
@@ -491,7 +500,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Object[] revisions = nCubePersister.getRevisions(appId, cubeName);
+        Object[] revisions = getPersister().getRevisions(appId, cubeName);
         return revisions;
     }
 
@@ -500,7 +509,7 @@ public class NCubeManager
      */
     public static Object[] getAppNames(String tenant)
     {
-        return nCubePersister.getAppNames(tenant);
+        return getPersister().getAppNames(tenant);
     }
 
     /**
@@ -510,7 +519,7 @@ public class NCubeManager
     public static Object[] getAppVersions(ApplicationID appId)
     {
         validateAppId(appId);
-        return nCubePersister.getAppVersions(appId);
+        return getPersister().getAppVersions(appId);
     }
 
     /**
@@ -521,11 +530,11 @@ public class NCubeManager
         NCube.validateCubeName(newName);
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
-        nCubePersister.createCube(newAppId, copy, username);
-        String json = nCubePersister.getTestData(oldAppId, oldName);
-        nCubePersister.updateTestData(newAppId, newName, json);
-        String notes = nCubePersister.getNotes(oldAppId, oldName);
-        nCubePersister.updateNotes(newAppId, newName, notes);
+        getPersister().createCube(newAppId, copy, username);
+        String json = getPersister().getTestData(oldAppId, oldName);
+        getPersister().updateTestData(newAppId, newName, json);
+        String notes = getPersister().getNotes(oldAppId, oldName);
+        getPersister().updateNotes(newAppId, newName, notes);
         broadcast(newAppId);
     }
 
@@ -540,7 +549,7 @@ public class NCubeManager
         validateAppId(appId);
         validateCube(ncube);
         final String cubeName = ncube.name;
-        nCubePersister.updateCube(appId, ncube, username);
+        getPersister().updateCube(appId, ncube, username);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(cubeName))
         {   // If the sys.classpath cube is changed, then the entire class loader must be dropped.  It will be lazily rebuilt.
@@ -563,7 +572,7 @@ public class NCubeManager
     public static int releaseCubes(ApplicationID appId)
     {
         validateAppId(appId);
-        int rows = nCubePersister.releaseCubes(appId);
+        int rows = getPersister().releaseCubes(appId);
         broadcast(appId);
         return rows;
     }
@@ -578,14 +587,14 @@ public class NCubeManager
             throw new IllegalArgumentException("New SNAPSHOT version " + newVersion + " cannot be the same as the RELEASE version.");
         }
 
-        return nCubePersister.createSnapshotVersion(appId, newVersion);
+        return getPersister().createSnapshotVersion(appId, newVersion);
     }
 
     public static void changeVersionValue(ApplicationID appId, String newVersion)
     {
         validateAppId(appId);
         ApplicationID.validateVersion(newVersion);
-        nCubePersister.changeVersionValue(appId, newVersion);
+        getPersister().changeVersionValue(appId, newVersion);
         clearCache(appId);
         broadcast(appId);
     }
@@ -607,7 +616,7 @@ public class NCubeManager
             throw new IllegalArgumentException("Could not rename due to name: " + oldName + " does not exist within app: " + appId);
         }
 
-        boolean result = nCubePersister.renameCube(appId, ncube, newName);
+        boolean result = getPersister().renameCube(appId, ncube, newName);
         Map<String, Object> appCache = getCacheForApp(appId);
         appCache.remove(oldName.toLowerCase());
         appCache.put(newName.toLowerCase(), ncube);
@@ -643,7 +652,7 @@ public class NCubeManager
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
 
-        if (nCubePersister.deleteCube(appId, cubeName, allowDelete, username))
+        if (getPersister().deleteCube(appId, cubeName, allowDelete, username))
         {
             Map<String, Object> appCache = getCacheForApp(appId);
             appCache.remove(cubeName.toLowerCase());
@@ -662,7 +671,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        nCubePersister.updateNotes(appId, cubeName, notes);
+        getPersister().updateNotes(appId, cubeName, notes);
         return true;
     }
 
@@ -675,7 +684,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.getNotes(appId, cubeName);
+        return getPersister().getNotes(appId, cubeName);
     }
 
     /**
@@ -688,14 +697,14 @@ public class NCubeManager
         validateAppId(appId);
         validateTestData(testData);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.updateTestData(appId, cubeName, testData);
+        return getPersister().updateTestData(appId, cubeName, testData);
     }
 
     public static String getTestData(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return nCubePersister.getTestData(appId, cubeName);
+        return getPersister().getTestData(appId, cubeName);
     }
 
 
@@ -738,7 +747,7 @@ public class NCubeManager
     {
         validateCube(ncube);
         validateAppId(appId);
-        nCubePersister.createCube(appId, ncube, username);
+        getPersister().createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);
         broadcast(appId);

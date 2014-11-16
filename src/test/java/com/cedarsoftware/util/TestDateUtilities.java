@@ -9,6 +9,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
@@ -34,39 +35,146 @@ public class TestDateUtilities
     @Test
     public void testXmlDates()
     {
-        String s = "2013-08-30T22:00:01.000";
-        Calendar c = Calendar.getInstance();
-        c.clear();
-        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
-        Date y = DateUtilities.parseDate(s);
-        assertEquals(c.getTime(), y);
+        Date t12 = DateUtilities.parseDate("2013-08-30T22:00Z");
+        Date t22 = DateUtilities.parseDate("2013-08-30T22:00+00:00");
+        Date t32 = DateUtilities.parseDate("2013-08-30T22:00-00:00");
+        Date t42 = DateUtilities.parseDate("2013-08-30T22:00+0000");
+        Date t52 = DateUtilities.parseDate("2013-08-30T22:00-0000");
+        assertEquals(t12, t22);
+        assertEquals(t22, t32);
+        assertEquals(t32, t42);
+        assertEquals(t42, t52);
 
-        s = "2013-08-30T22:00:01.000-09:00";
-        c.clear();
-        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
-        y = DateUtilities.parseDate(s);
-        assertEquals(c.getTime(), y);
+        Date t11 = DateUtilities.parseDate("2013-08-30T22:00:00Z");
+        Date t21 = DateUtilities.parseDate("2013-08-30T22:00:00+00:00");
+        Date t31 = DateUtilities.parseDate("2013-08-30T22:00:00-00:00");
+        Date t41 = DateUtilities.parseDate("2013-08-30T22:00:00+0000");
+        Date t51 = DateUtilities.parseDate("2013-08-30T22:00:00-0000");
+        assertEquals(t11, t12);
+        assertEquals(t11, t21);
+        assertEquals(t21, t31);
+        assertEquals(t31, t41);
+        assertEquals(t41, t51);
 
-        s = "2013-08-30T22:00:01.000+02:00";
-        c.clear();
-        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
-        y = DateUtilities.parseDate(s);
-        assertEquals(c.getTime(), y);
+        Date t1 = DateUtilities.parseDate("2013-08-30T22:00:00.0Z");
+        Date t2 = DateUtilities.parseDate("2013-08-30T22:00:00.0+00:00");
+        Date t3 = DateUtilities.parseDate("2013-08-30T22:00:00.0-00:00");
+        Date t4 = DateUtilities.parseDate("2013-08-30T22:00:00.0+0000");
+        Date t5 = DateUtilities.parseDate("2013-08-30T22:00:00.0-0000");
+        assertEquals(t1, t11);
+        assertEquals(t1, t2);
+        assertEquals(t2, t3);
+        assertEquals(t3, t4);
+        assertEquals(t4, t5);
 
-        s = "2013-08-30T22:00:01.000+02:00";
-        c.clear();
-        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
-        y = DateUtilities.parseDate(s);
-        assertEquals(c.getTime(), y);
+        Date t13 = DateUtilities.parseDate("2013-08-30T22:00:00.000000000Z");
+        Date t23 = DateUtilities.parseDate("2013-08-30T22:00:00.000000000+00:00");
+        Date t33 = DateUtilities.parseDate("2013-08-30T22:00:00.000000000-00:00");
+        Date t43 = DateUtilities.parseDate("2013-08-30T22:00:00.000000000+0000");
+        Date t53 = DateUtilities.parseDate("2013-08-30T22:00:00.000000000-0000");
+        assertEquals(t13, t1);
+        assertEquals(t13, t23);
+        assertEquals(t23, t33);
+        assertEquals(t33, t43);
+        assertEquals(t43, t53);
 
-        s = "2013-08-30T22:00:01.000Z";
-        c.clear();
-        c.set(2013, Calendar.AUGUST, 30, 22, 0, 1);
-        y = DateUtilities.parseDate(s);
-        assertEquals(c.getTime(), y);
+        Date t14 = DateUtilities.parseDate("2013-08-30T22:00:00.123456789Z");
+        Date t24 = DateUtilities.parseDate("2013-08-30T22:00:00.123456789+00:00");
+        Date t34 = DateUtilities.parseDate("2013-08-30T22:00:00.123456789-00:00");
+        Date t44 = DateUtilities.parseDate("2013-08-30T22:00:00.123456789+0000");
+        Date t54 = DateUtilities.parseDate("2013-08-30T22:00:00.123456789-0000");
+        assertNotEquals(t14, t13);
+        assertEquals(t14, t24);
+        assertEquals(t24, t34);
+        assertEquals(t34, t44);
+        assertEquals(t44, t54);
     }
 
     @Test
+    public void testXmlDatesWithOffsets()
+    {
+        Date t1 = DateUtilities.parseDate("2013-08-30T22:00Z");
+        Date t2 = DateUtilities.parseDate("2013-08-30T22:00+01:00");
+        Date t3 = DateUtilities.parseDate("2013-08-30T22:00-01:00");
+        Date t4 = DateUtilities.parseDate("2013-08-30T22:00+0100");
+        Date t5 = DateUtilities.parseDate("2013-08-30T22:00-0100");
+
+        assertEquals(60 * 60 * 1000, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t3.getTime());
+        assertEquals(60 * 60 * 1000, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t5.getTime());
+
+        t1 = DateUtilities.parseDate("2013-08-30T22:17Z");
+        t2 = DateUtilities.parseDate("2013-08-30T22:17+01:00");
+        t3 = DateUtilities.parseDate("2013-08-30T22:17-01:00");
+        t4 = DateUtilities.parseDate("2013-08-30T22:17+0100");
+        t5 = DateUtilities.parseDate("2013-08-30T22:17-0100");
+
+        assertEquals(60 * 60 * 1000, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t3.getTime());
+        assertEquals(60 * 60 * 1000, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t5.getTime());
+
+        t1 = DateUtilities.parseDate("2013-08-30T22:17:34Z");
+        t2 = DateUtilities.parseDate("2013-08-30T22:17:34+01:00");
+        t3 = DateUtilities.parseDate("2013-08-30T22:17:34-01:00");
+        t4 = DateUtilities.parseDate("2013-08-30T22:17:34+0100");
+        t5 = DateUtilities.parseDate("2013-08-30T22:17:34-0100");
+
+        assertEquals(60 * 60 * 1000, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t3.getTime());
+        assertEquals(60 * 60 * 1000, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t5.getTime());
+
+        t1 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789Z");
+        t2 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+01:00");
+        t3 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789-01:00");
+        t4 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+0100");
+        t5 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789-0100");
+
+        assertEquals(60 * 60 * 1000, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t3.getTime());
+        assertEquals(60 * 60 * 1000, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 60 * 1000, t1.getTime() - t5.getTime());
+
+        t1 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789Z");
+        t2 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+13:00");
+        t3 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789-13:00");
+        t4 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+1300");
+        t5 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789-1300");
+
+        assertEquals(60 * 60 * 1000 * 13, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 60 * 1000 * 13, t1.getTime() - t3.getTime());
+        assertEquals(60 * 60 * 1000 * 13, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 60 * 1000 * 13, t1.getTime() - t5.getTime());
+    }
+
+    @Test
+    public void testXmlDatesWithMinuteOffsets()
+    {
+        Date t1 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789Z");
+        Date t2 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+00:01");
+        Date t3 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789-00:01");
+        Date t4 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+0001");
+        Date t5 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789-0001");
+
+        assertEquals(60 * 1000, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 1000, t1.getTime() - t3.getTime());
+        assertEquals(60 * 1000, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 1000, t1.getTime() - t5.getTime());
+
+        t1 = DateUtilities.parseDate("2013-08-30T22:17Z");
+        t2 = DateUtilities.parseDate("2013-08-30T22:17+00:01");
+        t3 = DateUtilities.parseDate("2013-08-30T22:17-00:01");
+        t4 = DateUtilities.parseDate("2013-08-30T22:17+0001");
+        t5 = DateUtilities.parseDate("2013-08-30T22:17-0001");
+
+        assertEquals(60 * 1000, t1.getTime() - t2.getTime());
+        assertEquals(-60 * 1000, t1.getTime() - t3.getTime());
+        assertEquals(60 * 1000, t1.getTime() - t4.getTime());
+        assertEquals(-60 * 1000, t1.getTime() - t5.getTime());
+    }
+        @Test
     public void testConstructorIsPrivate() throws Exception
     {
         Class c = DateUtilities.class;

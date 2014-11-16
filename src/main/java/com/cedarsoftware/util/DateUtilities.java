@@ -4,6 +4,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,9 +37,9 @@ public final class DateUtilities
     private static final Pattern datePattern4 = Pattern.compile("(\\d{1,2})(st|nd|rd|th|)[ ]*[,]?[ ]*" + mos + "[ ]*[,]?[ ]*(\\d{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern datePattern5 = Pattern.compile("(\\d{4})[ ]*[,]?[ ]*" + mos + "[ ]*[,]?[ ]*(\\d{1,2})(st|nd|rd|th|)", Pattern.CASE_INSENSITIVE);
     private static final Pattern datePattern6 = Pattern.compile(days+"[ ]+" + mos + "[ ]+(\\d{1,2})[ ]+(\\d{2}:\\d{2}:\\d{2})[ ]+[A-Z]{1,3}\\s+(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})[.](\\d{1,15})([+-](\\d{2})[:]?(\\d{2})|Z)?");
-    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})([+-](\\d{2})[:]?(\\d{2})|Z)?");
-    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})([+-](\\d{2})[:]?(\\d{2})|Z)?");
+    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})[.](\\d{1,10})([+-]\\d{2}[:]?\\d{2}|Z)?");
+    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})([+-]\\d{2}[:]?\\d{2}|Z)?");
+    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})([+-]\\d{2}[:]?\\d{2}|Z)?");
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
     private static final Map<String, String> months = new LinkedHashMap<String, String>();
 
@@ -233,6 +234,17 @@ public final class DateUtilities
 
         Calendar c = Calendar.getInstance();
         c.clear();
+        if (tz != null)
+        {
+            if ("z".equalsIgnoreCase(tz))
+            {
+                c.setTimeZone(TimeZone.getTimeZone("GMT"));
+            }
+            else
+            {
+                c.setTimeZone(TimeZone.getTimeZone("GMT" + tz));
+            }
+        }
 
         // Regex prevents these from ever failing to parse
         int y = Integer.parseInt(year);
@@ -273,7 +285,7 @@ public final class DateUtilities
                 error("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
-            // regex enforces millis to 000 to 999 or none
+            // regex enforces millis to number
             c.set(y, m, d, h, mn, s);
             c.set(Calendar.MILLISECOND, ms);
         }

@@ -18,7 +18,8 @@
                 { "id":"MyOtherDriveUrlSSL"},
                 { "id":"GroovyExpression"},
                 { "id":"MyOtherDriveUriSSL"},
-                { "id":"StringFromRemoteUrlBig" }
+                { "id":"StringFromRemoteUrlBig" },
+                { "id":"AbsoluteHttpUrl"}
             ]
     }],
     "cells":[
@@ -33,6 +34,7 @@
         { "id":["MyOtherDriveUrlSSL"], "type":"exp", "url":"tests/ncube/hello.groovy"},
         { "id":["GroovyExpression"], "type":"string", "value":"return \"Hello, world.\""},
         { "id":["MyOtherDriveUriSSL"], "type":"template", "url":"html/quick-start"},
-        { "id":["StringFromRemoteUrlBig"], "type":"string", "cache":true, "url":"http://www.cedarsoftware.com/tests/ncube/FUNCDESC.TXT"}
+        { "id":["StringFromRemoteUrlBig"], "type":"string", "cache":true, "url":"http://www.cedarsoftware.com/tests/ncube/FUNCDESC.TXT"},
+        { "id":["AbsoluteHttpUrl"], "type":"exp", "url":"http://www.cedarsoftware.com/tests/ncube/hello.groovy"}
     ]
 }

@@ -5304,7 +5304,7 @@ public class TestNCube
 
     static NCube getTestNCube2D(boolean defCol)
     {
-        NCube<Double> ncube = new NCube<Double>("test.Age-Gender");
+        NCube<Double> ncube = new NCube<>("test.Age-Gender");
         Axis axis1 = getGenderAxis(defCol);
 
         Axis axis2 = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, defCol);
@@ -5327,7 +5327,7 @@ public class TestNCube
 
     static NCube getTestNCube3D_Boolean()
     {
-        NCube<Boolean> ncube = new NCube<Boolean>("test.ValidTrailorConfigs");
+        NCube<Boolean> ncube = new NCube<>("test.ValidTrailorConfigs");
         Axis axis1 = new Axis("Trailers", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         axis1.addColumn("S1A");
         axis1.addColumn("M1A");
@@ -5361,7 +5361,7 @@ public class TestNCube
     @Test
     public void testValidateCubeNames()
     {
-        NCube.validateCubeName("This:is.legal#but-hard_to|read");
+        NCube.validateCubeName("This:is.legal_but-hard_to.read");
         try
         {
             NCube.validateCubeName("This:is.not/legal#and-hard_to|read");

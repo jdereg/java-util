@@ -64,6 +64,8 @@ public class NCubeJdbcPersister
                 insert.setString(7, username);
                 insert.setString(8, appId.getTenant());
                 insert.setLong(9, rev);
+
+                //TODO:  should we also push the notes forward now that createCube is used for updates, etc.?
                 insert.setBytes(10, testData == null ? null : testData.getBytes("UTF-8"));
 
                 int rowCount = insert.executeUpdate();

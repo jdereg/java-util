@@ -108,7 +108,7 @@ public class NCubeManager
             for (Object value : getCacheForApp(appId).values())
             {
                 NCube cube = (NCube) value;
-                names.add(((NCube)value).name);
+                names.add(cube.name);
             }
         }
         return new CaseInsensitiveSet<>(names);
@@ -153,9 +153,10 @@ public class NCubeManager
         {   // Lazy load cube (make sure to apply any advices to it)
             NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
-            //TODO:  John:  I added putting hydrated cube into the cache?
-            //TODO:  We were always hydrating cubes from db without this.
-            getCacheForApp(cube.getApplicationID()).put(cube.getName().toLowerCase(), cube);
+            if (!cube.name.toLowerCase().startsWith("tx."))
+            {   // Do not cache transactional cubes
+                getCacheForApp(cube.getApplicationID()).put(cube.name.toLowerCase(), cube);
+            }
             return cube;
         }
         else

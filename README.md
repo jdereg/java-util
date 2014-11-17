@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>2.9.18</version>
+  <version>3.0.0</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -85,6 +85,19 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.0.0
+ * `NCubeManager` no longer has `Connection` in any of it's APIs. Instead a `NCubePersister` is set into the `NCubeManager` at start up, and it uses the persister for interacting with the database.  Set a `ConnectionProvider` inside the `Persister` so that it can obtain connections.  This is in preparation of MongoDB persister support.
+ * Cubes can now be written to, in addition to being read from while executing.  This means that n-cube can now be used for transactional data.
+ * Caching has been greatly improved and simplified from the user's perspective.  In the past, `NCubeManager` had to be told when to load cubes, and when it could be asked to fetch from the cache.  With the new caching strategy, cubes are loaded with a simple `NCubeManager.getCube()` call.  The Manager will fetch it from the persister if it is not already in it's internal cache.
+ * Revision history support added. When a cube is deleted, updated, or restored, an new record is created with a higher revision number.  Cubes are never deleted.  This enabled the new restore capability as well as version history.
+ * `NCubeManager` manages the classpath for each Application (tenant, app, version, status).  The classpath is maintained in the `sys.classpath` cube as `List` of `String` paths (relative [resource] entries as well as jar entries supported).
+ * `NCubeManager` manages the Application version.  `NCubeManager` will look to the 0.0.0 SNAPSHOT version of the sys.version cube for the App's version and SNAPSHOT. This makes it a simple to manage version and status within this single cube.
+ * When loading a `GroovyExpression` cell that is specified by a relative URL that ends with .groovy, and attempt will be made to locate this class already in the JVM, as might be there when running with a code coverage tool like Clover.
+ * `ApplicationID` class is available to `GroovyExpression` cells.
+ * Classpath, Method caches, and so forth are all scoped to tenant id.  When one is cleared, it does not clear cache for other tenants (`ApplicationID`s).
+ * Removed unnecessary synchronization by using `ConcurrentHashMap`s.
+ * JVM now handles proxied connections.
+ * Many more tests have been added, getting code coverage to 95%.
 * 2.9.18
  * Carrying ApplicationID throughout n-cube in preparation for n-cube 3.0.0.  This version is technically a pre-release candidate for 3.0.0.  It changes API and removes deprecated APIs.
 * 2.9.17

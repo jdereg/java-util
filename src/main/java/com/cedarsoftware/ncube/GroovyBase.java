@@ -290,7 +290,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (urlLoader == null)
         {
-            throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for appStr: " + cube.getApplicationID() + ".  Use NCubeManager.addBaseResourceUrls() to set it.  Found executing ncube: " + cube.getName());
+            throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for appStr: " + cube.getApplicationID() + ".  Make sure to use sys.classpath cube to set it.  Found executing cube: " + cube.getName());
         }
 
         if (isUrlUsed)
@@ -299,7 +299,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
             if (groovySourceUrl == null)
             {
-                throw new IllegalArgumentException("Groovy code source URL is non-relative, add base url to GroovyClassLoader on NCubeManager.addBaseResourceUrls(): " + url);
+                throw new IllegalArgumentException("Groovy code source URL is non-relative, add resource url to GroovyClassLoader using sys.classpath cube, url: " + url);
             }
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);

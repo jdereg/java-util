@@ -8,9 +8,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * NCubeManager Tests
@@ -541,31 +551,69 @@ public class TestNCubeManager
     public void testUpdateCubeWithSysClassPath() throws Exception
     {
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
-        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
-        assertEquals(1, NCubeManager.getCacheForApp(defaultSnapshotApp).size());
+        ApplicationID customId = new ApplicationID("NONE", "updateCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
-        NCube testCube = TestNCube.getSysClassPathCube();
-        NCubeManager.createCube(defaultSnapshotApp, testCube, USER_ID);
+        NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
 
-        Map<String, Object> cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
+
+        NCubeManager.createCube(customId, testCube, USER_ID);
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(customId);
         assertEquals(1, cache.size());
-
-        //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));
 
-        assertTrue(NCubeManager.updateCube(defaultSnapshotApp, testCube, USER_ID));
-        cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
-        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp));
-        assertEquals(0, cache.size());
+        assertTrue(NCubeManager.updateCube(customId, testCube, USER_ID));
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
-        testCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
-        cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        testCube = NCubeManager.getCube(customId, "sys.classpath");
+        cache = NCubeManager.getCacheForApp(customId);
         assertEquals(1, cache.size());
-        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));
     }
+
+    @Test
+    public void testRenameCubeWithSysClassPath() throws Exception
+    {
+        //  from setup, assert initial classloader condition (www.cedarsoftware.com)
+        ApplicationID customId = new ApplicationID("NONE", "renameCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
+
+        NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
+
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
+
+        NCubeManager.clearCache();
+        testCube.name = "sys.mistake";
+        NCubeManager.createCube(customId, testCube, USER_ID);
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(customId);
+        assertEquals(1, cache.size());
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get("sys.mistake"));
+
+        assertTrue(NCubeManager.renameCube(customId, "sys.mistake", "sys.classpath"));
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
+
+        testCube = NCubeManager.getCube(customId, "sys.classpath");
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get("sys.classpath"));
+    }
+
 
     @Test
     public void testNCubeManagerUpdateCubeExceptions() throws Exception

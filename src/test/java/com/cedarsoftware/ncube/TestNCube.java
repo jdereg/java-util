@@ -5322,7 +5322,7 @@ public class TestNCube
 
     static NCube getSysClassPathCube()
     {
-        return NCubeManager.getNCubeFromResource("sys.classpath.json");
+        return NCubeManager.getNCubeFromResource("sys.classpath.tests.json");
     }
 
     static NCube getTestNCube3D_Boolean()

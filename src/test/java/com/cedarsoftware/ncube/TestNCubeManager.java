@@ -516,6 +516,10 @@ public class TestNCubeManager
     @Test
     public void testUpdateCubeWithSysClassPath() throws Exception
     {
+        //  from setup, assert initial classloader condition (www.cedarsoftware.com)
+        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+        assertEquals(1, NCubeManager.getCacheForApp(defaultSnapshotApp).size());
+
         NCube testCube = TestNCube.getSysClassPathCube();
         NCubeManager.createCube(defaultSnapshotApp, testCube, USER_ID);
 
@@ -527,11 +531,13 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.updateCube(defaultSnapshotApp, testCube, USER_ID));
         cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp));
         assertEquals(0, cache.size());
 
         testCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
         cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
         assertEquals(1, cache.size());
+        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));

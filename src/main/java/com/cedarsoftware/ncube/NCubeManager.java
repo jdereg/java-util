@@ -59,12 +59,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NCubeManager
 {
     private static final String SYS_BOOTSTRAP = "sys.bootstrap";
+    private static final String CLASSPATH_CUBE = "sys.classpath";
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
-    private static final String CLASSPATH_CUBE = "sys.classpath";
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -153,6 +153,9 @@ public class NCubeManager
         {   // Lazy load cube (make sure to apply any advices to it)
             NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
+            //TODO:  John:  I added putting hydrated cube into the cache?
+            //TODO:  We were always hydrating cubes from db without this.
+            getCacheForApp(cube.getApplicationID()).put(cube.getName().toLowerCase(), cube);
             return cube;
         }
         else
@@ -257,7 +260,7 @@ public class NCubeManager
      * Fetch the Map of n-cubes for the given ApplicationID.  If no
      * cache yet exists, a new empty cache is added.
      */
-    private static Map<String, Object> getCacheForApp(ApplicationID appId)
+    static Map<String, Object> getCacheForApp(ApplicationID appId)
     {
         Map<String, Object> ncubes = ncubeCache.get(appId);
 

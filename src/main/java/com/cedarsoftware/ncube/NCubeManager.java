@@ -108,7 +108,7 @@ public class NCubeManager
             for (Object value : getCacheForApp(appId).values())
             {
                 NCube cube = (NCube) value;
-                names.add(((NCube)value).name);
+                names.add(cube.name);
             }
         }
         return new CaseInsensitiveSet<>(names);
@@ -153,7 +153,11 @@ public class NCubeManager
         {   // Lazy load cube (make sure to apply any advices to it)
             NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
-            getCacheForApp(cube.getApplicationID()).put(cube.getName().toLowerCase(), cube);
+            String cubeName = cube.getName().toLowerCase();
+            if (!cubeName.startsWith("tx."))
+            {
+                getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
+            }
             return cube;
         }
         else
@@ -211,7 +215,12 @@ public class NCubeManager
         validateCube(ncube);
 
         // Add the cube to the cache for this ApplicationID
-        getCacheForApp(appId).put(ncube.name.toLowerCase(), ncube);
+        String cubeName = ncube.name.toLowerCase();
+
+        if (!cubeName.startsWith("tx."))
+        {
+            getCacheForApp(appId).put(cubeName, ncube);
+        }
 
         // Apply any matching advices to it
         applyAdvices(appId, ncube);

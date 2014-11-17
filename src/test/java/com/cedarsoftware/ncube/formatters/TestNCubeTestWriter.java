@@ -17,10 +17,22 @@ public class TestNCubeTestWriter {
     public void testVerySimpleCase() throws Exception {
         NCubeTest[] tests = new NCubeTest[]
         {
-
+            verySimpleTest
         };
 
         String s = new NCubeTestWriter().format(tests);
         assertEquals("[{\"name\":\"foo\",\"coord\":[],\"assertions\":[]}]", s);
+    }
+
+    @Test
+    public void testNullCase() throws Exception {
+        String s = new NCubeTestWriter().format(null);
+        assertEquals("[]", s);
+    }
+
+    @Test
+    public void testEmptyCase() throws Exception {
+        String s = new NCubeTestWriter().format(new NCubeTest[0]);
+        assertEquals("[]", s);
     }
 }

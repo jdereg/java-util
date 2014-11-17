@@ -153,9 +153,10 @@ public class NCubeManager
         {   // Lazy load cube (make sure to apply any advices to it)
             NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
-            if (!cube.name.toLowerCase().startsWith("tx."))
+            String cubeName = cube.name.toLowerCase();
+            if (!cubeName.startsWith("tx."))
             {   // Do not cache transactional cubes
-                getCacheForApp(cube.getApplicationID()).put(cube.name.toLowerCase(), cube);
+                getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
             }
             return cube;
         }
@@ -213,8 +214,12 @@ public class NCubeManager
         validateAppId(appId);
         validateCube(ncube);
 
-        // Add the cube to the cache for this ApplicationID
-        getCacheForApp(appId).put(ncube.name.toLowerCase(), ncube);
+        String cubeName = ncube.name.toLowerCase();
+
+        if (!cubeName.startsWith("tx."))
+        {
+            getCacheForApp(appId).put(cubeName, ncube);
+        }
 
         // Apply any matching advices to it
         applyAdvices(appId, ncube);

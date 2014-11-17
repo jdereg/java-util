@@ -75,7 +75,7 @@ public class NCube<T>
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
     private transient ApplicationID appId = ApplicationID.defaultAppId;
 
-    public static final String validCubeNameChars = "0-9a-zA-Z:.|#_-";
+    public static final String validCubeNameChars = "0-9a-zA-Z:._-";
     private static final String[] emptyStringArray = new String[] {};
     public static final String RULE_EXEC_INFO = "_rule";
     private static final ThreadLocal<Deque<StackEntry>> executionStack = new ThreadLocal<Deque<StackEntry>>()
@@ -735,7 +735,7 @@ public class NCube<T>
         return result;
     }
 
-    private void bindColumn(Set<Column> idCoord, Map<String, Object> ruleIds, Axis axis, Column boundColumn)
+    private static void bindColumn(Set<Column> idCoord, Map<String, Object> ruleIds, Axis axis, Column boundColumn)
     {
         idCoord.add(boundColumn);
         ruleIds.put(axis.getName(), boundColumn.getValue() == null ? "null" : boundColumn.getValue().toString());
@@ -938,7 +938,7 @@ public class NCube<T>
             }
         }
 
-        // Add in all input.keyName references from the Groovy coode at the given cell (if it is a CommandCell).
+        // Add in all input.keyName references from the Groovy code at the given cell (if it is a CommandCell).
         //  This is highly valuable as it will find, for example, input.vehicle from the Groovy code.
         if (coord != null)
         {
@@ -1607,14 +1607,7 @@ public class NCube<T>
                 return declaredScopeKeys;
             }
             List declaredRequiredScope = (List) extractMetaPropertyValue(getMetaProperty("requiredScopeKeys"));
-            if (declaredRequiredScope == null)
-            {
-                declaredScopeKeys = new CaseInsensitiveSet<>();
-            }
-            else
-            {
-                declaredScopeKeys = new CaseInsensitiveSet(declaredRequiredScope);
-            }
+            declaredScopeKeys = declaredRequiredScope == null ? new CaseInsensitiveSet<>() : new CaseInsensitiveSet(declaredRequiredScope);
         }
         return declaredScopeKeys;
     }
@@ -2131,7 +2124,6 @@ public class NCube<T>
         }
         return list;
     }
-
 
     /**
      * Create an equivalent n-cube as 'this'.

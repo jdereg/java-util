@@ -269,7 +269,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
             if (groovySourceUrl == null)
             {
-                throw new IllegalArgumentException("Groovy code source URL is non-relative, add resource url to GroovyClassLoader using sys.classpath cube, url: " + url);
+                throw new IllegalArgumentException("Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, unresolvable url: " + url);
             }
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);

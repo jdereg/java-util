@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -86,8 +87,9 @@ public class TestUrlCommandCell
             };
             fail("should not make it here");
         }
-        catch (IllegalArgumentException ignored)
+        catch (IllegalArgumentException e)
         {
+            assertTrue(e.getMessage().contains("cannot be empty"));
         }
 
         UrlCommandCell cell = new UrlCommandCell("println 'hello'", null, false)
@@ -114,8 +116,9 @@ public class TestUrlCommandCell
             cube.getCell(coord);
             fail("Should not make it here");
         }
-        catch (Exception ignored)
+        catch (Exception e)
         {
+            assertTrue(e.getMessage().contains("Error occurred executing"));
         }
 
         coord.put("content.name", "badRelative");
@@ -124,8 +127,9 @@ public class TestUrlCommandCell
             cube.getCell(coord);
             fail("Should not make it here");
         }
-        catch (Exception ignored)
+        catch (Exception e)
         {
+            assertTrue(e.getMessage().contains("not found on axis"));
         }
 
         // Cause null urlLoader (it won't find URLs in NCubeManager for version 9.8.7)
@@ -136,8 +140,9 @@ public class TestUrlCommandCell
             cube.getCell(coord);
             fail("Should not make it here");
         }
-        catch (Exception ignored)
+        catch (Exception e)
         {
+            assertTrue(e.getMessage().contains("Error occurred executing"));
         }
     }
 

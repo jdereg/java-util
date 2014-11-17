@@ -512,17 +512,42 @@ public class TestNCubeManager
         assertEquals(2, cubeList.length);
     }
 
+
     @Test
-    public void testNCubeManagerUpdateCube() throws Exception
+    public void testUpdateCubeWithSysClassPath() throws Exception
+    {
+        NCube testCube = TestNCube.getSysClassPathCube();
+        NCubeManager.createCube(defaultSnapshotApp, testCube, USER_ID);
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        assertEquals(1, cache.size());
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get("sys.classpath"));
+
+        assertTrue(NCubeManager.updateCube(defaultSnapshotApp, testCube, USER_ID));
+        cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        assertEquals(0, cache.size());
+
+        testCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
+        cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        assertEquals(1, cache.size());
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get("sys.classpath"));
+    }
+
+    @Test
+    public void testNCubeManagerUpdateCubeExceptions() throws Exception
     {
         try
         {
             NCubeManager.updateCube(defaultSnapshotApp, null, USER_ID);
-            fail("should not make it here");
+            fail();
         }
-        catch (Exception e)
+        catch (IllegalArgumentException e)
         {
-            assertTrue(e instanceof IllegalArgumentException);
+            assertTrue(e.getMessage().contains("cannot be null"));
         }
 
         NCube testCube = TestNCube.getTestNCube2D(false);
@@ -530,13 +555,12 @@ public class TestNCubeManager
         {
             ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
             NCubeManager.updateCube(id, testCube, USER_ID);
-            fail("should not make it here");
+            fail();
         }
         catch (Exception e)
         {
             assertTrue(e.getMessage().contains("rror updating"));
-            assertTrue(e.getMessage().contains("no"));
-            assertTrue(e.getMessage().contains("exist"));
+            assertTrue(e.getMessage().contains("non-existing cube"));
         }
     }
 
@@ -762,6 +786,39 @@ public class TestNCubeManager
     public void testGetNCubesFromResourceException() throws Exception
     {
         NCubeManager.getNCubesFromResource(null);
+    }
+
+    @Test
+    public void testRestoreCubeWithEmptyArray() throws Exception
+    {
+        try {
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[]{}, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Empty array"));
+            assertTrue(e.getMessage().contains("to be restored"));
+        }
+    }
+
+    @Test
+    public void testRestoreCubeWithNullArray() throws Exception
+    {
+        try {
+            NCubeManager.restoreCube(defaultSnapshotApp, null, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Empty array"));
+            assertTrue(e.getMessage().contains("to be restored"));
+        }
+    }
+
+    @Test
+    public void testRestoreCubeWithNonStringArray() throws Exception
+    {
+        try {
+            NCubeManager.restoreCube(defaultSnapshotApp, new Object[] { Integer.MAX_VALUE}, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Non string name"));
+            assertTrue(e.getMessage().contains("to restore"));
+        }
     }
 
     @Test

@@ -9,12 +9,12 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +32,7 @@ public class TestBinaryUrlCmd
         BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false);
 
         PowerMockito.mockStatic(UrlUtilities.class);
-        PowerMockito.when(UrlUtilities.getContentFromUrl(anyString(), anyString(), anyInt(), eq((Map)null), eq((Map)null), (boolean)eq(true))).thenThrow(IOException.class);
+        PowerMockito.when(UrlUtilities.getContentFromUrl(any(URL.class), (boolean)eq(true))).thenThrow(IOException.class);
 
         Map map = new HashMap();
         map.put("ncube", mock);
@@ -44,7 +44,7 @@ public class TestBinaryUrlCmd
         {
             cmd.simpleFetch(map);
         } catch (IllegalStateException e) {
-            assertEquals("Failed to load binary content from URL: http://www.cedarsoftware.com, NCube 'foo'", e.getMessage());
+            assertTrue(e.getMessage().contains("Failed to load binary content"));
         }
     }
 

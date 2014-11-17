@@ -27,6 +27,23 @@ public class TestNCubeTestReader
         assertEquals(17, list.size());
     }
 
+    @Test
+    public void testEmptyString() throws Exception {
+
+        NCubeTestReader reader = new NCubeTestReader();
+        List<NCubeTest> list = reader.convert("");
+        assertEquals(0, list.size());
+    }
+
+    @Test
+    public void testNullString() throws Exception {
+
+        NCubeTestReader reader = new NCubeTestReader();
+        List<NCubeTest> list = reader.convert(null);
+        assertEquals(0, list.size());
+    }
+
+
     private static String getResourceAsString(String name) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);

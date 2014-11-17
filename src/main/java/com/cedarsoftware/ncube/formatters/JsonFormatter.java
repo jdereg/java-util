@@ -51,9 +51,14 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
      */
     public String format(NCube ncube)
     {
+        if (ncube == null)
+        {
+            throw new IllegalArgumentException("Cube to format cannot be null");
+        }
+
+        String name = ncube.getName();
         try
         {
-            String name = ncube.getName();
             builder.setLength(0);
             startObject();
             writeObjectKeyValue("ncube", name, true);
@@ -77,7 +82,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         }
         catch (Exception e)
         {
-            throw new IllegalStateException(String.format("Unable to format NCube '%s' into JSON", ncube.getName()), e);
+            throw new IllegalStateException(String.format("Unable to format NCube '%s' into JSON", name), e);
         }
     }
 

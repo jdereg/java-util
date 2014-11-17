@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Created by kpartlow on 3/18/14.
@@ -123,19 +125,42 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testWriteObjectException() throws Exception
-    {
-        //TODO correct assertion here
-        JsonFormatter formatter = new JsonFormatter();
-        formatter.writeObjectValue(null);
+    public void testNullCube() {
+        try {
+            new JsonFormatter().format(null);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("cannot be null"));
+        }
     }
 
-//    @Test
-//    public void testWriteObjectArray() throws Exception
-//    {
-//        JsonFormatter formatter = new JsonFormatter();
-//        formatter.writeObjectValue(null);
-//    }
+    @Test
+    public void testCubeWithInvalidDefaultCell() {
+        try {
+            NCube cube = new NCube("foo");
+            cube.setDefaultCellValue(new NCube("bar"));
+            new JsonFormatter().format(cube);
+            fail();
+        } catch (IllegalStateException e) {
+            assertEquals(IllegalArgumentException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().contains("Unable to format NCube"));
+        }
+    }
+
+    @Test
+    public void testCubeWithInvalidDefaultCellArrayType() {
+        try {
+            NCube cube = new NCube("foo");
+            cube.setDefaultCellValue(new Object[] {});
+            new JsonFormatter().format(cube);
+            fail();
+        } catch (IllegalStateException e) {
+            assertEquals(IllegalArgumentException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().contains("Unable to format NCube"));
+            assertTrue(e.getCause().getMessage().contains("Cell cannot be an array"));
+            assertTrue(e.getCause().getMessage().contains("Use Groovy Expression"));
+        }
+    }
 
     public List<String> getAllTestFiles()
     {

@@ -517,7 +517,7 @@ public class TestNCubeManager
     public void testUpdateCubeWithSysClassPath() throws Exception
     {
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
-        assertEquals(1, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
         assertEquals(1, NCubeManager.getCacheForApp(defaultSnapshotApp).size());
 
         NCube testCube = TestNCube.getSysClassPathCube();

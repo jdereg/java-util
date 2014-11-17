@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube.formatters;
 import com.cedarsoftware.ncube.CellInfo;
 import com.cedarsoftware.ncube.NCubeTest;
 import com.cedarsoftware.ncube.StringValuePair;
+import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 
@@ -18,11 +19,15 @@ public class NCubeTestReader
 {
     public List<NCubeTest> convert(String s) throws IOException
     {
+        List<NCubeTest> list = new ArrayList<>();
+        if (StringUtilities.isEmpty(s)) {
+            return list;
+        }
+
         Map map = JsonReader.jsonToMaps(s);
 
         Object[] items = (Object[])map.get("@items");
 
-        List<NCubeTest> list = new ArrayList<>();
         for (Object o : items) {
             JsonObject item = (JsonObject)o;
 

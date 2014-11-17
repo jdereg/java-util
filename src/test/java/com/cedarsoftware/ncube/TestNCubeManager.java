@@ -1,23 +1,16 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.formatters.NCubeTestReader;
+import com.cedarsoftware.ncube.formatters.NCubeTestWriter;
+import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * NCubeManager Tests
@@ -56,6 +49,15 @@ public class TestNCubeManager
         TestingDatabaseHelper.tearDownDatabase();
     }
 
+    private static NCubeTest[] createTests() {
+        CellInfo foo = new CellInfo("int", "5", false, false);
+        CellInfo bar = new CellInfo("string", "none", false, false);
+        StringValuePair[] pairs = new StringValuePair[] { new StringValuePair("foo", foo), new StringValuePair("bar", bar)};
+        CellInfo[] cellInfos = new CellInfo[] {foo, bar};
+
+        return new NCubeTest[] { new NCubeTest("foo", pairs, cellInfos)};
+    }
+
     private static NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -75,7 +77,7 @@ public class TestNCubeManager
         ncube.setCell(1.8, coord);
 
         NCubeManager.createCube(defaultSnapshotApp, ncube, USER_ID);
-        NCubeManager.updateTestData(defaultSnapshotApp, ncube.getName(), JsonWriter.objectToJson(coord));
+        NCubeManager.updateTestData(defaultSnapshotApp, ncube.getName(), new NCubeTestWriter().format(createTests()));
         NCubeManager.updateNotes(defaultSnapshotApp, ncube.getName(), "notes follow");
         return ncube;
     }
@@ -139,6 +141,28 @@ public class TestNCubeManager
         assertEquals(0, cubeInfo.length);
         cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2);
         assertEquals(0, cubeInfo.length);
+    }
+
+    @Test
+    public void testUpdateSavesTestData() throws Exception {
+        NCube cube = createCube();
+        assertNotNull(cube);
+
+        Object[] expectedTests = createTests();
+
+        // reading from cache.
+        String data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
+        assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
+
+        // reload from db
+        NCubeManager.clearCache();
+        data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
+        assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
+
+        //  update cube
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
+        data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
+        assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
     }
 
     @Test

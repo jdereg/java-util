@@ -1049,7 +1049,8 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testResolveClassPath() {
+    public void testResolveClassPath()
+    {
         loadTestClassPathCubes();
 
         Map map = new HashMap();
@@ -1068,6 +1069,27 @@ public class TestNCubeManager
         NCube classPathCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
         List<String> list = (List<String>)classPathCube.getCell(map);
         assertEquals(3, list.size());
+    }
+
+    @Test
+    public void testResolveRelativeUrl()
+    {
+        // Sets App classpath to http://www.cedarsoftware.com
+        NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.classpath.cedar.json");
+
+        // Rule cube that expects tests/ncube/hello.groovy to be relative to http://www.cedarsoftware.com
+        NCube hello = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "resolveRelativeHelloGroovy.json");
+
+        // When run, it will set up the classpath (first cube loaded for App), and then
+        // it will run the rule cube.  This cube has a relative URL (relative to the classpath above).
+        // The code from the website will be pulled down, executed, and the result (Hello, World.)
+        // will be returned.
+        Map input = new HashMap();
+        String s = (String) hello.getCell(input);
+        assertEquals("Hello, world.", s);
+
+        String absUrl = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, "tests/ncube/hello.groovy");
+        assertEquals("http://www.cedarsoftware.com/tests/ncube/hello.groovy", absUrl);
     }
 
     @Test

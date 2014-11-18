@@ -18,7 +18,7 @@
     </licenses>
 
     <scm>
-        <url>https://github.com/Uriljdereg/java-util</url>
+        <url>https://github.com/jdereg/java-util</url>
         <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
       <tag>HEAD</tag>

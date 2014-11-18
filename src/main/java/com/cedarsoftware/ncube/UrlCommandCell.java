@@ -57,7 +57,7 @@ public abstract class UrlCommandCell implements CommandCell
     private volatile transient Class runnableCode = null;
     private volatile transient String errorMsg = null;
     private String url = null;
-    private final boolean cacheable;
+    private boolean cacheable;
     private AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
     private AtomicBoolean hasBeenFetched = new AtomicBoolean(false);
     private Object cache;
@@ -80,6 +80,10 @@ public abstract class UrlCommandCell implements CommandCell
         extToMimeType.put(".gif", "image/gif");
         extToMimeType.put(".bmp", "image/bmp");
     }
+
+    //  Private constructor only for serialization.
+    //  TODO:  Remove this constructor once we remove old serialization support.
+    protected UrlCommandCell() { }
 
     public UrlCommandCell(String cmd, String url, boolean cacheable)
     {

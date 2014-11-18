@@ -23,6 +23,10 @@ import java.util.Map;
  */
 public class StringUrlCmd extends UrlCommandCell
 {
+    //  Private constructor only for serialization.
+    //  TODO:  Remove this constructor once we remove old serialization support.
+    private StringUrlCmd() {}
+
     public StringUrlCmd(String url, boolean cache)
     {
         super(null, url, cache);

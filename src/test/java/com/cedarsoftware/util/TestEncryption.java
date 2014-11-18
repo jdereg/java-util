@@ -13,6 +13,7 @@ import java.nio.channels.FileChannel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
@@ -94,7 +95,7 @@ public class TestEncryption
     @Test(expected=IllegalStateException.class)
     public void testEncryptWithNull()
     {
-        EncryptionUtilities.encrypt("GavynRocks", null);
+        EncryptionUtilities.encrypt("GavynRocks", (String)null);
     }
 
     @Test
@@ -139,11 +140,57 @@ public class TestEncryption
         {
             assertEquals(QUICK_FOX, EncryptionUtilities.decrypt("NcubeRocks", res));
             fail();
-        } catch (IllegalStateException e) {
-            // do nothing
         }
+        catch (IllegalStateException ignored) { }
         String diffRes = EncryptionUtilities.encrypt("NcubeRocks", QUICK_FOX);
         assertEquals("2A6EF54E3D1EEDBB0287E6CC690ED3879C98E55942DA250DC5FE0D10C9BD865105B1E0B4F8E8C389BEF11A85FB6C5F84", diffRes);
         assertEquals(QUICK_FOX, EncryptionUtilities.decrypt("NcubeRocks", diffRes));
+    }
+
+    @Test
+    public void testEncryptBytes()
+    {
+        String res = EncryptionUtilities.encryptBytes("GavynRocks", QUICK_FOX.getBytes());
+        assertEquals("E68D5CD6B1C0ACD0CC4E2B9329911CF0ADD37A6A18132086C7E17990B933EBB351C2B8E0FAC40B371450FA899C695AA2", res);
+        assertTrue(DeepEquals.deepEquals(QUICK_FOX.getBytes(), EncryptionUtilities.decryptBytes("GavynRocks", res)));
+        try
+        {
+            assertEquals(QUICK_FOX, EncryptionUtilities.decrypt("NcubeRocks", res));
+            fail();
+        }
+        catch (IllegalStateException ignored) { }
+        String diffRes = EncryptionUtilities.encryptBytes("NcubeRocks", QUICK_FOX.getBytes());
+        assertEquals("2A6EF54E3D1EEDBB0287E6CC690ED3879C98E55942DA250DC5FE0D10C9BD865105B1E0B4F8E8C389BEF11A85FB6C5F84", diffRes);
+        assertTrue(DeepEquals.deepEquals(QUICK_FOX.getBytes(), EncryptionUtilities.decryptBytes("NcubeRocks", diffRes)));
+    }
+
+    @Test
+    public void testEncryptBytesBadInput()
+    {
+        try
+        {
+            EncryptionUtilities.encryptBytes("GavynRocks", null);
+            fail();
+        }
+        catch(IllegalStateException e)
+        {
+            assertTrue(e.getMessage().contains("rror"));
+            assertTrue(e.getMessage().contains("encrypt"));
+        }
+    }
+
+    @Test
+    public void testDecryptBytesBadInput()
+    {
+        try
+        {
+            EncryptionUtilities.decryptBytes("GavynRocks", null);
+            fail();
+        }
+        catch(IllegalStateException e)
+        {
+            assertTrue(e.getMessage().contains("rror"));
+            assertTrue(e.getMessage().contains("ecrypt"));
+        }
     }
 }

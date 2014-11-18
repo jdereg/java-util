@@ -206,6 +206,18 @@ public class EncryptionUtilities
         }
     }
 
+    public static String encryptBytes(String key, byte[] content)
+    {
+        try
+        {
+            return ByteUtilities.encode(createAesEncryptionCipher(key).doFinal(content));
+        }
+        catch (Exception e)
+        {
+            throw new IllegalStateException("Error occurred encrypting data", e);
+        }
+    }
+
     /**
      * Get unencrypted String from encrypted hex String
      */
@@ -214,6 +226,22 @@ public class EncryptionUtilities
         try
         {
             return new String(createAesDecryptionCipher(key).doFinal(ByteUtilities.decode(hexStr)));
+        }
+        catch (Exception e)
+        {
+            throw new IllegalStateException("Error occurred decrypting data", e);
+        }
+    }
+
+
+    /**
+     * Get unencrypted byte[] from encrypted hex String
+     */
+    public static byte[] decryptBytes(String key, String hexStr)
+    {
+        try
+        {
+            return createAesDecryptionCipher(key).doFinal(ByteUtilities.decode(hexStr));
         }
         catch (Exception e)
         {

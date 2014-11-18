@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.13.1</version>
+  <version>1.13.2</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Feed hungry developers...</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -34,6 +34,7 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.13.2 (no changes, dealing with build errors due to peer not authenticated on GitHub).
 * 1.13.1
  * EncryptionUtilities - Added byte[] APIs.  Makes it easy to encrypt/decrypt byte[] data.
  * pom.xml had extraneous characters inadvertently added to the file - these are removed.

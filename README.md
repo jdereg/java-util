@@ -35,19 +35,16 @@ Including in java-util:
 
 Version History
 * 1.13.1
- * Added byte[] APIs to EncryptionUtilities.  Makes it easy to encrypt/decrypt byte[] data.
+ * EncryptionUtilities - Added byte[] APIs.  Makes it easy to encrypt/decrypt byte[] data.
  * pom.xml had extraneous characters inadvertently added to the file - these are removed.
 * 1.13.0
- * DateUtilities - Strengthened date parsing
-
-  * Day of week allowed (properly ignored).
-  * First (st), second (nd), third (rd), and fourth (th) ... supported.
-  * The default toString() standard date / time displayed by the JVM is now supported as a parseable format.
-  * Extra whitespace can exist within the date string.
-  * Full time zone support added.
-  * The date (or date time) is expected to be in isolation. Whitespace on either end is fine, however, once the date time is parsed from the string, no other content can be left (prevents accidently parsing dates from dates embedded in text).
-
- * Removed proxy from calls to URLUtilities.  These are now done through the JVM.
+ * DateUtilities - Day of week allowed (properly ignored).
+ * DateUtilities - First (st), second (nd), third (rd), and fourth (th) ... supported.
+ * DateUtilities - The default toString() standard date / time displayed by the JVM is now supported as a parseable format.
+ * DateUtilities - Extra whitespace can exist within the date string.
+ * DateUtilities - Full time zone support added.
+ * DateUtilities - The date (or date time) is expected to be in isolation. Whitespace on either end is fine, however, once the date time is parsed from the string, no other content can be left (prevents accidently parsing dates from dates embedded in text).
+ * UrlUtilities - Removed proxy from calls to URLUtilities.  These are now done through the JVM.
 * 1.12.0
  * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
  * All the 1.11.x features rolled up.

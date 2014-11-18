@@ -1,6 +1,10 @@
 package ncube.grv.exp;
 
-import com.cedarsoftware.ncube.*;
+import com.cedarsoftware.ncube.ApplicationID;
+import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 
@@ -29,20 +33,9 @@ import java.util.Set;
  */
 public class NCubeGroovyExpression
 {
-    protected Map input;
-    protected Map output;
-    protected NCube ncube;
-
-    /**
-     * @param args a Map that contains the 'input' Map, 'output' Map, 'ncube',
-     *  and the 'stack.'
-     */
-    public void init(Map args)
-    {
-        input = (Map) args.get("input");
-        output = (Map) args.get("output");
-        ncube = (NCube) args.get("ncube");
-    }
+    public Map input;
+    public Map output;
+    public NCube ncube;
 
     /**
      * Fetch the named n-cube from the NCubeManager.  It looks at the same

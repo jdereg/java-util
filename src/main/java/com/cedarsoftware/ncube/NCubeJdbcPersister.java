@@ -43,16 +43,16 @@ public class NCubeJdbcPersister
             throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists in app: " + appId);
         }
 
-        createCube(c, appId, cube, username, 0);
+        createCube(c, appId, cube, username, null, 0);
     }
 
-    void createCube(Connection c, ApplicationID appId, NCube ncube, String username, long rev)
+    void createCube(Connection c, ApplicationID appId, NCube ncube, String username, String testData, long rev)
     {
         final String cubeName = ncube.getName();
 
         try
         {
-            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, revision_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, revision_number, test_data_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
             {
                 insert.setLong(1, UniqueIdGenerator.getUniqueId());
                 insert.setString(2, appId.getApp());
@@ -64,6 +64,9 @@ public class NCubeJdbcPersister
                 insert.setString(7, username);
                 insert.setString(8, appId.getTenant());
                 insert.setLong(9, rev);
+
+                //TODO:  should we also push the notes forward now that createCube is used for updates, etc.?
+                insert.setBytes(10, testData == null ? null : testData.getBytes("UTF-8"));
 
                 int rowCount = insert.executeUpdate();
                 if (rowCount != 1)
@@ -95,7 +98,8 @@ public class NCubeJdbcPersister
         {
             throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update deleted cube.  Restore it first.");
         }
-        createCube(connection, appId, cube, username, maxRev + 1);
+        String testData = getTestData(connection, appId, cube.getName());
+        createCube(connection, appId, cube, username, testData, maxRev + 1);
     }
 
     Long getMaxRevision(Connection c, ApplicationID appId, String name)

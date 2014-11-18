@@ -1,6 +1,9 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.ncube.formatters.NCubeTestReader;
+import com.cedarsoftware.ncube.formatters.NCubeTestWriter;
+import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -60,6 +63,15 @@ public class TestNCubeManager
         TestingDatabaseHelper.tearDownDatabase();
     }
 
+    private static NCubeTest[] createTests() {
+        CellInfo foo = new CellInfo("int", "5", false, false);
+        CellInfo bar = new CellInfo("string", "none", false, false);
+        StringValuePair[] pairs = new StringValuePair[] { new StringValuePair("foo", foo), new StringValuePair("bar", bar)};
+        CellInfo[] cellInfos = new CellInfo[] {foo, bar};
+
+        return new NCubeTest[] { new NCubeTest("foo", pairs, cellInfos)};
+    }
+
     private static NCube createCube() throws Exception
     {
         NCube<Double> ncube = TestNCube.getTestNCube2D(true);
@@ -79,7 +91,7 @@ public class TestNCubeManager
         ncube.setCell(1.8, coord);
 
         NCubeManager.createCube(defaultSnapshotApp, ncube, USER_ID);
-        NCubeManager.updateTestData(defaultSnapshotApp, ncube.getName(), JsonWriter.objectToJson(coord));
+        NCubeManager.updateTestData(defaultSnapshotApp, ncube.getName(), new NCubeTestWriter().format(createTests()));
         NCubeManager.updateNotes(defaultSnapshotApp, ncube.getName(), "notes follow");
         return ncube;
     }
@@ -143,6 +155,28 @@ public class TestNCubeManager
         assertEquals(0, cubeInfo.length);
         cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2);
         assertEquals(0, cubeInfo.length);
+    }
+
+    @Test
+    public void testUpdateSavesTestData() throws Exception {
+        NCube cube = createCube();
+        assertNotNull(cube);
+
+        Object[] expectedTests = createTests();
+
+        // reading from cache.
+        String data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
+        assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
+
+        // reload from db
+        NCubeManager.clearCache();
+        data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
+        assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
+
+        //  update cube
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
+        data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
+        assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
     }
 
     @Test
@@ -521,27 +555,64 @@ public class TestNCubeManager
     public void testUpdateCubeWithSysClassPath() throws Exception
     {
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
-        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
-        assertEquals(1, NCubeManager.getCacheForApp(defaultSnapshotApp).size());
+        ApplicationID customId = new ApplicationID("NONE", "updateCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
-        NCube testCube = TestNCube.getSysClassPathCube();
-        NCubeManager.createCube(defaultSnapshotApp, testCube, USER_ID);
+        NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
 
-        Map<String, Object> cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
+
+        NCubeManager.createCube(customId, testCube, USER_ID);
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(customId);
         assertEquals(1, cache.size());
+        assertEquals(testCube, cache.get("sys.classpath"));
+
+        assertTrue(NCubeManager.updateCube(customId, testCube, USER_ID));
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
+
+        testCube = NCubeManager.getCube(customId, "sys.classpath");
+        cache = NCubeManager.getCacheForApp(customId);
+        assertEquals(1, cache.size());
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));
+    }
 
-        assertTrue(NCubeManager.updateCube(defaultSnapshotApp, testCube, USER_ID));
-        cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
-        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp));
-        assertEquals(0, cache.size());
+    @Test
+    public void testRenameCubeWithSysClassPath() throws Exception
+    {
+        //  from setup, assert initial classloader condition (www.cedarsoftware.com)
+        ApplicationID customId = new ApplicationID("NONE", "renameCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name());
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
-        testCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
-        cache = NCubeManager.getCacheForApp(defaultSnapshotApp);
+        NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
+
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
+
+        NCubeManager.clearCache();
+        testCube.name = "sys.mistake";
+        NCubeManager.createCube(customId, testCube, USER_ID);
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(customId);
         assertEquals(1, cache.size());
-        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get("sys.mistake"));
+
+        assertTrue(NCubeManager.renameCube(customId, "sys.mistake", "sys.classpath"));
+        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
+
+        testCube = NCubeManager.getCube(customId, "sys.classpath");
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));
@@ -605,6 +676,7 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("0.0.0 version"));
         }
     }
+
 
     @Test
     public void testNCubeManagerUpdateCubeExceptions() throws Exception
@@ -1040,7 +1112,8 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testResolveClassPath() {
+    public void testResolveClassPath()
+    {
         loadTestClassPathCubes();
 
         Map map = new HashMap();
@@ -1059,6 +1132,27 @@ public class TestNCubeManager
         NCube classPathCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
         List<String> list = (List<String>)classPathCube.getCell(map);
         assertEquals(3, list.size());
+    }
+
+    @Test
+    public void testResolveRelativeUrl()
+    {
+        // Sets App classpath to http://www.cedarsoftware.com
+        NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.classpath.cedar.json");
+
+        // Rule cube that expects tests/ncube/hello.groovy to be relative to http://www.cedarsoftware.com
+        NCube hello = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "resolveRelativeHelloGroovy.json");
+
+        // When run, it will set up the classpath (first cube loaded for App), and then
+        // it will run the rule cube.  This cube has a relative URL (relative to the classpath above).
+        // The code from the website will be pulled down, executed, and the result (Hello, World.)
+        // will be returned.
+        Map input = new HashMap();
+        String s = (String) hello.getCell(input);
+        assertEquals("Hello, world.", s);
+
+        String absUrl = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, "tests/ncube/hello.groovy");
+        assertEquals("http://www.cedarsoftware.com/tests/ncube/hello.groovy", absUrl);
     }
 
     @Test

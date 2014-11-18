@@ -35,13 +35,14 @@ public class CdnDefaultHandler extends NCubeGroovyExpression
     public Object resolve(final String extension, final boolean isString)
     {
         final String axisName = CdnRouter.CONTENT_NAME;
+        final String logicalFileName = (String) input.get(axisName);
+        final String url = extension + '/' + logicalFileName + '.' + extension;
+        final UrlCommandCell exp = isString ? new StringUrlCmd(url, false) : new BinaryUrlCmd(url, false);
+        final String fullName = ncube.getApplicationID().cacheKey(ncube.getName());
 
-        synchronized (ncube.getName().intern())
+        synchronized (fullName.intern())
         {
-            String logicalFileName = (String) input.get(axisName);
             ncube.addColumn(axisName, logicalFileName);
-            String url = extension + '/' + logicalFileName + '.' + extension;
-            UrlCommandCell exp = isString ? new StringUrlCmd(url, false) : new BinaryUrlCmd(url, false);
             ncube.setCell(exp, input);
             return ncube.getCell(input);
         }

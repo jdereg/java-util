@@ -1,0 +1,28 @@
+{
+  "ncube": "resolveRelativeHelloGroovy",
+  "axes": [
+    {
+      "name": "Rule",
+      "type": "RULE",
+      "valueType": "EXPRESSION",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "columns": [
+        {
+          "id": 1000000000001,
+          "type": "exp",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": [
+        1000000000001
+      ],
+      "type": "exp",
+      "url": "tests/ncube/hello.groovy"
+    }
+  ]
+}

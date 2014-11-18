@@ -768,6 +768,27 @@ public class NCubeManager
         return (ApplicationID) bootCube.getCell(coord);
     }
 
+    public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)
+    {
+        validateAppId(appId);
+        if (StringUtilities.isEmpty(relativeUrl))
+        {
+            throw new IllegalArgumentException("Cannot resolve relative url - relative url cannot be null or empty string.");
+        }
+        final String loUrl = relativeUrl.toLowerCase();
+        if (loUrl.startsWith("http:") || loUrl.startsWith("https:") || loUrl.startsWith("file:"))
+        {
+            return relativeUrl;
+        }
+        GroovyClassLoader gcl = urlClassLoaders.get(appId);
+        if (gcl == null)
+        {
+            return "No class loader exists for this app";
+        }
+        URL absUrl = gcl.getResource(relativeUrl);
+        return absUrl != null ? absUrl.toString() : null;
+    }
+
     // ----------------------------------------- Resource APIs ---------------------------------------------------------
     private static String getResourceAsString(String name) throws IOException
     {

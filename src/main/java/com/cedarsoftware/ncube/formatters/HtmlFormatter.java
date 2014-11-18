@@ -185,22 +185,12 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 s.append("<tr>\n");
                 Column column = topColumns.get(i);
-                boolean isCmd = isColumnInlineExpression(column);
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId);
                 s.append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
-                if (isCmd)
-                {
-                    s.append("<pre class=\"ncube-pre\">");
-                }
-                addColumnPrefixText(s, column);
-                s.append(column.isDefault() ? "Default" : column.toString());
-                if (isCmd)
-                {
-                    s.append("</pre>");
-                }
+                buildColumnGuts(s, column);
                 s.append("</th>\n");
                 Set<Long> colIds = new LinkedHashSet<>();
                 colIds.add(column.getId());
@@ -262,21 +252,11 @@ public class HtmlFormatter implements NCubeFormatter
 
             for (Column column : topColumns)
             {
-                boolean isCmd = isColumnInlineExpression(column);
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId).append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube-top ");
                 s.append(getColumnCssClass(topAxis, column));
                 s.append("\">");
-                if (isCmd)
-                {
-                    s.append("<pre class=\"ncube-pre\">");
-                }
-                addColumnPrefixText(s, column);
-                s.append(column.toString());
-                if (isCmd)
-                {
-                    s.append("</pre>");
-                }
+                buildColumnGuts(s, column);
                 s.append("</th>\n");
             }
 
@@ -327,18 +307,7 @@ public class HtmlFormatter implements NCubeFormatter
                             s.append(span);
                         }
                         s.append("\">");
-                        boolean isCmd = isColumnInlineExpression(column);
-
-                        if (isCmd)
-                        {
-                            s.append("<pre class=\"ncube-pre\">");
-                        }
-                        addColumnPrefixText(s, column);
-                        s.append(column.toString());
-                        if (isCmd)
-                        {
-                            s.append("</pre>");
-                        }
+                        buildColumnGuts(s, column);
                         s.append("</th>\n");
 
                         // Increment column counter
@@ -376,6 +345,32 @@ public class HtmlFormatter implements NCubeFormatter
         s.append("</body>\n");
         s.append("</html>");
         return s.toString();
+    }
+
+    private static void buildColumnGuts(StringBuilder s, Column column)
+    {
+        final boolean isCmd = column.getValue() instanceof CommandCell;
+        final boolean isUrlCmd = isCmd && StringUtilities.hasContent(((CommandCell) column.getValue()).getUrl());
+        final boolean isInlineCmd = isCmd && !isUrlCmd;
+
+        if (isInlineCmd)
+        {
+            s.append("<pre class=\"ncube-pre\">");
+        }
+        else if (isUrlCmd)
+        {
+            s.append("<a class=\"cmd-url\" href=\"#\">");
+        }
+        addColumnPrefixText(s, column);
+        s.append(column.isDefault() ? "Default" : column.toString());
+        if (isInlineCmd)
+        {
+            s.append("</pre>");
+        }
+        else if (isUrlCmd)
+        {
+            s.append("</a>");
+        }
     }
 
     private static String getHtmlPreamble(NCube ncube)
@@ -459,7 +454,7 @@ public class HtmlFormatter implements NCubeFormatter
                 "color: mediumblue;\n" +
                 "background: cornsilk;\n" +
                 "text-align: left;\n" +
-                "vertical-align: top\n" +
+                "vertical-align: middle\n" +
                 "}\n" +
                 ".cell-code\n" +
                 "{\n" +
@@ -500,7 +495,6 @@ public class HtmlFormatter implements NCubeFormatter
     {
         if (column.getValue() instanceof CommandCell)
         {
-            CommandCell cmd = (CommandCell) column.getValue();
             String name = (String)column.getMetaProperty("name");
             if (StringUtilities.hasContent(name))
             {
@@ -508,19 +502,11 @@ public class HtmlFormatter implements NCubeFormatter
                 s.append(name);
                 s.append("<hr style=\"margin:1px\"/>");
             }
-            if (StringUtilities.hasContent(cmd.getUrl()))
-            {
-                s.append("url: ");
-            }
         }
     }
 
     private static String getColumnCssClass(Axis axis, Column col)
     {
-        if (axis.getType() == AxisType.RULE)
-        {
-            return "column column-code";
-        }
         if (col.getValue() instanceof CommandCell)
         {
             CommandCell cmd = (CommandCell) col.getValue();
@@ -549,8 +535,9 @@ public class HtmlFormatter implements NCubeFormatter
                 CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.getUrl()))
                 {
-                    s.append("cell cell-url\">url: ");
+                    s.append("cell cell-url\"><a class=\"cmd-url\" href=\"#\">");
                     s.append(cmd.getUrl());
+                    s.append("</a>");
                 }
                 else if (cmd instanceof GroovyBase)
                 {
@@ -676,8 +663,4 @@ public class HtmlFormatter implements NCubeFormatter
         return s.toString();
     }
 
-    private static boolean isColumnInlineExpression(Column column)
-    {
-        return column.getValue() instanceof CommandCell && StringUtilities.isEmpty(((CommandCell)column.getValue()).getUrl());
-    }
 }

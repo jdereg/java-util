@@ -18,7 +18,7 @@
     </licenses>
 
     <scm>
-        <url>https://github.com/Uriljdereg/java-util</url>
+        <url>https://github.com/jdereg/java-util</url>
         <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
       <tag>HEAD</tag>
@@ -33,7 +33,7 @@
     </developers>
 
     <properties>
-        <version.json.io>2.7.2</version.json.io>
+        <version.json.io>2.7.3</version.json.io>
         <version.commons.logging>1.1.1</version.commons.logging>
         <version.junit>4.11</version.junit>
         <version.guava>16.0.1</version.guava>

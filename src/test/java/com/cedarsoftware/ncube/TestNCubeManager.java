@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.ncube.formatters.NCubeTestReader;
 import com.cedarsoftware.ncube.formatters.NCubeTestWriter;
 import com.cedarsoftware.util.DeepEquals;
@@ -9,9 +8,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -618,6 +614,8 @@ public class TestNCubeManager
         assertEquals(testCube, cache.get("sys.classpath"));
     }
 
+    /*
+    Old n-cube format.  isn't supported correctly anymore.  couldn't get it to hit that coe.
     @Test
     public void testJsonToJavaBackup() throws Exception {
         //can remove when this support is gone
@@ -665,6 +663,7 @@ public class TestNCubeManager
         assertEquals("2.0", arrays[3]);
 
     }
+     */
 
     @Test
     public void testMissingBootstrapException() throws Exception

@@ -356,6 +356,23 @@ public class TestNCubeJdbcPersister
     }
 
     @Test
+    public void testLoadCubesWithSQLException() throws Exception
+    {
+
+        Connection c = getConnectionThatThrowsSQLException();
+
+        NCubeInfoDto dto = new NCubeInfoDto();
+        dto.name = "foo";
+
+        try {
+            new NCubeJdbcPersister().loadCube(c, dto);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Unable to load cube"));
+        }
+    }
+
+    @Test
     public void testChangeVersionWithNoUpdate() throws Exception
     {
         TestNCube.getTestNCube2D(true);
@@ -551,8 +568,15 @@ public class TestNCubeJdbcPersister
 
     @Test
     public void testDeleteCubeWithSQLException() throws Exception {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = getConnectionThatThrowsSQLException();
+
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(1)).thenReturn(5L);
+
         try
         {
             new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", true, USER_ID);
@@ -561,6 +585,9 @@ public class TestNCubeJdbcPersister
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
+
+
+
 
     @Test
     public void testRenameCubeThatThrowsSQLEXception() throws Exception {

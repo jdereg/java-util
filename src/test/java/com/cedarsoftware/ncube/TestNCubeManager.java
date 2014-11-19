@@ -891,24 +891,6 @@ public class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, ncube.getName(), true, USER_ID);
     }
 
-//    @Test
-//    public void testBadUrlsAddedToClassLoader() throws Exception
-//    {
-//        String url = "htp://this wont work";
-//        List urls = new ArrayList();
-//        urls.add(url);
-//        try
-//        {
-//            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2.0.0", ReleaseStatus.SNAPSHOT.name());
-//            NCubeManager.addBaseResourceUrls(appId, urls);
-//            fail("Should not make it here");
-//        }
-//        catch (IllegalArgumentException e)
-//        {
-//            assertTrue(e.getMessage().contains("malformed"));
-//        }
-//    }
-
     @Test
     public void testLoadCubesWithNullApplicationID() throws Exception
     {
@@ -920,6 +902,27 @@ public class TestNCubeManager
         }
         catch(Exception ignored)
         { }
+    }
+
+    @Test
+    public void testEnsureLoadedOnCubeThatDoesNotExist() throws Exception
+    {
+        try
+        {
+            // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
+            NCubeInfoDto dto = new NCubeInfoDto();
+            dto.name = "does_not_exist";
+            dto.app = "NONE";
+            dto.tenant = "NONE";
+            dto.version = "1.0.0";
+
+            NCubeManager.ensureLoaded(dto);
+            fail();
+        }
+        catch(IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("Unable to load"));
+        }
     }
 
     @Test(expected=RuntimeException.class)

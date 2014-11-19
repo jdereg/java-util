@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.util.CdnRouter;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -10,6 +11,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.HashMap;
@@ -31,6 +34,14 @@ import static org.mockito.Mockito.when;
  */
 public class TestUrlCommandCell
 {
+    @Test
+    public void testDefaultConstructorIsProtected() throws Exception {
+        Class c = UrlCommandCell.class;
+        Constructor<UrlCommandCell> con = c.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PROTECTED, con.getModifiers() & Modifier.PROTECTED);
+        Assert.assertEquals(Modifier.ABSTRACT, c.getModifiers() & Modifier.ABSTRACT);
+    }
+
     @Before
     public void setUp() throws Exception
     {

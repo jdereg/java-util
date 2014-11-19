@@ -1,6 +1,6 @@
 {
     "@type":"com.cedarsoftware.ncube.NCube",
-    "ncube":"TestCube",
+    "name":"TestCube",
     "axisList":{
         "@id":14,
         "@type":"java.util.LinkedHashMap",

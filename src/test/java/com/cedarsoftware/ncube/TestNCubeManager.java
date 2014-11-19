@@ -4,7 +4,6 @@ import com.cedarsoftware.ncube.formatters.NCubeTestReader;
 import com.cedarsoftware.ncube.formatters.NCubeTestWriter;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -622,13 +621,11 @@ public class TestNCubeManager
     @Test
     public void testJsonToJavaBackup() throws Exception {
         //can remove when this support is gone
-
-
         URL u = NCubeManager.class.getResource("/files/oldFormatSimpleJsonArrayTest.json");
+        System.out.println(u.toString());
         byte[] encoded = Files.readAllBytes(Paths.get(u.toURI()));
         String cubeString = StringUtilities.createString(encoded, "UTF-8");
-        NCube ncube = (NCube)JsonReader.jsonToJava(cubeString);
-        /*
+
         NCube ncube = NCubeManager.ncubeFromJson(cubeString);
 
         Map coord = new HashMap();
@@ -667,9 +664,7 @@ public class TestNCubeManager
         sub = (List) arrays[2];
         assertEquals("1.b", sub.get(0));
         assertEquals("2.0", arrays[3]);
-*/
     }
-
 
     @Test
     public void testMissingBootstrapException() throws Exception
@@ -681,7 +676,6 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("0.0.0 version"));
         }
     }
-
 
     @Test
     public void testNCubeManagerUpdateCubeExceptions() throws Exception

@@ -1,7 +1,10 @@
 package com.cedarsoftware.ncube;
 
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -14,6 +17,16 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestGroovyMethod
 {
+    @Test
+    public void testDefaultConstructorIsPrivateForSerialization() throws Exception {
+        Class c = GroovyMethod.class;
+        Constructor<GroovyMethod> con = c.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+        Assert.assertNotNull(con.newInstance());
+    }
+
+
     @Test
     public void testGroovyMethod() {
         GroovyMethod m = new GroovyMethod("cmd", null);

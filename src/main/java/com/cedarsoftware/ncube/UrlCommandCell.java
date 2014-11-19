@@ -82,7 +82,6 @@ public abstract class UrlCommandCell implements CommandCell
     }
 
     //  Private constructor only for serialization.
-    //  TODO:  Remove this constructor once we remove old serialization support.
     protected UrlCommandCell() { }
 
     public UrlCommandCell(String cmd, String url, boolean cacheable)

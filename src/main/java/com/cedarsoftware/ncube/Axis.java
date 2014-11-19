@@ -6,7 +6,6 @@ import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.UniqueIdGenerator;
 import com.cedarsoftware.util.io.JsonReader;
 
 import java.math.BigDecimal;
@@ -26,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,6 +55,7 @@ public class Axis
 {
 	public static final int SORTED = 0;
 	public static final int DISPLAY = 1;
+    private static final AtomicLong baseAxisIdForTesting = new AtomicLong(1);
 	final long id;
     long colIdBase = 0;
 	private String name;
@@ -76,15 +77,16 @@ public class Axis
     transient Map<Long, Column> idToCol = new HashMap<>();
 
 
-    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
+    // for testing
+    Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
 	{
 		this(name, type, valueType, hasDefault, SORTED);
 	}
 
-    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
+    // for testing
+    Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order)
 	{
-        // TODO: Do something other than using UniqueIdGenerator
-        this(name, type, valueType, hasDefault, order, UniqueIdGenerator.getUniqueId());
+        this(name, type, valueType, hasDefault, order, baseAxisIdForTesting.getAndIncrement());
 	}
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long id)

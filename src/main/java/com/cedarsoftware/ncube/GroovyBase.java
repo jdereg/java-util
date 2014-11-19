@@ -263,7 +263,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (urlLoader == null)
         {
-            throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for appStr: " + cube.getApplicationID() + ".  Make sure to use sys.classpath cube to set it.  Found executing cube: " + cube.getName());
+            throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for app: " + cube.getApplicationID() + ".  Use sys.classpath cube to set it.  Found executing cube: " + cube.getName());
         }
 
         if (isUrlUsed)

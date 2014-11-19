@@ -54,25 +54,29 @@ public class NCubeGroovyExpression
     }
 
     /**
-     * Fetch the named n-cube from the NCubeManager.  It looks at the same
-     * account, app, and version as the running n-cube.
-     * @param name String n-cube name.
-     * @return NCube with the given name.
+     * Short-cut to fetch ApplicationID for current cell.
      */
-    public NCube getApplicationCube(String name)
+    public ApplicationID getApplicationID()
     {
-        ApplicationID appId = ncube.getApplicationID().createNewSnapshotId("0.0.0");
-        NCube cube = NCubeManager.getCube(appId, name);
-        if (cube == null)
-        {
-            throw new IllegalArgumentException("application (0.0.0) n-cube: " + name + " not loaded into NCubeManager, make sure to load all n-cubes first.");
-        }
-        return cube;
+        return ncube.getApplicationID();
     }
 
+    /**
+     * Fetch all cube names in the current application.
+     * @return Set<String> cube names>
+     */
     public Set<String> getCubeNames()
     {
         return NCubeManager.getCubeNames(ncube.getApplicationID());
+    }
+
+    /**
+     * Fetch cube records that match the given pattern.
+     * @return Object[] of NCubeInfoDto instances.
+     */
+    public Object[] getCubeRecords(String pattern)
+    {
+        return NCubeManager.getCubeRecordsFromDatabase(ncube.getApplicationID(), pattern);
     }
 
     /**

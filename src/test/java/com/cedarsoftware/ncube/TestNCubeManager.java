@@ -1155,7 +1155,55 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testGetApplicationId() {
+    public void testResolveUrlBadArgs()
+    {
+        try
+        {
+            NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, null);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("annot"));
+            assertTrue(e.getMessage().contains("resolve"));
+            assertTrue(e.getMessage().contains("null"));
+            assertTrue(e.getMessage().contains("empty"));
+        }
+    }
+
+    @Test
+    public void testResolveUrlFullyQualified()
+    {
+        String url = "http://www.cedarsoftware.com";
+        String ret = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, url);
+        assertEquals(url, ret);
+
+        url = "https://www.cedarsoftware.com";
+        ret = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, url);
+        assertEquals(url, ret);
+
+        url = "file://Users/joe/Development";
+        ret = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, url);
+        assertEquals(url, ret);
+    }
+
+    @Test
+    public void testResolveUrlBadApp()
+    {
+        try
+        {
+            NCubeManager.resolveRelativeUrl(new ApplicationID("foo", "bar", "1.0.0", ReleaseStatus.SNAPSHOT.name()), "tests/ncube/hello.groovy");
+        }
+        catch (IllegalStateException e)
+        {
+            String msg = e.getMessage().toLowerCase();
+            assertTrue(msg.contains("no class loader exists"));
+        }
+    }
+
+    @Test
+    public void testGetApplicationId()
+    {
         loadTestClassPathCubes();
         loadTestBootstrapCubes();
 

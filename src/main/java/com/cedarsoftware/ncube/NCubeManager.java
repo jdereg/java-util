@@ -889,7 +889,7 @@ public class NCubeManager
             }
             catch (Exception e1)
             {
-                throw e;
+                throw e1;
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.UrlUtilities;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -9,6 +10,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +28,16 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({UrlUtilities.class})
 public class TestBinaryUrlCmd
 {
+    @Test
+    public void testDefaultConstructorIsPrivateForSerialization() throws Exception {
+        Class c = BinaryUrlCmd.class;
+        Constructor<BinaryUrlCmd> con = c.getDeclaredConstructor();
+        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+        Assert.assertNotNull(con.newInstance());
+    }
+
+
     @Test
     public void testSimpleFetchException()
     {

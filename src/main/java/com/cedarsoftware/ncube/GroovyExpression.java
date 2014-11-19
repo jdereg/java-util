@@ -42,6 +42,8 @@ import java.util.Set;
  */
 public class GroovyExpression extends GroovyBase
 {
+    //  Private constructor only for serialization.
+    private GroovyExpression() { }
     public GroovyExpression(String cmd, String url)
     {
         super(cmd, url);

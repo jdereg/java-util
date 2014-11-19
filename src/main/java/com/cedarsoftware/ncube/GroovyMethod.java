@@ -54,6 +54,10 @@ import java.util.Map;
  */
 public class GroovyMethod extends GroovyBase
 {
+    //  Private constructor only for serialization.
+    //  TODO:  Remove this constructor once we remove old serialization support.
+    private GroovyMethod() {}
+
     public GroovyMethod(String cmd, String url)
     {
         super(cmd, url);

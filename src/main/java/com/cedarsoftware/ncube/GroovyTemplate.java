@@ -38,6 +38,10 @@ public class GroovyTemplate extends UrlCommandCell
 {
     private Template resolvedTemplate;
 
+    //  Private constructor only for serialization.
+    //  TODO:  Remove this constructor once we remove old serialization support.
+    private GroovyTemplate() { }
+
     public GroovyTemplate(String cmd, String url, boolean cache)
     {
         super(cmd, url, cache);

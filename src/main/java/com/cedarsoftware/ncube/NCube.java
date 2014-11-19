@@ -1731,6 +1731,8 @@ public class NCube<T>
         {
             Map<Object, Long> userIdToUniqueId = new CaseInsensitiveMap<>();
             Map<String, Object> jsonNCube = JsonReader.jsonToMaps(json);
+            // When writing out cubes from the old format this was true, but new cubes
+            // writing to json format will have 'name', not 'ncube'
             String cubeName = getString(jsonNCube, "ncube");
             if (StringUtilities.isEmpty(cubeName))
             {

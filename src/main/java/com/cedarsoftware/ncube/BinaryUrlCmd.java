@@ -26,6 +26,10 @@ import java.util.Map;
  */
 public class BinaryUrlCmd extends UrlCommandCell
 {
+    //  Private constructor only for serialization.
+    //  TODO:  Remove this constructor once we remove old serialization support.
+    private BinaryUrlCmd() {}
+
     public BinaryUrlCmd(String url, boolean cache)
     {
         super(null, url, cache);

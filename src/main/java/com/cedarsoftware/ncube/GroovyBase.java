@@ -43,6 +43,10 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
 
+    //  Private constructor only for serialization.
+    //  TODO:  Remove this constructor once we remove old serialization support.
+    protected GroovyBase() {}
+
     public GroovyBase(String cmd, String url)
     {
         super(cmd, url, true);

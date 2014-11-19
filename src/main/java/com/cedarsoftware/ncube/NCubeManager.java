@@ -783,7 +783,7 @@ public class NCubeManager
         GroovyClassLoader gcl = urlClassLoaders.get(appId);
         if (gcl == null)
         {
-            return "No class loader exists for this app";
+            throw new IllegalStateException("No class loader exists for this app: " + appId + ", relativeUrl: " + relativeUrl);
         }
         URL absUrl = gcl.getResource(relativeUrl);
         return absUrl != null ? absUrl.toString() : null;

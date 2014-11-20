@@ -50,6 +50,7 @@ public class TestNCubeManager
     static final String APP_ID = "ncube.test";
     static final String USER_ID = "jdirt";
     public static ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name());
+    public static ApplicationID defaultReleaseApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.RELEASE.name());
 
     @Before
     public void setUp() throws Exception
@@ -1224,16 +1225,105 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testEnsureLoadedException() {
-        try {
+    public void testEnsureLoadedException()
+    {
+        try
+        {
             NCubeManager.ensureLoaded(null);
-        } catch (IllegalStateException e) {
+        }
+        catch (IllegalStateException e)
+        {
             assertTrue(e.getMessage().contains("Failed"));
             assertTrue(e.getMessage().contains("retrieve cube from cache"));
         }
     }
 
-    private void loadTestClassPathCubes() {
+    @Test
+    public void testMutateReleaseCube()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "latlon.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        Object[] cubeInfos = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "%");
+        assertNotNull(cubeInfos);
+        assertEquals(1, cubeInfos.length);
+        NCubeManager.releaseCubes(defaultSnapshotApp);
+        try
+        {
+            NCubeManager.deleteCube(defaultReleaseApp, cube.getName(), USER_ID);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("RELEASE"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("cannot"));
+            assertTrue(e.getMessage().contains("deleted"));
+        }
+
+        try
+        {
+            NCubeManager.renameCube(defaultReleaseApp, cube.getName(), "jumbo");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("RELEASE"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("annot"));
+            assertTrue(e.getMessage().contains("rename"));
+        }
+
+        try
+        {
+            NCubeManager.restoreCube(defaultReleaseApp, new Object[] {cube.getName()}, USER_ID);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("RELEASE"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("annot"));
+            assertTrue(e.getMessage().contains("restore"));
+        }
+
+        try
+        {
+            NCubeManager.updateCube(defaultReleaseApp, cube, USER_ID);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("RELEASE"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("annot"));
+            assertTrue(e.getMessage().contains("update"));
+        }
+
+        try
+        {
+            NCubeManager.changeVersionValue(defaultReleaseApp, "1.2.3");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("RELEASE"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("annot"));
+            assertTrue(e.getMessage().contains("change"));
+            assertTrue(e.getMessage().contains("version"));
+        }
+
+        try
+        {
+            NCubeManager.duplicate(defaultSnapshotApp, defaultReleaseApp, cube.name, "jumbo", USER_ID);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("RELEASE"));
+            assertTrue(e.getMessage().contains("cube"));
+            assertTrue(e.getMessage().contains("annot"));
+            assertTrue(e.getMessage().contains("duplicate"));
+            assertTrue(e.getMessage().contains("version"));
+        }
+    }
+
+    private void loadTestClassPathCubes()
+    {
         NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.versions.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
         cube = NCubeManager.getNCubeFromResource("sys.classpath.local.json");
@@ -1244,7 +1334,8 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
     }
 
-    private void loadTestBootstrapCubes() {
+    private void loadTestBootstrapCubes()
+    {
         ApplicationID appId = defaultSnapshotApp.createNewSnapshotId("0.0.0");
 
         NCube cube = NCubeManager.getNCubeFromResource(appId, "sys.bootstrap.json");
@@ -1254,8 +1345,4 @@ public class TestNCubeManager
         cube = NCubeManager.getNCubeFromResource("sys.status.json");
         NCubeManager.createCube(appId, cube, USER_ID);
     }
-
-
-
-
 }

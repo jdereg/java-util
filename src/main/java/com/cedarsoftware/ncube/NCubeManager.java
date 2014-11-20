@@ -481,7 +481,7 @@ public class NCubeManager
 
         if (appId.isRelease())
         {
-            throw new IllegalArgumentException("Release cubes cannot be restored, app: " + appId);
+            throw new IllegalArgumentException(ReleaseStatus.RELEASE + " cubes cannot be restored, app: " + appId);
         }
 
         if (ArrayUtilities.isEmpty(cubeNames))
@@ -536,7 +536,7 @@ public class NCubeManager
     {
         if (newAppId.isRelease())
         {
-            throw new IllegalArgumentException("Cubes cannot be duplicated into a released version, cube: " + newName + ", app: " + newAppId);
+            throw new IllegalArgumentException("Cubes cannot be duplicated into a " + ReleaseStatus.RELEASE + " version, cube: " + newName + ", app: " + newAppId);
         }
 
         NCube.validateCubeName(newName);
@@ -563,7 +563,7 @@ public class NCubeManager
 
         if (appId.isRelease())
         {
-            throw new IllegalArgumentException("Release cubes cannot be updated, cube: " + ncube.getName() + ", app: " + appId);
+            throw new IllegalArgumentException(ReleaseStatus.RELEASE + " cubes cannot be updated, cube: " + ncube.getName() + ", app: " + appId);
         }
 
         final String cubeName = ncube.name;
@@ -614,7 +614,7 @@ public class NCubeManager
 
         if (appId.isRelease())
         {
-            throw new IllegalArgumentException("Cannot change the version of a RELEASE app, app: " + appId);
+            throw new IllegalArgumentException("Cannot change the version of a " + ReleaseStatus.RELEASE + " app, app: " + appId);
         }
         ApplicationID.validateVersion(newVersion);
         getPersister().changeVersionValue(appId, newVersion);
@@ -628,7 +628,7 @@ public class NCubeManager
 
         if (appId.isRelease())
         {
-            throw new IllegalArgumentException("Cannot rename a RELEASE cube, cube: " + oldName + ", app: " + appId);
+            throw new IllegalArgumentException("Cannot rename a " + ReleaseStatus.RELEASE + " cube, cube: " + oldName + ", app: " + appId);
         }
 
         NCube.validateCubeName(oldName);
@@ -684,7 +684,7 @@ public class NCubeManager
         {
             if (appId.isRelease())
             {
-                throw new IllegalArgumentException("Release cubes cannot be deleted, cube: " + cubeName + ", app: " + appId);
+                throw new IllegalArgumentException(ReleaseStatus.RELEASE + " cubes cannot be deleted, cube: " + cubeName + ", app: " + appId);
             }
         }
 

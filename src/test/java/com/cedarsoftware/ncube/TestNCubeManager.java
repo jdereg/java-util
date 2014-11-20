@@ -414,6 +414,39 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testUpdateOnDeletedCube() throws Exception
+    {
+        NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
+
+        assertTrue(ncube1.getNumDimensions() == 3);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), USER_ID);
+
+        try
+        {
+            NCubeManager.updateCube(defaultSnapshotApp, ncube1, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Error updating"));
+            assertTrue(e.getMessage().contains("attempting to update deleted cube"));
+        }
+
+    }
+
+    @Test
+    public void testGetNullPersister() {
+        NCubeManager.setNCubePersister(null);
+
+        try
+        {
+            NCubeManager.getPersister();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Persister not set"));
+        }
+    }
+
+    @Test
     public void testGetNCubes() throws Exception
     {
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();

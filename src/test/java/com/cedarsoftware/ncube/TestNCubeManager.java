@@ -178,6 +178,8 @@ public class TestNCubeManager
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
         data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
         assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
+
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), true, USER_ID));
     }
 
     @Test
@@ -414,6 +416,38 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testUpdateOnDeletedCube() throws Exception
+    {
+        NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
+
+        assertTrue(ncube1.getNumDimensions() == 3);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), USER_ID);
+
+        try
+        {
+            NCubeManager.updateCube(defaultSnapshotApp, ncube1, USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Error updating"));
+            assertTrue(e.getMessage().contains("attempting to update deleted cube"));
+        }
+    }
+
+    @Test
+    public void testGetNullPersister() {
+        NCubeManager.setNCubePersister(null);
+
+        try
+        {
+            NCubeManager.getPersister();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Persister not set"));
+        }
+    }
+
+    @Test
     public void testGetNCubes() throws Exception
     {
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
@@ -549,6 +583,9 @@ public class TestNCubeManager
         Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, null);
 
         assertEquals(2, cubeList.length);
+
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
     }
 
 
@@ -758,22 +795,15 @@ public class TestNCubeManager
         catch (IllegalStateException ignore)
         {
         }
+
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true, USER_ID);
     }
 
     @Test
     public void testNCubeManagerDeleteNotExistingCube() throws Exception
     {
         ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
-        try
-        {
-            NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID);
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("not"));
-            assertTrue(e.getMessage().contains("delete"));
-            assertTrue(e.getMessage().contains("exist"));
-        }
+        assertFalse(NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID));
     }
 
     @Test
@@ -892,24 +922,6 @@ public class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, ncube.getName(), true, USER_ID);
     }
 
-//    @Test
-//    public void testBadUrlsAddedToClassLoader() throws Exception
-//    {
-//        String url = "htp://this wont work";
-//        List urls = new ArrayList();
-//        urls.add(url);
-//        try
-//        {
-//            ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, "2.0.0", ReleaseStatus.SNAPSHOT.name());
-//            NCubeManager.addBaseResourceUrls(appId, urls);
-//            fail("Should not make it here");
-//        }
-//        catch (IllegalArgumentException e)
-//        {
-//            assertTrue(e.getMessage().contains("malformed"));
-//        }
-//    }
-
     @Test
     public void testLoadCubesWithNullApplicationID() throws Exception
     {
@@ -921,6 +933,27 @@ public class TestNCubeManager
         }
         catch(Exception ignored)
         { }
+    }
+
+    @Test
+    public void testEnsureLoadedOnCubeThatDoesNotExist() throws Exception
+    {
+        try
+        {
+            // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
+            NCubeInfoDto dto = new NCubeInfoDto();
+            dto.name = "does_not_exist";
+            dto.app = "NONE";
+            dto.tenant = "NONE";
+            dto.version = "1.0.0";
+
+            NCubeManager.ensureLoaded(dto);
+            fail();
+        }
+        catch(IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("Unable to load"));
+        }
     }
 
     @Test(expected=RuntimeException.class)

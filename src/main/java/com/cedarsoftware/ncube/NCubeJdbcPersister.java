@@ -285,7 +285,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load cube: " + cubeInfo.name + ", app: " + cubeInfo + " from database";
+            String s = "Unable to load cube: " + cubeInfo + " from database";
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }

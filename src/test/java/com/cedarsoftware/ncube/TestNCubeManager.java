@@ -178,6 +178,8 @@ public class TestNCubeManager
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
         data = NCubeManager.getTestData(defaultSnapshotApp, "test.Age-Gender");
         assertTrue(DeepEquals.deepEquals(expectedTests, new NCubeTestReader().convert(data).toArray(new NCubeTest[0])));
+
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), true, USER_ID));
     }
 
     @Test
@@ -431,7 +433,6 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("Error updating"));
             assertTrue(e.getMessage().contains("attempting to update deleted cube"));
         }
-
     }
 
     @Test
@@ -582,6 +583,9 @@ public class TestNCubeManager
         Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, null);
 
         assertEquals(2, cubeList.length);
+
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
+        assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
     }
 
 
@@ -791,22 +795,15 @@ public class TestNCubeManager
         catch (IllegalStateException ignore)
         {
         }
+
+        NCubeManager.deleteCube(defaultSnapshotApp, "test.Age-Gender", true, USER_ID);
     }
 
     @Test
     public void testNCubeManagerDeleteNotExistingCube() throws Exception
     {
         ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, "DASHBOARD", "0.1.0", ReleaseStatus.SNAPSHOT.name());
-        try
-        {
-            NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID);
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("not"));
-            assertTrue(e.getMessage().contains("delete"));
-            assertTrue(e.getMessage().contains("exist"));
-        }
+        assertFalse(NCubeManager.deleteCube(id, "DashboardRoles", true, USER_ID));
     }
 
     @Test

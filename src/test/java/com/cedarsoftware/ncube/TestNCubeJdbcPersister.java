@@ -527,23 +527,23 @@ public class TestNCubeJdbcPersister
         }
     }
 
-    @Test
-    public void testCreateCubeWhenOneAlreadyExists() throws Exception
-    {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true);
-
-        try
-        {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID);
-            fail();
-        }
-        catch(IllegalStateException e)
-        {
-            assertTrue(e.getMessage().contains("ube"));
-            assertTrue(e.getMessage().contains("already exists"));
-        }
-    }
+//    @Test
+//    public void testCreateCubeWhenOneAlreadyExists() throws Exception
+//    {
+//        NCube<Double> ncube = TestNCube.getTestNCube2D(true);
+//        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true);
+//
+//        try
+//        {
+//            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID);
+//            fail();
+//        }
+//        catch(IllegalStateException e)
+//        {
+//            assertTrue(e.getMessage().contains("ube"));
+//            assertTrue(e.getMessage().contains("already exists"));
+//        }
+//    }
 
     @Test
     public void testCreateCubeThatDoesntCreateCube() throws Exception {
@@ -632,29 +632,28 @@ public class TestNCubeJdbcPersister
         }
     }
 
-/*
     @Test
     public void testRestoreCubeThatThrowsSQLException() throws Exception {
         Connection c = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
         ResultSet rs = mock(ResultSet.class);
 
-        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class);
         when(ps.executeQuery()).thenReturn(rs);
-        when(ps.executeUpdate()).thenThrow(SQLException.class);
         when(rs.next()).thenReturn(true);
         when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+        //when(rs.getBytes(anyInt())).thenReturn();
 
         try
         {
             new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
             fail();
-        } catch(RuntimeException e) {
+        } catch(IllegalStateException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
         }
     }
 
-
+/*
     @Test
     public void testDeleteCubeThatThrowsSQLException() throws Exception {
         Connection c = mock(Connection.class);

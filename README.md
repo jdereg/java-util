@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.0.1</version>
+  <version>3.0.3</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -85,6 +85,11 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.0.3
+ * Added NCubeInfoDto to list of classes that are available to Groovy Expression cells, without the author having to import it (inherited imports).
+ * Added checks to NCubeManager to prevent any mutable operation on a release cube. Added here in addition to the perister implementations.
+* 3.0.2
+ * Improved support for reading cubes that were stored in json-io serialized format.
 * 3.0.1
  * NCubeManager has new API, resolveRelativeUrl().  This API will take a relative URL (com/foo/bar.groovy) and return an absolute URL using the sys.classpath for the given ApplicationID.
  * Bug fix: test data was being cleared when an update cube happened.  The test data was not being copied to the new revision.

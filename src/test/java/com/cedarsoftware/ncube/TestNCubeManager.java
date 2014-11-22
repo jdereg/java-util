@@ -321,12 +321,12 @@ public class TestNCubeManager
         Set refs = new TreeSet();
         NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n1.getName(), refs);
 
-        assertEquals(1, refs.size());
+        assertEquals(2, refs.size());
         assertTrue(refs.contains("Template2Cube"));
 
         refs.clear();
         NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n2.getName(), refs);
-        assertEquals(1, refs.size());
+        assertEquals(2, refs.size());
         assertTrue(refs.contains("Template1Cube"));
 
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, n1.getName(), true, USER_ID));
@@ -342,10 +342,26 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testGetReferencedCubeNamesSimple() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "aa.json");
+        NCube n2 = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "bb.json");
+
+        Set refs = new TreeSet();
+        NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n1.getName(), refs);
+
+        assertEquals(1, refs.size());
+        assertTrue(refs.contains("bb"));
+
+        refs.clear();
+        NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n2.getName(), refs);
+        assertEquals(0, refs.size());
+    }
+
+    @Test
     public void testDuplicateNCube() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource("stringIds.json");
-        String ver = "1.1.1";
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID);
         ApplicationID newId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.1.2", ReleaseStatus.SNAPSHOT.name());
 
@@ -356,7 +372,6 @@ public class TestNCubeManager
         assertTrue(NCubeManager.deleteCube(newId, n2.getName(), true, USER_ID));
         assertTrue(n1.equals(n2));
     }
-
 
     @Test
     public void testGetAppNames() throws Exception
@@ -1350,6 +1365,21 @@ public class TestNCubeManager
             assertTrue(e.getMessage().contains("duplicate"));
             assertTrue(e.getMessage().contains("version"));
         }
+    }
+
+    @Test
+    public void testCircularCubeReference()
+    {
+        NCubeManager.getNCubeFromResource(defaultSnapshotApp, "a.json");
+        NCubeManager.getNCubeFromResource(defaultSnapshotApp, "b.json");
+        NCubeManager.getNCubeFromResource(defaultSnapshotApp, "c.json");
+
+        Set<String> names = new TreeSet<>();
+        NCubeManager.getReferencedCubeNames(defaultSnapshotApp, "a", names);
+        assertEquals(3, names.size());
+        assertTrue(names.contains("a"));
+        assertTrue(names.contains("b"));
+        assertTrue(names.contains("c"));
     }
 
     private void loadTestClassPathCubes()

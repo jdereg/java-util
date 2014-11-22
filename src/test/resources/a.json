@@ -1,0 +1,20 @@
+{
+  "ncube": "a",
+  "axes": [
+    {
+      "name": "state",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "hasDefault": true,
+      "preferredOrder": 0,
+      "columns": []
+    }
+  ],
+  "cells": [
+    {
+      "id": [],
+      "type": "exp",
+      "value":"@b[:]"
+    }
+  ]
+}

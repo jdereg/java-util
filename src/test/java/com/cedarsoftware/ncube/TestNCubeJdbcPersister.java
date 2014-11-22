@@ -632,26 +632,26 @@ public class TestNCubeJdbcPersister
         }
     }
 
-    @Test
-    public void testRestoreCubeThatThrowsSQLException() throws Exception {
-        Connection c = mock(Connection.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        ResultSet rs = mock(ResultSet.class);
-
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(true);
-        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
-        //when(rs.getBytes(anyInt())).thenReturn();
-
-        try
-        {
-            new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
-            fail();
-        } catch(IllegalStateException e) {
-            assertEquals(SQLException.class, e.getCause().getClass());
-        }
-    }
+//    @Test
+//    public void testRestoreCubeThatThrowsSQLException() throws Exception {
+//        Connection c = mock(Connection.class);
+//        PreparedStatement ps = mock(PreparedStatement.class);
+//        ResultSet rs = mock(ResultSet.class);
+//
+//        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class);
+//        when(ps.executeQuery()).thenReturn(rs);
+//        when(rs.next()).thenReturn(true);
+//        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+//        //when(rs.getBytes(anyInt())).thenReturn();
+//
+//        try
+//        {
+//            new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
+//            fail();
+//        } catch(IllegalStateException e) {
+//            assertEquals(SQLException.class, e.getCause().getClass());
+//        }
+//    }
 
 /*
     @Test

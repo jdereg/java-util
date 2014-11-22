@@ -424,12 +424,12 @@ public class NCubeManager
             throw new IllegalArgumentException("Could not get referenced cube names, n-cube: " + name + " does not exist in app: " + appId);
         }
         Set<String> subCubeList = ncube.getReferencedCubeNames();
-        refs.addAll(subCubeList);
 
         for (String cubeName : subCubeList)
         {
             if (!refs.contains(cubeName))
             {
+                refs.add(cubeName);
                 getReferencedCubeNames(appId, cubeName, refs);
             }
         }

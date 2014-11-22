@@ -77,7 +77,6 @@ public class NCube<T>
     private transient ApplicationID appId = ApplicationID.defaultAppId;
 
     public static final String validCubeNameChars = "0-9a-zA-Z:._-";
-    private static final String[] emptyStringArray = new String[] {};
     public static final String RULE_EXEC_INFO = "_rule";
     private static final ThreadLocal<Deque<StackEntry>> executionStack = new ThreadLocal<Deque<StackEntry>>()
     {
@@ -852,7 +851,7 @@ public class NCube<T>
 
     private static String[] getAxisNames(final Map<String, List<Column>> bindings)
     {
-        return bindings.keySet().toArray(emptyStringArray);
+        return bindings.keySet().toArray(new String[bindings.size()]);
     }
 
     private static Map<String, Integer> getCountersPerAxis(final Map<String, List<Column>> bindings)

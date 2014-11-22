@@ -911,21 +911,15 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            try
-            {   // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
-                NCube ncube = (NCube) JsonReader.jsonToJava(json);
-                List<Axis> axes = ncube.getAxes();
-                for (Axis axis : axes)
-                {
-                    axis.buildScaffolding();
-                }
-                ncube.setMetaProperty("sha1", ncube.sha1());
-                return ncube;
-            }
-            catch (Exception e1)
+            // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
+            NCube ncube = (NCube) JsonReader.jsonToJava(json);
+            List<Axis> axes = ncube.getAxes();
+            for (Axis axis : axes)
             {
-                throw e1;
+                axis.buildScaffolding();
             }
+            ncube.setMetaProperty("sha1", ncube.sha1());
+            return ncube;
         }
     }
 

@@ -755,4 +755,13 @@ public class TestRuleEngine
         assertTrue(output.containsKey(1));
         assertEquals("months", output.get(1));
     }
+
+    @Test
+    public void testRuleStop()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("ruleStop.json");
+        Map output = new HashMap();
+        ncube.getCell(new HashMap(), output);
+        assertEquals(200, output.get("price"));
+    }
 }

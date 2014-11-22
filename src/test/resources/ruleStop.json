@@ -1,0 +1,22 @@
+{
+    "ncube":"ruleStop",
+    "axes":[
+        {
+            "name":"condition",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":1, "type":"exp", "value":"true" },
+                { "id":2, "type":"exp", "value":"true" },
+                { "id":3, "type":"exp", "value":"true" }
+            ]
+        }
+    ],
+    "cells":[
+        {"id":[1],"type":"exp","value":"output.price = 100"},
+        {"id":[2],"type":"exp","value":"output.price = 200; ruleStop()"},
+        {"id":[3],"type":"exp","value":"output.price = 300"}
+    ]
+}

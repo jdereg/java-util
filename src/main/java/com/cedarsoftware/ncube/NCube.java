@@ -2152,15 +2152,15 @@ public class NCube<T>
             }
             for (Column column : axis.getColumns())
             {
-                Column newCol = column.isDefault() ? copyAxis.getDefaultColumn() : copyAxis.addColumn(column.getValue());
+                Column copyCol = column.isDefault() ? copyAxis.getDefaultColumn() : copyAxis.addColumn(column.getValue());
                 metaProperties = column.getMetaProperties();
                 for (Map.Entry<String, Object> entry : metaProperties.entrySet())
                 {
-                    newCol.setMetaProperty(entry.getKey(), entry.getValue());
+                    copyCol.setMetaProperty(entry.getKey(), entry.getValue());
                 }
 
-                newCol.setId(column.id);
-                origToNewColumn.put(column.id, newCol);
+                copyCol.setId(column.id);
+                origToNewColumn.put(column.id, copyCol);
             }
             copyCube.addAxis(copyAxis);
         }

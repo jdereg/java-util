@@ -398,6 +398,43 @@ public class TestAdvice
     }
 
     @Test
+    public void testAdviceSubsetMatchingLateLoadExpressions()
+    {
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(ApplicationID.defaultAppId, "*.run()", new Advice()
+        {
+            public String getName()
+            {
+                return "alpha";
+            }
+
+            public boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.put("before", true);
+                return true;
+            }
+
+            public void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.put("after", true);
+            }
+        });
+
+        NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json");
+
+        Map output = new HashMap();
+        Map coord = new HashMap();
+        coord.put("Age", 10);
+        ncube.getCell(coord, output);
+
+        // This advice was placed on all expressions ("exp") in the loaded cube.
+        // This advice was placed into the Manager first, and then onto the cube later.
+        assertTrue(output.containsKey("before"));
+        assertTrue(output.containsKey("after"));
+    }
+
+    @Test
     public void testAdviceNoCallForward()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json");

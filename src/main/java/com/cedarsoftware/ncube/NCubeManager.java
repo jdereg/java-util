@@ -361,7 +361,7 @@ public class NCubeManager
         for (Object value : cubes.values())
         {
             if (value instanceof NCube)
-            {   // apply advice to hydrated ncubes
+            {   // apply advice to hydrated cubes
                 NCube ncube = (NCube) value;
                 Axis axis = ncube.getAxis("method");
                 if (axis != null)

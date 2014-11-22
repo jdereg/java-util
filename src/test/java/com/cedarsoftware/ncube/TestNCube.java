@@ -5017,6 +5017,30 @@ public class TestNCube
     }
 
     @Test
+    public void testDuplicateMetaProperties()
+    {
+        NCube c1 = NCubeManager.getNCubeFromResource("testDuplicate.json");
+        NCube c2 = c1.duplicate("DupeTest");
+        assertTrue(c2.getMetaProperties().containsKey("money"));
+        assertEquals(100.0, c2.getMetaProperties().get("money"));
+        assertTrue(c1.getMetaProperties().equals(c2.getMetaProperties()));
+
+        Axis gender = (Axis) c1.getAxes().get(0);
+        Axis sex = (Axis) c2.getAxes().get(0);
+        assertTrue(gender.getMetaProperties().size() == 1);
+        assertTrue(gender.getMetaProperties().equals(sex.getMetaProperties()));
+        assertEquals("gender", sex.getMetaProperty("sex"));
+
+        Column female = sex.findColumn("Female");
+        assertTrue((Boolean)female.getMetaProperty("chick"));
+        assertFalse((Boolean)female.getMetaProperty("dude"));
+
+        Column male = sex.findColumn("Male");
+        assertFalse((Boolean) male.getMetaProperty("chick"));
+        assertTrue((Boolean) male.getMetaProperty("dude"));
+    }
+
+    @Test
     public void testAbsoluteHttpUrlToGroovy()
     {
         NCube cube = NCubeManager.getNCubeFromResource("urlContent.json");

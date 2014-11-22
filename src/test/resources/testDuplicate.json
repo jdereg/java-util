@@ -1,0 +1,34 @@
+{
+  "ncube":"TestDuplicate",
+  "money": 100.0,
+  "axes":[
+    {
+      "name":"Gender",
+      "type":"DISCRETE",
+      "valueType":"STRING",
+      "sex":"gender",
+      "hasDefault":true,
+      "preferredOrder":0,
+      "columns":[
+        {
+          "id":"Female",
+          "chick": true,
+          "dude": false
+        },
+        {
+          "id":"Male",
+          "dude": true,
+          "chick": false
+        }
+      ]
+    }
+  ],
+  "cells":[
+    {
+      "id":["Male"], "value":1.0
+    },
+    {
+      "id":["Female"], "value":1.1
+    }
+  ]
+}

@@ -2145,9 +2145,20 @@ public class NCube<T>
         for (Axis axis : axisList.values())
         {
             Axis copyAxis = new Axis(axis.getName(), axis.getType(), axis.getValueType(), axis.hasDefaultColumn(), axis.getColumnOrder(), axis.id);
+            metaProperties = axis.getMetaProperties();
+            for (Map.Entry<String, Object> entry : metaProperties.entrySet())
+            {
+                copyAxis.setMetaProperty(entry.getKey(), entry.getValue());
+            }
             for (Column column : axis.getColumns())
             {
                 Column newCol = column.isDefault() ? copyAxis.getDefaultColumn() : copyAxis.addColumn(column.getValue());
+                metaProperties = column.getMetaProperties();
+                for (Map.Entry<String, Object> entry : metaProperties.entrySet())
+                {
+                    newCol.setMetaProperty(entry.getKey(), entry.getValue());
+                }
+
                 newCol.setId(column.id);
                 origToNewColumn.put(column.id, newCol);
             }

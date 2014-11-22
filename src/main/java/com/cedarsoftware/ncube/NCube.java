@@ -1726,9 +1726,7 @@ public class NCube<T>
         {
             Map<Object, Long> userIdToUniqueId = new CaseInsensitiveMap<>();
             Map<String, Object> jsonNCube = JsonReader.jsonToMaps(json);
-            // When writing out cubes from the old format this was true, but new cubes
-            // writing to json format will have 'name', not 'ncube'
-            String cubeName = getString(jsonNCube, "ncube");
+            String cubeName = getString(jsonNCube, "ncube");  // new cubes always have ncube as they key in JSON storage
             if (StringUtilities.isEmpty(cubeName))
             {
                 throw new IllegalArgumentException("JSON format must have a root 'ncube' field containing the String name of the NCube.");

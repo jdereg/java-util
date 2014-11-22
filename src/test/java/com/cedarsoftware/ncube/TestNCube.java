@@ -194,6 +194,7 @@ public class TestNCube
         assertTrue("AUTOPS".equals(riskType));
 
         Set<String> optionalScope = ncube.getOptionalScope();
+        optionalScope = ncube.getOptionalScope();   // 2nd time to force fetch from cache
         assertEquals(1, optionalScope.size());
         assertTrue(optionalScope.contains("bu"));
 

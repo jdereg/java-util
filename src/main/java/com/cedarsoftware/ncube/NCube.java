@@ -10,6 +10,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonObject;
@@ -87,12 +88,6 @@ public class NCube<T>
     };
     private Map<String, Advice> advices = new LinkedHashMap<>();
     private Map<String, Object> metaProps = null;
-
-    /**
-     * This field is only filled out when you use loadTestCube to load the cube.  That way it doesn't show
-     * up in production.
-     */
-    private String testData;
 
     /**
      * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
@@ -2370,7 +2365,7 @@ public class NCube<T>
             sha1.update(sep);
             sha1.update(axis.hasDefaultColumn() ? "t".getBytes() : "f".getBytes());
             sha1.update(sep);
-            if (axis.metaProps != null && axis.metaProps.size() > 0)
+            if (!MapUtilities.isEmpty(axis.metaProps))
             {
                 sha1.update(toJson(axis.getMetaProperties()).getBytes());
                 sha1.update(sep);
@@ -2379,7 +2374,7 @@ public class NCube<T>
             {
                 sha1.update(column.getValue().toString().getBytes());
                 sha1.update(sep);
-                if (column.metaProps != null && column.metaProps.size() > 0)
+                if (!MapUtilities.isEmpty(column.metaProps))
                 {
                     sha1.update(toJson(column.getMetaProperties()).getBytes());
                     sha1.update(sep);
@@ -2442,16 +2437,6 @@ public class NCube<T>
         {
             throw new IllegalStateException("Unable to convert value to JSON: " + o.toString());
         }
-    }
-
-    public String getTestData()
-    {
-        return testData;
-    }
-
-    public void setTestData(String testData)
-    {
-        this.testData = testData;
     }
 
     public static void validateCubeName(String cubeName)

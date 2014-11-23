@@ -161,7 +161,7 @@
                     <reuseForks>true</reuseForks>
                     <parallel>classes</parallel>
                     <threadCount>1</threadCount>
-                    <argLine>-Xmx512m -XX:MaxPermSize=256m</argLine>
+                    <argLine>-Xmx256m -XX:MaxPermSize=128m</argLine>
                 </configuration>
             </plugin>
         </plugins>

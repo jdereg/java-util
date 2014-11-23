@@ -260,7 +260,14 @@ public class TestNCubeJdbcPersister
     @Test
     public void testUpdateTestDataWithSQLException() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLException();
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(1)).thenReturn(5L);
+
         try
         {
             new NCubeJdbcPersister().updateTestData(c, defaultSnapshotApp, "foo", "test data");
@@ -269,9 +276,7 @@ public class TestNCubeJdbcPersister
         catch(RuntimeException e)
         {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("nable"));
-            assertTrue(e.getMessage().contains("max"));
-            assertTrue(e.getMessage().contains("rev"));
+            assertTrue(e.getMessage().contains("Unable to update test data"));
         }
     }
 

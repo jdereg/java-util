@@ -451,6 +451,46 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testUpdateTestDataOnDeletedCube() throws Exception
+    {
+        NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
+
+        assertTrue(ncube1.getNumDimensions() == 3);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), USER_ID);
+
+        try
+        {
+            NCubeManager.updateTestData(defaultSnapshotApp, ncube1.getName(), USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Cannot update"));
+            assertTrue(e.getMessage().contains("deleted"));
+        }
+    }
+
+    @Test
+    public void testUpdateNotesOnDeletedCube() throws Exception
+    {
+        NCube ncube1 = TestNCube.getTestNCube3D_Boolean();
+
+        NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID);
+
+        assertTrue(ncube1.getNumDimensions() == 3);
+
+        NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), USER_ID);
+
+        try
+        {
+            NCubeManager.updateNotes(defaultSnapshotApp, ncube1.getName(), USER_ID);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Cannot update"));
+            assertTrue(e.getMessage().contains("deleted"));
+        }
+    }
+
+    @Test
     public void testGetNullPersister() {
         NCubeManager.setNCubePersister(null);
 

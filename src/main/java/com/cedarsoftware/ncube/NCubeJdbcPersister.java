@@ -715,10 +715,6 @@ public class NCubeJdbcPersister
             stmt.setLong(7, maxRev);
             return stmt.executeUpdate() == 1;
         }
-        catch (IllegalStateException e)
-        {
-            throw e;
-        }
         catch (Exception e)
         {
             String s = "Unable to update test data for NCube: " + cubeName + ", app: " + appId;

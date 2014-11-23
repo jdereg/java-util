@@ -157,10 +157,10 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.18</version>
                 <configuration>
-                    <forkCount>1C</forkCount>
+                    <forkCount>2C</forkCount>
                     <reuseForks>true</reuseForks>
                     <parallel>classes</parallel>
-                    <threadCountClasses>1</threadCountClasses>
+                    <threadCount>1</threadCount>
                     <argLine>-Xmx512m -XX:MaxPermSize=256m</argLine>
                 </configuration>
             </plugin>

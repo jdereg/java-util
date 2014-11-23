@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.Binding;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.RuleInfo;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -57,11 +58,15 @@ public class TestResultsFormatter
         builder.append("<b>Axis bindings</b>");
         builder.append("<pre>");
         builder.append(newLine);
-        for (Binding binding : ruleInfo.getAxisBindings())
+        for (Iterator<Binding> iterator = ruleInfo.getAxisBindings().iterator(); iterator.hasNext(); )
         {
+            Binding binding = iterator.next();
             builder.append(binding.toHtml());
             builder.append(newLine);
-            builder.append("<hr/>");
+            if (iterator.hasNext())
+            {
+                builder.append("<hr class=\"hr-small\"/>");
+            }
         }
         builder.append("</pre>");
     }

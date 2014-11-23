@@ -9,38 +9,59 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by kpartlow on 9/16/2014.
+ * Implements an n-cube.  This is a hyper (n-dimensional) cube
+ * of cells, made up of 'n' number of axes.  Each Axis is composed
+ * of Columns that denote discrete nodes along an axis.  Use NCubeManager
+ * to manage a list of NCubes.  Documentation on Github.
+ *
+ * @author Ken Partlow (kpartlow@gmail.com)
+ *         <br/>
+ *         Copyright (c) Cedar Software LLC
+ *         <br/><br/>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br/><br/>
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <br/><br/>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 public class TestResultsFormatter
 {
-    private Map _output;
-    private StringBuilder _builder = new StringBuilder();
+    private Map output;
+    private StringBuilder builder = new StringBuilder();
     private static final String newLine = "\n";
 
-    public TestResultsFormatter(Map output)
+    public TestResultsFormatter(Map out)
     {
-        _output = output;
+        this.output = out;
     }
 
-    public String format() {
-
+    public String format()
+    {
         formatResult();
         formatOutput();
+        formatSystemOut("System.out");
+        formatSystemOut("System.err");
 
-        RuleInfo info = (RuleInfo)_output.get(NCube.RULE_EXEC_INFO);
+        RuleInfo info = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         format(info.getRuleExecutionTrace());
 
-        return _builder.toString();
+        return builder.toString();
     }
 
     public void format(List<MapEntry> trace)
     {
-        _builder.append("<b>Trace</b>");
-        _builder.append("<pre>");
-        _builder.append(newLine);
+        builder.append("<b>Trace</b>");
+        builder.append("<pre>");
+        builder.append(newLine);
         StringBuilder spaces = new StringBuilder("   ");
-        for (MapEntry entry : trace) {
-
+        for (MapEntry entry : trace)
+        {
             if (entry.getValue() instanceof Map)
             {
                 ((Map)entry.getValue()).remove("ncube");
@@ -54,34 +75,35 @@ public class TestResultsFormatter
                 spaces.setLength(spaces.length()-3);
             }
 
-            _builder.append(spaces);
-
-            _builder.append(entry.getKey());
+            builder.append(spaces);
+            builder.append(entry.getKey());
 
             if (begin)
             {
                 spaces.append("   ");
-                _builder.append("(");
+                builder.append("(");
                 turnMapIntoCoords((Map<String, Object>) entry.getValue());
-                _builder.append(")");
+                builder.append(")");
             }
             else
             {
-                _builder.append(" = ");
-                _builder.append(entry.getValue());
+                builder.append(" = ");
+                builder.append(entry.getValue());
             }
 
-            _builder.append(newLine);
+            builder.append(newLine);
         }
-        _builder.setLength(_builder.length()-1);
-        _builder.append("</pre>");
+        builder.setLength(builder.length()-1);
+        builder.append("</pre>");
     }
 
-    public boolean isBegin(Object o) {
+    public static boolean isBegin(Object o)
+    {
         return o instanceof String && ((String)o).startsWith("begin:");
     }
 
-    public boolean isEnd(Object o) {
+    public static boolean isEnd(Object o)
+    {
         return o instanceof String && ((String)o).startsWith("end:");
     }
 
@@ -89,64 +111,96 @@ public class TestResultsFormatter
     {
         for (Map.Entry<String, Object> entry : map.entrySet())
         {
-            _builder.append(entry.getKey());
-            _builder.append(":");
-            _builder.append(entry.getValue());
-            _builder.append(",");
+            builder.append(entry.getKey());
+            builder.append(":");
+            builder.append(entry.getValue());
+            builder.append(",");
         }
-        _builder.setLength(_builder.length()-1);
+        builder.setLength(builder.length()-1);
     }
 
-    public void formatResult() {
-        _builder.append("<b>Result</b>");
-        _builder.append("<pre>");
-        _builder.append(newLine);
-        _builder.append("   ");
-        _builder.append(_output.get("return"));
-        _builder.append(newLine);
+    public void formatResult()
+    {
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        builder.append("<b>Result</b>");
+        builder.append("<pre>");
+        builder.append(newLine);
+        builder.append("   ");
+        builder.append(ruleInfo.getLastExecutedStatementValue());
+        builder.append(newLine);
 
-        Set<String> failures = (Set<String>)_output.get("_failures");
-        if (failures != null && !failures.isEmpty()) {
-            _builder.append(newLine);
+        Set<String> failures = ruleInfo.getAssertionFailures();
+        if (failures != null && !failures.isEmpty())
+        {
+            builder.append(newLine);
             for (String entry : failures)
             {
-                _builder.append("   ");
-                _builder.append(entry);
-                _builder.append(newLine);
+                builder.append("   ");
+                builder.append(entry);
+                builder.append(newLine);
             }
-            _builder.setLength(_builder.length()-1);
+            builder.setLength(builder.length()-1);
         }
-        _builder.append("</pre>");
+        builder.append("</pre>");
     }
 
     public void formatOutput()
     {
-        _builder.append("<b>Output</b>");
-        _builder.append("<pre>");
-        _builder.append(newLine);
+        builder.append("<b>Output Map</b>");
+        builder.append("<pre>");
+        builder.append(newLine);
 
-        if (_output.size() <= 3) {
-            _builder.append("   No output");
-            _builder.append(newLine);
+        if (output.size() < 2)
+        {   // size() == 1 minimum (_rule metakey).
+            builder.append("   No output");
+            builder.append(newLine);
         }
         else
         {
-            java.util.Iterator i = _output.entrySet().iterator();
-            while (i.hasNext())
+            for (Object o : output.entrySet())
             {
-                Map.Entry item = (Map.Entry) i.next();
+                Map.Entry item = (Map.Entry) o;
 
-                if ("_rule".equals(item.getKey()) || "return".equals(item.getKey()) || "_failures".equals(item.getKey()))
+                final Object key = item.getKey();
+                if (NCube.RULE_EXEC_INFO.equals(key))
                 {
                     continue;
                 }
-                _builder.append("   ");
-                _builder.append(item.getKey());
-                _builder.append(" = ");
-                _builder.append(item.getValue());
-                _builder.append(newLine);
+                builder.append("   ");
+                builder.append(item.getKey());
+                builder.append(" = ");
+                builder.append(item.getValue());
+                builder.append(newLine);
             }
         }
-        _builder.append("</pre>");
+        builder.append("</pre>");
+    }
+
+    public void formatSystemOut(String section)
+    {
+        boolean isErr = section.toLowerCase().contains("err");
+        builder.append("<b>");
+        builder.append(section);
+        builder.append("</b>");
+        if (isErr)
+        {
+            builder.append("<pre style=\"color:darkred\">");
+        }
+        else
+        {
+            builder.append("<pre>");
+        }
+        builder.append(newLine);
+
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        if (isErr)
+        {
+            builder.append(ruleInfo.getSystemErr());
+        }
+        else
+        {
+            builder.append(ruleInfo.getSystemOut());
+        }
+        builder.append("</pre>");
     }
 }

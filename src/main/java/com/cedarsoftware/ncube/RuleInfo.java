@@ -4,7 +4,9 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import groovy.util.MapEntry;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class contains information about the rule execution.
@@ -68,5 +70,75 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
     {
         final String name = RuleMetaKeys.RULE_STOP.name();
         return containsKey(name) && (Boolean.TRUE.equals(get(name)));
+    }
+
+    public String getSystemOut()
+    {
+        if (containsKey(RuleMetaKeys.SYSTEM_OUT.name()))
+        {
+            return (String) get(RuleMetaKeys.SYSTEM_OUT.name());
+        }
+        return "";
+    }
+
+    public void setSystemOut(String out)
+    {
+        put(RuleMetaKeys.SYSTEM_OUT.name(), out);
+    }
+
+    public String getSystemErr()
+    {
+        if (containsKey(RuleMetaKeys.SYSTEM_ERR.name()))
+        {
+            return (String) get(RuleMetaKeys.SYSTEM_ERR.name());
+        }
+        return "";
+    }
+
+    public void setSystemErr(String err)
+    {
+        put(RuleMetaKeys.SYSTEM_ERR.name(), err);
+    }
+
+    public Set<String> getAssertionFailures()
+    {
+        if (containsKey(RuleMetaKeys.ASSERTION_FAILURES.name()))
+        {
+            return (Set<String>) get(RuleMetaKeys.ASSERTION_FAILURES.name());
+        }
+        return new HashSet<>();
+    }
+
+    public void setAssertionFailures(Set<String> failures)
+    {
+        put(RuleMetaKeys.ASSERTION_FAILURES.name(), failures);
+    }
+
+    public Object getLastExecutedStatementValue()
+    {
+        if (containsKey(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name()))
+        {
+            return get(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name());
+        }
+        return null;
+    }
+
+    void setLastExecutedStatementValue(Object value)
+    {
+        put(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name(), value);
+    }
+
+    public Object getLastExecutedConditionValue()
+    {
+        if (containsKey(RuleMetaKeys.LAST_EXECUTED_CONDITION.name()))
+        {
+            return get(RuleMetaKeys.LAST_EXECUTED_CONDITION.name());
+        }
+        return null;
+    }
+
+    void setLastExecutedConditionValue(Object value)
+    {
+        put(RuleMetaKeys.LAST_EXECUTED_CONDITION.name(), value);
     }
 }

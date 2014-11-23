@@ -6,12 +6,12 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.0.3</version>
+  <version>3.0.4</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
 
-The image below is a Visual Summary of the main capabilities of n-cube.  
+The image below is a Visual Summary of the main capabilities of n-cube.
 ![Alt text](https://raw.githubusercontent.com/jdereg/n-cube/master/n-cubeImage.png "n-cube Capabilities")
 
 What are the components of an n-cube?
@@ -40,7 +40,7 @@ The condition column can contain multiple statements.  Think of it like a method
 
 As each condition on the Rule axis is executed, the n-cube rule engine writes information to a "_rule" entry into the output map.  This _rule entry is a Map which includes the condition name executed, the condition expression executed, and other useful information.  This allows you to evaluate the rule exection while developing the rules, to see rules fired.
 
-In general, as cells execute, they write to the output map.  The input coordinate could be written to as well.  If it is modified, and a further n-cube is referenced, any modifications to the input coordinate will remain in place until that execution path returns.  When the execution path of the rules finishes and returns, the input map is restored to it's prior condition before execution. When returning then to an outer n-cube (or the code that called ncube.getCells()), that code will see no changes to the input map.  The output map will, of course, contain whatever changes were written to it.  
+In general, as cells execute, they write to the output map.  The input coordinate could be written to as well.  If it is modified, and a further n-cube is referenced, any modifications to the input coordinate will remain in place until that execution path returns.  When the execution path of the rules finishes and returns, the input map is restored to it's prior condition before execution. When returning then to an outer n-cube (or the code that called ncube.getCells()), that code will see no changes to the input map.  The output map will, of course, contain whatever changes were written to it.
 
 The return value of getCells() also returns the value of each executed cell in the return Map.  This can be useful for debugging, however, the general intention is for the rule body to make modifications to the output map, which the caller can then use.
 
@@ -85,6 +85,9 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.0.4
+ * Test results now confine all output to the RuleInfo (no more output in the output keys besides '_rule').
+ * Formatting of test output now includes System.out and System.err.  System.err output shows in dark red (typical of modern IDEs).
 * 3.0.3
  * Added NCubeInfoDto to list of classes that are available to Groovy Expression cells, without the author having to import it (inherited imports).
  * Added checks to NCubeManager to prevent any mutable operation on a release cube. Added here in addition to the perister implementations.
@@ -120,7 +123,7 @@ Version History
  * getCubeNames() is now available to Groovy cells to obtain the list of all n-cubes within the app (version and status).
 * 2.9.15
  * Added getCube(), getAxis(), getColumn() APIs to NCubeGroovyExpression so that executing cells have easy access to these elements.
- * Added many n-cube classes and all of Java-util's classes as imports within NCubeGroovyExpression so that executing cells have direct access to these classes without requiring them to perform imports. 
+ * Added many n-cube classes and all of Java-util's classes as imports within NCubeGroovyExpression so that executing cells have direct access to these classes without requiring them to perform imports.
 * 2.9.14
  * Required Scope and Optional Scope supported added.  Required scope is the minimal amount of keys (Set<String>) that must be present on the input coordinate in order to call ncube.getCell().  The n-cube meta property requiredScopeKeys can be set to a Groovy Expression (type="exp") in order to return a List of declared required scope keys.  Optional scope is computed by scanning all the rule conditions, and cells (and joining to other cubes) and including all of the scope keys that are found after 'input.'  The required scope keys are subtracted from this, and that is the full optional scope. Calls to ncube.setCell() need only the scope keys that the n-cube demands (values for Axes that do not have a Default column and are not Rule axes).  The declared required scope keys are not required for setCell(), removeCell(), or containsCell().
  * The 'RUN' feature (Tests) updated to use custom JSON written format, insulating the code from changes.

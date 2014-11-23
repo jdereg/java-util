@@ -466,7 +466,8 @@ public class NCube<T>
         boolean run = true;
         trace.add(new MapEntry("begin: " + getName(), coordinate));
         long numRulesExec = 0;
-        T lastExecutedCellValue = null;
+        T lastExecutedStatementValue = null;
+        Object lastExecutedConditionValue = null;
 
         while (run)
         {
@@ -507,6 +508,7 @@ public class NCube<T>
                                 // If the cmd == null, then we are looking at a default column on a rule axis.
                                 // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
                                 conditionValue = cmd == null ? isZero(conditionsFiredCountPerAxis.get(axisName)) : cmd.execute(ctx);
+                                lastExecutedConditionValue = conditionValue;
                                 cachedConditionValues.put(boundColumn.id, new Object[]{conditionValue});
 
                                 if (isTrue(conditionValue))
@@ -542,8 +544,8 @@ public class NCube<T>
                         MapEntry entry = new MapEntry(ruleIds, null);
                         try
                         {
-                            lastExecutedCellValue = getCellById(idCoord, input, output);
-                            entry.setValue(lastExecutedCellValue);
+                            lastExecutedStatementValue = getCellById(idCoord, input, output);
+                            entry.setValue(lastExecutedStatementValue);
                             trace.add(entry);
                         }
                         catch (RuleStop e)
@@ -591,8 +593,9 @@ public class NCube<T>
 
         trace.add(new MapEntry("end: " + getName(), numRulesExec));
         ruleInfo.addToRulesExecuted(numRulesExec);
-        output.put("return", lastExecutedCellValue);
-        return lastExecutedCellValue;
+        ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
+        ruleInfo.setLastExecutedConditionValue(lastExecutedConditionValue);
+        return lastExecutedStatementValue;
     }
 
     /**

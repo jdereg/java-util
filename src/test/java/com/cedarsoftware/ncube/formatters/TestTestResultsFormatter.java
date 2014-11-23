@@ -6,6 +6,7 @@ import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.NCubeTest;
+import com.cedarsoftware.ncube.RuleInfo;
 import com.cedarsoftware.ncube.StringValuePair;
 import com.cedarsoftware.ncube.TestingDatabaseHelper;
 import org.junit.After;
@@ -16,7 +17,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
 
@@ -47,13 +47,14 @@ public class TestTestResultsFormatter
 
 
         Map output = new HashMap();
-        output.put("_failures", new TreeSet());
         ncube.getCell(coord, output);
         String s = new TestResultsFormatter(output).format();
         assertEquals("<b>Result</b><pre>\n" +
                 "   18 OH\n" +
-                "</pre><b>Output</b><pre>\n" +
+                "</pre><b>Output Map</b><pre>\n" +
                 "   No output\n" +
+                "</pre><b>System.out</b><pre>\n" +
+                "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
                 "</pre><b>Trace</b><pre>\n" +
                 "   begin: idNoValue(age:18,state:OH)\n" +
                 "      {Age=18, State=OH} = 18 OH\n" +
@@ -70,37 +71,38 @@ public class TestTestResultsFormatter
 
         Map output = new HashMap();
         output.put("foo.age", "56");
-        output.put("foo.nassertame", "John");
+        output.put("foo.name", "John");
 
         ncube.getCell(coord, output);
 
-        Set<String> set = new HashSet<>();
-        set.add("[some assertion happened]");
+        Set<String> assertionFailures = new HashSet<>();
+        assertionFailures.add("[some assertion happened]");
 
-        output.put("_failures", set);
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        ruleInfo.setAssertionFailures(assertionFailures);
 
 
         String s = new TestResultsFormatter(output).format();
-
         assertEquals("<b>Result</b><pre>\n" +
                 "   18 OH\n" +
                 "\n" +
-                "   [some assertion happened]</pre><b>Output</b><pre>\n" +
-                "   foo.nassertame = John\n" +
+                "   [some assertion happened]</pre><b>Output Map</b><pre>\n" +
+                "   foo.name = John\n" +
                 "   foo.age = 56\n" +
+                "</pre><b>System.out</b><pre>\n" +
+                "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
                 "</pre><b>Trace</b><pre>\n" +
                 "   begin: idNoValue(age:18,state:OH)\n" +
                 "      {Age=18, State=OH} = 18 OH\n" +
                 "   end: idNoValue = 1</pre>", s);
-
     }
 
     @Test
     public void testOutput() throws Exception {
         StringValuePair<CellInfo>[] coord = new StringValuePair[0];
         CellInfo[] expected = new CellInfo[3];
-        expected[0] = new CellInfo(new Double(3.0));
-        expected[1] = new CellInfo(new Float(3.0));
+        expected[0] = new CellInfo(3.0);
+        expected[1] = new CellInfo(3.0f);
         expected[2] = new CellInfo(new GroovyExpression("help me", null));
 
         NCubeTest test = new NCubeTest("testName", coord, expected);

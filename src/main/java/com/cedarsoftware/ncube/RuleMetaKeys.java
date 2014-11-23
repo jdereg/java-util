@@ -24,7 +24,12 @@ package com.cedarsoftware.ncube;
  */
 public enum RuleMetaKeys
 {
-    RULE_STOP,          // RuleStop forcefully called (within condition or cell)
-    NUM_RESOLVED_CELLS, // Number of cells resolved when processing rule cube
-    RULES_EXECUTED      // Map of condition names (or IDs if no name for conditions) to associated statements return value
+    RULE_STOP,                  // RuleStop forcefully called (within condition or cell)
+    NUM_RESOLVED_CELLS,         // Number of cells resolved when processing rule cube
+    RULES_EXECUTED,             // Map of condition names (or IDs if no name for conditions) to associated statements return value
+    SYSTEM_ERR,                 // System.err contents
+    SYSTEM_OUT,                 // System.out contents
+    ASSERTION_FAILURES,         // Assertion failures
+    LAST_EXECUTED_STATEMENT,    // Value of last executed statement
+    LAST_EXECUTED_CONDITION     // Value of last executed condition
 }

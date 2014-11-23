@@ -2,9 +2,7 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.RuleInfo;
-import groovy.util.MapEntry;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,85 +41,16 @@ public class TestResultsFormatter
 
     public String format()
     {
-        axisBinding();
+        formatAxisBinding();
         formatLastExecutedStatement();
         formatAssertions();
         formatOutputMap();
         formatSystemOut("System.out");
         formatSystemOut("System.err");
-
-        RuleInfo info = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
-        format(info.getRuleExecutionTrace());
-
         return builder.toString();
     }
 
-    public void format(List<MapEntry> trace)
-    {
-        builder.append("<b>Trace</b>");
-        builder.append("<pre>");
-        builder.append(newLine);
-        StringBuilder spaces = new StringBuilder("   ");
-        for (MapEntry entry : trace)
-        {
-            if (entry.getValue() instanceof Map)
-            {
-                ((Map)entry.getValue()).remove("ncube");
-            }
-
-            boolean end = isEnd(entry.getKey());
-            boolean begin = isBegin(entry.getKey());
-
-            if (end)
-            {
-                spaces.setLength(spaces.length()-3);
-            }
-
-            builder.append(spaces);
-            builder.append(entry.getKey());
-
-            if (begin)
-            {
-                spaces.append("   ");
-                builder.append("(");
-                turnMapIntoCoords((Map<String, Object>) entry.getValue());
-                builder.append(")");
-            }
-            else
-            {
-                builder.append(" = ");
-                builder.append(entry.getValue());
-            }
-
-            builder.append(newLine);
-        }
-        builder.setLength(builder.length()-1);
-        builder.append("</pre>");
-    }
-
-    public static boolean isBegin(Object o)
-    {
-        return o instanceof String && ((String)o).startsWith("begin:");
-    }
-
-    public static boolean isEnd(Object o)
-    {
-        return o instanceof String && ((String)o).startsWith("end:");
-    }
-
-    public void turnMapIntoCoords(Map<String, Object> map)
-    {
-        for (Map.Entry<String, Object> entry : map.entrySet())
-        {
-            builder.append(entry.getKey());
-            builder.append(":");
-            builder.append(entry.getValue());
-            builder.append(",");
-        }
-        builder.setLength(builder.length()-1);
-    }
-
-    public void axisBinding()
+    public void formatAxisBinding()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         builder.append("<b>Axis bindings</b>");
@@ -129,7 +58,9 @@ public class TestResultsFormatter
         builder.append(newLine);
         for (Map.Entry<String, Object> entry : ruleInfo.getAxisBindings().entrySet())
         {
-            builder.append(entry.getKey() + " : " + entry.getValue());
+            builder.append(entry.getKey());
+            builder.append(" = ");
+            builder.append(entry.getValue());
             builder.append(newLine);
         }
         builder.append("</pre>");
@@ -141,7 +72,6 @@ public class TestResultsFormatter
         builder.append("<b>Last executed statement</b>");
         builder.append("<pre>");
         builder.append(newLine);
-        builder.append("   ");
         builder.append(ruleInfo.getLastExecutedStatementValue());
         builder.append(newLine);
         builder.append("</pre>");
@@ -180,7 +110,7 @@ public class TestResultsFormatter
 
         if (output.size() < 2)
         {   // size() == 1 minimum (_rule metakey).
-            builder.append("   No output");
+            builder.append("No output");
             builder.append(newLine);
         }
         else
@@ -194,7 +124,6 @@ public class TestResultsFormatter
                 {
                     continue;
                 }
-                builder.append("   ");
                 builder.append(item.getKey());
                 builder.append(" = ");
                 builder.append(item.getValue());

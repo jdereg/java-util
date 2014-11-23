@@ -5,7 +5,6 @@ import groovy.util.MapEntry;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,16 +46,6 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
     void addToRulesExecuted(long count)
     {
         put(RuleMetaKeys.NUM_RESOLVED_CELLS.name(), getNumberOfRulesExecuted() + count);
-    }
-
-    /**
-     * @return List<MapEntry> which contain information about each rule step executed.  The Key of this MapEntry
-     * is a Map<String axisName, column.value()>.  This is the location of the rule (map key) and the executed
-     * value (map value).  It is a list because it contains the executed rule steps in order of execution.
-     */
-    public List<MapEntry> getRuleExecutionTrace()
-    {
-        return (List<MapEntry>)get(RuleMetaKeys.RULES_EXECUTED.name());
     }
 
     void ruleStopThrown()

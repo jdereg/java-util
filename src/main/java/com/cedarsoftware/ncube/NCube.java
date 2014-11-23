@@ -460,11 +460,9 @@ public class NCube<T>
     public T getCell(final Map<String, Object> coordinate, final Map<String, Object> output)
     {
         final RuleInfo ruleInfo = getRuleInfo(output);
-        final List<MapEntry> trace = ruleInfo.getRuleExecutionTrace();
         final Map<String, Object> validCoord = validateCoordinate(coordinate, false);
         Map<String, Object> input = new CaseInsensitiveMap<>(validCoord);
         boolean run = true;
-        trace.add(new MapEntry("begin: " + getName(), coordinate));
         long numRulesExec = 0;
         T lastExecutedStatementValue = null;
         Map<String, Object> bindPath = ruleInfo.getAxisBindings();
@@ -527,13 +525,13 @@ public class NCube<T>
                             // subsequent access, the cached result of the condition is used.
                             if (isTrue(conditionValue))
                             {
-                                bindPath.put(name + "-->" + axisName, boundColumn.getValue());
+                                bindPath.put(name + " axis: " + axisName + ", column: " + boundColumn.getValue(), conditionValue);
                                 bindColumn(idCoord, ruleIds, axis, boundColumn);
                             }
                         }
                         else
                         {
-                            bindPath.put(name + "-->" + axisName, boundColumn.getValue());
+                            bindPath.put(name + " axis: " + axisName + ", column", boundColumn.getValue());
                             bindColumn(idCoord, ruleIds, axis, boundColumn);
                         }
                     }
@@ -547,12 +545,10 @@ public class NCube<T>
                         {
                             lastExecutedStatementValue = getCellById(idCoord, input, output);
                             entry.setValue(lastExecutedStatementValue);
-                            trace.add(entry);
                         }
                         catch (RuleStop e)
                         {   // Statement threw at RuleStop
                             entry.setValue("[RuleStop]");
-                            trace.add(entry);
                             // Mark that RULE_STOP occurred
                             ruleInfo.ruleStopThrown();
                             throw e;
@@ -560,7 +556,6 @@ public class NCube<T>
                         catch(RuleJump e)
                         {   // Statement threw at RuleJump
                             entry.setValue("[RuleJump]");
-                            trace.add(entry);
                             throw e;
                         }
                         catch (Exception e)
@@ -571,7 +566,6 @@ public class NCube<T>
                                 msg = e.getClass().getName();
                             }
                             entry.setValue("[" + msg + "]");
-                            trace.add(entry);
                             throw e;
                         }
                     }
@@ -592,7 +586,6 @@ public class NCube<T>
             }
         }
 
-        trace.add(new MapEntry("end: " + getName(), numRulesExec));
         ruleInfo.addToRulesExecuted(numRulesExec);
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
         return lastExecutedStatementValue;

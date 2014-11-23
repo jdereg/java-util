@@ -2417,7 +2417,7 @@ public class NCube<T>
         return StringUtilities.encode(sha1.digest());
     }
 
-    private static String toJson(Object o)
+    static String toJson(Object o)
     {
         if (o == null)
         {

@@ -3773,6 +3773,16 @@ public class TestNCube
     }
 
     @Test
+    public void testEquality()  throws Exception {
+        NCube cube1 = getTestNCube2D(false);
+        NCube cube2 = getTestNCube2D(false);
+
+        assertTrue(cube1.equals(cube2));
+
+        cube1.getMetaProperties();
+    }
+
+    @Test
     public void testRangeSetEquality() throws Exception
     {
         RangeSet a = new RangeSet(1);
@@ -5425,6 +5435,13 @@ public class TestNCube
         catch (Exception e)
         { }
     }
+
+    @Test
+    public void testToJson() throws Exception
+    {
+        assertEquals("null", NCube.toJson(null));
+    }
+
 
     static int countMatches(String s, String pattern)
     {

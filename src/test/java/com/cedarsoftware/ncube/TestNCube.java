@@ -3425,7 +3425,7 @@ public class TestNCube
         Object o = ncube.getCell(coord, output);
         assertEquals(16, o);
         assertEquals(16, output.get("good"));
-        assertEquals(3, output.size());
+        assertEquals(4, output.size());
         String foo = (String) output.get("stack");
         assertEquals("foo", foo) ;
 

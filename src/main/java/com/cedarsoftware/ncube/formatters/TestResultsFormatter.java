@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.formatters;
 
+import com.cedarsoftware.ncube.Binding;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.RuleInfo;
 
@@ -56,12 +57,11 @@ public class TestResultsFormatter
         builder.append("<b>Axis bindings</b>");
         builder.append("<pre>");
         builder.append(newLine);
-        for (Map.Entry<String, Object> entry : ruleInfo.getAxisBindings().entrySet())
+        for (Binding binding : ruleInfo.getAxisBindings())
         {
-            builder.append(entry.getKey());
-            builder.append(" = ");
-            builder.append(entry.getValue());
+            builder.append(binding.toHtml());
             builder.append(newLine);
+            builder.append("<hr/>");
         }
         builder.append("</pre>");
     }
@@ -69,7 +69,7 @@ public class TestResultsFormatter
     public void formatLastExecutedStatement()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
-        builder.append("<b>Last executed statement</b>");
+        builder.append("<b>Last statement (cell) executed</b>");
         builder.append("<pre>");
         builder.append(newLine);
         builder.append(ruleInfo.getLastExecutedStatementValue());
@@ -108,7 +108,7 @@ public class TestResultsFormatter
         builder.append("<pre>");
         builder.append(newLine);
 
-        if (output.size() < 2)
+        if (output.containsKey(NCube.RULE_EXEC_INFO) && output.containsKey("return") && output.size() <= 2)
         {   // size() == 1 minimum (_rule metakey).
             builder.append("No output");
             builder.append(newLine);

@@ -465,7 +465,7 @@ public class NCube<T>
         boolean run = true;
         long numRulesExec = 0;
         T lastExecutedStatementValue = null;
-        Map<String, Object> bindPath = ruleInfo.getAxisBindings();
+        List<Binding> bindings = ruleInfo.getAxisBindings();
 
         while (run)
         {
@@ -484,7 +484,7 @@ public class NCube<T>
                 {
                     idCoord.clear();
                     Map<String, Object> ruleIds = new LinkedHashMap<>();
-
+                    Binding binding = new Binding(name);
                     for (final String axisName : axisNames)
                     {
                         final List<Column> cols = boundCoordinates.get(axisName);
@@ -525,13 +525,13 @@ public class NCube<T>
                             // subsequent access, the cached result of the condition is used.
                             if (isTrue(conditionValue))
                             {
-                                bindPath.put(name + " axis: " + axisName + ", column: " + boundColumn.getValue(), conditionValue);
+                                binding.bind(axisName, boundColumn);
                                 bindColumn(idCoord, ruleIds, axis, boundColumn);
                             }
                         }
                         else
                         {
-                            bindPath.put(name + " axis: " + axisName + ", column", boundColumn.getValue());
+                            binding.bind(axisName, boundColumn);
                             bindColumn(idCoord, ruleIds, axis, boundColumn);
                         }
                     }
@@ -539,23 +539,23 @@ public class NCube<T>
                     // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
                     if (idCoord.size() == axisNames.length)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
+                        bindings.add(binding);
                         numRulesExec++;
-                        MapEntry entry = new MapEntry(ruleIds, null);
                         try
                         {
                             lastExecutedStatementValue = getCellById(idCoord, input, output);
-                            entry.setValue(lastExecutedStatementValue);
+                            binding.setValue(lastExecutedStatementValue);
                         }
                         catch (RuleStop e)
                         {   // Statement threw at RuleStop
-                            entry.setValue("[RuleStop]");
+                            binding.setValue("[RuleStop]");
                             // Mark that RULE_STOP occurred
                             ruleInfo.ruleStopThrown();
                             throw e;
                         }
                         catch(RuleJump e)
                         {   // Statement threw at RuleJump
-                            entry.setValue("[RuleJump]");
+                            binding.setValue("[RuleJump]");
                             throw e;
                         }
                         catch (Exception e)
@@ -565,7 +565,7 @@ public class NCube<T>
                             {
                                 msg = e.getClass().getName();
                             }
-                            entry.setValue("[" + msg + "]");
+                            binding.setValue("[" + msg + "]");
                             throw e;
                         }
                     }
@@ -588,6 +588,7 @@ public class NCube<T>
 
         ruleInfo.addToRulesExecuted(numRulesExec);
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
+        output.put("return", lastExecutedStatementValue);
         return lastExecutedStatementValue;
     }
 

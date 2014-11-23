@@ -49,20 +49,21 @@ public class TestTestResultsFormatter
         Map output = new HashMap();
         ncube.getCell(coord, output);
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Last axis binding</b><pre>\n" +
-                "   {age=18, state=OH}\n" +
-                "</pre><b>Last executed statement</b><pre>\n" +
-                "   18 OH\n" +
+        assertEquals("<b>Axis bindings</b><pre>\n" +
+                "idNoValue\n" +
+                "  age: 18\n" +
+                "  state: OH\n" +
+                "  <b>value = 18 OH</b>\n" +
+                "\n" +
+                "</pre><b>Last statement (cell) executed</b><pre>\n" +
+                "18 OH\n" +
                 "</pre><b>Assertions</b><pre>\n" +
                 "No assertion failures\n" +
                 "</pre><b>Output Map</b><pre>\n" +
-                "   No output\n" +
+                "No output\n" +
                 "</pre><b>System.out</b><pre>\n" +
                 "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
-                "</pre><b>Trace</b><pre>\n" +
-                "   begin: idNoValue(age:18,state:OH)\n" +
-                "      {Age=18, State=OH} = 18 OH\n" +
-                "   end: idNoValue = 1</pre>", s);
+                "</pre>", s);
     }
 
 //    @Test
@@ -87,20 +88,22 @@ public class TestTestResultsFormatter
 
 
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Last axis binding</b><pre>\n" +
-                "   {age=18, state=OH}\n" +
-                "</pre><b>Last executed statement</b><pre>\n" +
-                "   18 OH\n" +
+        assertEquals("<b>Axis bindings</b><pre>\n" +
+                "idNoValue\n" +
+                "  age: 18\n" +
+                "  state: OH\n" +
+                "  <b>value = 18 OH</b>\n" +
+                "\n" +
+                "</pre><b>Last statement (cell) executed</b><pre>\n" +
+                "18 OH\n" +
                 "</pre><b>Assertions</b><pre>\n" +
                 "[some assertion happened]</pre><b>Output Map</b><pre>\n" +
-                "   foo.name = John\n" +
-                "   foo.age = 56\n" +
+                "foo.name = John\n" +
+                "foo.age = 56\n" +
+                "return = 18 OH\n" +
                 "</pre><b>System.out</b><pre>\n" +
                 "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
-                "</pre><b>Trace</b><pre>\n" +
-                "   begin: idNoValue(age:18,state:OH)\n" +
-                "      {Age=18, State=OH} = 18 OH\n" +
-                "   end: idNoValue = 1</pre>", s);
+                "</pre>", s);
     }
 
     @Test

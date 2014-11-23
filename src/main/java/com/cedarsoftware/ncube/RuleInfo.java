@@ -1,11 +1,11 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.CaseInsensitiveSet;
 import groovy.util.MapEntry;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -96,7 +96,10 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
         {
             return (Set<String>) get(RuleMetaKeys.ASSERTION_FAILURES.name());
         }
-        return new HashSet<>();
+        Set<String> failures = new CaseInsensitiveSet<>();
+        put(RuleMetaKeys.ASSERTION_FAILURES.name(), failures);
+        return failures;
+
     }
 
     public void setAssertionFailures(Set<String> failures)
@@ -118,13 +121,13 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
         put(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name(), value);
     }
 
-    public Map<String, Object> getAxisBindings()
+    public List<Binding> getAxisBindings()
     {
         if (containsKey(RuleMetaKeys.AXIS_BINDINGS.name()))
         {
-            return (Map<String, Object>) get(RuleMetaKeys.AXIS_BINDINGS.name());
+            return (List<Binding>)get(RuleMetaKeys.AXIS_BINDINGS.name());
         }
-        Map<String, Object> bindings = new CaseInsensitiveMap<>();
+        List<Binding> bindings = new ArrayList<>();
         put(RuleMetaKeys.AXIS_BINDINGS.name(), bindings);
         return bindings;
     }

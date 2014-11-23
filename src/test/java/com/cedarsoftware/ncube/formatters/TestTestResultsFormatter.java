@@ -49,9 +49,9 @@ public class TestTestResultsFormatter
         Map output = new HashMap();
         ncube.getCell(coord, output);
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Result</b><pre>\n" +
+        assertEquals("<b>Last executed statement</b><pre>\n" +
                 "   18 OH\n" +
-                "</pre><b>Output Map</b><pre>\n" +
+                "</pre><b>Assertions</b><pre></pre><b>Output Map</b><pre>\n" +
                 "   No output\n" +
                 "</pre><b>System.out</b><pre>\n" +
                 "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
@@ -83,9 +83,9 @@ public class TestTestResultsFormatter
 
 
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Result</b><pre>\n" +
+        assertEquals("<b>Last executed statement</b><pre>\n" +
                 "   18 OH\n" +
-                "\n" +
+                "</pre><b>Assertions</b><pre>\n" +
                 "   [some assertion happened]</pre><b>Output Map</b><pre>\n" +
                 "   foo.name = John\n" +
                 "   foo.age = 56\n" +

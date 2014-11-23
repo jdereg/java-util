@@ -43,8 +43,9 @@ public class TestResultsFormatter
 
     public String format()
     {
-        formatResult();
-        formatOutput();
+        formatLastExecutedStatement();
+        formatAssertions();
+        formatOutputMap();
         formatSystemOut("System.out");
         formatSystemOut("System.err");
 
@@ -119,15 +120,23 @@ public class TestResultsFormatter
         builder.setLength(builder.length()-1);
     }
 
-    public void formatResult()
+    public void formatLastExecutedStatement()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
-        builder.append("<b>Result</b>");
+        builder.append("<b>Last executed statement</b>");
         builder.append("<pre>");
         builder.append(newLine);
         builder.append("   ");
         builder.append(ruleInfo.getLastExecutedStatementValue());
         builder.append(newLine);
+        builder.append("</pre>");
+    }
+
+    public void formatAssertions()
+    {
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        builder.append("<b>Assertions</b>");
+        builder.append("<pre>");
 
         Set<String> failures = ruleInfo.getAssertionFailures();
         if (failures != null && !failures.isEmpty())
@@ -144,7 +153,7 @@ public class TestResultsFormatter
         builder.append("</pre>");
     }
 
-    public void formatOutput()
+    public void formatOutputMap()
     {
         builder.append("<b>Output Map</b>");
         builder.append("<pre>");

@@ -137,11 +137,16 @@ public class TestResultsFormatter
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         builder.append("<b>Assertions</b>");
         builder.append("<pre>");
+        builder.append(newLine);
 
         Set<String> failures = ruleInfo.getAssertionFailures();
-        if (failures != null && !failures.isEmpty())
+        if (failures.isEmpty())
         {
+            builder.append("No assertion failures");
             builder.append(newLine);
+        }
+        else
+        {
             for (String entry : failures)
             {
                 builder.append("   ");

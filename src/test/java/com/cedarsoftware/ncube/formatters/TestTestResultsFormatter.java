@@ -51,7 +51,9 @@ public class TestTestResultsFormatter
         String s = new TestResultsFormatter(output).format();
         assertEquals("<b>Last executed statement</b><pre>\n" +
                 "   18 OH\n" +
-                "</pre><b>Assertions</b><pre></pre><b>Output Map</b><pre>\n" +
+                "</pre><b>Assertions</b><pre>\n" +
+                "No assertion failures\n" +
+                "</pre><b>Output Map</b><pre>\n" +
                 "   No output\n" +
                 "</pre><b>System.out</b><pre>\n" +
                 "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +

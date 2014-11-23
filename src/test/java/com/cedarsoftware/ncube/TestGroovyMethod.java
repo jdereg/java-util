@@ -26,6 +26,13 @@ public class TestGroovyMethod
         Assert.assertNotNull(con.newInstance());
     }
 
+    @Test
+    public void testGetCubeNamesFromTestWhenEmpty()
+    {
+        Set set = new HashSet();
+        GroovyBase.getCubeNamesFromText(set, "");
+        assertEquals(0, set.size());
+    }
 
     @Test
     public void testGroovyMethod() {

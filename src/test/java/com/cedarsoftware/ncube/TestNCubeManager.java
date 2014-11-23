@@ -471,6 +471,11 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testConstruction() {
+        assertNotNull(new NCubeManager());
+    }
+
+    @Test
     public void testUpdateNotesOnDeletedCube() throws Exception
     {
         NCube ncube1 = TestNCube.getTestNCube3D_Boolean();

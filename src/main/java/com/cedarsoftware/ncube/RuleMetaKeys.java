@@ -31,5 +31,5 @@ public enum RuleMetaKeys
     SYSTEM_OUT,                 // System.out contents
     ASSERTION_FAILURES,         // Assertion failures
     LAST_EXECUTED_STATEMENT,    // Value of last executed statement
-    LAST_EXECUTED_CONDITION     // Value of last executed condition
+    LAST_AXIS_BINDING           // Value of last executed binding
 }

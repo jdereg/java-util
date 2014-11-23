@@ -128,17 +128,17 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
         put(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name(), value);
     }
 
-    public Object getLastExecutedConditionValue()
+    public Object getAxisBinding()
     {
-        if (containsKey(RuleMetaKeys.LAST_EXECUTED_CONDITION.name()))
+        if (containsKey(RuleMetaKeys.LAST_AXIS_BINDING.name()))
         {
-            return get(RuleMetaKeys.LAST_EXECUTED_CONDITION.name());
+            return get(RuleMetaKeys.LAST_AXIS_BINDING.name());
         }
         return null;
     }
 
-    void setLastExecutedConditionValue(Object value)
+    void setLastAxisBinding(Object value)
     {
-        put(RuleMetaKeys.LAST_EXECUTED_CONDITION.name(), value);
+        put(RuleMetaKeys.LAST_AXIS_BINDING.name(), value);
     }
 }

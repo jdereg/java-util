@@ -43,6 +43,7 @@ public class TestResultsFormatter
 
     public String format()
     {
+        axisBinding();
         formatLastExecutedStatement();
         formatAssertions();
         formatOutputMap();
@@ -120,6 +121,18 @@ public class TestResultsFormatter
         builder.setLength(builder.length()-1);
     }
 
+    public void axisBinding()
+    {
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        builder.append("<b>Last axis binding</b>");
+        builder.append("<pre>");
+        builder.append(newLine);
+        builder.append("   ");
+        builder.append(ruleInfo.getAxisBinding());
+        builder.append(newLine);
+        builder.append("</pre>");
+    }
+
     public void formatLastExecutedStatement()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -149,7 +162,6 @@ public class TestResultsFormatter
         {
             for (String entry : failures)
             {
-                builder.append("   ");
                 builder.append(entry);
                 builder.append(newLine);
             }

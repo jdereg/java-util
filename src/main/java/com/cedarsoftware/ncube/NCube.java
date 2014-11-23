@@ -467,7 +467,7 @@ public class NCube<T>
         trace.add(new MapEntry("begin: " + getName(), coordinate));
         long numRulesExec = 0;
         T lastExecutedStatementValue = null;
-        Object lastExecutedConditionValue = null;
+        Map<String, Object> axisToBoundValue = new CaseInsensitiveMap<>();
 
         while (run)
         {
@@ -508,7 +508,6 @@ public class NCube<T>
                                 // If the cmd == null, then we are looking at a default column on a rule axis.
                                 // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
                                 conditionValue = cmd == null ? isZero(conditionsFiredCountPerAxis.get(axisName)) : cmd.execute(ctx);
-                                lastExecutedConditionValue = conditionValue;
                                 cachedConditionValues.put(boundColumn.id, new Object[]{conditionValue});
 
                                 if (isTrue(conditionValue))
@@ -528,11 +527,13 @@ public class NCube<T>
                             // subsequent access, the cached result of the condition is used.
                             if (isTrue(conditionValue))
                             {
+                                axisToBoundValue.put(axisName, boundColumn.getValue());
                                 bindColumn(idCoord, ruleIds, axis, boundColumn);
                             }
                         }
                         else
                         {
+                            axisToBoundValue.put(axisName, boundColumn.getValue());
                             bindColumn(idCoord, ruleIds, axis, boundColumn);
                         }
                     }
@@ -594,7 +595,7 @@ public class NCube<T>
         trace.add(new MapEntry("end: " + getName(), numRulesExec));
         ruleInfo.addToRulesExecuted(numRulesExec);
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
-        ruleInfo.setLastExecutedConditionValue(lastExecutedConditionValue);
+        ruleInfo.setLastAxisBinding(axisToBoundValue);
         return lastExecutedStatementValue;
     }
 

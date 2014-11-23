@@ -49,7 +49,9 @@ public class TestTestResultsFormatter
         Map output = new HashMap();
         ncube.getCell(coord, output);
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Last executed statement</b><pre>\n" +
+        assertEquals("<b>Last axis binding</b><pre>\n" +
+                "   {age=18, state=OH}\n" +
+                "</pre><b>Last executed statement</b><pre>\n" +
                 "   18 OH\n" +
                 "</pre><b>Assertions</b><pre>\n" +
                 "No assertion failures\n" +
@@ -85,10 +87,12 @@ public class TestTestResultsFormatter
 
 
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Last executed statement</b><pre>\n" +
+        assertEquals("<b>Last axis binding</b><pre>\n" +
+                "   {age=18, state=OH}\n" +
+                "</pre><b>Last executed statement</b><pre>\n" +
                 "   18 OH\n" +
                 "</pre><b>Assertions</b><pre>\n" +
-                "   [some assertion happened]</pre><b>Output Map</b><pre>\n" +
+                "[some assertion happened]</pre><b>Output Map</b><pre>\n" +
                 "   foo.name = John\n" +
                 "   foo.age = 56\n" +
                 "</pre><b>System.out</b><pre>\n" +

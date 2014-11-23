@@ -124,12 +124,14 @@ public class TestResultsFormatter
     public void axisBinding()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
-        builder.append("<b>Last axis binding</b>");
+        builder.append("<b>Axis bindings</b>");
         builder.append("<pre>");
         builder.append(newLine);
-        builder.append("   ");
-        builder.append(ruleInfo.getAxisBinding());
-        builder.append(newLine);
+        for (Map.Entry<String, Object> entry : ruleInfo.getAxisBindings().entrySet())
+        {
+            builder.append(entry.getKey() + " : " + entry.getValue());
+            builder.append(newLine);
+        }
         builder.append("</pre>");
     }
 

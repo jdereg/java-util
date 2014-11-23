@@ -6,6 +6,7 @@ import groovy.util.MapEntry;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -128,17 +129,14 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
         put(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name(), value);
     }
 
-    public Object getAxisBinding()
+    public Map<String, Object> getAxisBindings()
     {
-        if (containsKey(RuleMetaKeys.LAST_AXIS_BINDING.name()))
+        if (containsKey(RuleMetaKeys.AXIS_BINDINGS.name()))
         {
-            return get(RuleMetaKeys.LAST_AXIS_BINDING.name());
+            return (Map<String, Object>) get(RuleMetaKeys.AXIS_BINDINGS.name());
         }
-        return null;
-    }
-
-    void setLastAxisBinding(Object value)
-    {
-        put(RuleMetaKeys.LAST_AXIS_BINDING.name(), value);
+        Map<String, Object> bindings = new CaseInsensitiveMap<>();
+        put(RuleMetaKeys.AXIS_BINDINGS.name(), bindings);
+        return bindings;
     }
 }

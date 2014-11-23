@@ -467,7 +467,7 @@ public class NCube<T>
         trace.add(new MapEntry("begin: " + getName(), coordinate));
         long numRulesExec = 0;
         T lastExecutedStatementValue = null;
-        Map<String, Object> axisToBoundValue = new CaseInsensitiveMap<>();
+        Map<String, Object> bindPath = ruleInfo.getAxisBindings();
 
         while (run)
         {
@@ -527,13 +527,13 @@ public class NCube<T>
                             // subsequent access, the cached result of the condition is used.
                             if (isTrue(conditionValue))
                             {
-                                axisToBoundValue.put(axisName, boundColumn.getValue());
+                                bindPath.put(name + "-->" + axisName, boundColumn.getValue());
                                 bindColumn(idCoord, ruleIds, axis, boundColumn);
                             }
                         }
                         else
                         {
-                            axisToBoundValue.put(axisName, boundColumn.getValue());
+                            bindPath.put(name + "-->" + axisName, boundColumn.getValue());
                             bindColumn(idCoord, ruleIds, axis, boundColumn);
                         }
                     }
@@ -595,7 +595,6 @@ public class NCube<T>
         trace.add(new MapEntry("end: " + getName(), numRulesExec));
         ruleInfo.addToRulesExecuted(numRulesExec);
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
-        ruleInfo.setLastAxisBinding(axisToBoundValue);
         return lastExecutedStatementValue;
     }
 

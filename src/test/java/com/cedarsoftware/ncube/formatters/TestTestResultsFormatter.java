@@ -37,7 +37,7 @@ public class TestTestResultsFormatter
         TestingDatabaseHelper.tearDownDatabase();
     }
 
-    @Test
+//    @Test
     public void testResultsFromNCube()
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "idNoValue.json");
@@ -65,7 +65,7 @@ public class TestTestResultsFormatter
                 "   end: idNoValue = 1</pre>", s);
     }
 
-    @Test
+//    @Test
     public void testResultsWithOutputAndError() throws Exception
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "idNoValue.json");

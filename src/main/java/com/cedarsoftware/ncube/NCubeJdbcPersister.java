@@ -338,6 +338,10 @@ public class NCubeJdbcPersister
                 insert.setBytes(11, testData == null ? null : testData.getBytes("UTF-8"));
 
                 int rowCount = insert.executeUpdate();
+
+                //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
+                //TODO:  We may need to just replace this with a return of the update count and let the controllers
+                //TODO:  handle it.  I've mocked it out anyway for now.
                 if (rowCount != 1)
                 {
                     throw new IllegalStateException("Cannot restore n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
@@ -414,6 +418,9 @@ public class NCubeJdbcPersister
                     insert.setBytes(10, note.getBytes("UTF-8"));
                     insert.setBytes(11, testData == null ? null : testData.getBytes("UTF-8"));
 
+                    //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
+                    //TODO:  We may need to just replace this with a return of the update count and let the controllers
+                    //TODO:  handle it.  I've mocked it out anyway for now.
                     int rowCount = insert.executeUpdate();
                     if (rowCount != 1)
                     {
@@ -457,20 +464,7 @@ public class NCubeJdbcPersister
             stmt.setString(4, appId.getVersion());
             stmt.setString(5, appId.getTenant());
             stmt.setLong(6, maxRev);
-            int count = stmt.executeUpdate();
-            if (count > 1)
-            {
-                throw new IllegalStateException("Cannot update notes, only one (1) row's notes should be updated, count: " + count + ", cube: " + cubeName + ", app: " + appId);
-            }
-            if (count == 0)
-                {
-                throw new IllegalStateException("Cannot update notes, no cube matches app: " + appId + ", name: " + cubeName);
-            }
-                    return true;
-                }
-        catch (IllegalStateException e)
-        {
-            throw e;
+            return stmt.executeUpdate() == 1;
         }
         catch (Exception e)
         {
@@ -714,10 +708,6 @@ public class NCubeJdbcPersister
             stmt.setString(6, appId.getTenant());
             stmt.setLong(7, maxRev);
             return stmt.executeUpdate() == 1;
-        }
-        catch (IllegalStateException e)
-        {
-            throw e;
         }
         catch (Exception e)
         {

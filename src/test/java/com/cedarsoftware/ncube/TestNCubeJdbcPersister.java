@@ -1,9 +1,13 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.IOUtilities;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -260,7 +264,14 @@ public class TestNCubeJdbcPersister
     @Test
     public void testUpdateTestDataWithSQLException() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLException();
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(1)).thenReturn(5L);
+
         try
         {
             new NCubeJdbcPersister().updateTestData(c, defaultSnapshotApp, "foo", "test data");
@@ -269,9 +280,7 @@ public class TestNCubeJdbcPersister
         catch(RuntimeException e)
         {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("nable"));
-            assertTrue(e.getMessage().contains("max"));
-            assertTrue(e.getMessage().contains("rev"));
+            assertTrue(e.getMessage().contains("Unable to update test data"));
         }
     }
 
@@ -443,25 +452,29 @@ public class TestNCubeJdbcPersister
         }
     }
 
-    //This exception is impossible to hit without mocking since we prohibit you on createCube() from
-    //adding in a second duplicate cube with all the same parameters.
     @Test
     public void testUpdateNotesWithSQLException() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLException();
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(1)).thenReturn(5L);
+
         try
         {
-            new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes");
+            new NCubeJdbcPersister().updateNotes(c, defaultSnapshotApp, "foo", "test data");
             fail();
         }
         catch(RuntimeException e)
         {
             assertEquals(SQLException.class, e.getCause().getClass());
-            assertTrue(e.getMessage().contains("nable"));
-            assertTrue(e.getMessage().contains("max"));
-            assertTrue(e.getMessage().contains("rev"));
+            assertTrue(e.getMessage().contains("Unable to update notes"));
         }
     }
+
 
     @Test
     public void testCreateSnapshotVersionWithSQLException() throws Exception
@@ -632,38 +645,78 @@ public class TestNCubeJdbcPersister
         }
     }
 
-//    @Test
-//    public void testRestoreCubeThatThrowsSQLException() throws Exception {
-//        Connection c = mock(Connection.class);
-//        PreparedStatement ps = mock(PreparedStatement.class);
-//        ResultSet rs = mock(ResultSet.class);
-//
-//        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class);
-//        when(ps.executeQuery()).thenReturn(rs);
-//        when(rs.next()).thenReturn(true);
-//        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
-//        //when(rs.getBytes(anyInt())).thenReturn();
-//
-//        try
-//        {
-//            new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
-//            fail();
-//        } catch(IllegalStateException e) {
-//            assertEquals(SQLException.class, e.getCause().getClass());
-//        }
-//    }
+    @Test
+    public void testRestoreCubeThatThrowsSQLException() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
 
-/*
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json");
+        IOUtilities.transfer(new File(url.getFile()), out);
+        when(rs.getBytes(anyString())).thenReturn(out.toByteArray());
+        when(rs.getBytes(anyInt())).thenReturn(null);
+
+        try
+        {
+            new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
+            fail();
+        } catch(RuntimeException e) {
+            assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().contains("Unable to restore cube"));
+        }
+    }
+
+    @Test
+    public void testRestoreCubeThatFailsTheUpdate() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+
+        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json");
+        IOUtilities.transfer(new File(url.getFile()), out);
+        when(rs.getBytes(anyString())).thenReturn(out.toByteArray());
+        when(rs.getBytes(anyInt())).thenReturn(null);
+        when(ps.executeUpdate()).thenReturn(0);
+
+        try
+        {
+            new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID);
+            fail();
+        } catch(IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Cannot restore"));
+            assertTrue(e.getMessage().contains("rows inserted"));
+        }
+    }
+
     @Test
     public void testDeleteCubeThatThrowsSQLException() throws Exception {
         Connection c = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
         ResultSet rs = mock(ResultSet.class);
-        when(c.prepareStatement(anyString())).thenReturn(ps);
+
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class);
         when(ps.executeQuery()).thenReturn(rs);
-        when(ps.executeUpdate()).thenThrow(new SQLException());
-        when(rs.next()).thenReturn(true);
-        when(rs.getLong(anyInt())).thenReturn(new Long(-9));
+        when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false).thenReturn(true).thenReturn(true);
+        when(rs.getLong(anyInt())).thenReturn(new Long(9));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json");
+        IOUtilities.transfer(new File(url.getFile()), out);
+        when(rs.getBytes(anyString())).thenReturn(out.toByteArray());
+        when(rs.getBytes(anyInt())).thenReturn(null);
+        when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name());
 
         try
         {
@@ -671,9 +724,39 @@ public class TestNCubeJdbcPersister
             fail();
         } catch(RuntimeException e) {
             assertEquals(SQLException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().contains("Unable to delete cube"));
         }
     }
-*/
+
+    @Test
+    public void testDeleteCubeThatFailsTheUpdate() throws Exception {
+        Connection c = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+
+        when(c.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false).thenReturn(true).thenReturn(true);
+        when(rs.getLong(anyInt())).thenReturn(new Long(9));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
+        URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json");
+        IOUtilities.transfer(new File(url.getFile()), out);
+        when(rs.getBytes(anyString())).thenReturn(out.toByteArray());
+        when(rs.getBytes(anyInt())).thenReturn(null);
+        when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name());
+        when(ps.executeUpdate()).thenReturn(0);
+
+        try
+        {
+            new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", false, USER_ID);
+            fail();
+        } catch(IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Cannot delete"));
+            assertTrue(e.getMessage().contains("rows inserted"));
+        }
+    }
+
     @Test
     public void testCreateCubeWithWrongUpdateCount() throws Exception
     {

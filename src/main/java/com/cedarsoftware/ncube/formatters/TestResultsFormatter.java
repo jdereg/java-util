@@ -65,7 +65,7 @@ public class TestResultsFormatter
             builder.append(newLine);
             if (iterator.hasNext())
             {
-                builder.append("<hr class=\"hr-small\"/>");
+                builder.append("<hr class=\"hr-small\" style=\"border-color:#bbb\"/>");
             }
         }
         builder.append("</pre>");

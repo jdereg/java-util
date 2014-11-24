@@ -1,12 +1,16 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.StringUtilities;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class represents a binding to a Set of columns, and the associated
- * return value.
+ * return value.  It also knows at what depth it occurred in the execution
+ * stack.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -27,13 +31,15 @@ import java.util.Map;
 public class Binding
 {
     private final String cubeName;
+    private final int depth;
     private final Map<String, Column> axes = new CaseInsensitiveMap<>();
     private Object value;
     private static final String newLine = "\n";
 
-    public Binding(String cubeName)
+    public Binding(String cubeName, int stackDepth)
     {
         this.cubeName = cubeName;
+        this.depth = stackDepth;
     }
 
     public String getCubeName()
@@ -51,22 +57,53 @@ public class Binding
         this.value = value;
     }
 
+    public int getNumBoundAxes()
+    {
+        return axes.size();
+    }
+
+    public Set<Column> getBoundColsForAxis()
+    {
+        return new LinkedHashSet<>(axes.values());
+    }
+
     public String toHtml()
     {
-        StringBuilder s = new StringBuilder(cubeName);
+        String spaces = fixedLengthString("    ", depth);
+        StringBuilder s = new StringBuilder(spaces);
+        s.append(cubeName);
         s.append(newLine);
         for (Map.Entry<String, Column> entry : axes.entrySet())
         {
+            Column column = entry.getValue();
+            s.append(spaces);
             s.append("  ");
             s.append(entry.getKey());
             s.append(": ");
-            s.append(entry.getValue().getValue());
+            String name = (String) column.getMetaProperty("name");
+            if (StringUtilities.hasContent(name))
+            {
+                s.append(name);
+                s.append(" / ");
+            }
+            s.append(column.getValue());
             s.append(newLine);
         }
 
+        s.append(spaces);
         s.append("  <b>value = ");
         s.append(value == null ? "null" : value.toString());
         s.append("</b>");
+        return s.toString();
+    }
+
+    public static String fixedLengthString(String string, int length)
+    {
+        StringBuilder s = new StringBuilder();
+        for (int i=0; i < length; i++)
+        {
+            s.append(string);
+        }
         return s.toString();
     }
 }

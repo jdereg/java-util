@@ -55,7 +55,7 @@ public class TestResultsFormatter
     public void formatAxisBinding()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
-        builder.append("<b>Axis bindings</b>");
+        builder.append("<b>Execution flow</b>");
         builder.append("<pre>");
         builder.append(newLine);
         for (Iterator<Binding> iterator = ruleInfo.getAxisBindings().iterator(); iterator.hasNext(); )
@@ -65,7 +65,7 @@ public class TestResultsFormatter
             builder.append(newLine);
             if (iterator.hasNext())
             {
-                builder.append("<hr class=\"hr-small\"/>");
+                builder.append("<hr class=\"hr-small\" style=\"border-color:#bbb\"/>");
             }
         }
         builder.append("</pre>");

@@ -2,7 +2,9 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.CaseInsensitiveMap;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class represents a binding to a Set of columns, and the associated
@@ -49,6 +51,16 @@ public class Binding
     public void setValue(Object value)
     {
         this.value = value;
+    }
+
+    public int getNumBoundAxes()
+    {
+        return axes.size();
+    }
+
+    public Set<Column> getBoundColsForAxis()
+    {
+        return new LinkedHashSet<>(axes.values());
     }
 
     public String toHtml()

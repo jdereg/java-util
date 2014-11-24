@@ -460,21 +460,18 @@ public class NCube<T>
     public T getCell(final Map<String, Object> coordinate, final Map<String, Object> output)
     {
         final RuleInfo ruleInfo = getRuleInfo(output);
-        final Map<String, Object> validCoord = validateCoordinate(coordinate, false);
-        Map<String, Object> input = new CaseInsensitiveMap<>(validCoord);
+        Map<String, Object> input = validateCoordinate(coordinate, false);
         boolean run = true;
-        long numRulesExec = 0;
         T lastExecutedStatementValue = null;
         List<Binding> bindings = ruleInfo.getAxisBindings();
 
         while (run)
         {
             run = false;
-            final Map<String, List<Column>> boundCoordinates = bindCoordinateToAxes(input);
-            final String[] axisNames = getAxisNames(boundCoordinates);
-            final Map<String, Integer> counters = getCountersPerAxis(boundCoordinates);
-            final Set<Column> idCoord = new HashSet<>();
-            final Map<Long, Object[]> cachedConditionValues = new HashMap<>();
+            final Map<String, List<Column>> potentialBoundCols = bindCoordinateToAxes(input);
+            final String[] axisNames = getAxisNames(potentialBoundCols);
+            final Map<String, Integer> counters = getCountersPerAxis(potentialBoundCols);
+            final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
             boolean done = false;
 
@@ -482,12 +479,10 @@ public class NCube<T>
             {
                 while (!done)
                 {
-                    idCoord.clear();
-                    Map<String, Object> ruleIds = new LinkedHashMap<>();
                     Binding binding = new Binding(name);
                     for (final String axisName : axisNames)
                     {
-                        final List<Column> cols = boundCoordinates.get(axisName);
+                        final List<Column> cols = potentialBoundCols.get(axisName);
                         final Column boundColumn = cols.get(counters.get(axisName) - 1);
                         final Axis axis = axisList.get(axisName);
 
@@ -497,7 +492,7 @@ public class NCube<T>
 
                             // Use Object[] to hold cached condition value to distinguish from a condition
                             // that returned null as it's value.
-                            Object[] cachedConditionValue = cachedConditionValues.get(boundColumn.id);
+                            Object cachedConditionValue = cachedConditionValues.get(boundColumn.id);
                             if (cachedConditionValue == null)
                             {   // Has the condition on the Rule axis been run this execution?  If not, run it and cache it.
                                 CommandCell cmd = (CommandCell) boundColumn.getValue();
@@ -506,7 +501,7 @@ public class NCube<T>
                                 // If the cmd == null, then we are looking at a default column on a rule axis.
                                 // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
                                 conditionValue = cmd == null ? isZero(conditionsFiredCountPerAxis.get(axisName)) : cmd.execute(ctx);
-                                cachedConditionValues.put(boundColumn.id, new Object[]{conditionValue});
+                                cachedConditionValues.put(boundColumn.id, conditionValue);
 
                                 if (isTrue(conditionValue))
                                 {   // Rule fired
@@ -516,7 +511,7 @@ public class NCube<T>
                             }
                             else
                             {   // re-use condition on this rule axis (happens when more than one rule axis on an n-cube)
-                                conditionValue = cachedConditionValue[0];
+                                conditionValue = cachedConditionValue;
                             }
 
                             // A rule column on a given axis can be accessed more than once (example: A, B, C on
@@ -526,24 +521,21 @@ public class NCube<T>
                             if (isTrue(conditionValue))
                             {
                                 binding.bind(axisName, boundColumn);
-                                bindColumn(idCoord, ruleIds, axis, boundColumn);
                             }
                         }
                         else
                         {
                             binding.bind(axisName, boundColumn);
-                            bindColumn(idCoord, ruleIds, axis, boundColumn);
                         }
                     }
 
                     // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
-                    if (idCoord.size() == axisNames.length)
+                    if (binding.getNumBoundAxes() == axisNames.length)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
                         bindings.add(binding);
-                        numRulesExec++;
                         try
                         {
-                            lastExecutedStatementValue = getCellById(idCoord, input, output);
+                            lastExecutedStatementValue = getCellById(binding.getBoundColsForAxis(), input, output);
                             binding.setValue(lastExecutedStatementValue);
                         }
                         catch (RuleStop e)
@@ -571,7 +563,7 @@ public class NCube<T>
                     }
 
                     // Step #3 increment counters (variable radix increment)
-                    done = incrementVariableRadixCount(counters, boundCoordinates, axisNames);
+                    done = incrementVariableRadixCount(counters, potentialBoundCols, axisNames);
                 }
             }
             catch (RuleStop ignored)
@@ -586,7 +578,6 @@ public class NCube<T>
             }
         }
 
-        ruleInfo.addToRulesExecuted(numRulesExec);
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
         output.put("return", lastExecutedStatementValue);
         return lastExecutedStatementValue;
@@ -726,12 +717,6 @@ public class NCube<T>
         return result;
     }
 
-    private static void bindColumn(Set<Column> idCoord, Map<String, Object> ruleIds, Axis axis, Column boundColumn)
-    {
-        idCoord.add(boundColumn);
-        ruleIds.put(axis.getName(), boundColumn.getValue() == null ? "null" : boundColumn.getValue().toString());
-    }
-
     /**
      * Get / Create the RuleInfo Map stored at output[NCube.RULE_EXEC_INFO]
      */
@@ -740,13 +725,11 @@ public class NCube<T>
         final RuleInfo ruleInfo;
         if (output.containsKey(NCube.RULE_EXEC_INFO))
         {   // RULE_EXEC_INFO Map already exists, must be a recursive call.
-            ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+            return (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
         }
-        else
-        {   // RULE_EXEC_INFO Map does not exist, create it.
-            ruleInfo = new RuleInfo();
-            output.put(NCube.RULE_EXEC_INFO, ruleInfo);
-        }
+        // RULE_EXEC_INFO Map does not exist, create it.
+        ruleInfo = new RuleInfo();
+        output.put(NCube.RULE_EXEC_INFO, ruleInfo);
         return ruleInfo;
     }
 

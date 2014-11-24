@@ -43,8 +43,8 @@ public class TestResultsFormatter
 
     public String format()
     {
-        formatAxisBinding();
         formatLastExecutedStatement();
+        formatAxisBinding();
         formatAssertions();
         formatOutputMap();
         formatSystemOut("System.out");

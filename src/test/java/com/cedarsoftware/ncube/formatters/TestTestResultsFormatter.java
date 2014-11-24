@@ -18,7 +18,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by kpartlow on 9/16/2014.
@@ -45,24 +45,19 @@ public class TestTestResultsFormatter
         coord.put("age", 18);
         coord.put("state", "OH");
 
-
         Map output = new HashMap();
         ncube.getCell(coord, output);
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Axis bindings</b><pre>\n" +
-                "idNoValue\n" +
-                "  age: 18\n" +
-                "  state: OH\n" +
-                "  <b>value = 18 OH</b>\n" +
-                "</pre><b>Last statement (cell) executed</b><pre>\n" +
-                "18 OH\n" +
-                "</pre><b>Assertions</b><pre>\n" +
-                "No assertion failures\n" +
-                "</pre><b>Output Map</b><pre>\n" +
-                "No output\n" +
-                "</pre><b>System.out</b><pre>\n" +
-                "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
-                "</pre>", s);
+        assertTrue(s.contains("idNoValue"));
+        assertTrue(s.contains("age: 18"));
+        assertTrue(s.contains("state: OH"));
+        assertTrue(s.contains("value = 18 OH"));
+        assertTrue(s.contains("Assertions"));
+        assertTrue(s.contains("No assertion failures"));
+        assertTrue(s.contains("Output Map"));
+        assertTrue(s.contains("No output"));
+        assertTrue(s.contains("System.out"));
+        assertTrue(s.contains("System.err"));
     }
 
     @Test
@@ -87,21 +82,18 @@ public class TestTestResultsFormatter
 
 
         String s = new TestResultsFormatter(output).format();
-        assertEquals("<b>Axis bindings</b><pre>\n" +
-                "idNoValue\n" +
-                "  age: 18\n" +
-                "  state: OH\n" +
-                "  <b>value = 18 OH</b>\n" +
-                "</pre><b>Last statement (cell) executed</b><pre>\n" +
-                "18 OH\n" +
-                "</pre><b>Assertions</b><pre>\n" +
-                "[some assertion happened]</pre><b>Output Map</b><pre>\n" +
-                "foo.name = John\n" +
-                "foo.age = 56\n" +
-                "return = 18 OH\n" +
-                "</pre><b>System.out</b><pre>\n" +
-                "</pre><b>System.err</b><pre style=\"color:darkred\">\n" +
-                "</pre>", s);
+        assertTrue(s.contains("idNoValue"));
+        assertTrue(s.contains("age: 18"));
+        assertTrue(s.contains("state: OH"));
+        assertTrue(s.contains("value = 18 OH"));
+        assertTrue(s.contains("Assertions"));
+        assertTrue(s.contains("[some assertion happened]"));
+        assertTrue(s.contains("Output Map"));
+        assertTrue(s.contains("foo.name = John"));
+        assertTrue(s.contains("foo.age = 56"));
+        assertTrue(s.contains("return = 18 OH"));
+        assertTrue(s.contains("System.out"));
+        assertTrue(s.contains("System.err"));
     }
 
     @Test

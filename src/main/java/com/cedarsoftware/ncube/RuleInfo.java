@@ -31,7 +31,6 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
 {
     public RuleInfo()
     {
-        put(RuleMetaKeys.NUM_RESOLVED_CELLS.name(), 0L);
         put(RuleMetaKeys.RULES_EXECUTED.name(), new ArrayList<MapEntry>());
     }
 
@@ -40,12 +39,7 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
      */
     public long getNumberOfRulesExecuted()
     {
-        return (Long) get(RuleMetaKeys.NUM_RESOLVED_CELLS.name());
-    }
-
-    void addToRulesExecuted(long count)
-    {
-        put(RuleMetaKeys.NUM_RESOLVED_CELLS.name(), getNumberOfRulesExecuted() + count);
+        return getAxisBindings().size();
     }
 
     void ruleStopThrown()

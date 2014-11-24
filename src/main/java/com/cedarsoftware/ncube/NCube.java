@@ -477,9 +477,10 @@ public class NCube<T>
 
             try
             {
+                final int depth = executionStack.get().size();
                 while (!done)
                 {
-                    Binding binding = new Binding(name);
+                    Binding binding = new Binding(name, depth);
                     for (final String axisName : axisNames)
                     {
                         final List<Column> cols = potentialBoundCols.get(axisName);

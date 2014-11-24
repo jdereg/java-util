@@ -37,7 +37,7 @@ public class TestTestResultsFormatter
         TestingDatabaseHelper.tearDownDatabase();
     }
 
-//    @Test
+    @Test
     public void testResultsFromNCube()
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "idNoValue.json");
@@ -54,7 +54,6 @@ public class TestTestResultsFormatter
                 "  age: 18\n" +
                 "  state: OH\n" +
                 "  <b>value = 18 OH</b>\n" +
-                "\n" +
                 "</pre><b>Last statement (cell) executed</b><pre>\n" +
                 "18 OH\n" +
                 "</pre><b>Assertions</b><pre>\n" +
@@ -66,7 +65,7 @@ public class TestTestResultsFormatter
                 "</pre>", s);
     }
 
-//    @Test
+    @Test
     public void testResultsWithOutputAndError() throws Exception
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "idNoValue.json");
@@ -93,7 +92,6 @@ public class TestTestResultsFormatter
                 "  age: 18\n" +
                 "  state: OH\n" +
                 "  <b>value = 18 OH</b>\n" +
-                "\n" +
                 "</pre><b>Last statement (cell) executed</b><pre>\n" +
                 "18 OH\n" +
                 "</pre><b>Assertions</b><pre>\n" +

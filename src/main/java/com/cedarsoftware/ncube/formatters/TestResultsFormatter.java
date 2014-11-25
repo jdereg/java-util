@@ -52,6 +52,17 @@ public class TestResultsFormatter
         return builder.toString();
     }
 
+    public void formatLastExecutedStatement()
+    {
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        builder.append("<b>Last statement (cell) executed</b>");
+        builder.append("<pre>");
+        builder.append(newLine);
+        builder.append(ruleInfo.getLastExecutedStatementValue());
+        builder.append(newLine);
+        builder.append("</pre>");
+    }
+
     public void formatAxisBinding()
     {
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
@@ -68,17 +79,6 @@ public class TestResultsFormatter
                 builder.append("<hr class=\"hr-small\" style=\"border-color:#bbb\"/>");
             }
         }
-        builder.append("</pre>");
-    }
-
-    public void formatLastExecutedStatement()
-    {
-        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
-        builder.append("<b>Last statement (cell) executed</b>");
-        builder.append("<pre>");
-        builder.append(newLine);
-        builder.append(ruleInfo.getLastExecutedStatementValue());
-        builder.append(newLine);
         builder.append("</pre>");
     }
 

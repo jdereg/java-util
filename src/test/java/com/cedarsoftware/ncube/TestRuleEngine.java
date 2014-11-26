@@ -19,6 +19,7 @@ import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -763,5 +764,53 @@ public class TestRuleEngine
         Map output = new HashMap();
         ncube.getCell(new HashMap(), output);
         assertEquals(200, output.get("price"));
+    }
+
+    @Test
+    public void testRuleInfo()
+    {
+        RuleInfo ruleInfo =  new RuleInfo();
+        String x = ruleInfo.getSystemOut();
+        assertEquals("", x);
+        ruleInfo.setSystemOut("the quick brown fox");
+        assertEquals("the quick brown fox", ruleInfo.getSystemOut());
+
+        x = ruleInfo.getSystemErr();
+        assertEquals("", x);
+        ruleInfo.setSystemErr("the quick brown dog");
+        assertEquals("the quick brown dog", ruleInfo.getSystemErr());
+
+        assertNull(ruleInfo.getLastExecutedStatementValue());
+    }
+
+    @Test
+    public void testRuleBinding()
+    {
+        Binding binding = new Binding("fancy", 2);
+        assertEquals("fancy", binding.getCubeName());
+
+        String html = binding.toHtml();
+        assertTrue(html.contains(" fancy"));
+        assertTrue(html.contains("value"));
+        assertTrue(html.contains("null"));
+    }
+
+    @Test
+    public void testRuleInfoRuleName()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("multiRule.json");
+        Map input = new HashMap();
+        input.put("age", 18);
+        input.put("weight", 125);
+        Map output = new HashMap();
+        Object ret = ncube.getCell(input, output);
+        assertEquals("medium-weight", ret);
+        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO);
+        List<Binding> bindings = ruleInfo.getAxisBindings();
+        for (Binding binding : bindings)
+        {
+            String html = binding.toHtml();
+            assertTrue(html.contains("medium /"));
+        }
     }
 }

@@ -69,7 +69,7 @@ public class Binding
 
     public String toHtml()
     {
-        String spaces = fixedLengthString("    ", depth);
+        String spaces = padString("    ", depth);
         StringBuilder s = new StringBuilder(spaces);
         s.append(cubeName);
         s.append(newLine);
@@ -97,7 +97,7 @@ public class Binding
         return s.toString();
     }
 
-    public static String fixedLengthString(String string, int length)
+    public static String padString(String string, int length)
     {
         StringBuilder s = new StringBuilder();
         for (int i=0; i < length; i++)

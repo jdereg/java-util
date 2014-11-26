@@ -194,6 +194,102 @@ public class TestCdnRouter
         verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.cubeName' in the Map coordinate.");
     }
 
+    @Test
+    public void testCdnRouterErrorHandleNoTenant() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenReturn("/dyn/view/index");
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
+
+        ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+        when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
+
+        setCdnRoutingProvider(null, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, "foo", ReleaseStatus.SNAPSHOT.name(), true);
+
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.tenant' in the Map coordinate.");
+    }
+
+    @Test
+    public void testCdnRouterErrorHandleNoApp() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenReturn("/dyn/view/index");
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
+
+        ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+        when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
+
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, null, ApplicationID.DEFAULT_VERSION, "foo", ReleaseStatus.SNAPSHOT.name(), true);
+
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.app' in the Map coordinate.");
+    }
+
+    @Test
+    public void testCdnRouterErrorHandleNoVersion() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenReturn("/dyn/view/index");
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
+
+        ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+        when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
+
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, null, "foo", ReleaseStatus.SNAPSHOT.name(), true);
+
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.version' in the Map coordinate.");
+    }
+
+    @Test
+    public void testCdnRouterErrorHandleNoStatus() throws Exception
+    {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        when(request.getServletPath()).thenReturn("/dyn/view/index");
+        setupMockRequestHeaders(request);
+        setupMockResponseHeaders(response);
+
+        ServletOutputStream out = new DumboOutputStream();
+        ServletInputStream in = new DumboInputStream();
+
+        when(response.getOutputStream()).thenReturn(out);
+        when(request.getInputStream()).thenReturn(in);
+
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, "foo", null, true);
+
+        NCubeManager.getNCubeFromResource("cdnRouterTest.json");
+        CdnRouter router = new CdnRouter();
+        router.route(request, response);
+        verify(response, times(1)).sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "CdnRouter - CdnRoutingProvider did not set up 'router.status' in the Map coordinate.");
+    }
+
     private static void setCdnRoutingProvider(final String account, final String app, final String version, final String cubeName, final String status, final boolean isAuthorized)
     {
         CdnRouter.setCdnRoutingProvider(new CdnRoutingProvider()

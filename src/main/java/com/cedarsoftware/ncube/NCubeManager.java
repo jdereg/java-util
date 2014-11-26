@@ -315,7 +315,7 @@ public class NCubeManager
         urlClassLoaders.remove(appId);
     }
 
-    static void clearCache()
+    public static void clearCache()
     {
         for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
         {

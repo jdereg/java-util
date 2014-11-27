@@ -9,10 +9,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Implements an n-cube.  This is a hyper (n-dimensional) cube
- * of cells, made up of 'n' number of axes.  Each Axis is composed
- * of Columns that denote discrete nodes along an axis.  Use NCubeManager
- * to manage a list of NCubes.  Documentation on Github.
+ * Format test result output for display in HTML.  This includes
+ * showing the last executed statement value, execution path,
+ * assertion results, output map, System.out, and System.err.
  *
  * @author Ken Partlow (kpartlow@gmail.com)
  *         <br/>

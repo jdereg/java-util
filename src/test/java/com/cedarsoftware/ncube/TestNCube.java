@@ -3773,13 +3773,156 @@ public class TestNCube
     }
 
     @Test
-    public void testEquality()  throws Exception {
+    public void testEqualsMetaPropsMismatch()  throws Exception
+    {
         NCube cube1 = getTestNCube2D(false);
         NCube cube2 = getTestNCube2D(false);
 
-        assertTrue(cube1.equals(cube2));
+        assertEquals(cube1, cube2);
 
-        cube1.getMetaProperties();
+        cube1.setMetaProperty("foo", "bar");
+        assertNotEquals(cube1, cube2);
+        cube2.setMetaProperty("foo", "bar");
+        assertEquals(cube1, cube2);
+        cube1.removeMetaProperty("foo");
+        assertNotEquals(cube1, cube2);
+        cube1.setMetaProperty("foo", "baz");
+        assertNotEquals(cube1, cube2);
+        cube1.clearMetaProperties();
+        cube2.removeMetaProperty("foo");
+        assertEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisNameMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foot", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisMetaMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        axis1.setMetaProperty("fingers", 4);
+        axis1.setMetaProperty("thumb", 1);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.RANGE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisValueTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisDefaultMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnCountMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "qux");
+
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "qux");
+
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnValueMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "baz");
+
+        cube2.addAxis(axis2);
+        cube2.addColumn("foo", "qux");
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnMetaPropertiesMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "baz");
+        Column col = axis1.findColumn("baz");
+        col.setMetaProperty("Glock", "23");
+
+        cube2.addAxis(axis2);
+        cube2.addColumn("foo", "baz");
+        assertNotEquals(cube1, cube2);
     }
 
     @Test
@@ -5119,6 +5262,7 @@ public class TestNCube
         assertEquals(appId.getStatus(), ncube.getStatus());
         assertEquals(appId.getVersion(), ncube.getVersion());
     }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

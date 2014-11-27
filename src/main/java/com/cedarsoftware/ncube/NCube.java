@@ -2208,10 +2208,6 @@ public class NCube<T>
 
             Axis thisAxis = entry.getValue();
             Axis thatAxis = (Axis) that.axisList.get(entry.getKey());
-            if (!thisAxis.getName().equalsIgnoreCase(thatAxis.getName()))
-            {
-                return false;
-            }
 
             if (!DeepEquals.deepEquals(thisAxis.metaProps, thatAxis.metaProps))
             {

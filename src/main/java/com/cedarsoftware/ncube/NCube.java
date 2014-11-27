@@ -2397,6 +2397,20 @@ public class NCube<T>
         return StringUtilities.encode(sha1.digest());
     }
 
+    public long getMaxAxisId()
+    {
+        long max = 0;
+        for (Axis axis : axisList.values())
+        {
+            long axisId = axis.getId();
+            if (axisId > max)
+            {
+                max = axisId;
+            }
+        }
+        return max;
+    }
+
     static String toJson(Object o)
     {
         if (o == null)

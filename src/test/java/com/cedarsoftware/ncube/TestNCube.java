@@ -3925,6 +3925,35 @@ public class TestNCube
         assertNotEquals(cube1, cube2);
     }
 
+
+    @Test
+    public void testMaxAxisId()  throws Exception
+    {
+        NCube cube = new NCube("fourD");
+        long maxId = cube.getMaxAxisId();
+        assertEquals(0, maxId);
+
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis1);
+        maxId = cube.getMaxAxisId();
+        assertEquals(1, maxId);
+
+        Axis axis2 = new Axis("bar", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis2);
+        maxId = cube.getMaxAxisId();
+        assertEquals(2, maxId);
+
+        Axis axis3 = new Axis("baz", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis3);
+        maxId = cube.getMaxAxisId();
+        assertEquals(3, maxId);
+
+        Axis axis4 = new Axis("qux", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis4);
+        maxId = cube.getMaxAxisId();
+        assertEquals(4, maxId);
+    }
+
     @Test
     public void testRangeSetEquality() throws Exception
     {

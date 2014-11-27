@@ -5,14 +5,18 @@
       "name": "state",
       "type": "DISCRETE",
       "valueType": "STRING",
-      "hasDefault": true,
+      "hasDefault": false,
       "preferredOrder": 0,
-      "columns": []
+      "columns": [
+        {
+          "id":"OH"
+        }
+      ]
     }
   ],
   "cells": [
     {
-      "id": [],
+      "id": ["OH"],
       "type": "exp",
       "value":"true"
     }

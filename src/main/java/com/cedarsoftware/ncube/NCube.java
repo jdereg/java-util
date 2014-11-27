@@ -1526,7 +1526,7 @@ public class NCube<T>
                     NCube refCube = NCubeManager.getCube(appId, ncube);
                     if (refCube == null)
                     {
-                        throw new IllegalStateException("Attempting to get required scope, but NCube '" + ncube + "' is not loaded into NCubeManager.  Use NCubeManager.loadCubes() at application start.");
+                        throw new IllegalStateException("Attempting to get required scope, but n-cube: " + ncube + " failed to load");
                     }
                     stack.addFirst(refCube);
                 }

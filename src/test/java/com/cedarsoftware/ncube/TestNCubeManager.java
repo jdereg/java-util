@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.formatters.NCubeTestReader;
 import com.cedarsoftware.ncube.formatters.NCubeTestWriter;
 import com.cedarsoftware.util.DeepEquals;
@@ -356,6 +357,25 @@ public class TestNCubeManager
         refs.clear();
         NCubeManager.getReferencedCubeNames(defaultSnapshotApp, n2.getName(), refs);
         assertEquals(0, refs.size());
+    }
+
+    @Test
+    public void testReferencedCubeCoordinateNotFound() throws Exception
+    {
+        NCube n1 = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "aa.json");
+        NCubeManager.getNCubeFromResource(defaultSnapshotApp, "bb.json");
+
+        try
+        {
+            Map input = new HashMap();
+            input.put("state", "OH");
+            n1.getCell(input);
+            fail();
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            assertTrue(e.getMessage().contains("oordinate not found"));
+        }
     }
 
     @Test

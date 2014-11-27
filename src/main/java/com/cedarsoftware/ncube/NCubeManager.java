@@ -911,15 +911,30 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
-            NCube ncube = (NCube) JsonReader.jsonToJava(json);
-            List<Axis> axes = ncube.getAxes();
-            for (Axis axis : axes)
+            try
             {
-                axis.buildScaffolding();
+                // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
+                NCube ncube = (NCube) JsonReader.jsonToJava(json);
+                List<Axis> axes = ncube.getAxes();
+                for (Axis axis : axes)
+                {
+                    axis.buildScaffolding();
+                }
+                ncube.setMetaProperty("sha1", ncube.sha1());
+                return ncube;
             }
-            ncube.setMetaProperty("sha1", ncube.sha1());
-            return ncube;
+            catch (Exception e1)
+            {
+                LOG.warn("attempted to read n-cube json in serialized format, but was unreadable that way.", e1);
+                if (e.getCause() != null)
+                {
+                    throw new RuntimeException(e.getCause());
+                }
+                else
+                {
+                    throw e;
+                }
+            }
         }
     }
 

@@ -5061,6 +5061,64 @@ public class TestNCube
         assertEquals("Hello, world.", s);
     }
 
+    @Test
+    public void testValidateCubeNames()
+    {
+        NCube.validateCubeName("This:is.legal_but-hard_to.read");
+        try
+        {
+            NCube.validateCubeName("This:is.not/legal#and-hard_to|read");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        { }
+        try
+        {
+            NCube.validateCubeName(" NotValid");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        { }
+    }
+
+    @Test
+    public void testValidateCubeName() throws Exception
+    {
+        NCube.validateCubeName("Joe");
+        NCube.validateCubeName("Joe.Dirt");
+        NCube.validateCubeName(NCube.validCubeNameChars);
+        try
+        {
+            NCube.validateCubeName("");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+
+        try
+        {
+            NCube.validateCubeName(null);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+    @Test
+    public void testToJson() throws Exception
+    {
+        assertEquals("null", NCube.toJson(null));
+    }
+
+    @Test
+    public void testNCubeApplicationIdParts()
+    {
+        ApplicationID appId = new ApplicationID("foo", "bar", "0.0.1", ReleaseStatus.SNAPSHOT.name());
+        NCube ncube = getTestNCube3D_Boolean();
+        ncube.setApplicationID(appId);
+        assertEquals(appId.getStatus(), ncube.getStatus());
+        assertEquals(appId.getVersion(), ncube.getVersion());
+    }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 
@@ -5392,56 +5450,6 @@ public class TestNCube
 
         return ncube;
     }
-
-    @Test
-    public void testValidateCubeNames()
-    {
-        NCube.validateCubeName("This:is.legal_but-hard_to.read");
-        try
-        {
-            NCube.validateCubeName("This:is.not/legal#and-hard_to|read");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        { }
-        try
-        {
-            NCube.validateCubeName(" NotValid");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        { }
-    }
-
-    @Test
-    public void testValidateCubeName() throws Exception
-    {
-        NCube.validateCubeName("Joe");
-        NCube.validateCubeName("Joe.Dirt");
-        NCube.validateCubeName(NCube.validCubeNameChars);
-        try
-        {
-            NCube.validateCubeName("");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-
-        try
-        {
-            NCube.validateCubeName(null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-    }
-
-    @Test
-    public void testToJson() throws Exception
-    {
-        assertEquals("null", NCube.toJson(null));
-    }
-
 
     static int countMatches(String s, String pattern)
     {

@@ -617,6 +617,12 @@ public class Axis
         for (Column col : newCols.columns)
         {
             Column newColumn = createColumnFromValue(col.getValue());
+            Map<String, Object> metaProperties = col.getMetaProperties();
+            for (Map.Entry<String, Object> entry : metaProperties.entrySet())
+            {
+                newColumn.setMetaProperty(entry.getKey(), entry.getValue());
+            }
+
             newColumnMap.put(col.id, newColumn);
         }
 
@@ -632,10 +638,17 @@ public class Axis
             {   // Update case - matches existing column
                 Column newCol = newColumnMap.get(col.id);
                 col.setValue(newCol.getValue());
+
                 if (newCol.getMetaProperty("name") != null)
                 {   // Copy 'name' meta-property (used on Rule axis Expression [condition] columns)
                     col.setMetaProperty("name", newCol.getMetaProperty("name"));
                 }
+                Map<String, Object> metaProperties = newCol.getMetaProperties();
+                for (Map.Entry<String, Object> entry : metaProperties.entrySet())
+                {
+                    col.setMetaProperty(entry.getKey(), entry.getValue());
+                }
+
             }
             else
             {   // Delete case - existing column id no longer found
@@ -894,10 +907,6 @@ public class Axis
 			}
 			return value;	// First value added does not need to be checked
 		}
-        else if (type == AxisType.RULE)
-        {
-            return value;
-        }
 		else
 		{
 			throw new IllegalArgumentException("New AxisType added '" + type + "' but code support for it is not there.");
@@ -1017,11 +1026,7 @@ public class Axis
         {
             return ((BigDecimal) value).stripTrailingZeros().toPlainString();
         }
-        else if (value instanceof Number)
-        {
-            return value.toString();
-        }
-        else if (value instanceof Boolean)
+        else if (value instanceof Number || value instanceof Boolean)
         {
             return value.toString();
         }

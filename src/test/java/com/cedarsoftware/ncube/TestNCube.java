@@ -4932,15 +4932,13 @@ public class TestNCube
         NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
         for (Set<Column> cols : (Iterable<Set<Column>>) ncube.getCellMap().keySet())
         {
+            // This code is not generalized and intentionally relies on arrays.json being 1-dimensional
             Column col = cols.iterator().next();
             Set<Long> coord = new HashSet<>();
             coord.add(col.getId());
             Map<String, CellInfo> coordinate = new CaseInsensitiveMap<>();
-            ncube.getColumnsAndCoordinateFromIds(coord, null, coordinate);
-
+            ncube.getColumnsAndCoordinateFromIds(coord, coordinate);
             assertTrue(coordinate.containsKey("code"));
-
-            CellInfo map = (CellInfo)coordinate.get("code");
         }
     }
 
@@ -5290,6 +5288,66 @@ public class TestNCube
         ncube.setApplicationID(appId);
         assertEquals(appId.getStatus(), ncube.getStatus());
         assertEquals(appId.getVersion(), ncube.getVersion());
+    }
+
+    @Test
+    public void testGetColumnsAndCoordinateFromIds()
+    {
+        NCube cube = getTestNCube3D_Boolean();
+
+        Axis trailor = cube.getAxis("Trailers");
+        Column t = trailor.findColumn("M2A");
+
+        Axis vehicles = cube.getAxis("Vehicles");
+        Column v = vehicles.findColumn("van");
+
+        Axis bu = cube.getAxis("BU");
+        Column b = bu.findColumn("SHS");
+
+        Set<Long> longCoord = new HashSet<>();
+        longCoord.add(t.id);
+        longCoord.add(v.id);
+        longCoord.add(b.id);
+
+        // Make sure all columns are bound correctly
+        Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
+        Set<Column> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord);
+        for (Column column : boundCols)
+        {
+            assertTrue(column.id == t.id || column.id == v.id || column.id == b.id);
+        }
+
+        for (Map.Entry<String, CellInfo> entry : coord.entrySet())
+        {
+            CellInfo info = entry.getValue();
+            assertTrue("M2A".equals(info.value) || "van".equals(info.value) || "SHS".equals(info.value));
+        }
+
+        Column t2 = trailor.findColumn("L3A");
+        longCoord.add(t2.id);
+        try
+        {
+            cube.getColumnsAndCoordinateFromIds(longCoord, coord);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("more than one column"));
+            assertTrue(e.getMessage().contains("per axis"));
+        }
+
+        try
+        {
+            longCoord.remove(t2.id);
+            longCoord.remove(t.id);
+            cube.getColumnsAndCoordinateFromIds(longCoord, coord);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("column id"));
+            assertTrue(e.getMessage().toLowerCase().contains("missing"));
+        }
     }
 
     // ---------------------------------------------------------------------------------

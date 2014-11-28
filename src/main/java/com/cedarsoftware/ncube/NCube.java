@@ -324,8 +324,7 @@ public class NCube<T>
     public T removeCellById(final Set<Long> coordinate)
     {
         clearScopeKeyCaches();
-        Set<Column> cols = new HashSet<>();
-        getColumnsAndCoordinateFromIds(coordinate, cols, null);
+        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
         return cells.remove(cols);
     }
 
@@ -369,8 +368,7 @@ public class NCube<T>
      */
     public boolean containsCellById(final Set<Long> coordinate)
     {
-        Set<Column> cols = new HashSet<>();
-        getColumnsAndCoordinateFromIds(coordinate, cols, null);
+        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
         return cells.containsKey(cols);
     }
 
@@ -403,8 +401,7 @@ public class NCube<T>
             throw new IllegalArgumentException("Cannot set a cell to be an array type directly (except byte[]). Instead use GroovyExpression.");
         }
         clearScopeKeyCaches();
-        Set<Column> cols = new HashSet<>();
-        getColumnsAndCoordinateFromIds(coordinate, cols, null);
+        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
         return cells.put(cols, value);
     }
 
@@ -428,8 +425,7 @@ public class NCube<T>
      */
     public T getCellByIdNoExecute(final Set<Long> coordinate)
     {
-        Set<Column> cols = new HashSet<>();
-        getColumnsAndCoordinateFromIds(coordinate, cols, null);
+        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
         return cells.get(cols);
     }
 
@@ -848,25 +844,20 @@ public class NCube<T>
     }
 
     /**
-     * Given a Set of Column IDs, which can be less than the number of axes on this n-cube, this method
-     * will fill in the cols and coord parameters (if not null), with the fully specified Column set required
-     * to uniquely identify the same cell that the passed in Set<Long> identifies.  This method allows the Set<long>
-     * to be underspecified (less entries than number of dimensions on n-cube.  In that case, this method will
-     * bind the unmapped axes to their 'Default' column.  In an axis does not have a default column and no ID
-     * is passed in that would bind to that axis, then an IllegalArgumentException will be thrown.
-     * @param cols Set<Column> to be filled in (a Column for every axis will be added to this Set).  This parameter
-     * can be null.
-     * @param coord Map<String, Object> will be filled in with the coordinate keys/values that will point to the
-     * given cell identified by the Set<Long>.  This parameter can be null.
+     * Flip Set<Long> (coordinate) to Set<Column>. The challenge is that the Set<Long> is allowed to leave
+     * out bindings for Axes that have default columns.  In addition, an optional Map<String, CellInfo> can be
+     * passed in, which is filled in with the required axes as keys -and- for each axis that is not a rule axis,
+     * a column value that would bind to that axis (specified as a CellInfo).
+     *
      * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
      * cannot bind to any of the passed in IDs.
      */
-    public void getColumnsAndCoordinateFromIds(final Set<Long> coordinate, Set<Column> cols, Map<String, CellInfo> coord)
+    Set<Column> getColumnsAndCoordinateFromIds(final Set<Long> coordinate, Map<String, CellInfo> coord)
     {
         // Ensure that the specified coordinate matches a column on each axis
         final Set<String> axisNamesRef = new CaseInsensitiveSet<>();
         final Set<String> allAxes = new CaseInsensitiveSet<>(axisList.keySet());
-        final Set<Column> point = new HashSet<>();
+        final Set<Column> point = new LinkedHashSet<>();
 
         // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
         // but not more than one column ID per axis.  Also, too few can be supplied, if and
@@ -886,8 +877,7 @@ public class NCube<T>
 
                     axisNamesRef.add(axisName);
                     point.add(column);
-
-                    getColumnProperties(coord, axis, column);
+                    addCoordinateToColumnEntry(coord, column, axis);
                 }
             }
         }
@@ -908,13 +898,11 @@ public class NCube<T>
                 Column defCol = axis.getDefaultColumn();
                 axisNamesRef.remove(axisName);
                 point.add(defCol);
-
-                getColumnProperties(coord, axis, defCol);
+                addCoordinateToColumnEntry(coord, defCol, axis);
             }
         }
 
-        // Add in all input.keyName references from the Groovy code at the given cell (if it is a CommandCell).
-        //  This is highly valuable as it will find, for example, input.vehicle from the Groovy code.
+        // Add in all required scope keys to the [optional] passed in coord
         if (coord != null)
         {
             for (String scopeKey : getRequiredScope())
@@ -926,34 +914,27 @@ public class NCube<T>
             }
         }
 
-        // Pass back the converted Set<Long> as Set<Column>.  Use their passed in input variable 'cols' (if not null)
-        if (cols != null)
-        {
-            cols.clear();
-            cols.addAll(point);
-        }
-
         if (!axisNamesRef.isEmpty())
         {
             throw new IllegalArgumentException("Column IDs missing for the axes: " + axisNamesRef + ", NCube '" + name + "'");
         }
+
+        return point;
     }
 
     /**
-     * Load properties from map
+     * Associate input variables (axis names) to CellInfo for the given column.
      */
-    private static void getColumnProperties(Map<String, CellInfo> map, Axis axis, Column column) {
-
-        if (map == null)
+    private static void addCoordinateToColumnEntry(Map<String, CellInfo> coord, Column column, Axis axis)
+    {
+        if (coord == null)
         {
             return;
         }
 
         if (axis.getType() != AxisType.RULE)
         {
-            Object value = column.getValueThatMatches();
-            CellInfo info = new CellInfo(value);
-            map.put(axis.getName(), info);
+            coord.put(axis.getName(), new CellInfo(column.getValueThatMatches()));
         }
     }
 
@@ -2073,9 +2054,7 @@ public class NCube<T>
                 colIds.add(col.id);
             }
             Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
-            Set<Column> cols = new CaseInsensitiveSet<>();
-            getColumnsAndCoordinateFromIds(colIds, cols, coord);
-
+            getColumnsAndCoordinateFromIds(colIds, coord);
             String testName = String.format("test-%03d", i);
             CellInfo[] result = {new CellInfo("exp", "output.return", false, false)};
             coordinates.add(new NCubeTest(testName, convertCoordToList(coord), result));

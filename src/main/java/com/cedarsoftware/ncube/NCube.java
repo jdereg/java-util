@@ -68,7 +68,7 @@ public class NCube<T>
 {
     String name;
     private final Map<String, Axis> axisList = new LinkedHashMap<>();
-    final Map<Set<Column>, T> cells = new HashMap<>();
+    final Map<Set<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
@@ -466,7 +466,7 @@ public class NCube<T>
             run = false;
             final Map<String, List<Column>> potentialBoundCols = bindCoordinateToAxes(input);
             final String[] axisNames = getAxisNames(potentialBoundCols);
-            final Map<String, Integer> counters = getCountersPerAxis(potentialBoundCols);
+            final Map<String, Integer> counters = getCountersPerAxis(potentialBoundCols.keySet());
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
             boolean done = false;
@@ -560,7 +560,7 @@ public class NCube<T>
                     }
 
                     // Step #3 increment counters (variable radix increment)
-                    done = incrementVariableRadixCount(counters, potentialBoundCols, axisNames);
+                    done = incrementVariableRadixCount(counters, potentialBoundCols);
                 }
             }
             catch (RuleStop ignored)
@@ -802,13 +802,13 @@ public class NCube<T>
         Map<String, List<Column>> coordinates = new HashMap<>();
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
         {
-            final String axisNameLowcase = entry.getKey();
+            final String axisNameLower = entry.getKey();
             final Axis axis = entry.getValue();
-            final Comparable value = (Comparable) coord.get(axisNameLowcase);
+            final Comparable value = (Comparable) coord.get(axisNameLower);
 
             if (axis.getType() == AxisType.RULE)
             {   // For RULE axis, all possible columns must be added (they are tested later during execution)
-                coordinates.put(axisNameLowcase, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
+                coordinates.put(axisNameLower, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
             }
             else
             {   // Find the single column that binds to the input coordinate on a regular axis.
@@ -819,7 +819,7 @@ public class NCube<T>
                 }
                 List<Column> cols = new ArrayList<>();
                 cols.add(column);
-                coordinates.put(axisNameLowcase, cols);
+                coordinates.put(axisNameLower, cols);
             }
         }
 
@@ -831,12 +831,12 @@ public class NCube<T>
         return bindings.keySet().toArray(new String[bindings.size()]);
     }
 
-    private static Map<String, Integer> getCountersPerAxis(final Map<String, List<Column>> bindings)
+    private static Map<String, Integer> getCountersPerAxis(final Set<String> axisNames)
     {
         final Map<String, Integer> counters = new HashMap<>();
 
         // Set counters to 1
-        for (final String axisName : bindings.keySet())
+        for (final String axisName : axisNames)
         {
             counters.put(axisName, 1);
         }
@@ -845,8 +845,8 @@ public class NCube<T>
 
     /**
      * Flip Set<Long> (coordinate) to Set<Column>. The challenge is that the Set<Long> is allowed to leave
-     * out bindings for Axes that have default columns.  In addition, an optional Map<String, CellInfo> can be
-     * passed in, which is filled in with the required axes as keys -and- for each axis that is not a rule axis,
+     * out bindings for Axes that have default columns.  An optional Map<String, CellInfo> can be passed in,
+     * which is filled in with the required axes as keys -and- for each axis that is not a rule axis,
      * a column value that would bind to that axis (specified as a CellInfo).
      *
      * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
@@ -1007,14 +1007,16 @@ public class NCube<T>
      * @return false if more incrementing can be done, otherwise true.
      */
     private static boolean incrementVariableRadixCount(final Map<String, Integer> counters,
-                                                       final Map<String, List<Column>> bindings,
-                                                       final String[] axisNames)
+                                                       final Map<String, List<Column>> bindings)
     {
+        String[] axisNames = getAxisNames(bindings);
         int digit = axisNames.length - 1;
+
         while (true)
         {
-            final int count = counters.get(axisNames[digit]);
-            final List<Column> cols = bindings.get(axisNames[digit]);
+            final String axisName = axisNames[digit];
+            final int count = counters.get(axisName);
+            final List<Column> cols = bindings.get(axisName);
 
             if (count >= cols.size())
             {   // Reach max value for given dimension (digit)
@@ -1026,7 +1028,7 @@ public class NCube<T>
             }
             else
             {
-                counters.put(axisNames[digit], count + 1);  // increment counter
+                counters.put(axisName, count + 1);  // increment counter
                 return false;
             }
         }
@@ -2187,33 +2189,12 @@ public class NCube<T>
 
             Axis thisAxis = entry.getValue();
             Axis thatAxis = (Axis) that.axisList.get(entry.getKey());
-
-            if (!DeepEquals.deepEquals(thisAxis.metaProps, thatAxis.metaProps))
-            {
-                return false;
-            }
-
-            if (thisAxis.getColumnOrder() != thatAxis.getColumnOrder())
-            {
-                return false;
-            }
-
-            if (thisAxis.getType() != thatAxis.getType())
-            {
-                return false;
-            }
-
-            if (thisAxis.getValueType() != thatAxis.getValueType())
+            if (!thisAxis.areAxisPropsEqual(thatAxis))
             {
                 return false;
             }
 
             if (thisAxis.getColumns().size() != thatAxis.getColumns().size())
-            {
-                return false;
-            }
-
-            if (thisAxis.hasDefaultColumn() != thatAxis.hasDefaultColumn())
             {
                 return false;
             }
@@ -2254,7 +2235,7 @@ public class NCube<T>
         for (Map.Entry<Set<Column>, T> entry : cells.entrySet())
         {
             Set<Column> cellKey = entry.getKey();
-            T value = entry.getValue();
+            T cellValue = entry.getValue();
             Set<Column> thatCellKey = new HashSet<>();
 
             for (Column column : cellKey)
@@ -2263,7 +2244,7 @@ public class NCube<T>
             }
 
             Object thatCellValue = that.cells.get(thatCellKey);
-            if (!DeepEquals.deepEquals(value, thatCellValue))
+            if (!DeepEquals.deepEquals(cellValue, thatCellValue))
             {
                 return false;
             }
@@ -2308,7 +2289,7 @@ public class NCube<T>
         {
             Axis axis = entry.getValue();
             allCoordinates.put(axis.getName(), axis.columns);
-            sha1.update(axis.getName().getBytes());
+            sha1.update(axis.getName().toLowerCase().getBytes());
             sha1.update(sep);
             sha1.update(String.valueOf(axis.getColumnOrder()).getBytes());
             sha1.update(sep);
@@ -2337,7 +2318,7 @@ public class NCube<T>
 
         // Need deterministic ordering of cells by walking the n-dim matrix in sorted axis order,
         // accessing each coordinate thru that ordering, rather than their order in the 'cells' Map.
-        final Map<String, Integer> counters = getCountersPerAxis(allCoordinates);
+        final Map<String, Integer> counters = getCountersPerAxis(allCoordinates.keySet());
         final String[] axisNames = getAxisNames(allCoordinates);
         final Set<Column> idCoord = new HashSet<>();
         boolean done = false;
@@ -2370,10 +2351,216 @@ public class NCube<T>
             }
 
             idCoord.clear();
-            done = incrementVariableRadixCount(counters, allCoordinates, axisNames);
+            done = incrementVariableRadixCount(counters, allCoordinates);
         }
 
         return StringUtilities.encode(sha1.digest());
+    }
+
+    public List<String> getDeltaDescription(NCube old)
+    {
+        StringBuilder s = new StringBuilder();
+        List<String> changes = new ArrayList<>();
+
+        if (!name.equalsIgnoreCase(old.name))
+        {
+            s.append("Name changed from '");
+            s.append(old.name);
+            s.append("' to '");
+            s.append(name);
+            s.append("'");
+            changes.add(s.toString());
+            s.setLength(0);
+        }
+
+        if (!DeepEquals.deepEquals(metaProps, old.metaProps))
+        {
+            s.append("n-cube meta-properties changed: ");
+            s.append(getName());
+            s.append(", from: ");
+            s.append(old.getMetaProperties().toString());
+            s.append(", to: ");
+            s.append(getMetaProperties().toString());
+            changes.add(s.toString());
+            s.setLength(0);
+        }
+
+        if (axisList.size() != old.axisList.size())
+        {
+            s.append("Number of dimensions, before: ");
+            s.append(old.axisList.size());
+            s.append(' ');
+            s.append(", after: ");
+            s.append(axisList.size());
+            s.append(' ');
+            changes.add(s.toString());
+            s.setLength(0);
+        }
+
+        CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
+        CaseInsensitiveSet a2 = new CaseInsensitiveSet(old.axisList.keySet());
+        a1.removeAll(a2);
+        if (!a1.isEmpty())
+        {
+            s.append("New/changed axis names: ");
+            s.append(a1);
+            changes.add(s.toString());
+            s.setLength(0);
+        }
+
+        a1 = new CaseInsensitiveSet(axisList.keySet());
+        a2.removeAll(a1);
+        if (!a2.isEmpty())
+        {
+            s.append("Axis names changed/removed: ");
+            s.append(a2);
+            changes.add(s.toString());
+            s.setLength(0);
+        }
+
+        for (Axis axis : axisList.values())
+        {
+            Axis oldAxis = old.getAxis(axis.getName());
+            if (!axis.areAxisPropsEqual(oldAxis))
+            {
+                s.append("Axis properties changed, from ");
+                s.append(axis.getAxisPropString());
+                s.append(" to ");
+                s.append(oldAxis.getAxisPropString());
+                changes.add(s.toString());
+                s.setLength(0);
+            }
+
+            if (!DeepEquals.deepEquals(axis.getMetaProperties(), oldAxis.getMetaProperties()))
+            {
+                s.append("Axis meta-properties changed on axis: ");
+                s.append(axis.getName());
+                s.append(", from: ");
+                s.append(oldAxis.getMetaProperties().toString());
+                s.append(", to: ");
+                s.append(axis.getMetaProperties().toString());
+                changes.add(s.toString());
+                s.setLength(0);
+            }
+
+            for (Column newCol : axis.getColumnsWithoutDefault())
+            {
+                Column oldCol = oldAxis.findColumn(newCol.getValue());
+                if (oldCol == null)
+                {
+                    s.append("Column: ");
+                    s.append(newCol.getValue());
+                    s.append(" added");
+                    changes.add(s.toString());
+                    s.setLength(0);
+                }
+                else
+                {   // Check Column meta properties
+                    String delta = newCol.compareColumnMetaProperties(oldCol);
+                    if (StringUtilities.hasContent(delta))
+                    {
+                        changes.add(delta);
+                    }
+                }
+            }
+
+            for (Column oldCol : oldAxis.getColumnsWithoutDefault())
+            {
+                Column newCol = axis.findColumn(oldCol.getValue());
+                if (newCol == null)
+                {
+                    s.append("Column: ");
+                    s.append(oldCol.getValue());
+                    s.append(" removed");
+                    changes.add(s.toString());
+                    s.setLength(0);
+                }
+                else
+                {   // Check Column meta properties
+                    String delta = newCol.compareColumnMetaProperties(oldCol);
+                    if (StringUtilities.hasContent(delta))
+                    {
+                        changes.add(delta);
+                    }
+                }
+            }
+        }
+
+        // Different dimensions, don't compare cells
+        if (getNumDimensions() != old.getNumDimensions())
+        {
+            return changes;
+        }
+
+        if (cells.size() != old.cells.size())
+        {
+            changes.add("Had " + old.cells.size() + " cells with content, now has " + cells.size());
+        }
+
+        final Set<Long> idKey = new HashSet<>();
+
+        for (Map.Entry<Set<Column>, T> entry : cells.entrySet())
+        {
+            final T cellValue = entry.getValue();
+            final Set<Column> cellKey = entry.getKey();
+            idKey.clear();
+            for (Column column : cellKey)
+            {
+                idKey.add(column.id);
+            }
+
+            if (old.cells.containsKey(idKey))
+            {
+                final Object oldCellValue = old.cells.get(idKey);
+                if (cellValue == null)
+                {
+                    if (oldCellValue != null)
+                    {
+                        changes.add("Cell " + idCoordToProperCoord(idKey) + " was cleared");
+                    }
+                }
+                else
+                {
+                    if (!cellValue.equals(oldCellValue))
+                    {
+                        changes.add("Cell " + idCoordToProperCoord(idKey) + " was " + oldCellValue + ", changed to: " + cellValue);
+                    }
+                }
+            }
+            else
+            {
+                // cell added
+                final Map<String, Object> coord = idCoordToProperCoord(idKey);
+                changes.add("Cell " + coord + " added");
+            }
+
+        }
+        return changes;
+    }
+
+    private Map<String, Object> idCoordToProperCoord(Set<Long> idCoord)
+    {
+        Map<String, Object> coord = new CaseInsensitiveMap<>();
+        try
+        {
+            for (Long id : idCoord)
+            {
+                Axis axis = getAxisFromColumnId(id);
+                Column col = axis.getColumnById(id);
+                if (axis.getType() == AxisType.RULE)
+                {
+                    coord.put(axis.getName(), col.getMetaProperties().containsKey("name") ? col.getMetaProperty("name") : col.getValueThatMatches());
+                }
+                else
+                {
+                    coord.put(axis.getName(), col.getValueThatMatches());
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+        return coord;
     }
 
     public long getMaxAxisId()

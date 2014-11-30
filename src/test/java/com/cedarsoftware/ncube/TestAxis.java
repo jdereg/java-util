@@ -434,29 +434,26 @@ public class TestAxis
     }
 
     @Test
-    public void testGetString() {
-
+    public void testGetString()
+    {
         assertEquals("1", Axis.getString(1));
         assertEquals("true", Axis.getString(true));
         assertSame("foo", Axis.getString("foo"));
     }
 
     @Test
-    public void testToString() {
+    public void testToString()
+    {
         Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false);
-        assertEquals("Axis: foo [DISCRETE, LONG]\n" +
-                "  hasDefault column: false\n" +
-                "  preferred Order: 0\n", axis.toString());
+        assertEquals("Axis: foo [DISCRETE, LONG, no-default-column, sorted]", axis.toString());
 
 
         Axis c = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
         assertNull(c.getMetaProperties().get("foo"));
         c.setMetaProperty("foo", "bar");
 
-        assertEquals("Axis: foo [DISCRETE, STRING]\n" +
-                "  hasDefault column: true\n" +
-                "  preferred Order: 0\n" +
-                "  Default\n", c.toString());
+        assertEquals("Axis: foo [DISCRETE, STRING, default-column, sorted]\n" +
+                "  metaProps: {foo=bar}", c.toString());
     }
 
     @Test

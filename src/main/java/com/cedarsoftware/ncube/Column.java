@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.proximity.Distance;
 import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.DeepEquals;
 
 import java.util.Collections;
 import java.util.Map;
@@ -12,10 +13,10 @@ import java.util.Map;
  * columns to be inserted onto an axis, without
  * having to "move" the existing cells.  Cells
  * reference columns by their ID, not ordinal position.
- * 
+ *
  * Furthermore, for some axis types (String), it is
  * often better for display purposes to use the
- * display order, as opposed to it's sort order 
+ * display order, as opposed to it's sort order
  * (e.g., Months-of-year) for display.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -186,16 +187,26 @@ public class Column implements Comparable<Comparable>
 
         return value;
     }
-	
+
 	void setDisplayOrder(int order)
 	{
 		displayOrder = order;
 	}
-	
+
 	public int getDisplayOrder()
 	{
 		return displayOrder;
 	}
+
+    String compareColumnMetaProperties(Column oldCol)
+    {
+        if (!DeepEquals.deepEquals(getMetaProperties(), oldCol.getMetaProperties()))
+        {
+            return "Column properties differ on column: " + getDisplayOrder() + ", from: " +
+                    oldCol.getMetaProperties() + ", to: " + getMetaProperties();
+        }
+        return "";
+    }
 
 	public int compareTo(Comparable that)
 	{

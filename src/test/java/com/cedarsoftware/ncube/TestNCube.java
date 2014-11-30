@@ -3627,7 +3627,7 @@ public class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("nocolumns-nocells-nodefault-error.json");
 
-        Map<String, Object> coord = new HashMap<String, Object>();
+        Map<String, Object> coord = new HashMap<>();
         coord.put("test", "foo");
 
         ncube.getCell(coord);
@@ -3638,7 +3638,7 @@ public class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("nocolumns-nocells-hasdefault.json");
 
-        Map<String, Object> coord = new HashMap<String, Object>();
+        Map<String, Object> coord = new HashMap<>();
         coord.put("test", "foo");
 
         assertEquals("bar", ncube.getCell(coord));
@@ -5348,6 +5348,23 @@ public class TestNCube
             assertTrue(e.getMessage().toLowerCase().contains("column id"));
             assertTrue(e.getMessage().toLowerCase().contains("missing"));
         }
+    }
+
+    @Test
+    public void testSha1NotSensitiveToAxisNameCase()
+    {
+        NCube cube1 = new NCube("foo");
+        NCube cube2 = new NCube("foo");
+        NCube cube3 = new NCube("foo");
+        Axis axis1 = new Axis("state", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, true, Axis.SORTED, cube1.getMaxAxisId());
+        Axis axis2 = new Axis("STATE", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, true, Axis.SORTED, cube2.getMaxAxisId());
+        Axis axis3 = new Axis("state", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, true, Axis.SORTED, cube3.getMaxAxisId());
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertEquals(cube1.sha1(), cube2.sha1());
+
+        cube3.addAxis(axis3);
+        assertEquals(cube1.sha1(), cube3.sha1());
     }
 
     // ---------------------------------------------------------------------------------

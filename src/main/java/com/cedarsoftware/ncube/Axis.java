@@ -5,6 +5,7 @@ import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
 
@@ -277,7 +278,7 @@ public class Axis
         return id;
     }
 
-    public String toString()
+    public String getAxisPropString()
     {
         StringBuilder s = new StringBuilder();
         s.append("Axis: ");
@@ -286,18 +287,19 @@ public class Axis
         s.append(type);
         s.append(", ");
         s.append(valueType);
-        s.append("]\n");
-        s.append("  hasDefault column: ");
-        s.append(hasDefaultColumn());
-        s.append("\n");
-        s.append("  preferred Order: ");
-        s.append(getColumnOrder());
-        s.append("\n");
-        for (Comparable value : columns)
+        s.append(hasDefaultColumn() ? ", default-column" : ", no-default-column");
+        s.append(Axis.SORTED == preferredOrder ? ", sorted" : ", unsorted");
+        s.append(']');
+        return s.toString();
+    }
+
+    public String toString()
+    {
+        StringBuilder s = new StringBuilder(getAxisPropString());
+        if (!MapUtilities.isEmpty(metaProps))
         {
-            s.append("  ");
-            s.append(value);
-            s.append('\n');
+            s.append("\n");
+            s.append("  metaProps: " + metaProps);
         }
 
         return s.toString();
@@ -1454,5 +1456,46 @@ public class Axis
         {
             return range.compareTo(rc.range);
         }
+    }
+
+    public boolean areAxisPropsEqual(Object o)
+    {
+        if (this == o)
+        {
+            return true;
+        }
+        if (!(o instanceof Axis))
+        {
+            return false;
+        }
+
+        Axis axis = (Axis) o;
+
+        if (preferredOrder != axis.preferredOrder)
+        {
+            return false;
+        }
+        if (defaultCol != null ? !defaultCol.equals(axis.defaultCol) : axis.defaultCol != null)
+        {
+            return false;
+        }
+        if (metaProps != null ? !metaProps.equals(axis.metaProps) : axis.metaProps != null)
+        {
+            return false;
+        }
+        if (!name.equals(axis.name))
+        {
+            return false;
+        }
+        if (type != axis.type)
+        {
+            return false;
+        }
+        if (valueType != axis.valueType)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

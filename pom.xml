@@ -159,8 +159,8 @@
                 <configuration>
                     <forkCount>4</forkCount>
                     <reuseForks>true</reuseForks>
-                    <!--<parallel>classes</parallel>-->
-                    <!--<threadCount>2</threadCount>-->
+                    <groups>com.cedarsoftware.ncube.Slow1,com.cedarsoftware.ncube.Slow2,com.cedarsoftware.ncube.Slow3</groups>
+                    <!--<runOrder>alphabetical</runOrder>-->
                     <!--<argLine>-Xmx1024m -XX:MaxPermSize=128m</argLine>-->
                 </configuration>
             </plugin>

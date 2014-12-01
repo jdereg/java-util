@@ -146,11 +146,11 @@ public abstract class GroovyBase extends UrlCommandCell
             {
                 throw (RuleJump) cause;
             }
-            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "(), n-cube '" + cubeName + "', input: " + args.get("input"), e) ;
+            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "(), n-cube: " + cubeName + ", input: " + args.get("input"), cause != null ? cause : e) ;
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "(), n-cube '" + cubeName + "', input: " + args.get("input"), e);
+            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "(), n-cube: " + cubeName + ", input: " + args.get("input"), e);
         }
     }
 

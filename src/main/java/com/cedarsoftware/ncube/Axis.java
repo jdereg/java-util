@@ -68,10 +68,10 @@ public class Axis
     Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
-    private transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
+    transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
 
     // used to get O(1) on Ranges for SET access
-    private transient List<RangeToColumn> rangeToCol = new ArrayList<>();
+    transient List<RangeToColumn> rangeToCol = new ArrayList<>();
 
     // used to get O(1) access to columns by ID
     transient Map<Long, Column> idToCol = new HashMap<>();
@@ -303,7 +303,7 @@ public class Axis
         return s.toString();
     }
 
-	public String getName() 
+	public String getName()
 	{
 		return name;
 	}
@@ -313,16 +313,16 @@ public class Axis
 		this.name = name;
 	}
 
-	public AxisType getType() 
+	public AxisType getType()
 	{
 		return type;
 	}
 
-	public AxisValueType getValueType() 
+	public AxisValueType getValueType()
 	{
 		return valueType;
 	}
-	
+
 	public List<Column> getColumns()
 	{
         List<Column> cols = new ArrayList<>(columns);
@@ -494,11 +494,11 @@ public class Axis
         }
 
         // Remove column from scaffolding
-        removeColumnFromScaffolding(col.getValueThatMatches(), col);
+        removeColumnFromScaffolding(col);
         return col;
     }
 
-    private void removeColumnFromScaffolding(Comparable value, Column col)
+    private void removeColumnFromScaffolding(Column col)
     {
         if (!hasScaffolding())
         {
@@ -507,11 +507,10 @@ public class Axis
 
         if (discreteToCol != null)
         {
-            Iterator<Map.Entry<Comparable, Column>> j = discreteToCol.entrySet().iterator();
+            Iterator<Column> j = discreteToCol.values().iterator();
             while (j.hasNext())
             {
-                Map.Entry<Comparable, Column> entry = j.next();
-                Column column = entry.getValue();
+                Column column = j.next();
                 if (col.equals(column))
                 {   // Multiple discrete values may have pointed to the passed in column, so we must loop through all
                     j.remove();
@@ -525,7 +524,7 @@ public class Axis
             while (i.hasNext())
             {
                 Axis.RangeToColumn rangeToColumn = i.next();
-                if (rangeToColumn.getRange().isWithin(value) == 0)
+                if (rangeToColumn.column.equals(col))
                 {   // Multiple ranges may have pointed to the passed in column, so we must loop through all
                     i.remove();
                 }
@@ -542,12 +541,12 @@ public class Axis
 		{
 			throw new IllegalStateException("Axis '" + name + "' must be in DISPLAY order to permit column reordering");
 		}
-		
+
 		if (curPos == newPos)
 		{	// That was easy
 			return true;
 		}
-		
+
 		if (curPos < 0 || curPos >= columns.size() || newPos < 0 || newPos >= columns.size())
 		{
 			throw new IllegalArgumentException("Position must be >= 0 and < number of Columns to reorder column, axis '" + name + "'");
@@ -618,29 +617,38 @@ public class Axis
         for (Column col : newCols.columns)
         {
             Column newColumn = createColumnFromValue(col.getValue());
+            Map<String, Object> metaProperties = col.getMetaProperties();
+            for (Map.Entry<String, Object> entry : metaProperties.entrySet())
+            {
+                newColumn.setMetaProperty(entry.getKey(), entry.getValue());
+            }
+
             newColumnMap.put(col.id, newColumn);
         }
 
         // Step 2.  Build list of columns that no longer exist (add to deleted list)
         // and update existing columns that match by ID columns from the passed in DTO.
-        List<Column> tempCol = new ArrayList<>(columns);
+        List<Column> tempCol = new ArrayList<>(getColumnsWithoutDefault());
         Iterator<Column> i = tempCol.iterator();
 
         while (i.hasNext())
         {
             Column col = i.next();
-            if (col.getValue() == null)
-            {   // Don't add default column to columns to delete (that is done through toggle hasDefault in NCE)
-                continue;
-            }
             if (newColumnMap.containsKey(col.id))
             {   // Update case - matches existing column
                 Column newCol = newColumnMap.get(col.id);
                 col.setValue(newCol.getValue());
+
                 if (newCol.getMetaProperty("name") != null)
                 {   // Copy 'name' meta-property (used on Rule axis Expression [condition] columns)
                     col.setMetaProperty("name", newCol.getMetaProperty("name"));
                 }
+                Map<String, Object> metaProperties = newCol.getMetaProperties();
+                for (Map.Entry<String, Object> entry : metaProperties.entrySet())
+                {
+                    col.setMetaProperty(entry.getKey(), entry.getValue());
+                }
+
             }
             else
             {   // Delete case - existing column id no longer found
@@ -659,19 +667,6 @@ public class Axis
             {
                 Column c1 = (Column) o1;
                 Column c2 = (Column) o2;
-                if (c1.getValue() == null && c2.getValue() == null)
-                {
-                    return 0;
-                }
-                if (c1.getValue() == null)
-                {
-                    return 1;
-                }
-                if (c2.getValue() == null)
-                {
-                    return -1;
-                }
-
                 return c1.getValue().compareTo(c2.getValue());
             }
         });
@@ -700,6 +695,10 @@ public class Axis
                 realColumnMap.put(realId, newCol);
             }
             Column realColumn = realColumnMap.get(realId);
+            if (realColumn == null)
+            {
+                throw new IllegalArgumentException("Columns to be added should have negative ID values.");
+            }
             realColumn.setDisplayOrder(displayOrder++);
         }
 
@@ -809,19 +808,19 @@ public class Axis
 
 	private static void assignDisplayOrder(final List<Column> cols)
 	{
-		final int size = cols.size(); 
+		final int size = cols.size();
 		for (int k=0; k < size; k++)
 		{
             Column col = cols.get(k);
             col.setDisplayOrder(col.isDefault() ? Integer.MAX_VALUE : k);
 		}
-	}	
-	
+	}
+
 	public int getColumnOrder()
 	{
 		return preferredOrder;
 	}
-	
+
 	public void setColumnOrder(int order)
 	{
 		preferredOrder = order;
@@ -840,14 +839,14 @@ public class Axis
             }
         });
 	}
-	
+
 	public int size()
 	{
 		return columns.size();
 	}
-	
+
 	/**
-	 * This method takes the input value (could be Number, String, Range, etc.) 
+	 * This method takes the input value (could be Number, String, Range, etc.)
 	 * and 'promotes' it to the same type as the Axis.
 	 * @param value Comparable value to promote (to highest of it's type [e.g., short to long])
 	 * @return Comparable promoted value.  For example, a Long would be returned a
@@ -856,7 +855,7 @@ public class Axis
 	public Comparable standardizeColumnValue(Comparable value)
 	{
 		if (value == null)
-		{	
+		{
 			throw new IllegalArgumentException("'null' cannot be used as an axis value, axis: " + name);
 		}
 
@@ -908,30 +907,26 @@ public class Axis
 			}
 			return value;	// First value added does not need to be checked
 		}
-        else if (type == AxisType.RULE)
-        {
-            return value;
-        }
 		else
 		{
 			throw new IllegalArgumentException("New AxisType added '" + type + "' but code support for it is not there.");
 		}
 	}
-	
+
 	/**
 	 * Promote passed in range's low and high values to the largest
 	 * data type of their 'kinds' (e.g., byte to long).
 	 * @param range Range to be promoted
 	 * @return Range with the low and high values promoted and in proper order (low < high)
 	 */
-	private Range promoteRange(Range range) 
+	private Range promoteRange(Range range)
 	{
 		final Comparable low = promoteValue(range.low);
 		final Comparable high = promoteValue(range.high);
 		ensureOrder(range, low, high);
 		return range;
 	}
-	
+
 	private static void ensureOrder(Range range, final Comparable low, final Comparable high)
 	{
 		if (low.compareTo(high) > 0)
@@ -1031,24 +1026,20 @@ public class Axis
         {
             return ((BigDecimal) value).stripTrailingZeros().toPlainString();
         }
-        else if (value instanceof Number)
-        {
-            return value.toString();
-        }
-        else if (value instanceof Boolean)
+        else if (value instanceof Number || value instanceof Boolean)
         {
             return value.toString();
         }
         throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'String'");
 	}
-	
+
 	/**
 	 * Promote any Number (or String) type to a BigDecimal in the best possible manner.
 	 * @return BigDecimal equivalent of value, or null if it could not be converted.
 	 */
 	private static BigDecimal getBigDecimal(Comparable value)
 	{
-		try 
+		try
 		{
 			if (value instanceof BigDecimal)
 			{
@@ -1066,14 +1057,14 @@ public class Axis
 			{
 				return new BigDecimal(((Number)value).doubleValue());
 			}
-		} 
-		catch (Exception e) 
+		}
+		catch (Exception e)
 		{
             throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'BigDecimal'", e);
 		}
         throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'BigDecimal'");
 	}
-	
+
 	/**
 	 * Promote Number (or String) to a Double in the best possible manner.
 	 * @return Double equivalent of value, or null if it could not be converted.
@@ -1101,7 +1092,7 @@ public class Axis
 		}
         throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Double'");
 	}
-	
+
 	/**
 	 * Promote Number (or String) to a Long in the best possible manner.
 	 * @return Long equivalent of value, or null if it could not be converted.
@@ -1129,7 +1120,7 @@ public class Axis
         }
         throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Long'");
 	}
-			
+
 	/**
 	 * Promote Number (or String) to a Long in the best possible manner.
 	 * @return Long equivalent of value, or null if it could not be converted.
@@ -1159,7 +1150,7 @@ public class Axis
 	{
 		return defaultCol != null;
 	}
-	
+
 	/**
 	 * @param value to test against this Axis
 	 * @return boolean true if the value will be found along the axis, false
@@ -1167,11 +1158,11 @@ public class Axis
 	 */
 	public boolean contains(Comparable value)
 	{
-		try 
+		try
 		{
 			return findColumn(value) != null;
 		}
-		catch (Exception e) 
+		catch (Exception e)
 		{
 			return false;
 		}

@@ -713,4 +713,208 @@ public class TestAxis
         assertEquals(2.0, pt3d.getY(), 0.001);
         assertEquals(3.0, pt3d.getZ(), 0.001);
     }
+
+    @Test
+    public void testAddAxisSameWayAsUI()
+    {
+        Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
+        Axis axis2 = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
+        axis2.addColumn("[1, 2]");
+        List<Column> cols = axis2.getColumnsWithoutDefault();
+        cols.get(0).setId(-1);
+        axis.updateColumns(axis2);
+
+        assertEquals(2, axis.getColumns().size());
+        Column col = axis.getColumnsWithoutDefault().get(0);
+        RangeSet rs = new RangeSet(new Range(1L, 2L));
+        assertEquals(rs, col.getValue());
+    }
+
+    @Test
+    public void testUpdateColumnWithMetaPropertyName()
+    {
+        Axis axis1 = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
+        axis1.addColumn("[1, 2]");
+        Axis axis2 = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
+        axis2.addColumn("[1, 2]");
+        List<Column> cols = axis2.getColumnsWithoutDefault();
+        cols.get(0).setId(axis1.getColumnsWithoutDefault().get(0).id);
+        cols.get(0).setMetaProperty("name", "cheese");
+        cols.get(0).setMetaProperty("foo", "bar");
+        axis1.updateColumns(axis2);
+
+        assertEquals(2, axis1.getColumns().size());
+        Column col = axis1.getColumnsWithoutDefault().get(0);
+        assertEquals("cheese", col.getMetaProperty("name"));
+        assertEquals("bar", col.getMetaProperty("foo"));
+    }
+
+    @Test
+    public void testRemoveSetColumnWithMultipleRanges()
+    {
+        Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, false);
+        RangeSet rs = new RangeSet();
+        rs.add(new Range(10, 20));
+        rs.add(new Range(30, 40));
+        axis.addColumn(rs);
+        rs = new RangeSet();
+        rs.add(new Range(50, 60));
+        axis.addColumn(rs);
+        assertEquals(2, axis.getColumns().size());
+        assertEquals(3, axis.rangeToCol.size());
+        axis.deleteColumn(15);
+        assertEquals(1, axis.rangeToCol.size());
+        assertEquals(1, axis.getColumns().size());
+    }
+
+    @Test
+    public void testRemoveSetColumnWithMultipleDiscretes()
+    {
+        Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, false);
+        RangeSet rs = new RangeSet();
+        rs.add(20);
+        rs.add(30);
+        axis.addColumn(rs);
+        rs = new RangeSet();
+        rs.add(50);
+        axis.addColumn(rs);
+        assertEquals(2, axis.getColumns().size());
+        assertEquals(3, axis.discreteToCol.size());
+        axis.deleteColumn(30);
+        assertEquals(1, axis.discreteToCol.size());
+        assertEquals(1, axis.getColumns().size());
+    }
+
+    @Test
+    public void testInvalidMoveAxis()
+    {
+        Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, true, Axis.DISPLAY);
+        RangeSet rs = new RangeSet();
+        rs.add(20);
+        rs.add(30);
+        axis.addColumn(rs);
+        rs = new RangeSet();
+        rs.add(50);
+        axis.addColumn(rs);
+
+        try
+        {
+            axis.moveColumn(2, 1);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("move"));
+            assertTrue(e.getMessage().contains("axis"));
+        }
+
+        try
+        {
+            axis.moveColumn(1, 2);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("move"));
+            assertTrue(e.getMessage().contains("axis"));
+        }
+    }
+
+    @Test
+    public void testAddAxisBadColumnIds()
+    {
+        Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
+        Axis axis2 = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
+        axis2.addColumn("[1, 2]");
+        try
+        {
+            axis.updateColumns(axis2);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("added"));
+            assertTrue(e.getMessage().contains("negative"));
+            assertTrue(e.getMessage().contains("values"));
+        }
+    }
+
+    @Test
+    public void testParseBadRange()
+    {
+        Axis axis = new Axis("foo", AxisType.RANGE, AxisValueType.LONG, false);
+        try
+        {
+            axis.convertStringToColumnValue("this is not a range");
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("not"));
+            assertTrue(e.getMessage().contains("range"));
+        }
+    }
+
+    @Test
+    public void testParseBadSet()
+    {
+        Axis axis = new Axis("foo", AxisType.SET, AxisValueType.LONG, false);
+        try
+        {
+            axis.convertStringToColumnValue("[null, false]");
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+
+        try
+        {
+            axis.convertStringToColumnValue("null, false");
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
+    }
+
+    @Test
+    public void testAxisGetStringWithBigDecimal()
+    {
+        String pi = Axis.getString(new BigDecimal("3.1415926535897932384626433"));
+        assertEquals("3.1415926535897932384626433", pi);
+    }
+
+    @Test
+    public void testFindNonExistentRuleName()
+    {
+        Axis axis = new Axis("foo", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
+        try
+        {
+            axis.getRuleColumnsStartingAt("foo");
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("rule"));
+            assertTrue(e.getMessage().toLowerCase().contains("not"));
+            assertTrue(e.getMessage().contains("found"));
+        }
+    }
+
+    @Test
+    public void testFindRuleNameUsingNonString()
+    {
+        Axis axis = new Axis("foo", AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY);
+        try
+        {
+            axis.findColumn(25);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("rule"));
+            assertTrue(e.getMessage().toLowerCase().contains("only"));
+            assertTrue(e.getMessage().contains("located"));
+            assertTrue(e.getMessage().contains("name"));
+        }
+    }
 }

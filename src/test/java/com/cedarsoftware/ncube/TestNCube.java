@@ -3773,13 +3773,185 @@ public class TestNCube
     }
 
     @Test
-    public void testEquality()  throws Exception {
+    public void testEqualsMetaPropsMismatch()  throws Exception
+    {
         NCube cube1 = getTestNCube2D(false);
         NCube cube2 = getTestNCube2D(false);
 
-        assertTrue(cube1.equals(cube2));
+        assertEquals(cube1, cube2);
 
-        cube1.getMetaProperties();
+        cube1.setMetaProperty("foo", "bar");
+        assertNotEquals(cube1, cube2);
+        cube2.setMetaProperty("foo", "bar");
+        assertEquals(cube1, cube2);
+        cube1.removeMetaProperty("foo");
+        assertNotEquals(cube1, cube2);
+        cube1.setMetaProperty("foo", "baz");
+        assertNotEquals(cube1, cube2);
+        cube1.clearMetaProperties();
+        cube2.removeMetaProperty("foo");
+        assertEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisNameMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foot", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisMetaMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        axis1.setMetaProperty("fingers", 4);
+        axis1.setMetaProperty("thumb", 1);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.RANGE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisValueTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsAxisDefaultMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnCountMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "qux");
+
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "qux");
+
+        cube2.addAxis(axis2);
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnValueMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "baz");
+
+        cube2.addAxis(axis2);
+        cube2.addColumn("foo", "qux");
+        assertNotEquals(cube1, cube2);
+    }
+
+    @Test
+    public void testEqualsColumnMetaPropertiesMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true);
+        NCube cube1 = new NCube("bar");
+        NCube cube2 = new NCube("bar");
+
+        cube1.addAxis(axis1);
+        cube1.addColumn("foo", "baz");
+        Column col = axis1.findColumn("baz");
+        col.setMetaProperty("Glock", "23");
+
+        cube2.addAxis(axis2);
+        cube2.addColumn("foo", "baz");
+        assertNotEquals(cube1, cube2);
+    }
+
+
+    @Test
+    public void testMaxAxisId()  throws Exception
+    {
+        NCube cube = new NCube("fourD");
+        long maxId = cube.getMaxAxisId();
+        assertEquals(0, maxId);
+
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis1);
+        maxId = cube.getMaxAxisId();
+        assertEquals(1, maxId);
+
+        Axis axis2 = new Axis("bar", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis2);
+        maxId = cube.getMaxAxisId();
+        assertEquals(2, maxId);
+
+        Axis axis3 = new Axis("baz", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis3);
+        maxId = cube.getMaxAxisId();
+        assertEquals(3, maxId);
+
+        Axis axis4 = new Axis("qux", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.getMaxAxisId() + 1);
+        cube.addAxis(axis4);
+        maxId = cube.getMaxAxisId();
+        assertEquals(4, maxId);
     }
 
     @Test
@@ -4760,15 +4932,13 @@ public class TestNCube
         NCube ncube = NCubeManager.getNCubeFromResource("arrays.json");
         for (Set<Column> cols : (Iterable<Set<Column>>) ncube.getCellMap().keySet())
         {
+            // This code is not generalized and intentionally relies on arrays.json being 1-dimensional
             Column col = cols.iterator().next();
             Set<Long> coord = new HashSet<>();
             coord.add(col.getId());
             Map<String, CellInfo> coordinate = new CaseInsensitiveMap<>();
-            ncube.getColumnsAndCoordinateFromIds(coord, null, coordinate);
-
+            ncube.getColumnsAndCoordinateFromIds(coord, coordinate);
             assertTrue(coordinate.containsKey("code"));
-
-            CellInfo map = (CellInfo)coordinate.get("code");
         }
     }
 
@@ -5091,6 +5261,125 @@ public class TestNCube
         coord.put("sites", "AbsoluteHttpUrl");
         String s = (String) cube.getCell(coord);
         assertEquals("Hello, world.", s);
+    }
+
+    @Test
+    public void testValidateCubeNames()
+    {
+        NCube.validateCubeName("This:is.legal_but-hard_to.read");
+        try
+        {
+            NCube.validateCubeName("This:is.not/legal#and-hard_to|read");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        { }
+        try
+        {
+            NCube.validateCubeName(" NotValid");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        { }
+    }
+
+    @Test
+    public void testValidateCubeName() throws Exception
+    {
+        NCube.validateCubeName("Joe");
+        NCube.validateCubeName("Joe.Dirt");
+        NCube.validateCubeName(NCube.validCubeNameChars);
+        try
+        {
+            NCube.validateCubeName("");
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+
+        try
+        {
+            NCube.validateCubeName(null);
+            fail("should not make it here");
+        }
+        catch (Exception e)
+        { }
+    }
+
+    @Test
+    public void testToJson() throws Exception
+    {
+        assertEquals("null", NCube.toJson(null));
+    }
+
+    @Test
+    public void testNCubeApplicationIdParts()
+    {
+        ApplicationID appId = new ApplicationID("foo", "bar", "0.0.1", ReleaseStatus.SNAPSHOT.name());
+        NCube ncube = getTestNCube3D_Boolean();
+        ncube.setApplicationID(appId);
+        assertEquals(appId.getStatus(), ncube.getStatus());
+        assertEquals(appId.getVersion(), ncube.getVersion());
+    }
+
+    @Test
+    public void testGetColumnsAndCoordinateFromIds()
+    {
+        NCube cube = getTestNCube3D_Boolean();
+
+        Axis trailor = cube.getAxis("Trailers");
+        Column t = trailor.findColumn("M2A");
+
+        Axis vehicles = cube.getAxis("Vehicles");
+        Column v = vehicles.findColumn("van");
+
+        Axis bu = cube.getAxis("BU");
+        Column b = bu.findColumn("SHS");
+
+        Set<Long> longCoord = new HashSet<>();
+        longCoord.add(t.id);
+        longCoord.add(v.id);
+        longCoord.add(b.id);
+
+        // Make sure all columns are bound correctly
+        Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
+        Set<Column> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord);
+        for (Column column : boundCols)
+        {
+            assertTrue(column.id == t.id || column.id == v.id || column.id == b.id);
+        }
+
+        for (Map.Entry<String, CellInfo> entry : coord.entrySet())
+        {
+            CellInfo info = entry.getValue();
+            assertTrue("M2A".equals(info.value) || "van".equals(info.value) || "SHS".equals(info.value));
+        }
+
+        Column t2 = trailor.findColumn("L3A");
+        longCoord.add(t2.id);
+        try
+        {
+            cube.getColumnsAndCoordinateFromIds(longCoord, coord);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("more than one column"));
+            assertTrue(e.getMessage().contains("per axis"));
+        }
+
+        try
+        {
+            longCoord.remove(t2.id);
+            longCoord.remove(t.id);
+            cube.getColumnsAndCoordinateFromIds(longCoord, coord);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("column id"));
+            assertTrue(e.getMessage().toLowerCase().contains("missing"));
+        }
     }
 
     // ---------------------------------------------------------------------------------
@@ -5424,56 +5713,6 @@ public class TestNCube
 
         return ncube;
     }
-
-    @Test
-    public void testValidateCubeNames()
-    {
-        NCube.validateCubeName("This:is.legal_but-hard_to.read");
-        try
-        {
-            NCube.validateCubeName("This:is.not/legal#and-hard_to|read");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        { }
-        try
-        {
-            NCube.validateCubeName(" NotValid");
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        { }
-    }
-
-    @Test
-    public void testValidateCubeName() throws Exception
-    {
-        NCube.validateCubeName("Joe");
-        NCube.validateCubeName("Joe.Dirt");
-        NCube.validateCubeName(NCube.validCubeNameChars);
-        try
-        {
-            NCube.validateCubeName("");
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-
-        try
-        {
-            NCube.validateCubeName(null);
-            fail("should not make it here");
-        }
-        catch (Exception e)
-        { }
-    }
-
-    @Test
-    public void testToJson() throws Exception
-    {
-        assertEquals("null", NCube.toJson(null));
-    }
-
 
     static int countMatches(String s, String pattern)
     {

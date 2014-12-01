@@ -1332,6 +1332,7 @@ public class Axis
 
     private int findRuleByName(final String ruleName)
     {
+        // TODO: Add scaffolding (ruleName to Column).  Use that to locate rule by name in O(1).
         int pos = 0;
 
         for (Column column : getColumnsWithoutDefault())

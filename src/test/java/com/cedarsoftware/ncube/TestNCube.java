@@ -5367,6 +5367,16 @@ public class TestNCube
         assertEquals(cube1.sha1(), cube3.sha1());
     }
 
+    @Test
+    public void testDeltaDescription()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        List<String> delta = cube.getDeltaDescription(cube2);
+        System.out.println("delta = " + delta);
+        assertTrue(delta.isEmpty());
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

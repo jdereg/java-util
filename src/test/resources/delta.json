@@ -1,0 +1,118 @@
+{
+  "ncube": "delta",
+  "axes": [
+    {
+      "name": "gender",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "columns": [
+        {
+          "id": 1000000000001,
+          "type": "string",
+          "value": "male"
+        },
+        {
+          "id": 1000000000002,
+          "type": "string",
+          "value": "female"
+        }
+      ]
+    },
+    {
+      "name": "age",
+      "type": "RANGE",
+      "valueType": "LONG",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": [
+        {
+          "id": 2000000000002,
+          "value": [
+            0,
+            18
+          ]
+        },
+        {
+          "id": 2000000000003,
+          "value": [
+            18,
+            30
+          ]
+        },
+        {
+          "id": 2000000000004,
+          "value": [
+            30,
+            55
+          ]
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": [
+        1000000000001,
+        2000000000002
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000001,
+        2000000000003
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000001,
+        2000000000004
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000001
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000002,
+        2000000000002
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000002,
+        2000000000003
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000002,
+        2000000000004
+      ],
+      "type": "long",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000002
+      ],
+      "type": "long",
+      "value": 1
+    }
+  ]
+}

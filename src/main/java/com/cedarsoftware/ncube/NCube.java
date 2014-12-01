@@ -2418,6 +2418,14 @@ public class NCube<T>
             s.setLength(0);
         }
 
+        // Different dimensionality, don't compare cells
+        if (getNumDimensions() != old.getNumDimensions())
+        {
+            return changes;
+        }
+
+        Map<Column, Column> idMap = new HashMap<>();
+
         for (Axis axis : axisList.values())
         {
             Axis oldAxis = old.getAxis(axis.getName());
@@ -2443,9 +2451,9 @@ public class NCube<T>
                 s.setLength(0);
             }
 
-            for (Column newCol : axis.getColumnsWithoutDefault())
+            for (Column newCol : axis.getColumns())
             {
-                Column oldCol = oldAxis.findColumn(newCol.getValue());
+                Column oldCol = oldAxis.idToCol.get(newCol.id);
                 if (oldCol == null)
                 {
                     s.append("Column: ");
@@ -2456,6 +2464,7 @@ public class NCube<T>
                 }
                 else
                 {   // Check Column meta properties
+                    idMap.put(newCol, oldCol);
                     String delta = newCol.compareColumnMetaProperties(oldCol);
                     if (StringUtilities.hasContent(delta))
                     {
@@ -2464,9 +2473,9 @@ public class NCube<T>
                 }
             }
 
-            for (Column oldCol : oldAxis.getColumnsWithoutDefault())
+            for (Column oldCol : oldAxis.getColumns())
             {
-                Column newCol = axis.findColumn(oldCol.getValue());
+                Column newCol = axis.idToCol.get(oldCol.id);
                 if (newCol == null)
                 {
                     s.append("Column: ");
@@ -2497,70 +2506,50 @@ public class NCube<T>
             changes.add("Had " + old.cells.size() + " cells with content, now has " + cells.size());
         }
 
-        final Set<Long> idKey = new HashSet<>();
-
         for (Map.Entry<Set<Column>, T> entry : cells.entrySet())
         {
-            final T cellValue = entry.getValue();
-            final Set<Column> cellKey = entry.getKey();
-            idKey.clear();
-            for (Column column : cellKey)
+            Set<Column> newCellKey = entry.getKey();
+            T newCellValue = entry.getValue();
+            Set<Column> oldCellKey = new HashSet<>();
+
+            for (Column newCol : newCellKey)
             {
-                idKey.add(column.id);
+                oldCellKey.add(idMap.get(newCol));
             }
 
-            if (old.cells.containsKey(idKey))
+            Object oldCellValue = old.cells.get(oldCellKey);
+            if (!DeepEquals.deepEquals(newCellValue, oldCellValue))
             {
-                final Object oldCellValue = old.cells.get(idKey);
-                if (cellValue == null)
-                {
-                    if (oldCellValue != null)
-                    {
-                        changes.add("Cell " + idCoordToProperCoord(idKey) + " was cleared");
-                    }
-                }
-                else
-                {
-                    if (!cellValue.equals(oldCellValue))
-                    {
-                        changes.add("Cell " + idCoordToProperCoord(idKey) + " was " + oldCellValue + ", changed to: " + cellValue);
-                    }
-                }
-            }
-            else
-            {
-                // cell added
-                final Map<String, Object> coord = idCoordToProperCoord(idKey);
-                changes.add("Cell " + coord + " added");
+                Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
+                changes.add(properCoord.toString());
             }
 
         }
         return changes;
     }
 
-    private Map<String, Object> idCoordToProperCoord(Set<Long> idCoord)
+    private Map<String, Object> idCoordToProperCoord(Set<Column> idCoord)
     {
-        Map<String, Object> coord = new CaseInsensitiveMap<>();
+        Map<String, Object> properCoord = new CaseInsensitiveMap<>();
         try
         {
-            for (Long id : idCoord)
+            for (Column column : idCoord)
             {
-                Axis axis = getAxisFromColumnId(id);
-                Column col = axis.getColumnById(id);
+                Axis axis = getAxisFromColumnId(column.id);
                 if (axis.getType() == AxisType.RULE)
                 {
-                    coord.put(axis.getName(), col.getMetaProperties().containsKey("name") ? col.getMetaProperty("name") : col.getValueThatMatches());
+                    properCoord.put(axis.getName(), column.getMetaProperties().containsKey("name") ? column.getMetaProperty("name") : column.getValueThatMatches());
                 }
                 else
                 {
-                    coord.put(axis.getName(), col.getValueThatMatches());
+                    properCoord.put(axis.getName(), column.getValueThatMatches());
                 }
             }
         }
         catch (Exception ignored)
         {
         }
-        return coord;
+        return properCoord;
     }
 
     public long getMaxAxisId()

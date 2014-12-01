@@ -4943,6 +4943,20 @@ public class TestNCube
     }
 
     @Test
+    public void testObjectToMapWithNull()
+    {
+        try
+        {
+            NCube.objectToMap(null);
+            fail("should not make it here");
+        }
+        catch(IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().contains("convert null into a Map"));
+            assertTrue(e.getMessage().contains("null passed"));
+        }
+    }
+    @Test
     public void testObjectToMap()
     {
         class dto
@@ -4951,21 +4965,39 @@ public class TestNCube
             String fname = "Albert";
             String lname = "Einstein";
         }
-        Map coord = NCube.objectToMap(new dto());
-        assertTrue(coord.containsKey("fname"));
-        assertTrue(coord.containsKey("lname"));
-        assertTrue(coord.containsKey("when"));
+        dto d = new dto();
+        Map coord = NCube.objectToMap(d);
+
+        // test case-insensitivity
         assertEquals("Albert", coord.get("FName"));
         assertEquals("Einstein", coord.get("LName"));
-        assertTrue(coord.get("when") instanceof Date);
+        assertEquals("Albert", coord.get("fname"));
+        assertEquals("Einstein", coord.get("lname"));
+        assertEquals(d.when, coord.get("when"));
+    }
 
-        try
+    @Test
+    public void testObjectToMapWithConflictingFieldNameInParent()
+    {
+        class parentDto
         {
-            NCube.objectToMap(null);
-            fail("should not make it here");
+            String fname = "Foo";
         }
-        catch(Exception ignored)
-        { }
+
+        class childDto extends parentDto
+        {
+            private Date when = new Date();
+            String fname = "Albert";
+            String lname = "Einstein";
+        }
+
+        childDto dto = new childDto();
+        Map coord = NCube.objectToMap(dto);
+        assertTrue(coord.containsKey("com.cedarsoftware.ncube.TestNCube$1parentDto.fname"));
+        assertEquals("Albert", coord.get("FName"));
+        assertEquals("Foo", coord.get("com.cedarsoftware.ncube.TestNCube$1parentDto.fname"));
+        assertEquals("Einstein", coord.get("LName"));
+        assertEquals(dto.when, coord.get("when"));
     }
 
     @Test

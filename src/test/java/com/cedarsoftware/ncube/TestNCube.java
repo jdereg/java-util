@@ -5405,8 +5405,14 @@ public class TestNCube
         NCube cube = NCubeManager.getNCubeFromResource("delta.json");
         NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
         List<String> delta = cube.getDeltaDescription(cube2);
-        System.out.println("delta = " + delta);
         assertTrue(delta.isEmpty());
+
+        Map coord = new HashMap();
+        coord.put("gender", "male");
+        coord.put("age", 48);
+        cube2.setCell(2, coord);
+        delta = cube.getDeltaDescription(cube2);
+        System.out.println("delta = " + delta);
     }
 
     // ---------------------------------------------------------------------------------

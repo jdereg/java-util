@@ -10,7 +10,6 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.EncryptionUtilities;
-import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonObject;
@@ -19,6 +18,7 @@ import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -2139,118 +2139,12 @@ public class NCube<T>
             return false;
         }
 
-        NCube that = (NCube) other;
-        if (!name.equals(that.name))
+        if (this == other)
         {
-            return false;
+            return true;
         }
 
-        if (defaultCellValue == null)
-        {
-            if (that.defaultCellValue != null)
-            {
-                return false;
-            }
-        }
-        else
-        {
-            if (!defaultCellValue.equals(that.defaultCellValue))
-            {
-                return false;
-            }
-        }
-
-        if (metaProps != null && metaProps.size() == 0)
-        {
-            metaProps = null;
-        }
-        if (that.metaProps != null && that.metaProps.size() == 0)
-        {
-            that.metaProps = null;
-        }
-        if (!DeepEquals.deepEquals(metaProps, that.metaProps))
-        {
-            return false;
-        }
-
-        if (axisList.size() != that.axisList.size())
-        {
-            return false;
-        }
-
-        Map<Column, Column> idMap = new HashMap<>();
-
-        for (Map.Entry<String, Axis> entry : axisList.entrySet())
-        {
-            if (!that.axisList.containsKey(entry.getKey()))
-            {
-                return false;
-            }
-
-            Axis thisAxis = entry.getValue();
-            Axis thatAxis = (Axis) that.axisList.get(entry.getKey());
-            if (!thisAxis.areAxisPropsEqual(thatAxis))
-            {
-                return false;
-            }
-
-            if (thisAxis.getColumns().size() != thatAxis.getColumns().size())
-            {
-                return false;
-            }
-
-            Iterator<Column> iThisCol = thisAxis.getColumns().iterator();
-            Iterator<Column> iThatCol = thatAxis.getColumns().iterator();
-            while (iThisCol.hasNext())
-            {
-                Column thisCol = iThisCol.next();
-                Column thatCol = iThatCol.next();
-
-                if (thisCol.getValue() == null)
-                {
-                    if (thatCol.getValue() != null)
-                    {
-                        return false;
-                    }
-                }
-                else if (!thisCol.getValue().equals(thatCol.getValue()))
-                {
-                    return false;
-                }
-
-                if (!DeepEquals.deepEquals(thisCol.metaProps, thatCol.metaProps))
-                {
-                    return false;
-                }
-
-                idMap.put(thisCol, thatCol);
-            }
-        }
-
-        if (cells.size() != that.cells.size())
-        {
-            return false;
-        }
-
-        for (Map.Entry<Set<Column>, T> entry : cells.entrySet())
-        {
-            Set<Column> cellKey = entry.getKey();
-            T cellValue = entry.getValue();
-            Set<Column> thatCellKey = new HashSet<>();
-
-            for (Column column : cellKey)
-            {
-                thatCellKey.add(idMap.get(column));
-            }
-
-            Object thatCellValue = that.cells.get(thatCellKey);
-            if (!DeepEquals.deepEquals(cellValue, thatCellValue))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return sha1().equalsIgnoreCase(((NCube) other).sha1());
     }
 
     public int hashCode()
@@ -2268,23 +2162,21 @@ public class NCube<T>
         MessageDigest sha1 = EncryptionUtilities.getSHA1Digest();
         sha1.update(name.getBytes());
         sha1.update(sep);
-        sha1.update(defaultCellValue == null ? "null".getBytes() : toJson(defaultCellValue).getBytes());
-        sha1.update(sep);
+        deepSha1(sha1, defaultCellValue, sep);
         if (metaProps != null && metaProps.size() > 0)
         {
             String storedSha1 = (String) metaProps.remove("sha1");
-            sha1.update(toJson(getMetaProperties()).getBytes());
-            sha1.update(sep);
+            deepSha1(sha1, getMetaProperties(), sep);
             if (StringUtilities.hasContent(storedSha1))
             {
                 metaProps.put("sha1", storedSha1);
             }
         }
-        sha1.update(sep);
         // Need deterministic ordering (sorted by Axis name will do that)
         Map<String, Axis> sortedAxes = new TreeMap<>(axisList);
         final Map<String, List<Column>> allCoordinates = new LinkedHashMap<>();
-
+        sha1.update("axes".getBytes());
+        sha1.update(sep);
         for (Map.Entry<String, Axis> entry : sortedAxes.entrySet())
         {
             Axis axis = entry.getValue();
@@ -2299,25 +2191,22 @@ public class NCube<T>
             sha1.update(sep);
             sha1.update(axis.hasDefaultColumn() ? "t".getBytes() : "f".getBytes());
             sha1.update(sep);
-            if (!MapUtilities.isEmpty(axis.metaProps))
-            {
-                sha1.update(toJson(axis.getMetaProperties()).getBytes());
-                sha1.update(sep);
-            }
+            deepSha1(sha1, axis.metaProps, sep);
+            sha1.update(sep);
+
             for (Column column : axis.getColumnsWithoutDefault())
             {
                 sha1.update(column.getValue().toString().getBytes());
                 sha1.update(sep);
-                if (!MapUtilities.isEmpty(column.metaProps))
-                {
-                    sha1.update(toJson(column.getMetaProperties()).getBytes());
-                    sha1.update(sep);
-                }
+                deepSha1(sha1, column.metaProps, sep);
+                sha1.update(sep);
             }
         }
 
         // Need deterministic ordering of cells by walking the n-dim matrix in sorted axis order,
         // accessing each coordinate thru that ordering, rather than their order in the 'cells' Map.
+        sha1.update("cells".getBytes());
+        sha1.update(sep);
         final Map<String, Integer> counters = getCountersPerAxis(allCoordinates.keySet());
         final String[] axisNames = getAxisNames(allCoordinates);
         final Set<Column> idCoord = new HashSet<>();
@@ -2337,17 +2226,7 @@ public class NCube<T>
 
             if (cells.containsKey(idCoord))
             {
-                Object val = cells.get(idCoord);
-                if (val != null && val.getClass().isArray())
-                {
-                    sha1.update(toJson(val).getBytes());
-                }
-                else
-                {
-                    sha1.update(val == null ? "null".getBytes() : val.toString().getBytes());
-                }
-
-                sha1.update(sep);
+                deepSha1(sha1, cells.get(idCoord), sep);
             }
 
             idCoord.clear();
@@ -2355,6 +2234,70 @@ public class NCube<T>
         }
 
         return StringUtilities.encode(sha1.digest());
+    }
+
+    private static void deepSha1(MessageDigest md, Object value, byte sep)
+    {
+        if (value == null)
+        {
+            md.update("null".getBytes());
+            md.update(sep);
+        }
+        else if (value.getClass().isArray())
+        {
+            int len = Array.getLength(value);
+            md.update("array".getBytes());
+            md.update(String.valueOf(len).getBytes());
+            md.update(sep);
+            for (int i=0; i < len; i++)
+            {
+                deepSha1(md, Array.get(value, i), sep);
+                md.update(sep);
+            }
+        }
+        else if (value instanceof Collection)
+        {
+            Collection col = (Collection) value;
+            md.update("col".getBytes());
+            md.update(String.valueOf(col.size()).getBytes());
+            md.update(sep);
+            for (Object object : col)
+            {
+                deepSha1(md, object, sep);
+                md.update(sep);
+            }
+        }
+        else if (value instanceof Map)
+        {
+            Map map  = (Map) value;
+            md.update("map".getBytes());
+            md.update(String.valueOf(map.size()).getBytes());
+            md.update(sep);
+            for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
+            {
+                deepSha1(md, entry.getKey(), sep);
+                md.update(sep);
+                deepSha1(md, entry.getValue(), sep);
+                md.update(sep);
+            }
+        }
+        else
+        {
+            String strKey = value.toString();
+            if (strKey == null)
+            {
+                md.update("null".getBytes());
+            }
+            else if (strKey.contains("@"))
+            {
+                md.update(toJson(value).getBytes());
+            }
+            else
+            {
+                md.update(strKey.getBytes());
+            }
+            md.update(sep);
+        }
     }
 
     public List<String> getDeltaDescription(NCube old)
@@ -2385,41 +2328,33 @@ public class NCube<T>
             s.setLength(0);
         }
 
-        if (axisList.size() != old.axisList.size())
-        {
-            s.append("Number of dimensions, before: ");
-            s.append(old.axisList.size());
-            s.append(' ');
-            s.append(", after: ");
-            s.append(axisList.size());
-            s.append(' ');
-            changes.add(s.toString());
-            s.setLength(0);
-        }
-
         CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
         CaseInsensitiveSet a2 = new CaseInsensitiveSet(old.axisList.keySet());
         a1.removeAll(a2);
+
+        boolean axesChanged = false;
         if (!a1.isEmpty())
         {
-            s.append("New/changed axis names: ");
+            s.append("New/renamed axis: ");
             s.append(a1);
             changes.add(s.toString());
             s.setLength(0);
+            axesChanged = true;
         }
 
         a1 = new CaseInsensitiveSet(axisList.keySet());
         a2.removeAll(a1);
         if (!a2.isEmpty())
         {
-            s.append("Axis names changed/removed: ");
+            s.append("Axis removed/renamed: ");
             s.append(a2);
             changes.add(s.toString());
             s.setLength(0);
+            axesChanged = true;
         }
 
         // Different dimensionality, don't compare cells
-        if (getNumDimensions() != old.getNumDimensions())
+        if (axesChanged)
         {
             return changes;
         }
@@ -2517,13 +2452,32 @@ public class NCube<T>
                 oldCellKey.add(idMap.get(newCol));
             }
 
-            Object oldCellValue = old.cells.get(oldCellKey);
-            if (!DeepEquals.deepEquals(newCellValue, oldCellValue))
+            if (old.cells.containsKey(oldCellKey))
+            {
+                Object oldCellValue = old.cells.get(oldCellKey);
+                if (!DeepEquals.deepEquals(newCellValue, oldCellValue))
+                {
+                    Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
+                    s.append("Cell changed at location: ");
+                    s.append(properCoord.toString());
+                    s.append(", from: ");
+                    s.append(oldCellValue == null ? null : oldCellValue.toString());
+                    s.append(", to: ");
+                    s.append(newCellValue == null ? null : newCellValue.toString());
+                    changes.add(s.toString());
+                    s.setLength(0);
+                }
+            }
+            else
             {
                 Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
-                changes.add(properCoord.toString());
+                s.append("Cell added at location: ");
+                s.append(properCoord.toString());
+                s.append(", value: ");
+                s.append(newCellValue == null ? null : newCellValue.toString());
+                changes.add(s.toString());
+                s.setLength(0);
             }
-
         }
         return changes;
     }
@@ -2536,19 +2490,23 @@ public class NCube<T>
             for (Column column : idCoord)
             {
                 Axis axis = getAxisFromColumnId(column.id);
+                Object value = column.getValueThatMatches();
+                if (value == null)
+                {
+                    value = "default column";
+                }
                 if (axis.getType() == AxisType.RULE)
                 {
-                    properCoord.put(axis.getName(), column.getMetaProperties().containsKey("name") ? column.getMetaProperty("name") : column.getValueThatMatches());
+                    properCoord.put(axis.getName(), column.getMetaProperties().containsKey("name") ? column.getMetaProperty("name") : value);
                 }
                 else
                 {
-                    properCoord.put(axis.getName(), column.getValueThatMatches());
+                    properCoord.put(axis.getName(), value);
                 }
             }
         }
         catch (Exception ignored)
-        {
-        }
+        { }
         return properCoord;
     }
 

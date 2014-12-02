@@ -2373,10 +2373,10 @@ public class NCube<T>
             Axis oldAxis = old.getAxis(axis.getName());
             if (!axis.areAxisPropsEqual(oldAxis))
             {
-                s.append("Axis properties changed, from ");
-                s.append(axis.getAxisPropString());
-                s.append(" to ");
+                s.append("Axis properties changed from ");
                 s.append(oldAxis.getAxisPropString());
+                s.append(" to ");
+                s.append(axis.getAxisPropString());
                 changes.add(s.toString());
                 s.setLength(0);
             }
@@ -2407,7 +2407,7 @@ public class NCube<T>
                 else
                 {   // Check Column meta properties
                     idMap.put(newCol, oldCol);
-                    String delta = newCol.compareColumnMetaProperties(oldCol);
+                    String delta = newCol.compareMetaProperties(oldCol);
                     if (StringUtilities.hasContent(delta))
                     {
                         changes.add(delta);
@@ -2425,14 +2425,6 @@ public class NCube<T>
                     s.append("' removed");
                     changes.add(s.toString());
                     s.setLength(0);
-                }
-                else
-                {   // Check Column meta properties
-                    String delta = newCol.compareColumnMetaProperties(oldCol);
-                    if (StringUtilities.hasContent(delta))
-                    {
-                        changes.add(delta);
-                    }
                 }
             }
         }
@@ -2493,7 +2485,15 @@ public class NCube<T>
                 }
                 if (axis.getType() == AxisType.RULE)
                 {
-                    properCoord.put(axis.getName(), column.getMetaProperties().containsKey("name") ? column.getMetaProperty("name") : value);
+                    String ruleName = (String) column.getMetaProperty("name");
+                    if (StringUtilities.hasContent(ruleName))
+                    {
+                        properCoord.put(axis.getName(), "rule: '" + ruleName + "' condition: " + value);
+                    }
+                    else
+                    {
+                        properCoord.put(axis.getName(), "condition: " + value);
+                    }
                 }
                 else
                 {

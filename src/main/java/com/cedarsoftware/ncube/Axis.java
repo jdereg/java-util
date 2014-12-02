@@ -1481,10 +1481,6 @@ public class Axis
         {
             return false;
         }
-        if (metaProps != null ? !metaProps.equals(axis.metaProps) : axis.metaProps != null)
-        {
-            return false;
-        }
         if (!name.equals(axis.name))
         {
             return false;

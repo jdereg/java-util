@@ -198,11 +198,11 @@ public class Column implements Comparable<Comparable>
 		return displayOrder;
 	}
 
-    String compareColumnMetaProperties(Column oldCol)
+    String compareMetaProperties(Column oldCol)
     {
         if (!DeepEquals.deepEquals(getMetaProperties(), oldCol.getMetaProperties()))
         {
-            return "Column properties differ on column: " + getDisplayOrder() + ", from: " +
+            return "Column properties differ on column: " + value + ", from: " +
                     oldCol.getMetaProperties() + ", to: " + getMetaProperties();
         }
         return "";

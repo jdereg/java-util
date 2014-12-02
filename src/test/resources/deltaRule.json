@@ -1,0 +1,66 @@
+{
+  "ncube": "deltaRule",
+  "axes": [
+    {
+      "name": "rule",
+      "type": "RULE",
+      "valueType": "EXPRESSION",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "columns": [
+        {
+          "id": 1000000000001,
+          "type": "exp",
+          "name": "Init Random",
+          "value": "true"
+        },
+        {
+          "id": 1000000000002,
+          "type": "exp",
+          "name": "Pick noun",
+          "value": "true"
+        },
+        {
+          "id": 1000000000003,
+          "type": "exp",
+          "value": "true"
+        },
+        {
+          "id": 1000000000004,
+          "type": "exp",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": [
+        1000000000004
+      ],
+      "type": "exp",
+      "value": "println output"
+    },
+    {
+      "id": [
+        1000000000001
+      ],
+      "type": "exp",
+      "value": "input.random = new Random()"
+    },
+    {
+      "id": [
+        1000000000002
+      ],
+      "type": "exp",
+      "value": "output.noun = 'Joe'"
+    },
+    {
+      "id": [
+        1000000000003
+      ],
+      "type": "exp",
+      "value": "println input"
+    }
+  ]
+}

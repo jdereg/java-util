@@ -934,7 +934,7 @@ public class TestAxis
         Axis axis5 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         assertTrue(axis1.areAxisPropsEqual(axis5));
         axis5.setMetaProperty("foo", "bar");
-        assertFalse(axis1.areAxisPropsEqual(axis5));
+        assertTrue(axis1.areAxisPropsEqual(axis5)); // Ensuring meta-props are not part of arePropsEquals()
 
         Axis axis6 = new Axis("foot", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
         assertFalse(axis1.areAxisPropsEqual(axis6));

@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -5628,29 +5629,23 @@ public class TestNCube
         assertNotEquals(sha1, cube.sha1());
     }
 
-    static class Node
-    {
-        Node friend;
-        public String toString() { return null; }
-    }
-
     @Test
-    public void testSha1CycleBreaker()
+    public void testSha1CycleBreaker() throws Exception
     {
         NCube cube = NCubeManager.getNCubeFromResource("delta.json");
         String sha1 = cube.sha1();
 
         // Create cycle
-        Node node1 = new Node();
-        Node node2 = new Node();
-        node1.friend = node2;
-        node2.friend = node1;
+        Object[] stuff = new Object[1];
+        List things = new ArrayList();
+        things.add(stuff);
+        stuff[0] = things;
 
         // Stuff cyclic cell contents
         Map coord = new HashMap();
         coord.put("age", 48);
         coord.put("gender", "male");
-        cube.setCell(node1, coord);
+        cube.setCell(things, coord);
 
         // Ensure we do not lock up here.
         assertNotEquals(sha1, cube.sha1());

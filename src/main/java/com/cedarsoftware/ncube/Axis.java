@@ -504,6 +504,7 @@ public class Axis
     {
         if (!hasScaffolding())
         {
+            idToCol.remove(col.id);
             return;
         }
 

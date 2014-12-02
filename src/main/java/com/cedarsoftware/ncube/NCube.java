@@ -2238,65 +2238,72 @@ public class NCube<T>
 
     private static void deepSha1(MessageDigest md, Object value, byte sep)
     {
-        if (value == null)
+        Deque stack = new LinkedList();
+        stack.addFirst(value);
+        Set visited = new HashSet();
+
+        while (!stack.isEmpty())
         {
-            md.update("null".getBytes());
-            md.update(sep);
-        }
-        else if (value.getClass().isArray())
-        {
-            int len = Array.getLength(value);
-            md.update("array".getBytes());
-            md.update(String.valueOf(len).getBytes());
-            md.update(sep);
-            for (int i=0; i < len; i++)
+            value = stack.removeFirst();
+            if (visited.contains(value))
             {
-                deepSha1(md, Array.get(value, i), sep);
-                md.update(sep);
+                continue;
             }
-        }
-        else if (value instanceof Collection)
-        {
-            Collection col = (Collection) value;
-            md.update("col".getBytes());
-            md.update(String.valueOf(col.size()).getBytes());
-            md.update(sep);
-            for (Object object : col)
-            {
-                deepSha1(md, object, sep);
-                md.update(sep);
-            }
-        }
-        else if (value instanceof Map)
-        {
-            Map map  = (Map) value;
-            md.update("map".getBytes());
-            md.update(String.valueOf(map.size()).getBytes());
-            md.update(sep);
-            for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
-            {
-                deepSha1(md, entry.getKey(), sep);
-                md.update(sep);
-                deepSha1(md, entry.getValue(), sep);
-                md.update(sep);
-            }
-        }
-        else
-        {
-            String strKey = value.toString();
-            if (strKey == null)
+            visited.add(value);
+
+            if (value == null)
             {
                 md.update("null".getBytes());
+                md.update(sep);
             }
-            else if (strKey.contains("@"))
+            else if (value.getClass().isArray())
             {
-                md.update(toJson(value).getBytes());
+                int len = Array.getLength(value);
+                md.update("array".getBytes());
+                md.update(String.valueOf(len).getBytes());
+                md.update(sep);
+                for (int i=0; i < len; i++)
+                {
+                    stack.addFirst(Array.get(value, i));
+                }
+            }
+            else if (value instanceof Collection)
+            {
+                Collection col = (Collection) value;
+                md.update("col".getBytes());
+                md.update(String.valueOf(col.size()).getBytes());
+                md.update(sep);
+                stack.addAll(col);
+            }
+            else if (value instanceof Map)
+            {
+                Map map  = (Map) value;
+                md.update("map".getBytes());
+                md.update(String.valueOf(map.size()).getBytes());
+                md.update(sep);
+                for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
+                {
+                    stack.addFirst(entry.getValue());
+                    stack.addFirst(entry.getKey());
+                }
             }
             else
             {
-                md.update(strKey.getBytes());
+                String strKey = value.toString();
+                if (strKey == null)
+                {
+                    md.update("null".getBytes());
+                }
+                else if (strKey.contains("@"))
+                {
+                    md.update(toJson(value).getBytes());
+                }
+                else
+                {
+                    md.update(strKey.getBytes());
+                }
+                md.update(sep);
             }
-            md.update(sep);
         }
     }
 
@@ -2376,9 +2383,9 @@ public class NCube<T>
 
             if (!DeepEquals.deepEquals(axis.getMetaProperties(), oldAxis.getMetaProperties()))
             {
-                s.append("Axis meta-properties changed on axis: ");
+                s.append("Axis meta-properties changed on axis: '");
                 s.append(axis.getName());
-                s.append(", from: ");
+                s.append("', from: ");
                 s.append(oldAxis.getMetaProperties().toString());
                 s.append(", to: ");
                 s.append(axis.getMetaProperties().toString());
@@ -2391,9 +2398,9 @@ public class NCube<T>
                 Column oldCol = oldAxis.idToCol.get(newCol.id);
                 if (oldCol == null)
                 {
-                    s.append("Column: ");
+                    s.append("Column: '");
                     s.append(newCol.getValue());
-                    s.append(" added");
+                    s.append("' added");
                     changes.add(s.toString());
                     s.setLength(0);
                 }
@@ -2413,9 +2420,9 @@ public class NCube<T>
                 Column newCol = axis.idToCol.get(oldCol.id);
                 if (newCol == null)
                 {
-                    s.append("Column: ");
+                    s.append("Column: '");
                     s.append(oldCol.getValue());
-                    s.append(" removed");
+                    s.append("' removed");
                     changes.add(s.toString());
                     s.setLength(0);
                 }
@@ -2428,17 +2435,6 @@ public class NCube<T>
                     }
                 }
             }
-        }
-
-        // Different dimensions, don't compare cells
-        if (getNumDimensions() != old.getNumDimensions())
-        {
-            return changes;
-        }
-
-        if (cells.size() != old.cells.size())
-        {
-            changes.add("Had " + old.cells.size() + " cells with content, now has " + cells.size());
         }
 
         for (Map.Entry<Set<Column>, T> entry : cells.entrySet())

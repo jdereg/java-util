@@ -914,4 +914,35 @@ public class TestAxis
             assertTrue(e.getMessage().contains("name"));
         }
     }
+
+    @Test
+    public void testAxisProps()
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
+
+        assertTrue(axis1.areAxisPropsEqual(axis1));
+        assertTrue(axis1.areAxisPropsEqual(axis2));
+        assertFalse(axis1.areAxisPropsEqual("fudge"));
+
+        Axis axis3 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.SORTED);
+        assertFalse(axis1.areAxisPropsEqual(axis3));
+
+        Axis axis4 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY);
+        assertFalse(axis1.areAxisPropsEqual(axis4));
+
+        Axis axis5 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
+        assertTrue(axis1.areAxisPropsEqual(axis5));
+        axis5.setMetaProperty("foo", "bar");
+        assertFalse(axis1.areAxisPropsEqual(axis5));
+
+        Axis axis6 = new Axis("foot", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY);
+        assertFalse(axis1.areAxisPropsEqual(axis6));
+
+        Axis axis7 = new Axis("foo", AxisType.RANGE, AxisValueType.STRING, false, Axis.DISPLAY);
+        assertFalse(axis1.areAxisPropsEqual(axis7));
+
+        Axis axis8 = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false, Axis.DISPLAY);
+        assertFalse(axis1.areAxisPropsEqual(axis8));
+    }
 }

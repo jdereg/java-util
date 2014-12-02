@@ -5517,6 +5517,36 @@ public class TestNCube
         assertTrue(delta.get(1).toLowerCase().contains("gender"));
     }
 
+    @Test
+    public void testDeltaDescriptionColumnAdded()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.addColumn("age", new Range(55, 70));
+        List<String> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toLowerCase().contains("column"));
+        assertTrue(delta.get(0).toLowerCase().contains("55"));
+        assertTrue(delta.get(0).toLowerCase().contains("70"));
+        assertTrue(delta.get(0).toLowerCase().contains("added"));
+    }
+
+    @Test
+    public void testDeltaDescriptionColumnDeleted()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.deleteColumn("gender", "male");
+        List<String> delta = cube2.getDeltaDescription(cube);
+        System.out.println("delta = " + delta);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toLowerCase().contains("column"));
+        assertTrue(delta.get(0).toLowerCase().contains("male"));
+        assertTrue(delta.get(0).toLowerCase().contains("removed"));
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

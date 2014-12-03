@@ -13,6 +13,7 @@ import static org.mockito.Matchers.anyString;
 
 /**
  * Created by kpartlow on 12/3/2014.
+ * Mocking static methods is better done in a separate class.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({JsonReader.class})

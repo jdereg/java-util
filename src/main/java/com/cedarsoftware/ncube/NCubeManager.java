@@ -926,13 +926,13 @@ public class NCubeManager
             catch (Exception e1)
             {
                 LOG.debug("attempted to read n-cube json in serialized format, but was unreadable that way.", e1);
-                if (e1.getCause() != null)
+                if (e.getCause() != null)
                 {
-                    throw new RuntimeException(e1.getCause());
+                    throw new RuntimeException(e.getCause());
                 }
                 else
                 {
-                    throw e1;
+                    throw e;
                 }
             }
         }

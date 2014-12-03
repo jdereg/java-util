@@ -10,7 +10,12 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Calendar;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Created by kpartlow on 9/23/2014.
@@ -186,6 +191,11 @@ public class TestCellInfo
             assertTrue(e.getMessage().contains("Unknown Groovy Type"));
         }
 
+    }
+
+    @Test
+    public void testNullItemOnFormatForDisplay() {
+        assertEquals("Default", CellInfo.formatForDisplay(null));
     }
 
     public void performRecreateAssertion(Object o) {

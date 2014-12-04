@@ -574,7 +574,7 @@ public class TestNCube
         ncube.setCell(true, coord);
         coord.put("Gender", "yes missed");
         assertTrue(ncube.getCell(coord));
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4);
     }
 
     @Test
@@ -613,7 +613,7 @@ public class TestNCube
         assertNull(ncube.getCell(male));
         assertNull(ncube.getCell(female));
         assertNull(ncube.getCell(nullGender));
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4);
     }
 
 
@@ -655,7 +655,7 @@ public class TestNCube
         coord.put("Age", 65);
         x = ncube.getCell(coord);
         assertTrue(x == 3.0);
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 5);
     }
 
     @Test
@@ -684,7 +684,7 @@ public class TestNCube
         assertTrue(ncube.getCell(coord) == 0);
         coord.put("Gender", "Female");
         assertTrue(ncube.getCell(coord) == 1);
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 3);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 3);
 
         try
         {
@@ -816,7 +816,7 @@ public class TestNCube
         }
 
         ncube.toString(); // force code in toString() to execute
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 7);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 7);
     }
 
     @Test
@@ -896,7 +896,7 @@ public class TestNCube
         coord.put("bigD", "100000");
         assertTrue("JPEG".equals(ncube.getCell(coord)));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 6);
         subTestEdgeCases(ncube, "bigD");
     }
 
@@ -932,7 +932,7 @@ public class TestNCube
         coord.put("doubleRange", "100000");
         assertTrue("JPEG".equals(ncube.getCell(coord)));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 6);
         subTestEdgeCases(ncube, "doubleRange");
     }
 
@@ -967,7 +967,7 @@ public class TestNCube
         assertTrue("PNG".equals(ncube.getCell(coord)));
         coord.put("longRange", "100000");
         assertTrue("JPEG".equals(ncube.getCell(coord)));
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 6);
 
         subTestEdgeCases(ncube, "longRange");
     }
@@ -1016,7 +1016,7 @@ public class TestNCube
         assertFalse(axis.contains(99));
         assertTrue(axis.contains(cal5));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 5);
         subTestEdgeCases(ncube, "dateRange");
     }
 
@@ -1153,7 +1153,7 @@ public class TestNCube
         assertTrue(ncube.getCell(coord) == 2.0);
         coord.put("Age", 22);
         assertTrue(ncube.getCell(coord) == null);    // cell not set, therefore it should return null
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4);
 
         try
         {
@@ -1226,7 +1226,7 @@ public class TestNCube
         coord.put("Age", 39);
         ncube.setCell(9.9, coord);
         assertTrue(ncube.getCell(coord) == 9.9);
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4);
 
         coord.put("Gender", "Fmale");    // intentional
         try
@@ -1382,7 +1382,7 @@ public class TestNCube
 
         assertTrue((Double) continentCounty.getCell(coord1) == 1.0);
         assertTrue((Double) continentCounty.getCell(coord2) == 0.78);
-        assertTrue(countMatches(continentCounty.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(continentCounty.toHtml(), "<tr") == 5);
     }
 
     @Test
@@ -1483,7 +1483,7 @@ public class TestNCube
         ncube.setCell(4444L, coord);
         assertTrue(ncube.getCell(coord) == 4444L);
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 5);
     }
 
     @Test
@@ -1556,7 +1556,7 @@ public class TestNCube
         coord.put("Age", 60.0);
         assertTrue(ncube.getCell(coord) == 300.0);
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4);
     }
 
     @Test
@@ -1878,7 +1878,7 @@ public class TestNCube
 
         Range range = new Range(10, 50);
         assertTrue(range.isWithin(null) == 1);
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 5);
     }
 
     @Test
@@ -1933,7 +1933,7 @@ public class TestNCube
         coord.put("Age", 80);
         assertTrue(ncube.getCell(coord) == 99.9);
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 4);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4);
     }
 
     @Test
@@ -1995,7 +1995,7 @@ public class TestNCube
         coord.put("Point", new Point2D(0.5, -0.6));
         Assert.assertEquals("0.0, -1.0", ncube.getCell(coord));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 6);
 
         Axis points = null;
         try
@@ -2014,7 +2014,7 @@ public class TestNCube
         points.addColumn(new Point2D(-1.0, 0.0));
         points.addColumn(new Point2D(0.0, -1.0));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 6);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 6);
 
         try
         {
@@ -2130,7 +2130,7 @@ public class TestNCube
         Point3D p2 = new Point3D(1.0, 2.0, 3.0);
         assertTrue(p1.compareTo(p2) == 0);
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 8);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 8);
     }
 
     @Test(expected=RuntimeException.class)
@@ -2387,7 +2387,7 @@ public class TestNCube
         coord.put("Point", "AC");
         assertTrue("abc".equals(ncube.getCell(coord)));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 7);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 7);
     }
 
     @Test
@@ -2543,7 +2543,7 @@ public class TestNCube
             Range r = (Range) entry.getKey();
             assertTrue(r.low instanceof Date);
         }
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 5);
     }
 
     @Test
@@ -2582,7 +2582,7 @@ public class TestNCube
         {
             assertTrue("Should have 2 items", false);
         }
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 2);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 2);
     }
 
     @Test
@@ -2598,7 +2598,7 @@ public class TestNCube
         coord.put("attribute", "longName");
         assertTrue("Fidelity/Crime Division".equals(ncube.getCell(coord)));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 7);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 7);
     }
 
     @Test
@@ -2627,14 +2627,14 @@ public class TestNCube
     public void testApprovalLimits() throws Exception
     {
         NCube approvalLimits = NCubeManager.getNCubeFromResource("approvalLimits.json");
-        assertTrue(countMatches(approvalLimits.toHtml(), "<tr>") == 16);
+        assertTrue(countMatches(approvalLimits.toHtml(), "<tr") == 16);
     }
 
     @Test
     public void testEmptyToHtml()
     {
         NCube ncube = new NCube("Empty");
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 0);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 0);
     }
 
     @Test
@@ -2708,7 +2708,7 @@ public class TestNCube
         coord.put("TriState", null);
         assertTrue("default-default".equals(ncube.getCell(coord)));
 
-        assertTrue(countMatches(ncube.toHtml(), "<tr>") == 5);
+        assertTrue(countMatches(ncube.toHtml(), "<tr") == 5);
     }
 
     @Test

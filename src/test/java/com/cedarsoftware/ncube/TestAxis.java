@@ -257,7 +257,7 @@ public class TestAxis
         Axis axis = (Axis) ncube.getAxes().get(0);
         List values = axis.getColumns();
         assertTrue(values.size() == 7);
-        assertTrue(TestNCube.countMatches(ncube.toHtml(), "<tr>") == 44);
+        assertTrue(TestNCube.countMatches(ncube.toHtml(), "<tr") == 44);
     }
 
     @Test

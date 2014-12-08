@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
  *
  *  http.proxyHost
  *  http.proxyPort (default: 80)
- *  http.nonProxyHosts (should alwasy include localhost)
+ *  http.nonProxyHosts (should always include localhost)
  *  https.proxyHost
  *  https.proxyPort
  *

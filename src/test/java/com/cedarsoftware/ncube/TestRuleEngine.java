@@ -128,9 +128,9 @@ public class TestRuleEngine
     {
         NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
         Axis cond = ncube.getAxis("condition");
-        assertTrue(cond.getColumns().get(0).getId() != 1);
+        assertTrue(cond.getColumns().get(0).id != 1);
         Axis state = ncube.getAxis("state");
-        assertTrue(state.getColumns().get(0).getId() != 10);
+        assertTrue(state.getColumns().get(0).id != 10);
 
         Map coord = new HashMap();
         coord.put("vehiclePrice", 5000.0);
@@ -150,9 +150,9 @@ public class TestRuleEngine
     {
         NCube ncube = NCubeManager.getNCubeFromResource("expressionAxis.json");
         Axis cond = ncube.getAxis("condition");
-        assertTrue(cond.getColumns().get(0).getId() != 1);
+        assertTrue(cond.getColumns().get(0).id != 1);
         Axis state = ncube.getAxis("state");
-        assertTrue(state.getColumns().get(0).getId() != 10);
+        assertTrue(state.getColumns().get(0).id != 10);
 
         assertEquals("foo", state.standardizeColumnValue("foo"));
     }

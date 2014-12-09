@@ -9,7 +9,6 @@ import groovy.lang.GroovyCodeSource;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.LinkedHashSet;
@@ -131,7 +130,7 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             return executeGroovy(args, getCmdHash(getUrl() == null ? data.toString() : getUrl()));
         }
-        catch(InvocationTargetException e)
+        catch(Exception e)
         {
             Throwable cause = e.getCause();
             if (cause instanceof CoordinateNotFoundException)
@@ -147,10 +146,6 @@ public abstract class GroovyBase extends UrlCommandCell
                 throw (RuleJump) cause;
             }
             throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "(), n-cube: " + cubeName + ", input: " + args.get("input"), cause != null ? cause : e) ;
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Error occurred invoking method " + getMethodToExecute(args) + "(), n-cube: " + cubeName + ", input: " + args.get("input"), e);
         }
     }
 
@@ -235,7 +230,8 @@ public abstract class GroovyBase extends UrlCommandCell
         }
         catch (Exception e)
         {
-            setErrorMessage("Failed to compile Groovy Command '" + getCmd() + "', NCube '" + cube.getName() + "'");
+            String type = e.getClass().getName();
+            setErrorMessage("Failed to compile Groovy command: " + getCmd() + ", n-cube: " + cube.getName() + ", error: " + e.getMessage() + " from exception: " + type);
             throw new IllegalArgumentException(getErrorMessage(), e);
         }
     }

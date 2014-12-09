@@ -4936,7 +4936,7 @@ public class TestNCube
             // This code is not generalized and intentionally relies on arrays.json being 1-dimensional
             Column col = cols.iterator().next();
             Set<Long> coord = new HashSet<>();
-            coord.add(col.getId());
+            coord.add(col.id);
             Map<String, CellInfo> coordinate = new CaseInsensitiveMap<>();
             ncube.getColumnsAndCoordinateFromIds(coord, coordinate);
             assertTrue(coordinate.containsKey("code"));
@@ -5696,7 +5696,7 @@ public class TestNCube
             {
                 Column thisCol = iThisCol.next();
                 Column thatCol = iThatCol.next();
-                assertEquals(thisCol.getId(), thatCol.getId());
+                assertEquals(thisCol.id, thatCol.id);
             }
         }
     }

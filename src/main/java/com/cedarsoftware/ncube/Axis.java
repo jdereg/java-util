@@ -409,7 +409,7 @@ public class Axis
                 Range range = (Range)value;
                 if (doesOverlap(range))
                 {
-                    throw new AxisOverlapException("Passed in Range overlaps existing Range on axis '" + name + "'");
+                    throw new AxisOverlapException("Passed in Range overlaps existing Range on axis: " + name + ", value: " + value);
                 }
             }
             else if (type == AxisType.SET)
@@ -417,14 +417,14 @@ public class Axis
                 RangeSet set = (RangeSet)value;
                 if (doesOverlap(set))
                 {
-                    throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis '" + name + "'");
+                    throw new AxisOverlapException("Passed in RangeSet overlaps existing RangeSet on axis: " + name + ", value: " + value);
                 }
             }
             else if (type == AxisType.RULE)
             {
                 if (!(value instanceof CommandCell))
                 {
-                    throw new IllegalArgumentException("Columns for RULE axis must be a CommandCell, axis '" + name + "'");
+                    throw new IllegalArgumentException("Columns for RULE axis must be a CommandCell, axis: " + name + ", value: " + value);
                 }
             }
             else if (type == AxisType.NEAREST)
@@ -440,7 +440,13 @@ public class Axis
 
 	public Column addColumn(Comparable value)
 	{
-        Column column = createColumnFromValue(value);
+        final Column column = createColumnFromValue(value);
+        addColumnInternal(column);
+        return column;
+    }
+
+	Column addColumnInternal(Column column)
+	{
         ensureUnique(column.getValue());
 
         if (column.getValue() == null)
@@ -661,18 +667,10 @@ public class Axis
         }
 
         columns.clear();
-        columns.addAll(tempCol);
-
-        // Step 3. Sort columns by value, as that is how they are expected to be stored for binary searches.
-        sortColumns(columns, new Comparator()
+        for (Column column : tempCol)
         {
-            public int compare(Object o1, Object o2)
-            {
-                Column c1 = (Column) o1;
-                Column c2 = (Column) o2;
-                return c1.getValue().compareTo(c2.getValue());
-            }
-        });
+            addColumnInternal(column);
+        }
 
         int displayOrder = 0;
         Map<Long, Column> realColumnMap = new LinkedHashMap<>();
@@ -693,7 +691,7 @@ public class Axis
             long realId = col.id;
             if (col.id < 0)
             {   // Add case - negative id, add new column to 'columns' List.
-                Column newCol = addColumn(newColumnMap.get(col.id).getValue());
+                Column newCol = addColumnInternal(newColumnMap.get(col.id));
                 realId = newCol.id;
                 realColumnMap.put(realId, newCol);
             }
@@ -713,6 +711,7 @@ public class Axis
 
         // index
         buildScaffolding();
+
         return colsToDelete;
     }
 

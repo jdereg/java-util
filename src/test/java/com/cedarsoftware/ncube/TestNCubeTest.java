@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -13,9 +15,21 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestNCubeTest
 {
+    @Before
+    public void setUp() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+    }
+
+    @After
+    public void tearDown() throws Exception
+    {
+        TestingDatabaseHelper.tearDownDatabase();
+    }
 
     @Test
-    public void testNCubeTest() {
+    public void testNCubeTest()
+    {
         String name = "test-1";
         StringValuePair[] params = new StringValuePair[3];
         params[0] = new StringValuePair("int", new CellInfo("int", "5", false, false));
@@ -43,6 +57,8 @@ public class TestNCubeTest
         // unfortunately you have to pass in ncube to the execute.
         HashMap map = new HashMap();
         map.put("ncube", new NCube("hello"));
+        map.put("input", new HashMap());
+        map.put("output", new HashMap());
 
         assertEquals("bar", testAssertions.get(0).execute(map));
 

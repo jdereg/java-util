@@ -1871,8 +1871,7 @@ public class NCube<T>
 
                     if (id != null)
                     {
-                        long sysId = colAdded.getId();
-                        userIdToUniqueId.put(id, sysId);
+                        userIdToUniqueId.put(id, colAdded.id);
                     }
 
                     colAdded.metaProps = new CaseInsensitiveMap<>();

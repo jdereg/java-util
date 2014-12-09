@@ -715,10 +715,9 @@ public class TestAxis
     public void testAddAxisSameWayAsUI()
     {
         Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
-        Axis axis2 = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
-        axis2.addColumn("[1, 2]");
-        List<Column> cols = axis2.getColumnsWithoutDefault();
-        cols.get(0).setId(-1);
+        Axis axis2 = new Axis("loc", AxisType.SET, AxisValueType.LONG, false);
+        Column colAdded = axis2.addColumn("[1, 2]");
+        colAdded.setId(-1);
         axis.updateColumns(axis2);
 
         assertEquals(2, axis.getColumns().size());
@@ -944,5 +943,86 @@ public class TestAxis
 
         Axis axis8 = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, false, Axis.DISPLAY);
         assertFalse(axis1.areAxisPropsEqual(axis8));
+    }
+
+    @Test
+    public void testUpdateColumnsFrontMiddleBack()
+    {
+        Axis axis = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, false, Axis.SORTED, 1);
+        axis.addColumn(new Range(5, 10));
+        axis.addColumn(new Range(20, 30));
+        axis.addColumn(new Range(30, 40));
+
+        Axis axis2 = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, false, Axis.SORTED, 1);
+        axis2.addColumn(new Range(5, 10));
+        axis2.addColumn(new Range(20, 30));
+        axis2.addColumn(new Range(30, 40));
+
+        Column newCol = axis.createColumnFromValue(new Range(10, 20));
+        newCol.id = -newCol.id;
+        axis.columns.add(newCol);
+
+        axis2.updateColumns(axis);
+        assertEquals(4, axis2.getColumns().size());
+
+        newCol = axis.createColumnFromValue(new Range(0, 5));
+        newCol.id = -newCol.id;
+        axis.columns.add(newCol);
+
+        axis2.updateColumns(axis);
+        assertEquals(5, axis2.getColumns().size());
+
+        newCol = axis.createColumnFromValue(new Range(40, 50));
+        newCol.id = -newCol.id;
+        axis.columns.add(newCol);
+
+        axis2.updateColumns(axis);
+        assertEquals(6, axis2.getColumns().size());
+
+        for (Column column : axis2.columns)
+        {
+            assertTrue(column.id >= 0);
+        }
+
+        // Test remove via updateColumns()
+        axis = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, false, Axis.SORTED, 1);
+        axis.addColumn(new Range(5, 10));
+        axis.addColumn(new Range(20, 30));
+        axis.addColumn(new Range(30, 40));
+
+        axis2.updateColumns(axis);
+        assertEquals(3, axis2.size());
+    }
+
+    @Test
+    public void testUpdateColumnsOverlapCheck()
+    {
+        Axis axis = new Axis("Age", AxisType.RANGE, AxisValueType.STRING, false, Axis.DISPLAY, 1);
+        axis.addColumn(new Range("2", "4"));
+        axis.addColumn(new Range("4", "6"));
+        axis.addColumn(new Range("6", "8"));
+        axis.addColumn(new Range("0", "2"));
+
+        Axis axis2 = new Axis("Age", AxisType.RANGE, AxisValueType.STRING, false, Axis.DISPLAY, 1);
+        axis2.addColumn(new Range("2", "4"));
+        axis2.addColumn(new Range("4", "6"));
+        axis2.addColumn(new Range("6", "8"));
+        axis2.addColumn(new Range("0", "2"));
+
+        Column newCol = axis.createColumnFromValue(new Range("8", "10"));
+        newCol.id = -newCol.id;
+        axis.columns.add(newCol);
+
+        try
+        {
+            axis2.updateColumns(axis);
+            fail();
+        }
+        catch (AxisOverlapException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("overlap"));
+            assertTrue(e.getMessage().toLowerCase().contains("exist"));
+            assertTrue(e.getMessage().toLowerCase().contains("axis"));
+        }
     }
 }

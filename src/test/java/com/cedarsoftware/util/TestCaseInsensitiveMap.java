@@ -1006,6 +1006,40 @@ public class TestCaseInsensitiveMap
         assertEquals(1, five);
     }
 
+    @Test
+    public void testRetainAll2()
+    {
+        Map<String, String> oldMap = new CaseInsensitiveMap<>();
+        Map<String, String> newMap = new CaseInsensitiveMap<>();
+
+        oldMap.put("foo", null);
+        oldMap.put("bar", null);
+        newMap.put("foo", null);
+        newMap.put("bar", null);
+        newMap.put("qux", null);
+        Set<String> oldKeys = oldMap.keySet();
+        Set<String> newKeys = newMap.keySet();
+        assertTrue(newKeys.retainAll(oldKeys));
+    }
+
+
+    @Test
+    public void testRemoveAll2()
+    {
+        Map<String, String> oldMap = new CaseInsensitiveMap<>();
+        Map<String, String> newMap = new CaseInsensitiveMap<>();
+
+        oldMap.put("bart", null);
+        oldMap.put("qux", null);
+        newMap.put("foo", null);
+        newMap.put("bar", null);
+        newMap.put("qux", null);
+        Set<String> oldKeys = oldMap.keySet();
+        Set<String> newKeys = newMap.keySet();
+        boolean ret = newKeys.removeAll(oldKeys);
+        assertTrue(ret);
+    }
+
     // Used only during development right now
 //    @Test
 //    public void testPerformance()

@@ -246,17 +246,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean removeAll(Collection c)
         {
-            boolean modified = false;
+            int size = size();
 
             for (Object o : c)
             {
                 if (contains(o))
                 {
                     remove(o);
-                    modified = true;
                 }
             }
-            return modified;
+            return size() != size;
         }
 
         public boolean retainAll(Collection c)
@@ -447,17 +446,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
          */
         public boolean removeAll(Collection c)
         {
-            boolean modified = false;
+            int size = size();
 
             for (Object o : c)
             {
                 if (contains(o))
                 {
                     remove(o);
-                    modified = true;
                 }
             }
-            return modified;
+            return size() != size;
         }
 
         public boolean retainAll(Collection c)

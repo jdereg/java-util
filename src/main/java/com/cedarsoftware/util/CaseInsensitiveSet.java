@@ -136,11 +136,12 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean addAll(Collection<? extends E> c)
     {
+        int size = size();
         for (E elem : c)
         {
             map.put(elem, null);
         }
-        return map.size() != c.size();
+        return map.size() != size;
     }
 
     public boolean retainAll(Collection<?> c)
@@ -152,6 +153,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
         }
 
         Iterator i = map.keySet().iterator();
+        int size = size();
         while (i.hasNext())
         {
             Object elem = i.next();
@@ -160,16 +162,17 @@ public class CaseInsensitiveSet<E> implements Set<E>
                 i.remove();
             }
         }
-        return map.size() != c.size();
+        return map.size() != size;
     }
 
     public boolean removeAll(Collection<?> c)
     {
+        int size = size();
         for (Object elem : c)
         {
             map.remove(elem);
         }
-        return map.size() != c.size();
+        return map.size() != size;
     }
 
     public void clear()

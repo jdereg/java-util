@@ -307,6 +307,49 @@ public class TestCaseInsensitiveSet
         assertEquals(0, s.size());
     }
 
+    @Test
+    public void testRetainAll2()
+    {
+        Set<String> oldSet = new CaseInsensitiveSet<>();
+        Set<String> newSet = new CaseInsensitiveSet<>();
+
+        oldSet.add("foo");
+        oldSet.add("bar");
+        newSet.add("foo");
+        newSet.add("bar");
+        newSet.add("qux");
+        assertTrue(newSet.retainAll(oldSet));
+    }
+
+    @Test
+    public void testAddAll2()
+    {
+        Set<String> oldSet = new CaseInsensitiveSet<>();
+        Set<String> newSet = new CaseInsensitiveSet<>();
+
+        oldSet.add("foo");
+        oldSet.add("bar");
+        newSet.add("foo");
+        newSet.add("bar");
+        newSet.add("qux");
+        assertFalse(newSet.addAll(oldSet));
+    }
+
+    @Test
+    public void testRemoveAll2()
+    {
+        Set<String> oldSet = new CaseInsensitiveSet<>();
+        Set<String> newSet = new CaseInsensitiveSet<>();
+
+        oldSet.add("bart");
+        oldSet.add("qux");
+        newSet.add("foo");
+        newSet.add("bar");
+        newSet.add("qux");
+        boolean ret = newSet.removeAll(oldSet);
+        assertTrue(ret);
+    }
+
     private Set get123()
     {
         Set set = new CaseInsensitiveSet();

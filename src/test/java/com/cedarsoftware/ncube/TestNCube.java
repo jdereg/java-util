@@ -358,7 +358,7 @@ public class TestNCube
         }
         long stop = System.nanoTime();
         double diff = (stop - start) / 1000000.0;
-//        System.out.println("time to build and read allCellsInBigCube = " + diff);
+        System.out.println("time to build and read allCellsInBigCube = " + diff);
 //        assertTrue(ncube.toHtml() != null);
     }
 
@@ -1655,124 +1655,6 @@ public class TestNCube
     }
 
     @Test
-    public void testMoveColumn()
-    {
-        NCube<Integer> ncube = new NCube<Integer>("moveColTest");
-        Axis days = getShortDaysOfWeekAxis();
-        Axis gender = getGenderAxis(true);
-        ncube.addAxis(days);
-        ncube.addAxis(gender);
-
-        Map<String, Object> coord = new HashMap<String, Object>();
-        coord.put("Gender", "Female");
-        coord.put("Days", "Mon");
-        ncube.setCell(1, coord);
-        coord.put("Days", "Tue");
-        ncube.setCell(2, coord);
-        coord.put("Days", "Wed");
-        ncube.setCell(3, coord);
-        coord.put("Days", "Thu");
-        ncube.setCell(4, coord);
-        coord.put("Days", "Fri");
-        ncube.setCell(5, coord);
-        coord.put("Days", "Sat");
-        ncube.setCell(6, coord);
-        coord.put("Days", "Sun");
-        ncube.setCell(7, coord);
-
-        coord.put("Gender", "Male");
-        coord.put("Days", "Mon");
-        ncube.setCell(10, coord);
-        coord.put("Days", "Tue");
-        ncube.setCell(20, coord);
-        coord.put("Days", "Wed");
-        ncube.setCell(30, coord);
-        coord.put("Days", "Thu");
-        ncube.setCell(40, coord);
-        coord.put("Days", "Fri");
-        ncube.setCell(50, coord);
-        coord.put("Days", "Sat");
-        ncube.setCell(60, coord);
-        coord.put("Days", "Sun");
-        ncube.setCell(70, coord);
-
-        days.moveColumn(6, 0);
-        List<Column> cols = days.getColumns();
-        assertTrue(cols.get(0).getDisplayOrder() == 0);
-        assertTrue(cols.get(1).getDisplayOrder() == 1);
-        assertTrue(cols.get(2).getDisplayOrder() == 2);
-        assertTrue(cols.get(3).getDisplayOrder() == 3);
-        assertTrue(cols.get(4).getDisplayOrder() == 4);
-        assertTrue(cols.get(5).getDisplayOrder() == 5);
-        assertTrue(cols.get(6).getDisplayOrder() == 6);
-
-        assertTrue("Sun".equals(cols.get(0).getValue()));
-        assertTrue("Mon".equals(cols.get(1).getValue()));
-        assertTrue("Tue".equals(cols.get(2).getValue()));
-        assertTrue("Wed".equals(cols.get(3).getValue()));
-        assertTrue("Thu".equals(cols.get(4).getValue()));
-        assertTrue("Fri".equals(cols.get(5).getValue()));
-        assertTrue("Sat".equals(cols.get(6).getValue()));
-
-        coord.put("Gender", "Female");
-        coord.put("Days", "Mon");
-        assertTrue(ncube.getCell(coord) == 1);
-        coord.put("Days", "Tue");
-        assertTrue(ncube.getCell(coord) == 2);
-        coord.put("Days", "Wed");
-        assertTrue(ncube.getCell(coord) == 3);
-        coord.put("Days", "Thu");
-        assertTrue(ncube.getCell(coord) == 4);
-        coord.put("Days", "Fri");
-        assertTrue(ncube.getCell(coord) == 5);
-        coord.put("Days", "Sat");
-        assertTrue(ncube.getCell(coord) == 6);
-        coord.put("Days", "Sun");
-        assertTrue(ncube.getCell(coord) == 7);
-
-        coord.put("Gender", "Male");
-        coord.put("Days", "Mon");
-        assertTrue(ncube.getCell(coord) == 10);
-        coord.put("Days", "Tue");
-        assertTrue(ncube.getCell(coord) == 20);
-        coord.put("Days", "Wed");
-        assertTrue(ncube.getCell(coord) == 30);
-        coord.put("Days", "Thu");
-        assertTrue(ncube.getCell(coord) == 40);
-        coord.put("Days", "Fri");
-        assertTrue(ncube.getCell(coord) == 50);
-        coord.put("Days", "Sat");
-        assertTrue(ncube.getCell(coord) == 60);
-        coord.put("Days", "Sun");
-        assertTrue(ncube.getCell(coord) == 70);
-
-        try
-        {
-            gender.moveColumn(-1, 1);
-            assertTrue("should throw exception", false);
-        }
-        catch (IllegalStateException expected)
-        {
-            assertTrue(expected.getMessage().contains("must"));
-            assertTrue(expected.getMessage().contains("DISPLAY"));
-            assertTrue(expected.getMessage().contains("order"));
-        }
-
-        assertTrue(ncube.moveColumn("Days", 2, 2));
-
-        try
-        {
-            days.moveColumn(-1, 1);
-            assertTrue("should throw exception", false);
-        }
-        catch (Exception expected)
-        {
-            assertTrue(expected.getMessage().contains(">= 0"));
-            assertTrue(expected.getMessage().contains("< number"));
-        }
-    }
-
-    @Test
     public void testColumnApis()
     {
         NCube ncube = new NCube("columnApis");
@@ -1799,18 +1681,6 @@ public class TestNCube
         {
             assertTrue(expected.getMessage().contains("not"));
             assertTrue(expected.getMessage().contains("delete"));
-            assertTrue(expected.getMessage().contains("column"));
-        }
-
-        try
-        {
-            ncube.moveColumn("foo", 0, 1);
-            assertTrue("should throw exception", false);
-        }
-        catch (Exception expected)
-        {
-            assertTrue(expected.getMessage().contains("not"));
-            assertTrue(expected.getMessage().contains("move"));
             assertTrue(expected.getMessage().contains("column"));
         }
     }
@@ -4324,7 +4194,7 @@ public class TestNCube
         assertEquals(30, ncube.cells.size());
 
         // Delete 1st, middle, and last column
-        Map<Object, Long> valueToId = new HashMap<Object, Long>();
+        Map<Object, Long> valueToId = new HashMap<>();
         Axis code = ncube.getAxis("code");
         for (Column column : code.getColumns())
         {

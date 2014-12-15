@@ -57,6 +57,7 @@ public class Axis
 	public static final int SORTED = 0;
 	public static final int DISPLAY = 1;
     private static final AtomicLong baseAxisIdForTesting = new AtomicLong(1);
+    public static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
 	final long id;
     long colIdBase = 0;
 	private String name;
@@ -65,7 +66,6 @@ public class Axis
     final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
 	private int preferredOrder = SORTED;
-    public static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
     Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
@@ -114,7 +114,7 @@ public class Axis
             {
                 throw new IllegalArgumentException("NEAREST type axis '" + name + "' cannot have a default column");
             }
-            defaultCol = new Column(null, getNextColId());
+            defaultCol = new Column(null, getDefaultColId());
             defaultCol.setDisplayOrder(Integer.MAX_VALUE);  // Always at the end
             columns.add(defaultCol);
             idToCol.put(defaultCol.id, defaultCol);
@@ -124,6 +124,11 @@ public class Axis
     long getNextColId()
     {
         return id * 1000000000000L + (++colIdBase);
+    }
+
+    long getDefaultColId()
+    {
+        return id * 1000000000000L + Integer.MAX_VALUE;
     }
 
     /**
@@ -358,11 +363,7 @@ public class Axis
             {
                 v = standardizeColumnValue(value);
             }
-            else if (type == AxisType.RANGE)
-            {
-                v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
-            }
-            else if (type == AxisType.SET)
+            else if (type == AxisType.RANGE || type == AxisType.SET)
             {
                 v = value instanceof String ? convertStringToColumnValue((String) value) : standardizeColumnValue(value);
             }
@@ -451,6 +452,7 @@ public class Axis
 
         if (column.getValue() == null)
         {
+            column.setId(getDefaultColId());
             defaultCol = column;
         }
 
@@ -544,35 +546,6 @@ public class Axis
         idToCol.remove(col.id);
     }
 
-    public boolean moveColumn(int curPos, int newPos)
-	{
-		if (preferredOrder != DISPLAY)
-		{
-			throw new IllegalStateException("Axis '" + name + "' must be in DISPLAY order to permit column reordering");
-		}
-
-		if (curPos == newPos)
-		{	// That was easy
-			return true;
-		}
-
-		if (curPos < 0 || curPos >= columns.size() || newPos < 0 || newPos >= columns.size())
-		{
-			throw new IllegalArgumentException("Position must be >= 0 and < number of Columns to reorder column, axis '" + name + "'");
-		}
-
-        if (columns.get(curPos).isDefault() || columns.get(newPos).isDefault())
-        {
-            throw new IllegalArgumentException("Cannot move 'Default' column, axis '" + name + "'");
-        }
-
-        List<Column> cols = new ArrayList<>(columns);
-        sortColumnsByDisplayOrder(cols);
-        cols.add(newPos, cols.remove(curPos));
-        assignDisplayOrder(cols);
-        return true;
-	}
-
     /**
      * Update (change) the value of an existing column.  This entails not only
      * changing the value, but resorting the axis's columns (columns are always in
@@ -636,7 +609,7 @@ public class Axis
         }
 
         // Step 2.  Build list of columns that no longer exist (add to deleted list)
-        // and update existing columns that match by ID columns from the passed in DTO.
+        // AND update existing columns that match by ID columns from the passed in DTO.
         List<Column> tempCol = new ArrayList<>(getColumnsWithoutDefault());
         Iterator<Column> i = tempCol.iterator();
 
@@ -672,17 +645,17 @@ public class Axis
             addColumnInternal(column);
         }
 
-        int displayOrder = 0;
         Map<Long, Column> realColumnMap = new LinkedHashMap<>();
 
         for (Column column : columns)
         {
             realColumnMap.put(column.id, column);
         }
+        int displayOrder = 0;
 
         // Step 4. Add new columns (they exist in the passed in Axis, but not in this Axis) and
         // set display order to match the columns coming in from the DTO axis (argument).
-        for (Column col : newCols.columns)
+        for (Column col : newCols.getColumns())
         {
             if (col.getValue() == null)
             {   // Skip Default column
@@ -901,7 +874,7 @@ public class Axis
 			value = promoteValue(value);
 			if (!getColumnsWithoutDefault().isEmpty())
 			{
-				Column col = columns.iterator().next();
+				Column col = columns.get(0);
                 if (value.getClass() != col.getValue().getClass())
 				{
 					throw new IllegalArgumentException("Value '" + value.getClass().getName() + "' cannot be added to axis '" + name + "' where the values are of type: " + col.getValue().getClass().getName());

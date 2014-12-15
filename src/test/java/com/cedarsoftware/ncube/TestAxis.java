@@ -782,41 +782,6 @@ public class TestAxis
     }
 
     @Test
-    public void testInvalidMoveAxis()
-    {
-        Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, true, Axis.DISPLAY);
-        RangeSet rs = new RangeSet();
-        rs.add(20);
-        rs.add(30);
-        axis.addColumn(rs);
-        rs = new RangeSet();
-        rs.add(50);
-        axis.addColumn(rs);
-
-        try
-        {
-            axis.moveColumn(2, 1);
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().contains("not"));
-            assertTrue(e.getMessage().contains("move"));
-            assertTrue(e.getMessage().contains("axis"));
-        }
-
-        try
-        {
-            axis.moveColumn(1, 2);
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().contains("not"));
-            assertTrue(e.getMessage().contains("move"));
-            assertTrue(e.getMessage().contains("axis"));
-        }
-    }
-
-    @Test
     public void testAddAxisBadColumnIds()
     {
         Axis axis = new Axis("loc", AxisType.SET, AxisValueType.LONG, true);
@@ -1025,4 +990,124 @@ public class TestAxis
             assertTrue(e.getMessage().toLowerCase().contains("axis"));
         }
     }
+
+    @Test
+    public void testUpColumnsMaintainsOrder()
+    {
+        Axis axis = new Axis("days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY, 1);
+        axis.addColumn("Mon");
+        axis.addColumn("Tue");
+        Column wed = axis.addColumn("Wed");
+        wed.id = -wed.id;
+        axis.addColumn("Thu");
+        axis.addColumn("Fri");
+        axis.addColumn("Sat");
+        axis.addColumn("Sun");
+
+        // Mon/Sat backwards
+        // Wed missing
+        // Bogus column added (named 'Whoops')
+        // Fix these problems with updateColumns (simulate user moving columns in NCE)
+        Axis axis2 = new Axis("days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY, 1);
+        axis2.addColumn("Sat");
+        axis2.addColumn("Tue");
+        axis2.addColumn("Wed");
+        axis2.addColumn("Thu");
+        axis2.addColumn("Fri");
+        axis2.addColumn("Mon");
+        axis2.addColumn("Sun");
+        axis2.addColumn("Whoops");
+        axis2.deleteColumn("Wed");
+
+        axis2.updateColumns(axis);
+        assertEquals(7, axis2.size());
+        assertEquals("Mon", axis2.getColumns().get(0).getValue());
+        assertEquals("Tue", axis2.getColumns().get(1).getValue());
+        assertEquals("Wed", axis2.getColumns().get(2).getValue());
+        assertEquals("Thu", axis2.getColumns().get(3).getValue());
+        assertEquals("Fri", axis2.getColumns().get(4).getValue());
+        assertEquals("Sat", axis2.getColumns().get(5).getValue());
+        assertEquals("Sun", axis2.getColumns().get(6).getValue());
+    }
+
+    @Test
+    public void testUpColumnsMaintainsOrderWithDefault()
+    {
+        Axis axis = new Axis("days", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 1);
+        axis.addColumn("Mon");
+        axis.addColumn("Tue");
+        Column wed = axis.addColumn("Wed");
+        wed.id = -wed.id;
+        axis.addColumn("Thu");
+        axis.addColumn("Fri");
+        axis.addColumn("Sat");
+        axis.addColumn("Sun");
+
+        // Mon/Sat backwards
+        // Wed missing
+        // Bogus column added (named 'Whoops')
+        // Fix these problems with updateColumns (simulate user moving columns in NCE)
+        Axis axis2 = new Axis("days", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 1);
+        axis2.addColumn("Sat");
+        axis2.addColumn("Tue");
+        axis2.addColumn("Wed");
+        axis2.addColumn("Thu");
+        axis2.addColumn("Fri");
+        axis2.addColumn("Mon");
+        axis2.addColumn("Sun");
+        axis2.addColumn("Whoops");
+        axis2.deleteColumn("Wed");
+
+        axis2.updateColumns(axis);
+        assertEquals(8, axis2.size());
+        assertEquals("Mon", axis2.getColumns().get(0).getValue());
+        assertEquals("Tue", axis2.getColumns().get(1).getValue());
+        assertEquals("Wed", axis2.getColumns().get(2).getValue());
+        assertEquals("Thu", axis2.getColumns().get(3).getValue());
+        assertEquals("Fri", axis2.getColumns().get(4).getValue());
+        assertEquals("Sat", axis2.getColumns().get(5).getValue());
+        assertEquals("Sun", axis2.getColumns().get(6).getValue());
+        assertNull(axis2.getColumns().get(7).getValue());
+        assertEquals(Integer.MAX_VALUE, axis2.getColumns().get(7).getDisplayOrder());
+    }
+
+    @Test
+    public void testUpColumnsMaintainsIgnoresDefault()
+    {
+        Axis axis = new Axis("days", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 1);
+        axis.addColumn("Mon");
+        axis.addColumn("Tue");
+        Column wed = axis.addColumn("Wed");
+        wed.id = -wed.id;
+        axis.addColumn("Thu");
+        axis.addColumn("Fri");
+        axis.addColumn("Sat");
+        axis.addColumn("Sun");
+
+        // Mon/Sat backwards
+        // Wed missing
+        // Bogus column added (named 'Whoops')
+        // Fix these problems with updateColumns (simulate user moving columns in NCE)
+        Axis axis2 = new Axis("days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY, 1);
+        axis2.addColumn("Sat");
+        axis2.addColumn("Tue");
+        axis2.addColumn("Wed");
+        axis2.addColumn("Thu");
+        axis2.addColumn("Fri");
+        axis2.addColumn("Mon");
+        axis2.addColumn("Sun");
+        axis2.addColumn("Whoops");
+        axis2.deleteColumn("Wed");
+
+        axis2.updateColumns(axis);
+        assertEquals(7, axis2.size());
+        assertEquals("Mon", axis2.getColumns().get(0).getValue());
+        assertEquals("Tue", axis2.getColumns().get(1).getValue());
+        assertEquals("Wed", axis2.getColumns().get(2).getValue());
+        assertEquals("Thu", axis2.getColumns().get(3).getValue());
+        assertEquals("Fri", axis2.getColumns().get(4).getValue());
+        assertEquals("Sat", axis2.getColumns().get(5).getValue());
+        assertEquals("Sun", axis2.getColumns().get(6).getValue());
+    }
+
 }

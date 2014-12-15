@@ -1263,24 +1263,6 @@ public class NCube<T>
     }
 
     /**
-     * Move the column indicated by curPos to the newPos along the axis specified by name.
-     * Note this only works for an axis in display order.  This method will through an
-     * IllegalStateException if you attempt to call it on an axis in Sorted order.  If the
-     * columns indicated by curPos or newPos do not exist, an IllegalArgumentException
-     * will be thrown.
-     */
-    public boolean moveColumn(final String axisName, final int curPos, final int newPos)
-    {
-        final Axis axis = getAxis(axisName);
-        if (axis == null)
-        {
-            throw new IllegalArgumentException("Could not move column. Axis name '" + axisName + "' was not found on NCube '" + name + "'");
-        }
-
-        return axis.moveColumn(curPos, newPos);
-    }
-
-    /**
      * Change the value of a Column along an axis.
      * @param id long indicates the column to change
      * @param value Comparable new value to set into the column

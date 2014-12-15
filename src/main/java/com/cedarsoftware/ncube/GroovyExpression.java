@@ -87,8 +87,6 @@ public class GroovyExpression extends GroovyBase
         groovy.append(groovyCodeWithoutImportStatements);
         groovy.append("\n}\n}");
         return groovy.toString();
-
-
     }
 
     protected String getMethodToExecute(Map args)

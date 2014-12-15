@@ -11,13 +11,12 @@ import java.util.Map;
  * Holds the value of a 'column' on an axis.
  * This class exists in order to allow additional
  * columns to be inserted onto an axis, without
- * having to "move" the existing cells.  Cells
- * reference columns by their ID, not ordinal position.
+ * having to "move" the existing cells.
  *
  * Furthermore, for some axis types (String), it is
  * often better for display purposes to use the
  * display order, as opposed to it's sort order
- * (e.g., Months-of-year) for display.
+ * (e.g., months-of-year, days-of-week) for display.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -135,7 +134,7 @@ public class Column implements Comparable<Comparable>
 
     public int hashCode()
     {
-    	final long x = id;
+        final long x = id;
         // do not change the formula below.  It is been hand crafted and tested for performance.
         // If this does not hash well, ncube breaks down in performance.  The BigCube tests are
         // greatly slowed down as proper hashing is vital or cells will be really slow to access
@@ -196,7 +195,7 @@ public class Column implements Comparable<Comparable>
 	public int getDisplayOrder()
 	{
 		return displayOrder;
-	}
+    }
 
     String compareMetaProperties(Column oldCol)
     {

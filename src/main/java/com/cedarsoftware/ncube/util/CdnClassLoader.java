@@ -46,16 +46,14 @@ public class CdnClassLoader extends GroovyClassLoader
 
     boolean isLocalOnlyClass(String name)
     {
-        if (name.startsWith("java.lang.") ||
-                name.startsWith("java.io.") ||
-                name.startsWith("java.net.") ||
-                name.startsWith("java.util.") ||
-                name.startsWith("java.text.") ||
-                name.startsWith("groovy.lang.") ||
-                name.startsWith("groovy.util.") ||
+        if (name.startsWith("java.") ||
+                name.startsWith("groovy.") ||
+                name.startsWith("org.") ||
+                name.startsWith("net.") ||
                 name.startsWith("com.cedarsoftware") ||
                 name.startsWith("ncube$grv") ||
-                name.startsWith("ncube.grv"))
+                name.startsWith("ncube.grv") ||
+                (name.startsWith("com.gaic") && name.contains("$")))
         {
             return true;
         }
@@ -87,13 +85,15 @@ public class CdnClassLoader extends GroovyClassLoader
 
         if (name.startsWith("META-INF") ||
             name.startsWith("ncube/grv/") ||
-            name.startsWith("java/lang/") ||
-            name.startsWith("java/io/") ||
-            name.startsWith("java/util/") ||
-            name.startsWith("java/net/") ||
-            name.startsWith("java/text/") ||
-            name.startsWith("groovy/lang/") ||
-            name.startsWith("groovy/util/") ||
+            name.startsWith("java/") ||
+            name.startsWith("groovy/") ||
+            name.startsWith("org/") ||
+            name.startsWith("net/") ||
+            name.startsWith("com/gaic/bue/logging/") ||
+            name.startsWith("com/gaic/bue/rpm/") ||
+            name.startsWith("com/gaic/esapi/") ||
+            name.startsWith("com/gaic/uwd/core/util/") ||
+            name.startsWith("com/gaic/bue/uwd/ra/common") ||
             name.startsWith("com/cedarsoftware/"))
         {
             if (name.startsWith("ncube/grv/closure/"))

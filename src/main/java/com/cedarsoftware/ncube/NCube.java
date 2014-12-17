@@ -2288,33 +2288,18 @@ public class NCube<T>
         }
     }
 
-    public List<String> getDeltaDescription(NCube old)
+    public List<Delta> getDeltaDescription(NCube<T> old)
     {
-        StringBuilder s = new StringBuilder();
-        List<String> changes = new ArrayList<>();
+        List<Delta> changes = new ArrayList<>();
 
         if (!name.equalsIgnoreCase(old.name))
         {
-            s.append("Name changed from '");
-            s.append(old.name);
-            s.append("' to '");
-            s.append(name);
-            s.append("'");
-            changes.add(s.toString());
-            s.setLength(0);
+            String s = "Name changed from '" + old.name + "' to '" + name + "'";
+            changes.add(new Delta(Delta.Location.NCUBE, Delta.Type.UPDATE, s));
         }
 
-        if (!DeepEquals.deepEquals(metaProps, old.metaProps))
-        {
-            s.append("n-cube meta-properties changed: ");
-            s.append(getName());
-            s.append(", from: ");
-            s.append(old.getMetaProperties().toString());
-            s.append(", to: ");
-            s.append(getMetaProperties().toString());
-            changes.add(s.toString());
-            s.setLength(0);
-        }
+        List<Delta> metaChanges = compareMetaProperties(old.getMetaProperties(), getMetaProperties(), Delta.Location.NCUBE_META, "n-cube '" + name + "'");
+        changes.addAll(metaChanges);
 
         CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
         CaseInsensitiveSet a2 = new CaseInsensitiveSet(old.axisList.keySet());
@@ -2323,10 +2308,8 @@ public class NCube<T>
         boolean axesChanged = false;
         if (!a1.isEmpty())
         {
-            s.append("New/renamed axis: ");
-            s.append(a1);
-            changes.add(s.toString());
-            s.setLength(0);
+            String s = "Added axis: " + a1;
+            changes.add(new Delta(Delta.Location.AXIS, Delta.Type.ADD, s));
             axesChanged = true;
         }
 
@@ -2334,10 +2317,8 @@ public class NCube<T>
         a2.removeAll(a1);
         if (!a2.isEmpty())
         {
-            s.append("Axis removed/renamed: ");
-            s.append(a2);
-            changes.add(s.toString());
-            s.setLength(0);
+            String s = "Removed axis: " + a2;
+            changes.add(new Delta(Delta.Location.AXIS, Delta.Type.DELETE, s));
             axesChanged = true;
         }
 
@@ -2349,63 +2330,46 @@ public class NCube<T>
 
         Map<Column, Column> idMap = new HashMap<>();
 
-        for (Axis axis : axisList.values())
+        for (Axis newAxis : axisList.values())
         {
-            Axis oldAxis = old.getAxis(axis.getName());
-            if (!axis.areAxisPropsEqual(oldAxis))
+            Axis oldAxis = old.getAxis(newAxis.getName());
+            if (!newAxis.areAxisPropsEqual(oldAxis))
             {
-                s.append("Axis properties changed from ");
-                s.append(oldAxis.getAxisPropString());
-                s.append(" to ");
-                s.append(axis.getAxisPropString());
-                changes.add(s.toString());
-                s.setLength(0);
+                String s = "Axis properties changed from " + oldAxis.getAxisPropString() + " to " + newAxis.getAxisPropString();
+                changes.add(new Delta(Delta.Location.AXIS, Delta.Type.UPDATE, s));
             }
 
-            if (!DeepEquals.deepEquals(axis.getMetaProperties(), oldAxis.getMetaProperties()))
-            {
-                s.append("Axis meta-properties changed on axis: '");
-                s.append(axis.getName());
-                s.append("', from: ");
-                s.append(oldAxis.getMetaProperties().toString());
-                s.append(", to: ");
-                s.append(axis.getMetaProperties().toString());
-                changes.add(s.toString());
-                s.setLength(0);
-            }
+            metaChanges = compareMetaProperties(oldAxis.getMetaProperties(), newAxis.getMetaProperties(), Delta.Location.AXIS_META, "axis '" + newAxis.getName() + "'");
+            changes.addAll(metaChanges);
 
-            for (Column newCol : axis.getColumns())
+            for (Column newCol : newAxis.getColumns())
             {
                 Column oldCol = oldAxis.idToCol.get(newCol.id);
                 if (oldCol == null)
                 {
-                    s.append("Column: '");
-                    s.append(newCol.getValue());
-                    s.append("' added");
-                    changes.add(s.toString());
-                    s.setLength(0);
+                    String s = "Column: " + newCol.getValue() + " added to axis: " + newAxis.getName();
+                    changes.add(new Delta(Delta.Location.COLUMN, Delta.Type.ADD, s.toString()));
                 }
                 else
                 {   // Check Column meta properties
-                    idMap.put(newCol, oldCol);
-                    String delta = newCol.compareMetaProperties(oldCol);
-                    if (StringUtilities.hasContent(delta))
+                    metaChanges = compareMetaProperties(oldCol.getMetaProperties(), newCol.getMetaProperties(), Delta.Location.COLUMN_META, "column '" + newAxis.getName() + "'");
+                    changes.addAll(metaChanges);
+
+                    if (!DeepEquals.deepEquals(oldCol.getValue(), newCol.getValue()))
                     {
-                        changes.add(delta);
+                        String s = "Column value changed from: " + oldCol.getValue() + " to: " + newCol.getValue();
+                        changes.add(new Delta(Delta.Location.COLUMN, Delta.Type.UPDATE, s));
                     }
                 }
             }
 
             for (Column oldCol : oldAxis.getColumns())
             {
-                Column newCol = axis.idToCol.get(oldCol.id);
+                Column newCol = newAxis.idToCol.get(oldCol.id);
                 if (newCol == null)
                 {
-                    s.append("Column: '");
-                    s.append(oldCol.getValue());
-                    s.append("' removed");
-                    changes.add(s.toString());
-                    s.setLength(0);
+                    String s = "Column: " + oldCol.getValue() + " removed";
+                    changes.add(new Delta(Delta.Location.COLUMN, Delta.Type.DELETE, s));
                 }
             }
         }
@@ -2414,41 +2378,103 @@ public class NCube<T>
         {
             Set<Column> newCellKey = entry.getKey();
             T newCellValue = entry.getValue();
-            Set<Column> oldCellKey = new HashSet<>();
 
-            for (Column newCol : newCellKey)
+            if (old.cells.containsKey(newCellKey))
             {
-                oldCellKey.add(idMap.get(newCol));
-            }
-
-            if (old.cells.containsKey(oldCellKey))
-            {
-                Object oldCellValue = old.cells.get(oldCellKey);
+                Object oldCellValue = old.cells.get(newCellKey);
                 if (!DeepEquals.deepEquals(newCellValue, oldCellValue))
                 {
                     Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
-                    s.append("Cell changed at location: ");
-                    s.append(properCoord.toString());
-                    s.append(", from: ");
-                    s.append(oldCellValue == null ? null : oldCellValue.toString());
-                    s.append(", to: ");
-                    s.append(newCellValue == null ? null : newCellValue.toString());
-                    changes.add(s.toString());
-                    s.setLength(0);
+                    String s = "Cell changed at location: " + properCoord + ", from: " +
+                            (oldCellValue == null ? null : oldCellValue.toString()) + ", to: " +
+                            (newCellValue == null ? null : newCellValue.toString());
+                    changes.add(new Delta(Delta.Location.CELL, Delta.Type.UPDATE, s));
                 }
             }
             else
             {
                 Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
-                s.append("Cell added at location: ");
-                s.append(properCoord.toString());
-                s.append(", value: ");
-                s.append(newCellValue == null ? null : newCellValue.toString());
-                changes.add(s.toString());
-                s.setLength(0);
+                String s = "Cell added at location: " + properCoord + ", value: " + (newCellValue == null ? null : newCellValue.toString());
+                changes.add(new Delta(Delta.Location.CELL, Delta.Type.ADD, s));
+            }
+        }
+
+        for (Map.Entry<Set<Column>, T> entry : old.cells.entrySet())
+        {
+            Set<Column> oldCellKey = entry.getKey();
+            T oldCellValue = entry.getValue();
+
+            if (!cells.containsKey(oldCellKey))
+            {
+                Map<String, Object> properCoord = idCoordToProperCoord(oldCellKey);
+                String s = "Cell removed at location: " + properCoord + ", value: " + (oldCellValue == null ? null : oldCellValue.toString());
+                changes.add(new Delta(Delta.Location.CELL, Delta.Type.DELETE, s));
             }
         }
         return changes;
+    }
+
+    static List<Delta> compareMetaProperties(Map<String, Object> oldMeta, Map<String, Object> newMeta, Delta.Location location, String locName)
+    {
+        List<Delta> changes = new ArrayList<>();
+        Set<String> oldKeys = new CaseInsensitiveSet<>(oldMeta.keySet());
+        Set<String> sameKeys = new CaseInsensitiveSet<>(newMeta.keySet());
+        sameKeys.retainAll(oldKeys);
+
+        Set<String> addedKeys  = new CaseInsensitiveSet<>(newMeta.keySet());
+        addedKeys.removeAll(sameKeys);
+        if (!addedKeys.isEmpty())
+        {
+            StringBuilder s = makeMap(newMeta, addedKeys);
+            String entry = addedKeys.size() > 1 ? "meta-entries" : "meta-entry";
+            changes.add(new Delta(location, Delta.Type.ADD, locName + " " + entry + " added: " + s));
+        }
+
+        Set<String> deletedKeys  = new CaseInsensitiveSet<>(oldMeta.keySet());
+        deletedKeys.removeAll(sameKeys);
+        if (!deletedKeys.isEmpty())
+        {
+            StringBuilder s = makeMap(oldMeta, deletedKeys);
+            String entry = deletedKeys.size() > 1 ? "meta-entries" : "meta-entry";
+            changes.add(new Delta(location, Delta.Type.DELETE, locName + " " + entry + " deleted: " + s));
+        }
+
+        int i = 0;
+        StringBuilder s = new StringBuilder();
+        for (String key : sameKeys)
+        {
+            if (!DeepEquals.deepEquals(oldMeta.get(key), newMeta.get(key)))
+            {
+                s.append(key + "->" + oldMeta.get(key) + " ==> " + key + "->" + newMeta.get(key) + ", ");
+                i++;
+            }
+        }
+        if (i > 0)
+        {
+            s.setLength(s.length() - 2);     // remove extra ", " at end
+            String entry = i > 1 ? "meta-entries" : "meta-entry";
+            changes.add(new Delta(location, Delta.Type.UPDATE, locName + " " + entry + " changed: " + s));
+        }
+
+        return changes;
+    }
+
+    private static StringBuilder makeMap(Map<String, Object> newMeta, Set<String> addedKeys)
+    {
+        StringBuilder s = new StringBuilder();
+        Iterator<String> i = addedKeys.iterator();
+        while (i.hasNext())
+        {
+            String key = i.next();
+            s.append(key);
+            s.append("->");
+            s.append(newMeta.get(key));
+            if (i.hasNext())
+            {
+                s.append(", ");
+            }
+        }
+        return s;
     }
 
     private Map<String, Object> idCoordToProperCoord(Set<Column> idCoord)

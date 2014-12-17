@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.proximity.Distance;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.DeepEquals;
 
 import java.util.Collections;
 import java.util.Map;
@@ -195,16 +194,6 @@ public class Column implements Comparable<Comparable>
 	public int getDisplayOrder()
 	{
 		return displayOrder;
-    }
-
-    String compareMetaProperties(Column oldCol)
-    {
-        if (!DeepEquals.deepEquals(getMetaProperties(), oldCol.getMetaProperties()))
-        {
-            return "Column properties differ on column: " + value + ", from: " +
-                    oldCol.getMetaProperties() + ", to: " + getMetaProperties();
-        }
-        return "";
     }
 
 	public int compareTo(Comparable that)

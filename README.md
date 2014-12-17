@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.0.4</version>
+  <version>3.0.6</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -83,6 +83,10 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.0.6
+ * Changed `getDeltaDescription()` to return a list of `Delta` objects, which contain the textual difference as well as the location (NCube, Axis, Column, Cell) of the difference and the type of difference (ADD, DELETE, UPDATE).
+* 3.0.5
+ * Added `getDeltaDescription()` to `NCube` which returns a `List` of differences between the two cubes, each entry is a unique difference.  An empty list means there are no differences.
 * 3.0.4
  * Test results now confine all output to the RuleInfo (no more output in the output keys besides '_rule').
  * Formatting of test output now includes `System.out` and `System.err`.  `System.err` output shows in dark red (typical of modern IDEs).

@@ -142,19 +142,6 @@ public class TestUrlCommandCell
         {
             assertTrue(e.getMessage().contains("not found on axis"));
         }
-
-        // Cause null urlLoader (it won't find URLs in NCubeManager for version 9.8.7)
-        coord.put("content.name", "file");
-        cube.setApplicationID(new ApplicationID(cube.getApplicationID().getTenant(), cube.getApplicationID().getApp(), "9.8.7", cube.getApplicationID().getStatus()));
-        try
-        {
-            cube.getCell(coord);
-            fail("Should not make it here");
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().contains("Error occurred executing"));
-        }
     }
 
     @Test

@@ -200,29 +200,32 @@ public class NCubeManager
     /**
      * Fetch the classloader for the given ApplicationID.
      */
-    @Deprecated
-    public static URLClassLoader getUrlClassLoader(ApplicationID appId)
-    {
-        validateAppId(appId);
-        return urlClassLoaders.get(appId);
-    }
-
-    /**
-     * Fetch the classloader for the given ApplicationID.
-     */
     static URLClassLoader getUrlClassLoader(ApplicationID appId, String name)
     {
         validateAppId(appId);
         if(!name.toLowerCase().startsWith("sys.classpath") && !name.toLowerCase().startsWith("sys.bootstrap"))
         {
-            while(!isAppInitialized.containsKey(appId))
+            if (!isAppInitialized.containsKey(appId))
             {
-                try
+                Object[] ncubeInfoDtos = getCubeRecordsFromDatabase(appId, "sys.classpath");
+                if (ncubeInfoDtos.length > 0)
                 {
-                    LOG.info("Blocking on app: " + appId + " while attempting to fetch " + name);
-                    Thread.sleep(100);
+                    while (!isAppInitialized.containsKey(appId))
+                    {
+                        try
+                        {
+                            LOG.info("Blocking on app: " + appId + " while attempting to fetch " + name);
+                            Thread.sleep(100);
+                        }
+                        catch (InterruptedException ignored)
+                        {
+                        }
+                    }
                 }
-                catch(InterruptedException ignored){}
+                else
+                {
+                    isAppInitialized.put(appId, true);
+                }
             }
         }
         return urlClassLoaders.get(appId);
@@ -788,7 +791,6 @@ public class NCubeManager
         if (cpCube == null)
         {
             LOG.debug("no sys.classpath exists for this application:  " + appId);
-            isAppInitialized.put(appId, true);
             return;
         }
 

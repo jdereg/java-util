@@ -63,6 +63,7 @@ public class NCubeManager
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
+    private static final Map<ApplicationID, Object> isAppInitialized = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
 
@@ -199,9 +200,31 @@ public class NCubeManager
     /**
      * Fetch the classloader for the given ApplicationID.
      */
+    @Deprecated
     public static URLClassLoader getUrlClassLoader(ApplicationID appId)
     {
         validateAppId(appId);
+        return urlClassLoaders.get(appId);
+    }
+
+    /**
+     * Fetch the classloader for the given ApplicationID.
+     */
+    static URLClassLoader getUrlClassLoader(ApplicationID appId, String name)
+    {
+        validateAppId(appId);
+        if(!name.toLowerCase().startsWith("sys.classpath") && !name.toLowerCase().startsWith("sys.bootstrap"))
+        {
+            while(!isAppInitialized.containsKey(appId))
+            {
+                try
+                {
+                    LOG.info("Blocking on app: " + appId + " while attempting to fetch " + name);
+                    Thread.sleep(100);
+                }
+                catch(InterruptedException ignored){}
+            }
+        }
         return urlClassLoaders.get(appId);
     }
 
@@ -765,6 +788,7 @@ public class NCubeManager
         if (cpCube == null)
         {
             LOG.debug("no sys.classpath exists for this application:  " + appId);
+            isAppInitialized.put(appId, true);
             return;
         }
 
@@ -772,6 +796,7 @@ public class NCubeManager
         {
             List<String> urls = (List<String>)cpCube.getCell(map);
             addUrlsToClassLoader(urls, urlClassLoader);
+            isAppInitialized.put(appId, true);
         }
         catch (Exception e)
         {

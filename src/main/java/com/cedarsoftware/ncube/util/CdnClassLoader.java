@@ -41,34 +41,7 @@ public class CdnClassLoader extends GroovyClassLoader
 
     protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
-        return isLocalOnlyClass(name) ? super.getParent().loadClass(name) : super.findClass(name);
-    }
-
-    boolean isLocalOnlyClass(String name)
-    {
-        if (name.startsWith("java.") ||
-                name.startsWith("groovy.") ||
-                name.startsWith("org.") ||
-                name.startsWith("net.") ||
-                name.startsWith("com.cedarsoftware") ||
-                name.startsWith("ncube$grv") ||
-                name.startsWith("ncube.grv") ||
-                (name.startsWith("com.gaic") && name.contains("$")))
-        {
-            return true;
-        }
-
-        if (_preventRemoteBeanInfo && name.endsWith("BeanInfo"))
-        {
-            return true;
-        }
-
-        if (_preventRemoteCustomizer && name.endsWith("Customizer"))
-        {
-            return true;
-        }
-
-        return false;
+        return super.getParent().loadClass(name);
     }
 
     /**
@@ -77,6 +50,11 @@ public class CdnClassLoader extends GroovyClassLoader
      */
     boolean isLocalOnlyResource(String name)
     {
+        if (name.endsWith(".class"))
+        {
+            return true;
+        }
+
         //  Groovy ASTTransform Service
         if (name.endsWith("org.codehaus.groovy.transform.ASTTransformation"))
         {

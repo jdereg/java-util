@@ -83,6 +83,9 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.0.8
+ * Bug fix: Threading issue in NCubeManager during initialization.  GroovyClassLoaders could be accessed before the resource URLs were added to the GroovyClassLoader.
+ * Bug fix: CdnClassLoader was allowing .class files to be loaded remotely, which 1) is too slow to allow (.class files are attempted to be loaded with HTTP GET which fails very slowly with a 404, and 2) is insecure.  Instead, a future version will allow a 'white-less' of acceptable classes that can be remotely loaded.
 * 3.0.6 / 3.0.7
  * Changed `getDeltaDescription()` to return a list of `Delta` objects, which contain the textual difference as well as the location (NCube, Axis, Column, Cell) of the difference and the type of difference (ADD, DELETE, UPDATE).
 * 3.0.5

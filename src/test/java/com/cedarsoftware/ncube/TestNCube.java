@@ -5525,6 +5525,29 @@ public class TestNCube
     }
 
     @Test
+    public void testDeltaDescriptionAxisDeletedAndColumChanged()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        Axis axis = cube.getAxis("gender");
+        Column col = axis.findColumn("male");
+        cube.updateColumn(col.id, "mule");
+
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.deleteAxis("agE");
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(2, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("removed"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("age"));
+
+        assertTrue(delta.get(1).toString().toLowerCase().contains("column"));
+        assertTrue(delta.get(1).toString().toLowerCase().contains("changed"));
+        assertTrue(delta.get(1).toString().toLowerCase().contains("male"));
+        assertTrue(delta.get(1).toString().toLowerCase().contains("mule"));
+    }
+
+    @Test
     public void testSha1CollectionCell()
     {
         NCube cube = NCubeManager.getNCubeFromResource("delta.json");

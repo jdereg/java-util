@@ -2322,17 +2322,13 @@ public class NCube<T>
             axesChanged = true;
         }
 
-        // Different dimensionality, don't compare cells
-        if (axesChanged)
-        {
-            return changes;
-        }
-
-        Map<Column, Column> idMap = new HashMap<>();
-
         for (Axis newAxis : axisList.values())
         {
             Axis oldAxis = old.getAxis(newAxis.getName());
+            if (oldAxis == null)
+            {
+                continue;
+            }
             if (!newAxis.areAxisPropsEqual(oldAxis))
             {
                 String s = "Axis properties changed from " + oldAxis.getAxisPropString() + " to " + newAxis.getAxisPropString();
@@ -2348,7 +2344,7 @@ public class NCube<T>
                 if (oldCol == null)
                 {
                     String s = "Column: " + newCol.getValue() + " added to axis: " + newAxis.getName();
-                    changes.add(new Delta(Delta.Location.COLUMN, Delta.Type.ADD, s.toString()));
+                    changes.add(new Delta(Delta.Location.COLUMN, Delta.Type.ADD, s));
                 }
                 else
                 {   // Check Column meta properties
@@ -2372,6 +2368,12 @@ public class NCube<T>
                     changes.add(new Delta(Delta.Location.COLUMN, Delta.Type.DELETE, s));
                 }
             }
+        }
+
+        // Different dimensionality, don't compare cells
+        if (axesChanged)
+        {
+            return changes;
         }
 
         for (Map.Entry<Set<Column>, T> entry : cells.entrySet())
@@ -2406,9 +2408,25 @@ public class NCube<T>
 
             if (!cells.containsKey(oldCellKey))
             {
-                Map<String, Object> properCoord = idCoordToProperCoord(oldCellKey);
-                String s = "Cell removed at location: " + properCoord + ", value: " + (oldCellValue == null ? null : oldCellValue.toString());
-                changes.add(new Delta(Delta.Location.CELL, Delta.Type.DELETE, s));
+                boolean allColsStillExist = true;
+                for (Column column : oldCellKey)
+                {
+                    Axis axis = getAxisFromColumnId(column.id);
+                    if (axis == null)
+                    {
+                        allColsStillExist = false;
+                        break;
+                    }
+                }
+
+                // Make sure all columns for this cell still exist before reporting it as removed.  Otherwise, a
+                // dropped column would report a ton of removed cells.
+                if (allColsStillExist)
+                {
+                    Map<String, Object> properCoord = idCoordToProperCoord(oldCellKey);
+                    String s = "Cell removed at location: " + properCoord + ", value: " + (oldCellValue == null ? null : oldCellValue.toString());
+                    changes.add(new Delta(Delta.Location.CELL, Delta.Type.DELETE, s));
+                }
             }
         }
         return changes;
@@ -2513,7 +2531,7 @@ public class NCube<T>
         return properCoord;
     }
 
-    public long getMaxAxisId()
+    long getMaxAxisId()
     {
         long max = 0;
         for (Axis axis : axisList.values())

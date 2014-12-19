@@ -5325,167 +5325,164 @@ public class TestNCube
         assertTrue(delta.get(0).toString().toLowerCase().contains("funkey"));
     }
 
-//    @Test
-//    public void testDeltaDescriptionCubeMetaProp()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        cube2.setMetaProperty("foo", "bar");
-//        List<Delta> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//        assertTrue(delta.get(0).toString().toLowerCase().contains("meta"));
-//        assertTrue(delta.get(0).toString().toLowerCase().contains("prop"));
-//        assertTrue(delta.get(0).toString().toLowerCase().contains("changed"));
-//        assertTrue(delta.get(0).toString().toLowerCase().contains("from"));
-//        assertTrue(delta.get(0).toString().toLowerCase().contains("foo"));
-//        assertTrue(delta.get(0).toString().toLowerCase().contains(" to"));
-//        assertTrue(delta.get(0).toString().toLowerCase().contains("bar"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionDimMismatchAdded()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        cube2.addAxis(getStatesAxis());
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//        assertTrue(delta.get(0).toLowerCase().contains("new"));
-//        assertTrue(delta.get(0).toLowerCase().contains("axis"));
-//        assertTrue(delta.get(0).toLowerCase().contains("state"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionAxisPropDiff()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        Axis age = cube2.getAxis("age");
-//        age.setColumnOrder(Axis.SORTED);
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//        assertTrue(delta.get(0).toLowerCase().contains("axis"));
-//        assertTrue(delta.get(0).toLowerCase().contains("prop"));
-//        assertTrue(delta.get(0).toLowerCase().contains("changed"));
-//        assertTrue(delta.get(0).toLowerCase().contains("sorted"));
-//        assertTrue(delta.get(0).toLowerCase().contains("unsorted"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionAxisMetaPropDiff()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        Axis age = cube2.getAxis("age");
-//        age.setMetaProperty("foo", 18);
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//        assertTrue(delta.get(0).toLowerCase().contains("meta"));
-//        assertTrue(delta.get(0).toLowerCase().contains("prop"));
-//        assertTrue(delta.get(0).toLowerCase().contains("changed"));
-//        assertTrue(delta.get(0).toLowerCase().contains("foo"));
-//        assertTrue(delta.get(0).toLowerCase().contains("18"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionDimMismatchRemoved()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        cube2.deleteAxis("gender");
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//        assertTrue(delta.get(0).toLowerCase().contains("removed"));
-//        assertTrue(delta.get(0).toLowerCase().contains("axis"));
-//        assertTrue(delta.get(0).toLowerCase().contains("gender"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionDimMismatchAddRemove()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        cube2.deleteAxis("gender");
-//        cube2.addAxis(getStatesAxis());
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(2, delta.size());
-//
-//        assertTrue(delta.get(0).toLowerCase().contains("new"));
-//        assertTrue(delta.get(0).toLowerCase().contains("axis"));
-//        assertTrue(delta.get(0).toLowerCase().contains("state"));
-//
-//        assertTrue(delta.get(1).toLowerCase().contains("removed"));
-//        assertTrue(delta.get(1).toLowerCase().contains("axis"));
-//        assertTrue(delta.get(1).toLowerCase().contains("gender"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionColumnAdded()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        cube2.addColumn("age", new Range(55, 70));
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//
-//        assertTrue(delta.get(0).toLowerCase().contains("column"));
-//        assertTrue(delta.get(0).toLowerCase().contains("55"));
-//        assertTrue(delta.get(0).toLowerCase().contains("70"));
-//        assertTrue(delta.get(0).toLowerCase().contains("added"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionColumnDeleted()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        cube2.deleteColumn("gender", "male");
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//
-//        assertTrue(delta.get(0).toLowerCase().contains("column"));
-//        assertTrue(delta.get(0).toLowerCase().contains("male"));
-//        assertTrue(delta.get(0).toLowerCase().contains("removed"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionColumnMetaProp()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        Axis age = cube2.getAxis("age");
-//        Column column = age.findColumn(48);
-//        column.setMetaProperty("baz", "qux");
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//
-//        assertTrue(delta.get(0).toLowerCase().contains("column"));
-//        assertTrue(delta.get(0).toLowerCase().contains("prop"));
-//        assertTrue(delta.get(0).toLowerCase().contains("differ"));
-//        assertTrue(delta.get(0).toLowerCase().contains("30"));
-//        assertTrue(delta.get(0).toLowerCase().contains("55"));
-//        assertTrue(delta.get(0).toLowerCase().contains("baz"));
-//        assertTrue(delta.get(0).toLowerCase().contains("qux"));
-//    }
-//
-//    @Test
-//    public void testDeltaDescriptionCellAdded()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
-//        Map coord = new HashMap();
-//        coord.put("age", 48);
-//        coord.put("gender", "male");
-//        cube.removeCell(coord);
-//        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//
-//        assertTrue(delta.get(0).toLowerCase().contains("cell"));
-//        assertTrue(delta.get(0).toLowerCase().contains("added"));
-//        assertTrue(delta.get(0).toLowerCase().contains("male"));
-//        assertTrue(delta.get(0).toLowerCase().contains("30"));
-//        assertTrue(delta.get(0).toLowerCase().contains("value: 1"));
-//    }
+    @Test
+    public void testDeltaDescriptionCubeMetaProp()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.setMetaProperty("foo", "bar");
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+        assertTrue(delta.get(0).toString().toLowerCase().contains("meta"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("entry"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("foo->bar"));
+    }
+
+    @Test
+    public void testDeltaDescriptionDimMismatchAdded()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.addAxis(getStatesAxis());
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("state"));
+    }
+
+    @Test
+    public void testDeltaDescriptionAxisPropDiff()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        Axis age = cube2.getAxis("age");
+        age.setColumnOrder(Axis.SORTED);
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+        assertTrue(delta.get(0).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("prop"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("changed"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("sorted"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("unsorted"));
+    }
+
+    @Test
+    public void testDeltaDescriptionAxisMetaPropDiff()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        Axis age = cube2.getAxis("age");
+        age.setMetaProperty("foo", 18);
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+        assertTrue(delta.get(0).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("age"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("meta"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("entry"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("foo->18"));
+    }
+
+    @Test
+    public void testDeltaDescriptionDimMismatchRemoved()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.deleteAxis("gender");
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+        assertTrue(delta.get(0).toString().toLowerCase().contains("removed"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("gender"));
+    }
+
+    @Test
+    public void testDeltaDescriptionDimMismatchAddRemove()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.deleteAxis("gender");
+        cube2.addAxis(getStatesAxis());
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(2, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("state"));
+
+        assertTrue(delta.get(1).toString().toLowerCase().contains("removed"));
+        assertTrue(delta.get(1).toString().toLowerCase().contains("axis"));
+        assertTrue(delta.get(1).toString().toLowerCase().contains("gender"));
+    }
+
+    @Test
+    public void testDeltaDescriptionColumnAdded()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.addColumn("age", new Range(55, 70));
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("column"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("55"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("70"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+    }
+
+    @Test
+    public void testDeltaDescriptionColumnDeleted()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        cube2.deleteColumn("gender", "male");
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("column"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("male"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("removed"));
+    }
+
+    @Test
+    public void testDeltaDescriptionColumnMetaProp()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        Axis age = cube2.getAxis("age");
+        Column column = age.findColumn(48);
+        column.setMetaProperty("baz", "qux");
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("column"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("age"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("meta"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("entry"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("baz->qux"));
+    }
+
+    @Test
+    public void testDeltaDescriptionCellAdded()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        Map coord = new HashMap();
+        coord.put("age", 48);
+        coord.put("gender", "male");
+        cube.removeCell(coord);
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("cell"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("added"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("male"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("30"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("value: 1"));
+    }
 
     @Test
     public void testSha1CollectionCell()
@@ -5521,26 +5518,26 @@ public class TestNCube
         assertNotEquals(sha1, cube.sha1());
     }
 
-//    @Test
-//    public void testRuleDelta()
-//    {
-//        NCube cube = NCubeManager.getNCubeFromResource("deltaRule.json");
-//        NCube cube2 = NCubeManager.getNCubeFromResource("deltaRule.json");
-//
-//        Map coord = new HashMap();
-//        coord.put("rule", "Init Random");
-//        cube2.setCell("bogus", coord);
-//
-//        List<String> delta = cube2.getDeltaDescription(cube);
-//        assertEquals(1, delta.size());
-//
-//        assertTrue(delta.get(0).toLowerCase().contains("cell"));
-//        assertTrue(delta.get(0).toLowerCase().contains("changed"));
-//        assertTrue(delta.get(0).toLowerCase().contains("rule"));
-//        assertTrue(delta.get(0).toLowerCase().contains("init random"));
-//        assertTrue(delta.get(0).toLowerCase().contains("input.random"));
-//        assertTrue(delta.get(0).toLowerCase().contains("bogus"));
-//    }
+    @Test
+    public void testRuleDelta()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("deltaRule.json");
+        NCube cube2 = NCubeManager.getNCubeFromResource("deltaRule.json");
+
+        Map coord = new HashMap();
+        coord.put("rule", "Init Random");
+        cube2.setCell("bogus", coord);
+
+        List<Delta> delta = cube2.getDeltaDescription(cube);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("cell"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("changed"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("rule"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("init random"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("input.random"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("bogus"));
+    }
 
     @Test
     public void testMetaCompare()

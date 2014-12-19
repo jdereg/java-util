@@ -5485,6 +5485,46 @@ public class TestNCube
     }
 
     @Test
+    public void testDeltaDescriptionCellCleared()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        Map coord = new HashMap();
+        coord.put("age", 48);
+        coord.put("gender", "male");
+        cube.removeCell(coord);
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        List<Delta> delta = cube.getDeltaDescription(cube2);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("cell"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("removed"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("gender"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("male"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("age"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("30"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("value"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("1"));
+    }
+
+    @Test
+    public void testDeltaDescriptionColumChanged()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("delta.json");
+        Axis axis = cube.getAxis("gender");
+        Column col = axis.findColumn("male");
+        cube.updateColumn(col.id, "mule");
+
+        NCube cube2 = NCubeManager.getNCubeFromResource("delta.json");
+        List<Delta> delta = cube.getDeltaDescription(cube2);
+        assertEquals(1, delta.size());
+
+        assertTrue(delta.get(0).toString().toLowerCase().contains("column"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("changed"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("male"));
+        assertTrue(delta.get(0).toString().toLowerCase().contains("mule"));
+    }
+
+    @Test
     public void testSha1CollectionCell()
     {
         NCube cube = NCubeManager.getNCubeFromResource("delta.json");

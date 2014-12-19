@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.AbstractMap;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -613,7 +614,7 @@ public class TestCaseInsensitiveMap
         s3.add("one");
         s3.add("three");
         s3.add("five");
-        assertTrue(s3.equals(s));
+        assertFalse(s3.equals(s));
         assertTrue(s.equals(s3));
 
         Set s4 = new CaseInsensitiveSet();
@@ -1038,6 +1039,28 @@ public class TestCaseInsensitiveMap
         Set<String> newKeys = newMap.keySet();
         boolean ret = newKeys.removeAll(oldKeys);
         assertTrue(ret);
+    }
+
+    @Test
+    public void testAgainstUnmodifiableMap()
+    {
+        Map<String, String> oldMeta = new CaseInsensitiveMap<>();
+        oldMeta.put("foo", "baz");
+        oldMeta = Collections.unmodifiableMap(oldMeta);
+        oldMeta.keySet();
+        Map<String, String> newMeta = new CaseInsensitiveMap<>();
+        newMeta.put("foo", "baz");
+        newMeta.put("bar", "qux");
+        newMeta = Collections.unmodifiableMap(newMeta);
+
+        Set<String> oldKeys = new CaseInsensitiveSet<>(oldMeta.keySet());
+        Set<String> sameKeys = new CaseInsensitiveSet<>(newMeta.keySet());
+        sameKeys.retainAll(oldKeys);
+
+        Set<String> addedKeys  = new CaseInsensitiveSet<>(newMeta.keySet());
+        addedKeys.removeAll(sameKeys);
+        assertEquals(1, addedKeys.size());
+        assertTrue(addedKeys.contains("BAR"));
     }
 
     // Used only during development right now

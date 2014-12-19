@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -348,6 +349,26 @@ public class TestCaseInsensitiveSet
         newSet.add("qux");
         boolean ret = newSet.removeAll(oldSet);
         assertTrue(ret);
+    }
+
+    @Test
+    public void testAgainstUnmodifiableSet()
+    {
+        Set<String> oldKeys = new CaseInsensitiveSet<>();
+        oldKeys.add("foo");
+        oldKeys = Collections.unmodifiableSet(oldKeys);
+        Set<String> newKeys = new CaseInsensitiveSet<>();
+        newKeys.add("foo");
+        newKeys.add("bar");
+        newKeys = Collections.unmodifiableSet(newKeys);
+
+        Set<String> sameKeys = new CaseInsensitiveSet<>(newKeys);
+        sameKeys.retainAll(oldKeys);
+
+        Set<String> addedKeys  = new CaseInsensitiveSet<>(newKeys);
+        addedKeys.removeAll(sameKeys);
+        assertEquals(1, addedKeys.size());
+        assertTrue(addedKeys.contains("BAR"));
     }
 
     private Set get123()

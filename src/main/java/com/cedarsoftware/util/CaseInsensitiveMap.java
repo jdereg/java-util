@@ -225,12 +225,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     private class LocalSet extends AbstractSet<K>
     {
         final Map<K, V> localMap = CaseInsensitiveMap.this;
-        final Iterator iter;
+        Iterator iter;
 
         public LocalSet()
-        {
-            iter = map.keySet().iterator();
-        }
+        { }
 
         public boolean contains(Object o)
         {
@@ -350,6 +348,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public Iterator<K> iterator()
         {
+            iter = map.keySet().iterator();
             return new Iterator<K>()
             {
                 Object lastReturned = null;
@@ -385,11 +384,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     private class EntrySet<E> extends LinkedHashSet<E>
     {
         final Map<K, V> localMap = CaseInsensitiveMap.this;
-        final Iterator<Entry<K, V>> iter;
+        Iterator<Entry<K, V>> iter;
 
         public EntrySet()
         {
-            iter = map.entrySet().iterator();
         }
 
         public int size()
@@ -518,6 +516,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public Iterator iterator()
         {
+            iter = map.entrySet().iterator();
             return new Iterator()
             {
                 Entry lastReturned = null;

@@ -63,7 +63,7 @@ public class NCubeManager
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
-    private static final Map<ApplicationID, Object> isAppInitialized = new ConcurrentHashMap<>();
+    private static final Map<ApplicationID, Boolean> isAppInitialized = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
 
@@ -203,7 +203,9 @@ public class NCubeManager
     static URLClassLoader getUrlClassLoader(ApplicationID appId, String name)
     {
         validateAppId(appId);
-        if(!name.toLowerCase().startsWith("sys.classpath") && !name.toLowerCase().startsWith("sys.bootstrap"))
+        if (!name.toLowerCase().startsWith("sys.classpath") &&
+                !name.toLowerCase().startsWith("sys.bootstrap") &&
+                !name.toLowerCase().startsWith("sys.version"))
         {
             if (!isAppInitialized.containsKey(appId))
             {
@@ -217,9 +219,7 @@ public class NCubeManager
                             LOG.info("Blocking on app: " + appId + " while attempting to fetch " + name);
                             Thread.sleep(100);
                         }
-                        catch (InterruptedException ignored)
-                        {
-                        }
+                        catch (InterruptedException ignored) { }
                     }
                 }
                 else
@@ -339,6 +339,7 @@ public class NCubeManager
             classLoader.clearCache();
         }
         urlClassLoaders.remove(appId);
+        isAppInitialized.remove(appId);
     }
 
     public static void clearCache()
@@ -359,6 +360,7 @@ public class NCubeManager
         {
             applicationIDGroovyClassLoaderEntry.getValue().clearCache();
         }
+        isAppInitialized.clear();
     }
 
     /**
@@ -772,8 +774,8 @@ public class NCubeManager
 
     static void resolveClassPath(ApplicationID appId)
     {
-        if (urlClassLoaders.containsKey(appId))
-        {
+        if (urlClassLoaders.containsKey(appId) && isAppInitialized.containsKey(appId))
+        {   // ClassPath has been initialized
             return;
         }
 
@@ -790,7 +792,7 @@ public class NCubeManager
 
         if (cpCube == null)
         {
-            LOG.debug("no sys.classpath exists for this application:  " + appId);
+            LOG.info("no sys.classpath exists for this application:  " + appId);
             return;
         }
 

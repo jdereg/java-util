@@ -1452,6 +1452,24 @@ public class TestNCubeManager
         assertTrue(names.contains("c"));
     }
 
+    @Test
+    public void testClearCache()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "sys.classpath.cedar.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "cedar.hello.json");
+        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+
+        Map input = new HashMap();
+        Object out = cube.getCell(input);
+        assertEquals("Hello, world.", out);
+        NCubeManager.clearCache(defaultSnapshotApp);
+
+        cube = NCubeManager.getCube(defaultSnapshotApp, "hello");
+        out = cube.getCell(input);
+        assertEquals("Hello, world.", out);
+    }
+
     private void loadTestClassPathCubes()
     {
         NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.versions.json");

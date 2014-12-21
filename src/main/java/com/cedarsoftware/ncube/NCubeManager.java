@@ -155,8 +155,8 @@ public class NCubeManager
             NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
             String cubeName = cube.name.toLowerCase();
-            if (!cubeName.startsWith("tx."))
-            {   // Do not cache transactional cubes
+            if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
+            {   // Allow cubes to not be cached by specified 'cache':false as a cube meta-property.
                 getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
             }
             return cube;
@@ -203,10 +203,12 @@ public class NCubeManager
     static URLClassLoader getUrlClassLoader(ApplicationID appId, String name)
     {
         validateAppId(appId);
-        if(!name.toLowerCase().startsWith("sys.classpath") && !name.toLowerCase().startsWith("sys.bootstrap"))
+        if (!name.toLowerCase().startsWith("sys.classpath") &&
+                !name.toLowerCase().startsWith("sys.boot") &&
+                !name.toLowerCase().startsWith("sys.ver"))
         {
             if (!isAppInitialized.containsKey(appId))
-        {
+            {
                 Object[] ncubeInfoDtos = getCubeRecordsFromDatabase(appId, "sys.classpath");
                 if (ncubeInfoDtos.length > 0)
                 {
@@ -216,18 +218,17 @@ public class NCubeManager
                         {
                             LOG.info("Blocking on app: " + appId + " while attempting to fetch " + name);
                             Thread.sleep(100);
-        }
+                        }
                         catch (InterruptedException ignored)
-        {
-        }
+                        { }
                     }
                 }
-        else
-        {
+                else
+                {
                     isAppInitialized.put(appId, true);
+                }
             }
         }
-    }
         return urlClassLoaders.get(appId);
     }
 

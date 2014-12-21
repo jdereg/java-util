@@ -209,7 +209,7 @@ public class NCubeManager
     /**
      * Fetch the classloader for the given ApplicationID.
      */
-    static URLClassLoader getUrlClassLoader(ApplicationID appId)
+    static URLClassLoader getUrlClassLoader(ApplicationID appId, String name)
     {
         validateAppId(appId);
         if (isAppClassPathInitialized(appId))

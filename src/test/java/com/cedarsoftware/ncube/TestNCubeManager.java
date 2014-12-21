@@ -676,12 +676,12 @@ public class TestNCubeManager
         String name = "Fire";
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
         ApplicationID customId = new ApplicationID("NONE", "updateCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        assertNotNull(NCubeManager.getUrlClassLoader(customId));
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, name));
         assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
 
-        assertEquals(0, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(0, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
         NCubeManager.createCube(customId, testCube, USER_ID);
@@ -691,13 +691,13 @@ public class TestNCubeManager
         assertEquals(testCube, cache.get("sys.classpath"));
 
         assertTrue(NCubeManager.updateCube(customId, testCube, USER_ID));
-        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertNull(NCubeManager.getUrlClassLoader(customId, name));
         assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
         testCube = NCubeManager.getCube(customId, "sys.classpath");
         cache = NCubeManager.getCacheForApp(customId);
         assertEquals(1, cache.size());
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));
@@ -709,13 +709,13 @@ public class TestNCubeManager
         String name = "Dude";
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
         ApplicationID customId = new ApplicationID("NONE", "renameCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name());
-        final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId);
+        final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId, name);
         assertNotNull(urlClassLoader1);
         assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
 
-        final URLClassLoader urlClassLoader = NCubeManager.getUrlClassLoader(customId);
+        final URLClassLoader urlClassLoader = NCubeManager.getUrlClassLoader(customId, name);
         assertEquals(0, urlClassLoader.getURLs().length);
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
@@ -730,12 +730,12 @@ public class TestNCubeManager
         assertEquals(testCube, cache.get("sys.mistake"));
 
         assertTrue(NCubeManager.renameCube(customId, "sys.mistake", "sys.classpath"));
-        assertNull(NCubeManager.getUrlClassLoader(customId));
+        assertNull(NCubeManager.getUrlClassLoader(customId, name));
         assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
         testCube = NCubeManager.getCube(customId, "sys.classpath");
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId).getURLs().length);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));
@@ -1220,13 +1220,13 @@ public class TestNCubeManager
         createCube();
 
         // force reload from hsql and reget classpath
-        assertEquals(1, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+        assertEquals(1, NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name).getURLs().length);
 
         NCubeManager.clearCache(defaultSnapshotApp);
-        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp));
+        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name));
 
         NCubeManager.getCube(defaultSnapshotApp, "test.AgeGender");
-        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp).getURLs().length);
+        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name).getURLs().length);
     }
 
     @Test

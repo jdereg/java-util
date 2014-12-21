@@ -109,7 +109,7 @@ public class GroovyTemplate extends UrlCommandCell
                 cmd = replaceScriptletNCubeRefs(cmd, Regexes.velocityPattern, "${", "}");
 
                 NCube ncube = (NCube) args.get("ncube");
-                GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(ncube.getApplicationID());
+                GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(ncube.getApplicationID(), ncube.getName());
                 InputStream in = urlLoader.getResourceAsStream("ncube/grv/closure/NCubeTemplateClosures.groovy");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
                 IOUtilities.close(in);

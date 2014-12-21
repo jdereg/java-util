@@ -339,6 +339,7 @@ public class NCubeManager
             classLoader.clearCache();
         }
         urlClassLoaders.remove(appId);
+        isAppInitialized.remove(appId);
     }
 
     public static void clearCache()
@@ -359,6 +360,8 @@ public class NCubeManager
         {
             applicationIDGroovyClassLoaderEntry.getValue().clearCache();
         }
+        urlClassLoaders.clear();
+        isAppInitialized.clear();
     }
 
     /**

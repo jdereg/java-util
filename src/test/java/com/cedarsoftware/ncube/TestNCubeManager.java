@@ -669,7 +669,6 @@ public class TestNCubeManager
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
     }
 
-
     @Test
     public void testUpdateCubeWithSysClassPath() throws Exception
     {
@@ -691,8 +690,8 @@ public class TestNCubeManager
         assertEquals(testCube, cache.get("sys.classpath"));
 
         assertTrue(NCubeManager.updateCube(customId, testCube, USER_ID));
-        assertNull(NCubeManager.getUrlClassLoader(customId, name));
-        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, name));
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
         testCube = NCubeManager.getCube(customId, "sys.classpath");
         cache = NCubeManager.getCacheForApp(customId);
@@ -730,8 +729,8 @@ public class TestNCubeManager
         assertEquals(testCube, cache.get("sys.mistake"));
 
         assertTrue(NCubeManager.renameCube(customId, "sys.mistake", "sys.classpath"));
-        assertNull(NCubeManager.getUrlClassLoader(customId, name));
-        assertEquals(0, NCubeManager.getCacheForApp(customId).size());
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, name));
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
         testCube = NCubeManager.getCube(customId, "sys.classpath");
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
@@ -742,10 +741,10 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testJsonToJavaBackup() throws Exception {
+    public void testJsonToJavaBackup() throws Exception
+    {
         //can remove when this support is gone
         URL u = NCubeManager.class.getResource("/files/oldFormatSimpleJsonArrayTest.json");
-        System.out.println(u.toString());
         byte[] encoded = Files.readAllBytes(Paths.get(u.toURI()));
         String cubeString = StringUtilities.createString(encoded, "UTF-8");
 

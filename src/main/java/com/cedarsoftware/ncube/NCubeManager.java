@@ -216,8 +216,19 @@ public class NCubeManager
         {
             return urlClassLoaders.get(appId);
         }
-        initializeClassLoaderWithAdditionalClassPaths(appId);
-        return urlClassLoaders.get(appId);
+
+        // Allow the ClassLoader to be returned even though it may not be initialized since it is a 'sys.' cube.
+        if (name.startsWith("sys.") && urlClassLoaders.containsKey(appId))
+        {
+            return urlClassLoaders.get(appId);
+        }
+        forceLoadOfSysCubes(appId);
+        if (name.startsWith("sys."))
+        {
+            return new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+        }
+
+        throw new IllegalStateException("Unable to initialize classpath for app: " + appId + ", cube: " + name);
     }
 
     /**
@@ -477,7 +488,9 @@ public class NCubeManager
 
         if (!isAppClassPathInitialized(appId))
         {
-            initializeClassLoaderWithAdditionalClassPaths(appId);
+            forceLoadOfSysCubes(appId);
+            resolveClassPath(appId);
+
         }
         return cubes;
     }
@@ -487,20 +500,15 @@ public class NCubeManager
      * required to be done before any non-system (sys.) cube is loaded, or before anyone asks
      * for the classloader scoped to their ApplicationID.
      */
-    private static void initializeClassLoaderWithAdditionalClassPaths(ApplicationID appId)
+    private static void forceLoadOfSysCubes(ApplicationID appId)
     {
         Map<String, Object> appCache = getCacheForApp(appId);
         Object[] sysCubes = getPersister().getCubeRecords(appId, "sys.%");
         if (sysCubes.length > 0)
         {
-            boolean hasSysClassPath = false;
             for (Object infoDto : sysCubes)
             {
                 NCubeInfoDto info = (NCubeInfoDto) infoDto;
-                if ("sys.classpath".equalsIgnoreCase(info.name))
-                {
-                    hasSysClassPath = true;
-                }
                 if (!appCache.containsKey(info.name.toLowerCase()))
                 {
                     NCube cube = getPersister().loadCube(info);
@@ -508,16 +516,6 @@ public class NCubeManager
                     getCacheForApp(cube.getApplicationID()).put(cube.name.toLowerCase(), cube);
                 }
             }
-            if (hasSysClassPath)
-            {
-                resolveClassPath(appId);
-            }
-        }
-        else
-        {
-            GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-            urlClassLoaders.put(appId, urlClassLoader);
-            isClassPathInitialized.put(appId, true);
         }
     }
 

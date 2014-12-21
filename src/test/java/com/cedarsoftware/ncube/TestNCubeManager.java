@@ -681,7 +681,8 @@ public class TestNCubeManager
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
 
-        assertEquals(0, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
+        URL[] urls = NCubeManager.getUrlClassLoader(customId, name).getURLs();
+        assertEquals(0, urls.length);
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
         NCubeManager.createCube(customId, testCube, USER_ID);

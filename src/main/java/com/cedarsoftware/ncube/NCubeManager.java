@@ -206,6 +206,12 @@ public class NCubeManager
         return urlClassLoaders.containsKey(appId) && isClassPathInitialized.containsKey(appId);
     }
 
+    static boolean doesAppHaveSysClassPathCube(ApplicationID appId)
+    {
+        Object[] info = getPersister().getCubeRecords(appId, "sys.classpath");
+        return !ArrayUtilities.isEmpty(info);
+    }
+
     /**
      * Fetch the classloader for the given ApplicationID.
      */
@@ -222,13 +228,23 @@ public class NCubeManager
         {
             return urlClassLoaders.get(appId);
         }
-        forceLoadOfSysCubes(appId);
         if (name.startsWith("sys."))
         {
-            return new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+            forceLoadOfSysCubes(appId);
+            GroovyClassLoader gcl = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+            urlClassLoaders.put(appId, gcl);
+            return gcl;
         }
-
-        throw new IllegalStateException("Unable to initialize classpath for app: " + appId + ", cube: " + name);
+        else
+        {
+            if (doesAppHaveSysClassPathCube(appId))
+            {
+                throw new IllegalStateException("Unable to initialize classpath for app: " + appId + ", cube: " + name);
+            }
+            GroovyClassLoader gcl = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+            urlClassLoaders.put(appId, gcl);
+            return gcl;
+        }
     }
 
     /**
@@ -490,7 +506,6 @@ public class NCubeManager
         {
             forceLoadOfSysCubes(appId);
             resolveClassPath(appId);
-
         }
         return cubes;
     }

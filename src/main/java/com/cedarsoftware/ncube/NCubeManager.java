@@ -785,13 +785,7 @@ public class NCubeManager
         GroovyClassLoader urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
         urlClassLoaders.put(appId, urlClassLoader);
 
-        Map map = new HashMap();
-        final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
-        map.put("env", StringUtilities.isEmpty(envLevel) ? "LOCAL" : envLevel);
-        map.put("username", System.getProperty("user.name"));
-
         NCube cpCube = getCube(appId, CLASSPATH_CUBE);
-
         if (cpCube == null)
         {
             LOG.debug("no sys.classpath exists for this application:  " + appId);
@@ -800,7 +794,14 @@ public class NCubeManager
 
         try
         {
+            // Fetch classpath List of Strings
+            Map map = new HashMap();
+            final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
+            map.put("env", StringUtilities.isEmpty(envLevel) ? "LOCAL" : envLevel);
+            map.put("username", System.getProperty("user.name"));
             List<String> urls = (List<String>)cpCube.getCell(map);
+
+            // Add the List of String URLs to the GroovyClassLoader
             addUrlsToClassLoader(urls, urlClassLoader);
             isAppInitialized.put(appId, true);
         }

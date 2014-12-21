@@ -161,7 +161,7 @@ public class TestCdnRouter
         setDefaultCdnRoutingProvider();
 
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
-        NCubeManager.getUrlClassLoader(appId, "bingo");
+        NCubeManager.getUrlClassLoader(appId, "hey");
         NCubeManager.getNCubeFromResource("cdnRouterTest.json");
 
         CdnRouter router = new CdnRouter();

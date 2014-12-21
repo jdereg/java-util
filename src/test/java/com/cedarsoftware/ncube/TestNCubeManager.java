@@ -681,8 +681,7 @@ public class TestNCubeManager
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, "sys.classpath.tests.json");
 
-        URL[] urls = NCubeManager.getUrlClassLoader(customId, name).getURLs();
-        assertEquals(0, urls.length);
+        assertEquals(0, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
         NCubeManager.createCube(customId, testCube, USER_ID);
@@ -736,7 +735,7 @@ public class TestNCubeManager
 
         testCube = NCubeManager.getCube(customId, "sys.classpath");
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, testCube.name).getURLs().length);
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get("sys.classpath"));

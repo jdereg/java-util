@@ -7,13 +7,11 @@ import java.sql.Statement;
 /**
  * Created by kpartlow on 10/28/2014.
  */
-public class MySqlTestingDatabaseManager implements TestingDatabaseManager
+public class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 {
-    private JdbcConnectionProvider provider;
-
     public MySqlTestingDatabaseManager(JdbcConnectionProvider p)
     {
-        provider = p;
+        super(p);
     }
 
     public void setUp() throws SQLException

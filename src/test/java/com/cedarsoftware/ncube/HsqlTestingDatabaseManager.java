@@ -7,12 +7,11 @@ import java.sql.Statement;
 /**
  * Created by kpartlow on 10/28/2014.
  */
-public class HsqlTestingDatabaseManager implements TestingDatabaseManager
+public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 {
-    JdbcConnectionProvider provider;
 
     public HsqlTestingDatabaseManager(JdbcConnectionProvider p) {
-        provider = p;
+        super(p);
     }
 
     public void setUp() throws SQLException
@@ -49,4 +48,5 @@ public class HsqlTestingDatabaseManager implements TestingDatabaseManager
             provider.releaseConnection(c);
         }
     }
+
 }

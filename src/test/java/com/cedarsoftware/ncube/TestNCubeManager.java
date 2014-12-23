@@ -6,6 +6,7 @@ import com.cedarsoftware.ncube.formatters.NCubeTestWriter;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
+import groovy.lang.GroovyClassLoader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -1213,19 +1214,22 @@ public class TestNCubeManager
     }
 
     @Test
-    public void testResolveClasspathWithInvalidUrl() throws Exception {
+    public void testResolveClasspathWithInvalidUrl() throws Exception
+    {
+        NCubeManager.clearCache();
         NCube cube = NCubeManager.getNCubeFromResource("sys.classpath.invalid.url.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
         createCube();
 
         // force reload from hsql and reget classpath
-        assertEquals(1, NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name).getURLs().length);
-
-        NCubeManager.clearCache(defaultSnapshotApp);
         assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name));
 
+        NCubeManager.clearCache(defaultSnapshotApp);
+        assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name));
+
         NCubeManager.getCube(defaultSnapshotApp, "test.AgeGender");
-        assertEquals(0, NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name).getURLs().length);
+        GroovyClassLoader loader = (GroovyClassLoader) NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name);
+        assertEquals(0, loader.getURLs().length);
     }
 
     @Test

@@ -339,7 +339,6 @@ public class NCubeManager
 
         if (classLoader == null)
         {
-            urlClassLoaders.remove(appId);
             isAppInitialized.remove(appId);
             resolveClassPath(appId);
             return;

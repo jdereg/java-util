@@ -77,18 +77,33 @@ public class TestingDatabaseHelper
     {
         getTestingDatabaseManager().setUp();
         NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister());
-
         setupTestClassPaths();
     }
 
     public static void setupTestClassPaths() throws Exception
     {
-        NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, "sys.classpath.tests.json");
-        NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.classpath.tests.json");
+        NCube cp = NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, "sys.classpath.tests.json");
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, cp, TestNCubeManager.USER_ID);
+        cp = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, "sys.classpath.tests.json");
+        NCubeManager.createCube(ApplicationID.defaultAppId, cp, TestNCubeManager.USER_ID);
     }
 
     public static void tearDownDatabase() throws Exception
     {
+        try
+        {
+            NCubeManager.deleteCube(TestNCubeManager.defaultSnapshotApp, "sys.classpath", TestNCubeManager.USER_ID);
+        }
+        catch(Exception ignored)
+        { }
+
+        try
+        {
+            NCubeManager.deleteCube(ApplicationID.defaultAppId, "sys.classpath", TestNCubeManager.USER_ID);
+        }
+        catch(Exception ignored)
+        { }
+
         getTestingDatabaseManager().tearDown();
         NCubeManager.clearCache();
     }

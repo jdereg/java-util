@@ -62,6 +62,7 @@ public class GroovyExpression extends GroovyBase
         groovy.append("import com.cedarsoftware.ncube.CellTypes\n");
         groovy.append("import com.cedarsoftware.ncube.Column\n");
         groovy.append("import com.cedarsoftware.ncube.CommandCell\n");
+        groovy.append("import com.cedarsoftware.ncube.Delta\n");
         groovy.append("import com.cedarsoftware.ncube.NCube\n");
         groovy.append("import com.cedarsoftware.ncube.NCubeInfoDto\n");
         groovy.append("import com.cedarsoftware.ncube.NCubeManager\n");

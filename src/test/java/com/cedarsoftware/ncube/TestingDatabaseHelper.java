@@ -1,6 +1,13 @@
 package com.cedarsoftware.ncube;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by kpartlow on 10/28/2014.
@@ -12,6 +19,28 @@ public class TestingDatabaseHelper
     public static int ORACLE = 3;
 
     public static int test_db = HSQL;
+
+    public static NCube[] getCubesFromDisk(String ...names) throws IOException
+    {
+        List<NCube> list = new ArrayList<NCube>(names.length);
+
+        for (String name : names) {
+            URL url = NCubeManager.class.getResource("/" + name);
+            File jsonFile = new File(url.getFile());
+
+            try (InputStream in = new FileInputStream(jsonFile))
+            {
+                byte[] data = new byte[(int) jsonFile.length()];
+                in.read(data);
+
+                String str = new String(data, "UTF-8");
+                // parse cube just to get the name.
+                list.add(NCube.fromSimpleJson(str));
+            }
+        }
+
+        return list.toArray(new NCube[list.size()]);
+    }
 
     private static Object getProxyInstance() throws Exception
     {
@@ -58,7 +87,7 @@ public class TestingDatabaseHelper
             return new MySqlTestingDatabaseManager(createJdbcConnectionProvider());
         }
 
-        //  Don't manager tables for Oracle
+        //  Don't manage tables for Oracle
         return new TestingDatabaseManager()
         {
             @Override
@@ -69,6 +98,24 @@ public class TestingDatabaseHelper
             @Override
             public void tearDown() throws SQLException
             {
+            }
+
+            @Override
+            public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+            {
+
+            }
+
+            @Override
+            public void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+            {
+
+            }
+
+            @Override
+            public void updateCube(ApplicationID appId, String username, NCube cube) throws Exception
+            {
+
             }
         };
     }

@@ -59,4 +59,102 @@ public class TestGroovyMethod
         assertEquals("com/foo/not/found/bar.groovy", m.getUrl());
         assertEquals(true, m.isCacheable());
     }
+
+    @Test
+    public void testGroovyMethodClearCache() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+
+        NCube cpCube = NCubeManager.getNCubeFromResource(appId, "sys.classpath.cp1.json");
+        NCubeManager.createCube(appId, cpCube, TestNCubeManager.USER_ID);
+
+        NCube cube = NCubeManager.getNCubeFromResource(appId, "GroovyMethodClassPath1.json");
+        NCubeManager.createCube(appId, cube, TestNCubeManager.USER_ID);
+
+        NCubeManager.clearCache();
+        cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1");
+
+        Map input = new HashMap();
+        input.put("method", "foo");
+        Object x = cube.getCell(input);
+        assertEquals("foo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("foo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("Bar", x);
+
+        cpCube = NCubeManager.getNCubeFromResource(appId, "sys.classpath.cp2.json");
+        NCubeManager.updateCube(appId, cpCube, TestNCubeManager.USER_ID);
+
+        NCubeManager.clearCache();
+        cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1");
+
+        input = new HashMap();
+        input.put("method", "foo");
+        x = cube.getCell(input);
+        assertEquals("boo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("boo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("far", x);
+        TestingDatabaseHelper.tearDownDatabase();
+    }
+
+    @Test
+    public void testGroovyMethodClearCacheExplicitly() throws Exception
+    {
+        TestingDatabaseHelper.setupDatabase();
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+
+        NCube cpCube = NCubeManager.getNCubeFromResource(appId, "sys.classpath.cp1.json");
+        NCubeManager.createCube(appId, cpCube, TestNCubeManager.USER_ID);
+
+        NCube cube = NCubeManager.getNCubeFromResource(appId, "GroovyMethodClassPath1.json");
+        NCubeManager.createCube(appId, cube, TestNCubeManager.USER_ID);
+
+        NCubeManager.clearCache(appId);
+        cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1");
+
+        Map input = new HashMap();
+        input.put("method", "foo");
+        Object x = cube.getCell(input);
+        assertEquals("foo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("foo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("Bar", x);
+
+        cpCube = NCubeManager.getNCubeFromResource(appId, "sys.classpath.cp2.json");
+        NCubeManager.updateCube(appId, cpCube, TestNCubeManager.USER_ID);
+
+        NCubeManager.clearCache(appId);
+        cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1");
+
+        input = new HashMap();
+        input.put("method", "foo");
+        x = cube.getCell(input);
+        assertEquals("boo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("boo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("far", x);
+        TestingDatabaseHelper.tearDownDatabase();
+    }
 }

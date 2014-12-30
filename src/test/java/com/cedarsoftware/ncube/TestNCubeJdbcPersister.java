@@ -68,7 +68,7 @@ public class TestNCubeJdbcPersister
         ncube1.deleteAxis("bu");
         persister.updateCube(defaultSnapshotApp, ncube1, USER_ID);
         int numRelease = persister.releaseCubes(defaultSnapshotApp);
-        assertEquals(3, numRelease);
+        assertEquals(4, numRelease);
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         persister.createSnapshotVersion(defaultSnapshotApp, "0.2.0");

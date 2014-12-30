@@ -747,14 +747,12 @@ public class TestRuleEngine
         Map output = new LinkedHashMap();
         input.put("Age", 10);
         ncube.getCell(input, output);
-        assertTrue((boolean)output.get("isAxis"));
-        assertTrue((boolean)output.get("isColumn"));
+        assertTrue((boolean) output.get("isAxis"));
+        assertTrue((boolean) output.get("isColumn"));
         assertTrue((boolean)output.get("isRange"));
         assertTrue((long)output.get("colId") > 0);
         assertTrue(output.containsKey(0));
-        assertEquals("expressionTests", output.get(0));
-        assertTrue(output.containsKey(1));
-        assertEquals("months", output.get(1));
+        assertEquals("sys.classpath", output.get(0));
     }
 
     @Test

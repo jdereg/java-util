@@ -4742,7 +4742,7 @@ public class TestNCube
 
     public static NCube createTempDirClassPathCube() throws Exception
     {
-        NCube cpCube = new NCube<Double>("sys.classpath");
+        NCube cpCube = new NCube<>("sys.classpath");
 
         Axis axis = new Axis("environment", AxisType.DISCRETE, AxisValueType.STRING, true);
         cpCube.addAxis(axis);
@@ -4761,7 +4761,7 @@ public class TestNCube
         NCube cpCube = createTempDirClassPathCube();
 
         // manually set classpath cube
-        NCubeManager.addCube(appId, cpCube);
+        NCubeManager.createCube(appId, cpCube, TestNCubeManager.USER_ID);
 
         FileOutputStream fo = new FileOutputStream(base + "Abc.groovy");
         String code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 10 } }";
@@ -4778,9 +4778,6 @@ public class TestNCube
         assertEquals(10, out);
 
         NCubeManager.clearCache(appId);
-
-        // add classpath cube back in so everything is found correctly
-        NCubeManager.addCube(appId, cpCube);
 
         fo = new FileOutputStream(base + "Abc.groovy");
         code = "import ncube.grv.exp.NCubeGroovyExpression; class Abc extends NCubeGroovyExpression { def run() { return 20 } }";

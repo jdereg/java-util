@@ -1,0 +1,41 @@
+{
+    "ncube": "GroovyMethodClassPath1",
+    "defaultCellValue": "ZZZ",
+    "axes": [
+        {
+            "name": "method",
+            "type": "DISCRETE",
+            "valueType": "STRING",
+            "hasDefault": true,
+            "preferredOrder": 0,
+            "columns": [
+                {
+                    "id": "foo"
+                },
+                {
+                    "id": "foo2"
+                },
+                {
+                    "id": "bar"
+                }
+            ]
+        }
+    ],
+    "cells": [
+        {
+            "id": ["foo"],
+            "type": "method",
+            "url": "Foo.groovy"
+        },
+        {
+            "id": ["foo2"],
+            "type": "method",
+            "url": "Foo.groovy"
+        },
+        {
+            "id": ["bar"],
+            "type": "method",
+            "url": "Bar.groovy"
+        }
+   ]
+}

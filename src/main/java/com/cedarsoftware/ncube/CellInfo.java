@@ -171,9 +171,9 @@ public class CellInfo
         else if (cell instanceof GroovyMethod)
         {
             GroovyMethod method = (GroovyMethod) cell;
-            value = method.getCmd();
-            dataType = CellTypes.Method.desc();
             isUrl = StringUtilities.hasContent(method.getUrl());
+            value = isUrl ? method.getUrl() : method.getCmd();
+            dataType = CellTypes.Method.desc();
             isCached = true;
         }
         else if (cell instanceof StringUrlCmd)

@@ -292,13 +292,13 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, usa, USER_ID);
         NCubeManager.createCube(defaultSnapshotApp, canada, USER_ID);
 
-        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
+        assertEquals(4, NCubeManager.getCubeNames(defaultSnapshotApp).size());
 
         // make sure items aren't in cache for next load from db for next getCubeNames call
         // during create they got added to database.
         NCubeManager.clearCache();
 
-        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 3);
+        assertEquals(4, NCubeManager.getCubeNames(defaultSnapshotApp).size());
 
         NCubeManager.clearCache();
 
@@ -309,7 +309,7 @@ public class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, "test.ContinentCountries", false, USER_ID);
         NCubeManager.deleteCube(defaultSnapshotApp, "test.States", false, USER_ID);
         NCubeManager.deleteCube(defaultSnapshotApp, "test.Provinces", false, USER_ID);
-        assertTrue(NCubeManager.getCubeNames(defaultSnapshotApp).size() == 0);
+        assertEquals(1, NCubeManager.getCubeNames(defaultSnapshotApp).size());
     }
 
     @Test
@@ -551,7 +551,7 @@ public class TestNCubeManager
         NCube cube1 = NCubeManager.getCube(defaultSnapshotApp, "test.ValidTrailorConfigs");
         assertTrue(cube1.getNumDimensions() == 2);    // used to be 3
 
-        assertTrue(3 == NCubeManager.releaseCubes(defaultSnapshotApp));
+        assertEquals(4, NCubeManager.releaseCubes(defaultSnapshotApp));
 
         // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
         NCubeManager.createSnapshotCubes(defaultSnapshotApp, "0.2.0");
@@ -664,7 +664,7 @@ public class TestNCubeManager
         // This proves that null is turned into '%' (no exception thrown)
         Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, null);
 
-        assertEquals(2, cubeList.length);
+        assertEquals(3, cubeList.length);
 
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube1.getName(), true, USER_ID));
         assertTrue(NCubeManager.deleteCube(defaultSnapshotApp, ncube2.getName(),true, USER_ID));
@@ -1118,7 +1118,7 @@ public class TestNCubeManager
     {
         NCube cube = createCube();
         Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
-        assertEquals(1, records.length);
+        assertEquals(2, records.length);
 
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
 
@@ -1127,11 +1127,11 @@ public class TestNCubeManager
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
 
         records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
-        assertEquals(0, records.length);
+        assertEquals(1, records.length);
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
 
         NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {cube.getName()}, USER_ID);
-        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "");
+        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "test%");
         assertEquals(1, records.length);
         NCubeInfoDto cubeInfo = (NCubeInfoDto) records[0];
         assertTrue(cubeInfo.notes.contains("restored"));
@@ -1172,7 +1172,7 @@ public class TestNCubeManager
     public void testDeleteWithRevisions() throws Exception
     {
         NCube cube = createCube();
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, null).length);
         assertEquals(1, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
 
@@ -1181,7 +1181,7 @@ public class TestNCubeManager
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
         assertEquals(2, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
 
         Axis conAxis = TestNCube.getContinentAxis();
@@ -1190,25 +1190,25 @@ public class TestNCubeManager
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
 
         assertEquals(3, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
 
-        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(4, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.getName()));
 
         NCubeManager.restoreCube(defaultSnapshotApp, new Object[] {cube.getName()}, USER_ID);
 
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(5, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.getName(), USER_ID);
 
-        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, "").length);
         assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.getName()).length);
     }
@@ -1218,11 +1218,11 @@ public class TestNCubeManager
     {
         NCubeManager.clearCache();
         NCube cube = NCubeManager.getNCubeFromResource("sys.classpath.invalid.url.json");
-        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
         createCube();
 
         // force reload from hsql and reget classpath
-        assertNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name));
+        assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name));
 
         NCubeManager.clearCache(defaultSnapshotApp);
         assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name));
@@ -1363,7 +1363,7 @@ public class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
         Object[] cubeInfos = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, "%");
         assertNotNull(cubeInfos);
-        assertEquals(1, cubeInfos.length);
+        assertEquals(2, cubeInfos.length);
         NCubeManager.releaseCubes(defaultSnapshotApp);
         try
         {
@@ -1459,7 +1459,7 @@ public class TestNCubeManager
     public void testClearCache()
     {
         NCube cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "sys.classpath.cedar.json");
-        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
         cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, "cedar.hello.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
 
@@ -1480,7 +1480,7 @@ public class TestNCubeManager
         cube = NCubeManager.getNCubeFromResource("sys.classpath.local.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
         cube = NCubeManager.getNCubeFromResource("sys.classpath.json");
-        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID);
         cube = NCubeManager.getNCubeFromResource("sys.classpath.base.json");
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID);
     }

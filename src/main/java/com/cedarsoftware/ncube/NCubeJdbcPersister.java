@@ -516,7 +516,7 @@ public class NCubeJdbcPersister
             ApplicationID newId = appId.createNewSnapshotId(newVersion);
             if (doCubesExist(c, newId))
             {
-                throw new IllegalStateException("Snapshot version ot created, as new SNAPSHOT version specified (" + newVersion + ") matches an existing version.  Specify new SNAPSHOT version that does not exist, app: " + appId);
+                throw new IllegalStateException("Snapshot version not created, as new SNAPSHOT version specified (" + newVersion + ") matches an existing version.  Specify new SNAPSHOT version that does not exist, app: " + appId);
             }
 
             try (PreparedStatement stmt = c.prepareStatement(

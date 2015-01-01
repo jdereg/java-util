@@ -341,6 +341,11 @@ public class Axis
 		return cols;
 	}
 
+    List<Column> getColumnsInternal()
+    {
+        return columns;
+    }
+
     /**
      * Given the passed in 'raw' value, get a Column from the passed in value, which entails
      * converting the 'raw' value to the correct type, promoting the value to the appropriate

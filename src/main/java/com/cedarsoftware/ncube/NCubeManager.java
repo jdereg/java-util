@@ -395,7 +395,6 @@ public class NCubeManager
 
         isAppInitialized.remove(appId);
         urlClassLoaders.remove(appId);
-//        resolveClassPath(appId);
     }
 
     public static void clearCache()
@@ -544,7 +543,6 @@ public class NCubeManager
                 appCache.put(key, cubeInfo);
             }
         }
-//        resolveClassPath(appId);
         return cubes;
     }
 
@@ -895,7 +893,6 @@ public class NCubeManager
             NCube ncube = ncubeFromJson(json);
             ncube.setApplicationID(id);
             addCube(id, ncube);
-//            resolveClassPath(id);
             return ncube;
         }
         catch (Exception e)

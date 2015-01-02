@@ -36,7 +36,6 @@ import static org.mockito.Mockito.when
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-
 public class TestUrlCommandCell
 {
     @Test

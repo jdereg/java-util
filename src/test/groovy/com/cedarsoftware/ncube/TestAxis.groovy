@@ -660,12 +660,12 @@ public class TestAxis
 
         // Doubles
         Axis doubles = new Axis('bigDec', AxisType.DISCRETE, AxisValueType.DOUBLE, false)
-        assert -1.0 == doubles.convertStringToColumnValue('-1'), 0.000001d
-        assert 0.0 == doubles.convertStringToColumnValue('0'), 0.000001d
-        assert 1.0 == doubles.convertStringToColumnValue('1'), 0.00001d
-        assert 12345678901234.0 == doubles.convertStringToColumnValue('12345678901234'), 0.00001d
-        assert -12345678901234.0 == doubles.convertStringToColumnValue('-12345678901234'), 0.00001d
-        assert -12345.678901234 == doubles.convertStringToColumnValue('-12345.678901234'), 0.00001d
+        assertEquals(-1.0, doubles.convertStringToColumnValue('-1'), 0.000001d)
+        assertEquals(0.0, doubles.convertStringToColumnValue('0'), 0.000001d)
+        assertEquals(1.0, doubles.convertStringToColumnValue('1'), 0.00001d)
+        assertEquals(12345678901234.0, doubles.convertStringToColumnValue('12345678901234'), 0.00001d)
+        assertEquals(-12345678901234.0, doubles.convertStringToColumnValue('-12345678901234'), 0.00001d)
+        assertEquals(-12345.678901234d, doubles.convertStringToColumnValue('-12345.678901234'), 0.00001d)
 
         // Dates
         Axis dates = new Axis('Dates', AxisType.DISCRETE, AxisValueType.DATE, false)

@@ -92,7 +92,9 @@ public class TestAdvice
 
         advice1.before = {  method, cube, input, output ->
             output.put("before", true)
-            assertEquals(2, input.size())
+
+            // Could be 4 because of env and user.name being added to input coordinate
+            assert input.size() == 2 || input.size() == 4
             boolean ret = true
             if ("foo".equals(method.getName()))
             {

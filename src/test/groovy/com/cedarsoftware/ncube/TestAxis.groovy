@@ -1222,13 +1222,13 @@ public class TestAxis
 
         axis2.updateColumns axis
         assert 7 == axis2.size()
-        assert 'Mon' == axis2.columns.get(0).value
-        assert 'Tue' == axis2.columns.get(1).value
-        assert 'Wed' == axis2.columns.get(2).value
-        assert 'Thu' == axis2.columns.get(3).value
-        assert 'Fri' == axis2.columns.get(4).value
-        assert 'Sat' == axis2.columns.get(5).value
-        assert 'Sun' == axis2.columns.get(6).value
+        assert 'Mon' == axis2.columns[0].value
+        assert 'Tue' == axis2.columns[1].value
+        assert 'Wed' == axis2.columns[2].value
+        assert 'Thu' == axis2.columns[3].value
+        assert 'Fri' == axis2.columns[4].value
+        assert 'Sat' == axis2.columns[5].value
+        assert 'Sun' == axis2.columns[6].value
     }
 
     @Test
@@ -1261,14 +1261,14 @@ public class TestAxis
 
         axis2.updateColumns axis
         assert 8 == axis2.size()
-        assert 'Mon' == axis2.columns.get(0).value
-        assert 'Tue' == axis2.columns.get(1).value
-        assert 'Wed' == axis2.columns.get(2).value
-        assert 'Thu' == axis2.columns.get(3).value
-        assert 'Fri' == axis2.columns.get(4).value
-        assert 'Sat' == axis2.columns.get(5).value
-        assert 'Sun' == axis2.columns.get(6).value
-        assertNull axis2.columns.get(7).value
+        assert 'Mon' == axis2.columns[0].value
+        assert 'Tue' == axis2.columns[1].value
+        assert 'Wed' == axis2.columns[2].value
+        assert 'Thu' == axis2.columns[3].value
+        assert 'Fri' == axis2.columns[4].value
+        assert 'Sat' == axis2.columns[5].value
+        assert 'Sun' == axis2.columns[6].value
+        assertNull axis2.columns[7].value
         assert Integer.MAX_VALUE == axis2.columns.get(7).displayOrder
     }
 
@@ -1302,13 +1302,13 @@ public class TestAxis
 
         axis2.updateColumns axis
         assert 7 == axis2.size()
-        assert 'Mon' == axis2.columns.get(0).value
-        assert 'Tue' == axis2.columns.get(1).value
-        assert 'Wed' == axis2.columns.get(2).value
-        assert 'Thu' == axis2.columns.get(3).value
-        assert 'Fri' == axis2.columns.get(4).value
-        assert 'Sat' == axis2.columns.get(5).value
-        assert 'Sun' == axis2.columns.get(6).value
+        assert 'Mon' == axis2.columns[0].value
+        assert 'Tue' == axis2.columns[1].value
+        assert 'Wed' == axis2.columns[2].value
+        assert 'Thu' == axis2.columns[3].value
+        assert 'Fri' == axis2.columns[4].value
+        assert 'Sat' == axis2.columns[5].value
+        assert 'Sun' == axis2.columns[6].value
     }
 
     @Test
@@ -1355,7 +1355,7 @@ public class TestAxis
         assertEquals(cols.get(2).value, "bravo")
     }
 
-    private boolean isValidRange(Axis axis, Range range)
+    private static boolean isValidRange(Axis axis, Range range)
     {
         try
         {

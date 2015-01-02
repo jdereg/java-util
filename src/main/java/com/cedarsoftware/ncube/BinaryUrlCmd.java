@@ -34,12 +34,12 @@ public class BinaryUrlCmd extends UrlCommandCell
         super(null, url, cache);
     }
 
-    protected Object simpleFetch(Map args)
+    protected Object simpleFetch(Map ctx)
     {
-        NCube ncube = (NCube) args.get("ncube");
+        NCube ncube = getNCube(ctx);
         try
         {
-            URL u = getActualUrl(ncube);
+            URL u = getActualUrl(ctx);
             return UrlUtilities.getContentFromUrl(u, true);
         }
         catch (Exception e)

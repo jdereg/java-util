@@ -224,7 +224,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         try
         {
-            Class groovyCode = compile(cube, cmdHash);
+            Class groovyCode = compile(ctx, cmdHash);
             setRunnableCode(groovyCode);
             compiledMap.put(cmdHash, getRunnableCode());
         }
@@ -236,8 +236,9 @@ public abstract class GroovyBase extends UrlCommandCell
         }
     }
 
-    protected Class compile(NCube cube, String cmdHash) throws Exception
+    protected Class compile(Map ctx, String cmdHash) throws Exception
     {
+        NCube cube = getNCube(ctx);
         String url = getUrl();
         boolean isUrlUsed = StringUtilities.hasContent(url);
         if (isUrlUsed && url.endsWith(".groovy"))
@@ -255,7 +256,7 @@ public abstract class GroovyBase extends UrlCommandCell
             { }
         }
 
-        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), cube.getName());
+        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), cube.getName(), getInput(ctx));
 
         if (urlLoader == null)
         {

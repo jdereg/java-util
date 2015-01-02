@@ -94,7 +94,7 @@ public class GroovyTemplate extends UrlCommandCell
         }
     }
 
-    protected Object executeInternal(final Object data, final Map args)
+    protected Object executeInternal(final Object data, final Map ctx)
     {
         // args.input, args.output, args.ncube, and args.stack,
         // are ALWAYS set by NCube before the execution gets here.
@@ -108,8 +108,8 @@ public class GroovyTemplate extends UrlCommandCell
                 cmd = replaceScriptletNCubeRefs(cmd, Regexes.scripletPattern, "<%", "%>");
                 cmd = replaceScriptletNCubeRefs(cmd, Regexes.velocityPattern, "${", "}");
 
-                NCube ncube = (NCube) args.get("ncube");
-                GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(ncube.getApplicationID(), ncube.getName());
+                NCube ncube = getNCube(ctx);
+                GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(ncube.getApplicationID(), ncube.getName(), getInput(ctx));
                 InputStream in = urlLoader.getResourceAsStream("ncube/grv/closure/NCubeTemplateClosures.groovy");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
                 IOUtilities.close(in);
@@ -122,11 +122,11 @@ public class GroovyTemplate extends UrlCommandCell
             }
 
             // Do normal Groovy substitutions.
-            return resolvedTemplate.make(args).toString();
+            return resolvedTemplate.make(ctx).toString();
         }
         catch (Exception e)
         {
-            NCube ncube = (NCube) args.get("ncube");
+            NCube ncube = getNCube(ctx);
             String errorMsg = "Error setting up Groovy template, NCube '" + ncube.getName() + "'";
             setErrorMessage(errorMsg + ", " + e.getMessage());
             throw new RuntimeException(errorMsg, e);

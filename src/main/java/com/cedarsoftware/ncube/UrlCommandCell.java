@@ -145,10 +145,9 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    protected Object proxyFetch(Map args)
+    protected Object proxyFetch(Map ctx)
     {
-        NCube cube = getNCube(args);
-        Map input = getInput(args);
+        Map input = getInput(ctx);
         HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
         HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
         HttpURLConnection conn = null;
@@ -156,7 +155,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         try
         {
-            actualUrl = getActualUrl(cube);
+            actualUrl = getActualUrl(ctx);
             URLConnection connection = actualUrl.openConnection();
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
@@ -234,13 +233,13 @@ public abstract class UrlCommandCell implements CommandCell
         response.addHeader("content-type", mime);
     }
 
-    protected Object simpleFetch(Map args)
+    protected Object simpleFetch(Map ctx)
     {
-        NCube cube = getNCube(args);
+        NCube cube = getNCube(ctx);
 
         try
         {
-            URL u = getActualUrl(cube);
+            URL u = getActualUrl(ctx);
             return UrlUtilities.getContentFromUrlAsString(u, true);
         }
         catch (Exception e)
@@ -250,10 +249,10 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    protected URL getActualUrl(NCube ncube) throws MalformedURLException
+    protected URL getActualUrl(Map ctx) throws MalformedURLException
     {
         URL actualUrl;
-
+        NCube ncube = getNCube(ctx);
         try
         {
             String localUrl = url.toLowerCase();
@@ -264,7 +263,7 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {   // Relative URL
-                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), ncube.getName());
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), ncube.getName(), getInput(ctx));
                 if (loader == null)
                 {
                     // TODO: Make attempt to load them from sys.classpath

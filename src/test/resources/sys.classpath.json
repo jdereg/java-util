@@ -14,7 +14,7 @@
         {
             "id": [],
             "type": "exp",
-            "value": "[\n@sys.classpath.base[:] + 'public',\n@sys.classpath.base[:] + 'private',\n@sys.classpath.base[:] + 'private/groovy'\n]"
+            "value": "[@sys.classpath.base[:]]"
         }
     ]
 }

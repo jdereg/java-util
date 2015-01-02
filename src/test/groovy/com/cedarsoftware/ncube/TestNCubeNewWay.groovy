@@ -65,8 +65,8 @@ public class TestNCubeNewWay
         assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
         cache = NCubeManager.getCacheForApp(customId);
-        assertEquals(1, cache.size());
         assertEquals(1, NCubeManager.getUrlClassLoader(customId, name).getURLs().length);
+        assertEquals(1, cache.size());
 
 
         manager.removeCubes(customId, USER_ID, ncubes);
@@ -144,4 +144,88 @@ public class TestNCubeNewWay
         manager.removeCubes(appId, USER_ID, ncubes);
     }
 
+    @Test
+    public void testMultiCubeClassPath() throws Exception {
+
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json");
+
+        // add cubes for this test.
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        manager.addCubes(appId, USER_ID, ncubes);
+
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size());
+        NCube cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1");
+        assertEquals(4, NCubeManager.getCacheForApp(appId).size());
+
+        Map input = new HashMap();
+
+        //  classpath cube input parameters aren't set here.  They are only picked up by your environment
+        //  by setting a vm argument or environment variable to ENV_LOCAL and it picks up the java('user.name')
+        //  These cannot be passed in to the resolve classpath cube because they are only picked up during
+        //  the resolve classpath and that is setup by NCubeManager only!  For test purposes this will use
+        //  the default cube, but the test may fail if the ENV_LOCAL is set to something other than DEV.
+        input = new HashMap();
+        input.put("method", "foo");
+        Object x = cube.getCell(input);
+        assertEquals("boo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("boo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("far", x);
+
+
+        // change classpath in database only.  This cube doesn't rely on all the other cubes,
+        // but instead sets the classpath directly to cp1
+        NCube[] cp2 = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json");
+        manager.updateCube(appId, USER_ID, cp2[0]);
+        assertEquals(4, NCubeManager.getCacheForApp(appId).size());
+
+
+        // haven't cleared the cache yet.  These items are still in the cache
+        input.put("method", "foo");
+        x = cube.getCell(input);
+        assertEquals("boo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("boo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("far", x);
+
+        NCubeManager.clearCache(appId);
+
+        // even though you think this might need to be 0 it is 1 because clearCache() calls resolveClassPath()
+        // change this assertion if resolveClassPath is removed from clearCache()
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+
+        // reload hasn't happened in cache so we get same answers as above
+        input = new HashMap();
+        input.put("method", "foo");
+        x = cube.getCell(input);
+        assertEquals("foo", x);
+
+        input.put("method", "foo2");
+        x = cube.getCell(input);
+        assertEquals("foo2", x);
+
+        input.put("method", "bar");
+        x = cube.getCell(input);
+        assertEquals("Bar", x);
+
+
+        //  clear cache so we get different answers this time.  classpath 2 has already been loaded in database.
+        NCubeManager.clearCache(appId);
+
+        // even though you think this might need to be 0 it is 1 because clearCache() calls resolveClassPath()
+        // change this assertion if resolveClassPath is removed from clearCache()
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+
+        manager.removeCubes(appId, USER_ID, ncubes);
+    }
 }

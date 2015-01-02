@@ -1,8 +1,8 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Connection
+import java.sql.SQLException
+import java.sql.Statement
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -27,14 +27,16 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
 
     public MySqlTestingDatabaseManager(JdbcConnectionProvider p)
     {
-        provider = p;
+        provider = p
     }
 
     public void setUp() throws SQLException
     {
-        Connection c = provider.getConnection();
-        try (Statement s = c.createStatement())
+        Connection c = provider.getConnection()
+        Statement s = null
+        try
         {
+            s = c.createStatement()
             // Normally this should NOT be used, however, for the first time creation of your MySQL
             // schema, you will want to run this one time.  You will also need to change
             // TestingDatabaseHelper.test_db = MYSQL instead of HSQL
@@ -59,12 +61,16 @@ public class MySqlTestingDatabaseManager implements TestingDatabaseManager
 //                    "  KEY versionIdx (version_no_cd)\n" +
 //                    ") ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
-        } finally {
-            provider.releaseConnection(c);
+        }
+        finally
+        {
+            try { s.close() } catch(Exception e) {}
+            provider.releaseConnection(c)
         }
     }
 
-    public void tearDown() throws SQLException {
+    public void tearDown() throws SQLException
+    {
         // don't accidentally erase your MySql database.
     }
 }

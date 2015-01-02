@@ -1,15 +1,15 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Connection
+import java.sql.SQLException
+import java.sql.Statement
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
  *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
- *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         Licensed under the Apache License, Version 2.0 (the "License")
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br/><br/>
@@ -23,17 +23,20 @@ import java.sql.Statement;
  */
 public class HsqlTestingDatabaseManager implements TestingDatabaseManager
 {
-    JdbcConnectionProvider provider;
+    JdbcConnectionProvider provider
 
-    public HsqlTestingDatabaseManager(JdbcConnectionProvider p) {
-        provider = p;
+    public HsqlTestingDatabaseManager(JdbcConnectionProvider p)
+    {
+        provider = p
     }
 
     public void setUp() throws SQLException
     {
-        Connection c = provider.getConnection();
-        try (Statement s = c.createStatement())
+        Connection c = provider.getConnection()
+        Statement s = null
+        try
         {
+            s = c.createStatement()
             s.execute("CREATE TABLE n_cube ( " +
                     "n_cube_id bigint NOT NULL, " +
                     "n_cube_nm VARCHAR(100) NOT NULL, " +
@@ -49,18 +52,28 @@ public class HsqlTestingDatabaseManager implements TestingDatabaseManager
                     "revision_number bigint DEFAULT '0' NOT NULL, " +
                     "PRIMARY KEY (n_cube_id), " +
                     "UNIQUE (tenant_cd, app_cd, version_no_cd, n_cube_nm, revision_number) " +
-                    ");");
-        } finally {
-            provider.releaseConnection(c);
+                    ")")
+        }
+        finally
+        {
+            try { s.close() } catch(Exception e) {}
+            provider.releaseConnection(c)
         }
     }
 
-    public void tearDown() throws SQLException {
-        Connection c = provider.getConnection();
-        try (Statement s = c.createStatement()) {
-            s.execute("DROP TABLE n_cube;");
-        } finally {
-            provider.releaseConnection(c);
+    public void tearDown() throws SQLException
+    {
+        Connection c = provider.getConnection()
+        Statement s = null
+        try
+        {
+            s = c.createStatement()
+            s.execute("DROP TABLE n_cube;")
+        }
+        finally
+        {
+            try { s.close() } catch(Exception e) {}
+            provider.releaseConnection(c)
         }
     }
 }

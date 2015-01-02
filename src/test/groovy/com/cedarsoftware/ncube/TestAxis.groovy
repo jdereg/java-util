@@ -9,7 +9,9 @@ import org.junit.Before
 import org.junit.Test
 
 import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
 import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 
 /**
@@ -143,6 +145,22 @@ public class TestAxis
     }
 
     @Test
+    public void testStandardizeColumnValueErrorHandling()
+    {
+        Axis states = TestNCube.getStatesAxis()
+        try
+        {
+            states.standardizeColumnValue(null)
+            fail("should not make it here")
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('null')
+            assert e.message.toLowerCase().contains('cannot be used')
+        }
+    }
+
+    @Test
     public void testAxisValueOverlap()
     {
         Axis axis = new Axis('test axis', AxisType.DISCRETE, AxisValueType.LONG, true)
@@ -187,6 +205,147 @@ public class TestAxis
         catch (IllegalArgumentException expected)
         {
             expected.message.toLowerCase().contains("unsupported value type")
+        }
+    }
+
+    @Test
+    public void testRangeOverlap()
+    {
+        Axis axis = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, true)
+        axis.addColumn(new Range(0, 18))
+        axis.addColumn(new Range(18, 30))
+        axis.addColumn(new Range(65, 80))
+
+        assertFalse(isValidRange(axis, new Range(17, 20)))
+        assertFalse(isValidRange(axis, new Range(18, 20)))
+        assertTrue(isValidRange(axis, new Range(30, 65)))
+        assertFalse(isValidRange(axis, new Range(40, 50)))
+        assertTrue(isValidRange(axis, new Range(80, 100)))
+        assertFalse(isValidRange(axis, new Range(-150, 150)))
+        assertTrue(axis.size() == 6)
+
+        // Edge and Corner cases
+        try
+        {
+            axis.addColumn(17)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('only add range value')
+        }
+
+        try
+        {
+            axis.addColumn(new Range(-10, -10))
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('low and high must be different')
+        }
+
+        // Using Long's as Dates (Longs, Date, or Calendar allowed)
+        axis = new Axis("Age", AxisType.RANGE, AxisValueType.DATE, true)
+        axis.addColumn(new Range(0L, 18L))
+        axis.addColumn(new Range(18L, 30L))
+        axis.addColumn(new Range(65L, 80L))
+
+        assertFalse(isValidRange(axis, new Range(17L, 20L)))
+        assertFalse(isValidRange(axis, new Range(18L, 20L)))
+        assertTrue(isValidRange(axis, new Range(30L, 65L)))
+        assertFalse(isValidRange(axis, new Range(40L, 50L)))
+        assertTrue(isValidRange(axis, new Range(80L, 100L)))
+        assertFalse(isValidRange(axis, new Range(-150L, 150L)))
+        assertTrue(axis.size() == 6)
+
+        // Edge and Corner cases
+        try
+        {
+            axis.addColumn(17)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('only add range value')
+        }
+
+        try
+        {
+            axis.addColumn(new Range(-10L, -10L))
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('low and high must be different')
+        }
+
+        axis = new Axis("Age", AxisType.RANGE, AxisValueType.DOUBLE, true)
+        axis.addColumn(new Range(0, 18))
+        axis.addColumn(new Range(18, 30))
+        axis.addColumn(new Range(65, 80))
+
+        assertFalse(isValidRange(axis, new Range(17, 20)))
+        assertFalse(isValidRange(axis, new Range(18, 20)))
+        assertTrue(isValidRange(axis, new Range(30, 65)))
+        assertFalse(isValidRange(axis, new Range(40, 50)))
+        assertTrue(isValidRange(axis, new Range(80, 100)))
+        assertFalse(isValidRange(axis, new Range(-150, 150)))
+        assertTrue(axis.size() == 6)
+
+        // Edge and Corner cases
+        try
+        {
+            axis.addColumn(17)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('only add range value')
+        }
+
+        try
+        {
+            axis.addColumn(new Range(-10, -10))
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('low and high must be different')
+        }
+
+        axis = new Axis("Age", AxisType.RANGE, AxisValueType.BIG_DECIMAL, true)
+        axis.addColumn(new Range(0, 18))
+        axis.addColumn(new Range(18, 30))
+        axis.addColumn(new Range(65, 80))
+
+        assertFalse(isValidRange(axis, new Range(17, 20)))
+        assertFalse(isValidRange(axis, new Range(18, 20)))
+        assertTrue(isValidRange(axis, new Range(30, 65)))
+        assertFalse(isValidRange(axis, new Range(40, 50)))
+        assertTrue(isValidRange(axis, new Range(80, 100)))
+        assertFalse(isValidRange(axis, new Range(-150, 150)))
+        assertTrue(axis.size() == 6)
+
+        // Edge and Corner cases
+        try
+        {
+            axis.addColumn(17)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('only add range value')
+        }
+
+        try
+        {
+            axis.addColumn(new Range(-10, -10))
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('low and high must be different')
         }
     }
 
@@ -926,6 +1085,33 @@ public class TestAxis
     }
 
     @Test
+    public void testUpdateColumn()
+    {
+        Axis dow = TestNCube.getShortDaysOfWeekAxis()
+        Column wed = dow.findColumn("Wed")
+        dow.updateColumn(wed.id, "aWed")
+        wed = dow.columns.get(2)
+        assertEquals(wed.value, "aWed")
+
+        Column mon = dow.findColumn("Mon")
+        dow.updateColumn(mon.id, "aMon")
+        mon = dow.columns.get(0)
+        assertEquals(mon.value, "aMon")
+
+        Column sun = dow.findColumn("Sun")
+        dow.updateColumn(sun.id, "aSun")
+        sun = dow.columns.get(6)
+        assertEquals(sun.value, "aSun")
+
+        List<Column> cols = dow.getColumnsWithoutDefault()
+        assertEquals(cols.get(4).value, "aMon")
+        assertEquals(cols.get(5).value, "aSun")
+        assertEquals(cols.get(6).value, "aWed")
+
+        assertEquals(-1, cols.get(4).compareTo(new Column(null, dow.getNextColId())))
+    }
+
+    @Test
     public void testUpdateColumnsFrontMiddleBack()
     {
         Axis axis = new Axis('Age', AxisType.RANGE, AxisValueType.LONG, false, Axis.SORTED, 1)
@@ -1125,4 +1311,60 @@ public class TestAxis
         assert 'Sun' == axis2.columns.get(6).value
     }
 
+    @Test
+    public void testProveDefaultLast()
+    {
+        Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED)
+        axis.addColumn("alpha")
+        axis.addColumn("charlie")
+        axis.addColumn("bravo")
+        List<Column> cols = axis.columns
+        assertEquals(cols.get(0).value, "alpha")
+        assertEquals(cols.get(1).value, "bravo")
+        assertEquals(cols.get(2).value, "charlie")
+        assertEquals(cols.get(3).value, null)
+
+        axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.SORTED)
+        axis.addColumn("alpha")
+        axis.addColumn("charlie")
+        axis.addColumn("bravo")
+        cols = axis.columns
+        assertEquals(3, cols.size())
+        assertEquals(cols.get(0).value, "alpha")
+        assertEquals(cols.get(1).value, "bravo")
+        assertEquals(cols.get(2).value, "charlie")
+
+        axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY)
+        axis.addColumn("alpha")
+        axis.addColumn("charlie")
+        axis.addColumn("bravo")
+        cols = axis.columns
+        assertEquals(cols.get(0).value, "alpha")
+        assertEquals(cols.get(1).value, "charlie")
+        assertEquals(cols.get(2).value, "bravo")
+        assertEquals(cols.get(3).value, null)
+
+        axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
+        axis.addColumn("alpha")
+        axis.addColumn("charlie")
+        axis.addColumn("bravo")
+        cols = axis.columns
+        assertEquals(3, cols.size())
+        assertEquals(cols.get(0).value, "alpha")
+        assertEquals(cols.get(1).value, "charlie")
+        assertEquals(cols.get(2).value, "bravo")
+    }
+
+    private boolean isValidRange(Axis axis, Range range)
+    {
+        try
+        {
+            axis.addColumn(range);
+            return true;
+        }
+        catch (AxisOverlapException e)
+        {
+            return false;
+        }
+    }
 }

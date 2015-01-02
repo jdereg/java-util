@@ -1239,20 +1239,19 @@ public class TestNCubeManager
 
         Map map = new HashMap();
         map.put("env", "DEV");
+        map.put("username", "kpartlow");
 
         NCube baseCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath.base");
 
-        assertEquals("https://cdn.com/private/ud/ra-resources/1.19.1-SNAPSHOT/", baseCube.getCell(map));
+        assertEquals("http://www.cedarsoftware.com/tests/ncube/cp2/", baseCube.getCell(map));
         map.put("env", "CERT");
-        assertEquals("https://cdn.com/private/ud/ra-resources/1.12.0/", baseCube.getCell(map));
-        map.put("env", "LOCAL");
-        assertEquals("file:///C:/Development/Java/Idea/RefApp/foo/src/main/", baseCube.getCell(map));
-        map.put("username", "jderegnaucourt");
-        assertEquals("file:///Users/jderegnaucourt/Development/foo/src/main/", baseCube.getCell(map));
+        assertEquals("http://www.cedarsoftware.com/tests/ncube/cp2/", baseCube.getCell(map));
+        map.put("env", "INT");
+        assertEquals("http://www.cedarsoftware.com/tests/ncube/cp1/", baseCube.getCell(map));
 
         NCube classPathCube = NCubeManager.getCube(defaultSnapshotApp, "sys.classpath");
         List<String> list = (List<String>)classPathCube.getCell(map);
-        assertEquals(3, list.size());
+        assertEquals(1, list.size());
     }
 
     @Test

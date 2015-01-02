@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.sql.SQLException;
@@ -20,26 +19,33 @@ public class TestingDatabaseHelper
 
     public static int test_db = HSQL;
 
-    public static NCube[] getCubesFromDisk(String ...names) throws IOException
+    public static NCube[] getCubesFromDisk(String ...names)
     {
-        List<NCube> list = new ArrayList<NCube>(names.length);
+            List<NCube> list = new ArrayList<NCube>(names.length);
 
-        for (String name : names) {
-            URL url = NCubeManager.class.getResource("/" + name);
-            File jsonFile = new File(url.getFile());
-
-            try (InputStream in = new FileInputStream(jsonFile))
+            for (String name : names)
             {
-                byte[] data = new byte[(int) jsonFile.length()];
-                in.read(data);
+                URL url = NCubeManager.class.getResource("/" + name);
 
-                String str = new String(data, "UTF-8");
-                // parse cube just to get the name.
-                list.add(NCube.fromSimpleJson(str));
+                try
+                {
+                    File jsonFile = new File(url.getFile());
+
+                    try (InputStream in = new FileInputStream(jsonFile))
+                    {
+                        byte[] data = new byte[(int) jsonFile.length()];
+                        in.read(data);
+
+                        String str = new String(data, "UTF-8");
+                        // parse cube just to get the name.
+                        list.add(NCube.fromSimpleJson(str));
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Error loading " + name, e);
+                }
             }
-        }
 
-        return list.toArray(new NCube[list.size()]);
+            return list.toArray(new NCube[list.size()]);
     }
 
     private static Object getProxyInstance() throws Exception

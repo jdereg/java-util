@@ -41,11 +41,6 @@
                     "id": 2000000000005,
                     "type": "string",
                     "value": "DEV"
-                },
-                {
-                    "id": 2000000000006,
-                    "type": "string",
-                    "value": "LOCAL"
                 }
             ]
         }
@@ -53,45 +48,38 @@
     "cells": [
         {
             "id": [
-                2000000000006
-            ],
-            "type": "exp",
-            "value": "@sys.classpath.local[:] + 'foo/src/main/'"
-        },
-        {
-            "id": [
                 2000000000005
             ],
             "type": "exp",
-            "value": "'https://cdn.com/private/ud/ra-resources/' + @sys.versions[feature:'resources'] + '/'"
+            "value": "'http://www.cedarsoftware.com/' + @sys.versions[feature:'resources'] + '/'"
         },
         {
             "id": [
                 2000000000004
             ],
             "type": "exp",
-            "value": "'https://cdn.com/private/ud/ra-resources/' + @sys.versions[feature:'resources'] + '/'"
+            "value": "'http://www.cedarsoftware.com/' + @sys.versions[feature:'resources'] + '/'"
         },
         {
             "id": [
                 2000000000002
             ],
             "type": "exp",
-            "value": "'https://cdn.com/private/ud/ra-resources/' + @sys.versions[feature:'resources'] + '/'"
+            "value": "'http://www.cedarsoftware.com/' + @sys.versions[feature:'resources'] + '/'"
         },
         {
             "id": [
                 2000000000003
             ],
             "type": "exp",
-            "value": "'https://cdn.com/private/ud/ra-resources/' + @sys.versions[feature:'resources'] + '/'"
+            "value": "'http://www.cedarsoftware.com/' + @sys.versions[feature:'resources'] + '/'"
         },
         {
             "id": [
                 2000000000001
             ],
             "type": "exp",
-            "value": "'https://cdn.com/private/ud/ra-resources/' + @sys.versions[feature:'resources'] + '/'"
+            "value": "'http://www.cedarsoftware.com/' + @sys.versions[feature:'resources'] + '/'"
         }
     ]
 }

@@ -260,10 +260,10 @@ public class NCubeManager
                 {
                     // Fetch classpath List of Strings
                     final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
-                    if (!input.containsKey("env"))
+                    if (!input.containsKey("env") && StringUtilities.hasContent(envLevel))
                     {   // Add in the 'ENV_LEVEL" environment variable when looking up sys.* cubes,
                         // if there was not already an entry for it.
-                        input.put("env", StringUtilities.isEmpty(envLevel) ? "LOCAL" : envLevel);
+                        input.put("env", envLevel);
                     }
                     if (!input.containsKey("username"))
                     {   // same as ENV_LEVEL, add it in if not already there.

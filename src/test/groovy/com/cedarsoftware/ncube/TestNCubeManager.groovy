@@ -13,12 +13,7 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCubeManager Tests
@@ -1276,17 +1271,14 @@ public class TestNCubeManager
         def map = [env:'DEV']
         NCube baseCube = NCubeManager.getCube(defaultSnapshotApp, 'sys.classpath.base')
 
-        assertEquals('https://cdn.com/private/ud/ra-resources/1.19.1-SNAPSHOT/', baseCube.getCell(map))
+        assertEquals('http://www.cedarsoftware.com/tests/ncube/cp1/', baseCube.getCell(map))
         map.env = 'CERT'
-        assertEquals('https://cdn.com/private/ud/ra-resources/1.12.0/', baseCube.getCell(map))
-        map.env = 'LOCAL'
-        assertEquals('file:///C:/Development/Java/Idea/RefApp/foo/src/main/', baseCube.getCell(map))
-        map.username = 'jderegnaucourt'
-        assertEquals('file:///Users/jderegnaucourt/Development/foo/src/main/', baseCube.getCell(map))
+        assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', baseCube.getCell(map))
 
         NCube classPathCube = NCubeManager.getCube(defaultSnapshotApp, 'sys.classpath')
         List<String> list = (List<String>) classPathCube.getCell(map)
-        assertEquals(3, list.size())
+        assertEquals(1, list.size());
+        assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', list.get(0));
     }
 
     @Test

@@ -261,7 +261,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         if (isUrlUsed)
         {
-            GroovyClassLoader gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), cube.getName(), getInput(ctx));
+            GroovyClassLoader gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), getInput(ctx));
 
             if (gcLoader == null)
             {

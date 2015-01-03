@@ -46,7 +46,7 @@ public class TestNCubeNewWay
 
         //  url classloader has 1 item
         Map input = [:]
-        URLClassLoader loader = NCubeManager.getUrlClassLoader(customId, name, input);
+        URLClassLoader loader = NCubeManager.getUrlClassLoader(customId, input);
         assertEquals(1, loader.getURLs().length);
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
         assertEquals(new URL("http://www.cedarsoftware.com/tests/ncube/cp1/"), loader.getURLs()[0]);
@@ -54,14 +54,14 @@ public class TestNCubeNewWay
         Map<String, Object> cache = NCubeManager.getCacheForApp(customId);
         assertEquals(1, cache.size());
 
-        assertNotNull(NCubeManager.getUrlClassLoader(customId, name, input));
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, input));
         assertEquals(1, NCubeManager.getCacheForApp(customId).size());
 
         NCubeManager.clearCache();
         assertEquals(0, NCubeManager.getCacheForApp(customId).size());
 
         cache = NCubeManager.getCacheForApp(customId);
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId, name, input).getURLs().length);
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, input).getURLs().length);
         assertEquals(1, cache.size());
 
 

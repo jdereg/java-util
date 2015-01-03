@@ -203,14 +203,13 @@ public class NCubeManager
     /**
      * Fetch the classloader for the given ApplicationID.
      */
-    static URLClassLoader getUrlClassLoader(ApplicationID appId, String name, Map input)
+    static URLClassLoader getUrlClassLoader(ApplicationID appId, Map input)
     {
         if (isAppInitialized.containsKey(appId))
         {   // URL/GroovyClassLoader has already been initialized with URLs from sys.classpath, hand it back
             return urlClassLoaders.get(appId);
         }
 
-        // For non-sys.* and non-bootstrap (0.0.0) cubes, force building of GroovyClassPath (adds URLs to it).
         resolveClassPath(appId, input);
         return urlClassLoaders.get(appId);
     }

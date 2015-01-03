@@ -41,6 +41,7 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
+    static GroovyClassLoader localGroovyClassLoader = new GroovyClassLoader();
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
@@ -64,6 +65,8 @@ public abstract class GroovyBase extends UrlCommandCell
 
         Map<String, Method> runMethodMap = getRunMethodCache(appId);
         runMethodMap.clear();
+        localGroovyClassLoader.clearCache();
+        localGroovyClassLoader = new GroovyClassLoader();
     }
 
     private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)
@@ -256,16 +259,15 @@ public abstract class GroovyBase extends UrlCommandCell
             { }
         }
 
-        GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), cube.getName(), getInput(ctx));
-
-        if (urlLoader == null)
-        {
-            throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for app: " + cube.getApplicationID() + ".  Use sys.classpath cube to set it.  Found executing cube: " + cube.getName());
-        }
-
         if (isUrlUsed)
         {
-            URL groovySourceUrl = urlLoader.getResource(url);
+            GroovyClassLoader gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), cube.getName(), getInput(ctx));
+
+            if (gcLoader == null)
+            {
+                throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for app: " + cube.getApplicationID() + ".  Use sys.classpath cube to set it.  Found executing cube: " + cube.getName());
+            }
+            URL groovySourceUrl = gcLoader.getResource(url);
 
             if (groovySourceUrl == null)
             {
@@ -274,12 +276,12 @@ public abstract class GroovyBase extends UrlCommandCell
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-            return urlLoader.parseClass(gcs);
+            return gcLoader.parseClass(gcs);
         }
         else
         {
             String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
-            return urlLoader.parseClass(groovySource);
+            return localGroovyClassLoader.parseClass(groovySource);
         }
     }
 

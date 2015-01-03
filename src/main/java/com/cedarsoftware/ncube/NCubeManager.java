@@ -210,18 +210,6 @@ public class NCubeManager
             return urlClassLoaders.get(appId);
         }
 
-        if (urlClassLoaders.containsKey(appId))
-        {
-            if (name.toLowerCase().startsWith("sys.") || "0.0.0".equals(appId.getVersion()))
-            {   // We are allowing the uninitialized URLClassLoader to be handed back, only because we know it is
-                // for a sys.* cube or a bootstrap (0.0.0) cube.  This may chain (multiple Groovy Expressions that
-                // need compiling) and therefore we allow the caller in this case to get the GroovyClassLoader
-                // before URLs are set into it.  This means that sys.* cubes CANNOT rely on URL references to content.
-                // All cells must contain their contents (value not url cells).
-                return urlClassLoaders.get(appId);
-            }
-        }
-
         // For non-sys.* and non-bootstrap (0.0.0) cubes, force building of GroovyClassPath (adds URLs to it).
         resolveClassPath(appId, input);
         return urlClassLoaders.get(appId);

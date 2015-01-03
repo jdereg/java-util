@@ -41,7 +41,7 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
-    static final GroovyClassLoader localGroovyClassLoader = new GroovyClassLoader();
+    static GroovyClassLoader localGroovyClassLoader = new GroovyClassLoader();
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
@@ -65,6 +65,8 @@ public abstract class GroovyBase extends UrlCommandCell
 
         Map<String, Method> runMethodMap = getRunMethodCache(appId);
         runMethodMap.clear();
+        localGroovyClassLoader.clearCache();
+        localGroovyClassLoader = new GroovyClassLoader();
     }
 
     private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)

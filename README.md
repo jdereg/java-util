@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.0.6</version>
+  <version>3.0.10</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -83,6 +83,10 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.0.10
+ * Attempting to re-use GroovyClassLoader after clearCache(appId). Discovered that the URLs do not clear.
+* 3.0.9
+ * Internal work on classpath management.  Fixing an issue where clearing the cache needed to reset the URLs within the GroovyClassLoader.
 * 3.0.8
  * Bug fix: Threading issue in NCubeManager during initialization.  GroovyClassLoaders could be accessed before the resource URLs were added to the GroovyClassLoader.
  * Bug fix: CdnClassLoader was allowing .class files to be loaded remotely, which 1) is too slow to allow (.class files are attempted to be loaded with HTTP GET which fails very slowly with a 404, and 2) is insecure.  Instead, a future version will allow a 'white-less' of acceptable classes that can be remotely loaded.

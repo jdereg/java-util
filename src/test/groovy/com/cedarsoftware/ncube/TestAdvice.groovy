@@ -4,10 +4,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCube Advice Tests (Advice often used for security annotations on Groovy Methods / Expressions)
@@ -94,7 +91,8 @@ public class TestAdvice
             output.put("before", true)
 
             // Could be 4 because of env and user.name being added to input coordinate
-            assert input.size() == 2 || input.size() == 4
+
+            assert input.size() == 2 || input.size() == 3 || input.size() == 4
             boolean ret = true
             if ("foo".equals(method.getName()))
             {

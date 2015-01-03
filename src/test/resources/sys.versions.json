@@ -1,6 +1,5 @@
 {
     "ncube": "sys.versions",
-    "sha1": "B2344A6262FEC9852C63D2F54C2D2F238FCF226D",
     "axes": [
         {
             "name": "feature",
@@ -56,7 +55,7 @@
                 {
                     "id": 2000000000007,
                     "type": "string",
-                    "value": "SANDBOX"
+                    "value": "SAND"
                 }
             ]
         }
@@ -92,7 +91,7 @@
                 2000000000006
             ],
             "type": "exp",
-            "value": "@[environment:'DEV']"
+            "value": "@[environment:'CERT']"
         },
         {
             "id": [
@@ -100,7 +99,7 @@
                 2000000000006
             ],
             "type": "string",
-            "value": "tests/ncube/cp2"
+            "value": "tests/ncube/cp1"
         },
         {
             "id": [
@@ -140,7 +139,7 @@
                 2000000000002
             ],
             "type": "string",
-            "value": "tests/ncube/cp1"
+            "value": "1.19.0"
         },
         {
             "id": [
@@ -155,8 +154,8 @@
                 1000000000002,
                 2000000000007
             ],
-            "type": "string",
-            "value": "tests/ncube/cp2"
+            "type": "exp",
+            "value": "@[environment:'UAT']"
         },
         {
             "id": [

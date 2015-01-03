@@ -1,6 +1,8 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube
 
-import java.sql.SQLException;
+import com.cedarsoftware.util.IOUtilities
+
+import java.sql.SQLException
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -25,6 +27,30 @@ public class TestingDatabaseHelper
     public static int HSQL = 2
     public static int ORACLE = 3
     public static int test_db = HSQL
+
+    public static NCube[] getCubesFromDisk(String ...names) throws IOException
+    {
+        List<NCube> list = new ArrayList<NCube>(names.length);
+
+        for (String name : names) {
+            URL url = NCubeManager.class.getResource("/" + name);
+            File jsonFile = new File(url.getFile());
+
+            InputStream input = null;
+            try {
+                input = new FileInputStream(jsonFile);
+                byte[] data = new byte[(int) jsonFile.length()];
+                input.read(data);
+
+                String str = new String(data, "UTF-8");
+                list.add(NCube.fromSimpleJson(str));
+            } finally {
+                IOUtilities.close(input);
+            }
+        }
+
+        return list.toArray(new NCube[list.size()]);
+    }
 
     public static NCubePersister getPersister() throws Exception
     {
@@ -75,6 +101,23 @@ public class TestingDatabaseHelper
 
         void tearDown() throws SQLException
         {
+        }
+        @Override
+        public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+        {
+
+        }
+
+        @Override
+        public void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+        {
+
+        }
+
+        @Override
+        public void updateCube(ApplicationID appId, String username, NCube cube) throws Exception
+        {
+
         }
     }
 

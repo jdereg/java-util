@@ -695,9 +695,10 @@ public class TestNCubeManager
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
 
-        assertEquals(0, NCubeManager.getUrlClassLoader(customId, [:]).URLs.length)
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, [:]).URLs.length)
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
+        testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')   // reload to clear classLoader inside the cell
         NCubeManager.createCube(customId, testCube, USER_ID)
 
         Map<String, Object> cache = NCubeManager.getCacheForApp(customId)
@@ -730,15 +731,16 @@ public class TestNCubeManager
         NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
 
         final URLClassLoader urlClassLoader = NCubeManager.getUrlClassLoader(customId, [:])
-        assertEquals(0, urlClassLoader.URLs.length)
+        assertEquals(1, urlClassLoader.URLs.length)
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
         NCubeManager.clearCache()
+        testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')        // reload so that it does not attempt to write classLoader cells (which will blow up)
         testCube.name = 'sys.mistake'
         NCubeManager.createCube(customId, testCube, USER_ID)
 
         Map<String, Object> cache = NCubeManager.getCacheForApp(customId)
-        assertEquals(1, cache.size())
+        assertEquals(2, cache.size())     // both sys.mistake and sys.classpath are in the cache
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.mistake'))
@@ -1342,16 +1344,8 @@ public class TestNCubeManager
     @Test
     public void testResolveUrlBadApp()
     {
-        try
-        {
-            NCubeManager.resolveRelativeUrl(new ApplicationID('foo', 'bar', '1.0.0', ReleaseStatus.SNAPSHOT.name()), 'tests/ncube/hello.groovy')
-            fail()
-        }
-        catch (IllegalStateException e)
-        {
-            String msg = e.message.toLowerCase()
-            assertTrue(msg.contains('no class loader exists'))
-        }
+        Object o = NCubeManager.resolveRelativeUrl(new ApplicationID('foo', 'bar', '1.0.0', ReleaseStatus.SNAPSHOT.name()), 'tests/ncube/hello.groovy')
+        assertNull o
     }
 
     @Test

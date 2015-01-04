@@ -4,7 +4,10 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.fail
 
 /**
  * NCube Advice Tests (Advice often used for security annotations on Groovy Methods / Expressions)
@@ -161,7 +164,7 @@ public class TestAdvice
 
         advice1.before = {  method, cube, input, output ->
             output.put("before", true)
-            assertEquals(2, input.size())
+
             boolean ret = true
             if ("foo".equals(method.getName()))
             {
@@ -253,7 +256,7 @@ public class TestAdvice
     {
         advice1.before = {  method, cube, input, output ->
             output.put("before", true)
-            assertEquals(2, input.size())
+
             boolean ret = true
             if ("foo".equals(method.getName()))
             {

@@ -219,7 +219,7 @@ public class NCubeManager
         return (URLClassLoader) urlCpLoader;
     }
 
-    private static URLClassLoader getLocalClasspath(ApplicationID appId)
+    static URLClassLoader getLocalClasspath(ApplicationID appId)
     {
         GroovyClassLoader gcl = localClassLoaders.get(appId);
         if (gcl == null)

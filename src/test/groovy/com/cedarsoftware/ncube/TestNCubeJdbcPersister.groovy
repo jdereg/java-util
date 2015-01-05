@@ -62,8 +62,8 @@ public class TestNCubeJdbcPersister
     {
         NCubePersister persister = TestingDatabaseHelper.persister
 
-        NCube ncube1 = TestNCube.getTestNCube3D_Boolean()
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.getTestNCube3D_Boolean()
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         persister.createCube(defaultSnapshotApp, ncube1, USER_ID)
         persister.createCube(defaultSnapshotApp, ncube2, USER_ID)
@@ -191,7 +191,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testUpdateCubeWithSqlException() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
@@ -363,7 +363,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testRenameCubeThatDoesNotExist() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
@@ -422,7 +422,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testChangeVersionWithNoUpdate() throws Exception
     {
-        TestNCube.getTestNCube2D(true)
+        NCubeBuilder.getTestNCube2D(true)
 
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
@@ -567,7 +567,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testCreateCubeWithSqlException() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
         try
         {
@@ -584,7 +584,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testCreateCubeWhenOneAlreadyExists() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
 
         try
@@ -602,7 +602,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testCreateCubeThatDoesntCreateCube() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
@@ -650,7 +650,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testRenameCubeThatThrowsSQLEXception() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
@@ -826,7 +826,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testCreateCubeWithWrongUpdateCount() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
@@ -850,7 +850,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testUpdateCubeWithWrongUpdateCount() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
@@ -897,7 +897,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testReleaseCubesWithCubeThatExistsAlready() throws Exception
     {
-        TestNCube.getTestNCube2D(true)
+        NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
 
         try
@@ -914,7 +914,7 @@ public class TestNCubeJdbcPersister
     @Test
     public void testChangeVersionWhenCubeAlreadyExists() throws Exception
     {
-        TestNCube.getTestNCube2D(true)
+        NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
         try
         {

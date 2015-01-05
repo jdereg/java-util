@@ -1,0 +1,33 @@
+{
+  "ncube": "GroovyExpCp1",
+  "defaultCellValue": "ZZZ",
+  "axes": [
+    {
+      "name": "state",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "hasDefault": true,
+      "preferredOrder": 0,
+      "columns": [
+        {
+          "id": "OH"
+        },
+        {
+          "id": "TX"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": ["OH"],
+      "type": "exp",
+      "url": "hello.groovy"
+    },
+    {
+      "id": ["TX"],
+      "type": "exp",
+      "url": "hello.groovy"
+    }
+  ]
+}

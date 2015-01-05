@@ -205,7 +205,7 @@ public class NCubeManager
             synchronized(appId.cacheKey().intern())
             {
                 urlCpLoader = cpCube.getCell(input);
-                if (!(urlCpLoader instanceof List))
+                if (urlCpLoader instanceof URLClassLoader)
                 {
                     return (URLClassLoader) urlCpLoader;
                 }

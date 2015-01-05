@@ -8,7 +8,21 @@ import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertNotNull
 
 /**
- * Created by kpartlow on 12/23/2014.
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br/>
+ *         Copyright (c) Cedar Software LLC
+ *         <br/><br/>
+ *         Licensed under the Apache License, Version 2.0 (the 'License')
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br/><br/>
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <br/><br/>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an 'AS IS' BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 public class TestNCubeNewWay
 {
@@ -177,7 +191,7 @@ public class TestNCubeNewWay
 
 
         //TODO:  Uncomment this to make test work.
-        //NCubeManager.clearCache(appId);
+        NCubeManager.clearCache(appId);
 
 
 
@@ -204,6 +218,38 @@ public class TestNCubeNewWay
         //  clear cache so we get different answers this time.  classpath 2 has already been loaded in database.
         NCubeManager.clearCache(appId);
         assertEquals(0, NCubeManager.getCacheForApp(appId).size());
+
+        manager.removeCubes(appId, USER_ID, ncubes);
+    }
+
+    @Test
+    public void testTwoClasspathsSameAppId() throws Exception
+    {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "GroovyExpCp1.json");
+
+        // add cubes for this test.
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        manager.addCubes(appId, USER_ID, ncubes);
+
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size());
+        NCube cube = NCubeManager.getCube(appId, "GroovyExpCp1");
+
+        // classpath isn't loaded at this point.
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+
+        def input = [:]
+        input.env = "a";
+        input.put("state", "OH");
+        def x = cube.getCell(input);
+        println "x = $x"
+
+        // GroovyExpCp1 and sys.classpath are now both loaded.
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+
+        input.env = "b";
+        input.put("state", "TX");
+        def y = cube.getCell(input);
+        println "y = $y"
 
         manager.removeCubes(appId, USER_ID, ncubes);
     }

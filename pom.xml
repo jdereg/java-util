@@ -41,18 +41,21 @@
         <version.powermock>1.5.4</version.powermock>
         <version.mockito>1.9.5</version.mockito>
         <version.mongo>2.12.3</version.mongo>
+        <version.mysql.connector.java>5.1.28</version.mysql.connector.java>
         <version.nosqlunit>0.7.9</version.nosqlunit>
         <version.tomcat.jdbc>8.0.12</version.tomcat.jdbc>
         <version.hsqldb>2.3.1</version.hsqldb>
         <version.oracle>11.2.0.3</version.oracle>
         <version.plugin.compiler>3.2</version.plugin.compiler>
         <version.plugin.groovy.eclipse.compiler>2.9.1-01</version.plugin.groovy.eclipse.compiler>
+        <version.plugin.groovy.eclipse.batch>2.3.7-01</version.plugin.groovy.eclipse.batch>
         <version.plugin.deploy>2.8.2</version.plugin.deploy>
         <version.plugin.source>2.4</version.plugin.source>
         <version.plugin.javadoc>2.10.1</version.plugin.javadoc>
         <version.plugin.gpg>1.5</version.plugin.gpg>
         <version.plugin.release>2.5.1</version.plugin.release>
         <version.plugin.surefire>2.18</version.plugin.surefire>
+        <version.servlet.api>2.3</version.servlet.api>
     </properties>
 
     <pluginRepositories>
@@ -103,7 +106,7 @@
                     <dependency>
                         <groupId>org.codehaus.groovy</groupId>
                         <artifactId>groovy-eclipse-batch</artifactId>
-                        <version>2.3.7-01</version>
+                        <version>${version.plugin.groovy.eclipse.batch}</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -237,14 +240,14 @@
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
-            <version>2.3</version>
+            <version>${version.servlet.api}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.28</version>
+            <version>${version.mysql.connector.java}</version>
             <scope>test</scope>
         </dependency>
 

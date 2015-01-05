@@ -70,7 +70,7 @@ public class TestNCubeManager
 
     private static NCube createCube() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
         def coord = [gender:'male', age:47]
         ncube.setCell(1.0, coord)
@@ -93,7 +93,7 @@ public class TestNCubeManager
     @Test
     public void testLoadCubes() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
         def coord = [gender:'male', age:47]
         ncube.setCell(1.0d, coord)
@@ -117,7 +117,7 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.doesCubeExist(appId, name1))
 
-        ncube = TestNCube.testNCube3D_Boolean
+        ncube = NCubeBuilder.testNCube3D_Boolean
         String name2 = ncube.name
         NCubeManager.createCube(appId, ncube, USER_ID)
 
@@ -238,7 +238,7 @@ public class TestNCubeManager
         NCube<Object> continentCounty = new NCube<>('test.ContinentCountries')
         continentCounty.applicationID = defaultSnapshotApp
         NCubeManager.addCube(defaultSnapshotApp, continentCounty)
-        continentCounty.addAxis(TestNCube.continentAxis)
+        continentCounty.addAxis(NCubeBuilder.continentAxis)
         Axis countries = new Axis('Country', AxisType.DISCRETE, AxisValueType.STRING, true)
         countries.addColumn('Canada')
         countries.addColumn('USA')
@@ -248,12 +248,12 @@ public class TestNCubeManager
         NCube<Object> canada = new NCube<>('test.Provinces')
         canada.applicationID = defaultSnapshotApp
         NCubeManager.addCube(defaultSnapshotApp, canada)
-        canada.addAxis(TestNCube.provincesAxis)
+        canada.addAxis(NCubeBuilder.provincesAxis)
 
         NCube<Object> usa = new NCube<>('test.States')
         usa.applicationID = defaultSnapshotApp
         NCubeManager.addCube(defaultSnapshotApp, usa)
-        usa.addAxis(TestNCube.statesAxis)
+        usa.addAxis(NCubeBuilder.statesAxis)
 
         Map coord1 = new HashMap()
         coord1.put('Continent', 'North America')
@@ -453,7 +453,7 @@ public class TestNCubeManager
     @Test
     public void testUpdateOnDeletedCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
 
@@ -476,7 +476,7 @@ public class TestNCubeManager
     @Test
     public void testUpdateTestDataOnDeletedCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
 
@@ -505,7 +505,7 @@ public class TestNCubeManager
     @Test
     public void testUpdateNotesOnDeletedCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         assertTrue(ncube1.numDimensions == 3)
         NCubeManager.deleteCube(defaultSnapshotApp, ncube1.name, USER_ID)
@@ -541,8 +541,8 @@ public class TestNCubeManager
     @Test
     public void testGetNCubes() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
@@ -628,8 +628,8 @@ public class TestNCubeManager
     @Test
     public void testRenameNCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         try
         {
@@ -669,8 +669,8 @@ public class TestNCubeManager
     @Test
     public void testNCubeManagerGetCubes() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
@@ -832,7 +832,7 @@ public class TestNCubeManager
             assertTrue(e.message.contains('cannot be null'))
         }
 
-        NCube testCube = TestNCube.getTestNCube2D(false)
+        NCube testCube = NCubeBuilder.getTestNCube2D(false)
         try
         {
             ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
@@ -1214,7 +1214,7 @@ public class TestNCubeManager
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, null).length)
         assertEquals(1, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
 
-        Axis oddAxis = TestNCube.getOddAxis(true)
+        Axis oddAxis = NCubeBuilder.getOddAxis(true)
         cube.addAxis(oddAxis)
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
@@ -1222,7 +1222,7 @@ public class TestNCubeManager
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
 
-        Axis conAxis = TestNCube.continentAxis
+        Axis conAxis = NCubeBuilder.continentAxis
         cube.addAxis(conAxis)
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)

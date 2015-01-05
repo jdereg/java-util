@@ -147,7 +147,7 @@ public class TestAxis
     @Test
     public void testStandardizeColumnValueErrorHandling()
     {
-        Axis states = TestNCube.getStatesAxis()
+        Axis states = NCubeBuilder.getStatesAxis()
         try
         {
             states.standardizeColumnValue(null)
@@ -423,9 +423,9 @@ public class TestAxis
     public void testAxisGetValues()
     {
         NCube ncube = new NCube('foo')
-        ncube.addAxis TestNCube.longDaysOfWeekAxis
-        ncube.addAxis TestNCube.longMonthsOfYear
-        ncube.addAxis TestNCube.getOddAxis(true)
+        ncube.addAxis NCubeBuilder.longDaysOfWeekAxis
+        ncube.addAxis NCubeBuilder.longMonthsOfYear
+        ncube.addAxis NCubeBuilder.getOddAxis(true)
         Axis axis = (Axis) ncube.axes.get(0)
         List values = axis.columns
         assert values.size() == 7
@@ -436,7 +436,7 @@ public class TestAxis
     public void testAxisCaseInsensitivity()
     {
         NCube<String> ncube = new NCube<String>('TestAxisCase')
-        Axis gender = TestNCube.getGenderAxis true
+        Axis gender = NCubeBuilder.getGenderAxis true
         ncube.addAxis gender
         Axis gender2 = new Axis('gender', AxisType.DISCRETE, AxisValueType.STRING, true)
 
@@ -629,7 +629,7 @@ public class TestAxis
     public void testConvertDiscreteColumnValue() throws Exception
     {
         // Strings
-        Axis states = TestNCube.statesAxis
+        Axis states = NCubeBuilder.statesAxis
         assert states.convertStringToColumnValue('OH') == 'OH'
 
         // Longs
@@ -1087,7 +1087,7 @@ public class TestAxis
     @Test
     public void testUpdateColumn()
     {
-        Axis dow = TestNCube.getShortDaysOfWeekAxis()
+        Axis dow = NCubeBuilder.getShortDaysOfWeekAxis()
         Column wed = dow.findColumn("Wed")
         dow.updateColumn(wed.id, "aWed")
         wed = dow.columns.get(2)

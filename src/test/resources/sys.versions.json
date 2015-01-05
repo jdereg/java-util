@@ -38,17 +38,17 @@
         {
             "id": ["resources", "UAT"],
             "type": "exp",
-            "value": "@[environment:'PROD']"
+            "value": "@[env:'PROD']"
         },
         {
             "id": ["resources","CERT"],
             "type": "exp",
-            "value": "@[environment:'PROD']"
+            "value": "@[env:'PROD']"
         },
         {
             "id": ["resources", "INT"],
             "type": "exp",
-            "value": "@[environment:'PROD']"
+            "value": "@[env:'PROD']"
         },
         {
             "id": ["resources","DEV"],
@@ -68,7 +68,7 @@
         {
             "id": ["bootstrap","UAT"],
             "type": "exp",
-            "value": "@[environment:'CERT']"
+            "value": "@[env:'CERT']"
         },
         {
             "id": ["bootstrap", "DEV"],
@@ -78,22 +78,22 @@
         {
             "id": ["bootstrap", "SAND"],
             "type": "exp",
-            "value": "@[environment:'DEV']"
+            "value": "@[env:'DEV']"
         },
         {
             "id": ["bootstrap","INT"],
             "type": "exp",
-            "value": "@[environment:'CERT']"
+            "value": "@[env:'CERT']"
         },
         {
             "id": ["resources"],
             "type": "exp",
-            "value": "@[environment:'DEV']"
+            "value": "@[env:'DEV']"
         },
         {
             "id": ["bootstrap"],
             "type": "exp",
-            "value": "@[environment:'DEV']"
+            "value": "@[env:'DEV']"
         }
     ]
 }

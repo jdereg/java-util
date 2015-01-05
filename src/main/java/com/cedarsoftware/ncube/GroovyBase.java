@@ -282,9 +282,12 @@ s    */
             { }
         }
 
+        String grvSrcCode;
+        GroovyClassLoader gcLoader;
+
         if (isUrlUsed)
         {
-            GroovyClassLoader gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), getInput(ctx));
+            gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), getInput(ctx));
 
             if (gcLoader == null)
             {
@@ -299,14 +302,15 @@ s    */
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-            return gcLoader.parseClass(gcs);
+            grvSrcCode = gcs.getScriptText();
         }
         else
         {
-            GroovyClassLoader gcLoader = (GroovyClassLoader)NCubeManager.getLocalClasspath(cube.getApplicationID());
-            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName()));
-            return gcLoader.parseClass(groovySource);
+            gcLoader = (GroovyClassLoader)NCubeManager.getLocalClassloader(cube.getApplicationID());
+            grvSrcCode = getCmd();
         }
+        String groovySource = expandNCubeShortCuts(buildGroovy(grvSrcCode, cube.getName()));
+        return gcLoader.parseClass(groovySource);
     }
 
     static String expandNCubeShortCuts(String groovy)

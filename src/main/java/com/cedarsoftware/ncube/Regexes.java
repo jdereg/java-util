@@ -49,4 +49,6 @@ public interface Regexes
     Pattern groovyExplicitJumpPattern = Pattern.compile("([^a-zA-Z0-9_$]|^)jump[\\s]*[(][\\s]*['\"]([" + NCube.validCubeNameChars + "]+)['\"].*?[)]");
 
     Pattern cdnUrlPattern = Pattern.compile("^\\/dyn\\/([^\\/]+)\\/(.*)$");
+
+    Pattern hasClassDefPattern = Pattern.compile("class([a-zA-Z _0-9$\\s\\.]+)\\{");
 }

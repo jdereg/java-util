@@ -241,7 +241,7 @@ public class TestNCubeNewWay
         input.env = "a";
         input.put("state", "OH");
         def x = cube.getCell(input);
-        println "x = $x"
+        assert 'Hello, world.' == x
 
         // GroovyExpCp1 and sys.classpath are now both loaded.
         assertEquals(2, NCubeManager.getCacheForApp(appId).size());
@@ -249,7 +249,7 @@ public class TestNCubeNewWay
         input.env = "b";
         input.put("state", "TX");
         def y = cube.getCell(input);
-        println "y = $y"
+        assert 'Goodbye, world.' == y
 
         manager.removeCubes(appId, USER_ID, ncubes);
     }

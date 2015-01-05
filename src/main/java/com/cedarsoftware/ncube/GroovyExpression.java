@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 /**
  * This class is used to hold Groovy Expressions.  This means that
@@ -51,6 +52,12 @@ public class GroovyExpression extends GroovyBase
 
     public String buildGroovy(String theirGroovy, String cubeName)
     {
+        Matcher m = Regexes.hasClassDefPattern.matcher(theirGroovy);
+        if (m.find())
+        {   // If they include a class ... { in their source, then we do not add the 'apartment' around the content.
+            return theirGroovy;
+        }
+
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder("package ncube.grv.exp\n");

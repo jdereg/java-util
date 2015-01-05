@@ -186,7 +186,7 @@ public class NCubeManager
         if (cpCube == null)
         {   // No sys.classpath cube exists, just create regular GroovyClassLoader with no URLs set into it.
             // Scope the GroovyClassLoader per ApplicationID
-            return getLocalClasspath(appId);
+            return getLocalClassloader(appId);
         }
 
         final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
@@ -219,7 +219,7 @@ public class NCubeManager
         return (URLClassLoader) urlCpLoader;
     }
 
-    static URLClassLoader getLocalClasspath(ApplicationID appId)
+    static URLClassLoader getLocalClassloader(ApplicationID appId)
     {
         GroovyClassLoader gcl = localClassLoaders.get(appId);
         if (gcl == null)

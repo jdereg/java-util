@@ -208,7 +208,8 @@ public abstract class UrlCommandCell implements CommandCell
         return null;
     }
 
-    private static String getExtension(String urlPath) {
+    private static String getExtension(String urlPath)
+    {
         int index = urlPath == null ? -1 : urlPath.lastIndexOf(EXTENSION_SEPARATOR);
         return index == -1 ? null : urlPath.substring(index).intern();
     }

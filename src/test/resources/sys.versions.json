@@ -8,16 +8,8 @@
             "preferredOrder": 1,
             "hasDefault": false,
             "columns": [
-                {
-                    "id": 1000000000001,
-                    "type": "string",
-                    "value": "bootstrap"
-                },
-                {
-                    "id": 1000000000002,
-                    "type": "string",
-                    "value": "resources"
-                }
+                {"id":"bootstrap"},
+                {"id":"resources"}
             ]
         },
         {
@@ -27,147 +19,79 @@
             "preferredOrder": 1,
             "hasDefault": true,
             "columns": [
-                {
-                    "id": 2000000000002,
-                    "type": "string",
-                    "value": "CERT"
-                },
-                {
-                    "id": 2000000000003,
-                    "type": "string",
-                    "value": "UAT"
-                },
-                {
-                    "id": 2000000000004,
-                    "type": "string",
-                    "value": "INT"
-                },
-                {
-                    "id": 2000000000005,
-                    "type": "string",
-                    "value": "TESTING"
-                },
-                {
-                    "id": 2000000000006,
-                    "type": "string",
-                    "value": "DEV"
-                },
-                {
-                    "id": 2000000000007,
-                    "type": "string",
-                    "value": "SAND"
-                }
+                {"id":"PROD"},
+                {"id":"CERT"},
+                {"id":"UAT"},
+                {"id":"INT"},
+                {"id":"TESTING"},
+                {"id":"SAND"},
+                {"id":"DEV"}
             ]
         }
     ],
     "cells": [
         {
-            "id": [
-                1000000000002,
-                2000000000003
-            ],
+            "id": ["resources", "PROD"],
             "type": "string",
             "value": "tests/ncube/cp2"
         },
         {
-            "id": [
-                1000000000002,
-                2000000000004
-            ],
-            "type": "string",
-            "value": "tests/ncube/cp2"
-        },
-        {
-            "id": [
-                1000000000001,
-                2000000000007
-            ],
+            "id": ["resources", "UAT"],
             "type": "exp",
-            "value": "@[environment:'CERT']"
+            "value": "@[environment:'PROD']"
         },
         {
-            "id": [
-                1000000000001,
-                2000000000006
-            ],
+            "id": ["resources","CERT"],
             "type": "exp",
-            "value": "@[environment:'CERT']"
+            "value": "@[environment:'PROD']"
         },
         {
-            "id": [
-                1000000000002,
-                2000000000006
-            ],
+            "id": ["resources", "INT"],
+            "type": "exp",
+            "value": "@[environment:'PROD']"
+        },
+        {
+            "id": ["resources","DEV"],
             "type": "string",
             "value": "tests/ncube/cp1"
         },
         {
-            "id": [
-                1000000000002,
-                2000000000002
-            ],
+            "id": ["bootstrap","PROD"],
             "type": "string",
-            "value": "tests/ncube/cp2"
+            "value": "1.10.0"
         },
         {
-            "id": [
-                1000000000001,
-                2000000000005
-            ],
-            "type": "exp",
-            "value": "@[environment:'CERT']"
-        },
-        {
-            "id": [
-                1000000000001,
-                2000000000003
-            ],
-            "type": "exp",
-            "value": "@[environment:'CERT']"
-        },
-        {
-            "id": [
-                1000000000001,
-                2000000000004
-            ],
-            "type": "exp",
-            "value": "@[environment:'CERT']"
-        },
-        {
-            "id": [
-                1000000000001,
-                2000000000002
-            ],
+            "id": ["bootstrap","CERT"],
             "type": "string",
             "value": "1.19.0"
         },
         {
-            "id": [
-                1000000000002,
-                2000000000005
-            ],
-            "type": "string",
-            "value": "tests/ncube/cp2"
-        },
-        {
-            "id": [
-                1000000000002,
-                2000000000007
-            ],
+            "id": ["bootstrap","UAT"],
             "type": "exp",
-            "value": "@[environment:'UAT']"
+            "value": "@[environment:'CERT']"
         },
         {
-            "id": [
-                1000000000002
-            ],
+            "id": ["bootstrap", "DEV"],
+            "type": "string",
+            "value": "1.26.0"
+        },
+        {
+            "id": ["bootstrap", "SAND"],
             "type": "exp",
             "value": "@[environment:'DEV']"
         },
         {
-            "id": [
-                1000000000001
-            ],
+            "id": ["bootstrap","INT"],
+            "type": "exp",
+            "value": "@[environment:'CERT']"
+        },
+        {
+            "id": ["resources"],
+            "type": "exp",
+            "value": "@[environment:'DEV']"
+        },
+        {
+            "id": ["bootstrap"],
             "type": "exp",
             "value": "@[environment:'DEV']"
         }

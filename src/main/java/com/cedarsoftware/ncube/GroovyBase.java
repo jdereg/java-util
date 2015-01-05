@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyCodeSource;
@@ -41,7 +42,7 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
-    static GroovyClassLoader localGroovyClassLoader = new GroovyClassLoader();
+    protected transient String cmdHash;
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
@@ -51,7 +52,7 @@ public abstract class GroovyBase extends UrlCommandCell
         super(cmd, url, true);
     }
 
-    protected abstract String buildGroovy(String theirGroovy, String cubeName, String cmdHash);
+    protected abstract String buildGroovy(String theirGroovy, String cubeName);
 
     protected abstract String getMethodToExecute(Map args);
 
@@ -65,8 +66,6 @@ public abstract class GroovyBase extends UrlCommandCell
 
         Map<String, Method> runMethodMap = getRunMethodCache(appId);
         runMethodMap.clear();
-        localGroovyClassLoader.clearCache();
-        localGroovyClassLoader = new GroovyClassLoader();
     }
 
     private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)
@@ -131,7 +130,7 @@ public abstract class GroovyBase extends UrlCommandCell
         String cubeName = getNCube(args).getName();
         try
         {
-            return executeGroovy(args, getCmdHash(getUrl() == null ? data.toString() : getUrl()));
+            return executeGroovy(args);
         }
         catch(Exception e)
         {
@@ -155,7 +154,7 @@ public abstract class GroovyBase extends UrlCommandCell
     /**
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
-    protected Object executeGroovy(final Map args, final String cmdHash) throws Exception
+    protected Object executeGroovy(final Map args) throws Exception
     {
         NCube cube = getNCube(args);
         Map<String, Constructor> constructorMap = getConstructorCache(cube.getApplicationID());
@@ -169,10 +168,14 @@ public abstract class GroovyBase extends UrlCommandCell
         }
 
         // Step 2: Assign the input, output, and ncube pointers to the groovy cell instance.
-        final NCubeGroovyExpression instance = (NCubeGroovyExpression) c.newInstance();
-        instance.input = getInput(args);
-        instance.output = getOutput(args);
-        instance.ncube = getNCube(args);
+        final Object instance = c.newInstance();
+        if (instance instanceof NCubeGroovyExpression)
+        {
+            NCubeGroovyExpression exp = (NCubeGroovyExpression) instance;
+            exp.input = getInput(args);
+            exp.output = getOutput(args);
+            exp.ncube = getNCube(args);
+        }
 
         // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method
         Map<String, Method> runMethodMap = getRunMethodCache(cube.getApplicationID());
@@ -183,12 +186,12 @@ public abstract class GroovyBase extends UrlCommandCell
             runMethodMap.put(cmdHash, runMethod);
         }
 
-        return invokeRunMethod(runMethod, instance, args, cmdHash);
+        return invokeRunMethod(runMethod, instance, args);
     }
 
     protected abstract Method getRunMethod() throws NoSuchMethodException;
 
-    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args, String cmdHash) throws Exception;
+    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception;
 
     public Object fetch(Map args)
     {
@@ -205,20 +208,11 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             return;
         }
-        //  This order is important because data can be null before the url is loaded
-        //  and then be present afterwards.  we'd have two different hashes for the same object.
-        String cmdHash;
-        if (getUrl() == null)
-        {
-            cmdHash = getCmdHash(data != null ? data.toString() : "null");
-        }
-        else
-        {
-            cmdHash = getCmdHash(getUrl());
-        }
 
+        computeCmdHash(data, ctx);
         NCube cube = getNCube(ctx);
         Map<String, Class> compiledMap = getCompiledClassesCache(cube.getApplicationID());
+
         if (compiledMap.containsKey(cmdHash))
         {   // Already been compiled, re-use class
             setRunnableCode(compiledMap.get(cmdHash));
@@ -227,7 +221,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
         try
         {
-            Class groovyCode = compile(ctx, cmdHash);
+            Class groovyCode = compile(ctx);
             setRunnableCode(groovyCode);
             compiledMap.put(cmdHash, getRunnableCode());
         }
@@ -239,7 +233,36 @@ public abstract class GroovyBase extends UrlCommandCell
         }
     }
 
-    protected Class compile(Map ctx, String cmdHash) throws Exception
+    /**
+     * Compute SHA1 hash for this CommandCell.  The tricky bit here is that the command can be either
+     * defined inline or via a URL.  If defined inline, then the command hash is SHA1(command text).  If
+     * defined through a URL, then the command hash is SHA1(command URL + GroovyClassLoader URLs.toString).
+s    */
+    private void computeCmdHash(Object data, Map ctx)
+    {
+        String content;
+        if (getUrl() == null)
+        {
+            content = data != null ? data.toString() : "null";
+        }
+        else
+        {   // specified via URL, add classLoader URL strings to URL for SHA1 source.
+            NCube cube = getNCube(ctx);
+            GroovyClassLoader gcLoader = (GroovyClassLoader) NCubeManager.getUrlClassLoader(cube.getApplicationID(), getInput(ctx));
+            URL[] urls = gcLoader.getURLs();
+            StringBuilder s = new StringBuilder();
+            for (URL url : urls)
+            {
+                s.append(url.toString());
+                s.append('.');
+            }
+            s.append(getUrl());
+            content = s.toString();
+        }
+        cmdHash = EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(content, "UTF-8"));
+    }
+
+    protected Class compile(Map ctx) throws Exception
     {
         NCube cube = getNCube(ctx);
         String url = getUrl();
@@ -259,9 +282,12 @@ public abstract class GroovyBase extends UrlCommandCell
             { }
         }
 
+        String grvSrcCode;
+        GroovyClassLoader gcLoader;
+
         if (isUrlUsed)
         {
-            GroovyClassLoader gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), cube.getName(), getInput(ctx));
+            gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), getInput(ctx));
 
             if (gcLoader == null)
             {
@@ -276,13 +302,15 @@ public abstract class GroovyBase extends UrlCommandCell
 
             GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
             gcs.setCachable(false);
-            return gcLoader.parseClass(gcs);
+            grvSrcCode = gcs.getScriptText();
         }
         else
         {
-            String groovySource = expandNCubeShortCuts(buildGroovy(getCmd(), cube.getName(), cmdHash));
-            return localGroovyClassLoader.parseClass(groovySource);
+            gcLoader = (GroovyClassLoader)NCubeManager.getLocalClassloader(cube.getApplicationID());
+            grvSrcCode = getCmd();
         }
+        String groovySource = expandNCubeShortCuts(buildGroovy(grvSrcCode, cube.getName()));
+        return gcLoader.parseClass(groovySource);
     }
 
     static String expandNCubeShortCuts(String groovy)

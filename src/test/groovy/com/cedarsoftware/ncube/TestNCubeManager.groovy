@@ -13,7 +13,12 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCubeManager Tests
@@ -65,7 +70,7 @@ public class TestNCubeManager
 
     private static NCube createCube() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
         def coord = [gender:'male', age:47]
         ncube.setCell(1.0, coord)
@@ -88,7 +93,7 @@ public class TestNCubeManager
     @Test
     public void testLoadCubes() throws Exception
     {
-        NCube<Double> ncube = TestNCube.getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
         def coord = [gender:'male', age:47]
         ncube.setCell(1.0d, coord)
@@ -112,7 +117,7 @@ public class TestNCubeManager
 
         assertTrue(NCubeManager.doesCubeExist(appId, name1))
 
-        ncube = TestNCube.testNCube3D_Boolean
+        ncube = NCubeBuilder.testNCube3D_Boolean
         String name2 = ncube.name
         NCubeManager.createCube(appId, ncube, USER_ID)
 
@@ -233,7 +238,7 @@ public class TestNCubeManager
         NCube<Object> continentCounty = new NCube<>('test.ContinentCountries')
         continentCounty.applicationID = defaultSnapshotApp
         NCubeManager.addCube(defaultSnapshotApp, continentCounty)
-        continentCounty.addAxis(TestNCube.continentAxis)
+        continentCounty.addAxis(NCubeBuilder.continentAxis)
         Axis countries = new Axis('Country', AxisType.DISCRETE, AxisValueType.STRING, true)
         countries.addColumn('Canada')
         countries.addColumn('USA')
@@ -243,12 +248,12 @@ public class TestNCubeManager
         NCube<Object> canada = new NCube<>('test.Provinces')
         canada.applicationID = defaultSnapshotApp
         NCubeManager.addCube(defaultSnapshotApp, canada)
-        canada.addAxis(TestNCube.provincesAxis)
+        canada.addAxis(NCubeBuilder.provincesAxis)
 
         NCube<Object> usa = new NCube<>('test.States')
         usa.applicationID = defaultSnapshotApp
         NCubeManager.addCube(defaultSnapshotApp, usa)
-        usa.addAxis(TestNCube.statesAxis)
+        usa.addAxis(NCubeBuilder.statesAxis)
 
         Map coord1 = new HashMap()
         coord1.put('Continent', 'North America')
@@ -448,7 +453,7 @@ public class TestNCubeManager
     @Test
     public void testUpdateOnDeletedCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
 
@@ -471,7 +476,7 @@ public class TestNCubeManager
     @Test
     public void testUpdateTestDataOnDeletedCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
 
@@ -500,7 +505,7 @@ public class TestNCubeManager
     @Test
     public void testUpdateNotesOnDeletedCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         assertTrue(ncube1.numDimensions == 3)
         NCubeManager.deleteCube(defaultSnapshotApp, ncube1.name, USER_ID)
@@ -536,8 +541,8 @@ public class TestNCubeManager
     @Test
     public void testGetNCubes() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
@@ -623,8 +628,8 @@ public class TestNCubeManager
     @Test
     public void testRenameNCube() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         try
         {
@@ -664,8 +669,8 @@ public class TestNCubeManager
     @Test
     public void testNCubeManagerGetCubes() throws Exception
     {
-        NCube ncube1 = TestNCube.testNCube3D_Boolean
-        NCube ncube2 = TestNCube.getTestNCube2D(true)
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
+        NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
@@ -685,14 +690,15 @@ public class TestNCubeManager
         String name = 'Fire'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
         ApplicationID customId = new ApplicationID('NONE', 'updateCubeSys', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        assertNotNull(NCubeManager.getUrlClassLoader(customId, name, [:]))
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(0, NCubeManager.getCacheForApp(customId).size())
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
 
-        assertEquals(0, NCubeManager.getUrlClassLoader(customId, name, [:]).URLs.length)
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, [:]).URLs.length)
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
+        testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')   // reload to clear classLoader inside the cell
         NCubeManager.createCube(customId, testCube, USER_ID)
 
         Map<String, Object> cache = NCubeManager.getCacheForApp(customId)
@@ -700,13 +706,13 @@ public class TestNCubeManager
         assertEquals(testCube, cache.get('sys.classpath'))
 
         assertTrue(NCubeManager.updateCube(customId, testCube, USER_ID))
-        assertNotNull(NCubeManager.getUrlClassLoader(customId, name, [:]))
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
         testCube = NCubeManager.getCube(customId, 'sys.classpath')
         cache = NCubeManager.getCacheForApp(customId)
         assertEquals(1, cache.size())
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId, name, [:]).URLs.length)
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, [:]).URLs.length)
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.classpath'))
@@ -718,33 +724,34 @@ public class TestNCubeManager
         String name = 'Dude'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
         ApplicationID customId = new ApplicationID('NONE', 'renameCubeSys', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId, name, [:])
+        final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId, [:])
         assertNotNull(urlClassLoader1)
         assertEquals(0, NCubeManager.getCacheForApp(customId).size())
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
 
-        final URLClassLoader urlClassLoader = NCubeManager.getUrlClassLoader(customId, name, [:])
-        assertEquals(0, urlClassLoader.URLs.length)
+        final URLClassLoader urlClassLoader = NCubeManager.getUrlClassLoader(customId, [:])
+        assertEquals(1, urlClassLoader.URLs.length)
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
         NCubeManager.clearCache()
+        testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')        // reload so that it does not attempt to write classLoader cells (which will blow up)
         testCube.name = 'sys.mistake'
         NCubeManager.createCube(customId, testCube, USER_ID)
 
         Map<String, Object> cache = NCubeManager.getCacheForApp(customId)
-        assertEquals(1, cache.size())
+        assertEquals(2, cache.size())     // both sys.mistake and sys.classpath are in the cache
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.mistake'))
 
         assertTrue(NCubeManager.renameCube(customId, 'sys.mistake', 'sys.classpath'))
-        assertNotNull(NCubeManager.getUrlClassLoader(customId, name, [:]))
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
         testCube = NCubeManager.getCube(customId, 'sys.classpath')
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId, testCube.name, [:]).URLs.length)
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, [:]).URLs.length)
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.classpath'))
@@ -825,7 +832,7 @@ public class TestNCubeManager
             assertTrue(e.message.contains('cannot be null'))
         }
 
-        NCube testCube = TestNCube.getTestNCube2D(false)
+        NCube testCube = NCubeBuilder.getTestNCube2D(false)
         try
         {
             ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
@@ -1207,7 +1214,7 @@ public class TestNCubeManager
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, null).length)
         assertEquals(1, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
 
-        Axis oddAxis = TestNCube.getOddAxis(true)
+        Axis oddAxis = NCubeBuilder.getOddAxis(true)
         cube.addAxis(oddAxis)
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
@@ -1215,7 +1222,7 @@ public class TestNCubeManager
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
 
-        Axis conAxis = TestNCube.continentAxis
+        Axis conAxis = NCubeBuilder.continentAxis
         cube.addAxis(conAxis)
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
@@ -1253,13 +1260,13 @@ public class TestNCubeManager
         createCube()
 
         // force reload from hsql and reget classpath
-        assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name, [:]))
+        assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, [:]))
 
         NCubeManager.clearCache(defaultSnapshotApp)
-        assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name, [:]))
+        assertNotNull(NCubeManager.getUrlClassLoader(defaultSnapshotApp, [:]))
 
         NCubeManager.getCube(defaultSnapshotApp, 'test.AgeGender')
-        GroovyClassLoader loader = (GroovyClassLoader) NCubeManager.getUrlClassLoader(defaultSnapshotApp, cube.name, [:])
+        GroovyClassLoader loader = (GroovyClassLoader) NCubeManager.getUrlClassLoader(defaultSnapshotApp, [:])
         assertEquals(0, loader.getURLs().length)
     }
 
@@ -1337,16 +1344,8 @@ public class TestNCubeManager
     @Test
     public void testResolveUrlBadApp()
     {
-        try
-        {
-            NCubeManager.resolveRelativeUrl(new ApplicationID('foo', 'bar', '1.0.0', ReleaseStatus.SNAPSHOT.name()), 'tests/ncube/hello.groovy')
-            fail()
-        }
-        catch (IllegalStateException e)
-        {
-            String msg = e.message.toLowerCase()
-            assertTrue(msg.contains('no class loader exists'))
-        }
+        Object o = NCubeManager.resolveRelativeUrl(new ApplicationID('foo', 'bar', '1.0.0', ReleaseStatus.SNAPSHOT.name()), 'tests/ncube/hello.groovy')
+        assertNull o
     }
 
     @Test

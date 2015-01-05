@@ -1,0 +1,34 @@
+{
+  "ncube": "sys.classpath",
+  "axes": [
+    {
+      "name": "env",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "columns": [
+        {
+          "id": "a",
+          "type": "string"
+        },
+        {
+          "id": "b",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": ["a"],
+      "type": "exp",
+      "value": "['http://www.cedarsoftware.com/tests/ncube/cp1']"
+    },
+    {
+      "id": ["b"],
+      "type": "exp",
+      "value": "['http://www.cedarsoftware.com/tests/ncube/cp2']"
+    }
+  ]
+}

@@ -62,8 +62,7 @@ public class NCubeManager
     private static final String CLASSPATH_CUBE = "sys.classpath";
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
-    private static final Map<ApplicationID, GroovyClassLoader> urlClassLoaders = new ConcurrentHashMap<>();
-    private static final Map<ApplicationID, Object> isAppInitialized = new ConcurrentHashMap<>();
+    private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Log LOG = LogFactory.getLog(NCubeManager.class);
 
@@ -178,6 +177,68 @@ public class NCubeManager
         return ncubes.containsKey(cubeName.toLowerCase());
     }
 
+    /**
+     * Fetch the classloader for the given ApplicationID.
+     */
+    static URLClassLoader getUrlClassLoader(ApplicationID appId, Map input)
+    {
+        NCube cpCube = getCube(appId, CLASSPATH_CUBE);
+        if (cpCube == null)
+        {   // No sys.classpath cube exists, just create regular GroovyClassLoader with no URLs set into it.
+            // Scope the GroovyClassLoader per ApplicationID
+            return getLocalClassloader(appId);
+        }
+
+        final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
+        if (!input.containsKey("env") && StringUtilities.hasContent(envLevel))
+        {   // Add in the 'ENV_LEVEL" environment variable when looking up sys.* cubes,
+            // if there was not already an entry for it.
+            input.put("env", envLevel);
+        }
+        if (!input.containsKey("username"))
+        {   // same as ENV_LEVEL, add it in if not already there.
+            input.put("username", System.getProperty("user.name"));
+        }
+        Object urlCpLoader = cpCube.getCell(input);
+        if (urlCpLoader instanceof List)
+        {
+            synchronized(appId.cacheKey().intern())
+            {
+                urlCpLoader = cpCube.getCell(input);
+                if (urlCpLoader instanceof URLClassLoader)
+                {
+                    return (URLClassLoader) urlCpLoader;
+                }
+                List<String> urls = (List<String>) urlCpLoader;
+                GroovyClassLoader groovyClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+                addUrlsToClassLoader(urls, groovyClassLoader);
+                cpCube.setCell(groovyClassLoader, input);   // Overwrite List<String> with GroovyClassLoader instance (with URLs added to it)
+                urlCpLoader = groovyClassLoader;
+            }
+        }
+        return (URLClassLoader) urlCpLoader;
+    }
+
+    static URLClassLoader getLocalClassloader(ApplicationID appId)
+    {
+        GroovyClassLoader gcl = localClassLoaders.get(appId);
+        if (gcl == null)
+        {
+            synchronized (appId.cacheKey().intern())
+            {
+                gcl = localClassLoaders.get(appId);
+                if (gcl != null)
+                {
+                    return gcl;
+                }
+                LOG.debug("No sys.classpath exists for this application: " + appId + ". No URL (external) resources will be loadable.");
+                gcl = new GroovyClassLoader();
+                localClassLoaders.put(appId, gcl);
+            }
+        }
+        return gcl;
+    }
+
     static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
     {
         for (String url : urls)
@@ -197,79 +258,6 @@ public class NCubeManager
             {
                 throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url, e);
             }
-        }
-    }
-
-    /**
-     * Fetch the classloader for the given ApplicationID.
-     */
-    static URLClassLoader getUrlClassLoader(ApplicationID appId, String name, Map input)
-    {
-        if (isAppInitialized.containsKey(appId))
-        {   // URL/GroovyClassLoader has already been initialized with URLs from sys.classpath, hand it back
-            return urlClassLoaders.get(appId);
-        }
-
-        // For non-sys.* and non-bootstrap (0.0.0) cubes, force building of GroovyClassPath (adds URLs to it).
-        resolveClassPath(appId, input);
-        return urlClassLoaders.get(appId);
-    }
-
-    /**
-     * Initialize the GroovyClassLoader with URLs from the sys.classpath cube if one exists.
-     * @param appId ApplicationID requesting the classloader.
-     * @param input Map input - this comes from the input ultimately from a getCell() API call which
-     *              resulted in a cell that needs to be compiled or has a URL that needs to be fetched.
-     */
-    static void resolveClassPath(ApplicationID appId, Map input)
-    {
-        synchronized (appId.cacheKey().intern())
-        {
-            if (isAppInitialized.containsKey(appId))
-            {
-                return;
-            }
-
-            try
-            {
-                GroovyClassLoader urlClassLoader = urlClassLoaders.get(appId);
-                if (urlClassLoader == null)
-                {   // May not be null (2+ cells being compiled to determine classpath)
-                    urlClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-                    urlClassLoaders.put(appId, urlClassLoader);
-                }
-
-                NCube cpCube = getCube(appId, CLASSPATH_CUBE);
-                if (cpCube == null)
-                {
-                    LOG.debug("No sys.classpath exists for this application: " + appId + ". No URL (external) resources will be loadable.");
-                }
-                else
-                {
-                    // Fetch classpath List of Strings
-                    final String envLevel = SystemUtilities.getExternalVariable("ENV_LEVEL");
-                    if (!input.containsKey("env") && StringUtilities.hasContent(envLevel))
-                    {   // Add in the 'ENV_LEVEL" environment variable when looking up sys.* cubes,
-                        // if there was not already an entry for it.
-                        input.put("env", envLevel);
-                    }
-                    if (!input.containsKey("username"))
-                    {   // same as ENV_LEVEL, add it in if not already there.
-                        input.put("username", System.getProperty("user.name"));
-                    }
-                    List<String> urls = (List<String>) cpCube.getCell(input);
-                    if (urlClassLoader.getURLs().length == 0)
-                    {   // Only add URLs if there are none
-                        addUrlsToClassLoader(urls, urlClassLoader);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                LOG.warn("Error resolving " + CLASSPATH_CUBE + ". Make sure " + CLASSPATH_CUBE + " is set up correctly.  URL resources will fail to load.", e);
-            }
-
-            isAppInitialized.put(appId, true);
         }
     }
 
@@ -357,13 +345,10 @@ public class NCubeManager
     {
         validateAppId(appId);
 
-        // Clear App cache
-        Map<String, Object> appCache = ncubeCache.get(appId);
-        if (appCache != null)
-        {
-            appCache.clear();
-        }
+        Map<String, Object> appCache = getCacheForApp(appId);
+        clearGroovyClassLoaderCache(appCache);
 
+        appCache.clear();
         GroovyBase.clearCache(appId);
         NCubeGroovyController.clearCache(appId);
 
@@ -375,20 +360,20 @@ public class NCubeManager
         }
 
         // Clear ClassLoader cache
-        GroovyClassLoader classLoader = urlClassLoaders.get(appId);
+        GroovyClassLoader classLoader = localClassLoaders.get(appId);
         if (classLoader != null)
         {
             classLoader.clearCache();
+            localClassLoaders.remove(appId);
         }
-
-        isAppInitialized.remove(appId);
-        urlClassLoaders.remove(appId);
     }
 
     public static void clearCache()
     {
         for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
         {
+            Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
+            clearGroovyClassLoaderCache(appCache);
             applicationIDMapEntry.getValue().clear();
             GroovyBase.clearCache(applicationIDMapEntry.getKey());
             NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
@@ -401,12 +386,28 @@ public class NCubeManager
         }
         advices.clear();
 
-        for (Map.Entry<ApplicationID, GroovyClassLoader> applicationIDGroovyClassLoaderEntry : urlClassLoaders.entrySet())
+        for (GroovyClassLoader classLoader : localClassLoaders.values())
         {
-            applicationIDGroovyClassLoaderEntry.getValue().clearCache();
+            classLoader.clearCache();
         }
-        urlClassLoaders.clear();
-        isAppInitialized.clear();
+        localClassLoaders.clear();
+    }
+
+    private static void clearGroovyClassLoaderCache(Map<String, Object> appCache)
+    {
+        Object cube = appCache.get(CLASSPATH_CUBE);
+        if (cube instanceof NCube)
+        {
+            NCube cpCube = (NCube) cube;
+            for (Object content : cpCube.cells.values())
+            {
+                if (content instanceof GroovyClassLoader)
+                {
+                    GroovyClassLoader gcl = (GroovyClassLoader) content;
+                    gcl.clearCache();
+                }
+            }
+        }
     }
 
     /**
@@ -850,7 +851,8 @@ public class NCubeManager
         {
             return relativeUrl;
         }
-        GroovyClassLoader gcl = urlClassLoaders.get(appId);
+
+        GroovyClassLoader gcl = (GroovyClassLoader) getUrlClassLoader(appId, new HashMap());
         if (gcl == null)
         {
             throw new IllegalStateException("No class loader exists for this app: " + appId + ", relativeUrl: " + relativeUrl);

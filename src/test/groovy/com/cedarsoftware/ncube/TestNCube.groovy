@@ -205,11 +205,11 @@ public class TestNCube
     {
         NCube<Byte> ncube = new NCube<Byte>("Byte.Cube")
         ncube.setDefaultCellValue((byte) -1)
-        Axis axis1 = getGenderAxis(true)
+        Axis axis1 = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(axis1)
-        Axis axis2 = getShortMonthsOfYear()
+        Axis axis2 = NCubeBuilder.getShortMonthsOfYear()
         ncube.addAxis(axis2)
-        Axis axis3 = getGenderAxis(false)
+        Axis axis3 = NCubeBuilder.getGenderAxis(false)
 
         try
         {
@@ -223,7 +223,7 @@ public class TestNCube
 
         ncube.deleteAxis("miss")
         ncube.deleteAxis("Gender")
-        ncube.addAxis(getGenderAxis(true))
+        ncube.addAxis(NCubeBuilder.getGenderAxis(true))
         ncube.toString()    // Force some APIs to be called during toString()
         assertTrue(ncube.toHtml() != null)
         assertTrue(ncube.numDimensions == 2)
@@ -344,7 +344,7 @@ public class TestNCube
     @Test
     public void testNoDefaultColumn()
     {
-        NCube<Boolean> ncube = getTestNCube3D_Boolean()
+        NCube<Boolean> ncube = NCubeBuilder.getTestNCube3D_Boolean()
 
         def coord = [:]
         coord.put("Trailers", "S1A")
@@ -376,7 +376,7 @@ public class TestNCube
     public void testDefaultColumn()
     {
         NCube<Boolean> ncube = new NCube<Boolean>("Test.Default.Column")
-        Axis axis = getGenderAxis(true)
+        Axis axis = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(axis)
 
         def male = [:]
@@ -427,7 +427,7 @@ public class TestNCube
     public void testClearCells()
     {
         NCube<Boolean> ncube = new NCube<Boolean>("Test.Default.Column")
-        Axis axis = getGenderAxis(true)
+        Axis axis = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(axis)
 
         def male = [:]
@@ -452,7 +452,7 @@ public class TestNCube
     @Test
     public void testIllegalArrayExceptions()
     {
-        NCube<Object> ncube = getTestNCube2D(true)
+        NCube<Object> ncube = NCubeBuilder.getTestNCube2D(true)
         try
         {
             ncube.setCell([] as Object[], new HashMap())
@@ -479,7 +479,7 @@ public class TestNCube
     @Test
     public void testDefaultNCubeCellValue()
     {
-        NCube<Double> ncube = getTestNCube2D(true)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         ncube.defaultCellValue = 3.0        // Non-set cells will return this value
 
         def coord = [Gender:'Male', Age:18]
@@ -496,7 +496,7 @@ public class TestNCube
     public void testStringAxis()
     {
         NCube<Integer> ncube = new NCube<Integer>("SingleStringAxis")
-        Axis genderAxis = getGenderAxis(false)
+        Axis genderAxis = NCubeBuilder.getGenderAxis(false)
         ncube.addAxis(genderAxis)
 
         def coord = [Gender:'Male']
@@ -608,7 +608,7 @@ public class TestNCube
     public void testLongAxis()
     {
         NCube<String> ncube = new NCube<String>("Long.test")
-        ncube.addAxis(getEvenAxis(false))
+        ncube.addAxis(NCubeBuilder.getEvenAxis(false))
 
         def coord = [Even:0 as byte]
         ncube.setCell("zero", coord)
@@ -710,7 +710,7 @@ public class TestNCube
     public void testBigDecimalRangeAxis()
     {
         NCube<String> ncube = new NCube<String>("Big.Decimal.Range")
-        Axis axis = getDecimalRangeAxis(false)
+        Axis axis = NCubeBuilder.getDecimalRangeAxis(false)
         ncube.addAxis(axis)
 
         subTestErrorCases(axis)
@@ -768,7 +768,7 @@ public class TestNCube
     public void testDoubleRangeAxis()
     {
         NCube<String> ncube = new NCube<String>("Double.Range")
-        Axis axis = getDoubleRangeAxis(false)
+        Axis axis = NCubeBuilder.getDoubleRangeAxis(false)
         ncube.addAxis(axis)
 
         subTestErrorCases(axis)
@@ -804,7 +804,7 @@ public class TestNCube
     public void testLongRangeAxis()
     {
         NCube<String> ncube = new NCube<String>("Long.Range")
-        Axis axis = getLongRangeAxis(false)
+        Axis axis = NCubeBuilder.getLongRangeAxis(false)
         ncube.addAxis(axis)
 
         subTestErrorCases(axis)
@@ -840,7 +840,7 @@ public class TestNCube
     public void testDateRangeAxis()
     {
         NCube<String> ncube = new NCube<>("Date.Range")
-        Axis axis = getDateRangeAxis(false)
+        Axis axis = NCubeBuilder.getDateRangeAxis(false)
         ncube.addAxis(axis)
 
         subTestErrorCases(axis)
@@ -1096,7 +1096,7 @@ public class TestNCube
     @Test
     public void testGetCellWithMap()
     {
-        NCube<Double> ncube = getTestNCube2D(false)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(false)
         def coord = [:]
         coord.put("Gender", "Male")
         coord.put("Age", 39)
@@ -1123,7 +1123,7 @@ public class TestNCube
     public void testWithImproperMapCoordinate()
     {
         // 'null' Map
-        NCube<Double> ncube = getTestNCube2D(false)
+        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(false)
         try
         {
             ncube.setCell(9.9, null)
@@ -1167,7 +1167,7 @@ public class TestNCube
     @Test
     public void testNullCoordinate()
     {
-        NCube<Boolean> ncube = getTestNCube3D_Boolean()
+        NCube<Boolean> ncube = NCubeBuilder.getTestNCube3D_Boolean()
         ncube.setDefaultCellValue(false)
 
         def coord = [:]
@@ -1226,7 +1226,7 @@ public class TestNCube
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries")
         NCubeManager.addCube(continentCounty.applicationID, continentCounty)
-        continentCounty.addAxis(getContinentAxis())
+        continentCounty.addAxis(NCubeBuilder.getContinentAxis())
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true)
         countries.addColumn("Canada")
         countries.addColumn("USA")
@@ -1234,11 +1234,11 @@ public class TestNCube
 
         NCube<Object> canada = new NCube<Object>("Provinces")
         NCubeManager.addCube(canada.applicationID, canada)
-        canada.addAxis(getProvincesAxis())
+        canada.addAxis(NCubeBuilder.getProvincesAxis())
 
         NCube<Object> usa = new NCube<Object>("States")
         NCubeManager.addCube(usa.applicationID, usa)
-        usa.addAxis(getStatesAxis())
+        usa.addAxis(NCubeBuilder.getStatesAxis())
 
         def coord1 = [Continent:'North America', Country:'USA', State:'OH']
         def coord2 = [Continent:'North America', Country:'Canada', Province:'Quebec']
@@ -1259,7 +1259,7 @@ public class TestNCube
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries")
         NCubeManager.addCube(continentCounty.applicationID, continentCounty)
-        continentCounty.addAxis(getContinentAxis())
+        continentCounty.addAxis(NCubeBuilder.getContinentAxis())
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true)
         countries.addColumn("Canada")
         countries.addColumn("USA")
@@ -1267,11 +1267,11 @@ public class TestNCube
 
         NCube canada = new NCube("Provinces")
         NCubeManager.addCube(canada.applicationID, canada)
-        canada.addAxis(getProvincesAxis())
+        canada.addAxis(NCubeBuilder.getProvincesAxis())
 
         NCube usa = new NCube("States")
         NCubeManager.addCube(usa.applicationID, usa)
-        usa.addAxis(getStatesAxis())
+        usa.addAxis(NCubeBuilder.getStatesAxis())
 
         def coord1 = [Continent:'North America', Country:'USA', State:'OH']
         def coord2 = [Continent:'North America', Country:'Canada', Province:'Quebec']
@@ -1425,7 +1425,7 @@ public class TestNCube
     public void testDeleteColumnNotFound()
     {
         NCube<Boolean> ncube = new NCube("yo")
-        Axis axis = getGenderAxis(false)
+        Axis axis = NCubeBuilder.getGenderAxis(false)
         ncube.addAxis(axis)
         assertFalse(ncube.deleteColumn("Gender", "blah"))
     }
@@ -1434,7 +1434,7 @@ public class TestNCube
     public void testColumnOrder() throws Exception
     {
         NCube ncube = new NCube("columnOrder")
-        Axis axis = getShortDaysOfWeekAxis()
+        Axis axis = NCubeBuilder.getShortDaysOfWeekAxis()
         axis.columnOrder = Axis.SORTED
         ncube.addAxis(axis)
         List<Column> cols = axis.columns
@@ -1520,7 +1520,7 @@ public class TestNCube
     public void testColumnApis()
     {
         NCube ncube = new NCube("columnApis")
-        Axis axis = getShortMonthsOfYear()
+        Axis axis = NCubeBuilder.getShortMonthsOfYear()
         ncube.addAxis(axis)
         try
         {
@@ -2132,7 +2132,7 @@ public class TestNCube
     {
         NCube ncube = new NCube("TestClearCell")
         ncube.setDefaultCellValue("DEFAULT VALUE")
-        Axis gender = getGenderAxis(true)
+        Axis gender = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(gender)
         def coord = [:]
         coord.put("Gender", "Male")
@@ -2150,7 +2150,7 @@ public class TestNCube
     {
         NCube ncube = new NCube("TestGetMap")
         ncube.setDefaultCellValue("DEFAULT VALUE")
-        Axis gender = getGenderAxis(true)
+        Axis gender = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(gender)
         def coord = [:]
         coord.put("Gender", "Male")
@@ -2184,8 +2184,8 @@ public class TestNCube
     {
         NCube ncube = new NCube("TestGetMap")
         ncube.setDefaultCellValue("DEFAULT VALUE")
-        Axis gender = getGenderAxis(true)
-        Axis days = getShortDaysOfWeekAxis()
+        Axis gender = NCubeBuilder.getGenderAxis(true)
+        Axis days = NCubeBuilder.getShortDaysOfWeekAxis()
         ncube.addAxis(gender)
         ncube.addAxis(days)
         def coord = [:]
@@ -2221,7 +2221,7 @@ public class TestNCube
     public void testGetMapWithRangeColumn()
     {
         NCube ncube = new NCube("TestGetMapWithRange")
-        Axis range = getDateRangeAxis(false)
+        Axis range = NCubeBuilder.getDateRangeAxis(false)
         ncube.addAxis(range)
 
         Set set = new HashSet()
@@ -2296,7 +2296,7 @@ public class TestNCube
     public void testContainsCell()
     {
         NCube<Date> ncube = new NCube<Date>("Dates")
-        ncube.addAxis(getShortMonthsOfYear())
+        ncube.addAxis(NCubeBuilder.getShortMonthsOfYear())
 
         def coord = [:]
         coord.put("Months", "Jun")
@@ -2332,7 +2332,7 @@ public class TestNCube
     public void testInternalColumnPointers()
     {
         NCube<String> ncube = new NCube<>("TestColumnPointers")
-        ncube.addAxis(getGenderAxis(true))
+        ncube.addAxis(NCubeBuilder.getGenderAxis(true))
         Axis triAxis = new Axis("Tristate", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 2)
         triAxis.addColumn("true")
         triAxis.addColumn("false")
@@ -2406,7 +2406,7 @@ public class TestNCube
     public void testStackTrace()
     {
         NCube<CommandCell> continents = new NCube<CommandCell>("Continents")
-        Axis continent = getContinentAxis()
+        Axis continent = NCubeBuilder.getContinentAxis()
         continents.addAxis(continent)
 
         def coord = [:]
@@ -2455,7 +2455,7 @@ public class TestNCube
     public void testRenameAxis()
     {
         NCube<String> ncube = new NCube("RenameAxisTest")
-        Axis days = getShortDaysOfWeekAxis()
+        Axis days = NCubeBuilder.getShortDaysOfWeekAxis()
         ncube.addAxis(days)
 
         def coord = [:]
@@ -3416,8 +3416,8 @@ public class TestNCube
     @Test
     public void testEqualsMetaPropsMismatch()  throws Exception
     {
-        NCube cube1 = getTestNCube2D(false)
-        NCube cube2 = getTestNCube2D(false)
+        NCube cube1 = NCubeBuilder.getTestNCube2D(false)
+        NCube cube2 = NCubeBuilder.getTestNCube2D(false)
 
         assertEquals(cube1, cube2)
 
@@ -3594,7 +3594,7 @@ public class TestNCube
     @Test
     public void testRemoveCellById()
     {
-        NCube ncube = getTestNCube2D(true)
+        NCube ncube = NCubeBuilder.getTestNCube2D(true)
         Axis age = ncube.getAxis("age")
         Axis gender = ncube.getAxis("gender")
         Column ageCol = age.columns.get(0)
@@ -4599,7 +4599,7 @@ public class TestNCube
         sha1_b = c2.sha1()
         assertNotEquals(sha1_a, sha1_b)
 
-        Axis a = getStatesAxis()
+        Axis a = NCubeBuilder.getStatesAxis()
         c2 = c1.duplicate("TestCube")
         c2.addAxis(a)
         assertNotEquals(c1, c2)
@@ -4738,7 +4738,7 @@ public class TestNCube
     public void testNCubeApplicationIdParts()
     {
         ApplicationID appId = new ApplicationID("foo", "bar", "0.0.1", ReleaseStatus.SNAPSHOT.name())
-        NCube ncube = getTestNCube3D_Boolean()
+        NCube ncube = NCubeBuilder.getTestNCube3D_Boolean()
         ncube.setApplicationID(appId)
         assertEquals(appId.getStatus(), ncube.getStatus())
         assertEquals(appId.getVersion(), ncube.getVersion())
@@ -4747,7 +4747,7 @@ public class TestNCube
     @Test
     public void testGetColumnsAndCoordinateFromIds()
     {
-        NCube cube = getTestNCube3D_Boolean()
+        NCube cube = NCubeBuilder.getTestNCube3D_Boolean()
 
         Axis trailor = cube.getAxis("Trailers")
         Column t = trailor.findColumn("M2A")
@@ -4895,7 +4895,7 @@ public class TestNCube
     {
         NCube cube = NCubeManager.getNCubeFromResource("delta.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("delta.json")
-        cube2.addAxis(getStatesAxis())
+        cube2.addAxis(NCubeBuilder.getStatesAxis())
         List<Delta> delta = cube2.getDeltaDescription(cube)
         assertEquals(1, delta.size())
         assertTrue(delta.get(0).toString().toLowerCase().contains("added"))
@@ -4955,7 +4955,7 @@ public class TestNCube
         NCube cube = NCubeManager.getNCubeFromResource("delta.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("delta.json")
         cube2.deleteAxis("gender")
-        cube2.addAxis(getStatesAxis())
+        cube2.addAxis(NCubeBuilder.getStatesAxis())
         List<Delta> delta = cube2.getDeltaDescription(cube)
         assertEquals(2, delta.size())
 
@@ -5250,309 +5250,6 @@ public class TestNCube
                 assertEquals(thisCol.id, thatCol.id)
             }
         }
-    }
-
-    static Axis getStatesAxis()
-    {
-        Axis states = new Axis("State", AxisType.DISCRETE, AxisValueType.STRING, false)
-        states.addColumn("AL")
-        states.addColumn("AK")
-        states.addColumn("AZ")
-        states.addColumn("AR")
-        states.addColumn("CA")
-        states.addColumn("CO")
-        states.addColumn("CT")
-        states.addColumn("DE")
-        states.addColumn("FL")
-        states.addColumn("GA")
-        states.addColumn("HI")
-        states.addColumn("ID")
-        states.addColumn("IL")
-        states.addColumn("IN")
-        states.addColumn("IA")
-        states.addColumn("KS")
-        states.addColumn("KY")
-        states.addColumn("LA")
-        states.addColumn("ME")
-        states.addColumn("MD")
-        states.addColumn("MA")
-        states.addColumn("MI")
-        states.addColumn("MN")
-        states.addColumn("MS")
-        states.addColumn("MO")
-        states.addColumn("MT")
-        states.addColumn("NE")
-        states.addColumn("NV")
-        states.addColumn("NH")
-        states.addColumn("NJ")
-        states.addColumn("NM")
-        states.addColumn("NY")
-        states.addColumn("NC")
-        states.addColumn("ND")
-        states.addColumn("OH")
-        states.addColumn("OK")
-        states.addColumn("OR")
-        states.addColumn("PA")
-        states.addColumn("RI")
-        states.addColumn("SC")
-        states.addColumn("SD")
-        states.addColumn("TN")
-        states.addColumn("TX")
-        states.addColumn("UT")
-        states.addColumn("VT")
-        states.addColumn("VA")
-        states.addColumn("WA")
-        states.addColumn("WI")
-        states.addColumn("WV")
-        states.addColumn("WY")
-        return states
-    }
-
-    static Axis getProvincesAxis()
-    {
-        Axis provinces = new Axis("Province", AxisType.DISCRETE, AxisValueType.STRING, false)
-        provinces.addColumn("Quebec")
-        provinces.addColumn("New Brunswick")
-        provinces.addColumn("Nova Scotia")
-        provinces.addColumn("Ontario")
-        provinces.addColumn("Manitoba")
-        provinces.addColumn("Saskatchewan")
-        provinces.addColumn("Alberta")
-        provinces.addColumn("British Columbia")
-        provinces.addColumn("Yukon")
-        provinces.addColumn("Northwest Territories")
-        provinces.addColumn("Nunavut")
-        provinces.addColumn("Newfoundland")
-        return provinces
-    }
-
-    static Axis getContinentAxis()
-    {
-        Axis continent = new Axis("Continent", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        continent.addColumn("Africa")
-        continent.addColumn("Antarctica")
-        continent.addColumn("Asia")
-        continent.addColumn("Australia")
-        continent.addColumn("Europe")
-        continent.addColumn("North America")
-        continent.addColumn("South America")
-        return continent
-    }
-
-    static Axis getDecimalRangeAxis(boolean defCol)
-    {
-        Axis axis = new Axis("bigD", AxisType.RANGE, AxisValueType.BIG_DECIMAL, defCol)
-        axis.addColumn(new Range(-10.0, 10.0))
-        axis.addColumn(new Range("20.0", "30.0"))
-        axis.addColumn(new Range(100 as Byte, 1000 as Short))
-        axis.addColumn(new Range(10000, 100000L))
-        axis.addColumn(new Range(100000L, 9900000L))
-        return axis
-    }
-
-    static Axis getDoubleRangeAxis(boolean defCol)
-    {
-        Axis axis = new Axis("doubleRange", AxisType.RANGE, AxisValueType.DOUBLE, defCol)
-        axis.addColumn(new Range(-10.0, 10.0))
-        axis.addColumn(new Range("20.0", "30.0"))
-        axis.addColumn(new Range(100 as Byte, 1000 as Short))
-        axis.addColumn(new Range(10000, 100000L))
-        axis.addColumn(new Range(100000L, 9900000L))
-        return axis
-    }
-
-    static Axis getLongRangeAxis(boolean defCol)
-    {
-        Axis axis = new Axis("longRange", AxisType.RANGE, AxisValueType.LONG, defCol)
-        axis.addColumn(new Range(-10.0, 10.0))
-        axis.addColumn(new Range("20", "30"))
-        axis.addColumn(new Range(100 as Byte, 1000 as Short))
-        axis.addColumn(new Range(10000, 100000L))
-        axis.addColumn(new Range(100000L, 9900000L))
-        return axis
-    }
-
-    static Axis getDateRangeAxis(boolean defCol)
-    {
-        Axis axis = new Axis("dateRange", AxisType.RANGE, AxisValueType.DATE, defCol)
-        Calendar cal = Calendar.getInstance()
-        cal.set(1990, 5, 10, 13, 5, 25)
-        Calendar cal1 = Calendar.getInstance()
-        cal1.set(2000, 0, 1, 0, 0, 0)
-        Calendar cal2 = Calendar.getInstance()
-        cal2.set(2002, 11, 17, 0, 0, 0)
-        Calendar cal3 = Calendar.getInstance()
-        cal3.set(2008, 11, 24, 0, 0, 0)
-        Calendar cal4 = Calendar.getInstance()
-        cal4.set(2010, 0, 1, 12, 0, 0)
-        Calendar cal5 = Calendar.getInstance()
-        cal5.set(2014, 7, 1, 12, 59, 59)
-
-        axis.addColumn(new Range(cal, cal1.getTime()))
-        axis.addColumn(new Range(cal1, cal2.getTime()))
-        axis.addColumn(new Range(cal2, cal3))
-        axis.addColumn(new Range(cal4, cal5))
-        return axis
-    }
-
-    static Axis getLongDaysOfWeekAxis()
-    {
-        Axis axis = new Axis("Days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        axis.addColumn("Monday")
-        axis.addColumn("Tuesday")
-        axis.addColumn("Wednesday")
-        axis.addColumn("Thursday")
-        axis.addColumn("Friday")
-        axis.addColumn("Saturday")
-        axis.addColumn("Sunday")
-        return axis
-    }
-
-    static Axis getShortDaysOfWeekAxis()
-    {
-        Axis axis = new Axis("Days", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        axis.addColumn("Mon")
-        axis.addColumn("Tue")
-        axis.addColumn("Wed")
-        axis.addColumn("Thu")
-        axis.addColumn("Fri")
-        axis.addColumn("Sat")
-        axis.addColumn("Sun")
-        return axis
-    }
-
-    static Axis getLongMonthsOfYear()
-    {
-        Axis axis = new Axis("Months", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        axis.addColumn("Janurary")
-        axis.addColumn("February")
-        axis.addColumn("March")
-        axis.addColumn("April")
-        axis.addColumn("May")
-        axis.addColumn("June")
-        axis.addColumn("July")
-        axis.addColumn("August")
-        axis.addColumn("September")
-        axis.addColumn("October")
-        axis.addColumn("November")
-        axis.addColumn("December")
-        return axis
-    }
-
-    static Axis getShortMonthsOfYear()
-    {
-        Axis axis = new Axis("Months", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        axis.addColumn("Jan")
-        axis.addColumn("Feb")
-        axis.addColumn("Mar")
-        axis.addColumn("Apr")
-        axis.addColumn("May")
-        axis.addColumn("Jun")
-        axis.addColumn("Jul")
-        axis.addColumn("Aug")
-        axis.addColumn("Sep")
-        axis.addColumn("Oct")
-        axis.addColumn("Nov")
-        axis.addColumn("Dec")
-        return axis
-    }
-
-    static Axis getGenderAxis(boolean defCol)
-    {
-        Axis axis = new Axis("Gender", AxisType.DISCRETE, AxisValueType.STRING, defCol)
-        axis.addColumn("Male")
-        axis.addColumn("Female")
-        return axis
-    }
-
-    static Axis getFullGenderAxis()
-    {
-        Axis axis = new Axis("Gender", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        axis.addColumn("Male")
-        axis.addColumn("Female")
-        axis.addColumn("Trans Female->Male")
-        axis.addColumn("Trans Male->Female")
-        axis.addColumn("Hermaphrodite")
-        return axis
-    }
-
-    static Axis getEvenAxis(boolean defCol)
-    {
-        Axis axis = new Axis("Even", AxisType.DISCRETE, AxisValueType.LONG, defCol)
-        axis.addColumn(0L)
-        axis.addColumn(2L)
-        axis.addColumn(4L)
-        axis.addColumn(6L)
-        axis.addColumn(8L)
-        axis.addColumn(10L)
-        return axis
-    }
-
-    static Axis getOddAxis(boolean defCol)
-    {
-        Axis axis = new Axis("Odd", AxisType.DISCRETE, AxisValueType.LONG, defCol)
-        axis.addColumn(1L)
-        axis.addColumn(3L)
-        axis.addColumn(5L)
-        axis.addColumn(7L)
-        axis.addColumn(9L)
-        return axis
-    }
-
-    static NCube getTestNCube2D(boolean defCol)
-    {
-        NCube<Double> ncube = new NCube<>("test.Age-Gender")
-        Axis axis1 = getGenderAxis(defCol)
-
-        Axis axis2 = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, defCol)
-        axis2.addColumn(new Range(0, 18))
-        axis2.addColumn(new Range(18, 30))
-        axis2.addColumn(new Range(30, 40))
-        axis2.addColumn(new Range(40, 65))
-        axis2.addColumn(new Range(65, 80))
-
-        ncube.addAxis(axis1)
-        ncube.addAxis(axis2)
-
-        return ncube
-    }
-
-    static NCube getSysClassPathCube()
-    {
-        return NCubeManager.getNCubeFromResource("sys.classpath.tests.json")
-    }
-
-    static NCube getTestNCube3D_Boolean()
-    {
-        NCube<Boolean> ncube = new NCube<>("test.ValidTrailorConfigs")
-        Axis axis1 = new Axis("Trailers", AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
-        axis1.addColumn("S1A")
-        axis1.addColumn("M1A")
-        axis1.addColumn("L1A")
-        axis1.addColumn("S2A")
-        axis1.addColumn("M2A")
-        axis1.addColumn("L2A")
-        axis1.addColumn("M3A")
-        axis1.addColumn("L3A")
-        Axis axis2 = new Axis("Vehicles", AxisType.DISCRETE, AxisValueType.STRING, false)
-        axis2.addColumn("car")
-        axis2.addColumn("small truck")
-        axis2.addColumn("med truck")
-        axis2.addColumn("large truck")
-        axis2.addColumn("van")
-        axis2.addColumn("motorcycle")
-        axis2.addColumn("limousine")
-        axis2.addColumn("tractor")
-        axis2.addColumn("golf cart")
-        Axis axis3 = new Axis("BU", AxisType.DISCRETE, AxisValueType.STRING, false)
-        axis3.addColumn("Agri")
-        axis3.addColumn("SHS")
-
-        ncube.addAxis(axis1)
-        ncube.addAxis(axis2)
-        ncube.addAxis(axis3)
-
-        return ncube
     }
 
     static int countMatches(String s, String pattern)

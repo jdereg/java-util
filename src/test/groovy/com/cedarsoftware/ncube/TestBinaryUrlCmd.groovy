@@ -49,7 +49,7 @@ public class TestBinaryUrlCmd
     @Test
     public void testSimpleFetchException()
     {
-        NCube cube = TestNCube.getTestNCube2D true
+        NCube cube = NCubeBuilder.getTestNCube2D true
         BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false)
 
         PowerMockito.mockStatic UrlUtilities.class

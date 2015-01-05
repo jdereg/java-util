@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 /**
  * This class is used to hold Groovy Expressions.  This means that
@@ -49,8 +50,14 @@ public class GroovyExpression extends GroovyBase
         super(cmd, url);
     }
 
-    public String buildGroovy(String theirGroovy, String cubeName, String cmdHash)
+    public String buildGroovy(String theirGroovy, String cubeName)
     {
+        Matcher m = Regexes.hasClassDefPattern.matcher(theirGroovy);
+        if (m.find())
+        {   // If they include a class ... { in their source, then we do not add the 'apartment' around the content.
+            return theirGroovy;
+        }
+
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder("package ncube.grv.exp\n");
@@ -100,7 +107,7 @@ public class GroovyExpression extends GroovyBase
         return getRunnableCode().getMethod("run");
     }
 
-    protected Object invokeRunMethod(Method runMethod, Object instance, Map args, String cmdHash) throws Exception
+    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception
     {
         // If 'around' Advice has been added to n-cube, invoke it before calling Groovy expression's run() method
         NCube ncube = getNCube(args);

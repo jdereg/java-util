@@ -1,9 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.util.CdnRouter;
-import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
 import org.apache.commons.logging.Log;
@@ -53,7 +51,6 @@ import java.util.regex.Matcher;
 public abstract class UrlCommandCell implements CommandCell
 {
     private String cmd;
-    private transient String cmdHash;
     private volatile transient Class runnableCode = null;
     private volatile transient String errorMsg = null;
     private String url = null;
@@ -211,7 +208,8 @@ public abstract class UrlCommandCell implements CommandCell
         return null;
     }
 
-    private static String getExtension(String urlPath) {
+    private static String getExtension(String urlPath)
+    {
         int index = urlPath == null ? -1 : urlPath.lastIndexOf(EXTENSION_SEPARATOR);
         return index == -1 ? null : urlPath.substring(index).intern();
     }
@@ -263,7 +261,7 @@ public abstract class UrlCommandCell implements CommandCell
             }
             else
             {   // Relative URL
-                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), ncube.getName(), getInput(ctx));
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), getInput(ctx));
                 if (loader == null)
                 {
                     // TODO: Make attempt to load them from sys.classpath
@@ -394,15 +392,6 @@ public abstract class UrlCommandCell implements CommandCell
     public String getCmd()
     {
         return cmd;
-    }
-
-    public String getCmdHash(String command)
-    {
-        if (cmdHash == null)
-        {
-            cmdHash = EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(command, "UTF-8"));
-        }
-        return cmdHash;
     }
 
     public String toString()

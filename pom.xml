@@ -54,7 +54,7 @@
         <version.plugin.javadoc>2.10.1</version.plugin.javadoc>
         <version.plugin.gpg>1.5</version.plugin.gpg>
         <version.plugin.release>2.5.1</version.plugin.release>
-        <version.plugin.surefire>2.18</version.plugin.surefire>
+        <version.plugin.surefire>2.18.1</version.plugin.surefire>
         <version.servlet.api>2.3</version.servlet.api>
     </properties>
 

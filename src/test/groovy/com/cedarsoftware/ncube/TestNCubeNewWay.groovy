@@ -182,10 +182,42 @@ public class TestNCubeNewWay
         assertEquals(2, NCubeManager.getCacheForApp(appId).size());
 
         input.env = "b";
-        input.put("state", "TX");
+        input.put("state", "OH");
         def y = cube.getCell(input);
         assert 'Goodbye, world.' == y
 
         manager.removeCubes(appId, USER_ID, ncubes);
+    }
+
+    @Test
+    public void testMathControllerUsingExpressions() throws Exception
+    {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json");
+
+        // add cubes for this test.
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "controller", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        manager.addCubes(appId, USER_ID, ncubes);
+
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size());
+        NCube cube = NCubeManager.getCube(appId, "MathController");
+
+        // classpath isn't loaded at this point.
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+
+        def input = [:]
+        input.env = "a";
+        input.x = 5;
+        input.method = "square";
+
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+        assertEquals(25, cube.getCell(input));
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+
+        input.method = 'factorial'
+        assertEquals(25, cube.getCell(input));
+
+        input.method = 'hello'
+        assert 'Goodbye, world.' == cube.getCell(input)
+
     }
 }

@@ -5,8 +5,8 @@ import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyClassLoader;
-import groovy.lang.GroovyCodeSource;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Constructor;
@@ -300,9 +300,10 @@ s    */
                 throw new IllegalArgumentException("Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, unresolvable url: " + url);
             }
 
-            GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
-            gcs.setCachable(false);
-            grvSrcCode = gcs.getScriptText();
+            grvSrcCode = UrlUtilities.getContentFromUrlAsString(groovySourceUrl, true);
+            //GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
+            //gcs.setCachable(false);
+            //grvSrcCode = gcs.getScriptText();
         }
         else
         {

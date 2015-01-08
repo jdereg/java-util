@@ -253,4 +253,45 @@ public class TestNCubeNewWay
 
         manager.removeCubes(appId, USER_ID, ncubes)
     }
+
+    @Test
+    public void testMathControllerUsingExpressions() throws Exception
+    {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json");
+
+        // add cubes for this test.
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "controller", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+        manager.addCubes(appId, USER_ID, ncubes);
+
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size());
+        NCube cube = NCubeManager.getCube(appId, "MathController");
+
+        // classpath isn't loaded at this point.
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+        def input = [:]
+        input.env = "a";
+        input.x = 5;
+        input.method = "square";
+
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+        assertEquals(25, cube.getCell(input));
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+
+        input.method = 'factorial'
+        assertEquals(120, cube.getCell(input));
+
+        // same number of cubes, different cells
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+
+        // test that shows you can add an axis to a controller to selectively choose a new classpath
+        input.env = "b";
+        input.method = "square";
+        assertEquals(5, cube.getCell(input));
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+
+        input.method = 'factorial'
+        assertEquals(5, cube.getCell(input));
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+    }
+
 }

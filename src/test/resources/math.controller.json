@@ -9,12 +9,31 @@
       "hasDefault": false,
       "columns": [
         { "id":"square"},
-        { "id":"factorial"},
-        { "id":"hello"}
-    ]}
+        { "id":"factorial"}
+    ]},
+    {
+      "name": "env",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": [
+        { "id":"a"}
+      ]
+    }
 
   ],
   "cells": [
+    {
+      "id" : ["square", "a"],
+      "type": "exp",
+      "url": "square.groovy"
+    },
+    {
+      "id" : ["factorial", "a"],
+      "type": "exp",
+      "url": "factorial.groovy"
+    },
     {
       "id" : ["square"],
       "type": "exp",

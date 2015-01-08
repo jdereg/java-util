@@ -27,6 +27,7 @@ public class TestThreadedClearCache
 {
     public static String USER_ID = TestNCubeManager.USER_ID
     public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+    public static ApplicationID usedId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "usedInvalidId", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
 
     private TestingDatabaseManager manager;
 
@@ -51,12 +52,12 @@ public class TestThreadedClearCache
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json");
 
         // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        manager.addCubes(usedId, USER_ID, ncubes)
 
         concurrencyTestWithAppId();
 
         // remove cubes
-        manager.removeCubes(appId, USER_ID, ncubes);
+        manager.removeCubes(usedId, USER_ID, ncubes);
     }
 
     private void concurrencyTestWithAppId()
@@ -66,7 +67,7 @@ public class TestThreadedClearCache
             long start = System.currentTimeMillis()
             while (System.currentTimeMillis() - start < 3000) {
                 for (int j = 0; j < 100; j++) {
-                    NCube cube = NCubeManager.getCube(appId, "MathController")
+                    NCube cube = NCubeManager.getCube(usedId, "MathController")
 
                     def input = [:]
                     input.env = "a"

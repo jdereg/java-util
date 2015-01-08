@@ -205,7 +205,9 @@ public class TestJsonFormatter
     {
         for (String f : strings)
         {
-            NCube ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, f)
+            String original = NCubeManager.getResourceAsString(f)
+            NCube ncube = NCube.fromSimpleJson(original)
+
 //            long start = System.nanoTime()
             String s = ncube.toFormattedJson()
 //            System.out.println(s)

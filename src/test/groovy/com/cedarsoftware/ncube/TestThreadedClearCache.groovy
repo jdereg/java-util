@@ -176,7 +176,10 @@ public class TestThreadedClearCache
             catch (InterruptedException ignored)
             { }
         }
-        clear.join();
+        try {
+            clear.join();
+        } catch (InterruptedException ignored) {
+        }
     }
 
     private void concurrencyTestWithAppId() throws Exception

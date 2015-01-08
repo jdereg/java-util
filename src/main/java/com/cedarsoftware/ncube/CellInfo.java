@@ -45,6 +45,7 @@ public class CellInfo
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd");
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
+    private static final Pattern HEX_DIGIT = Pattern.compile("[0-9a-fA-F]+");
 
     public CellInfo(String type, String value, Object isUrl, Object isCached)
     {
@@ -424,7 +425,7 @@ public class CellInfo
                 {
                     throw new IllegalArgumentException("Binary (hex) values must have an even number of digits.");
                 }
-                if (!hex.matches("[0-9a-fA-F]+"))
+                if (!HEX_DIGIT.matcher(hex).matches())
                 {
                     throw new IllegalArgumentException("Binary (hex) values must contain only the numbers 0 thru 9 and letters A thru F.");
                 }

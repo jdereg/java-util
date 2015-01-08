@@ -24,28 +24,28 @@ public class Range implements Comparable<Range>
     Comparable low;
     Comparable high;
     public Range() {}	// For serialization support
-    
+
     public Range(Comparable low, Comparable high)
     {
     	if (low == null || high == null)
     	{
     		throw new IllegalArgumentException("Range value cannot be null");
     	}
-    	
+
     	if (low.equals(high))
     	{   // Using compareTo() because we know that it HAD to be implemented (whereas .equals() comes free)
     		throw new IllegalArgumentException("Range low and high must be different");
     	}
         this.low = low;
-        this.high = high;        
+        this.high = high;
     }
-    
+
     public String toString()
     {
         return "[" + CellInfo.formatForDisplay(low) + " - " + CellInfo.formatForDisplay(high) + ")";
     }
-    
-	public int compareTo(Range that) 
+
+	public int compareTo(Range that)
 	{
 		return low.compareTo(that.low);
 	}
@@ -65,7 +65,7 @@ public class Range implements Comparable<Range>
     {
         return low.hashCode() + high.hashCode();
     }
-	
+
 	/**
 	 * @param value to compare with Range to determine if the value is
 	 * within the Range [low, high).
@@ -79,7 +79,7 @@ public class Range implements Comparable<Range>
 		{
 			return 1;
 		}
-		
+
 		if (value.compareTo(low) < 0)
 		{
 			return -1;
@@ -88,9 +88,9 @@ public class Range implements Comparable<Range>
 		{
 			return 1;
 		}
-		return 0;			
+		return 0;
 	}
-	
+
 	/**
 	 * @return boolean true if the line segments represented by these two ranges
 	 * overlap.  Assumption that the Range objects 'low' value is less than the

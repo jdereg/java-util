@@ -21,7 +21,7 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class StringUrlCmd extends UrlCommandCell
+public class StringUrlCmd extends ContentCmdCell
 {
     //  Private constructor only for serialization.
     private StringUrlCmd() {}
@@ -35,10 +35,5 @@ public class StringUrlCmd extends UrlCommandCell
     {
         byte[] bytes = (byte[])super.proxyFetch(args);
         return bytes == null ? null : new String(bytes);
-    }
-
-    protected Object executeInternal(Object data, Map ctx)
-    {
-        return data;
     }
 }

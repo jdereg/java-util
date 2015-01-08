@@ -83,15 +83,7 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
-        StringBuilder s = new StringBuilder();
-        s.append(tenant);
-        s.append('/');
-        s.append(app);
-        s.append('/');
-        s.append(version);
-        s.append('/');
-        s.append(name);
-        return s.toString().toLowerCase();
+        return (tenant + '/' + app + '/' + version + '/' + name).toLowerCase();
     }
 
     public boolean equals(Object o)

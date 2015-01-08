@@ -852,12 +852,8 @@ public class NCubeManager
             return relativeUrl;
         }
 
-        GroovyClassLoader gcl = (GroovyClassLoader) getUrlClassLoader(appId, new HashMap());
-        if (gcl == null)
-        {
-            throw new IllegalStateException("No class loader exists for this app: " + appId + ", relativeUrl: " + relativeUrl);
-        }
-        URL absUrl = gcl.getResource(relativeUrl);
+        URLClassLoader classLoader = getUrlClassLoader(appId, new HashMap());
+        URL absUrl = classLoader.getResource(relativeUrl);
         return absUrl != null ? absUrl.toString() : null;
     }
 

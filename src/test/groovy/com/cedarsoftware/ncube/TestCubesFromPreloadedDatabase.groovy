@@ -24,9 +24,11 @@ import static org.junit.Assert.assertNotNull
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestNCubeNewWay
+public class TestCubesFromPreloadedDatabase
 {
-    public static String USER_ID = TestNCubeManager.USER_ID;
+    public static String USER_ID = TestNCubeManager.USER_ID
+    public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "preloaded", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+
     private TestingDatabaseManager manager;
 
     @Before
@@ -47,39 +49,36 @@ public class TestNCubeNewWay
 
     @Test
     public void testUrlClassLoader() throws Exception {
-        final String name = "SomeName";
-
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json")
 
         // add cubes for this test.
-        ApplicationID customId = new ApplicationID("NONE", "updateCubeSys", "1.0.0", ReleaseStatus.SNAPSHOT.name())
-        manager.addCubes(customId, USER_ID, ncubes)
+        manager.addCubes(appId, USER_ID, ncubes)
 
         // nothing in cache until we try and get the classloader or load a cube.
-        assertEquals(0, NCubeManager.getCacheForApp(customId).size())
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
 
         //  url classloader has 1 item
         Map input = [:]
-        URLClassLoader loader = NCubeManager.getUrlClassLoader(customId, input)
+        URLClassLoader loader = NCubeManager.getUrlClassLoader(appId, input)
         assertEquals(1, loader.getURLs().length)
-        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
         assertEquals(new URL("http://www.cedarsoftware.com/tests/ncube/cp1/"), loader.getURLs()[0])
 
-        Map<String, Object> cache = NCubeManager.getCacheForApp(customId)
+        Map<String, Object> cache = NCubeManager.getCacheForApp(appId)
         assertEquals(1, cache.size())
 
-        assertNotNull(NCubeManager.getUrlClassLoader(customId, input))
-        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
+        assertNotNull(NCubeManager.getUrlClassLoader(appId, input))
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
 
         NCubeManager.clearCache()
-        assertEquals(0, NCubeManager.getCacheForApp(customId).size())
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
 
-        cache = NCubeManager.getCacheForApp(customId)
-        assertEquals(1, NCubeManager.getUrlClassLoader(customId, input).getURLs().length)
+        cache = NCubeManager.getCacheForApp(appId)
+        assertEquals(1, NCubeManager.getUrlClassLoader(appId, input).getURLs().length)
         assertEquals(1, cache.size())
 
 
-        manager.removeCubes(customId, USER_ID, ncubes)
+        manager.removeCubes(appId, USER_ID, ncubes)
     }
 
     @Test
@@ -88,7 +87,6 @@ public class TestNCubeNewWay
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
 
         // add cubes for this test.
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
         manager.addCubes(appId, USER_ID, ncubes)
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
@@ -163,7 +161,6 @@ public class TestNCubeNewWay
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
 
         // add cubes for this test.
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
         manager.addCubes(appId, USER_ID, ncubes)
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
@@ -228,7 +225,6 @@ public class TestNCubeNewWay
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "GroovyExpCp1.json")
 
         // add cubes for this test.
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "GroovyMethodCP", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
         manager.addCubes(appId, USER_ID, ncubes)
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
@@ -257,41 +253,39 @@ public class TestNCubeNewWay
     @Test
     public void testMathControllerUsingExpressions() throws Exception
     {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json");
 
         // add cubes for this test.
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "controller", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
         manager.addCubes(appId, USER_ID, ncubes);
 
-        assertEquals(0, NCubeManager.getCacheForApp(appId).size());
-        NCube cube = NCubeManager.getCube(appId, "MathController");
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
+        NCube cube = NCubeManager.getCube(appId, "MathController")
 
         // classpath isn't loaded at this point.
-        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
         def input = [:]
-        input.env = "a";
-        input.x = 5;
-        input.method = "square";
+        input.env = "a"
+        input.x = 5
+        input.method = 'square'
 
-        assertEquals(1, NCubeManager.getCacheForApp(appId).size());
-        assertEquals(25, cube.getCell(input));
-        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
+        assertEquals(25, cube.getCell(input))
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size())
 
         input.method = 'factorial'
-        assertEquals(120, cube.getCell(input));
+        assertEquals(120, cube.getCell(input))
 
         // same number of cubes, different cells
-        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size())
 
         // test that shows you can add an axis to a controller to selectively choose a new classpath
-        input.env = "b";
-        input.method = "square";
-        assertEquals(5, cube.getCell(input));
-        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+        input.env = "b"
+        input.method = 'square'
+        assertEquals(5, cube.getCell(input))
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size())
 
         input.method = 'factorial'
-        assertEquals(5, cube.getCell(input));
-        assertEquals(2, NCubeManager.getCacheForApp(appId).size());
+        assertEquals(5, cube.getCell(input))
+        assertEquals(2, NCubeManager.getCacheForApp(appId).size())
     }
 
 }

@@ -253,6 +253,7 @@ public class TestCubesFromPreloadedDatabase
     @Test
     public void testMathControllerUsingExpressions() throws Exception
     {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json")
 
         // add cubes for this test.
         manager.addCubes(appId, USER_ID, ncubes);
@@ -287,5 +288,28 @@ public class TestCubesFromPreloadedDatabase
         assertEquals(5, cube.getCell(input))
         assertEquals(2, NCubeManager.getCacheForApp(appId).size())
     }
+
+    @Test
+    public void testClearCache()
+    {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cedar.json", "cedar.hello.json")
+
+        // add cubes for this test.
+        manager.addCubes(appId, USER_ID, ncubes)
+
+        Map input = new HashMap()
+        NCube cube = NCubeManager.getCube(appId, 'hello');
+        Object out = cube.getCell(input)
+        assertEquals('Hello, world.', out)
+        NCubeManager.clearCache(appId)
+
+        cube = NCubeManager.getCube(appId, 'hello')
+        out = cube.getCell(input)
+        assertEquals('Hello, world.', out)
+
+        // remove cubes for this test.
+        manager.removeCubes(appId, USER_ID, ncubes)
+    }
+
 
 }

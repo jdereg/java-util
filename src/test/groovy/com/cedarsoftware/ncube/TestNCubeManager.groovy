@@ -13,12 +13,7 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCubeManager Tests
@@ -1485,24 +1480,6 @@ public class TestNCubeManager
         assertTrue(names.contains('a'))
         assertTrue(names.contains('b'))
         assertTrue(names.contains('c'))
-    }
-
-    @Test
-    public void testClearCache()
-    {
-        NCube cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'sys.classpath.cedar.json')
-        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
-        cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'cedar.hello.json')
-        NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID)
-
-        Map input = new HashMap()
-        Object out = cube.getCell(input)
-        assertEquals('Hello, world.', out)
-        NCubeManager.clearCache(defaultSnapshotApp)
-
-        cube = NCubeManager.getCube(defaultSnapshotApp, 'hello')
-        out = cube.getCell(input)
-        assertEquals('Hello, world.', out)
     }
 
     private static void loadTestClassPathCubes()

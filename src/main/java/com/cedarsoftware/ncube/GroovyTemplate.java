@@ -1,11 +1,11 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.IOUtilities;
-import groovy.lang.GroovyClassLoader;
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 
 import java.io.InputStream;
+import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class GroovyTemplate extends UrlCommandCell
+class GroovyTemplate extends ContentCmdCell
 {
     private Template resolvedTemplate;
 
@@ -109,7 +109,7 @@ public class GroovyTemplate extends UrlCommandCell
                 cmd = replaceScriptletNCubeRefs(cmd, Regexes.velocityPattern, "${", "}");
 
                 NCube ncube = getNCube(ctx);
-                GroovyClassLoader urlLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(ncube.getApplicationID(), getInput(ctx));
+                URLClassLoader urlLoader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), getInput(ctx));
                 InputStream in = urlLoader.getResourceAsStream("ncube/grv/closure/NCubeTemplateClosures.groovy");
                 String groovyClosures = new String(IOUtilities.inputStreamToBytes(in));
                 IOUtilities.close(in);

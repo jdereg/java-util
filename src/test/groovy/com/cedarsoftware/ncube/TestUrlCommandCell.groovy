@@ -64,7 +64,7 @@ public class TestUrlCommandCell
     {
         String s = 'foo-bar';
         ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes('UTF-8'))
-        UrlCommandCell.CachingInputStream input = new UrlCommandCell.CachingInputStream(stream)
+        ContentCmdCell.CachingInputStream input = new ContentCmdCell.CachingInputStream(stream)
 
         assert 102 == input.read()
         assert 111 == input.read()
@@ -81,7 +81,7 @@ public class TestUrlCommandCell
     {
         String s = 'foo-bar';
         ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes('UTF-8'))
-        UrlCommandCell.CachingInputStream input = new UrlCommandCell.CachingInputStream(stream)
+        ContentCmdCell.CachingInputStream input = new ContentCmdCell.CachingInputStream(stream)
 
         byte[] bytes = new byte[7];
         assert 7 == input.read(bytes, 0, 7)
@@ -89,7 +89,7 @@ public class TestUrlCommandCell
         assert -1 == input.read(bytes, 0, 7)
     }
 
-    private static class EmptyUrlCommandCell extends UrlCommandCell
+    private static class EmptyUrlCommandCell extends ContentCmdCell
     {
         EmptyUrlCommandCell(String cmd, String url, boolean cacheable)
         {
@@ -153,13 +153,14 @@ public class TestUrlCommandCell
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
-        NCube ncube = Mockito.mock NCube.class
+        NCube ncube = Mockito.mock(NCube.class)
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
 
-        when(request.getHeaderNames()).thenThrow SocketTimeoutException.class
-        when(ncube.getName()).thenReturn 'foo-cube'
-        when(ncube.getVersion()).thenReturn 'foo-version'
+        when(request.headerNames).thenThrow SocketTimeoutException.class
+        when(ncube.name).thenReturn 'foo-cube'
+        when(ncube.version).thenReturn 'foo-version'
+        when(ncube.applicationID).thenReturn(ApplicationID.defaultAppId)
 
         def args = [ncube:ncube]
         def input = [(CdnRouter.HTTP_RESPONSE):response, (CdnRouter.HTTP_REQUEST):request]
@@ -179,7 +180,7 @@ public class TestUrlCommandCell
 
         when(request.getHeaderNames()).thenThrow SocketTimeoutException.class
         doThrow(IOException.class).when(response).sendError HttpServletResponse.SC_NOT_FOUND, 'File not found: http://www.cedarsoftware.com'
-        when(ncube.getName()).thenReturn 'foo-cube'
+        when(ncube.name).thenReturn 'foo-cube'
         when(ncube.getVersion()).thenReturn 'foo-version'
 
         def args = [ncube:ncube]
@@ -194,8 +195,8 @@ public class TestUrlCommandCell
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.  Verify the method was never called
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
-        UrlCommandCell.addFileHeader null, null
-        verify(response, never()).addHeader anyString(), anyString()
+        ContentCmdCell.addFileHeader(null, null)
+        verify(response, never()).addHeader(anyString(), anyString())
     }
 
     @Test
@@ -204,8 +205,8 @@ public class TestUrlCommandCell
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
-        UrlCommandCell.addFileHeader new URL('http://www.google.com/index.foo'), response
-        verify(response, never()).addHeader anyString(), anyString()
+        ContentCmdCell.addFileHeader(new URL('http://www.google.com/index.foo'), response)
+        verify(response, never()).addHeader(anyString(), anyString())
     }
 
     @Test
@@ -214,7 +215,7 @@ public class TestUrlCommandCell
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
-        UrlCommandCell.addFileHeader new URL('http://www.google.com/index'), response
-        verify(response, never()).addHeader anyString(), anyString()
+        ContentCmdCell.addFileHeader(new URL('http://www.google.com/index'), response)
+        verify(response, never()).addHeader(anyString(), anyString())
     }
 }

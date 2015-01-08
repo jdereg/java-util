@@ -39,17 +39,53 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
+    protected transient String cmdHash;
+    private volatile transient Class runnableCode = null;
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
-    protected transient String cmdHash;
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
 
     public GroovyBase(String cmd, String url)
     {
-        super(cmd, url, true);
+        super(cmd, url);
+    }
+
+    public Class getRunnableCode()
+    {
+        return runnableCode;
+    }
+
+    public void setRunnableCode(Class runnableCode)
+    {
+        this.runnableCode = runnableCode;
+    }
+
+    public boolean isCacheable()
+    {
+        return true;
+    }
+
+    public Object execute(Map<String, Object> ctx)
+    {
+        failOnErrors();
+
+        Object data;
+
+        if (getUrl() == null)
+        {
+            data = getCmd();
+        }
+        else
+        {
+            expandUrl(ctx);
+            data = null;
+        }
+
+        prepare(data, ctx);
+        return executeInternal(ctx);
     }
 
     protected abstract String buildGroovy(String theirGroovy, String cubeName);
@@ -125,15 +161,15 @@ public abstract class GroovyBase extends UrlCommandCell
         return runMethodMap;
     }
 
-    protected Object executeInternal(Object data, Map args)
+    protected Object executeInternal(Map ctx)
     {
-        String cubeName = getNCube(args).getName();
         try
         {
-            return executeGroovy(args);
+            return executeGroovy(ctx);
         }
         catch(Exception e)
         {
+            String cubeName = getNCube(ctx).getName();
             Throwable cause = e.getCause();
             if (cause instanceof CoordinateNotFoundException)
             {
@@ -147,16 +183,16 @@ public abstract class GroovyBase extends UrlCommandCell
             {
                 throw (RuleJump) cause;
             }
-            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(args) + "(), n-cube: " + cubeName + ", input: " + args.get("input"), cause != null ? cause : e) ;
+            throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(ctx) + "(), n-cube: " + cubeName + ", input: " + getInput(ctx), cause != null ? cause : e) ;
         }
     }
 
     /**
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
-    protected Object executeGroovy(final Map args) throws Exception
+    protected Object executeGroovy(final Map ctx) throws Exception
     {
-        NCube cube = getNCube(args);
+        NCube cube = getNCube(ctx);
         Map<String, Constructor> constructorMap = getConstructorCache(cube.getApplicationID());
 
         // Step 1: Construct the object (use default constructor)
@@ -172,9 +208,9 @@ public abstract class GroovyBase extends UrlCommandCell
         if (instance instanceof NCubeGroovyExpression)
         {
             NCubeGroovyExpression exp = (NCubeGroovyExpression) instance;
-            exp.input = getInput(args);
-            exp.output = getOutput(args);
-            exp.ncube = getNCube(args);
+            exp.input = getInput(ctx);
+            exp.output = getOutput(ctx);
+            exp.ncube = getNCube(ctx);
         }
 
         // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method
@@ -186,17 +222,12 @@ public abstract class GroovyBase extends UrlCommandCell
             runMethodMap.put(cmdHash, runMethod);
         }
 
-        return invokeRunMethod(runMethod, instance, args);
+        return invokeRunMethod(runMethod, instance, ctx);
     }
 
     protected abstract Method getRunMethod() throws NoSuchMethodException;
 
     protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception;
-
-    public Object fetch(Map args)
-    {
-        return null;
-    }
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method
@@ -288,22 +319,8 @@ s    */
         if (isUrlUsed)
         {
             gcLoader = (GroovyClassLoader)NCubeManager.getUrlClassLoader(cube.getApplicationID(), getInput(ctx));
-
-            if (gcLoader == null)
-            {
-                throw new IllegalStateException("Problem compiling Groovy code. No ClassLoaders set in NCubeManager for app: " + cube.getApplicationID() + ".  Use sys.classpath cube to set it.  Found executing cube: " + cube.getName());
-            }
-            URL groovySourceUrl = gcLoader.getResource(url);
-
-            if (groovySourceUrl == null)
-            {
-                throw new IllegalArgumentException("Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, unresolvable url: " + url);
-            }
-
-            grvSrcCode = UrlUtilities.getContentFromUrlAsString(groovySourceUrl, true);
-            //GroovyCodeSource gcs = new GroovyCodeSource(groovySourceUrl);
-            //gcs.setCachable(false);
-            //grvSrcCode = gcs.getScriptText();
+            URL groovySourceUrl = getActualUrl(ctx);
+            grvSrcCode = StringUtilities.createString(UrlUtilities.getContentFromUrl(groovySourceUrl, true), "UTF-8");
         }
         else
         {

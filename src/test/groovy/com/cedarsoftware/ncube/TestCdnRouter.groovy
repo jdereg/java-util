@@ -96,7 +96,7 @@ public class TestCdnRouter
         CdnRouter router = new CdnRouter()
         router.route request, response
 
-        verify(response, times(1)).sendError 500, 'n-cube cell URL resolved to null, url: tests/does/not/exist/index.html, ncube: CdnRouterTest, appId: ' + ApplicationID.defaultAppId
+        verify(response, times(1)).sendError 500, 'Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, url: tests/does/not/exist/index.html, cube: CdnRouterTest, app: ' + ApplicationID.defaultAppId
     }
 
     @Test
@@ -173,9 +173,9 @@ public class TestCdnRouter
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
 
         CdnRouter router = new CdnRouter()
-        router.route request, response
+        router.route(request, response)
 
-        verify(response, times(1)).sendError 404, 'Not Found'
+        verify(response, times(1)).sendError(404, 'Not Found')
     }
 
     @Test

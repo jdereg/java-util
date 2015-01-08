@@ -24,7 +24,7 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class BinaryUrlCmd extends UrlCommandCell
+public class BinaryUrlCmd extends ContentCmdCell
 {
     //  Private constructor only for serialization.
     private BinaryUrlCmd() {}
@@ -47,10 +47,5 @@ public class BinaryUrlCmd extends UrlCommandCell
             setErrorMessage("Failed to load binary content from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
             throw new IllegalStateException(getErrorMessage(), e);
         }
-    }
-
-    protected Object executeInternal(Object data, Map<String, Object> ctx)
-    {
-        return data;
     }
 }

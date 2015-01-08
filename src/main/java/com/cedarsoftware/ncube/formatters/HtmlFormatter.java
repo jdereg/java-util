@@ -611,7 +611,7 @@ public class HtmlFormatter implements NCubeFormatter
             str.append(']');
             return str.toString();
         }
-        else if (isArray && Object[].class == cellValue.getClass())
+        else if (isArray && Object[].class.equals(cellValue.getClass()))
         {
             StringBuilder str = new StringBuilder();
             str.append('[');

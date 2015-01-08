@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.0.10</version>
+  <version>3.1.0</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -83,6 +83,9 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.1.0
+ * All JUnit test cases converted from Java to Groovy.
+ * Improvement in classloader management.  Initially, a classloader per App (tenant, app, version) was maintained.  This has been further refined to support any additional scope that may have been added to the `sys.classpath` cube.  This allows a different URL set per AppID per additional scope like a business unit, for example.
 * 3.0.10
  * Attempting to re-use GroovyClassLoader after clearCache(appId). Discovered that the URLs do not clear.
 * 3.0.9

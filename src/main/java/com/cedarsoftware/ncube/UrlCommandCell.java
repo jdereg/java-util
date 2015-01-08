@@ -1,32 +1,12 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.util.CdnRouter;
-import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyShell;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.FilterInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.net.URLConnection;
-import java.util.Enumeration;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 
@@ -51,37 +31,17 @@ import java.util.regex.Matcher;
 public abstract class UrlCommandCell implements CommandCell
 {
     private String cmd;
-    private volatile transient Class runnableCode = null;
     private volatile transient String errorMsg = null;
     private String url = null;
-    private boolean cacheable;
     private AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
-    private AtomicBoolean hasBeenFetched = new AtomicBoolean(false);
-    private Object cache;
     private int hash;
     private static final GroovyShell shell = new GroovyShell();
-    private static Map<String, String> extToMimeType = new ConcurrentHashMap<>();
     public static final char EXTENSION_SEPARATOR = '.';
-    private static final Log LOG = LogFactory.getLog(CdnRouter.class);
-
-
-    static
-    {
-        extToMimeType.put(".css", "text/css");
-        extToMimeType.put(".html", "text/html");
-        extToMimeType.put(".js", "application/javascript");
-        extToMimeType.put(".xml", "application/xml");
-        extToMimeType.put(".json", "application/json");
-        extToMimeType.put(".jpg", "image/jpeg");
-        extToMimeType.put(".png", "image/png");
-        extToMimeType.put(".gif", "image/gif");
-        extToMimeType.put(".bmp", "image/bmp");
-    }
 
     //  Private constructor only for serialization.
     protected UrlCommandCell() { }
 
-    public UrlCommandCell(String cmd, String url, boolean cacheable)
+    public UrlCommandCell(String cmd, String url)
     {
         if (cmd == null && url == null)
         {
@@ -95,7 +55,6 @@ public abstract class UrlCommandCell implements CommandCell
 
         this.cmd = cmd;
         this.url = url;
-        this.cacheable = cacheable;
         this.hash = cmd == null ? url.hashCode() : cmd.hashCode();
     }
 
@@ -104,190 +63,9 @@ public abstract class UrlCommandCell implements CommandCell
         return url;
     }
 
-    public Object fetch(Map args)
-    {
-        if (!cacheable)
-        {
-            return fetchContentFromUrl(args);
-        }
+    public abstract boolean isCacheable();
 
-        if (hasBeenFetched.get())
-        {
-            return cache;
-        }
-
-        synchronized (this)
-        {
-            if (hasBeenFetched.get())
-            {
-                return cache;
-            }
-
-            cache = fetchContentFromUrl(args);
-            hasBeenFetched.set(true);
-            return cache;
-        }
-    }
-
-    protected Object fetchContentFromUrl(Map args)
-    {
-        Map input = getInput(args);
-        if (input.containsKey(CdnRouter.HTTP_REQUEST) && input.containsKey(CdnRouter.HTTP_RESPONSE))
-        {
-            return proxyFetch(args);
-        }
-        else
-        {
-            return simpleFetch(args);
-        }
-    }
-
-    protected Object proxyFetch(Map ctx)
-    {
-        Map input = getInput(ctx);
-        HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST);
-        HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE);
-        HttpURLConnection conn = null;
-        URL actualUrl = null;
-
-        try
-        {
-            actualUrl = getActualUrl(ctx);
-            URLConnection connection = actualUrl.openConnection();
-            if (!(connection instanceof HttpURLConnection))
-            {   // Handle a "file://" URL
-                connection.connect();
-                addFileHeader(actualUrl, response);
-                return transferFromServer(connection, response);
-            }
-            conn = (HttpURLConnection) connection;
-            conn.setAllowUserInteraction(false);
-            conn.setRequestMethod("GET");
-            conn.setDoOutput(true);
-            conn.setDoInput(true);
-            conn.setReadTimeout(20000);
-            conn.setConnectTimeout(10000);
-
-            setupRequestHeaders(conn, request);
-            conn.connect();
-            transferToServer(conn, request);
-
-            int resCode = conn.getResponseCode();
-
-            if (resCode <= HttpServletResponse.SC_PARTIAL_CONTENT)
-            {
-                transferResponseHeaders(conn, response);
-                return transferFromServer(conn, response);
-            }
-            else
-            {
-                UrlUtilities.readErrorResponse(conn);
-                response.sendError(resCode, conn.getResponseMessage());
-                return null;
-            }
-        }
-        catch (SocketTimeoutException e)
-        {
-            try
-            {
-                LOG.warn("Socket time out occurred fetching: " + actualUrl, e);
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found: " + actualUrl.toString());
-            }
-            catch (IOException ignore) { }
-        }
-        catch (Exception e)
-        {
-            try
-            {
-                LOG.error("Error occurred fetching: " + actualUrl, e);
-                UrlUtilities.readErrorResponse(conn);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
-            }
-            catch (IOException ignored) { }
-        }
-        return null;
-    }
-
-    private static String getExtension(String urlPath)
-    {
-        int index = urlPath == null ? -1 : urlPath.lastIndexOf(EXTENSION_SEPARATOR);
-        return index == -1 ? null : urlPath.substring(index).intern();
-    }
-
-    static void addFileHeader(URL actualUrl, HttpServletResponse response)
-    {
-        if (actualUrl == null)
-        {
-            return;
-        }
-
-        String ext = getExtension(actualUrl.toString().toLowerCase());
-        String mime = extToMimeType.get(ext);
-
-        if (mime == null) {
-            return;
-        }
-
-        response.addHeader("content-type", mime);
-    }
-
-    protected Object simpleFetch(Map ctx)
-    {
-        NCube cube = getNCube(ctx);
-
-        try
-        {
-            URL u = getActualUrl(ctx);
-            return UrlUtilities.getContentFromUrlAsString(u, true);
-        }
-        catch (Exception e)
-        {
-            setErrorMessage("Failed to load cell contents from URL: " + getUrl() + ", n-cube: " + cube.getName() + "', version: " + cube.getVersion());
-            throw new IllegalStateException(getErrorMessage(), e);
-        }
-    }
-
-    protected URL getActualUrl(Map ctx) throws MalformedURLException
-    {
-        URL actualUrl;
-        NCube ncube = getNCube(ctx);
-        try
-        {
-            String localUrl = url.toLowerCase();
-
-            if (localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:"))
-            {   // Absolute URL
-                actualUrl = new URL(url);
-            }
-            else
-            {   // Relative URL
-                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), getInput(ctx));
-                if (loader == null)
-                {
-                    // TODO: Make attempt to load them from sys.classpath
-                    throw new IllegalStateException("No root URLs are set for relative path resources to be loaded, ncube: " + ncube.getName() + ", version: " + ncube.getVersion());
-                }
-                // Make URL absolute (uses URL roots added to NCubeManager)
-                actualUrl = loader.getResource(url);
-            }
-        }
-        catch(IllegalStateException e)
-        {
-            throw e;
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.getName() + ", version: " + ncube.getVersion(), e);
-        }
-
-        if (actualUrl == null)
-        {
-            throw new IllegalStateException("n-cube cell URL resolved to null, url: " + url + ", ncube: " + ncube.getName() + ", appId: " + ncube.getApplicationID());
-        }
-        return actualUrl;
-    }
-
-    public void expandUrl(Map args)
+    public void expandUrl(Map ctx)
     {
         if (isUrlExpanded.get())
         {
@@ -300,11 +78,11 @@ public abstract class UrlCommandCell implements CommandCell
             {
                 return;
             }
-            NCube ncube = getNCube(args);
+            NCube ncube = getNCube(ctx);
             Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(url);
             StringBuilder expandedUrl = new StringBuilder();
             int last = 0;
-            Map input = getInput(args);
+            Map input = getInput(ctx);
 
             while (m.find())
             {
@@ -330,26 +108,58 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    public boolean isCacheable()
+    protected URL getActualUrl(Map ctx) throws MalformedURLException
     {
-        return cacheable;
+        URL actualUrl;
+        NCube ncube = getNCube(ctx);
+        try
+        {
+            String localUrl = url.toLowerCase();
+
+            if (localUrl.startsWith("http:") || localUrl.startsWith("https:") || localUrl.startsWith("file:"))
+            {   // Absolute URL
+                actualUrl = new URL(url);
+            }
+            else
+            {   // Relative URL
+                URLClassLoader loader = NCubeManager.getUrlClassLoader(ncube.getApplicationID(), getInput(ctx));
+
+                // Make URL absolute (uses URL roots added to NCubeManager)
+                actualUrl = loader.getResource(url);
+            }
+        }
+        catch(IllegalStateException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.name + ", version: " + ncube.getVersion(), e);
+        }
+
+        if (actualUrl == null)
+        {
+            throw new IllegalStateException("Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, url: " +
+                    url + ", cube: " + ncube.name + ", app: " + ncube.getApplicationID());
+        }
+        return actualUrl;
     }
 
-    public static NCube getNCube(Map args)
+    public static NCube getNCube(Map ctx)
     {
-        NCube ncube = (NCube) args.get("ncube");
+        NCube ncube = (NCube) ctx.get("ncube");
         return ncube;
     }
 
-    public static Map getInput(Map args)
+    public static Map getInput(Map ctx)
     {
-        Map input = (Map) args.get("input");
+        Map input = (Map) ctx.get("input");
         return input;
     }
 
-    public static Map getOutput(Map args)
+    public static Map getOutput(Map ctx)
     {
-        Map output = (Map) args.get("output");
+        Map output = (Map) ctx.get("output");
         return output;
     }
 
@@ -373,20 +183,6 @@ public abstract class UrlCommandCell implements CommandCell
     public int hashCode()
     {
         return this.hash;
-    }
-
-    public void prepare(Object command, Map ctx)
-    {
-    }
-
-    public Class getRunnableCode()
-    {
-        return runnableCode;
-    }
-
-    public void setRunnableCode(Class runnableCode)
-    {
-        this.runnableCode = runnableCode;
     }
 
     public String getCmd()
@@ -437,137 +233,5 @@ public abstract class UrlCommandCell implements CommandCell
     {
     }
 
-    public Object execute(Map<String, Object> ctx)
-    {
-        failOnErrors();
-
-        Object data;
-
-        if (getUrl() == null)
-        {
-            data = getCmd();
-        }
-        else
-        {
-            expandUrl(ctx);
-            data = fetch(ctx);
-        }
-
-        prepare(data, ctx);
-        return executeInternal(data, ctx);
-    }
-
-    protected abstract Object executeInternal(Object data, Map<String, Object> ctx);
-
-    private static void transferToServer(URLConnection conn, HttpServletRequest request) throws IOException
-    {
-        OutputStream out = null;
-        InputStream in = null;
-
-        try
-        {
-            in = request.getInputStream();
-            out = new BufferedOutputStream(conn.getOutputStream(), 32768);
-            IOUtilities.transfer(in, out);
-        }
-        finally
-        {
-            IOUtilities.close(in);
-            IOUtilities.close(out);
-        }
-    }
-
-    private Object transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
-    {
-        InputStream in = null;
-        OutputStream out = null;
-        try
-        {
-            in = new BufferedInputStream(conn.getInputStream(), 32768);
-            if (cacheable)
-            {
-                in = new CachingInputStream(in);
-            }
-            out = response.getOutputStream();
-            IOUtilities.transfer(in, out);
-
-            return cacheable ? ((CachingInputStream) in).getCache() : null;
-        }
-        finally
-        {
-            IOUtilities.close(in);
-            IOUtilities.close(out);
-        }
-    }
-
-    private static void setupRequestHeaders(URLConnection c, HttpServletRequest request)
-    {
-        Enumeration headerNames = request.getHeaderNames();
-        while (headerNames.hasMoreElements())
-        {
-            String key = (String) headerNames.nextElement();
-            String value = request.getHeader(key);
-            c.setRequestProperty(key, value);
-        }
-    }
-
-    private static void transferResponseHeaders(URLConnection c, HttpServletResponse response)
-    {
-        Map<String, List<String>> headerFields = c.getHeaderFields();
-        Set<Map.Entry<String, List<String>>> entries = headerFields.entrySet();
-
-        for (Map.Entry<String, List<String>> entry : entries)
-        {
-            if (entry.getValue() != null && entry.getKey() != null)
-            {
-                for (String s : entry.getValue())
-                {
-                    response.addHeader(entry.getKey(), s);
-                }
-            }
-        }
-    }
-
-    static class CachingInputStream extends FilterInputStream
-    {
-        ByteArrayOutputStream cache = new ByteArrayOutputStream();
-
-        /**
-         * Creates a {@code FilterInputStream}
-         * by assigning the  argument {@code in}
-         * to the field {@code this.in} so as
-         * to remember it for later use.
-         * @param in the underlying input stream, or {@code null} if
-         *           this instance is to be created without an underlying stream.
-         */
-        protected CachingInputStream(InputStream in)
-        {
-            super(in);
-        }
-
-        public int read(byte[] b, int off, int len) throws IOException
-        {
-            int count = super.read(b, off, len);
-            if (count != -1)
-            {
-                cache.write(b, off, count);
-            }
-            return count;
-        }
-
-        public int read() throws IOException
-        {
-            int result = super.read();
-            if (result != -1)
-            {
-                cache.write(result);
-            }
-            return result;
-        }
-
-        public byte[] getCache()
-        {
-            return cache.toByteArray();
-        }
-    }
+    public abstract Object execute(Map<String, Object> ctx);
 }

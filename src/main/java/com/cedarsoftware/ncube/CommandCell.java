@@ -9,14 +9,10 @@ import java.util.Set;
  * to write cells that contain Groovy expressions, Groovy methods, or
  * Groovy classes.  Javascript executable cells, as well as Java
  * executable cells can be added to NCube.  The CommandCell expects
- * to call the method "Object run(Map args)" on whatever object is assigned
+ * to call the method "def run()" on whatever object is assigned
  * to the runnableCode member.
  *
- * Subclasses must implement 'getShortType()' which returns a fixed String
- * so that the NCube JSON reader can figure out what type of CommandCell to
- * instantiate when the CommandCell is specified in NCube's simpleJson format.
- *
- * Subclasses must also implement 'getCubeNamesFromCommandText()' which returns
+ * Subclasses must implement 'getCubeNamesFromCommandText()' which returns
  * any NCube names the subclass may reference.  For example, if NCubes are referenced
  * in the Groovy code, the Groovy CommandCell subclasses would return any NCube
  * names they reference.  This is required so that when an NCube is loaded,

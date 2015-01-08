@@ -858,7 +858,7 @@ public class NCubeManager
     }
 
     // ----------------------------------------- Resource APIs ---------------------------------------------------------
-    private static String getResourceAsString(String name) throws IOException
+    public static String getResourceAsString(String name) throws IOException
     {
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
         URL url = NCubeManager.class.getResource("/" + name);

@@ -182,7 +182,7 @@ public class TestNCubeNewWay
         assertEquals(2, NCubeManager.getCacheForApp(appId).size());
 
         input.env = "b";
-        input.put("state", "OH");
+        input.put("state", "TX");
         def y = cube.getCell(input);
         assert 'Goodbye, world.' == y
 
@@ -203,7 +203,7 @@ public class TestNCubeNewWay
 
         // classpath isn't loaded at this point.
         assertEquals(1, NCubeManager.getCacheForApp(appId).size());
-
+        JsonReader.jsonToJava();
         def input = [:]
         input.env = "a";
         input.x = 5;
@@ -213,11 +213,15 @@ public class TestNCubeNewWay
         assertEquals(25, cube.getCell(input));
         assertEquals(2, NCubeManager.getCacheForApp(appId).size());
 
-        input.method = 'factorial'
-        assertEquals(25, cube.getCell(input));
+        //input.method = 'factorial'
+        //assertEquals(120, cube.getCell(input));
 
-        input.method = 'hello'
-        assert 'Goodbye, world.' == cube.getCell(input)
 
+        input.env = "b";
+        input.method = "square";
+        assertEquals(5, cube.getCell(input));
+
+        //input.method = 'factorial'
+        //assertEquals(5, cube.getCell(input));
     }
 }

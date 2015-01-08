@@ -11,34 +11,19 @@
         { "id":"square"},
         { "id":"factorial"},
         { "id":"hello"}
-    ]},
-    {
-      "name": "env",
-      "type": "DISCRETE",
-      "valueType": "STRING",
-      "preferredOrder": 1,
-      "hasDefault": true,
-      "columns": [
-        { "id":"a"},
-        { "id":"b"}
-      ]}
+    ]}
 
   ],
   "cells": [
     {
-      "id" : ["square", "a"],
+      "id" : ["square"],
       "type": "exp",
       "url": "square.groovy"
     },
     {
-      "id" : ["factorial", "a"],
+      "id" : ["factorial"],
       "type": "exp",
       "url": "factorial.groovy"
-    },
-    {
-      "id" : ["hello", "a"],
-      "type": "exp",
-      "url": "hello.groovy"
     }
   ]
 }

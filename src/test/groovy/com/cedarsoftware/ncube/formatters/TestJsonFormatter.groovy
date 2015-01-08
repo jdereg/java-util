@@ -205,12 +205,14 @@ public class TestJsonFormatter
     {
         for (String f : strings)
         {
-//            System.out.println('Starting ' + f)
             NCube ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, f)
+//            long start = System.nanoTime()
             String s = ncube.toFormattedJson()
 //            System.out.println(s)
             NCube res = NCube.fromSimpleJson(s)
+//            long end = System.nanoTime();
             assertEquals res, ncube
+//            System.out.println(f + " " + (end - start)/1000000);
         }
     }
 }

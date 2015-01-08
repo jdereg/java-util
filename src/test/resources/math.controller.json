@@ -1,0 +1,48 @@
+{
+  "ncube": "MathController",
+  "axes": [
+    {
+      "name": "method",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "columns": [
+        { "id":"square"},
+        { "id":"factorial"}
+    ]},
+    {
+      "name": "env",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": [
+        { "id":"a"}
+      ]
+    }
+
+  ],
+  "cells": [
+    {
+      "id" : ["square", "a"],
+      "type": "exp",
+      "url": "square.groovy"
+    },
+    {
+      "id" : ["factorial", "a"],
+      "type": "exp",
+      "url": "factorial.groovy"
+    },
+    {
+      "id" : ["square"],
+      "type": "exp",
+      "url": "square.groovy"
+    },
+    {
+      "id" : ["factorial"],
+      "type": "exp",
+      "url": "factorial.groovy"
+    }
+  ]
+}

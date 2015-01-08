@@ -27,7 +27,6 @@ public class TestThreadedClearCache
 {
     public static String USER_ID = TestNCubeManager.USER_ID
     public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
-    public static ApplicationID appId2 = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest2", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
 
     private TestingDatabaseManager manager;
 
@@ -60,7 +59,7 @@ public class TestThreadedClearCache
         manager.removeCubes(appId, USER_ID, ncubes);
     }
 
-    private void concurrencyTestWithAppId() throws Exception
+    private void concurrencyTestWithAppId()
     {
         def run =
         {

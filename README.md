@@ -85,7 +85,7 @@ n-cube can be used free for personal use.
 Version History
 * 3.1.0
  * All JUnit test cases converted from Java to Groovy.
- * Improvement in classloader management.  Initially, a classloader per App (tenant, app, version) was maintained.  This has been further refined to support any additional scope that may have been added to the sys.classpath cube.  This allows a different URL set per AppID per additional scope like a business unit, for example.
+ * Improvement in classloader management.  Initially, a classloader per App (tenant, app, version) was maintained.  This has been further refined to support any additional scope that may have been added to the `sys.classpath` cube.  This allows a different URL set per AppID per additional scope like a business unit, for example.
 * 3.0.10
  * Attempting to re-use GroovyClassLoader after clearCache(appId). Discovered that the URLs do not clear.
 * 3.0.9

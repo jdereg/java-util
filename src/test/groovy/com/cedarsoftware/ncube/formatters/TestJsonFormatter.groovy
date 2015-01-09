@@ -161,16 +161,16 @@ public class TestJsonFormatter
         try
         {
             NCube cube = new NCube('foo')
-            cube.setDefaultCellValue([] as Object[])
+            cube.defaultCellValue = [] as Object[]
             new JsonFormatter().format cube
             fail 'should not make it here'
         }
         catch (IllegalStateException e)
         {
-            assertEquals IllegalArgumentException.class, e.getCause().getClass()
+            assertEquals(IllegalArgumentException.class, e.cause.class)
             assert e.message.contains('Unable to format NCube')
-            assert e.getCause().getMessage().contains('Cell cannot be an array')
-            assert e.getCause().getMessage().contains('Use Groovy Expression')
+            assert e.cause.message.contains('Cell cannot be an array')
+            assert e.cause.message.contains('Use Groovy Expression')
         }
     }
 
@@ -196,7 +196,7 @@ public class TestJsonFormatter
 
         for (File f : files)
         {
-            names.add f.getName()
+            names.add f.name
         }
         return names;
     }

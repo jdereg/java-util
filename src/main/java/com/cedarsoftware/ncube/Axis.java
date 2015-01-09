@@ -342,12 +342,15 @@ public class Axis
 	public List<Column> getColumns()
 	{
         List<Column> cols = new ArrayList<>(columns);
-		if (preferredOrder == SORTED)
-		{
-			return cols;	// Return a copy of the columns, not our internal values list.
-		}
-		sortColumnsByDisplayOrder(cols);
-		return cols;
+        if (type != AxisType.RULE)
+        {
+            if (preferredOrder == SORTED)
+            {
+                return cols;	// Return a copy of the columns, not our internal values list.
+            }
+            sortColumnsByDisplayOrder(cols);
+        }
+        return cols;
 	}
 
     List<Column> getColumnsInternal()
@@ -484,12 +487,26 @@ public class Axis
         // are done against it.
         int dispOrder = hasDefaultColumn() ? size() - 1 : size();
         column.setDisplayOrder(column.getValue() == null ? Integer.MAX_VALUE : dispOrder);
-        int where = Collections.binarySearch(columns, column.getValue());
-        if (where < 0)
-        {
-            where = Math.abs(where + 1);
+        if (type == AxisType.RULE)
+        {   // Rule columns are added in 'occurrence' order
+            if (column != defaultCol && hasDefaultColumn())
+            {   // Insert right before default column at the end
+                columns.add(columns.size() - 1, column);
+            }
+            else
+            {
+                columns.add(column);
+            }
         }
-        columns.add(where, column);
+        else
+        {
+            int where = Collections.binarySearch(columns, column.getValue());
+            if (where < 0)
+            {
+                where = Math.abs(where + 1);
+            }
+            columns.add(where, column);
+        }
         addScaffolding(column);
         return column;
     }

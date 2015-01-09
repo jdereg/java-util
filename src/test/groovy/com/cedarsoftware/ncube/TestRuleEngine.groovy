@@ -846,6 +846,12 @@ public class TestRuleEngine
         ret = ncube.getCell(input, output)
         assert ret == 'nope'
         assert output.text == 'nope'
+
+        input = [state:'OH', rule:'MatchesNoRuleName']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'nope'
+        assert output.text == 'nope'
     }
 
     @Test
@@ -892,6 +898,20 @@ public class TestRuleEngine
         catch (CoordinateNotFoundException e)
         {
             ruleAxisDidNotBind(e)
+        }
+
+        input = [state:'OH', rule:'MatchesNoRuleName']
+        output = [:]
+        try
+        {
+            ncube.getCell(input, output)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            assert e.message.toLowerCase().contains('rule named')
+            assert e.message.toLowerCase().contains('matches no column')
+            assert e.message.toLowerCase().contains('no default column')
         }
     }
 }

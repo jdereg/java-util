@@ -458,36 +458,31 @@ public class NCube<T>
         final RuleInfo ruleInfo = getRuleInfo(output);
         Map<String, Object> input = validateCoordinate(coordinate, false);
         boolean run = true;
-        boolean anyFired = false;
-        boolean hasRuleAxis = false;
         T lastExecutedStatementValue = null;
         List<Binding> bindings = ruleInfo.getAxisBindings();
+        final int depth = executionStack.get().size();
 
         while (run)
         {
             run = false;
             final Map<String, List<Column>> columnToAxisBindings = bindCoordinateToAxisColumns(input);
             final String[] axisNames = getAxisNames(columnToAxisBindings);
-            final Map<String, Integer> counters = getCountersPerAxis(columnToAxisBindings.keySet());
+            final Map<String, Integer> counters = getCountersPerAxis(axisList.keySet());
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
-            boolean done = false;
 
             try
             {
-                final int depth = executionStack.get().size();
-                while (!done)
+                do
                 {
                     Binding binding = new Binding(name, depth);
-                    for (final String axisName : axisNames)
+                    for (final Axis axis: axisList.values())
                     {
-                        final List<Column> cols = columnToAxisBindings.get(axisName);
-                        final Column boundColumn = cols.get(counters.get(axisName) - 1);
-                        final Axis axis = axisList.get(axisName);
+                        final String axisName = axis.getName();
+                        final Column boundColumn = columnToAxisBindings.get(axisName).get(counters.get(axisName) - 1);
 
                         if (axis.getType() == AxisType.RULE)
                         {
-                            hasRuleAxis = true;
                             Object conditionValue;
 
                             // Use Object[] to hold cached condition value to distinguish from a condition
@@ -521,7 +516,6 @@ public class NCube<T>
                             if (isTrue(conditionValue))
                             {
                                 binding.bind(axisName, boundColumn);
-                                anyFired = true;
                             }
                         }
                         else
@@ -533,6 +527,12 @@ public class NCube<T>
                     // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
                     if (binding.getNumBoundAxes() == axisNames.length)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
+
+                        // TODO: At this point, if a rule axis has been bound to, and the axis is marked as fire: once,
+                        // then the rest of the columns associated to this axis need to be skipped or removed.
+                        // This is true for each rule axis, in the case of more than one.
+                        // Basically drop the rest of the columns from the columnToAxisBindings map
+
                         bindings.add(binding);
                         try
                         {
@@ -564,7 +564,19 @@ public class NCube<T>
                     }
 
                     // Step #3 increment counters (variable radix increment)
-                    done = incrementVariableRadixCount(counters, columnToAxisBindings);
+                } while (!incrementVariableRadixCount(counters, columnToAxisBindings));
+
+                // Verify all rule axes were bound 1 or more times
+                for (Axis axis : axisList.values())
+                {
+                    if (axis.getType() == AxisType.RULE)
+                    {
+                        Integer count = conditionsFiredCountPerAxis.get(axis.getName());
+                        if (count == null || count < 1)
+                        {
+                            throw new CoordinateNotFoundException("No conditions on the rule axis '" + axis.getName() + "' fired, and there is no default column on this axis, cube: " + name + ", input: " + coordinate);
+                        }
+                    }
                 }
             }
             catch (RuleStop ignored)
@@ -579,10 +591,6 @@ public class NCube<T>
             }
         }
 
-        if (hasRuleAxis && !anyFired)
-        {
-            throw new CoordinateNotFoundException("No conditions on the rule axis fired, and there is no default column on the rule axis, cube: " + name + ", input: " + coordinate);
-        }
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
         output.put("return", lastExecutedStatementValue);
         return lastExecutedStatementValue;
@@ -841,7 +849,7 @@ public class NCube<T>
 
     private static Map<String, Integer> getCountersPerAxis(final Set<String> axisNames)
     {
-        final Map<String, Integer> counters = new HashMap<>();
+        final Map<String, Integer> counters = new CaseInsensitiveMap<>();
 
         // Set counters to 1
         for (final String axisName : axisNames)

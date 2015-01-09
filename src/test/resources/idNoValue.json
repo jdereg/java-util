@@ -1,6 +1,5 @@
 {
     "ncube":"idNoValue",
-    "ruleMode":false,
     "axes":
         [
             {
@@ -9,7 +8,6 @@
                 "valueType":"LONG",
                 "hasDefault":true,
                 "preferredOrder":1,
-                "multiMatch":false,
                 "columns":
                     [
                         {"id":18},
@@ -23,7 +21,6 @@
                 "valueType":"STRING",
                 "hasDefault":false,
                 "preferredOrder":1,
-                "multiMatch":false,
                 "columns":
                     [
                         {"id":"GA"},

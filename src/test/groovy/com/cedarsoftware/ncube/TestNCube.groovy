@@ -270,74 +270,77 @@ public class TestNCube
     @Test
     public void testAllCellsInBigCube()
     {
-        long start = System.nanoTime()
-        NCube<Long> ncube = new NCube("bigCube")
-
-        for (int i = 0; i < 5; i++)
+        for (int qq=0; qq < 1; qq++)
         {
-            Axis axis = new Axis("axis" + i, AxisType.DISCRETE, AxisValueType.LONG, i % 2 == 0)
-            ncube.addAxis(axis)
-            for (int j = 0; j < 10; j++)
+            long start = System.nanoTime()
+            NCube<Long> ncube = new NCube("bigCube")
+
+            for (int i = 0; i < 5; i++)
             {
-                if (j % 2 == 0)
+                Axis axis = new Axis("axis" + i, AxisType.DISCRETE, AxisValueType.LONG, i % 2 == 0)
+                ncube.addAxis(axis)
+                for (int j = 0; j < 10; j++)
                 {
-                    axis.addColumn(j)
-                }
-                else
-                {
-                    ncube.addColumn("axis" + i, j)
+                    if (j % 2 == 0)
+                    {
+                        axis.addColumn(j)
+                    }
+                    else
+                    {
+                        ncube.addColumn("axis" + i, j)
+                    }
                 }
             }
-        }
 
-        def coord = [:]
-        for (int a = 1; a <= 11; a++)
-        {
-            coord.put("axis0", a - 1)
-            for (int b = 1; b <= 10; b++)
+            def coord = [:]
+            for (int a = 1; a <= 11; a++)
             {
-                coord.put("axis1", b - 1)
-                for (int c = 1; c <= 11; c++)
+                coord.put("axis0", a - 1)
+                for (int b = 1; b <= 10; b++)
                 {
-                    coord.put("axis2", c - 1)
-                    for (int d = 1; d <= 10; d++)
+                    coord.put("axis1", b - 1)
+                    for (int c = 1; c <= 11; c++)
                     {
-                        coord.put("axis3", d - 1)
-                        for (long e = 1; e <= 11; e++)
+                        coord.put("axis2", c - 1)
+                        for (int d = 1; d <= 10; d++)
                         {
-                            coord.put("axis4", e - 1)
-                            ncube.setCell(a * b * c * d * e, coord)
+                            coord.put("axis3", d - 1)
+                            for (long e = 1; e <= 11; e++)
+                            {
+                                coord.put("axis4", e - 1)
+                                ncube.setCell(a * b * c * d * e, coord)
+                            }
                         }
                     }
                 }
             }
-        }
 
-        for (int a = 1; a <= 11; a++)
-        {
-            coord.put("axis0", a - 1)
-            for (int b = 1; b <= 10; b++)
+            for (int a = 1; a <= 11; a++)
             {
-                coord.put("axis1", b - 1)
-                for (int c = 1; c <= 11; c++)
+                coord.put("axis0", a - 1)
+                for (int b = 1; b <= 10; b++)
                 {
-                    coord.put("axis2", c - 1)
-                    for (int d = 1; d <= 10; d++)
+                    coord.put("axis1", b - 1)
+                    for (int c = 1; c <= 11; c++)
                     {
-                        coord.put("axis3", d - 1)
-                        for (long e = 1; e <= 11; e++)
+                        coord.put("axis2", c - 1)
+                        for (int d = 1; d <= 10; d++)
                         {
-                            coord.put("axis4", e - 1)
-                            long v = ncube.getCell(coord)
-                            assertTrue(v == a * b * c * d * e)
+                            coord.put("axis3", d - 1)
+                            for (long e = 1; e <= 11; e++)
+                            {
+                                coord.put("axis4", e - 1)
+                                long v = ncube.getCell(coord)
+                                assertTrue(v == a * b * c * d * e)
+                            }
                         }
                     }
                 }
             }
+            long stop = System.nanoTime()
+            double diff = (stop - start) / 1000000.0
+            System.out.println("time to build and read allCellsInBigCube = " + diff)
         }
-        long stop = System.nanoTime()
-        double diff = (stop - start) / 1000000.0
-        System.out.println("time to build and read allCellsInBigCube = " + diff)
 //        assertTrue(ncube.toHtml() != null)
     }
 

@@ -45,7 +45,6 @@
     },
     {
         "ncube": "idTest",
-        "ruleMode": false,
         "axes": [
             {
                 "name": "Age",

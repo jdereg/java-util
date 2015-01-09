@@ -1,6 +1,5 @@
 {
     "ncube":"ruleFalseValues",
-    "ruleMode":true,
     "axes":[
         {
             "name":"conditions",

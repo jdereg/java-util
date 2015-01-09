@@ -1,6 +1,5 @@
 {
     "ncube": "Template2Cube",
-    "ruleMode": false,
     "axes": [
         {
             "name": "State",
@@ -8,7 +7,6 @@
             "valueType": "STRING",
             "preferredOrder": 0,
             "hasDefault": true,
-            "multiMatch": false,
             "columns": [
                 {
                     "id": "AR"

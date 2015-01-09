@@ -1,6 +1,5 @@
 {
     "ncube":"MultiRule2",
-    "ruleMode":true,
     "axes":[
         {
             "name":"condition1",

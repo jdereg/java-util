@@ -1,6 +1,5 @@
 {
     "ncube": "debugExp",
-    "ruleMode": false,
     "axes": [
         {
             "name": "Age",
@@ -8,7 +7,6 @@
             "valueType": "LONG",
             "hasDefault": false,
             "preferredOrder": 1,
-            "multiMatch": false,
             "columns": [
                 {
                     "id":10
@@ -24,7 +22,6 @@
             "valueType": "STRING",
             "hasDefault": false,
             "preferredOrder": 1,
-            "multiMatch": false,
             "columns": [
                 {
                     "id":"female"

@@ -1,17 +1,14 @@
 {
     "ncube":"empty-columns",
     "defaultCellValue" : null,
-    "ruleMode" : false,
     "axes":[
         {
             "name":"column",
             "type":"DISCRETE",
             "hasDefault":true,
-            "multiMatch":false,
             "valueType":"STRING",
             "columns":[],
-            "preferredOrder":0,
-            "multiMatch":false
+            "preferredOrder":0
         }
     ],
     "cells":[

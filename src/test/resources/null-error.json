@@ -1,6 +1,5 @@
 {
     "ncube":"nullTest",
-    "ruleMode":false,
     "axes":
         [
             {
@@ -9,7 +8,6 @@
                 "valueType":"STRING",
                 "hasDefault":true,
                 "preferredOrder":1,
-                "multiMatch":false,
                 "columns":
                     [
                         {"id":"CA"},

@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import com.cedarsoftware.ncube.proximity.LatLon
 import com.cedarsoftware.ncube.proximity.Point3D
 import com.cedarsoftware.util.io.JsonWriter
@@ -1025,14 +1026,15 @@ public class TestAxis
         Axis axis = new Axis('foo', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
         try
         {
-            axis.getRuleColumnsStartingAt 'foo'
+            axis.getRuleColumnsStartingAt('foo')
             fail 'should not make it here'
         }
-        catch (IllegalArgumentException e)
+        catch (CoordinateNotFoundException e)
         {
             assert e.message.contains('rule')
-            assert e.message.toLowerCase().contains('not')
-            assert e.message.contains('found')
+            assert e.message.toLowerCase().contains('matches no column')
+            assert e.message.contains('foo')
+            assert e.message.contains('no default')
         }
     }
 

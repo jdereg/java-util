@@ -1,5 +1,4 @@
 {
-    "ruleMode":false,
     "axes":[
         {
             "name":"Lat / Lon",
@@ -7,7 +6,6 @@
             "valueType":"COMPARABLE",
             "preferredOrder":0,
             "hasDefault":false,
-            "multiMatch":false,
             "columns":[
                 {
                     "id":1.0,

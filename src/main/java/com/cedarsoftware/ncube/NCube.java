@@ -458,15 +458,17 @@ public class NCube<T>
         final RuleInfo ruleInfo = getRuleInfo(output);
         Map<String, Object> input = validateCoordinate(coordinate, false);
         boolean run = true;
+        boolean anyFired = false;
+        boolean hasRuleAxis = false;
         T lastExecutedStatementValue = null;
         List<Binding> bindings = ruleInfo.getAxisBindings();
 
         while (run)
         {
             run = false;
-            final Map<String, List<Column>> potentialBoundCols = bindCoordinateToAxes(input);
-            final String[] axisNames = getAxisNames(potentialBoundCols);
-            final Map<String, Integer> counters = getCountersPerAxis(potentialBoundCols.keySet());
+            final Map<String, List<Column>> columnToAxisBindings = bindCoordinateToAxisColumns(input);
+            final String[] axisNames = getAxisNames(columnToAxisBindings);
+            final Map<String, Integer> counters = getCountersPerAxis(columnToAxisBindings.keySet());
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
             boolean done = false;
@@ -479,12 +481,13 @@ public class NCube<T>
                     Binding binding = new Binding(name, depth);
                     for (final String axisName : axisNames)
                     {
-                        final List<Column> cols = potentialBoundCols.get(axisName);
+                        final List<Column> cols = columnToAxisBindings.get(axisName);
                         final Column boundColumn = cols.get(counters.get(axisName) - 1);
                         final Axis axis = axisList.get(axisName);
 
                         if (axis.getType() == AxisType.RULE)
                         {
+                            hasRuleAxis = true;
                             Object conditionValue;
 
                             // Use Object[] to hold cached condition value to distinguish from a condition
@@ -518,6 +521,7 @@ public class NCube<T>
                             if (isTrue(conditionValue))
                             {
                                 binding.bind(axisName, boundColumn);
+                                anyFired = true;
                             }
                         }
                         else
@@ -560,7 +564,7 @@ public class NCube<T>
                     }
 
                     // Step #3 increment counters (variable radix increment)
-                    done = incrementVariableRadixCount(counters, potentialBoundCols);
+                    done = incrementVariableRadixCount(counters, columnToAxisBindings);
                 }
             }
             catch (RuleStop ignored)
@@ -575,6 +579,10 @@ public class NCube<T>
             }
         }
 
+        if (hasRuleAxis && !anyFired)
+        {
+            throw new CoordinateNotFoundException("No conditions on the rule axis fired, and there is no default column on the rule axis, cube: " + name + ", input: " + coordinate);
+        }
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
         output.put("return", lastExecutedStatementValue);
         return lastExecutedStatementValue;
@@ -676,11 +684,11 @@ public class NCube<T>
      */
     public Map<String, Object> prepareExecutionContext(final Map<String, Object> coord, final Map output)
     {
-        final Map<String, Object> args = new HashMap<>();
-        args.put("input", coord);   // Input coordinate is already a duplicate (CaseInsensitiveMap) at this point
-        args.put("output", output);
-        args.put("ncube", this);
-        return args;
+        final Map<String, Object> ctx = new HashMap<>();
+        ctx.put("input", coord);   // Input coordinate is already a duplicate (CaseInsensitiveMap) at this point
+        ctx.put("output", output);
+        ctx.put("ncube", this);
+        return ctx;
     }
 
     /**
@@ -797,9 +805,9 @@ public class NCube<T>
      * of binding to an axis results in a List<Column>.
      * @param coord The passed in input coordinate to bind (or multi-bind) to each axis.
      */
-    private Map<String, List<Column>> bindCoordinateToAxes(Map coord)
+    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map coord)
     {
-        Map<String, List<Column>> coordinates = new HashMap<>();
+        Map<String, List<Column>> bindings = new CaseInsensitiveMap<>();
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
         {
             final String axisName = entry.getKey();
@@ -808,7 +816,7 @@ public class NCube<T>
 
             if (axis.getType() == AxisType.RULE)
             {   // For RULE axis, all possible columns must be added (they are tested later during execution)
-                coordinates.put(axisName, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
+                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
             }
             else
             {   // Find the single column that binds to the input coordinate on a regular axis.
@@ -819,11 +827,11 @@ public class NCube<T>
                 }
                 List<Column> cols = new ArrayList<>();
                 cols.add(column);
-                coordinates.put(axisName, cols);
+                bindings.put(axisName, cols);
             }
         }
 
-        return coordinates;
+        return bindings;
     }
 
     private static String[] getAxisNames(final Map<String, List<Column>> bindings)

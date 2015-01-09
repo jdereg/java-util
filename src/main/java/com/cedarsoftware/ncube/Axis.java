@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.AxisOverlapException;
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
@@ -217,8 +218,7 @@ public class Axis
      * All column ids are mapped to the column instances to support the setCellById(),
      * getCellByIdNoExecute(), removeCellById(), and containsCellById().  Variable
      * 'idToCol' is the scaffolding member that maintains this relationship.  This is built-in
-     * scaffolding that ALWAYS must be present.  The scaffolding to support RANGE_SETs is only
-     * used on a RANGE_SET axis, when it is not in 'multiMatch' mode.
+     * scaffolding that ALWAYS must be present.
      */
     boolean hasScaffolding()
     {
@@ -482,7 +482,8 @@ public class Axis
         // New columns are always added at the end in terms of displayOrder, but internally they are added
         // in the correct sort order location.  The sort order of the list is required because binary searches
         // are done against it.
-        column.setDisplayOrder(column.getValue() == null ? Integer.MAX_VALUE : size());
+        int dispOrder = hasDefaultColumn() ? size() - 1 : size();
+        column.setDisplayOrder(column.getValue() == null ? Integer.MAX_VALUE : dispOrder);
         int where = Collections.binarySearch(columns, column.getValue());
         if (where < 0)
         {
@@ -804,16 +805,6 @@ public class Axis
                 throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to parse value: " + value);
         }
     }
-
-	private static void assignDisplayOrder(final List<Column> cols)
-	{
-		final int size = cols.size();
-		for (int k=0; k < size; k++)
-		{
-            Column col = cols.get(k);
-            col.setDisplayOrder(col.isDefault() ? Integer.MAX_VALUE : k);
-		}
-	}
 
 	public int getColumnOrder()
 	{
@@ -1175,28 +1166,29 @@ public class Axis
     List<Column> getRuleColumnsStartingAt(String ruleName)
     {
         if (StringUtilities.isEmpty(ruleName))
-        {
+        {   // Since no rule name specified, all rule columns are returned to have their conditions evaluated.
             return getColumns();
         }
+
         List<Column> cols = new ArrayList<>();
-        boolean found = false;
-
-        for (Column col : getColumns())
-        {
-            if (ruleName.equalsIgnoreCase((String) col.getMetaProperties().get(Column.NAME)))
-            {
-                found = true;
-            }
-
-            if (found)
-            {
-                cols.add(col);
-            }
+        Column firstRule = findColumn(ruleName);
+        if (firstRule == null)
+        {   // A name was specified for a rule, but did not match any rule names and there is no default column.
+            throw new CoordinateNotFoundException("Rule named '" + ruleName + "' matches no column names on the rule axis '" + name + "', and there is no default column.");
+        }
+        else if (firstRule == defaultCol)
+        {   // Matched no names, but there is a default column
+            cols.add(defaultCol);
+            return cols;
         }
 
-        if (cols.isEmpty())
+        int pos = firstRule.getDisplayOrder();
+        final List<Column> allColumns = getColumns();
+        final int len = allColumns.size();
+
+        for (int i=pos; i < len; i++)
         {
-            throw new IllegalArgumentException("Attempting to locate rule name '" + ruleName + "' on axis '" + name + "'.  Not found.");
+            cols.add(allColumns.get(i));
         }
         return cols;
     }

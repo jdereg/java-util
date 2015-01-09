@@ -208,12 +208,12 @@ public class TestJsonFormatter
             String original = NCubeManager.getResourceAsString(f)
             NCube ncube = NCube.fromSimpleJson(original)
 
-//            long start = System.nanoTime()
+            long start = System.nanoTime()
             String s = ncube.toFormattedJson()
 //            System.out.println(s)
             NCube res = NCube.fromSimpleJson(s)
-//            long end = System.nanoTime();
-            assertEquals res, ncube
+            long end = System.nanoTime()
+            assertEquals(res, ncube)
 //            System.out.println(f + " " + (end - start)/1000000);
         }
     }

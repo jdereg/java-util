@@ -1,6 +1,5 @@
 {
     "ncube": "inlineExpression",
-    "ruleMode": false,
     "axes": [
         {
             "name": "Age",
@@ -8,7 +7,6 @@
             "valueType": "STRING",
             "hasDefault": false,
             "preferredOrder": 1,
-            "multiMatch": false,
             "columns": [
                 {
                     "id":"ncubeRef1"

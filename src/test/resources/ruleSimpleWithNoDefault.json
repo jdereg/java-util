@@ -1,0 +1,20 @@
+{
+    "ncube":"ruleSimpleWithNoDefault",
+    "axes":[
+        {
+            "name":"rule",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":false,
+            "preferredOrder":1,
+            "columns":[
+                { "id":"OH", "name":"OhioRule", "type":"exp", "value":"input.state == 'OH'" },
+                { "id":"TX", "name":"TexasRule", "type":"exp", "value":"input.state == 'TX'" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":["OH"], "type":"exp", "value":"output.text='Ohio'" },
+        { "id":["TX"], "type":"exp", "value":"output.text='Texas'" }
+    ]
+}

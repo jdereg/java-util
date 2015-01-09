@@ -287,7 +287,7 @@ public class TestRuleEngine
 
         // The age is 'adult' because two rules are matching on the age axis (intentional rule error)
         // This test illustrates that I can match 2 or more rules on one rule axis, 1 on a 2nd rule
-        // axis, and it does not violate 'ruleMode'.
+        // axis.
         assert output.age == 'adult'
     }
 
@@ -418,17 +418,33 @@ public class TestRuleEngine
 
         def coord = [age:85]
         def output = [:]
-        ncube.getCell coord, output
-        assert 2 == output.size()
+        try
+        {
+            ncube.getCell(coord, output)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            ruleAxisDidNotBind(e)
+        }
+        assert 1 == output.size()
         RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
         assert 0L == ruleInfo.getNumberOfRulesExecuted()
 
         coord.age = 22
-        ncube.getCell coord, output
+        ncube.getCell(coord, output)
         assert output.containsKey('adult')
         assert output.containsKey('old')
         ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
         assert 2L == ruleInfo.getNumberOfRulesExecuted()
+    }
+
+    private void ruleAxisDidNotBind(CoordinateNotFoundException e)
+    {
+        assert e.message.toLowerCase().contains("no condition")
+        assert e.message.toLowerCase().contains("fired")
+        assert e.message.toLowerCase().contains("no default")
+        assert e.message.toLowerCase().contains("rule axis")
     }
 
     @Test
@@ -438,11 +454,27 @@ public class TestRuleEngine
 
         def coord = [condition:'Male']
         assert ncube.containsCell(coord, true)
-        assertNull(ncube.getCell(coord))
+        try
+        {
+            ncube.getCell(coord)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            ruleAxisDidNotBind(e)
+        }
 
         coord.condition = 'Female'
         assert ncube.containsCell(coord)
-        assertNull(ncube.getCell(coord))
+        try
+        {
+            ncube.getCell(coord)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            ruleAxisDidNotBind(e)
+        }
         coord.gender = 'Female'
         assert 'bar' == ncube.getCell(coord)
 
@@ -671,7 +703,18 @@ public class TestRuleEngine
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleSet2.json'
 
         def output = [:]
-        assert null == ncube.getCell([:], output)
+        try
+        {
+            ncube.getCell([:], output)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            assert e.message.toLowerCase().contains("no condition")
+            assert e.message.toLowerCase().contains("rule axis")
+            assert e.message.toLowerCase().contains("fired")
+            assert e.message.toLowerCase().contains("no default column")
+        }
         RuleInfo ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 0 == ruleInfo.getNumberOfRulesExecuted()
     }
@@ -741,6 +784,114 @@ public class TestRuleEngine
         {
             String html = binding.toHtml()
             assert html.contains('medium /')
+        }
+    }
+
+    @Test
+    public void testRuleSimpleWithDefault()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource('ruleSimpleWithDefault.json')
+        def input = [state:'OH']
+        def output = [:]
+        def ret = ncube.getCell(input, output)
+        assert ret == 'Ohio'
+        assert output.text == 'Ohio'
+
+        input = [state:'OH', rule:'OhioRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'Ohio'
+        assert output.text == 'Ohio'
+
+        input = [state:'O', rule:'OhioRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'nope'
+        assert output.text == 'nope'
+
+        input = [state:'O']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'nope'
+        assert output.text == 'nope'
+
+        input = [state:'TX']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'Texas'
+        assert output.text == 'Texas'
+
+        input = [state:'TX', rule:'TexasRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'Texas'
+        assert output.text == 'Texas'
+
+        input = [state:'O', rule:'TexasRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'nope'
+        assert output.text == 'nope'
+
+        // Starting at 'OhioRule' but input value is TX so we should get Texas
+        input = [state:'TX', rule:'OhioRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'Texas'
+        assert output.text == 'Texas'
+
+        // Starting at 'TexasRule' but input value is OH so we should get 'no state' (because of rule order)
+        input = [state:'OH', rule:'TexasRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'nope'
+        assert output.text == 'nope'
+    }
+
+    @Test
+    public void testRuleSimpleWithNoDefault()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource('ruleSimpleWithNoDefault.json')
+        def input = [state: 'OH']
+        def output = [:]
+        def ret = ncube.getCell(input, output)
+        assert ret == 'Ohio'
+        assert output.text == 'Ohio'
+
+        input = [state:'OH', rule:'OhioRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'Ohio'
+        assert output.text == 'Ohio'
+
+        input = [state:'O', rule:'OhioRule']
+        output = [:]
+        try
+        {
+            ncube.getCell(input, output)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            ruleAxisDidNotBind(e)
+        }
+
+        input = [state:'TX', rule:'OhioRule']
+        output = [:]
+        ret = ncube.getCell(input, output)
+        assert ret == 'Texas'
+        assert output.text == 'Texas'
+
+        input = [state:'OH', rule:'TexasRule']
+        output = [:]
+        try
+        {
+            ncube.getCell(input, output)
+            fail()
+        }
+        catch (CoordinateNotFoundException e)
+        {
+            ruleAxisDidNotBind(e)
         }
     }
 }

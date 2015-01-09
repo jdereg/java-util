@@ -1,6 +1,5 @@
 {
     "ncube":"basicJumpRestart",
-    "ruleMode":true,
     "axes":[
         {
             "name":"condition",

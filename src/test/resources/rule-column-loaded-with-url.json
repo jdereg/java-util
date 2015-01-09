@@ -1,6 +1,5 @@
 {
     "ncube":"RuleColumnLoadedWithUrl",
-    "ruleMode":true,
     "requiredScopeKeys":{"type":"exp","value":"['age', 'weight']"},
     "axes":[
         {

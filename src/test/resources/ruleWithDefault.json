@@ -1,6 +1,5 @@
 {
     "ncube":"ruleWithDefault",
-    "ruleMode":true,
     "axes":[
         {
             "name":"condition1",

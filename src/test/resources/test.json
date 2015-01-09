@@ -1,7 +1,6 @@
 {
     "ncube":"activityTypes",
     "defaultCellValue" : null,
-    "ruleMode" : false,
     "axes":[
         {
            "name":"businessDivisionCode",

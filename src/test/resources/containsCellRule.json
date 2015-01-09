@@ -1,22 +1,33 @@
 {
-    "ncube":"containsCellRule",
-    "defaultCellValue":"foo",
-    "axes":[
+  "ncube": "containsCellRule",
+  "defaultCellValue": "foo",
+  "axes": [
+    {
+      "name": "condition",
+      "type": "RULE",
+      "valueType": "EXPRESSION",
+      "hasDefault": false,
+      "preferredOrder": 1,
+      "columns":[
         {
-            "name":"condition",
-            "type":"RULE",
-            "valueType":"EXPRESSION",
-            "hasDefault":false,
-            "preferredOrder":1,
-            "columns":[
-                {
-                    "id":1, "name":"female", "type":"exp","value":"input.gender=='Female'"
-                },
-                {
-                    "id":2, "name":"male", "type":"exp","value":"input.gender=='Male'"
-                }
-            ]
+          "id": 1,
+          "name": "female",
+          "type": "exp",
+          "value": "input.gender=='Female'"
+        },
+        {
+          "id": 2,
+          "name": "male",
+          "type": "exp",
+          "value": "input.gender=='Male'"
         }
-    ],
-    "cells":[{"id":[1],"value":"bar"}]
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": [1],
+      "value": "bar"
+    }
+  ]
 }

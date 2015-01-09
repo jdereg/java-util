@@ -85,11 +85,11 @@ abstract class ContentCmdCell extends UrlCommandCell
         return executeInternal(data, ctx);
     }
 
-    protected Object fetch(Map args)
+    protected Object fetch(Map ctx)
     {
         if (!cacheable)
         {
-            return fetchContentFromUrl(args)
+            return fetchContentFromUrl(ctx)
         }
 
         if (hasBeenFetched.get())
@@ -104,7 +104,7 @@ abstract class ContentCmdCell extends UrlCommandCell
                 return cache
             }
 
-            cache = fetchContentFromUrl(args)
+            cache = fetchContentFromUrl(ctx)
             hasBeenFetched.set(true)
             return cache
         }

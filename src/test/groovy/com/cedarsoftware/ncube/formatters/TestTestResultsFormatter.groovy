@@ -53,8 +53,8 @@ public class TestTestResultsFormatter
         ncube.getCell coord, output
         String s = new TestResultsFormatter(output).format()
         assert s.contains('idNoValue')
-        assert s.contains('age: 18')
-        assert s.contains('state: OH')
+        assert s.contains('Age: 18')
+        assert s.contains('State: OH')
         assert s.contains('value = 18 OH')
         assert s.contains('Assertions')
         assert s.contains('No assertion failures')
@@ -80,8 +80,8 @@ public class TestTestResultsFormatter
 
         String s = new TestResultsFormatter(output).format()
         assert s.contains('idNoValue')
-        assert s.contains('age: 18')
-        assert s.contains('state: OH')
+        assert s.contains('Age: 18')
+        assert s.contains('State: OH')
         assert s.contains('value = 18 OH')
         assert s.contains('Assertions')
         assert s.contains('[some assertion happened]')

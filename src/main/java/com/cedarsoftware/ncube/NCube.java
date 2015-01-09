@@ -67,7 +67,7 @@ import java.util.regex.Matcher;
 public class NCube<T>
 {
     String name;
-    private final Map<String, Axis> axisList = new LinkedHashMap<>();
+    private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
     final Map<Set<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
@@ -802,13 +802,13 @@ public class NCube<T>
         Map<String, List<Column>> coordinates = new HashMap<>();
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
         {
-            final String axisNameLower = entry.getKey();
+            final String axisName = entry.getKey();
             final Axis axis = entry.getValue();
-            final Comparable value = (Comparable) coord.get(axisNameLower);
+            final Comparable value = (Comparable) coord.get(axisName);
 
             if (axis.getType() == AxisType.RULE)
             {   // For RULE axis, all possible columns must be added (they are tested later during execution)
-                coordinates.put(axisNameLower, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
+                coordinates.put(axisName, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
             }
             else
             {   // Find the single column that binds to the input coordinate on a regular axis.
@@ -819,7 +819,7 @@ public class NCube<T>
                 }
                 List<Column> cols = new ArrayList<>();
                 cols.add(column);
-                coordinates.put(axisNameLower, cols);
+                coordinates.put(axisName, cols);
             }
         }
 
@@ -1050,7 +1050,7 @@ public class NCube<T>
             if (entry.getValue() instanceof Set)
             {
                 count++;
-                wildcardAxis = axisList.get(entry.getKey().toLowerCase());      // intentional case insensitive match
+                wildcardAxis = axisList.get(entry.getKey());      // intentional case insensitive match
             }
         }
 
@@ -1216,12 +1216,23 @@ public class NCube<T>
      */
     public Column addColumn(final String axisName, final Comparable value)
     {
+        return addColumn(axisName, value, null);
+    }
+
+    /**
+     * Add a column to the n-cube
+     * @param axisName String name of the Axis to which the column will be added.
+     * @param value Comparable that will be the value for the given column.  Cannot be null.
+     * @return Column the added Column.
+     */
+    public Column addColumn(final String axisName, final Comparable value, String name)
+    {
         final Axis axis = getAxis(axisName);
         if (axis == null)
         {
             throw new IllegalArgumentException("Could not add column. Axis name '" + axisName + "' was not found on NCube '" + name + "'");
         }
-        Column newCol = axis.addColumn(value);
+        Column newCol = axis.addColumn(value, name);
         clearScopeKeyCaches();
         return newCol;
     }
@@ -1290,13 +1301,12 @@ public class NCube<T>
         {
             throw new IllegalArgumentException("Cannot pass in null Axis for updating columns, NCube '" + name + "'");
         }
-        final String lowAxisName = newCols.getName().toLowerCase();
-        if (!axisList.containsKey(lowAxisName))
+        if (!axisList.containsKey(newCols.getName()))
         {
             throw new IllegalArgumentException("No axis exists with the name: " + newCols.getName() + ", NCube '" + name + "'");
         }
 
-        final Axis axisToUpdate = axisList.get(newCols.getName().toLowerCase());
+        final Axis axisToUpdate = axisList.get(newCols.getName());
         final Set<Long> colsToDel = axisToUpdate.updateColumns(newCols);
         Column testColumn = new Column(1, newCols.getNextColId());
         Iterator<Set<Column>> i = cells.keySet().iterator();
@@ -1362,7 +1372,7 @@ public class NCube<T>
      */
     public Axis getAxis(final String axisName)
     {
-        return axisList.get(axisName.toLowerCase());
+        return axisList.get(axisName);
     }
 
     /**
@@ -1372,11 +1382,10 @@ public class NCube<T>
      */
     public void addAxis(final Axis axis)
     {
-        String axisName = axis.getName().toLowerCase();
+        String axisName = axis.getName();
         if (axisList.containsKey(axisName))
         {
-            throw new IllegalArgumentException("An axis with the name '" + axis.getName()
-                    + "' already exists on NCube '" + name + "'");
+            throw new IllegalArgumentException("An axis with the name '" + axisName + "' already exists on NCube '" + name + "'");
         }
 
         cells.clear();
@@ -1399,9 +1408,9 @@ public class NCube<T>
         {
             throw new IllegalArgumentException("Axis '" + oldName + "' not on NCube '" + name + "'");
         }
-        axisList.remove(oldName.toLowerCase());
+        axisList.remove(oldName);
         axis.setName(newName);
-        axisList.put(newName.toLowerCase(), axis);
+        axisList.put(newName, axis);
     }
 
     /**
@@ -1414,7 +1423,7 @@ public class NCube<T>
     {
         cells.clear();
         clearScopeKeyCaches();
-        return axisList.remove(axisName.toLowerCase()) != null;
+        return axisList.remove(axisName) != null;
     }
 
     public int getNumDimensions()
@@ -1764,6 +1773,7 @@ public class NCube<T>
                     String url = (String)jsonColumn.get("url");
                     String colType = (String) jsonColumn.get("type");
                     Object id = jsonColumn.get("id");
+                    String colName = (String) jsonColumn.get(Column.NAME);
 
                     if (value == null)
                     {
@@ -1799,7 +1809,7 @@ public class NCube<T>
 
                     if (type == AxisType.DISCRETE || type == AxisType.NEAREST)
                     {
-                        colAdded = ncube.addColumn(axis.getName(), (Comparable) CellInfo.parseJsonValue(value, null, colType, false));
+                        colAdded = ncube.addColumn(axis.getName(), (Comparable) CellInfo.parseJsonValue(value, null, colType, false), colName);
                     }
                     else if (type == AxisType.RANGE)
                     {
@@ -1810,7 +1820,7 @@ public class NCube<T>
                         }
                         Comparable low = (Comparable) CellInfo.parseJsonValue(rangeItems[0], null, colType, false);
                         Comparable high = (Comparable) CellInfo.parseJsonValue(rangeItems[1], null, colType, false);
-                        colAdded = ncube.addColumn(axis.getName(), new Range(low, high));
+                        colAdded = ncube.addColumn(axis.getName(), new Range(low, high), colName);
                     }
                     else if (type == AxisType.SET)
                     {
@@ -1835,7 +1845,7 @@ public class NCube<T>
                                 rangeSet.add((Comparable)CellInfo.parseJsonValue(pt, null, colType, false));
                             }
                         }
-                        colAdded = ncube.addColumn(axis.getName(), rangeSet);
+                        colAdded = ncube.addColumn(axis.getName(), rangeSet, colName);
                     }
                     else if (type == AxisType.RULE)
                     {
@@ -1844,7 +1854,7 @@ public class NCube<T>
                         {
                             throw new IllegalArgumentException("Column values on a RULE axis must be of type CommandCell, axis '" + name + "', NCube '" + cubeName + "'");
                         }
-                        colAdded = ncube.addColumn(axis.getName(), (CommandCell)cmd);
+                        colAdded = ncube.addColumn(axis.getName(), (CommandCell)cmd, colName);
                     }
                     else
                     {

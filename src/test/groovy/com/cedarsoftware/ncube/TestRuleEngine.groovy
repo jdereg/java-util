@@ -438,8 +438,13 @@ public class TestRuleEngine
 
         def coord = [condition:'Male']
         assert ncube.containsCell(coord, true)
+        assertNull(ncube.getCell(coord))
+
         coord.condition = 'Female'
         assert ncube.containsCell(coord)
+        assertNull(ncube.getCell(coord))
+        coord.gender = 'Female'
+        assert 'bar' == ncube.getCell(coord)
 
         try
         {

@@ -54,19 +54,20 @@ import java.util.regex.Pattern;
  */
 public class Axis
 {
+    final long id;
+    long colIdBase = 0;
+    private String name;
+    private final AxisType type;
+    private final AxisValueType valueType;
+    final List<Column> columns = new CopyOnWriteArrayList<>();
+    private Column defaultCol;
+    private int preferredOrder = SORTED;
+    Map<String, Object> metaProps = null;
+
 	public static final int SORTED = 0;
 	public static final int DISPLAY = 1;
     private static final AtomicLong baseAxisIdForTesting = new AtomicLong(1);
     public static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
-	final long id;
-    long colIdBase = 0;
-	private String name;
-	private final AxisType type;
-	private final AxisValueType valueType;
-    final List<Column> columns = new CopyOnWriteArrayList<>();
-    private Column defaultCol;
-	private int preferredOrder = SORTED;
-    Map<String, Object> metaProps = null;
 
     // used to get O(1) on SET axis for the discrete elements in the Set
     transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
@@ -77,6 +78,8 @@ public class Axis
     // used to get O(1) access to columns by ID
     transient Map<Long, Column> idToCol = new HashMap<>();
 
+    // used to get O(1) access to columns by rule-name
+    transient Map<String, Column> colNameToCol = new CaseInsensitiveMap<>();
 
     // for testing
     Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
@@ -235,6 +238,7 @@ public class Axis
         rangeToCol.clear();
         discreteToCol.clear();
         idToCol.clear();
+        colNameToCol.clear();
         for (Column column : columns)
         {
             addScaffolding(column);
@@ -244,6 +248,11 @@ public class Axis
     private void addScaffolding(Column column)
     {
         idToCol.put(column.id, column);
+        String colName = (String) column.getMetaProperty(Column.NAME);
+        if (StringUtilities.hasContent(colName))
+        {
+            colNameToCol.put(colName, column);
+        }
 
         if (!hasScaffolding())
         {   // This check is required because this API may be called from other than buildScaffolding() (e.g., addColumn)
@@ -446,7 +455,16 @@ public class Axis
 
 	public Column addColumn(Comparable value)
 	{
+        return addColumn(value, null);
+    }
+
+	public Column addColumn(Comparable value, String name)
+	{
         final Column column = createColumnFromValue(value);
+        if (StringUtilities.hasContent(name))
+        {
+            column.setMetaProperty(Column.NAME, name);
+        }
         addColumnInternal(column);
         return column;
     }
@@ -518,6 +536,7 @@ public class Axis
         if (!hasScaffolding())
         {
             idToCol.remove(col.id);
+            colNameToCol.remove(col.getMetaProperty(Column.NAME));
             return;
         }
 
@@ -626,9 +645,9 @@ public class Axis
                 Column newCol = newColumnMap.get(col.id);
                 col.setValue(newCol.getValue());
 
-                if (newCol.getMetaProperty("name") != null)
+                if (newCol.getMetaProperty(Column.NAME) != null)
                 {   // Copy 'name' meta-property (used on Rule axis Expression [condition] columns)
-                    col.setMetaProperty("name", newCol.getMetaProperty("name"));
+                    col.setMetaProperty(Column.NAME, newCol.getMetaProperty(Column.NAME));
                 }
                 Map<String, Object> metaProperties = newCol.getMetaProperties();
                 for (Map.Entry<String, Object> entry : metaProperties.entrySet())
@@ -1219,7 +1238,8 @@ public class Axis
             {
                 throw new IllegalArgumentException("A column on a rule axis can only be located by the 'name' attribute, which must be a String, axis: " + name);
             }
-            pos = findRuleByName((String)promotedValue);
+
+            return findColumnByName((String)promotedValue);
         }
         else
         {
@@ -1231,6 +1251,21 @@ public class Axis
             return columns.get(pos);
         }
 
+        return defaultCol;
+    }
+
+    /**
+     * Locate a column on an axis using the 'name' meta property.  If the value passed in matches no names, then
+     * the Default column will be returned if one exists, otherwise null will be returned.
+     * Note: This is a case-insensitive match.
+     */
+    public Column findColumnByName(String name)
+    {
+        Column col = colNameToCol.get(name);
+        if (col != null)
+        {
+            return col;
+        }
         return defaultCol;
     }
 
@@ -1306,22 +1341,6 @@ public class Axis
             pos++;
         }
         return savePos;
-    }
-
-    private int findRuleByName(final String ruleName)
-    {
-        // TODO: Add scaffolding (ruleName to Column).  Use that to locate rule by name in O(1).
-        int pos = 0;
-
-        for (Column column : getColumnsWithoutDefault())
-        {
-            if (ruleName.equalsIgnoreCase((String) column.getMetaProperties().get(Column.NAME)))
-            {
-                return pos;
-            }
-            pos++;
-        }
-        return -1;
     }
 
     /**

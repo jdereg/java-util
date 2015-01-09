@@ -134,7 +134,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
         catch (Exception e)
         {
-            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.name + ", version: " + ncube.getVersion(), e);
+            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.name + ", app: " + ncube.getApplicationID(), e);
         }
 
         if (actualUrl == null)
@@ -203,14 +203,14 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    public void setErrorMessage(String errorMsg)
+    public void setErrorMessage(String msg)
     {
-        this.errorMsg = errorMsg;
+        errorMsg = msg;
     }
 
     public String getErrorMessage()
     {
-        return this.errorMsg;
+        return errorMsg;
     }
 
     public int compareTo(CommandCell cmdCell)

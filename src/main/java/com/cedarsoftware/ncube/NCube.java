@@ -459,7 +459,7 @@ public class NCube<T>
         Map<String, Object> input = validateCoordinate(coordinate, false);
         boolean run = true;
         T lastExecutedStatementValue = null;
-        List<Binding> bindings = ruleInfo.getAxisBindings();
+        final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
 
         while (run)

@@ -51,4 +51,5 @@ public interface Regexes
     Pattern cdnUrlPattern = Pattern.compile("^\\/dyn\\/([^\\/]+)\\/(.*)$");
 
     Pattern hasClassDefPattern = Pattern.compile("^(|.*?\\s+)class\\s+([a-zA-Z_0-9$\\.]+).*?\\{.*?\\}.*$", Pattern.DOTALL);
+    Pattern sha1Pattern = Pattern.compile("\"sha1\":\\s*\"(.*?)\"");
 }

@@ -34,6 +34,7 @@ public class NCubeInfoDto
 	public String revision;
 	public Date createDate;
 	public String createHid;
+	public String sha1;
 
 	public ApplicationID getApplicationID()
 	{
@@ -42,6 +43,6 @@ public class NCubeInfoDto
 
 	public String toString()
 	{
-		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + revision + ", id=" + id;
+		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + revision + "/" + id + "/" + sha1;
 	}
 }

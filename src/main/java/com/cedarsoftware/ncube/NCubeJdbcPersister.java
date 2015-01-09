@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
 
 /**
  * Class used to carry the NCube meta-information
@@ -135,7 +136,7 @@ public class NCubeJdbcPersister
         }
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number FROM n_cube n, " +
+                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
@@ -173,7 +174,7 @@ public class NCubeJdbcPersister
         }
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number FROM n_cube n, " +
+                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
                         "( " +
                         "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                         "  FROM n_cube " +
@@ -204,7 +205,7 @@ public class NCubeJdbcPersister
     public Object[] getRevisions(Connection c, ApplicationID appId, String cubeName)
     {
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number " +
+                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, cube_value_bin " +
                 "FROM n_cube " +
                 "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') " +
                 "ORDER BY abs(revision_number) DESC"))
@@ -215,7 +216,8 @@ public class NCubeJdbcPersister
             stmt.setString(4, appId.getTenant());
 
             Object[] records = getCubeInfoRecords(appId, stmt);
-            if (records.length == 0) {
+            if (records.length == 0)
+            {
                 throw new IllegalArgumentException("Cannot fetch revision history for cube:  " + cubeName + " as it does not exist in app:  " + appId);
             }
             return records;
@@ -251,6 +253,17 @@ public class NCubeJdbcPersister
                 dto.createDate = rs.getDate("create_dt");
                 dto.createHid = rs.getString("create_hid");
                 dto.revision = Long.toString(rs.getLong("revision_number"));
+                byte[] jsonBytes = rs.getBytes("cube_value_bin");
+
+                if (!ArrayUtilities.isEmpty(jsonBytes))
+                {
+                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                    Matcher m = Regexes.sha1Pattern.matcher(json);
+                    if (m.find() && m.groupCount() > 0)
+                    {
+                        dto.sha1 = m.group(1);
+                    }
+                }
                 records.add(dto);
             }
         }

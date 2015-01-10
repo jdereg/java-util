@@ -473,6 +473,7 @@ public class NCube<T>
 
             try
             {
+                Map<String, Object> ctx = prepareExecutionContext(input, output);
                 do
                 {
                     Binding binding = new Binding(name, depth);
@@ -484,14 +485,9 @@ public class NCube<T>
                         if (axis.getType() == AxisType.RULE)
                         {
                             Object conditionValue;
-
-                            // Use Object[] to hold cached condition value to distinguish from a condition
-                            // that returned null as it's value.
-                            Object cachedConditionValue = cachedConditionValues.get(boundColumn.id);
-                            if (cachedConditionValue == null)
+                            if (!cachedConditionValues.containsKey(boundColumn.id))
                             {   // Has the condition on the Rule axis been run this execution?  If not, run it and cache it.
                                 CommandCell cmd = (CommandCell) boundColumn.getValue();
-                                Map<String, Object> ctx = prepareExecutionContext(input, output);
 
                                 // If the cmd == null, then we are looking at a default column on a rule axis.
                                 // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
@@ -513,7 +509,7 @@ public class NCube<T>
                             }
                             else
                             {   // re-use condition on this rule axis (happens when more than one rule axis on an n-cube)
-                                conditionValue = cachedConditionValue;
+                                conditionValue = cachedConditionValues.get(boundColumn.id);
                             }
 
                             // A rule column on a given axis can be accessed more than once (example: A, B, C on

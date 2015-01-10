@@ -69,10 +69,15 @@ public class Binding
 
     public String toString()
     {
-        return toHtml();
+        return toHtml(false);
     }
 
     public String toHtml()
+    {
+        return toHtml(true);
+    }
+
+    String toHtml(boolean tagsOK)
     {
         String spaces = padString("    ", depth);
         StringBuilder s = new StringBuilder(spaces);
@@ -96,9 +101,19 @@ public class Binding
         }
 
         s.append(spaces);
-        s.append("  <b>value = ");
+        if (tagsOK)
+        {
+            s.append("  <b>value = ");
+        }
+        else
+        {
+            s.append("  value = ");
+        }
         s.append(value == null ? "null" : value.toString());
-        s.append("</b>");
+        if (tagsOK)
+        {
+            s.append("</b>");
+        }
         return s.toString();
     }
 

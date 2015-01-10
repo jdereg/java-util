@@ -34,8 +34,8 @@
 
     <properties>
         <version.json-io>2.7.6</version.json-io>
-        <version.java-util>1.14.1</version.java-util>
-        <version.commons.logging>1.1.3</version.commons.logging>
+        <version.java-util>1.15.0</version.java-util>
+        <version.log4j>2.1</version.log4j>
         <version.junit>4.11</version.junit>
         <version.groovy>2.3.9</version.groovy>
         <version.powermock>1.5.4</version.powermock>
@@ -259,9 +259,15 @@
 		</dependency>
 
         <dependency>
-            <groupId>commons-logging</groupId>
-            <artifactId>commons-logging</artifactId>
-            <version>${version.commons.logging}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${version.log4j}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${version.log4j}</version>
         </dependency>
 
         <dependency>

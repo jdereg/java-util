@@ -5,8 +5,8 @@ import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.Regexes;
 import com.cedarsoftware.util.StringUtilities;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -36,7 +36,7 @@ import java.util.regex.Matcher;
 public class CdnRouter
 {
     private static CdnRoutingProvider provider;
-    private static final Log LOG = LogFactory.getLog(CdnRouter.class);
+    private static final Logger LOG = LogManager.getLogger(CdnRouter.class);
     public static final String TENANT = "router.tenant";
     public static final String APP = "router.app";
     public static final String CUBE_VERSION = "router.version";

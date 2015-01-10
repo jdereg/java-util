@@ -146,14 +146,14 @@ public class ApplicationID
 
     /**
      * Creates a new SNAPSHOT version of this application id.
-     * @param version new version.
+     * @param ver new version.
      * @return a new ApplicationId that is a snapshot of the new version passed in.
      */
-    public ApplicationID createNewSnapshotId(String version)
+    public ApplicationID createNewSnapshotId(String ver)
     {
         //  In the Change Version the status was always SNAPSHOT when creating a new version.
         //  That is why we hardcode this to snapshot here.
-        return new ApplicationID(tenant, app, version, ReleaseStatus.SNAPSHOT.name());
+        return new ApplicationID(tenant, app, ver, ReleaseStatus.SNAPSHOT.name());
     }
 
     public void validate()

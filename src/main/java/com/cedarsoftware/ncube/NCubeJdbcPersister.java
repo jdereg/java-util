@@ -3,8 +3,8 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -36,7 +36,8 @@ import java.util.regex.Matcher;
  */
 public class NCubeJdbcPersister
 {
-    private static final Log LOG = LogFactory.getLog(NCubeJdbcPersister.class);
+    private static final Logger LOG = LogManager.getLogger(NCubeJdbcPersister.class);
+
 
     public void createCube(Connection c, ApplicationID appId, NCube cube, String username)
     {

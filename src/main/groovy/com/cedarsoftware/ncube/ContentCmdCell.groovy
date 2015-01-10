@@ -3,8 +3,8 @@ package com.cedarsoftware.ncube
 import com.cedarsoftware.ncube.util.CdnRouter
 import com.cedarsoftware.util.IOUtilities
 import com.cedarsoftware.util.UrlUtilities
-import org.apache.commons.logging.Log
-import org.apache.commons.logging.LogFactory
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -37,7 +37,7 @@ abstract class ContentCmdCell extends UrlCommandCell
     private boolean cacheable;
     private Object cache;
     private static Map<String, String> extToMimeType = new ConcurrentHashMap<>()
-    private static final Log LOG = LogFactory.getLog(CdnRouter.class)
+    private static final Logger LOG = LogManager.getLogger(CdnRouter.class)
 
     static
     {

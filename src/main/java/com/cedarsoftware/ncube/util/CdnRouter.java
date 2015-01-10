@@ -135,8 +135,7 @@ public class CdnRouter
             NCube routingCube = NCubeManager.getCube(appId, cubeName);
             if (routingCube == null)
             {
-                throw new IllegalStateException("In order to use the n-cube CDN routing capabilities, " +
-                        "a CdnRouter n-cube must already be loaded, and it's name passed in as CdnRouter.CUBE_NAME");
+                throw new IllegalStateException("Could not load routing cube using app: " + appId + ", cube name: " + cubeName);
             }
             routingCube.getCell(coord, output);
         }

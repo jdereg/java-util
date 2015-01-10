@@ -17,6 +17,8 @@ import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -633,6 +635,27 @@ public class HtmlFormatter implements NCubeFormatter
         else if (cellValue instanceof CommandCell)
         {
             return ((CommandCell) cellValue).getCmd();
+        }
+        else if (cellValue instanceof URLClassLoader)
+        {   // Turn URLClassLoader back into the [] of String URL it was built from.
+            URLClassLoader urlClassLoader = (URLClassLoader) cellValue;
+            StringBuilder s = new StringBuilder();
+            s.append('[');
+            URL[] urls = urlClassLoader.getURLs();
+            for (int i=0; i < urls.length; i++)
+            {
+                URL url = urls[i];
+                s.append('"');
+                s.append(url.toExternalForm());
+                s.append('"');
+                if (i < urls.length - 1)
+                {
+                    s.append(',');
+                }
+            }
+            s.append(']');
+            return s.toString();
+
         }
         else
         {

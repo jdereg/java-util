@@ -12,7 +12,10 @@ import javax.servlet.ServletOutputStream
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-import static org.mockito.Mockito.*
+import static org.mockito.Mockito.doThrow
+import static org.mockito.Mockito.times
+import static org.mockito.Mockito.verify
+import static org.mockito.Mockito.when
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -145,7 +148,7 @@ public class TestCdnRouter
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         new CdnRouter().route request, response
 
-        verify(response, times(1)).sendError 500, 'CdnRouter - Error occurred: In order to use the n-cube CDN routing capabilities, a CdnRouter n-cube must already be loaded, and it\'s name passed in as CdnRouter.CUBE_NAME'
+        verify(response, times(1)).sendError 500, 'CdnRouter - Error occurred: Could not load routing cube using app: none/default_app/999.99.9/, cube name: foo'
     }
 
     @Test

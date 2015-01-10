@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube.formatters;
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.GroovyExpression;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
@@ -17,6 +18,8 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -260,7 +263,31 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         }
         else
         {
-            writeObjectKeyValue("value", cell.getValue(), false);
+            Object content = cell.getValue();
+            if (content instanceof URLClassLoader)
+            {
+                URLClassLoader urlClassLoader = (URLClassLoader) content;
+                StringBuilder s = new StringBuilder();
+                s.append('[');
+                URL[] urls = urlClassLoader.getURLs();
+                for (int i=0; i < urls.length; i++)
+                {
+                    URL url = urls[i];
+                    s.append('"');
+                    s.append(url.toExternalForm());
+                    s.append('"');
+                    if (i < urls.length - 1)
+                    {
+                        s.append(',');
+                    }
+                }
+                s.append(']');
+                writeCommandCell(new GroovyExpression(s.toString(), null));
+            }
+            else
+            {
+                writeObjectKeyValue("value", cell.getValue(), false);
+            }
         }
         endObject();
     }

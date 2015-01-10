@@ -284,8 +284,9 @@ public enum CellTypes
         }
 
         if (cell instanceof ClassLoader)
-        {
-            return cell.getClass().getName();
+        {   // Returned as type='exp' because the JSON is returned as a String[] of URLs
+            // The JSON and HTML formatter turn URLClassLoaders back into their URL lists.
+            return "exp";
         }
         throw new IllegalArgumentException(MessageFormat.format("Unsupported type {0} found in {1}", cell.getClass().getName(), section));
     }

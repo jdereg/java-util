@@ -247,6 +247,19 @@ public class TestCubesFromPreloadedDatabase
         def y = cube.getCell(input)
         assert 'Goodbye, world.' == y
 
+        // Test JsonFormatter - that it properly handles the URLClassLoader in the sys.classpath cube
+        NCube cp = NCubeManager.getCube(appId, "sys.classpath");
+        String json = cp.toFormattedJson();
+
+        NCube cp2 = NCube.fromSimpleJson(json)
+        cp.removeMetaProperty("sha1")
+        cp2.removeMetaProperty("sha1")
+        assert cp.toFormattedJson() == cp2.toFormattedJson()
+
+        // Test HtmlFormatter - that it properly handles the URLClassLoader in the sys.classpath cube
+        String html = cp.toHtml()
+        assert html.contains('http://www.cedarsoftware.com')
+
         manager.removeCubes(appId, USER_ID, ncubes)
     }
 

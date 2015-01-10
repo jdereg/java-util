@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.times;
 /**
  * Created by kpartlow on 4/19/2014.
  */
+@PowerMockIgnore("javax.management.*")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({UrlUtilities.class, IOUtilities.class})
 public class TestHandshakeException

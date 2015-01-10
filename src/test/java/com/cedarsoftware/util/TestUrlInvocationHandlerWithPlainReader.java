@@ -2,8 +2,8 @@ package com.cedarsoftware.util;
 
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -22,7 +22,7 @@ import java.net.URLConnection;
  */
 public class TestUrlInvocationHandlerWithPlainReader
 {
-    private static final Log LOG = LogFactory.getLog(TestUrlInvocationHandlerWithPlainReader.class);
+    private static final Logger LOG = LogManager.getLogger(TestUrlInvocationHandlerWithPlainReader.class);
 
     @Test
     public void testWithBadUrl() {

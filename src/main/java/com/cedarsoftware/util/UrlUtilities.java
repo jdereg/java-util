@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -65,7 +65,7 @@ import java.util.regex.Pattern;
  */
 public final class UrlUtilities
 {
-    private static final Log LOG = LogFactory.getLog(UrlUtilities.class);
+    private static final Logger LOG = LogManager.getLogger(UrlUtilities.class);
     private static String referrer = null;
     private static String userAgent = null;
 

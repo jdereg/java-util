@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -57,7 +57,7 @@ import java.net.HttpURLConnection;
 public class UrlInvocationHandler implements InvocationHandler
 {
     public static int SLEEP_TIME = 5000;
-    private static final Log LOG = LogFactory.getLog(UrlInvocationHandler.class);
+    private final Logger LOG = LogManager.getLogger(UrlInvocationHandler.class);
     private final UrlInvocationHandlerStrategy _strategy;
 
     public UrlInvocationHandler(UrlInvocationHandlerStrategy strategy)

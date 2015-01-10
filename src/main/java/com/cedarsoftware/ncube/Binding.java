@@ -67,6 +67,11 @@ public class Binding
         return new LinkedHashSet<>(axes.values());
     }
 
+    public String toString()
+    {
+        return toHtml();
+    }
+
     public String toHtml()
     {
         String spaces = padString("    ", depth);

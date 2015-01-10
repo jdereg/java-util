@@ -461,12 +461,12 @@ public class NCube<T>
         T lastExecutedStatementValue = null;
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
+        final String[] axisNames = axisList.keySet().toArray(new String[]{});
 
         while (run)
         {
             run = false;
             final Map<String, List<Column>> columnToAxisBindings = bindCoordinateToAxisColumns(input);
-            final String[] axisNames = getAxisNames(columnToAxisBindings);
             final Map<String, Integer> counters = getCountersPerAxis(axisList.keySet());
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
@@ -502,8 +502,13 @@ public class NCube<T>
                                 {   // Rule fired
                                     Integer count = conditionsFiredCountPerAxis.get(axisName);
                                     conditionsFiredCountPerAxis.put(axisName, count == null ? 1 : count + 1);
-
-                                    // TODO: Stop firing rules for this axis, if fireAll = false
+                                    if (!axis.isFireAll())
+                                    {   // Only fire one condition on this axis (fireAll is false)
+                                        counters.put(axisName, 1);
+                                        List<Column> boundCols = new ArrayList<>();
+                                        boundCols.add(boundColumn);
+                                        columnToAxisBindings.put(axisName, boundCols);
+                                    }
                                 }
                             }
                             else
@@ -1743,7 +1748,11 @@ public class NCube<T>
                 boolean hasDefault = getBoolean(jsonAxis, "hasDefault");
                 AxisValueType valueType = AxisValueType.valueOf(getString(jsonAxis, "valueType"));
                 final int preferredOrder = getLong(jsonAxis, "preferredOrder").intValue();
-                boolean fireAll = getBoolean(jsonAxis, "fireAll");
+                boolean fireAll = true;
+                if (jsonAxis.containsKey("fireAll"))
+                {
+                    fireAll = getBoolean(jsonAxis, "fireAll");
+                }
                 Axis axis = new Axis(name, type, valueType, hasDefault, preferredOrder, idBase++, fireAll);
                 ncube.addAxis(axis);
                 axis.metaProps = new CaseInsensitiveMap<>();
@@ -2176,7 +2185,7 @@ public class NCube<T>
      */
     public String sha1()
     {
-        byte sep = 0;
+        final byte sep = 0;
         MessageDigest sha1 = EncryptionUtilities.getSHA1Digest();
         sha1.update(name.getBytes());
         sha1.update(sep);

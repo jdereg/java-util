@@ -1,0 +1,39 @@
+{
+    "ncube":"ruleSimpleWithDefault",
+    "axes":[
+        {
+            "name":"ruleLetter",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":true,
+            "preferredOrder":1,
+            "fireAll":false,
+            "columns":[
+                { "id":"@", "name":"@Rule", "type":"exp", "value":"false" },
+                { "id":"A", "name":"ARule", "type":"exp", "value":"true" },
+                { "id":"B", "name":"BRule", "type":"exp", "value":"true" }
+            ]
+        },
+        {
+            "name":"ruleNumber",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":true,
+            "preferredOrder":1,
+            "fireAll":false,
+            "columns":[
+                { "id":1, "name":"1Rule", "type":"exp", "value":"true" },
+                { "id":2, "name":"2Rule", "type":"exp", "value":"true" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":["@", 1], "type":"exp", "value":"output.@1='@1 fired'" },
+        { "id":["@", 2], "type":"exp", "value":"output.@2='@2 fired'" },
+        { "id":["A", 1], "type":"exp", "value":"output.A1='A1 fired'" },
+        { "id":["A", 2], "type":"exp", "value":"output.A2='A2 fired'" },
+        { "id":["B", 1], "type":"exp", "value":"output.B1='B1 fired'" },
+        { "id":["B", 2], "type":"exp", "value":"output.B2='B2 fired'" },
+        { "id":[], "type":"exp", "value":"output.text='default fired'" }
+    ]
+}

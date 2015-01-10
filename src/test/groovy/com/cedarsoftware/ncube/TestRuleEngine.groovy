@@ -519,10 +519,10 @@ public class TestRuleEngine
     @Test
     public void testBasicJump() throws Exception
     {
-        NCube ncube = NCubeManager.getNCubeFromResource 'basicJump.json'
+        NCube ncube = NCubeManager.getNCubeFromResource('basicJump.json')
         def input = [age:10]
         def output = [:]
-        ncube.getCell input, output
+        ncube.getCell(input, output)
 
         assert 'child' == output.group
         assert 'thang' == output.thing
@@ -532,11 +532,11 @@ public class TestRuleEngine
 //        System.out.println('ruleInfo.getRuleExecutionTrace() = ' + ruleInfo.getRuleExecutionTrace())
 
         input.age = 48
-        ncube.getCell input, output
+        ncube.getCell(input, output)
         assert 'adult' == output.group
 
         input.age = 84
-        ncube.getCell input, output
+        ncube.getCell(input, output)
         assert 'geezer' == output.group
     }
 
@@ -913,5 +913,92 @@ public class TestRuleEngine
             assert e.message.toLowerCase().contains('matches no column')
             assert e.message.toLowerCase().contains('no default column')
         }
+    }
+
+    @Test
+    public void testFireOne()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource('ruleFireOneVer1D.json')
+
+        // Start at 1st rule
+        def input = [:]
+        def output = [:]
+        def ret = ncube.getCell(input, output)
+        assert output.A == 'A fired'
+        assert ret == 'A fired'
+        assert output.size() == 3   // A, _rule, return
+
+        // Start on 2nd rule
+        input = [rule:'SecondRule']
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.B == 'B fired'
+        assert ret == 'B fired'
+        assert output.size() == 3   // B, _rule, return
+
+        Axis axis = ncube.getAxis('rule')
+        axis.fireAll = true
+        input.clear()
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.A == 'A fired'
+        assert output.B == 'B fired'
+        assert ret == 'B fired'
+        assert output.size() == 4   // A, B, _rule, return
+    }
+
+    @Test
+    public void testFireOne2D()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource('ruleFireOneVer2D.json')
+        def input = [:]
+        def output = [:]
+        def ret = ncube.getCell(input, output)
+        assert output.A1 == 'A1 fired'
+        assert ret == 'A1 fired'
+        assert output.size() == 3   // B, _rule, return
+
+        input = [ruleLetter:'BRule']
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.B1 == 'B1 fired'
+        assert ret == 'B1 fired'
+        assert output.size() == 3   // B, _rule, return
+
+        input = [ruleNumber:'2Rule']
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.A2 == 'A2 fired'
+        assert ret == 'A2 fired'
+        assert output.size() == 3   // B, _rule, return
+
+        input = [ruleNumber:'2Rule', ruleLetter:'BRule']
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.B2 == 'B2 fired'
+        assert ret == 'B2 fired'
+        assert output.size() == 3   // B, _rule, return
+
+        // Switch RuleNumber axis back to fireAll=true
+        Axis axis = ncube.getAxis('ruleNumber')
+        axis.fireAll = true
+        input.clear()
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.size() == 4
+        assert output.A1 == 'A1 fired'
+        assert output.A2 == 'A2 fired'
+        assert ret == 'A2 fired'
+
+        axis.fireAll = false;
+        axis = ncube.getAxis('ruleLetter')
+        axis.fireAll = true
+        input.clear()
+        output.clear()
+        ret = ncube.getCell(input, output)
+        assert output.size() == 4
+        assert output.A1 == 'A1 fired'
+        assert output.B1 == 'B1 fired'
+        assert ret == 'B1 fired'
     }
 }

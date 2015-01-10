@@ -1,0 +1,22 @@
+{
+    "ncube":"ruleSimpleWithDefault",
+    "axes":[
+        {
+            "name":"rule",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":true,
+            "preferredOrder":1,
+            "fireAll":false,
+            "columns":[
+                { "id":"A", "name":"FirstRule", "type":"exp", "value":"true" },
+                { "id":"B", "name":"SecondRule", "type":"exp", "value":"true" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":["A"], "type":"exp", "value":"output.A='A fired'" },
+        { "id":["B"], "type":"exp", "value":"output.B='B fired'" },
+        { "id":[], "type":"exp", "value":"output.text='default fired'" }
+    ]
+}

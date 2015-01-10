@@ -152,6 +152,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         //  optional inputs that can use defaults
         writeObjectKeyValue("preferredOrder", axis.getColumnOrder(), true);
         writeObjectKeyValue("hasDefault", axis.hasDefaultColumn(), true);
+        writeObjectKeyValue("fireAll", axis.isFireAll(), true);
         writeMetaProperties(axis.getMetaProperties());
         writeColumns(axis.getColumns());
         endObject();

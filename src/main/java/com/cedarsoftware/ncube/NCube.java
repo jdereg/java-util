@@ -502,6 +502,8 @@ public class NCube<T>
                                 {   // Rule fired
                                     Integer count = conditionsFiredCountPerAxis.get(axisName);
                                     conditionsFiredCountPerAxis.put(axisName, count == null ? 1 : count + 1);
+
+                                    // TODO: Stop firing rules for this axis, if fireAll = false
                                 }
                             }
                             else
@@ -527,12 +529,6 @@ public class NCube<T>
                     // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
                     if (binding.getNumBoundAxes() == axisNames.length)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
-
-                        // TODO: At this point, if a rule axis has been bound to, and the axis is marked as fire: once,
-                        // then the rest of the columns associated to this axis need to be skipped or removed.
-                        // This is true for each rule axis, in the case of more than one.
-                        // Basically drop the rest of the columns from the columnToAxisBindings map
-
                         bindings.add(binding);
                         try
                         {
@@ -564,7 +560,7 @@ public class NCube<T>
                     }
 
                     // Step #3 increment counters (variable radix increment)
-                } while (!incrementVariableRadixCount(counters, columnToAxisBindings));
+                } while (incrementVariableRadixCount(counters, columnToAxisBindings, axisNames));
 
                 // Verify all rule axes were bound 1 or more times
                 for (Axis axis : axisList.values())
@@ -1023,9 +1019,9 @@ public class NCube<T>
      * @return false if more incrementing can be done, otherwise true.
      */
     private static boolean incrementVariableRadixCount(final Map<String, Integer> counters,
-                                                       final Map<String, List<Column>> bindings)
+                                                       final Map<String, List<Column>> bindings,
+                                                       final String[] axisNames)
     {
-        String[] axisNames = getAxisNames(bindings);
         int digit = axisNames.length - 1;
 
         while (true)
@@ -1038,14 +1034,14 @@ public class NCube<T>
             {   // Reach max value for given dimension (digit)
                 if (digit == 0)
                 {   // we have reached the max radix for the most significant digit - we are done
-                    return true;
+                    return false;
                 }
                 counters.put(axisNames[digit--], 1);
             }
             else
             {
                 counters.put(axisName, count + 1);  // increment counter
-                return false;
+                return true;
             }
         }
     }
@@ -1747,7 +1743,8 @@ public class NCube<T>
                 boolean hasDefault = getBoolean(jsonAxis, "hasDefault");
                 AxisValueType valueType = AxisValueType.valueOf(getString(jsonAxis, "valueType"));
                 final int preferredOrder = getLong(jsonAxis, "preferredOrder").intValue();
-                Axis axis = new Axis(name, type, valueType, hasDefault, preferredOrder, idBase++);
+                boolean fireAll = getBoolean(jsonAxis, "fireAll");
+                Axis axis = new Axis(name, type, valueType, hasDefault, preferredOrder, idBase++, fireAll);
                 ncube.addAxis(axis);
                 axis.metaProps = new CaseInsensitiveMap<>();
                 axis.metaProps.putAll(jsonAxis);
@@ -1759,6 +1756,7 @@ public class NCube<T>
                 axis.metaProps.remove("preferredOrder");
                 axis.metaProps.remove("multiMatch");
                 axis.metaProps.remove("columns");
+                axis.metaProps.remove("fireAll");
 
                 if (axis.metaProps.size() < 1)
                 {
@@ -1977,7 +1975,7 @@ public class NCube<T>
             {
                 if (!calcSha1.equals(storedSha1))
                 {
-                    // TODO: Add back after demo
+                    // TODO: Add back when users are no longer manually editing JSON cubes
 //                    throw new IllegalStateException("The json file was edited directly and no longer matches the stored SHA1, n-cube: " + ncube.getName());
                 }
             }
@@ -2024,9 +2022,18 @@ public class NCube<T>
     static Long getLong(Map obj, String key)
     {
         Object val = obj.get(key);
-        if (val instanceof Long)
+        if (val instanceof Number)
         {
-            return (Long) val;
+            return ((Number) val).longValue();
+        }
+        if (val instanceof String)
+        {
+            try
+            {
+                return Long.parseLong((String)val);
+            }
+            catch(Exception ignored)
+            { }
         }
         String clazz = val == null ? "null" : val.getClass().getName();
         throw new IllegalArgumentException("Expected 'Long' for key '" + key + "' but instead found: " + clazz);
@@ -2038,6 +2045,10 @@ public class NCube<T>
         if (val instanceof Boolean)
         {
             return (Boolean) val;
+        }
+        if (val instanceof String)
+        {
+            return "true".equalsIgnoreCase((String)val);
         }
         if (val == null)
         {
@@ -2105,7 +2116,7 @@ public class NCube<T>
 
         for (Axis axis : axisList.values())
         {
-            Axis copyAxis = new Axis(axis.getName(), axis.getType(), axis.getValueType(), axis.hasDefaultColumn(), axis.getColumnOrder(), axis.id);
+            Axis copyAxis = new Axis(axis.getName(), axis.getType(), axis.getValueType(), axis.hasDefaultColumn(), axis.getColumnOrder(), axis.id, axis.isFireAll());
             metaProperties = axis.getMetaProperties();
             for (Map.Entry<String, Object> entry : metaProperties.entrySet())
             {
@@ -2198,6 +2209,11 @@ public class NCube<T>
             sha1.update(sep);
             sha1.update(axis.hasDefaultColumn() ? "t".getBytes() : "f".getBytes());
             sha1.update(sep);
+            if (!axis.isFireAll())
+            {   // non-default value, add to SHA1 because it's been changed (backwards sha1 compatible)
+                sha1.update("fireOnce".getBytes());
+                sha1.update(sep);
+            }
             deepSha1(sha1, axis.metaProps, sep);
             sha1.update(sep);
 
@@ -2217,9 +2233,8 @@ public class NCube<T>
         final Map<String, Integer> counters = getCountersPerAxis(allCoordinates.keySet());
         final String[] axisNames = getAxisNames(allCoordinates);
         final Set<Column> idCoord = new HashSet<>();
-        boolean done = false;
 
-        while (!done)
+        do
         {
             for (final String axisName : axisNames)
             {
@@ -2237,8 +2252,7 @@ public class NCube<T>
             }
 
             idCoord.clear();
-            done = incrementVariableRadixCount(counters, allCoordinates);
-        }
+        } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));
 
         return StringUtilities.encode(sha1.digest());
     }

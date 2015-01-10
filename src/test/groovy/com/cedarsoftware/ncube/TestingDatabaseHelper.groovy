@@ -130,10 +130,10 @@ public class TestingDatabaseHelper
 
     public static void setupTestClassPaths() throws Exception
     {
-        NCube cp = NCubeManager.getNCubeFromResource TestNCubeManager.defaultSnapshotApp, 'sys.classpath.tests.json'
-        NCubeManager.createCube TestNCubeManager.defaultSnapshotApp, cp, TestNCubeManager.USER_ID
-        cp = NCubeManager.getNCubeFromResource ApplicationID.defaultAppId, 'sys.classpath.tests.json'
-        NCubeManager.createCube ApplicationID.defaultAppId, cp, TestNCubeManager.USER_ID
+        NCube cp = NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, 'sys.classpath.tests.json')
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, cp, TestNCubeManager.USER_ID)
+        cp = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'sys.classpath.tests.json')
+        NCubeManager.createCube(ApplicationID.defaultAppId, cp, TestNCubeManager.USER_ID)
     }
 
     public static void tearDownDatabase() throws Exception

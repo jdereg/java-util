@@ -63,6 +63,7 @@ public class Axis
     final List<Column> columns = new CopyOnWriteArrayList<>();
     private Column defaultCol;
     private int preferredOrder = SORTED;
+    private boolean fireAll = true;
     Map<String, Object> metaProps = null;
 
 	public static final int SORTED = 0;
@@ -96,11 +97,17 @@ public class Axis
 
     public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long id)
     {
+        this(name, type, valueType, hasDefault, order, id, true);
+    }
+
+    public Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault, int order, long id, boolean fireAll)
+    {
         this.id = id;
         this.name = name;
         this.type = type;
         this.preferredOrder = order;
         this.valueType = valueType;
+        this.fireAll = fireAll;
         if (type == AxisType.RULE)
         {
             if (order == SORTED)
@@ -207,6 +214,16 @@ public class Axis
             metaProps.clear();
             metaProps = null;
         }
+    }
+
+    public boolean isFireAll()
+    {
+        return fireAll;
+    }
+
+    public void setFireAll(boolean fireAll)
+    {
+        this.fireAll = fireAll;
     }
 
     /**
@@ -1495,6 +1512,10 @@ public class Axis
             return false;
         }
         if (valueType != axis.valueType)
+        {
+            return false;
+        }
+        if (fireAll != axis.fireAll)
         {
             return false;
         }

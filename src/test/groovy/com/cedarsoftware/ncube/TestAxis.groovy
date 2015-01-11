@@ -12,6 +12,7 @@ import org.junit.Test
 
 import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
 import static org.junit.Assert.assertNull
 import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
@@ -1710,6 +1711,198 @@ public class TestAxis
         assertEquals(cols.get(0).value, "alpha")
         assertEquals(cols.get(1).value, "charlie")
         assertEquals(cols.get(2).value, "bravo")
+    }
+
+    @Test
+    public void testMaxAxisId()  throws Exception
+    {
+        NCube cube = new NCube("fourD")
+        assertEquals(0, cube.maxAxisId)
+
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.maxAxisId + 1)
+        cube.addAxis(axis1)
+        assertEquals(1, cube.maxAxisId)
+
+        Axis axis2 = new Axis("bar", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.maxAxisId + 1)
+        cube.addAxis(axis2)
+        assertEquals(2, cube.maxAxisId)
+
+        Axis axis3 = new Axis("baz", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.maxAxisId + 1)
+        cube.addAxis(axis3)
+        assertEquals(3, cube.maxAxisId)
+
+        Axis axis4 = new Axis("qux", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED, cube.maxAxisId + 1)
+        cube.addAxis(axis4)
+        assertEquals(4, cube.maxAxisId)
+    }
+
+    @Test
+    public void testEqualsAxisNameMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        Axis axis2 = new Axis("foot", AxisType.DISCRETE, AxisValueType.STRING, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube2.addAxis(axis2)
+
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsAxisMetaMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        axis1.setMetaProperty("fingers", 4)
+        axis1.setMetaProperty("thumb", 1)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube2.addAxis(axis2)
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsAxisTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.RANGE, AxisValueType.STRING, true)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube2.addAxis(axis2)
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsAxisValueTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube2.addAxis(axis2)
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsAxisDefaultMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube2.addAxis(axis2)
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsColumnCountMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube1.addColumn("foo", "qux")
+
+        cube2.addAxis(axis2)
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsColumnTypeMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube1.addColumn("foo", "qux")
+
+        cube2.addAxis(axis2)
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsColumnValueMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube1.addColumn("foo", "baz")
+
+        cube2.addAxis(axis2)
+        cube2.addColumn("foo", "qux")
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testEqualsColumnMetaPropertiesMismatch()  throws Exception
+    {
+        Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
+        NCube cube1 = new NCube("bar")
+        NCube cube2 = new NCube("bar")
+
+        cube1.addAxis(axis1)
+        cube1.addColumn("foo", "baz")
+        Column col = axis1.findColumn("baz")
+        col.setMetaProperty("Glock", "23")
+
+        cube2.addAxis(axis2)
+        cube2.addColumn("foo", "baz")
+        assertNotEquals(cube1, cube2)
+    }
+
+    @Test
+    public void testLargeNumberOfColumns() throws Exception
+    {
+        NCube ncube = new NCube("BigDaddy")
+        Axis axis = new Axis("numbers", AxisType.SET, AxisValueType.LONG, true, Axis.DISPLAY)
+        ncube.addAxis(axis)
+        def coord = [:]
+
+        long start = System.nanoTime()
+        for (int i = 0; i < 10000; i += 10)
+        {
+            RangeSet set = new RangeSet(i)
+            Range range = new Range(i + 1, i + 4)
+            set.add(range)
+            axis.addColumn(set)
+            coord.put("numbers", i)
+            ncube.setCell(i * 2, coord)
+        }
+
+        long stop = System.nanoTime()
+
+        double diff = (stop - start) / 1000.0  // usec
+        println("build 10,000 columns = " + (diff / 1000.0) + " ms")
+
+        start = System.nanoTime()
+        for (int i = 0; i < 10000; i += 10)
+        {
+            coord.numbers = i
+            Integer ans = (Integer) ncube.getCell(coord)
+            assertEquals(i * 2, ans.intValue())
+        }
+        stop = System.nanoTime()
+
+        diff = (stop - start) / 1000.0  // usec
+        println("lookup 10,000 times large number of columns = " + (diff / 1000.0) + " ms")
     }
 
     private static boolean isValidRange(Axis axis, Range range)

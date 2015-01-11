@@ -1890,7 +1890,7 @@ public class TestAxis
         long stop = System.nanoTime()
 
         double diff = (stop - start) / 1000.0  // usec
-        println("build 10,000 columns = " + (diff / 1000.0) + " ms")
+//        println("build 10,000 columns = " + (diff / 1000.0) + " ms")
 
         start = System.nanoTime()
         for (int i = 0; i < 10000; i += 10)
@@ -1902,7 +1902,7 @@ public class TestAxis
         stop = System.nanoTime()
 
         diff = (stop - start) / 1000.0  // usec
-        println("lookup 10,000 times large number of columns = " + (diff / 1000.0) + " ms")
+//        println("lookup 10,000 times large number of columns = " + (diff / 1000.0) + " ms")
     }
 
     private static boolean isValidRange(Axis axis, Range range)

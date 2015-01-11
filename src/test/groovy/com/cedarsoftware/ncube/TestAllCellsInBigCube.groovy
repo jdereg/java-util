@@ -99,7 +99,7 @@ class TestAllCellsInBigCube
             }
             long stop = System.nanoTime()
             double diff = (stop - start) / 1000000.0
-            System.out.println("time to build and read allCellsInBigCube = " + diff)
+//            println("time to build and read allCellsInBigCube = " + diff)
         }
     }
 }

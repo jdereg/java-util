@@ -176,9 +176,6 @@
                 <version>${version.plugin.surefire}</version>
                 <configuration>
                     <forkCount>3</forkCount>
-                    <reuseForks>true</reuseForks>
-                    <!--<runOrder>alphabetical</runOrder>-->
-                    <!--<argLine>-Xmx1024m -XX:MaxPermSize=128m</argLine>-->
                 </configuration>
             </plugin>
         </plugins>

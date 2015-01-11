@@ -1810,18 +1810,7 @@ public class NCube<T>
 
                     if (jsonColumn.containsKey("cache"))
                     {
-                        if (jsonColumn.get("cache") instanceof Boolean)
-                        {
-                            cache = (Boolean) jsonColumn.get("cache");
-                        }
-                        else if (jsonColumn.get("cache") instanceof String)
-                        {   // Allow setting it as a String too
-                            cache = "true".equalsIgnoreCase((String)jsonColumn.get("cache"));
-                        }
-                        else
-                        {
-                            throw new IllegalArgumentException("'cache' parameter must be set to 'true' or 'false', or not used (defaults to 'true')");
-                        }
+                        cache = getBoolean(jsonColumn, "cache");
                     }
 
                     Column colAdded;
@@ -1871,7 +1860,7 @@ public class NCube<T>
                         Object cmd = CellInfo.parseJsonValue(value, url, colType, cache);
                         if (!(cmd instanceof CommandCell))
                         {
-                            throw new IllegalArgumentException("Column values on a RULE axis must be of type CommandCell, axis '" + name + "', NCube '" + cubeName + "'");
+                            cmd = new GroovyExpression("false", null);
                         }
                         colAdded = ncube.addColumn(axis.getName(), (CommandCell)cmd, colName);
                     }
@@ -1928,18 +1917,7 @@ public class NCube<T>
 
                 if (cMap.containsKey("cache"))
                 {
-                    if (cMap.get("cache") instanceof Boolean)
-                    {
-                        cache = (Boolean) cMap.get("cache");
-                    }
-                    else if (cMap.get("cache") instanceof String)
-                    {   // Allow setting it as a String too
-                        cache = "true".equalsIgnoreCase((String)cMap.get("cache"));
-                    }
-                    else
-                    {
-                        throw new IllegalArgumentException("'cache' parameter must be set to 'true' or 'false', or not used (defaults to 'true')");
-                    }
+                    cache = getBoolean(cMap, "cache");
                 }
 
                 Object v = CellInfo.parseJsonValue(cMap.get("value"), url, type, cache);

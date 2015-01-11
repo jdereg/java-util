@@ -162,6 +162,42 @@ public class TestAxis
     }
 
     @Test
+    public void testCONDITIONnoSort()
+    {
+        Axis axis = new Axis('sorted', AxisType.RULE, AxisValueType.EXPRESSION, true, Axis.SORTED)
+        assert axis.columnOrder == Axis.DISPLAY
+
+        axis = new Axis('sorted', AxisType.RULE, AxisValueType.BIG_DECIMAL, true, Axis.DISPLAY)
+        assert axis.valueType == AxisValueType.EXPRESSION
+
+        axis = new Axis('sorted', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
+        try
+        {
+            axis.addColumn 10
+            fail 'should not make it here'
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('rule axis')
+            assert e.message.toLowerCase().contains('commandcell')
+        }
+
+        axis = new Axis('sorted', AxisType.DISCRETE, AxisValueType.LONG, false, Axis.DISPLAY)
+        try
+        {
+            axis.findColumn null
+            fail 'should not make it here'
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('null')
+            assert e.message.toLowerCase().contains('sorted')
+            assert e.message.toLowerCase().contains('not have')
+            assert e.message.toLowerCase().contains('default column')
+        }
+    }
+
+    @Test
     public void testAxisValueOverlap()
     {
         Axis axis = new Axis('test axis', AxisType.DISCRETE, AxisValueType.LONG, true)

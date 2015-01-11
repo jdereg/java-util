@@ -105,26 +105,26 @@ public class Axis
         this.id = id;
         this.name = name;
         this.type = type;
-        this.preferredOrder = order;
-        this.valueType = valueType;
+        preferredOrder = order;
         this.fireAll = fireAll;
         if (type == AxisType.RULE)
         {
-            if (order == SORTED)
-            {
-                throw new IllegalArgumentException("RULE axis '" + name + "' cannot be set to SORTED");
-            }
-            if (valueType != AxisValueType.EXPRESSION)
-            {
-                throw new IllegalArgumentException("RULE axis '" + name + "' must have valueType set to EXPRESSION");
-            }
+            preferredOrder = DISPLAY;
+            this.valueType = AxisValueType.EXPRESSION;
         }
-        if (hasDefault)
+        else if (type == AxisType.NEAREST)
         {
-            if (type == AxisType.NEAREST)
-            {
-                throw new IllegalArgumentException("NEAREST type axis '" + name + "' cannot have a default column");
-            }
+            preferredOrder = SORTED;
+            this.valueType = valueType;
+            defaultCol = null;
+        }
+        else
+        {
+            this.valueType = valueType;
+        }
+
+        if (hasDefault && type != AxisType.NEAREST)
+        {
             defaultCol = new Column(null, getDefaultColId());
             defaultCol.setDisplayOrder(Integer.MAX_VALUE);  // Always at the end
             columns.add(defaultCol);
@@ -689,7 +689,6 @@ public class Axis
                 {
                     col.setMetaProperty(entry.getKey(), entry.getValue());
                 }
-
             }
             else
             {   // Delete case - existing column id no longer found
@@ -733,6 +732,11 @@ public class Axis
                 throw new IllegalArgumentException("Columns to be added should have negative ID values.");
             }
             realColumn.setDisplayOrder(displayOrder++);
+        }
+
+        if (type == AxisType.RULE)
+        {
+            sortColumnsByDisplayOrder(columns);
         }
 
         // Put default column back if it was already there.

@@ -1700,19 +1700,10 @@ public class TestNCube
 
         assertTrue(countMatches(ncube.toHtml(), "<tr") == 6)
 
-        Axis points = null
-        try
-        {
-            points = new Axis("Point", AxisType.NEAREST, AxisValueType.COMPARABLE, true)
-            fail("should not make it here")
-        }
-        catch (IllegalArgumentException e)
-        {
-            assert e.message.toLowerCase().contains("nearest")
-            assert e.message.toLowerCase().contains("axis")
-            assert e.message.toLowerCase().contains("cannot have")
-            assert e.message.toLowerCase().contains("default")
-        }
+        Axis points = new Axis("Point", AxisType.NEAREST, AxisValueType.COMPARABLE, true)
+        assert !points.hasDefaultColumn()
+        assert points.columnOrder == Axis.SORTED
+
         points = new Axis("Point", AxisType.NEAREST, AxisValueType.COMPARABLE, false)
         points.addColumn(new Point2D(0.0, 0.0))
         points.addColumn(new Point2D(1.0, 0.0))

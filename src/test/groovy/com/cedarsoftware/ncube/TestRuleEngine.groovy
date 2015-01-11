@@ -145,52 +145,6 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testCONDITIONnoSort()
-    {
-        try
-        {
-            new Axis('sorted', AxisType.RULE, AxisValueType.EXPRESSION, true, Axis.SORTED)
-            fail 'Should not make it here'
-        }
-        catch (Exception e)
-        {
-            assert e instanceof IllegalArgumentException
-        }
-
-        try
-        {
-            new Axis('sorted', AxisType.RULE, AxisValueType.BIG_DECIMAL, true, Axis.DISPLAY)
-            fail 'Should not make it here'
-        }
-        catch (Exception e)
-        {
-            assert e instanceof IllegalArgumentException
-        }
-
-        Axis axis = new Axis('sorted', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
-        try
-        {
-            axis.addColumn 10
-            fail 'should not make it here'
-        }
-        catch (Exception e)
-        {
-            assert e instanceof IllegalArgumentException
-        }
-
-        axis = new Axis('sorted', AxisType.DISCRETE, AxisValueType.LONG, false, Axis.DISPLAY)
-        try
-        {
-            axis.findColumn null
-            fail 'should not make it here'
-        }
-        catch (Exception e)
-        {
-            assert e instanceof IllegalArgumentException
-        }
-    }
-
-    @Test
     public void testRequiredScopeRuleAxis() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'

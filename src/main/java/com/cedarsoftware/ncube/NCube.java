@@ -673,7 +673,7 @@ public class NCube<T>
         }
         catch (CoordinateNotFoundException e)
         {
-            throw new CoordinateNotFoundException("Coordinate not found in NCube '" + name + "'\n" + stackToString(), e);
+            throw new CoordinateNotFoundException("Coordinate not found in cube: " + name + "\n" + stackToString(), e);
         }
         catch (Exception e)
         {
@@ -1724,7 +1724,7 @@ public class NCube<T>
 
             if (!(jsonNCube.get("axes") instanceof JsonObject))
             {
-                throw new IllegalArgumentException("Must specify a list of axes for the ncube, under the key 'axes' as [{axis 1}, {axis 2}, ... {axis n}].");
+                throw new IllegalArgumentException("Must specify a list of axes for the ncube, under the key 'axes' as [{axis 1}, {axis 2}, ... {axis n}], cube: " + cubeName);
             }
 
             JsonObject axes = (JsonObject) jsonNCube.get("axes");
@@ -1732,7 +1732,7 @@ public class NCube<T>
 
             if (ArrayUtilities.isEmpty(items))
             {
-                throw new IllegalArgumentException("Must be at least one axis defined in the JSON format.");
+                throw new IllegalArgumentException("Must be at least one axis defined in the JSON format, cube: " + cubeName);
             }
             long idBase = 1;
             // Read axes
@@ -1774,13 +1774,13 @@ public class NCube<T>
 
                 if (!(jsonAxis.get("columns") instanceof JsonObject))
                 {
-                    throw new IllegalArgumentException("'columns' must be specified, axis '" + name + "', NCube '" + cubeName + "'");
+                    throw new IllegalArgumentException("'columns' must be specified, axis '" + name + "', cube: " + cubeName);
                 }
                 JsonObject colMap = (JsonObject) jsonAxis.get("columns");
 
                 if (!colMap.isArray())
                 {
-                    throw new IllegalArgumentException("'columns' must be an array, axis '" + name + "', NCube '" + cubeName + "'");
+                    throw new IllegalArgumentException("'columns' must be an array, axis '" + name + "', cube: " + cubeName);
                 }
 
                 // Read columns
@@ -1798,7 +1798,7 @@ public class NCube<T>
                     {
                         if (id == null)
                         {
-                            throw new IllegalArgumentException("Missing 'value' field on column or it is null, axis '" + name + "', NCube '" + cubeName + "'");
+                            throw new IllegalArgumentException("Missing 'value' field on column or it is null, axis '" + name + "', cube: " + cubeName);
                         }
                         else
                         {   // Allows you to skip setting both id and value to the same value.
@@ -1824,7 +1824,7 @@ public class NCube<T>
                         Object[] rangeItems = ((JsonObject)value).getArray();
                         if (rangeItems.length != 2)
                         {
-                            throw new IllegalArgumentException("Range must have exactly two items, axis '" + name +"', NCube '" + cubeName + "'");
+                            throw new IllegalArgumentException("Range must have exactly two items, axis '" + name +"', cube: " + cubeName);
                         }
                         Comparable low = (Comparable) CellInfo.parseJsonValue(rangeItems[0], null, colType, false);
                         Comparable high = (Comparable) CellInfo.parseJsonValue(rangeItems[1], null, colType, false);
@@ -1841,7 +1841,7 @@ public class NCube<T>
                                 Object[] rangeValues = (Object[]) pt;
                                 if (rangeValues.length != 2)
                                 {
-                                    throw new IllegalArgumentException("Set Ranges must have two values only, range length: " + rangeValues.length + ", axis '" + name + "', NCube '" + cubeName +"'");
+                                    throw new IllegalArgumentException("Set Ranges must have two values only, range length: " + rangeValues.length + ", axis '" + name + "', cube: " + cubeName);
                                 }
                                 Comparable low = (Comparable) CellInfo.parseJsonValue(rangeValues[0], null, colType, false);
                                 Comparable high = (Comparable) CellInfo.parseJsonValue(rangeValues[1], null, colType, false);
@@ -1866,7 +1866,7 @@ public class NCube<T>
                     }
                     else
                     {
-                        throw new IllegalArgumentException("Unsupported Axis Type '" + type + "' for simple JSON input, axis '" + name + "', NCube '" + cubeName + "'");
+                        throw new IllegalArgumentException("Unsupported Axis Type '" + type + "' for simple JSON input, axis '" + name + "', cube: " + cubeName);
                     }
 
                     if (id != null)
@@ -1894,62 +1894,60 @@ public class NCube<T>
             }
 
             // Read cells
-            if (!(jsonNCube.get("cells") instanceof JsonObject))
-            {
-                throw new IllegalArgumentException("Must specify the 'cells' portion.  It can be empty but must be specified, NCube '" + cubeName + "'");
-            }
+            if (jsonNCube.get("cells") instanceof JsonObject)
+            {   // Allow JSON to have no cells
+                JsonObject cellMap = (JsonObject) jsonNCube.get("cells");
 
-            JsonObject cellMap = (JsonObject) jsonNCube.get("cells");
-
-            if (!cellMap.isArray())
-            {
-                throw new IllegalArgumentException("'cells' must be an []. It can be empty but must be specified, NCube '" + cubeName + "'");
-            }
-
-            Object[] cells = cellMap.getArray();
-            for (Object cell : cells)
-            {
-                JsonObject cMap = (JsonObject) cell;
-                Object ids = cMap.get("id");
-                String type = (String) cMap.get("type");
-                String url = (String) cMap.get("url");
-                boolean cache = false;
-
-                if (cMap.containsKey("cache"))
+                if (!cellMap.isArray())
                 {
-                    cache = getBoolean(cMap, "cache");
+                    throw new IllegalArgumentException("'cells' must be an []. It can be empty but must be specified, cube: " + cubeName);
                 }
 
-                Object v = CellInfo.parseJsonValue(cMap.get("value"), url, type, cache);
+                Object[] cells = cellMap.getArray();
+                for (Object cell : cells)
+                {
+                    JsonObject cMap = (JsonObject) cell;
+                    Object ids = cMap.get("id");
+                    String type = (String) cMap.get("type");
+                    String url = (String) cMap.get("url");
+                    boolean cache = false;
 
-                if (ids instanceof JsonObject)
-                {   // If specified as ID array, build coordinate that way
-                    Set<Long> colIds = new HashSet<>();
-                    for (Object id : ((JsonObject)ids).getArray())
+                    if (cMap.containsKey("cache"))
                     {
-                        if (!userIdToUniqueId.containsKey(id))
+                        cache = getBoolean(cMap, "cache");
+                    }
+
+                    Object v = CellInfo.parseJsonValue(cMap.get("value"), url, type, cache);
+
+                    if (ids instanceof JsonObject)
+                    {   // If specified as ID array, build coordinate that way
+                        Set<Long> colIds = new HashSet<>();
+                        for (Object id : ((JsonObject)ids).getArray())
                         {
-                            throw new IllegalArgumentException("ID specified in cell does not match an ID in the columns, id: " + id);
+                            if (!userIdToUniqueId.containsKey(id))
+                            {
+                                throw new IllegalArgumentException("ID specified in cell does not match an ID in the columns, id: " + id + ", cube: " + cubeName);
+                            }
+                            colIds.add(userIdToUniqueId.get(id));
                         }
-                        colIds.add(userIdToUniqueId.get(id));
+                        ncube.setCellById(v, colIds);
                     }
-                    ncube.setCellById(v, colIds);
-                }
-                else
-                {
-                    // TODO: Drop support for specifying columns this way
-                    // specified as key-values along each axis
-                    if (!(cMap.get("key") instanceof JsonObject))
+                    else
                     {
-                        throw new IllegalArgumentException("'key' must be a JSON object {}, NCube '" + cubeName + "'");
-                    }
+                        // TODO: Drop support for specifying columns this way
+                        // specified as key-values along each axis
+                        if (!(cMap.get("key") instanceof JsonObject))
+                        {
+                            throw new IllegalArgumentException("'key' must be a JSON object {}, NCube '" + cubeName + "'");
+                        }
 
-                    JsonObject<String, Object> keys = (JsonObject<String, Object>) cMap.get("key");
-                    for (Map.Entry<String, Object> entry : keys.entrySet())
-                    {
-                        keys.put(entry.getKey(), CellInfo.parseJsonValue(entry.getValue(), null, null, false));
+                        JsonObject<String, Object> keys = (JsonObject<String, Object>) cMap.get("key");
+                        for (Map.Entry<String, Object> entry : keys.entrySet())
+                        {
+                            keys.put(entry.getKey(), CellInfo.parseJsonValue(entry.getValue(), null, null, false));
+                        }
+                        ncube.setCell(v, keys);
                     }
-                    ncube.setCell(v, keys);
                 }
             }
 
@@ -1967,7 +1965,11 @@ public class NCube<T>
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Error reading NCube from passed in JSON", e);
+            if (e instanceof RuntimeException)
+            {
+                throw (RuntimeException)e;
+            }
+            throw new RuntimeException("Error reading cube from passed in JSON", e);
         }
     }
 

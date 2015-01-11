@@ -735,7 +735,7 @@ public class Axis
         }
 
         if (type == AxisType.RULE)
-        {
+        {   // required because RULE columns are stored in execution order
             sortColumnsByDisplayOrder(columns);
         }
 
@@ -747,7 +747,6 @@ public class Axis
 
         // index
         buildScaffolding();
-
         return colsToDelete;
     }
 

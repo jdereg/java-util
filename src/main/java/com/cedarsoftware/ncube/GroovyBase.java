@@ -171,17 +171,13 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             String cubeName = getNCube(ctx).getName();
             Throwable cause = e.getCause();
-            if (cause instanceof CoordinateNotFoundException)
+            if (cause instanceof CoordinateNotFoundException || cause instanceof RuleStop || cause instanceof RuleJump)
             {
-                throw (CoordinateNotFoundException) cause;
+                throw (RuntimeException) cause;
             }
-            else if (cause instanceof RuleStop)
+            if (e instanceof CoordinateNotFoundException || e instanceof RuleStop || e instanceof RuleJump)
             {
-                throw (RuleStop) cause;
-            }
-            else if (cause instanceof RuleJump)
-            {
-                throw (RuleJump) cause;
+                throw (RuntimeException)e;
             }
             throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(ctx) + "(), n-cube: " + cubeName + ", input: " + getInput(ctx), cause != null ? cause : e) ;
         }

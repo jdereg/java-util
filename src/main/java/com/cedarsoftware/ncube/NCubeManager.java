@@ -883,7 +883,11 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Failed to load ncube from resource: " + name, e);
+            if (e instanceof RuntimeException)
+            {
+                throw (RuntimeException)e;
+            }
+            throw new RuntimeException("Failed to load cube from resource: " + name, e);
         }
     }
 
@@ -929,7 +933,7 @@ public class NCubeManager
         }
         catch (Exception e)
         {
-            String s = "Failed to load ncubes from resource: " + name + ", last successful cube: " + lastSuccessful;
+            String s = "Failed to load cubes from resource: " + name + ", last successful cube: " + lastSuccessful;
             LOG.warn(s);
             throw new RuntimeException(s, e);
         }
@@ -957,9 +961,13 @@ public class NCubeManager
             }
             catch (Exception e1)
             {
-                LOG.debug("attempted to read n-cube json in serialized format, but was unreadable that way.", e1);
+                LOG.warn("attempted to read cube json in serialized format, but was unreadable that way.", e1);
                 if (e.getCause() != null)
                 {
+                    if (e.getCause() instanceof RuntimeException)
+                    {
+                        throw (RuntimeException)e.getCause();
+                    }
                     throw new RuntimeException(e.getCause());
                 }
                 else

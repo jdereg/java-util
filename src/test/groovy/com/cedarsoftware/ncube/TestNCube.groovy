@@ -345,75 +345,6 @@ public class TestNCube
     }
 
     @Test
-    public void testNoDefaultColumn()
-    {
-        NCube<Boolean> ncube = NCubeBuilder.getTestNCube3D_Boolean()
-
-        def coord = [:]
-        coord.put("Trailers", "S1A")
-        coord.put("Vehicles", "car")
-        coord.put("BU", "Agri")
-        Boolean v = ncube.getCell(coord)
-        assertNull(v)
-        ncube.setCell(true, coord)
-        v = ncube.getCell(coord)
-        assertTrue(v)
-        ncube.toHtml() // Use to test 3D visually
-
-        try
-        {
-            coord.put("BU", "bogus")
-            ncube.getCell(coord)
-            fail("should throw exception")
-        }
-        catch (CoordinateNotFoundException e)
-        {
-            assertTrue(e.message.contains("alue"))
-            assertTrue(e.message.contains("not"))
-            assertTrue(e.message.contains("found"))
-            assertTrue(e.message.contains("axis"))
-        }
-    }
-
-    @Test
-    public void testDefaultColumn()
-    {
-        NCube<Boolean> ncube = new NCube<Boolean>("Test.Default.Column")
-        Axis axis = NCubeBuilder.getGenderAxis(true)
-        ncube.addAxis(axis)
-
-        def male = [:]
-        male.put("Gender", "Male")
-        def female = [:]
-        female.put("Gender", "Female")
-        Map nullGender = new HashMap()
-        nullGender.put("Gender", null)
-
-        ncube.setCell(true, male)
-        ncube.setCell(false, female)
-        ncube.setCell(true, nullGender)
-
-        assertTrue(ncube.getCell(male))
-        assertFalse(ncube.getCell(female))
-        assertTrue(ncube.getCell(nullGender))
-
-        ncube.setCell(false, male)
-        ncube.setCell(true, female)
-        ncube.setCell(null, nullGender)
-
-        assertFalse(ncube.getCell(male))
-        assertTrue(ncube.getCell(female))
-        assertNull(ncube.getCell(nullGender))
-
-        def coord = [:]
-        coord.put("Gender", "missed")
-        ncube.setCell(true, coord)
-        coord.put("Gender", "yes missed")
-        assertTrue(ncube.getCell(coord))
-        assertTrue(countMatches(ncube.toHtml(), "<tr") == 4)
-    }
-
-    @Test
     public void testBig5D() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("big5D.json")
@@ -493,118 +424,6 @@ public class TestNCube
         x = ncube.getCell(coord)
         assertTrue(x == 3.0)
         assertTrue(countMatches(ncube.toHtml(), "<tr") == 5)
-    }
-
-    @Test
-    public void testStringAxis()
-    {
-        NCube<Integer> ncube = new NCube<Integer>("SingleStringAxis")
-        Axis genderAxis = NCubeBuilder.getGenderAxis(false)
-        ncube.addAxis(genderAxis)
-
-        def coord = [Gender:'Male']
-        ncube.setCell(0, coord)
-        coord.Gender = 'Female'
-        ncube.setCell(1, coord)
-
-        try
-        {
-            genderAxis.addColumn(new Date())
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assert e.message.toLowerCase().contains('error promoting value')
-        }
-
-        coord.put("Gender", "Male")
-        assertTrue(ncube.getCell(coord) == 0)
-        coord.put("Gender", "Female")
-        assertTrue(ncube.getCell(coord) == 1)
-        assertTrue(countMatches(ncube.toHtml(), "<tr") == 3)
-
-        try
-        {
-            coord.put("Gender", "Jones")
-            ncube.getCell(coord)
-            fail()
-        }
-        catch (CoordinateNotFoundException e)
-        {
-            assertTrue(e.message.contains("alue"))
-            assertTrue(e.message.contains("not"))
-            assertTrue(e.message.contains("found"))
-            assertTrue(e.message.contains("axis"))
-        }
-
-        // 'null' value to find on String axis:
-        try
-        {
-            coord.put("Gender", null)
-            ncube.getCell(coord)
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assert e.message.toLowerCase().contains('null')
-            assert e.message.toLowerCase().contains('passed to axis')
-            assert e.message.toLowerCase().contains('not have')
-            assert e.message.toLowerCase().contains('default column')
-        }
-
-        // Illegal value to find on String axis:
-        try
-        {
-            coord.put("Gender", 8)
-            ncube.getCell(coord)
-            fail()
-        }
-        catch (CoordinateNotFoundException e)
-        {
-            assert e.message.toLowerCase().contains('value')
-            assert e.message.toLowerCase().contains('not found on axis')
-        }
-
-        // 'null' for coordinate
-        try
-        {
-            ncube.getCell((Map)null)
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assert e.message.toLowerCase().contains('null')
-            assert e.message.toLowerCase().contains('passed in for coordinate map')
-        }
-
-        // 0-length coordinate
-        try
-        {
-            coord.clear()
-            ncube.getCell(coord)
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assert e.message.toLowerCase().contains('input')
-            assert e.message.toLowerCase().contains('not contain')
-            assert e.message.toLowerCase().contains('required scope')
-        }
-
-        // coordinate / table dimension mismatch
-        try
-        {
-            coord.clear()
-            coord.State = 'OH'
-            ncube.getCell(coord)
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assert e.message.toLowerCase().contains('input')
-            assert e.message.toLowerCase().contains('not contain')
-            assert e.message.toLowerCase().contains('required scope')
-        }
     }
 
     @Test
@@ -1758,120 +1577,6 @@ public class TestNCube
         assertEquals(p1.y, p2.y, 0.0001d)
         assertFalse(p2.equals(p3))
         assertFalse(p1.equals("string"))
-    }
-
-    @Test
-    public void testNearestAxisTypePoint3D()
-    {
-        NCube<String> ncube = new NCube<String>("Nearest3D")
-
-        Axis points = new Axis("Point", AxisType.NEAREST, AxisValueType.COMPARABLE, false)
-        points.addColumn(new Point3D(0.0, 0.0, 0.0))
-        points.addColumn(new Point3D(1.0, 0.0, 0.0))
-        points.addColumn(new Point3D(0.0, 1.0, 0.0))
-        points.addColumn(new Point3D(-1.0, 0.0, 0.0))
-        points.addColumn(new Point3D(0.0, -1.0, 0.0))
-        points.addColumn(new Point3D(0.0, 0.0, 1.0))
-        points.addColumn(new Point3D(0.0, 0.0, -1.0))
-        ncube.addAxis(points)
-
-        def coord = [Point:new Point3D(0.0, 0.0, 0.0)]
-        ncube.setCell("0.0, 0.0, 0.0", coord)
-        coord.Point = new Point3D(1.0, 0.0, 0.0)
-        ncube.setCell("1.0, 0.0, 0.0", coord)
-        coord.Point = new Point3D(0.0, 1.0, 0.0)
-        ncube.setCell("0.0, 1.0, 0.0", coord)
-        coord.Point = new Point3D(-1.0, 0.0, 0.0)
-        ncube.setCell("-1.0, 0.0, 0.0", coord)
-        coord.Point = new Point3D(0.0, -1.0, 0.0)
-        ncube.setCell("0.0, -1.0, 0.0", coord)
-        coord.Point = new Point3D(0.0, 0.0, 1.0)
-        ncube.setCell("0.0, 0.0, 1.0", coord)
-        coord.Point = new Point3D(0.0, 0.0, -1.0)
-        ncube.setCell("0.0, 0.0, -1.0", coord)
-
-        coord.Point = new Point3D(0.0, 0.0, 0.0)
-        String s = ncube.getCell(coord)
-        assertTrue("0.0, 0.0, 0.0".equals(s))
-
-        coord.Point = new Point3D(-0.1, 0.1, 0.1)
-        s = ncube.getCell(coord)
-        assertTrue("0.0, 0.0, 0.0".equals(s))
-
-        coord.Point = new Point3D(0.49, 0.49, 0.49)
-        s = ncube.getCell(coord)
-        assertTrue("0.0, 0.0, 0.0".equals(s))
-
-        coord.Point = new Point3D(2.0, 100.0, 3.0)
-        s = ncube.getCell(coord)
-        assertTrue("0.0, 1.0, 0.0".equals(s))
-
-        coord.Point = new Point3D(0.1, -0.2, -63.0)
-        s = ncube.getCell(coord)
-        assertTrue("0.0, 0.0, -1.0".equals(s))
-
-        Point3D p1 = new Point3D(1.0, 2.0, 3.0)
-        s = p1.toString()
-        assertEquals("1.0, 2.0, 3.0", s)
-        assertFalse(p1.equals("string"))
-        Point3D p2 = new Point3D(1.0, 2.0, 3.0)
-        assertTrue(p1.compareTo(p2) == 0)
-
-        assertTrue(countMatches(ncube.toHtml(), "<tr") == 8)
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testNCubeMissingColumnParserError()
-    {
-        NCubeManager.getNCubeFromResource("ncube-missing-column-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyColumnsError()
-    {
-        NCubeManager.getNCubeFromResource("ncube-column-not-array-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyAxesParseError()
-    {
-        NCubeManager.getNCubeFromResource("ncube-empty-axes-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testNCubeMissingAxesParseError()
-    {
-        NCubeManager.getNCubeFromResource("ncube-missing-axes-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testNCubeMissingNameParseError()
-    {
-        NCubeManager.getNCubeFromResource("ncube-missing-name-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testLatLongParseError()
-    {
-        NCubeManager.getNCubeFromResource("lat-lon-parse-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testDateParseError()
-    {
-        NCubeManager.getNCubeFromResource("date-parse-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testPoint2dParseError()
-    {
-        NCubeManager.getNCubeFromResource("point2d-parse-error.json")
-    }
-
-    @Test(expected=RuntimeException.class)
-    public void testPoint3dParseError()
-    {
-        NCubeManager.getNCubeFromResource("point3d-parse-error.json")
     }
 
     @Test
@@ -3400,10 +3105,9 @@ public class TestNCube
             NCubeManager.getNCubeFromResource("idBasedCubeError.json")
             fail("should not get here")
         }
-        catch (RuntimeException e)
+        catch (AxisOverlapException e)
         {
-            assert e.message.toLowerCase().contains("failed to load")
-            assert e.message.toLowerCase().contains("from resource")
+            assert e.message.toLowerCase().contains("range overlap")
         }
     }
 
@@ -4739,83 +4443,6 @@ public class TestNCube
     }
 
     @Test
-    public void testGetColumnsAndCoordinateFromIds()
-    {
-        NCube cube = NCubeBuilder.getTestNCube3D_Boolean()
-
-        Axis trailor = cube.getAxis("Trailers")
-        Column t = trailor.findColumn("M2A")
-
-        Axis vehicles = cube.getAxis("Vehicles")
-        Column v = vehicles.findColumn("van")
-
-        Axis bu = cube.getAxis("BU")
-        Column b = bu.findColumn("SHS")
-
-        Set<Long> longCoord = new HashSet<>()
-        longCoord.add(t.id)
-        longCoord.add(v.id)
-        longCoord.add(b.id)
-
-        // Make sure all columns are bound correctly
-        def coord = new CaseInsensitiveMap()
-        Set<Column> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord)
-        for (Column column : boundCols)
-        {
-            assertTrue(column.id == t.id || column.id == v.id || column.id == b.id)
-        }
-
-        for (Map.Entry<String, CellInfo> entry : coord.entrySet())
-        {
-            CellInfo info = entry.value
-            assertTrue("M2A".equals(info.value) || "van".equals(info.value) || "SHS".equals(info.value))
-        }
-
-        Column t2 = trailor.findColumn("L3A")
-        longCoord.add(t2.id)
-        try
-        {
-            cube.getColumnsAndCoordinateFromIds(longCoord, coord)
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.message.contains("more than one column"))
-            assertTrue(e.message.contains("per axis"))
-        }
-
-        try
-        {
-            longCoord.remove(t2.id)
-            longCoord.remove(t.id)
-            cube.getColumnsAndCoordinateFromIds(longCoord, coord)
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.message.toLowerCase().contains("column id"))
-            assertTrue(e.message.toLowerCase().contains("missing"))
-        }
-    }
-
-    @Test
-    public void testSha1NotSensitiveToAxisNameCase()
-    {
-        NCube cube1 = new NCube("foo")
-        NCube cube2 = new NCube("foo")
-        NCube cube3 = new NCube("foo")
-        Axis axis1 = new Axis("state", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, true, Axis.SORTED, cube1.maxAxisId)
-        Axis axis2 = new Axis("STATE", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, true, Axis.SORTED, cube2.maxAxisId)
-        Axis axis3 = new Axis("state", AxisType.DISCRETE, AxisValueType.BIG_DECIMAL, true, Axis.SORTED, cube3.maxAxisId)
-        cube1.addAxis(axis1)
-        cube2.addAxis(axis2)
-        assertEquals(cube1.sha1(), cube2.sha1())
-
-        cube3.addAxis(axis3)
-        assertEquals(cube1.sha1(), cube3.sha1())
-    }
-
-    @Test
     public void testDeltaDescriptionCellValue()
     {
         NCube cube = NCubeManager.getNCubeFromResource("delta.json")
@@ -5233,7 +4860,7 @@ public class TestNCube
         for (Axis axis : ncube.axes)
         {
             Axis dupeAxis = dupe.getAxis(axis.name)
-            assertEquals(axis.getId(), dupeAxis.getId())
+            assertEquals(axis.id, dupeAxis.id)
 
             Iterator<Column> iThisCol = axis.columns.iterator()
             Iterator<Column> iThatCol = dupeAxis.columns.iterator()

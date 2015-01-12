@@ -33,13 +33,13 @@
     </developers>
 
     <properties>
-        <version.json-io>2.7.6</version.json-io>
+        <version.json-io>2.8.0</version.json-io>
         <version.java-util>1.15.0</version.java-util>
         <version.log4j>2.1</version.log4j>
-        <version.junit>4.11</version.junit>
+        <version.junit>4.12</version.junit>
         <version.groovy>2.3.9</version.groovy>
-        <version.powermock>1.5.4</version.powermock>
-        <version.mockito>1.9.5</version.mockito>
+        <version.powermock>1.6.1</version.powermock>
+        <version.mockito>1.10.8</version.mockito>
         <version.mongo>2.12.3</version.mongo>
         <version.mysql.connector.java>5.1.28</version.mysql.connector.java>
         <version.nosqlunit>0.7.9</version.nosqlunit>

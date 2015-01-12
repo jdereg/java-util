@@ -955,4 +955,19 @@ public class TestRuleEngine
         assert output.B1 == 'B1 fired'
         assert ret == 'B1 fired'
     }
+
+    // Working on this test. Goal is to test multiple RULE axes and that
+    // minimal binding is going on in order to traverse combinations of axis to rule column (binding).
+//    @Test
+//    public void testFire2D()
+//    {
+//        NCube ncube = NCubeManager.getNCubeFromResource('ruleFireOneVer2D.json')
+//        Axis axis = ncube.getAxis('ruleLetter')
+//        axis.setFireAll(true)
+//        axis = ncube.getAxis('ruleNumber')
+//        axis.setFireAll(true)
+//        def input = [:]
+//        def output = [:]
+//        def ret = ncube.getCell(input, output)
+//    }
 }

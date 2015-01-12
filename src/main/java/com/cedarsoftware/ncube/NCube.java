@@ -462,6 +462,7 @@ public class NCube<T>
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
         final String[] axisNames = axisList.keySet().toArray(new String[]{});
+        final Collection<Axis> axes = axisList.values();
 
         while (run)
         {
@@ -476,8 +477,9 @@ public class NCube<T>
                 Map<String, Object> ctx = prepareExecutionContext(input, output);
                 do
                 {
-                    Binding binding = new Binding(name, depth);
-                    for (final Axis axis: axisList.values())
+                    final Binding binding = new Binding(name, depth);
+
+                    for (final Axis axis: axes)
                     {
                         final String axisName = axis.getName();
                         final Column boundColumn = columnToAxisBindings.get(axisName).get(counters.get(axisName) - 1);
@@ -491,12 +493,13 @@ public class NCube<T>
 
                                 // If the cmd == null, then we are looking at a default column on a rule axis.
                                 // the conditionValue becomes 'true' for Default column when ruleAxisBindCount = 0
-                                conditionValue = cmd == null ? isZero(conditionsFiredCountPerAxis.get(axisName)) : cmd.execute(ctx);
-                                cachedConditionValues.put(boundColumn.id, conditionValue);
+                                final Integer count = conditionsFiredCountPerAxis.get(axisName);
+                                conditionValue = cmd == null ? isZero(count) : cmd.execute(ctx);
+                                final boolean conditionAnswer = isTrue(conditionValue);
+                                cachedConditionValues.put(boundColumn.id, conditionAnswer);
 
-                                if (isTrue(conditionValue))
+                                if (conditionAnswer)
                                 {   // Rule fired
-                                    Integer count = conditionsFiredCountPerAxis.get(axisName);
                                     conditionsFiredCountPerAxis.put(axisName, count == null ? 1 : count + 1);
                                     if (!axis.isFireAll())
                                     {   // Only fire one condition on this axis (fireAll is false)
@@ -516,9 +519,13 @@ public class NCube<T>
                             // one rule axis, X, Y, Z on another).  This generates coordinate combinations
                             // (AX, AY, AZ, BX, BY, BZ, CX, CY, CZ).  The condition columns must be run only once, on
                             // subsequent access, the cached result of the condition is used.
-                            if (isTrue(conditionValue))
+                            if (Boolean.TRUE.equals(conditionValue))
                             {
                                 binding.bind(axisName, boundColumn);
+                            }
+                            else
+                            {   // Incomplete binding - no need to attempt further bindings on other axes.
+                                break;
                             }
                         }
                         else
@@ -564,17 +571,7 @@ public class NCube<T>
                 } while (incrementVariableRadixCount(counters, columnToAxisBindings, axisNames));
 
                 // Verify all rule axes were bound 1 or more times
-                for (Axis axis : axisList.values())
-                {
-                    if (axis.getType() == AxisType.RULE)
-                    {
-                        Integer count = conditionsFiredCountPerAxis.get(axis.getName());
-                        if (count == null || count < 1)
-                        {
-                            throw new CoordinateNotFoundException("No conditions on the rule axis '" + axis.getName() + "' fired, and there is no default column on this axis, cube: " + name + ", input: " + coordinate);
-                        }
-                    }
-                }
+                ensureAllRuleAxesBound(coordinate, conditionsFiredCountPerAxis);
             }
             catch (RuleStop ignored)
             {
@@ -591,6 +588,27 @@ public class NCube<T>
         ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
         output.put("return", lastExecutedStatementValue);
         return lastExecutedStatementValue;
+    }
+
+    /**
+     * Verify that at least one rule on each rule axis fired.  If not, then you have a
+     * CoordinateNotFoundException.
+     * @param coordinate Input (Map) coordinate for getCell()
+     * @param conditionsFiredCountPerAxis Map that tracks AxisName to number of fired-columns bound to axis
+     */
+    private void ensureAllRuleAxesBound(Map<String, Object> coordinate, Map<String, Integer> conditionsFiredCountPerAxis)
+    {
+        for (Axis axis : axisList.values())
+        {
+            if (axis.getType() == AxisType.RULE)
+            {
+                Integer count = conditionsFiredCountPerAxis.get(axis.getName());
+                if (count == null || count < 1)
+                {
+                    throw new CoordinateNotFoundException("No conditions on the rule axis '" + axis.getName() + "' fired, and there is no default column on this axis, cube: " + name + ", input: " + coordinate);
+                }
+            }
+        }
     }
 
     /**
@@ -753,6 +771,11 @@ public class NCube<T>
             return false;
         }
 
+        if (ruleValue instanceof Boolean)
+        {
+            return ruleValue.equals(true);
+        }
+
         if (ruleValue instanceof Number)
         {
             boolean isZero = ruleValue.equals((byte)0) ||
@@ -791,10 +814,6 @@ public class NCube<T>
             return ((Iterator)ruleValue).hasNext();
         }
 
-        if (ruleValue instanceof Boolean)
-        {
-            return ruleValue.equals(true);
-        }
         return true;
     }
 

@@ -211,9 +211,13 @@ public class TestJsonFormatter
             long start = System.nanoTime()
             String s = ncube.toFormattedJson()
 //            System.out.println(s)
-            NCube res = NCube.fromSimpleJson(s)
             long end = System.nanoTime()
+            NCube res = NCube.fromSimpleJson(s)
             assertEquals(res, ncube)
+            double time = (end-start)/1000000.0;
+            if (time > 0.25) {
+                System.out.println(f + " time -> " + time);
+            }
 //            System.out.println(f + " " + (end - start)/1000000);
         }
     }

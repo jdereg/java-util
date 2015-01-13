@@ -70,7 +70,6 @@ public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManag
         }
         finally
         {
-            try { s.close() } catch(Exception e) {}
             provider.releaseConnection(c)
         }
     }

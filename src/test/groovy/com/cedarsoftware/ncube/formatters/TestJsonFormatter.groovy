@@ -1,9 +1,6 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.ApplicationID
-import com.cedarsoftware.ncube.NCube
-import com.cedarsoftware.ncube.NCubeManager
-import com.cedarsoftware.ncube.TestingDatabaseHelper
+import com.cedarsoftware.ncube.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -30,16 +27,27 @@ import static org.junit.Assert.fail
  */
 public class TestJsonFormatter
 {
+
+    public static String USER_ID = TestNCubeManager.USER_ID
+    public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+    public static ApplicationID usedId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "usedInvalidId", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+
+    private TestingDatabaseManager manager;
+
     @Before
-    public void setUp() throws Exception
-    {
-        TestingDatabaseHelper.setupDatabase()
+    public void setup() throws Exception {
+        manager = TestingDatabaseHelper.getTestingDatabaseManager()
+        manager.setUp()
+
+        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister())
     }
 
     @After
-    public void tearDown() throws Exception
-    {
-        TestingDatabaseHelper.tearDownDatabase()
+    public void tearDown() throws Exception {
+        manager.tearDown()
+        manager = null;
+
+        NCubeManager.clearCache()
     }
 
     @Test
@@ -55,8 +63,11 @@ public class TestJsonFormatter
     @Test
     public void testConvertArray() throws Exception
     {
-        //  Load Arrays Type, write to new formatted type (they'll become Groovy Expressions
-        NCube ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'arrays.json')
+
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk('sys.classpath.tests.json', 'arrays.json');
+        manager.addCubes(ApplicationID.defaultAppId, 'lol', cubes);
+
+        NCube ncube = cubes[1];
 
         def coord = [Code:'longs']
         assertEquals 9223372036854775807L, ((Object[]) ncube.getCell(coord))[2]
@@ -114,6 +125,8 @@ public class TestJsonFormatter
         assertEquals new BigInteger('0'), ((Object[]) ncube.getCell(coord))[0]
         assertEquals new BigInteger('9223372036854775807'), ((Object[]) ncube.getCell(coord))[2]
         assertEquals new BigInteger('147573952589676410000'), ((Object[]) ncube.getCell(coord))[3]
+
+        manager.removeCubes(ApplicationID.defaultAppId, 'lol', cubes);
     }
 
     @Test
@@ -208,13 +221,16 @@ public class TestJsonFormatter
             String original = NCubeManager.getResourceAsString(f)
             NCube ncube = NCube.fromSimpleJson(original)
 
-            long start = System.nanoTime()
+            //long start = System.nanoTime()
             String s = ncube.toFormattedJson()
 //            System.out.println(s)
             NCube res = NCube.fromSimpleJson(s)
-            long end = System.nanoTime()
+            //long end = System.nanoTime()
             assertEquals(res, ncube)
-//            System.out.println(f + " " + (end - start)/1000000);
+            //long time = (end-start)/1000000;
+            //if (time > 250) {
+                //System.out.println(f + " " + time);
+            //}
         }
     }
 }

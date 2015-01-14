@@ -38,6 +38,7 @@
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.groovy>2.3.9</version.groovy>
+        <version.jgit>3.6.1.201501031845-r</version.jgit>
         <version.powermock>1.6.1</version.powermock>
         <version.mockito>1.10.8</version.mockito>
         <version.mongo>2.12.3</version.mongo>
@@ -184,6 +185,12 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>${version.jgit}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy</artifactId>
             <version>${version.groovy}</version>
@@ -208,18 +215,18 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.lordofthejars</groupId>
-            <artifactId>nosqlunit-mongodb</artifactId>
-            <version>${version.nosqlunit}</version>
-            <scope>test</scope>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>com.lordofthejars</groupId>-->
+            <!--<artifactId>nosqlunit-mongodb</artifactId>-->
+            <!--<version>${version.nosqlunit}</version>-->
+            <!--<scope>test</scope>-->
+        <!--</dependency>-->
 
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongo-java-driver</artifactId>
-            <version>${version.mongo}</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.mongodb</groupId>-->
+            <!--<artifactId>mongo-java-driver</artifactId>-->
+            <!--<version>${version.mongo}</version>-->
+        <!--</dependency>-->
 
         <!--<dependency>-->
 			<!--<groupId>oracle</groupId>-->
@@ -241,12 +248,12 @@
             <scope>provided</scope>
         </dependency>
 
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>${version.mysql.connector.java}</version>
-            <scope>test</scope>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>mysql</groupId>-->
+            <!--<artifactId>mysql-connector-java</artifactId>-->
+            <!--<version>${version.mysql.connector.java}</version>-->
+            <!--<scope>test</scope>-->
+        <!--</dependency>-->
 
 		<dependency>
 			<groupId>junit</groupId>

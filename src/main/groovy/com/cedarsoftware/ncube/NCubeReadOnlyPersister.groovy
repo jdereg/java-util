@@ -1,4 +1,4 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube
 
 /**
  * Class used to carry the NCube meta-information
@@ -20,20 +20,18 @@ package com.cedarsoftware.ncube;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public interface NCubePersister extends NCubeReadOnlyPersister
+interface NCubeReadOnlyPersister
 {
-    void createCube(ApplicationID appId, NCube cube, String username);
-    void updateCube(ApplicationID appId, NCube cube, String username);
-    boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete, String username);
-    boolean renameCube(ApplicationID appId, NCube oldCube, String newName);
+    NCube loadCube(NCubeInfoDto cubeInfo)
+    Object[] getCubeRecords(ApplicationID appId, String pattern)
+    Object[] getAppNames(String tenant)
+    Object[] getAppVersions(ApplicationID appId)
+    boolean doesCubeExist(ApplicationID appId, String cubeName)
 
-    void restoreCube(ApplicationID appId, String cubeName, String username);
+    Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)
+    Object[] getRevisions(ApplicationID appId, String cubeName)
 
-    boolean updateNotes(ApplicationID appId, String cubeName, String notes);
+    String getNotes(ApplicationID appId, String cubeName)
 
-    int createSnapshotVersion(ApplicationID appId, String newVersion);
-    int changeVersionValue(ApplicationID appId, String newVersion);
-    int releaseCubes(ApplicationID appId);
-
-    boolean updateTestData(ApplicationID appId, String cubeName, String testData);
+    String getTestData(ApplicationID appId, String cubeName)
 }

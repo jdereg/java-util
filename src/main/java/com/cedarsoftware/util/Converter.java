@@ -8,7 +8,7 @@ import java.util.Date;
 /**
  * Handy conversion utilities
  *
- * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
  *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
@@ -26,6 +26,7 @@ import java.util.Date;
  */
 public class Converter
 {
+    private Converter() { }
     /**
      * Turn the passed in value to the class indicated.  This will allow, for
      * example, a String value to be passed in and have it coerced to a Long.
@@ -348,6 +349,10 @@ public class Converter
                     {
                         return Float.valueOf((String) fromInstance);
                     }
+                    else if (fromInstance instanceof Boolean)
+                    {
+                        return (Boolean) fromInstance ? 1.0f : 0.0f;
+                    }
                 }
                 catch(Exception e)
                 {
@@ -370,6 +375,10 @@ public class Converter
                     else if (fromInstance instanceof String)
                     {
                         return Double.valueOf((String) fromInstance);
+                    }
+                    else if (fromInstance instanceof Boolean)
+                    {
+                        return (Boolean) fromInstance ? 1.0d : 0.0d;
                     }
                 }
                 catch(Exception e)

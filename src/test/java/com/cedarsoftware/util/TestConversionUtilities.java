@@ -428,6 +428,10 @@ public class TestConversionUtilities
         assertEquals(-3.14f, Converter.convert("-3.14", Float.class));
         assertEquals(-3.14f, Converter.convert(-3.14d, float.class));
         assertEquals(-3.14f, Converter.convert(-3.14d, Float.class));
+        assertEquals(1.0f, Converter.convert(true, float.class));
+        assertEquals(1.0f, Converter.convert(true, Float.class));
+        assertEquals(0.0f, Converter.convert(false, float.class));
+        assertEquals(0.0f, Converter.convert(false, Float.class));
 
         try
         {
@@ -457,6 +461,10 @@ public class TestConversionUtilities
         assertEquals(-3.14d, Converter.convert("-3.14", Double.class));
         assertEquals(-3.14d, Converter.convert(new BigDecimal("-3.14"), double.class));
         assertEquals(-3.14d, Converter.convert(new BigDecimal("-3.14"), Double.class));
+        assertEquals(1.0d, Converter.convert(true, double.class));
+        assertEquals(1.0d, Converter.convert(true, Double.class));
+        assertEquals(0.0d, Converter.convert(false, double.class));
+        assertEquals(0.0d, Converter.convert(false, Double.class));
 
         try
         {

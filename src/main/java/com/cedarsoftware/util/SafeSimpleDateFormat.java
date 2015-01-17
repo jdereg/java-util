@@ -9,9 +9,9 @@ import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class implements a Thread-Safe (re-entrant) SimpleDateFormat
@@ -45,11 +45,11 @@ public class SafeSimpleDateFormat extends Format
     {
         public Map<String, SimpleDateFormat> initialValue()
         {
-            return new HashMap<String, SimpleDateFormat>();
+            return new ConcurrentHashMap<>();
         }
     };
 
-    private SimpleDateFormat getDateFormat(String format)
+    public static SimpleDateFormat getDateFormat(String format)
     {
         Map<String, SimpleDateFormat> formatters = _dateFormats.get();
         SimpleDateFormat formatter = formatters.get(format);

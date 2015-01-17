@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.15.0</version>
+  <version>1.16.0</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Feed hungry developers...</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -19,6 +19,7 @@ Including in java-util:
 * **ByteUtilities** - Useful routines for converting byte[] to HEX character [] and visa-versa.
 * **CaseInsensitiveMap** - When Strings are used as keys, they are compared without case. Can be used as regular Map with any Java object as keys, just specially handles Strings.
 * **CaseInsensitiveSet** - Set implementation that ignores String case for contains() calls, yet can have any object added to it (does not limit you to adding only Strings to it).
+* **Converter** - Convert from once instance to another.  For example, convert("45.3", BigDecimal.class) will convert the String to a BigDecimal.  Works for all primitives, primitive wrappers, Date, java.sql.Date, String, BigDecimal, and BigInteger.  The method is very generous on what it allows to be converted.  For example, a Calendar instance can be input for a Date or Long.  Examine source to see all possibilities.
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, y/m/d and m/d/y ordering as well.
 * **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an equals() method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.
 * **EncryptionUtilities** - Makes it easy to compute MD5 checksums for Strings, byte[], as well as making it easy to AES-128 encrypt Strings and byte[]'s.
@@ -34,6 +35,9 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.16.0
+ * Added Converter.convert() API.  Allows converting instances of one type to another.  Handles all primitives, primitive wrappers, Date, java.sql.Date, String, BigDecimal, and BigInteger.  Additionally, input (from) argument accepts Calendar.
+ * Added static getDateFormat() to SafeSimpleDateFormat for quick access to thread local formatter (per format String).
 * 1.15.0
  * Switched to use Log4J2 () for logging.
 * 1.14.1

@@ -426,7 +426,12 @@ public class TestNCube
 
         try
         {
-            axis.addColumn(new Date())
+            axis.addColumn(new Comparable() {
+                int compareTo(Object o) 
+                {
+                    return 0
+                }
+            })
             fail()
         }
         catch (IllegalArgumentException e)

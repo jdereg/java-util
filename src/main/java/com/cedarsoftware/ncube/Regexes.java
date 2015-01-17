@@ -52,4 +52,6 @@ public interface Regexes
 
     Pattern hasClassDefPattern = Pattern.compile("^(|.*?\\s+)class\\s+([a-zA-Z_0-9$\\.]+).*?\\{.*?\\}.*$", Pattern.DOTALL);
     Pattern sha1Pattern = Pattern.compile("\"sha1\":\\s*\"(.*?)\"");
+
+    Pattern gitCubeNames = Pattern.compile("^cubes\\/([^\\/]*)\\.json$", Pattern.MULTILINE);
 }

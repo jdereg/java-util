@@ -5,16 +5,14 @@ import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.Converter;
 import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonReader;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -1002,28 +1000,28 @@ public class Axis
         switch(srcValueType)
         {
             case STRING:
-                return getString(value);
+                return (String) Converter.convert(value, String.class);
             case LONG:
-                return getLong(value);
+                return (Long) Converter.convert(value, long.class);
             case BIG_DECIMAL:
-                return getBigDecimal(value);
+                return (BigDecimal) Converter.convert(value, BigDecimal.class);
             case DOUBLE:
-                return getDouble(value);
+                return (Double) Converter.convert(value, Double.class);
             case DATE:
-                return getDate(value);
+                return (Date) Converter.convert(value, Date.class);
             case COMPARABLE:
                 if (value instanceof String)
                 {
                     Matcher m = Regexes.valid2Doubles.matcher((String) value);
                     if (m.matches())
                     {   // No way to determine if it was supposed to be a Point2D. Specify as JSON for Point2D
-                        return new LatLon(getDouble(m.group(1)), getDouble(m.group(2)));
+                        return new LatLon((Double)Converter.convert(m.group(1), double.class), (Double)Converter.convert(m.group(2), double.class));
                     }
 
                     m = Regexes.valid3Doubles.matcher((String) value);
                     if (m.matches())
                     {
-                        return new Point3D(getDouble(m.group(1)), getDouble(m.group(2)), getDouble(m.group(3)));
+                        return new Point3D((Double)Converter.convert(m.group(1), double.class), (Double)Converter.convert(m.group(2), double.class), (Double)Converter.convert(m.group(3), double.class));
                     }
 
                     try
@@ -1042,136 +1040,6 @@ public class Axis
                 throw new IllegalArgumentException("AxisValueType '" + srcValueType + "' added but no code to support it.");
         }
     }
-
-	static String getString(Comparable value)
-	{
-		if (value instanceof String)
-		{
-			return (String) value;
-		}
-        else if (value instanceof BigDecimal)
-        {
-            return ((BigDecimal) value).stripTrailingZeros().toPlainString();
-        }
-        else if (value instanceof Number || value instanceof Boolean)
-        {
-            return value.toString();
-        }
-        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'String'");
-	}
-
-	/**
-	 * Promote any Number (or String) type to a BigDecimal in the best possible manner.
-	 * @return BigDecimal equivalent of value, or null if it could not be converted.
-	 */
-	private static BigDecimal getBigDecimal(Comparable value)
-	{
-		try
-		{
-			if (value instanceof BigDecimal)
-			{
-				return (BigDecimal) value;
-			}
-			else if (value instanceof BigInteger)
-			{
-				return new BigDecimal((BigInteger)value);
-			}
-			else if (value instanceof String)
-			{
-				return new BigDecimal((String) value);
-			}
-			else if (value instanceof Number)
-			{
-				return new BigDecimal(((Number)value).doubleValue());
-			}
-		}
-		catch (Exception e)
-		{
-            throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'BigDecimal'", e);
-		}
-        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'BigDecimal'");
-	}
-
-	/**
-	 * Promote Number (or String) to a Double in the best possible manner.
-	 * @return Double equivalent of value, or null if it could not be converted.
-	 */
-	private static Double getDouble(Comparable value)
-	{
-		try
-		{
-			if (value instanceof Double)
-			{
-				return (Double) value;
-			}
-			else if (value instanceof Number)
-			{
-				return ((Number)value).doubleValue();
-			}
-			else if (value instanceof String)
-			{
-				return Double.valueOf((String) value);
-			}
-		}
-		catch(Exception e)
-		{
-            throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'Double'", e);
-		}
-        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Double'");
-	}
-
-	/**
-	 * Promote Number (or String) to a Long in the best possible manner.
-	 * @return Long equivalent of value, or null if it could not be converted.
-	 */
-	private static Long getLong(Comparable value)
-	{
-		try
-		{
-			if (value instanceof Long)
-			{
-				return (Long) value;
-			}
-			else if (value instanceof Number)
-			{
-				return ((Number)value).longValue();
-			}
-			else if (value instanceof String)
-			{
-				return Long.valueOf((String) value);
-			}
-		}
-		catch(Exception e)
-		{
-            throw new IllegalArgumentException("value [" + value.getClass().getName() + "] could not be converted to a 'Long'", e);
-        }
-        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Long'");
-	}
-
-	/**
-	 * Promote Number (or String) to a Long in the best possible manner.
-	 * @return Long equivalent of value, or null if it could not be converted.
-	 */
-	private static Date getDate(Comparable value)
-	{
-		if (value instanceof Date)
-		{
-			return (Date) value;
-		}
-        else if (value instanceof String)
-        {
-            return DateUtilities.parseDate((String)value);
-        }
-		else if (value instanceof Calendar)
-		{
-			return ((Calendar)value).getTime();
-		}
-		else if (value instanceof Long)
-		{
-			return new Date((Long)value);
-		}
-        throw new IllegalArgumentException("Unsupported value type [" + value.getClass().getName() + "] attempting to convert to 'Date'");
-	}
 
 	public boolean hasDefaultColumn()
 	{

@@ -643,14 +643,6 @@ public class TestAxis
     }
 
     @Test
-    public void testGetString()
-    {
-        assert '1' == Axis.getString(1)
-        assert 'true' == Axis.getString(true)
-        assert 'foo'.is(Axis.getString('foo'))
-    }
-
-    @Test
     public void testToString()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
@@ -1052,13 +1044,6 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisGetStringWithBigDecimal()
-    {
-        String pi = Axis.getString(3.1415926535897932384626433g)
-        assert '3.1415926535897932384626433' == pi
-    }
-
-    @Test
     public void testFindNonExistentRuleName()
     {
         Axis axis = new Axis('foo', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
@@ -1184,7 +1169,11 @@ public class TestAxis
 
         try
         {
-            genderAxis.addColumn(new Date())
+            genderAxis.addColumn(new Comparable() {
+                int compareTo(Object o) {
+                    return 0
+                }
+            })
             fail()
         }
         catch (IllegalArgumentException e)

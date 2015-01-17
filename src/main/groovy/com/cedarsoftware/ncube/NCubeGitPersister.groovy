@@ -1,10 +1,14 @@
 package com.cedarsoftware.ncube
 
+import com.cedarsoftware.util.IOUtilities
+import com.cedarsoftware.util.StringUtilities
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.lib.AnyObjectId
 import org.eclipse.jgit.lib.Constants
+import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.lib.ObjectLoader
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
@@ -12,6 +16,8 @@ import org.eclipse.jgit.revwalk.RevTree
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.treewalk.TreeWalk
+
+import java.util.regex.Matcher
 
 /**
  * NCube Persister implementation that stores / retrieves n-cubes directly from
@@ -33,41 +39,48 @@ import org.eclipse.jgit.treewalk.TreeWalk
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-class NCubeGitPersister implements NCubeReadOnlyPersister
+class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 {
-    Repository repo;
+    Repository repository;
+    String repoDir;
+
+    private Repository getRepoByAppId(ApplicationID appId)
+    {
+        return repository;
+    }
 
     void setRepositoryDir(String dir)
     {
+        repoDir = dir;
         FileRepositoryBuilder builder = new FileRepositoryBuilder();
-        repo = builder.setGitDir(new File(dir))
+        repository = builder.setGitDir(new File(dir))
                 .readEnvironment() // scan environment GIT_* variables
                 .findGitDir() // scan up the file system tree
                 .build();
-
-        println repo
-        println '--------------------------------------------'
-        ObjectId lastCommitId = repo.resolve(Constants.HEAD);
-//        listAllCommits()
+//
+//        println repository
+//        println '--------------------------------------------'
+//        ObjectId lastCommitId = repository.resolve(Constants.HEAD);
+////        listAllCommits()
+////        println '------------------------'
+//        listAllBranches()
 //        println '------------------------'
-        listAllBranches()
-        println '------------------------'
-        listAllTags()
-        println '------------------------'
-        listRepositoryContents(lastCommitId)
+//        listAllTags()
+//        println '------------------------'
+//        listRepositoryContents(lastCommitId)
     }
 
     private void listRepositoryContents(AnyObjectId root) throws IOException
     {
         // a RevWalk allows to walk over commits based on some filtering that is defined
-        RevWalk walk = new RevWalk(repo)
+        RevWalk walk = new RevWalk(repository)
 
         RevCommit commit = walk.parseCommit(root)
         RevTree tree = commit.tree
 
         // now use a TreeWalk to iterate over all files in the Tree recursively
         // you can set Filters to narrow down the results if needed
-        TreeWalk treeWalk = new TreeWalk(repo)
+        TreeWalk treeWalk = new TreeWalk(repository)
         treeWalk.addTree(tree)
         treeWalk.recursive = true
         while (treeWalk.next())
@@ -78,7 +91,7 @@ class NCubeGitPersister implements NCubeReadOnlyPersister
 
     private void listAllCommits()
     {
-        Git git = new Git(repo)
+        Git git = new Git(repository)
         Iterable<RevCommit> commits = git.log().all().call()
         int count = 0;
         for (RevCommit commit : commits)
@@ -92,14 +105,14 @@ class NCubeGitPersister implements NCubeReadOnlyPersister
     private void listAllBranches()
     {
         println('Listing local branches:')
-        List<Ref> call = new Git(repo).branchList().call();
+        List<Ref> call = new Git(repository).branchList().call();
         for (Ref ref : call)
         {
             println('Branch: ' + ref + ' ' + ref.name + ' ' + ref.objectId.name)
         }
 
         println('Now including remote branches:');
-        call = new Git(repo).branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
+        call = new Git(repository).branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
         for (Ref ref : call)
         {
             println('Branch: ' + ref + ' ' + ref.name + ' ' + ref.objectId.name);
@@ -108,7 +121,7 @@ class NCubeGitPersister implements NCubeReadOnlyPersister
 
     private void listAllTags()
     {
-        List<Ref> call = new Git(repo).tagList().call()
+        List<Ref> call = new Git(repository).tagList().call()
         for (Ref ref : call)
         {
             ref.
@@ -123,7 +136,62 @@ class NCubeGitPersister implements NCubeReadOnlyPersister
 
     Object[] getCubeRecords(ApplicationID appId, String pattern)
     {
-        return new Object[0]
+        ObjectId lastCommitId = repository.resolve(Constants.HEAD)
+
+        Repository repo = getRepoByAppId(appId)
+        RevWalk walk = new RevWalk(repo)
+
+        RevCommit commit = walk.parseCommit(lastCommitId)
+        RevTree tree = commit.tree
+
+        // now use a TreeWalk to iterate over all files in the Tree recursively
+        // you can set Filters to narrow down the results if needed
+        TreeWalk treeWalk = new TreeWalk(repo)
+        treeWalk.addTree(tree)
+        treeWalk.recursive = true
+        List<NCubeInfoDto> cubes = new ArrayList()
+
+        int count = 0;
+        long start = System.nanoTime()
+
+        while (treeWalk.next())
+        {
+            NCubeInfoDto info = new NCubeInfoDto()
+            Matcher m = Regexes.gitCubeNames.matcher(treeWalk.pathString)
+            if (m.find() && m.groupCount() > 0)
+            {
+                info.id = treeWalk.getObjectId(0).getName()
+                info.tenant = appId.tenant
+                info.app = appId.app
+                info.version = appId.version
+                info.status = appId.status
+                info.name = m.group(1)
+                info.notes = ''  // another file with similar name
+                info.revision = treeWalk.getDepth()
+                info.createDate = new Date()
+                info.createHid = 'jdirt'
+                info.sha1 = ''
+                cubes.add(info)
+
+                FileMode fileMode = treeWalk.getFileMode(0);
+                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
+//                println info.name
+//                println loader.getSize()
+                InputStream input = loader.openStream();
+                byte[] bytes = IOUtilities.inputStreamToBytes(input)
+                IOUtilities.close(input)
+                StringUtilities.createString(bytes, 'UTF-8');
+//                println '----------------'
+                count++;
+            }
+        }
+
+        long stop = System.nanoTime()
+        long ms = (stop - start) / 1000000
+        println 'read all files = ' + ms
+        println 'count = ' + count
+        walk.dispose()
+        return cubes.toArray()
     }
 
     Object[] getAppNames(String tenant)
@@ -159,5 +227,52 @@ class NCubeGitPersister implements NCubeReadOnlyPersister
     String getTestData(ApplicationID appId, String cubeName)
     {
         return null
+    }
+
+    void createCube(ApplicationID appId, NCube cube, String username)
+    {
+    }
+
+    void updateCube(ApplicationID appId, NCube cube, String username)
+    {
+    }
+
+    boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete, String username)
+    {
+        return false
+    }
+
+    boolean renameCube(ApplicationID appId, NCube oldCube, String newName)
+    {
+        return false
+    }
+
+    void restoreCube(ApplicationID appId, String cubeName, String username)
+    {
+    }
+
+    boolean updateNotes(ApplicationID appId, String cubeName, String notes)
+    {
+        return false
+    }
+
+    int createSnapshotVersion(ApplicationID appId, String newVersion)
+    {
+        return 0
+    }
+
+    int changeVersionValue(ApplicationID appId, String newVersion)
+    {
+        return 0
+    }
+
+    int releaseCubes(ApplicationID appId)
+    {
+        return 0
+    }
+
+    boolean updateTestData(ApplicationID appId, String cubeName, String testData)
+    {
+        return false
     }
 }

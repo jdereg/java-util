@@ -31,7 +31,7 @@ import static org.junit.Assert.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestConversionUtilities
+public class TestConverter
 {
     @Test
     public void testByte()

@@ -554,12 +554,12 @@ public class TestAxis
         {
             set = new RangeSet(new Character('c' as char)) // not a valid type for a LONG axis
             age.addColumn set
-            fail 'should throw exception'
+            fail()
         }
         catch (Exception expected)
         {
             assert expected instanceof IllegalArgumentException
-            assert expected.message.toLowerCase().contains('error promoting value')
+            assert expected.message.toLowerCase().contains('unsupported value type')
         }
 
         try
@@ -677,7 +677,7 @@ public class TestAxis
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('could not be converted')
         }
 
         // BigDecimals
@@ -710,11 +710,11 @@ public class TestAxis
         try
         {
             dates.convertStringToColumnValue('2014 Ju1y 9 13:10:58')
-            fail('should not make it here')
+            fail()
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('could not be converted')
         }
 
         // Expression
@@ -1178,7 +1178,7 @@ public class TestAxis
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('unsupported value type')
         }
 
         coord.put("Gender", "Male")

@@ -405,7 +405,7 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('unsupported value type')
         }
 
         ncube.toString() // force code in toString() to execute
@@ -427,7 +427,7 @@ public class TestNCube
         try
         {
             axis.addColumn(new Comparable() {
-                int compareTo(Object o) 
+                int compareTo(Object o)
                 {
                     return 0
                 }
@@ -436,7 +436,7 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('unsupported value type')
         }
 
         assert axis.columns[0].value instanceof Long
@@ -595,25 +595,25 @@ public class TestNCube
 
         subTestErrorCases(axis)
 
-        Calendar cal = Calendar.getInstance()
+        Calendar cal = Calendar.instance
         cal.set(1990, 5, 10, 13, 5, 25)
-        Calendar cal1 = Calendar.getInstance()
+        Calendar cal1 = Calendar.instance
         cal1.set(2000, 0, 1, 0, 0, 0)
-        Calendar cal2 = Calendar.getInstance()
+        Calendar cal2 = Calendar.instance
         cal2.set(2002, 11, 17, 0, 0, 0)
-        Calendar cal3 = Calendar.getInstance()
+        Calendar cal3 = Calendar.instance
         cal3.set(2008, 11, 24, 0, 0, 0)
-        Calendar cal4 = Calendar.getInstance()
+        Calendar cal4 = Calendar.instance
         cal4.set(2010, 0, 1, 12, 0, 0)
-        Calendar cal5 = Calendar.getInstance()
+        Calendar cal5 = Calendar.instance
         cal5.set(2014, 7, 1, 12, 59, 58)
 
         def coord = [:]
         coord.put("dateRange", cal)
         ncube.setCell("JSON", coord)
-        coord.put("dateRange", cal1.getTime())
+        coord.put("dateRange", cal1.time)
         ncube.setCell("XML", coord)
-        coord.put("dateRange", cal2.getTime().getTime())
+        coord.put("dateRange", cal2.time.time)
         ncube.setCell("YAML", coord)
         coord.put("dateRange", cal4)
         ncube.setCell("PNG", coord)
@@ -671,7 +671,8 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            String msg = e.message.toLowerCase();
+            assert msg.contains('could not be converted') || msg.contains("unsupported value type")
         }
     }
 
@@ -718,7 +719,7 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('could not be converted')
         }
 
         // Range with bad high
@@ -729,7 +730,7 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            assert e.message.toLowerCase().contains('could not be converted')
         }
 
         // Range with bad low class type
@@ -740,7 +741,8 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
+            String msg = e.message.toLowerCase();
+            assert msg.contains('could not be converted') || msg.contains("unsupported value type")
         }
 
         // Range with bad high
@@ -751,8 +753,8 @@ public class TestNCube
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('error promoting value')
-
+            String msg = e.message.toLowerCase();
+            assert msg.contains('could not be converted') || msg.contains("unsupported value type")
         }
     }
 

@@ -827,7 +827,7 @@ public class Axis
                 }
                 catch (Exception e)
                 {
-                    throw new IllegalArgumentException("Value: " + value + " cannot be parsed as a Set.  Use [value, [low, high], ... ], axis: " + name, e);
+                    throw new IllegalArgumentException("Value: " + value + " cannot be parsed as a Set.  Use v1, v2, [low, high], v3, ... , axis: " + name, e);
                 }
 
             case NEAREST:
@@ -886,7 +886,7 @@ public class Axis
 
 		if (type == AxisType.DISCRETE)
 		{
-			return promoteValue(value);
+			return promoteValue(valueType, value);
 		}
 		else if (type == AxisType.RANGE)
 		{
@@ -913,7 +913,7 @@ public class Axis
                 }
                 else
                 {
-                    val = promoteValue(val);
+                    val = promoteValue(valueType, val);
                 }
                 set.add(val);
             }
@@ -921,7 +921,7 @@ public class Axis
 		}
 		else if (type == AxisType.NEAREST)
 		{	// Standardizing a NEAREST axis entails ensuring conformity amongst values (must all be Point2D, LatLon, Date, Long, String, etc.)
-			value = promoteValue(value);
+			value = promoteValue(valueType, value);
 			if (!getColumnsWithoutDefault().isEmpty())
 			{
 				Column col = columns.get(0);
@@ -946,8 +946,8 @@ public class Axis
 	 */
 	private Range promoteRange(Range range)
 	{
-		final Comparable low = promoteValue(range.low);
-		final Comparable high = promoteValue(range.high);
+		final Comparable low = promoteValue(valueType, range.low);
+		final Comparable high = promoteValue(valueType, range.high);
 		ensureOrder(range, low, high);
 		return range;
 	}
@@ -967,24 +967,6 @@ public class Axis
 	}
 
     /**
-     * Convert passed in value to a similar value of the highest type.  Axis
-     * values and inputs are always promoted before being stored or compared.
-     * @param value Comparable to promote
-     * @return promoted value, or the same value if no promotion occurs.
-     */
-    Comparable promoteValue(Comparable value)
-    {
-        try
-        {
-            return promoteValue(valueType, value);
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Error promoting value for Axis: " + name, e);
-        }
-    }
-
-    /**
      * Convert passed in value to a similar value of the highest type.  If the
      * valueType is not the same basic type as the value passed in, intelligent
      * conversions will happen, and the result will be of the requested type.
@@ -1002,7 +984,7 @@ public class Axis
             case STRING:
                 return (String) Converter.convert(value, String.class);
             case LONG:
-                return (Long) Converter.convert(value, long.class);
+                return (Long) Converter.convert(value, Long.class);
             case BIG_DECIMAL:
                 return (BigDecimal) Converter.convert(value, BigDecimal.class);
             case DOUBLE:
@@ -1115,7 +1097,7 @@ public class Axis
             throw new IllegalArgumentException("'null' passed to axis '" + name + "' which does not have a default column");
         }
 
-        final Comparable promotedValue = promoteValue(value);
+        final Comparable promotedValue = promoteValue(valueType, value);
         int pos;
         if (type == AxisType.DISCRETE || type == AxisType.RANGE)
         {	// DISCRETE and RANGE axis searched in O(Log n) time using a binary search

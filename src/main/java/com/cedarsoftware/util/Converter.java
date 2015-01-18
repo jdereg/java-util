@@ -24,9 +24,8 @@ import java.util.Date;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class Converter
+public final class Converter
 {
-    private Converter() { }
     /**
      * Turn the passed in value to the class indicated.  This will allow, for
      * example, a String value to be passed in and have it coerced to a Long.

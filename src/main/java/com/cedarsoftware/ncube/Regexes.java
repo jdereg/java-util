@@ -36,13 +36,17 @@ public interface Regexes
     Pattern valid2Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");
     Pattern valid3Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");
 
-    Pattern groovyAbsRefCubeCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)[$][\\s]*([" + NCube.validCubeNameChars + "]+)[\\s]*[(]([^)]+)[)]");
+    String invalidNames = "(?!\\b(?:Autowired|Configuration|Controller|ControllerClass|ControllerMethod|Documented|InitBinder|" +
+            "Interface|Overrride|ModelAttribute|PackageScope|PreAuthorize|RequestMapping|RequestParam|Resource|" +
+            "Retention|SessionAttributes|SmartCacheCmd|SuppressFBWarnings|SuppressWarnings|Target|XmlAnyElement|" +
+            "XStreamAlias)\\b.*)";
+    Pattern groovyAbsRefCubeCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)[$][\\s]*([" + NCube.validCubeNameChars + "]+)[\\s]*[(]([^)=]+)[)]");
     Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$][\\s]*([" + NCube.validCubeNameChars + "]+)[\\s]*(\\[.*?:.*?\\])");
-    Pattern groovyAbsRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)[$][\\s]*[(]([^)]+)[)]");
+    Pattern groovyAbsRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)[$][\\s]*[(]([^)=]+)[)]");
     Pattern groovyAbsRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$][\\s]*(\\[[^\\]]*\\])");
-    Pattern groovyRelRefCubeCellPattern =  Pattern.compile("([^a-zA-Z0-9_$]|^)@[\\s]*([" + NCube.validCubeNameChars + "]+)[\\s]*[(]([^)]+)[)]");
+    Pattern groovyRelRefCubeCellPattern =  Pattern.compile("([^a-zA-Z0-9_$]|^)@[\\s]*" + invalidNames + "([" + NCube.validCubeNameChars + "]+)[\\s]*[(](?=[^\\s]+)([^)=]+)[)]");
     Pattern groovyRelRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_$]|^)@[\\s]*([" + NCube.validCubeNameChars + "]+)[\\s]*(\\[.*?:.*?\\])");
-    Pattern groovyRelRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_$]|^)@[\\s]*[(]([^)]+)[)]");
+    Pattern groovyRelRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_$]|^)@[\\s]*" + invalidNames + "[(]([^)=]+)[)]");
     Pattern groovyRelRefCellPatternA = Pattern.compile("([^a-zA-Z0-9_$]|^)@[\\s]*(\\[.*?:.*?\\])");
     Pattern groovyExplicitCubeRefPattern = Pattern.compile("([^a-zA-Z0-9_$]|^)NCubeManager[.]getCube[\\s]*[(][\\s]*['\"]([" + NCube.validCubeNameChars + "]+)['\"][\\s]*[)]");
     Pattern groovyExplicitRunRulePattern = Pattern.compile("([^a-zA-Z0-9_$]|^)runRuleCube[\\s]*[(][\\s]*['\"]([" + NCube.validCubeNameChars + "]+)['\"].*?[)]");

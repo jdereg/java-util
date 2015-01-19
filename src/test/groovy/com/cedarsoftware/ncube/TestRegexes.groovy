@@ -27,7 +27,7 @@ import static org.junit.Assert.assertFalse
 public class TestRegexes
 {
     @Test
-    public void testLatLongRegex()
+    void testLatLongRegex()
     {
         Matcher m = Regexes.valid2Doubles.matcher '25.8977899,56.899988'
         assert m.matches()
@@ -58,7 +58,7 @@ public class TestRegexes
     }
 
     @Test
-    public void testNCubeNameParser()
+    void testNCubeNameParser()
     {
         String name = "['Less than \$10,000':['startIncurredAmount':'0','endIncurredAmount':'10000'],'\$10,000 - \$25,000':['startIncurredAmount':'10000','endIncurredAmount':'25000'],'\$25,000 - \$50,000':['startIncurredAmount':'25000','endIncurredAmount':'50000'],'More than \$50,000':['startIncurredAmount':'50000','endIncurredAmount':'0']]";
         Matcher m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
@@ -93,5 +93,81 @@ public class TestRegexes
         m = Regexes.groovyAbsRefCubeCellPatternA.matcher(name)
         m.find()
         assertEquals("Foo", m.group(2))
+    }
+
+    @Test
+    void testPositiveRelativeCubeBracketAnnotations()
+    {
+        def name = "@PackageScope[a:1]" // Legal because of square brackets
+        def m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assert m.find()
+
+        name = "@ PackageScope [a:1]" // Legal because of square brackets
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assert m.find()
+
+        name = "@PackageScope[:]" // Legal because of square brackets
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assert m.find()
+
+        name = "@Very_Ugly.Name[:]" // Legal because of square brackets and safe name
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assert m.find()
+
+        name = "@PackageScope[:]" // Legal because of colon within brackets (no mods to input map)
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assert m.find()
+    }
+
+    @Test
+    void testNegativeRelativeCubeBracketAnnotations()
+    {
+        def name = "@PackageScope[]" // Illegal because of no colon within brackets
+        def m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assertFalse m.find()
+
+        name = "@Foo[map]" // Illegal because of no colon within brackets
+        m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
+        assertFalse m.find()
+    }
+
+    @Test
+    void testPositiveRelativeCubeParenAnnotations()
+    {
+        def name = "@PostAuthorize(jim)"    // valid, and jim better be a map
+        def m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = "@SuppressWarningsDude(\"foo\")"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+    }
+
+    @Test
+    void testNegativeRelativeCubeParenAnnotations()
+    {
+        def name = "@PreAuthorize(jim)"
+        def m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assertFalse m.find()
+
+        name = "@PreAuthorize(resourceURI = \"/resource/submission\", actionURI = \"/action/view\")"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assertFalse m.find()
+
+        name = "@ControllerClass"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assertFalse m.find()
+
+        name = "@PackageScope( )"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assertFalse m.find()
+
+        name = "@PackageScope(METHODS)"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assertFalse m.find()
+
+        name = "@SuppressWarnings(\"foo\")"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assertFalse m.find()
     }
 }

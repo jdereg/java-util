@@ -28,7 +28,7 @@ class TestGitNCubeManager
         Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')
         for (NCubeInfoDto info : cubes)
         {
-            println info
+//            println info
         }
     }
 }

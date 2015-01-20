@@ -188,8 +188,8 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
         long stop = System.nanoTime()
         long ms = (stop - start) / 1000000
-        println 'read all files = ' + ms
-        println 'count = ' + count
+//        println 'read all files = ' + ms
+//        println 'count = ' + count
         walk.dispose()
         return cubes.toArray()
     }

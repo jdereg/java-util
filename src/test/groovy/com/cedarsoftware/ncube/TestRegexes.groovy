@@ -102,7 +102,7 @@ public class TestRegexes
         def m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
         assert m.find()
 
-        name = "@ PackageScope [a:1]" // Legal because of square brackets
+        name = "@ PackageScope [a:1, b:2, c:'three', 'd':\"four\"]" // Legal because of square brackets
         m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
         assert m.find()
 
@@ -111,10 +111,6 @@ public class TestRegexes
         assert m.find()
 
         name = "@Very_Ugly.Name[:]" // Legal because of square brackets and safe name
-        m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
-        assert m.find()
-
-        name = "@PackageScope[:]" // Legal because of colon within brackets (no mods to input map)
         m = Regexes.groovyRelRefCubeCellPatternA.matcher(name)
         assert m.find()
     }
@@ -138,7 +134,31 @@ public class TestRegexes
         def m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
         assert m.find()
 
-        name = "@SuppressWarningsDude(\"foo\")"
+        name = "@PostAuthorize( jim )"    // valid, and jim better be a map
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = "@PreAuthorizeStart([foo:bar])"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = "@PreAuthorizeStart( [ foo : bar ] )"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = "@PreAuthorizeStart([foo:'bar'])"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = "@PreAuthorizeStart([foo:\"bar\"])"
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = '@PreAuthorizeStart([\'foo\':com.foo.bar.Qux$b])'
+        m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
+        assert m.find()
+
+        name = '@ PreAuthorizeStart ( [  "foo"  :  com.foo.bar.Qux$b  ]  )'
         m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
         assert m.find()
     }
@@ -146,7 +166,7 @@ public class TestRegexes
     @Test
     void testNegativeRelativeCubeParenAnnotations()
     {
-        def name = "@PreAuthorize(jim)"
+        def name = "@PreAuthorize(jim)"    // Not allowed to use PreAuthorize
         def m = Regexes.groovyRelRefCubeCellPattern.matcher(name)
         assertFalse m.find()
 

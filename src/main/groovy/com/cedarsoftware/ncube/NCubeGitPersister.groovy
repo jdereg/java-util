@@ -154,6 +154,10 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         int count = 0;
         long start = System.nanoTime()
 
+
+        // TODO: Use line below to fetch versions of a particular file
+        //  git log --oneline ./cubes/aa.json
+
         while (treeWalk.next())
         {
             NCubeInfoDto info = new NCubeInfoDto()

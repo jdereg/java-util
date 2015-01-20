@@ -84,7 +84,7 @@ n-cube can be used free for personal use.
 
 Version History
 * 3.1.2
- * Tightened up regex pattern match that is used to expand relative references into getCube() called.  This prevents it from matching popular annotations
+ * Bug fix: Tightened up regex pattern match that is used to expand relative references into getRelativeCubeCell() calls.  This prevents it from matching popular Java/Groovy annotations in the source code wtihin an expression cell.
  * Started work on GitPersister
 * 3.1.1
  * Bindings to rule axis with a name is O(1) - directly starts evaluating the named condition.

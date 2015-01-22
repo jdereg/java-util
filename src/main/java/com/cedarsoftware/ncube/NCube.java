@@ -519,7 +519,7 @@ public class NCube<T>
                             // one rule axis, X, Y, Z on another).  This generates coordinate combinations
                             // (AX, AY, AZ, BX, BY, BZ, CX, CY, CZ).  The condition columns must be run only once, on
                             // subsequent access, the cached result of the condition is used.
-                            if (Boolean.TRUE.equals(conditionValue))
+                            if (isTrue(conditionValue))
                             {
                                 binding.bind(axisName, boundColumn);
                             }

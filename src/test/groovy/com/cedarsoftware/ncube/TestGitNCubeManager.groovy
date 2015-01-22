@@ -25,10 +25,13 @@ class TestGitNCubeManager
         NCubeGitPersister persister = new NCubeGitPersister()
         persister.setRepositoryDir('/Users/jderegnaucourt/Development/cubes/.git')
         NCubeManager.setNCubePersister(persister);
-        Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')
-        for (NCubeInfoDto info : cubes)
+        for (int i = 0; i < 1; i++)
         {
+            Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')
+            for (NCubeInfoDto info : cubes)
+            {
 //            println info
+            }
         }
     }
 }

@@ -1,0 +1,64 @@
+{ "ncube": "rule-test-1",
+  "axes":
+  [
+    {
+      "name": "bu",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "hasDefault": true,
+      "preferredOrder": 1,
+      "columns": [
+        {"id":"A"},
+        {"id":"T"},
+        {"id":"R"},
+        {"id":"S"}
+      ]
+    },
+    {
+      "name": "ruleName",
+      "type": "RULE",
+      "valueType": "EXPRESSION",
+      "hasDefault": true,
+      "preferredOrder": 1,
+      "columns":
+      [
+        {
+          "id":"Initialize",
+          "name":"InitializeRule",
+          "type":"exp",
+          "value":"true"
+        },
+        {
+          "id":"NonActive",
+          "name":"NonActive",
+          "type":"exp",
+          "value":"!input.item"
+        },
+        {
+          "id":"Active",
+          "name":"Active",
+          "type":"exp",
+          "value":"input.item"
+        }
+      ]
+    }
+  ],
+  "cells":
+  [
+    {
+      "id":["R","Initialize"],
+      "type":"exp",
+      "url":"files/rules/test/Initialize.groovy"
+    },
+    {
+      "id":["R","Active"],
+      "type":"exp",
+      "url":"files/rules/test/Active.groovy"
+    },
+    {
+      "id":["R","NonActive"],
+      "type":"exp",
+      "url":"files/rules/test/NonActive.groovy"
+    }
+  ]
+}

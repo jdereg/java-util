@@ -34,19 +34,19 @@ import static org.junit.Assert.fail
 public class TestRuleEngine
 {
     @Before
-    public void setUp() throws Exception
+    void setUp() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    void tearDown() throws Exception
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
 
     @Test
-    public void testLoadRuleFromUrl() throws Exception
+    void testLoadRuleFromUrl() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource 'rule-column-loaded-with-url.json'
         def output = [:]
@@ -77,7 +77,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testContainsCellRuleAxis() throws Exception
+    void testContainsCellRuleAxis() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource 'multiRule.json'
         boolean b = n1.containsCell([condition1:'youngster', condition2:'light'])
@@ -107,7 +107,7 @@ public class TestRuleEngine
 
     // This test also tests ID-based ncube's specified in simple JSON format
     @Test
-    public void testRuleCube() throws Exception
+    void testRuleCube() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'
         Axis cond = ncube.getAxis 'condition'
@@ -123,7 +123,7 @@ public class TestRuleEngine
 
     // This test also tests ID-based ncube's specified in simple JSON format
     @Test
-    public void testExpressionValue() throws Exception
+    void testExpressionValue() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'
         Axis cond = ncube.getAxis 'condition'
@@ -135,7 +135,7 @@ public class TestRuleEngine
 
     // This test ensures that identical expressions result in a single dynamic Groovy class being generated for them.
     @Test
-    public void testDuplicateExpression() throws Exception
+    void testDuplicateExpression() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'duplicateExpression.json'
         def output = [:]
@@ -145,7 +145,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRequiredScopeRuleAxis() throws Exception
+    void testRequiredScopeRuleAxis() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'
 
@@ -164,7 +164,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testCubeRefFromRuleAxis() throws Exception
+    void testCubeRefFromRuleAxis() throws Exception
     {
         NCube ncube1 = NCubeManager.getNCubeFromResource 'testCube5.json'
         Set reqScope = ncube1.requiredScope
@@ -198,7 +198,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testMultipleRuleAxisBindings() throws Exception
+    void testMultipleRuleAxisBindings() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'multiRule.json'
         def output = [:]
@@ -232,7 +232,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testMultipleRuleAxisBindingsOKInMultiDim() throws Exception
+    void testMultipleRuleAxisBindingsOKInMultiDim() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'multiRule2.json'
         def output = [:]
@@ -246,7 +246,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleStopCondition() throws Exception
+    void testRuleStopCondition() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'multiRuleHalt.json'
         def output = [:]
@@ -273,7 +273,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testDefaultColumnOnRuleAxis() throws Exception
+    void testDefaultColumnOnRuleAxis() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleWithDefault.json'
 
@@ -366,7 +366,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleAxisWithNoMatchAndNoDefault()
+    void testRuleAxisWithNoMatchAndNoDefault()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleNoMatch.json'
 
@@ -402,7 +402,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testContainsCellValueRule()
+    void testContainsCellValueRule()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'containsCellRule.json'
 
@@ -452,7 +452,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testOneRuleSetCallsAnotherRuleSet() throws Exception
+    void testOneRuleSetCallsAnotherRuleSet() throws Exception
     {
         NCubeManager.getNCubeFromResource 'ruleSet2.json'
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleSet1.json'
@@ -471,7 +471,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testBasicJump() throws Exception
+    void testBasicJump() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource('basicJump.json')
         def input = [age:10]
@@ -495,14 +495,14 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testMultipleRuleAxesWithMoreThanOneRuleFiring() throws Exception
+    void testMultipleRuleAxesWithMoreThanOneRuleFiring() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'multiRule.json'
         assert 'medium-weight' == ncube.getCell([age:35, weight:99])
     }
 
     @Test
-    public void testRuleFalseValues() throws Exception
+    void testRuleFalseValues() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleFalseValues.json'
         def input = [state:'OH']
@@ -558,7 +558,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testJumpStart()
+    void testJumpStart()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'basicJumpStart.json'
         def input = [letter:'e']
@@ -589,7 +589,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testJumpStart2D()
+    void testJumpStart2D()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'basicJumpStart2D.json'
         def input = [letter:'f', column:'y', condition:'f', condition2:'y']
@@ -615,7 +615,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testJumpRestart()
+    void testJumpRestart()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'basicJumpRestart.json'
         def input = [letter:'e']
@@ -652,7 +652,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testNoRuleBinding()
+    void testNoRuleBinding()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleSet2.json'
 
@@ -674,7 +674,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testNCubeGroovyExpressionAPIs()
+    void testNCubeGroovyExpressionAPIs()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionTests.json'
         NCubeManager.getNCubeFromResource 'months.json'
@@ -691,7 +691,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleStop()
+    void testRuleStop()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'ruleStop.json'
         def output = [:]
@@ -700,7 +700,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleInfo()
+    void testRuleInfo()
     {
         RuleInfo ruleInfo = new RuleInfo()
         assert '' == ruleInfo.getSystemOut()
@@ -713,7 +713,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleBinding()
+    void testRuleBinding()
     {
         Binding binding = new Binding('fancy', 2)
         assert 'fancy' == binding.cubeName
@@ -725,7 +725,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleInfoRuleName()
+    void testRuleInfoRuleName()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'multiRule.json'
         def input = [age:18, weight:125]
@@ -742,7 +742,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleSimpleWithDefault()
+    void testRuleSimpleWithDefault()
     {
         NCube ncube = NCubeManager.getNCubeFromResource('ruleSimpleWithDefault.json')
         def input = [state:'OH']
@@ -809,7 +809,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testRuleSimpleWithNoDefault()
+    void testRuleSimpleWithNoDefault()
     {
         NCube ncube = NCubeManager.getNCubeFromResource('ruleSimpleWithNoDefault.json')
         def input = [state: 'OH']
@@ -870,7 +870,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testFireOne()
+    void testFireOne()
     {
         NCube ncube = NCubeManager.getNCubeFromResource('ruleFireOneVer1D.json')
 
@@ -902,7 +902,7 @@ public class TestRuleEngine
     }
 
     @Test
-    public void testFireOne2D()
+    void testFireOne2D()
     {
         NCube ncube = NCubeManager.getNCubeFromResource('ruleFireOneVer2D.json')
         def input = [:]
@@ -956,18 +956,14 @@ public class TestRuleEngine
         assert ret == 'B1 fired'
     }
 
-    // Working on this test. Goal is to test multiple RULE axes and that
-    // minimal binding is going on in order to traverse combinations of axis to rule column (binding).
-//    @Test
-//    public void testFire2D()
-//    {
-//        NCube ncube = NCubeManager.getNCubeFromResource('ruleFireOneVer2D.json')
-//        Axis axis = ncube.getAxis('ruleLetter')
-//        axis.setFireAll(true)
-//        axis = ncube.getAxis('ruleNumber')
-//        axis.setFireAll(true)
-//        def input = [:]
-//        def output = [:]
-//        def ret = ncube.getCell(input, output)
-//    }
+    @Test
+    void testRuleFire()
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource('rule-test-1.json')
+        def input = [bu: 'R', item: new Date()]
+        def output = [:]
+        ncube.getCell(input, output)
+        assert output.initialize == true
+        assert output.active == true
+    }
 }

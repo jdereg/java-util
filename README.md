@@ -83,6 +83,8 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.1.3
+ * Bug fix: Fixed bug in rule engine where Boolean.equals() was being called instead of isTrue() - which uses proper Groovy Truth.  This bug was introduced in 3.1.1.
 * 3.1.2
  * Bug fix: Tightened up regex pattern match that is used to expand relative references into getRelativeCubeCell() calls.  This prevents it from matching popular Java/Groovy annotations in the source code wtihin an expression cell.
  * Started work on GitPersister

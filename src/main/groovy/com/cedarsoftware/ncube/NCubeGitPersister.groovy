@@ -1,14 +1,10 @@
 package com.cedarsoftware.ncube
 
-import com.cedarsoftware.util.IOUtilities
-import com.cedarsoftware.util.StringUtilities
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.lib.AnyObjectId
 import org.eclipse.jgit.lib.Constants
-import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.ObjectId
-import org.eclipse.jgit.lib.ObjectLoader
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
@@ -153,10 +149,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
         int count = 0;
         long start = System.nanoTime()
-
-
-        // TODO: Use line below to fetch versions of a particular file
-        //  git log --oneline ./cubes/aa.json
+        Git git = new Git(repo)
 
         while (treeWalk.next())
         {
@@ -164,27 +157,30 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
             Matcher m = Regexes.gitCubeNames.matcher(treeWalk.pathString)
             if (m.find() && m.groupCount() > 0)
             {
-                info.id = treeWalk.getObjectId(0).getName()
+                info.id = treeWalk.getObjectId(0).name
                 info.tenant = appId.tenant
                 info.app = appId.app
                 info.version = appId.version
                 info.status = appId.status
                 info.name = m.group(1)
                 info.notes = ''  // another file with similar name
-                info.revision = treeWalk.getDepth()
+                info.revision = treeWalk.depth
                 info.createDate = new Date()
                 info.createHid = 'jdirt'
                 info.sha1 = ''
+                def revisions = getFileLog(git, treeWalk.pathString)
+//                println revisions;
+//                println '-------------------------'
                 cubes.add(info)
 
-                FileMode fileMode = treeWalk.getFileMode(0);
-                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
+//                FileMode fileMode = treeWalk.getFileMode(0);
+//                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
 //                println info.name
 //                println loader.getSize()
-                InputStream input = loader.openStream();
-                byte[] bytes = IOUtilities.inputStreamToBytes(input)
-                IOUtilities.close(input)
-                StringUtilities.createString(bytes, 'UTF-8');
+//                InputStream input = loader.openStream();
+//                byte[] bytes = IOUtilities.inputStreamToBytes(input)
+//                IOUtilities.close(input)
+//                StringUtilities.createString(bytes, 'UTF-8')
 //                println '----------------'
                 count++;
             }
@@ -278,5 +274,16 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
     boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
         return false
+    }
+
+    static List getFileLog(Git git, String qualifiedFilename)
+    {
+        def logs = git.log().addPath(qualifiedFilename).call()
+        def history = [];
+        for (RevCommit rev : logs)
+        {
+            history.add([id: rev.id.name, comment: rev.fullMessage])
+        }
+        return history;
     }
 }

@@ -458,7 +458,7 @@ public class NCube<T>
         final RuleInfo ruleInfo = getRuleInfo(output);
         Map<String, Object> input = validateCoordinate(coordinate, false);
         boolean run = true;
-        T lastExecutedStatementValue = null;
+        T lastStatementValue = null;
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
         final String[] axisNames = axisList.keySet().toArray(new String[]{});
@@ -538,33 +538,7 @@ public class NCube<T>
                     if (binding.getNumBoundAxes() == axisNames.length)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
                         bindings.add(binding);
-                        try
-                        {
-                            lastExecutedStatementValue = getCellById(binding.getBoundColsForAxis(), input, output);
-                            binding.setValue(lastExecutedStatementValue);
-                        }
-                        catch (RuleStop e)
-                        {   // Statement threw at RuleStop
-                            binding.setValue("[RuleStop]");
-                            // Mark that RULE_STOP occurred
-                            ruleInfo.ruleStopThrown();
-                            throw e;
-                        }
-                        catch(RuleJump e)
-                        {   // Statement threw at RuleJump
-                            binding.setValue("[RuleJump]");
-                            throw e;
-                        }
-                        catch (Exception e)
-                        {
-                            String msg = e.getMessage();
-                            if (StringUtilities.isEmpty(msg))
-                            {
-                                msg = e.getClass().getName();
-                            }
-                            binding.setValue("[" + msg + "]");
-                            throw e;
-                        }
+                        lastStatementValue = executeAssociatedStatement(input, output, ruleInfo, binding);
                     }
 
                     // Step #3 increment counters (variable radix increment)
@@ -585,9 +559,41 @@ public class NCube<T>
             }
         }
 
-        ruleInfo.setLastExecutedStatementValue(lastExecutedStatementValue);
-        output.put("return", lastExecutedStatementValue);
-        return lastExecutedStatementValue;
+        ruleInfo.setLastExecutedStatementValue(lastStatementValue);
+        output.put("return", lastStatementValue);
+        return lastStatementValue;
+    }
+
+    private T executeAssociatedStatement(Map<String, Object> input, Map<String, Object> output, RuleInfo ruleInfo, Binding binding)
+    {
+        try
+        {
+            T statementValue = getCellById(binding.getBoundColsForAxis(), input, output);
+            binding.setValue(statementValue);
+            return statementValue;
+        }
+        catch (RuleStop e)
+        {   // Statement threw at RuleStop
+            binding.setValue("[RuleStop]");
+            // Mark that RULE_STOP occurred
+            ruleInfo.ruleStopThrown();
+            throw e;
+        }
+        catch(RuleJump e)
+        {   // Statement threw at RuleJump
+            binding.setValue("[RuleJump]");
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String msg = e.getMessage();
+            if (StringUtilities.isEmpty(msg))
+            {
+                msg = e.getClass().getName();
+            }
+            binding.setValue("[" + msg + "]");
+            throw e;
+        }
     }
 
     /**
@@ -780,7 +786,7 @@ public class NCube<T>
         {
             boolean isZero = ruleValue.equals((byte)0) ||
                     ruleValue.equals((short)0) ||
-                    ruleValue.equals((int)0) ||
+                    ruleValue.equals(0) ||
                     ruleValue.equals((long)0) ||
                     ruleValue.equals(0.0d) ||
                     ruleValue.equals(0.0f) ||

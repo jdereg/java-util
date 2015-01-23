@@ -59,6 +59,11 @@
       "id":["R","NonActive"],
       "type":"exp",
       "url":"files/rules/test/NonActive.groovy"
+    },
+    {
+      "id":["R"],
+      "type":"exp",
+      "value":"output.defaultExecuted = true"
     }
   ]
 }

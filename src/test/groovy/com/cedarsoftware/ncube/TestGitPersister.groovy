@@ -7,7 +7,7 @@ import org.junit.Test
 /**
  * Created by jderegnaucourt on 2015/01/12.
  */
-class TestGitNCubeManager
+class TestGitPersister
 {
     @Before
     void setUp() throws Exception

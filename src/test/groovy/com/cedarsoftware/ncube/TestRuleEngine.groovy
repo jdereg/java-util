@@ -965,5 +965,6 @@ public class TestRuleEngine
         ncube.getCell(input, output)
         assert output.initialize == true
         assert output.active == true
+        assertFalse output.containsValue('defaultExecuted')
     }
 }

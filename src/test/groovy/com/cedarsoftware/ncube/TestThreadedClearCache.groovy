@@ -33,10 +33,10 @@ public class TestThreadedClearCache
 
     @Before
     public void setup() throws Exception {
-        manager = TestingDatabaseHelper.getTestingDatabaseManager()
+        manager = TestingDatabaseHelper.testingDatabaseManager
         manager.setUp()
 
-        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister())
+        NCubeManager.NCubePersister = TestingDatabaseHelper.persister
     }
 
     @After

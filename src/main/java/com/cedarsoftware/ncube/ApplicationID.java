@@ -100,24 +100,11 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        if (!tenant.equalsIgnoreCase(that.tenant))
-        {
-            return false;
-        }
-        if (!app.equalsIgnoreCase(that.app))
-        {
-            return false;
-        }
-        if (!status.equals(that.status))
-        {
-            return false;
-        }
-        if (!version.equals(that.version))
-        {
-            return false;
-        }
+        return tenant.equalsIgnoreCase(that.tenant) && 
+                app.equalsIgnoreCase(that.app) && 
+                status.equals(that.status) && 
+                version.equals(that.version);
 
-        return true;
     }
 
     public int hashCode()

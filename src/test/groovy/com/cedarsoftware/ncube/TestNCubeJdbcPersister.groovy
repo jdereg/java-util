@@ -62,7 +62,7 @@ public class TestNCubeJdbcPersister
     {
         NCubePersister persister = TestingDatabaseHelper.persister
 
-        NCube ncube1 = NCubeBuilder.getTestNCube3D_Boolean()
+        NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
         persister.createCube(defaultSnapshotApp, ncube1, USER_ID)
@@ -546,14 +546,13 @@ public class TestNCubeJdbcPersister
         }
     }
 
-    private Connection getConnectionThatThrowsSQLException() throws SQLException
-    {
+    private static getConnectionThatThrowsSQLException = { ->
         Connection c = mock(Connection.class)
         when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
         return c;
     }
 
-    private Connection getConnectionThatThrowsSQLExceptionAfterExistenceCheck(boolean exists) throws SQLException
+    private static Connection getConnectionThatThrowsSQLExceptionAfterExistenceCheck(boolean exists) throws SQLException
     {
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)

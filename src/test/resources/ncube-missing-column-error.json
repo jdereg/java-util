@@ -6,7 +6,7 @@
             "type":"NEAREST",
             "valueType":"COMPARABLE",
             "preferredOrder":0,
-            "hasDefault":false,
+            "hasDefault":false
         }
     ],
     "cells":[

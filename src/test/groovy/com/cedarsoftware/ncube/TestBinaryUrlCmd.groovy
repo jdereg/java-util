@@ -44,7 +44,7 @@ public class TestBinaryUrlCmd
     {
         Class c = BinaryUrlCmd.class
         Constructor<BinaryUrlCmd> con = c.getDeclaredConstructor()
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE)
+        Assert.assertEquals(Modifier.PRIVATE, con.modifiers & Modifier.PRIVATE)
         con.accessible = true
         Assert.assertNotNull con.newInstance()
     }

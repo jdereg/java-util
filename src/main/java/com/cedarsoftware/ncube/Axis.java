@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
 public class Axis
 {
     final long id;
-    long colIdBase = 0;
+    private long colIdBase = 0;
     private String name;
     private final AxisType type;
     private final AxisValueType valueType;
@@ -79,7 +79,7 @@ public class Axis
     final transient Map<Long, Column> idToCol = new HashMap<>();
 
     // used to get O(1) access to columns by rule-name
-    final transient Map<String, Column> colNameToCol = new CaseInsensitiveMap<>();
+    private final transient Map<String, Column> colNameToCol = new CaseInsensitiveMap<>();
 
     // for testing
     Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
@@ -476,12 +476,12 @@ public class Axis
         return addColumn(value, null);
     }
 
-	public Column addColumn(Comparable value, String name)
+	public Column addColumn(Comparable value, String colName)
 	{
         final Column column = createColumnFromValue(value);
-        if (StringUtilities.hasContent(name))
+        if (StringUtilities.hasContent(colName))
         {
-            column.setMetaProperty(Column.NAME, name);
+            column.setMetaProperty(Column.NAME, colName);
         }
         addColumnInternal(column);
         return column;
@@ -1138,9 +1138,9 @@ public class Axis
      * the Default column will be returned if one exists, otherwise null will be returned.
      * Note: This is a case-insensitive match.
      */
-    public Column findColumnByName(String name)
+    public Column findColumnByName(String colName)
     {
-        Column col = colNameToCol.get(name);
+        Column col = colNameToCol.get(colName);
         if (col != null)
         {
             return col;
@@ -1368,11 +1368,7 @@ public class Axis
         {
             return false;
         }
-        if (fireAll != axis.fireAll)
-        {
-            return false;
-        }
+        return fireAll == axis.fireAll;
 
-        return true;
     }
 }

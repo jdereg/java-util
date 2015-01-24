@@ -50,8 +50,6 @@ public class NCubeJdbcPersister
 
     void createCube(Connection c, ApplicationID appId, NCube ncube, String username, String testData, long rev)
     {
-        final String cubeName = ncube.getName();
-
         try
         {
             try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, revision_number, test_data_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
@@ -732,8 +730,6 @@ public class NCubeJdbcPersister
 
     public boolean renameCube(Connection c, ApplicationID appId, NCube cube, String newName)
     {
-        String cubeName = cube.getName();
-
         //  Save in case exception happens and we have to reset proper name on the cube.
         String oldName = cube.getName();
 

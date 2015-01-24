@@ -4,7 +4,6 @@ import com.cedarsoftware.ncube.util.CdnRouter
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito
 
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -13,7 +12,12 @@ import java.lang.reflect.Modifier
 
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyString
-import static org.mockito.Mockito.*
+import static org.mockito.Mockito.doThrow
+import static org.mockito.Mockito.mock
+import static org.mockito.Mockito.never
+import static org.mockito.Mockito.times
+import static org.mockito.Mockito.verify
+import static org.mockito.Mockito.when
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -149,9 +153,9 @@ public class TestUrlCommandCell
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
-        NCube ncube = Mockito.mock(NCube.class)
-        HttpServletResponse response = Mockito.mock HttpServletResponse.class
-        HttpServletRequest request = Mockito.mock HttpServletRequest.class
+        NCube ncube = mock(NCube.class)
+        HttpServletResponse response = mock HttpServletResponse.class
+        HttpServletRequest request = mock HttpServletRequest.class
 
         when(request.headerNames).thenThrow SocketTimeoutException.class
         when(ncube.name).thenReturn 'foo-cube'
@@ -170,18 +174,18 @@ public class TestUrlCommandCell
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
-        NCube ncube = Mockito.mock NCube.class
-        HttpServletResponse response = Mockito.mock HttpServletResponse.class
-        HttpServletRequest request = Mockito.mock HttpServletRequest.class
+        NCube ncube = mock NCube.class
+        HttpServletResponse response = mock HttpServletResponse.class
+        HttpServletRequest request = mock HttpServletRequest.class
 
-        when(request.getHeaderNames()).thenThrow SocketTimeoutException.class
+        when(request.headerNames).thenThrow SocketTimeoutException.class
         doThrow(IOException.class).when(response).sendError HttpServletResponse.SC_NOT_FOUND, 'File not found: http://www.cedarsoftware.com'
         when(ncube.name).thenReturn 'foo-cube'
-        when(ncube.getVersion()).thenReturn 'foo-version'
+        when(ncube.version).thenReturn 'foo-version'
 
         def args = [ncube:ncube]
         def input = [(CdnRouter.HTTP_REQUEST):request, (CdnRouter.HTTP_RESPONSE):response]
-        args.put('input', input)
+        args.input = input
         cell.proxyFetch args
     }
 
@@ -190,7 +194,7 @@ public class TestUrlCommandCell
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.  Verify the method was never called
-        HttpServletResponse response = Mockito.mock HttpServletResponse.class
+        HttpServletResponse response = mock HttpServletResponse.class
         ContentCmdCell.addFileHeader(null, null)
         verify(response, never()).addHeader(anyString(), anyString())
     }
@@ -200,7 +204,7 @@ public class TestUrlCommandCell
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
-        HttpServletResponse response = Mockito.mock HttpServletResponse.class
+        HttpServletResponse response = mock HttpServletResponse.class
         ContentCmdCell.addFileHeader(new URL('http://www.google.com/index.foo'), response)
         verify(response, never()).addHeader(anyString(), anyString())
     }
@@ -210,7 +214,7 @@ public class TestUrlCommandCell
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
-        HttpServletResponse response = Mockito.mock HttpServletResponse.class
+        HttpServletResponse response = mock HttpServletResponse.class
         ContentCmdCell.addFileHeader(new URL('http://www.google.com/index'), response)
         verify(response, never()).addHeader(anyString(), anyString())
     }

@@ -44,7 +44,7 @@ public class CellInfo
     public boolean isCached;
     static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd");
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
+    private static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
     private static final Pattern HEX_DIGIT = Pattern.compile("[0-9a-fA-F]+");
 
     public CellInfo(String type, String value, Object isUrl, Object isCached)

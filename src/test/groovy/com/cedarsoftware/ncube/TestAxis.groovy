@@ -150,7 +150,7 @@ public class TestAxis
     @Test
     public void testStandardizeColumnValueErrorHandling()
     {
-        Axis states = NCubeBuilder.getStatesAxis()
+        Axis states = NCubeBuilder.statesAxis
         try
         {
             states.standardizeColumnValue(null)
@@ -895,22 +895,22 @@ public class TestAxis
     {
         Axis axis = new Axis('loc', AxisType.NEAREST, AxisValueType.COMPARABLE, false)
         LatLon latlon = (LatLon) axis.convertStringToColumnValue('1.0, 2.0')
-        assertEquals 1.0, latlon.getLat(), 0.00001d
-        assertEquals 2.0, latlon.getLon(), 0.00001d
+        assertEquals 1.0, latlon.lat, 0.00001d
+        assertEquals 2.0, latlon.lon, 0.00001d
 
         latlon = (LatLon) axis.convertStringToColumnValue('1,2')
-        assertEquals 1.0, latlon.getLat(), 0.00001d
-        assertEquals 2.0, latlon.getLon(), 0.00001d
+        assertEquals 1.0, latlon.lat, 0.00001d
+        assertEquals 2.0, latlon.lon, 0.00001d
 
         latlon = (LatLon) axis.convertStringToColumnValue('-1,-2')
-        assertEquals(-1.0, latlon.getLat(), 0.00001d)
-        assertEquals(-2.0, latlon.getLon(), 0.001d)
+        assertEquals(-1.0, latlon.lat, 0.00001d)
+        assertEquals(-2.0, latlon.lon, 0.001d)
 
         axis = new Axis('loc', AxisType.NEAREST, AxisValueType.COMPARABLE, false)
         Point3D pt3d = (Point3D) axis.convertStringToColumnValue('1.0, 2.0, 3.0')
-        assertEquals 1.0, pt3d.getX(), 0.00001d
-        assertEquals 2.0, pt3d.getY(), 0.00001d
-        assertEquals 3.0, pt3d.getZ(), 0.00001d
+        assertEquals 1.0, pt3d.x, 0.00001d
+        assertEquals 2.0, pt3d.y, 0.00001d
+        assertEquals 3.0, pt3d.z, 0.00001d
     }
 
     @Test
@@ -1081,7 +1081,7 @@ public class TestAxis
     @Test
     public void testGetColumnsAndCoordinateFromIds()
     {
-        NCube cube = NCubeBuilder.getTestNCube3D_Boolean()
+        NCube cube = NCubeBuilder.testNCube3D_Boolean
 
         Axis trailor = cube.getAxis("Trailers")
         Column t = trailor.findColumn("M2A")
@@ -1274,7 +1274,7 @@ public class TestAxis
     @Test
     public void testNoDefaultColumn()
     {
-        NCube<Boolean> ncube = NCubeBuilder.getTestNCube3D_Boolean()
+        NCube<Boolean> ncube = NCubeBuilder.testNCube3D_Boolean
 
         def coord = [:]
         coord.put("Trailers", "S1A")
@@ -1434,7 +1434,7 @@ public class TestAxis
     @Test
     public void testUpdateColumn()
     {
-        Axis dow = NCubeBuilder.getShortDaysOfWeekAxis()
+        Axis dow = NCubeBuilder.shortDaysOfWeekAxis
         Column wed = dow.findColumn("Wed")
         dow.updateColumn(wed.id, "aWed")
         wed = dow.columns.get(2)
@@ -1450,12 +1450,12 @@ public class TestAxis
         sun = dow.columns.get(6)
         assertEquals(sun.value, "aSun")
 
-        List<Column> cols = dow.getColumnsWithoutDefault()
+        List<Column> cols = dow.columnsWithoutDefault
         assertEquals(cols.get(4).value, "aMon")
         assertEquals(cols.get(5).value, "aSun")
         assertEquals(cols.get(6).value, "aWed")
 
-        assertEquals(-1, cols.get(4).compareTo(new Column(null, dow.getNextColId())))
+        assertEquals(-1, cols.get(4).compareTo(new Column(null, dow.nextColId)))
     }
 
     @Test

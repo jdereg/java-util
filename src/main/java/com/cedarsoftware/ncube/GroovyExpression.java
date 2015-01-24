@@ -50,7 +50,7 @@ public class GroovyExpression extends GroovyBase
         super(cmd, url);
     }
 
-    public String buildGroovy(String theirGroovy, String cubeName)
+    public String buildGroovy(String theirGroovy)
     {
         Matcher m = Regexes.hasClassDefPattern.matcher(theirGroovy);
         if (m.find())

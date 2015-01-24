@@ -1262,16 +1262,17 @@ public class NCube<T>
      * Add a column to the n-cube
      * @param axisName String name of the Axis to which the column will be added.
      * @param value Comparable that will be the value for the given column.  Cannot be null.
+     * @param colName The optional name of the column, useful for RULE axis columns.
      * @return Column the added Column.
      */
-    public Column addColumn(final String axisName, final Comparable value, String name)
+    public Column addColumn(final String axisName, final Comparable value, String colName)
     {
         final Axis axis = getAxis(axisName);
         if (axis == null)
         {
             throw new IllegalArgumentException("Could not add column. Axis name '" + axisName + "' was not found on NCube '" + name + "'");
         }
-        Column newCol = axis.addColumn(value, name);
+        Column newCol = axis.addColumn(value, colName);
         clearScopeKeyCaches();
         return newCol;
     }

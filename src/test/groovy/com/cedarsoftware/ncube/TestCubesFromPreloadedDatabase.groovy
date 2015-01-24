@@ -32,18 +32,18 @@ public class TestCubesFromPreloadedDatabase
     private TestingDatabaseManager manager;
 
     @Before
-    public void setup() throws Exception {
-        manager = TestingDatabaseHelper.getTestingDatabaseManager()
+    public void setup() throws Exception
+    {
+        manager = TestingDatabaseHelper.testingDatabaseManager
         manager.setUp()
-
-        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister())
+        NCubeManager.NCubePersister = TestingDatabaseHelper.persister
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws Exception
+    {
         manager.tearDown()
         manager = null;
-
         NCubeManager.clearCache()
     }
 
@@ -60,9 +60,9 @@ public class TestCubesFromPreloadedDatabase
         //  url classloader has 1 item
         Map input = [:]
         URLClassLoader loader = NCubeManager.getUrlClassLoader(appId, input)
-        assertEquals(1, loader.getURLs().length)
+        assertEquals(1, loader.URLs.length)
         assertEquals(1, NCubeManager.getCacheForApp(appId).size())
-        assertEquals(new URL("http://www.cedarsoftware.com/tests/ncube/cp1/"), loader.getURLs()[0])
+        assertEquals(new URL("http://www.cedarsoftware.com/tests/ncube/cp1/"), loader.URLs[0])
 
         Map<String, Object> cache = NCubeManager.getCacheForApp(appId)
         assertEquals(1, cache.size())
@@ -74,7 +74,7 @@ public class TestCubesFromPreloadedDatabase
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
 
         cache = NCubeManager.getCacheForApp(appId)
-        assertEquals(1, NCubeManager.getUrlClassLoader(appId, input).getURLs().length)
+        assertEquals(1, NCubeManager.getUrlClassLoader(appId, input).URLs.length)
         assertEquals(1, cache.size())
 
 

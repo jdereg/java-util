@@ -127,9 +127,9 @@ public class TestRuleEngine
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'
         Axis cond = ncube.getAxis 'condition'
-        assert cond.getColumns().get(0).id != 1
+        assert cond.columns.get(0).id != 1
         Axis state = ncube.getAxis 'state'
-        assert state.getColumns().get(0).id != 10
+        assert state.columns.get(0).id != 10
         assert 'foo' == state.standardizeColumnValue('foo')
     }
 

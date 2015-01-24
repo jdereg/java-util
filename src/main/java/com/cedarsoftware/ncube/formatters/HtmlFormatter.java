@@ -190,7 +190,7 @@ public class HtmlFormatter implements NCubeFormatter
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId);
                 s.append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube ");
-                s.append(getColumnCssClass(topAxis, column));
+                s.append(getColumnCssClass(column));
                 s.append("\">");
                 buildColumnGuts(s, column);
                 s.append("</th>\n");
@@ -256,7 +256,7 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 String colId = String.valueOf(column.getId());
                 s.append(" <th data-id=\"").append(colId).append("\" data-axis=\"").append(topAxisName).append("\" class=\"th-ncube-top ");
-                s.append(getColumnCssClass(topAxis, column));
+                s.append(getColumnCssClass(column));
                 s.append("\">");
                 buildColumnGuts(s, column);
                 s.append("</th>\n");
@@ -265,12 +265,11 @@ public class HtmlFormatter implements NCubeFormatter
             if (topAxis.size() != topColumnSize)
             {
                 s.append(" <th class=\"th-ncube-top ");
-                s.append(getColumnCssClass(topAxis, topAxis.getDefaultColumn()));
+                s.append(getColumnCssClass(topAxis.getDefaultColumn()));
                 s.append("\">Default</th>");
             }
 
             s.append("</tr>\n");
-            Map<String, Long> coord = new HashMap<>();
             Map<String, Long> colIds = new HashMap<>();
 
             // The left column headers and cells
@@ -288,12 +287,11 @@ public class HtmlFormatter implements NCubeFormatter
                     {
                         Long colIdx = columnCounter.get(axisName);
                         Column column = columns.get(axisName).get(colIdx.intValue());
-                        coord.put(axisName, colIdx);
                         colIds.put(axisName, column.getId());
                         long span = rowspan.get(axisName);
 
                         String columnId = String.valueOf(column.getId());
-                        String colCssClass = getColumnCssClass(axis, column);
+                        String colCssClass = getColumnCssClass(column);
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
@@ -334,7 +332,6 @@ public class HtmlFormatter implements NCubeFormatter
                 {
                     Column column = topColumns.get(i);
                     colIds.put(topAxisName, column.getId());
-                    coord.put(topAxisName, (long)i);
                     // Other coordinate values are set above this for-loop
                     buildCell(ncube, s, new LinkedHashSet<>(colIds.values()));
                 }
@@ -507,7 +504,7 @@ public class HtmlFormatter implements NCubeFormatter
         }
     }
 
-    private static String getColumnCssClass(Axis axis, Column col)
+    private static String getColumnCssClass(Column col)
     {
         if (col.getValue() instanceof CommandCell)
         {

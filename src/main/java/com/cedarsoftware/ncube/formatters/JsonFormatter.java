@@ -294,7 +294,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
     }
 
 
-    void writeIds(Map.Entry<Set<Column>, ?> item) throws IOException
+    void writeIds(Map.Entry<Set<Column>, ?> item)
     {
         builder.append("\"id\":");
         startArray();

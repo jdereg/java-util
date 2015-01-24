@@ -40,7 +40,7 @@ public class TestRoutingCapabilities
         setupRequest conn
         conn.connect()
 
-        InputStream input = new BufferedInputStream(conn.getInputStream(), 32768)
+        InputStream input = new BufferedInputStream(conn.inputStream, 32768)
 
         //secondOut = response.getOutputStream()
         ByteArrayOutputStream bout = new ByteArrayOutputStream(8192)

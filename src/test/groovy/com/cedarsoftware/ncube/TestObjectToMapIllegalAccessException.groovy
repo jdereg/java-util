@@ -45,7 +45,7 @@ public class TestObjectToMapIllegalAccessException
     {
         def instance = new dto()
         mockStatic(ReflectionUtils.class)
-        when(ReflectionUtils.getDeepDeclaredFields(instance.getClass())).thenThrow IllegalAccessException.class
+        when(ReflectionUtils.getDeepDeclaredFields(instance.class)).thenThrow IllegalAccessException.class
 
         try
         {

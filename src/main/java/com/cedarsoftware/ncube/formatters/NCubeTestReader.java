@@ -17,7 +17,7 @@ import java.util.Map;
  */
 public class NCubeTestReader
 {
-    public List<NCubeTest> convert(String s) throws IOException
+    public static List<NCubeTest> convert(String s) throws IOException
     {
         List<NCubeTest> list = new ArrayList<>();
         if (StringUtilities.isEmpty(s)) {

@@ -30,7 +30,7 @@ public class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseMana
 
     public void setUp() throws SQLException
     {
-        Connection c = provider.getConnection()
+        Connection c = provider.connection
         Statement s = null
         try
         {

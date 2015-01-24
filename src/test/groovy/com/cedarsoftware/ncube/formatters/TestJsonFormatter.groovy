@@ -1,6 +1,12 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.*
+import com.cedarsoftware.ncube.ApplicationID
+import com.cedarsoftware.ncube.NCube
+import com.cedarsoftware.ncube.NCubeManager
+import com.cedarsoftware.ncube.ReleaseStatus
+import com.cedarsoftware.ncube.TestNCubeManager
+import com.cedarsoftware.ncube.TestingDatabaseHelper
+import com.cedarsoftware.ncube.TestingDatabaseManager
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -35,18 +41,18 @@ public class TestJsonFormatter
     private TestingDatabaseManager manager;
 
     @Before
-    public void setup() throws Exception {
-        manager = TestingDatabaseHelper.getTestingDatabaseManager()
+    public void setup() throws Exception
+    {
+        manager = TestingDatabaseHelper.testingDatabaseManager
         manager.setUp()
-
-        NCubeManager.setNCubePersister(TestingDatabaseHelper.getPersister())
+        NCubeManager.NCubePersister = TestingDatabaseHelper.persister
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws Exception
+    {
         manager.tearDown()
         manager = null;
-
         NCubeManager.clearCache()
     }
 

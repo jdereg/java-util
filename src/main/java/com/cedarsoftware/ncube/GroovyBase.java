@@ -88,7 +88,7 @@ public abstract class GroovyBase extends UrlCommandCell
         return executeInternal(ctx);
     }
 
-    protected abstract String buildGroovy(String theirGroovy, String cubeName);
+    protected abstract String buildGroovy(String theirGroovy);
 
     protected abstract String getMethodToExecute(Map args);
 
@@ -289,7 +289,7 @@ s    */
         cmdHash = EncryptionUtilities.calculateSHA1Hash(StringUtilities.getBytes(content, "UTF-8"));
     }
 
-    protected Class compile(Map ctx) throws Exception
+    protected Class compile(Map ctx)
     {
         NCube cube = getNCube(ctx);
         String url = getUrl();
@@ -323,7 +323,7 @@ s    */
             gcLoader = (GroovyClassLoader)NCubeManager.getLocalClassloader(cube.getApplicationID());
             grvSrcCode = getCmd();
         }
-        String groovySource = expandNCubeShortCuts(buildGroovy(grvSrcCode, cube.getName()));
+        String groovySource = expandNCubeShortCuts(buildGroovy(grvSrcCode));
         return gcLoader.parseClass(groovySource);
     }
 

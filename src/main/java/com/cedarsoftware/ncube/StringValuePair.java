@@ -49,19 +49,21 @@ public class StringValuePair<V> implements Map.Entry<String,V> {
         this.value = value;
     }
 
-    public boolean equals(Object that) {
-        if (that instanceof StringValuePair) {
-            return equals((StringValuePair) that);
+    public boolean equals(Object that)
+    {
+        if (this == that)
+        {
+            return true;
+        }
+        if (that instanceof String)
+        {
+            return StringUtilities.equalsIgnoreCase(key, (String)that);
+        }
+        if (that instanceof StringValuePair)
+        {
+            return StringUtilities.equalsIgnoreCase(key, ((StringValuePair) that).key);
         }
         return false;
-    }
-
-    public boolean equals(StringValuePair that) {
-        return equals(that.key);
-    }
-
-    public boolean equals(String that) {
-        return StringUtilities.equalsIgnoreCase(this.key, that);
     }
 
     public int hashCode() {
@@ -92,7 +94,7 @@ public class StringValuePair<V> implements Map.Entry<String,V> {
     /**
      * Helper method to handle object hashes for possibly null values
      */
-    protected int hash(Object object) {
+    protected static int hash(Object object) {
         return (object == null) ? 0xbabe : object.hashCode();
     }
 

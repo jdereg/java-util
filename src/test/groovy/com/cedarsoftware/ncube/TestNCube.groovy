@@ -204,10 +204,10 @@ public class TestNCube
     public void testDuplicateAxisName()
     {
         NCube<Byte> ncube = new NCube<Byte>("Byte.Cube")
-        ncube.setDefaultCellValue((byte) -1)
+        ncube.defaultCellValue = (byte) -1
         Axis axis1 = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(axis1)
-        Axis axis2 = NCubeBuilder.getShortMonthsOfYear()
+        Axis axis2 = NCubeBuilder.shortMonthsOfYear
         ncube.addAxis(axis2)
         Axis axis3 = NCubeBuilder.getGenderAxis(false)
 
@@ -276,7 +276,7 @@ public class TestNCube
         long end = System.nanoTime()
         assertTrue((end - start) / 1000000.0 < 1000)   // verify that it runs in under 1 second (actual 87ms)
         NCubeTest test = (NCubeTest)list.get(0)
-        assertEquals(5, test.getCoord().length)
+        assertEquals(5, test.coord.length)
         assertEquals("test-001", test.name)
     }
 
@@ -919,8 +919,8 @@ public class TestNCube
     @Test
     public void testNullCoordinate()
     {
-        NCube<Boolean> ncube = NCubeBuilder.getTestNCube3D_Boolean()
-        ncube.setDefaultCellValue(false)
+        NCube<Boolean> ncube = NCubeBuilder.testNCube3D_Boolean
+        ncube.defaultCellValue = false
 
         def coord = [:]
         coord.put("Trailers", "L1A")
@@ -978,7 +978,7 @@ public class TestNCube
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries")
         NCubeManager.addCube(continentCounty.applicationID, continentCounty)
-        continentCounty.addAxis(NCubeBuilder.getContinentAxis())
+        continentCounty.addAxis(NCubeBuilder.continentAxis)
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true)
         countries.addColumn("Canada")
         countries.addColumn("USA")
@@ -986,11 +986,11 @@ public class TestNCube
 
         NCube<Object> canada = new NCube<Object>("Provinces")
         NCubeManager.addCube(canada.applicationID, canada)
-        canada.addAxis(NCubeBuilder.getProvincesAxis())
+        canada.addAxis(NCubeBuilder.provincesAxis)
 
         NCube<Object> usa = new NCube<Object>("States")
         NCubeManager.addCube(usa.applicationID, usa)
-        usa.addAxis(NCubeBuilder.getStatesAxis())
+        usa.addAxis(NCubeBuilder.statesAxis)
 
         def coord1 = [Continent:'North America', Country:'USA', State:'OH']
         def coord2 = [Continent:'North America', Country:'Canada', Province:'Quebec']
@@ -1011,7 +1011,7 @@ public class TestNCube
     {
         NCube<Object> continentCounty = new NCube<Object>("ContinentCountries")
         NCubeManager.addCube(continentCounty.applicationID, continentCounty)
-        continentCounty.addAxis(NCubeBuilder.getContinentAxis())
+        continentCounty.addAxis(NCubeBuilder.continentAxis)
         Axis countries = new Axis("Country", AxisType.DISCRETE, AxisValueType.STRING, true)
         countries.addColumn("Canada")
         countries.addColumn("USA")
@@ -1019,11 +1019,11 @@ public class TestNCube
 
         NCube canada = new NCube("Provinces")
         NCubeManager.addCube(canada.applicationID, canada)
-        canada.addAxis(NCubeBuilder.getProvincesAxis())
+        canada.addAxis(NCubeBuilder.provincesAxis)
 
         NCube usa = new NCube("States")
         NCubeManager.addCube(usa.applicationID, usa)
-        usa.addAxis(NCubeBuilder.getStatesAxis())
+        usa.addAxis(NCubeBuilder.statesAxis)
 
         def coord1 = [Continent:'North America', Country:'USA', State:'OH']
         def coord2 = [Continent:'North America', Country:'Canada', Province:'Quebec']
@@ -1148,7 +1148,7 @@ public class TestNCube
 
         ncube.deleteColumn("Age", 90)
         assertTrue(age.size() == 3)
-        assertTrue(age.hasDefaultColumn() == false)    // default column was deleted.
+        assertFalse(age.hasDefaultColumn())    // default column was deleted.
 
         assertTrue(ncube.numCells == 9)
         assertTrue(ncube.deleteColumn("Age", 18))
@@ -1186,7 +1186,7 @@ public class TestNCube
     public void testColumnOrder() throws Exception
     {
         NCube ncube = new NCube("columnOrder")
-        Axis axis = NCubeBuilder.getShortDaysOfWeekAxis()
+        Axis axis = NCubeBuilder.shortDaysOfWeekAxis
         axis.columnOrder = Axis.SORTED
         ncube.addAxis(axis)
         List<Column> cols = axis.columns
@@ -1272,7 +1272,7 @@ public class TestNCube
     public void testColumnApis()
     {
         NCube ncube = new NCube("columnApis")
-        Axis axis = NCubeBuilder.getShortMonthsOfYear()
+        Axis axis = NCubeBuilder.shortMonthsOfYear
         ncube.addAxis(axis)
         try
         {
@@ -1548,17 +1548,17 @@ public class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testCube6.json")
         assertTrue("TestCube".equals(ncube.name))
-        Calendar cal = Calendar.getInstance()
+        Calendar cal = Calendar.instance
         cal.clear()
         cal.set(2012, Calendar.DECEMBER, 17, 0, 11, 22)
-        assertTrue(cal.getTime().getTime() == ((Date) ncube.getDefaultCellValue()).getTime())
+        assertTrue(cal.time.time == ((Date) ncube.defaultCellValue).time)
         List<Axis> axes = ncube.axes
         assertTrue(axes.size() == 1)
         Axis gender = axes.get(0)
         assertTrue("Gender".equals(gender.name))
-        assertTrue(gender.getType() == AxisType.DISCRETE)
-        assertTrue(gender.getValueType() == AxisValueType.STRING)
-        assertTrue(gender.getColumnOrder() == Axis.SORTED)
+        assertTrue(gender.type == AxisType.DISCRETE)
+        assertTrue(gender.valueType == AxisValueType.STRING)
+        assertTrue(gender.columnOrder == Axis.SORTED)
         List<Column> columns = gender.columns
         assertTrue(columns.size() == 3)
         assertTrue(gender.size() == 3)   // default column = true
@@ -1743,16 +1743,16 @@ public class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testCube1.json")
         def coord = [:]
-        Calendar cal = Calendar.getInstance()
+        Calendar cal = Calendar.instance
         cal.clear()
         cal.set(1984, 6, 9, 2, 2, 2)
-        coord.put("Code", cal.getTime())
+        coord.put("Code", cal.time)
         assertTrue("ABC".equals(ncube.getCell(coord)))
         cal.set(2001, 4, 22, 3, 3, 3)
-        coord.put("Code", cal.getTime())
+        coord.put("Code", cal.time)
         assertTrue("DEF".equals(ncube.getCell(coord)))
         cal.set(2009, 2, 8, 4, 4, 4)
-        coord.put("Code", cal.getTime())
+        coord.put("Code", cal.time)
         assertTrue("GHI".equals(ncube.getCell(coord)))
     }
 
@@ -1760,7 +1760,7 @@ public class TestNCube
     public void testClearCell()
     {
         NCube ncube = new NCube("TestClearCell")
-        ncube.setDefaultCellValue("DEFAULT VALUE")
+        ncube.defaultCellValue = "DEFAULT VALUE"
         Axis gender = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(gender)
         def coord = [:]
@@ -1778,7 +1778,7 @@ public class TestNCube
     public void testGetMap()
     {
         NCube ncube = new NCube("TestGetMap")
-        ncube.setDefaultCellValue("DEFAULT VALUE")
+        ncube.defaultCellValue = "DEFAULT VALUE"
         Axis gender = NCubeBuilder.getGenderAxis(true)
         ncube.addAxis(gender)
         def coord = [:]
@@ -1812,9 +1812,9 @@ public class TestNCube
     public void testGetMapErrorHandling()
     {
         NCube ncube = new NCube("TestGetMap")
-        ncube.setDefaultCellValue("DEFAULT VALUE")
+        ncube.defaultCellValue = "DEFAULT VALUE"
         Axis gender = NCubeBuilder.getGenderAxis(true)
-        Axis days = NCubeBuilder.getShortDaysOfWeekAxis()
+        Axis days = NCubeBuilder.shortDaysOfWeekAxis
         ncube.addAxis(gender)
         ncube.addAxis(days)
         def coord = [:]
@@ -1859,8 +1859,8 @@ public class TestNCube
         for (Object o : result.entrySet())
         {
             Map.Entry entry = (Map.Entry) o
-            assertTrue(entry.getKey() instanceof Range)
-            Range r = (Range) entry.getKey()
+            assertTrue(entry.key instanceof Range)
+            Range r = (Range) entry.key
             assertTrue(r.low instanceof Date)
         }
         assertTrue(countMatches(ncube.toHtml(), "<tr") == 5)
@@ -1889,8 +1889,8 @@ public class TestNCube
         if (i.hasNext())
         {
             Map.Entry entry = (Map.Entry) i.next()
-            assertTrue(entry.getKey() instanceof RangeSet)
-            rs = (RangeSet) entry.getKey()
+            assertTrue(entry.key instanceof RangeSet)
+            rs = (RangeSet) entry.key
             assertTrue(rs.get(0) instanceof Range)
             Range range = (Range) rs.get(0)
             assertEquals(60L, range.low)
@@ -1925,7 +1925,7 @@ public class TestNCube
     public void testContainsCell()
     {
         NCube<Date> ncube = new NCube<Date>("Dates")
-        ncube.addAxis(NCubeBuilder.getShortMonthsOfYear())
+        ncube.addAxis(NCubeBuilder.shortMonthsOfYear)
 
         def coord = [:]
         coord.put("Months", "Jun")
@@ -2035,7 +2035,7 @@ public class TestNCube
     public void testStackTrace()
     {
         NCube<CommandCell> continents = new NCube<CommandCell>("Continents")
-        Axis continent = NCubeBuilder.getContinentAxis()
+        Axis continent = NCubeBuilder.continentAxis
         continents.addAxis(continent)
 
         def coord = [:]
@@ -2083,79 +2083,79 @@ public class TestNCube
     @Test
     public void testRenameAxis()
     {
-        NCube<String> ncube = new NCube("RenameAxisTest")
-        Axis days = NCubeBuilder.getShortDaysOfWeekAxis()
+        NCube<String> ncube = new NCube('RenameAxisTest')
+        Axis days = NCubeBuilder.shortDaysOfWeekAxis
         ncube.addAxis(days)
 
         def coord = [:]
-        coord.put("days", "Mon")
-        ncube.setCell("Monday", coord)
+        coord.days = 'Mon'
+        ncube.setCell('Monday', coord)
         coord.clear()
-        coord.put("DAYS", "Wed")
-        ncube.setCell("Wednesday", coord)
+        coord.DAYS = 'Wed'
+        ncube.setCell('Wednesday', coord)
         coord.clear()
-        coord.put("Days", "Fri")
-        ncube.setCell("Friday", coord)
+        coord.Days = 'Fri'
+        ncube.setCell('Friday', coord)
 
-        ncube.renameAxis("DAYS", "DAYS-OF-WEEK")
+        ncube.renameAxis('DAYS', 'DAYS-OF-WEEK')
 
         coord.clear()
-        coord.put("DAYS-OF-WEEK", "Mon")
-        assertTrue("Monday".equals(ncube.getCell(coord)))
+        coord['DAYS-OF-WEEK'] = 'Mon'
+        assertTrue('Monday'.equals(ncube.getCell(coord)))
         coord.clear()
-        coord.put("DAYS-of-WEEK", "Wed")
-        assertTrue("Wednesday".equals(ncube.getCell(coord)))
+        coord['DAYS-of-WEEK'] = 'Wed'
+        assertTrue('Wednesday'.equals(ncube.getCell(coord)))
         coord.clear()
-        coord.put("DAYS-OF-week", "Fri")
-        assertTrue("Friday".equals(ncube.getCell(coord)))
+        coord['DAYS-OF-week'] = 'Fri'
+        assertTrue('Friday'.equals(ncube.getCell(coord)))
 
         try
         {
-            ncube.renameAxis(null, "DAYS-OF-WEEK")
+            ncube.renameAxis(null, 'DAYS-OF-WEEK')
             fail()
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains("name"))
-            assertTrue(e.message.contains("cannot"))
-            assertTrue(e.message.contains("empty"))
+            assertTrue(e.message.contains('name'))
+            assertTrue(e.message.contains('cannot'))
+            assertTrue(e.message.contains('empty'))
         }
 
         try
         {
-            ncube.renameAxis("days", null)
-            assertTrue("should throw exception", false)
+            ncube.renameAxis('days', null)
+            assertTrue('should throw exception', false)
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains("name"))
-            assertTrue(e.message.contains("cannot"))
-            assertTrue(e.message.contains("empty"))
+            assertTrue(e.message.contains('name'))
+            assertTrue(e.message.contains('cannot'))
+            assertTrue(e.message.contains('empty'))
         }
 
         try
         {
-            ncube.renameAxis("days-OF-week", "Days-of-week")
-            assertTrue("should throw exception", false)
+            ncube.renameAxis('days-OF-week', 'Days-of-week')
+            assertTrue('should throw exception', false)
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains("already"))
-            assertTrue(e.message.contains("axis"))
-            assertTrue(e.message.contains("named"))
+            assertTrue(e.message.contains('already'))
+            assertTrue(e.message.contains('axis'))
+            assertTrue(e.message.contains('named'))
         }
 
         try
         {
-            ncube.renameAxis("jojo", "mojo")
-            assertTrue("should throw exception", false)
+            ncube.renameAxis('jojo', 'mojo')
+            assertTrue('should throw exception', false)
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains("xis"))
-            assertTrue(e.message.contains("not"))
-            assertTrue(e.message.contains("on"))
-            assertTrue(e.message.contains("NCube"))
+            assertTrue(e.message.contains('xis'))
+            assertTrue(e.message.contains('not'))
+            assertTrue(e.message.contains('on'))
+            assertTrue(e.message.contains('NCube'))
         }
     }
 
@@ -3044,8 +3044,8 @@ public class TestNCube
         ncube.setCellById(1.1, colIds)
 
         def coord = [:]
-        coord.put("AGE", ageCol.getValueThatMatches())
-        coord.put("GENDER", genderCol.getValueThatMatches())
+        coord.AGE = ageCol.valueThatMatches
+        coord.GENDER = genderCol.valueThatMatches
         Double x = (Double) ncube.getCell(coord)
         assertEquals(x, 1.1d, 0.00001d)
 
@@ -3281,7 +3281,7 @@ public class TestNCube
         Axis code = ncube.getAxis("code")
         for (Column column : code.columns)
         {
-            valueToId.put(column.value, column.getId())
+            valueToId.put(column.value, column.id)
         }
         Axis axisDto = new Axis("code", AxisType.DISCRETE, AxisValueType.LONG, true)
         axisDto.addColumn(2)
@@ -3290,7 +3290,7 @@ public class TestNCube
         for (Column column : cols)
         {
             long id = valueToId.get(column.value)
-            column.setId(id)
+            column.id = id
         }
         // 1,3,5 deleted
         ncube.updateColumns(axisDto)
@@ -3300,7 +3300,7 @@ public class TestNCube
         code = ncube.getAxis("state")
         for (Column column : code.columns)
         {
-            valueToId.put(column.value, column.getId())
+            valueToId.put(column.value, column.id)
         }
         axisDto = new Axis("state", AxisType.DISCRETE, AxisValueType.STRING, true)
         axisDto.addColumn("CA")
@@ -3309,7 +3309,7 @@ public class TestNCube
         for (Column column : cols)
         {
             long id = valueToId.get(column.value)
-            column.setId(id)
+            column.id = id
         }
 
         ncube.updateColumns(axisDto)
@@ -3385,7 +3385,7 @@ public class TestNCube
         catch (Exception e)
         {
             assertEquals("foo", e.message)
-            assert r.is(e.getCause())
+            assert r.is(e.cause)
         }
     }
 
@@ -3562,7 +3562,7 @@ public class TestNCube
             assert e.message.toLowerCase().contains('not found on axis')
         }
 
-        ncube.setDefaultCellValue(null)
+        ncube.defaultCellValue = null
 
         coord.put("gender", "Male")
         assertFalse(ncube.containsCell(coord))
@@ -3779,7 +3779,7 @@ public class TestNCube
     public void testCoordinateGetter()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("arrays.json")
-        for (Set<Column> cols : (Iterable<Set<Column>>) ncube.getCellMap().keySet())
+        for (Set<Column> cols : (Iterable<Set<Column>>) ncube.cellMap.keySet())
         {
             // This code is not generalized and intentionally relies on arrays.json being 1-dimensional
             Column col = cols.iterator().next()
@@ -4033,7 +4033,7 @@ public class TestNCube
         sha1_b = c2.sha1()
         assertNotEquals(sha1_a, sha1_b)
 
-        Axis a = NCubeBuilder.getStatesAxis()
+        Axis a = NCubeBuilder.statesAxis
         c2 = c1.duplicate("TestCube")
         c2.addAxis(a)
         assertNotEquals(c1, c2)
@@ -4172,10 +4172,10 @@ public class TestNCube
     public void testNCubeApplicationIdParts()
     {
         ApplicationID appId = new ApplicationID("foo", "bar", "0.0.1", ReleaseStatus.SNAPSHOT.name())
-        NCube ncube = NCubeBuilder.getTestNCube3D_Boolean()
-        ncube.setApplicationID(appId)
-        assertEquals(appId.getStatus(), ncube.getStatus())
-        assertEquals(appId.getVersion(), ncube.getVersion())
+        NCube ncube = NCubeBuilder.testNCube3D_Boolean
+        ncube.applicationID = appId
+        assertEquals(appId.status, ncube.status)
+        assertEquals(appId.version, ncube.version)
     }
 
     @Test
@@ -4252,7 +4252,7 @@ public class TestNCube
     {
         NCube cube = NCubeManager.getNCubeFromResource("delta.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("delta.json")
-        cube2.addAxis(NCubeBuilder.getStatesAxis())
+        cube2.addAxis(NCubeBuilder.statesAxis)
         List<Delta> delta = cube2.getDeltaDescription(cube)
         assertEquals(1, delta.size())
         assertTrue(delta.get(0).toString().toLowerCase().contains("added"))
@@ -4312,7 +4312,7 @@ public class TestNCube
         NCube cube = NCubeManager.getNCubeFromResource("delta.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("delta.json")
         cube2.deleteAxis("gender")
-        cube2.addAxis(NCubeBuilder.getStatesAxis())
+        cube2.addAxis(NCubeBuilder.statesAxis)
         List<Delta> delta = cube2.getDeltaDescription(cube)
         assertEquals(2, delta.size())
 

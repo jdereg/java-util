@@ -30,7 +30,7 @@ public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManag
 
     public void setUp() throws SQLException
     {
-        Connection c = provider.getConnection()
+        Connection c = provider.connection
         Statement s = null
         try
         {
@@ -61,7 +61,7 @@ public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManag
 
     public void tearDown() throws SQLException
     {
-        Connection c = provider.getConnection()
+        Connection c = provider.connection
         Statement s = null
         try
         {

@@ -62,7 +62,7 @@ public class GroovyMethod extends GroovyBase
         super(cmd, url);
     }
 
-    public String buildGroovy(String theirGroovy, String cubeName)
+    public String buildGroovy(String theirGroovy)
     {
         return theirGroovy;
     }

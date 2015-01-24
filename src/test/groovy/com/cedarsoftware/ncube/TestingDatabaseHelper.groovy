@@ -34,7 +34,7 @@ public class TestingDatabaseHelper
 
         for (String name : names) {
             URL url = NCubeManager.class.getResource("/" + name);
-            File jsonFile = new File(url.getFile());
+            File jsonFile = new File(url.file);
 
             InputStream input = null;
             try {

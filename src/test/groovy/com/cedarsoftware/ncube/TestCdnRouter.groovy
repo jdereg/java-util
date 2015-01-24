@@ -333,7 +333,7 @@ public class TestCdnRouter
     }
     private static void setCdnRoutingProvider(String account, String app, String version, String cubeName, String status, boolean isAuthorized)
     {
-        CdnRouter.setCdnRoutingProvider new TestCdnRoutingProvider(account, app, version, cubeName, status, isAuthorized)
+        CdnRouter.cdnRoutingProvider = new TestCdnRoutingProvider(account, app, version, cubeName, status, isAuthorized)
     }
 
     private static void setDefaultCdnRoutingProvider()
@@ -510,7 +510,7 @@ public class TestCdnRouter
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
 
-        CdnRouter.setCdnRoutingProvider null
+        CdnRouter.cdnRoutingProvider = null
         new CdnRouter().route request, response
 
         verify(response, times(1)).sendError 500, 'CdnRouter - CdnRoutingProvider has not been set into the CdnRouter.'

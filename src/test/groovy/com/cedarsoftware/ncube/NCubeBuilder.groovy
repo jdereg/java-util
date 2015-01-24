@@ -142,21 +142,21 @@ class NCubeBuilder
     static Axis getDateRangeAxis(boolean defCol)
     {
         Axis axis = new Axis("dateRange", AxisType.RANGE, AxisValueType.DATE, defCol)
-        Calendar cal = Calendar.getInstance()
+        Calendar cal = Calendar.instance
         cal.set(1990, 5, 10, 13, 5, 25)
-        Calendar cal1 = Calendar.getInstance()
+        Calendar cal1 = Calendar.instance
         cal1.set(2000, 0, 1, 0, 0, 0)
-        Calendar cal2 = Calendar.getInstance()
+        Calendar cal2 = Calendar.instance
         cal2.set(2002, 11, 17, 0, 0, 0)
-        Calendar cal3 = Calendar.getInstance()
+        Calendar cal3 = Calendar.instance
         cal3.set(2008, 11, 24, 0, 0, 0)
-        Calendar cal4 = Calendar.getInstance()
+        Calendar cal4 = Calendar.instance
         cal4.set(2010, 0, 1, 12, 0, 0)
-        Calendar cal5 = Calendar.getInstance()
+        Calendar cal5 = Calendar.instance
         cal5.set(2014, 7, 1, 12, 59, 59)
 
-        axis.addColumn(new Range(cal, cal1.getTime()))
-        axis.addColumn(new Range(cal1, cal2.getTime()))
+        axis.addColumn(new Range(cal, cal1.time))
+        axis.addColumn(new Range(cal1, cal2.time))
         axis.addColumn(new Range(cal2, cal3))
         axis.addColumn(new Range(cal4, cal5))
         return axis

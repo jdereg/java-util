@@ -31,8 +31,8 @@ import java.util.Set;
  */
 public class TestResultsFormatter
 {
-    private Map output;
-    private StringBuilder builder = new StringBuilder();
+    private final Map output;
+    private final StringBuilder builder = new StringBuilder();
     private static final String newLine = "\n";
 
     public TestResultsFormatter(Map out)

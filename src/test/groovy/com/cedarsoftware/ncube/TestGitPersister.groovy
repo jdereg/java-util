@@ -23,8 +23,8 @@ class TestGitPersister
     void testOpenRepository()
     {
         NCubeGitPersister persister = new NCubeGitPersister()
-        persister.setRepositoryDir('/Users/jderegnaucourt/Development/cubes/.git')
-        NCubeManager.setNCubePersister(persister);
+        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        NCubeManager.NCubePersister = persister;
         for (int i = 0; i < 1; i++)
         {
             Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')

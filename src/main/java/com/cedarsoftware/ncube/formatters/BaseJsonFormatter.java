@@ -12,7 +12,7 @@ import java.io.StringWriter;
 public class BaseJsonFormatter
 {
     public static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    protected StringBuilder builder = new StringBuilder();
+    protected final StringBuilder builder = new StringBuilder();
 
     void startArray() {
         builder.append("[");

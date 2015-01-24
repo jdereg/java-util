@@ -41,7 +41,7 @@ public class NCubeTestReader
         return list;
     }
 
-    public List<StringValuePair<CellInfo>> createCoord(JsonObject<String, Object> o)
+    public static List<StringValuePair<CellInfo>> createCoord(JsonObject<String, Object> o)
     {
         List<StringValuePair<CellInfo>> list = new ArrayList<>();
 
@@ -57,15 +57,15 @@ public class NCubeTestReader
         return list;
     }
 
-    public CellInfo createCellInfo(JsonObject o) {
+    public static CellInfo createCellInfo(JsonObject o) {
         String type = (String)o.get("type");
         String value = (String)o.get("value");
 
         return new CellInfo(type, value, o.get("isUrl"), false);
     }
 
-    public List<CellInfo> createAssertions(JsonObject o) {
-        List<CellInfo> list = new ArrayList<CellInfo>();
+    public static List<CellInfo> createAssertions(JsonObject o) {
+        List<CellInfo> list = new ArrayList<>();
         for (Object item : o.getArray()) {
             list.add(createCellInfo((JsonObject)item));
         }

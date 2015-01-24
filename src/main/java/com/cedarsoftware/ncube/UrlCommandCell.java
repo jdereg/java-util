@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube;
 
 import groovy.lang.GroovyShell;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
@@ -33,7 +32,7 @@ public abstract class UrlCommandCell implements CommandCell
     private String cmd;
     private volatile transient String errorMsg = null;
     private String url = null;
-    private AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
+    private final AtomicBoolean isUrlExpanded = new AtomicBoolean(false);
     private int hash;
     private static final GroovyShell shell = new GroovyShell();
     public static final char EXTENSION_SEPARATOR = '.';
@@ -108,7 +107,7 @@ public abstract class UrlCommandCell implements CommandCell
         }
     }
 
-    protected URL getActualUrl(Map ctx) throws MalformedURLException
+    protected URL getActualUrl(Map ctx)
     {
         URL actualUrl;
         NCube ncube = getNCube(ctx);

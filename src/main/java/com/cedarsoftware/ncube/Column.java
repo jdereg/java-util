@@ -222,9 +222,6 @@ public class Column implements Comparable<Comparable>
         {
             return value.toString();
         }
-        else
-        {
-		    return CellInfo.formatForDisplay(value);
-        }
+       return CellInfo.formatForDisplay(value);
 	}
 }

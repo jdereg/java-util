@@ -28,9 +28,9 @@ import java.util.Map;
 
 public class NCubeTest
 {
-    private String name;
-    private StringValuePair<CellInfo>[] coord;
-    private CellInfo[] expected;
+    private final String name;
+    private final StringValuePair<CellInfo>[] coord;
+    private final CellInfo[] expected;
 
     public NCubeTest(String name, StringValuePair<CellInfo>[] coord, CellInfo[] expected) {
         this.name = name;

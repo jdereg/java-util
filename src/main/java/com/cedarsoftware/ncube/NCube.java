@@ -85,7 +85,7 @@ public class NCube<T>
             return new ArrayDeque<>();
         }
     };
-    private Map<String, Advice> advices = new LinkedHashMap<>();
+    private final Map<String, Advice> advices = new LinkedHashMap<>();
     private Map<String, Object> metaProps = null;
 
     /**
@@ -461,14 +461,15 @@ public class NCube<T>
         T lastStatementValue = null;
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
-        final String[] axisNames = axisList.keySet().toArray(new String[]{});
+        final Set<String> axisNameSet = axisList.keySet();
+        final String[] axisNames = axisNameSet.toArray(new String[axisNameSet.size()]);
         final Collection<Axis> axes = axisList.values();
 
         while (run)
         {
             run = false;
             final Map<String, List<Column>> columnToAxisBindings = bindCoordinateToAxisColumns(input);
-            final Map<String, Integer> counters = getCountersPerAxis(axisList.keySet());
+            final Map<String, Integer> counters = getCountersPerAxis(axisNameSet);
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
 
@@ -833,20 +834,20 @@ public class NCube<T>
      * binds to on the axis, is to support RULE axes.  On a regular axis, the coordinate binds
      * to a column (with a binary search or hashMap lookup), however, on a RULE axis, the act
      * of binding to an axis results in a List<Column>.
-     * @param coord The passed in input coordinate to bind (or multi-bind) to each axis.
+     * @param input The passed in input coordinate to bind (or multi-bind) to each axis.
      */
-    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map coord)
+    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map input)
     {
         Map<String, List<Column>> bindings = new CaseInsensitiveMap<>();
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
         {
             final String axisName = entry.getKey();
             final Axis axis = entry.getValue();
-            final Comparable value = (Comparable) coord.get(axisName);
+            final Comparable value = (Comparable) input.get(axisName);
 
             if (axis.getType() == AxisType.RULE)
             {   // For RULE axis, all possible columns must be added (they are tested later during execution)
-                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) coord.get(axis.getName())));
+                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) input.get(axis.getName())));
             }
             else
             {   // Find the single column that binds to the input coordinate on a regular axis.

@@ -24,33 +24,33 @@ import com.cedarsoftware.ncube.CellInfo;
  */
 public class Point2D implements Comparable<Point2D>, Distance<Point2D>
 {
-	private double x;
-	private double y;
-	
+	private final double x;
+	private final double y;
+
 	public Point2D(double x, double y)
 	{
 		this.x = x;
 		this.y = y;
 	}
-	
+
 	public boolean equals(Object obj)
 	{
 		if (!(obj instanceof Point2D))
 		{
 			return false;
 		}
-		
+
 		Point2D that = (Point2D) obj;
 		return x == that.x && y == that.y;
 	}
 
-	public double distance(Point2D that) 
+	public double distance(Point2D that)
 	{
 		double dx = that.x - x;
 		double dy = that.y - y;
 		return Math.sqrt(dx * dx + dy * dy);
 	}
-	
+
 	public String toString()
 	{
         return String.format("%s, %s", CellInfo.formatForEditing(x), CellInfo.formatForEditing(y));
@@ -74,7 +74,7 @@ public class Point2D implements Comparable<Point2D>, Distance<Point2D>
 		{
 			return 1;
 		}
-		return 0;	
+		return 0;
 	}
 
     public double getX() { return x; }

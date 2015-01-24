@@ -4,19 +4,19 @@ import com.cedarsoftware.ncube.exception.RuleStop
 
 def getRelativeCubeCell =
         { name, coord ->
-            input.putAll(coord);
+            input.putAll(coord)
             def cube = NCubeManager.getCube(ncube.getApplicationID(), name)
             if (cube == null)
             {
-                throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString());
+                throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting relative (@) reference to cell: ' + coord.toString())
             };
-            return cube.getCell(input, output);
+            return cube.getCell(input, output)
         };
 
 def getRelativeCell =
         { coord ->
-            input.putAll(coord);
-            return ncube.getCell(input, output);
+            input.putAll(coord)
+            return ncube.getCell(input, output)
         };
 
 def getFixedCubeCell =
@@ -24,16 +24,23 @@ def getFixedCubeCell =
             def cube = NCubeManager.getCube(ncube.getApplicationID(), name)
             if (cube == null)
             {
-                throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString());
+                throw new IllegalArgumentException('NCube: ' + name + ' is not loaded, attempting fixed ($) reference to cell: ' + coord.toString())
             };
-            return cube.getCell(input, output)
+            return cube.getCell(coord, output)
         };
 
 def getFixedCell =
         { coord ->
-            return ncube.getCell(coord, output);
+            return ncube.getCell(coord, output)
         }
 
-def ruleStop = { throw new RuleStop(); }
+def ruleStop =
+        {
+            throw new RuleStop()
+        }
 
-def jump = { throw new RuleJump(); }
+def jump =
+        { coord ->
+            input.putAll(coord)
+            throw new RuleJump(input)
+        }

@@ -3,7 +3,7 @@ package com.cedarsoftware.ncube.proximity;
 import com.cedarsoftware.ncube.CellInfo;
 
 /**
- * This class is used to represent a 3D point.  This 
+ * This class is used to represent a 3D point.  This
  * class implements the Proximity interface so that it
  * can work with NCube.
  *
@@ -25,28 +25,28 @@ import com.cedarsoftware.ncube.CellInfo;
  */
 public class Point3D implements Comparable<Point3D>, Distance<Point3D>
 {
-	private double x;
-	private double y;
-	private double z;
-	
+	private final double x;
+	private final double y;
+	private final double z;
+
 	public Point3D(double x, double y, double z)
 	{
 		this.x = x;
 		this.y = y;
 		this.z = z;
 	}
-	
+
 	public boolean equals(Object obj)
 	{
 		if (!(obj instanceof Point3D))
 		{
 			return false;
 		}
-		
+
 		Point3D that = (Point3D) obj;
 		return x == that.x && y == that.y && z == that.z;
 	}
-	
+
 	public int compareTo(Point3D that)
 	{
 		if (x < that.x)
@@ -76,15 +76,15 @@ public class Point3D implements Comparable<Point3D>, Distance<Point3D>
 		return 0;
 	}
 
-	public double distance(Point3D that) 
+	public double distance(Point3D that)
 	{
 		double dx = that.x - x;
 		double dy = that.y - y;
 		double dz = that.z - z;
-		
+
 		return Math.sqrt(dx * dx + dy * dy + dz * dz);
 	}
-	
+
 	public String toString()
 	{
         return String.format("%s, %s, %s",

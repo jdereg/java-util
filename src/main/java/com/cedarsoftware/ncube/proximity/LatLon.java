@@ -31,9 +31,9 @@ import static java.lang.Math.toRadians;
 public class LatLon implements Comparable<LatLon>, Distance<LatLon>
 {
 	public static final double EARTH_RADIUS = 6371.00; // Radius in Kilometers default
-    private double lat;
-	private double lon;
-	
+    private final double lat;
+	private final double lon;
+
 	/**
 	 * @param lat decimal degrees latitude
 	 * @param lon decimal degrees longitude
@@ -43,18 +43,18 @@ public class LatLon implements Comparable<LatLon>, Distance<LatLon>
 		this.lat = lat;
 		this.lon = lon;
 	}
-	
+
 	public boolean equals(Object obj)
 	{
 		if (!(obj instanceof LatLon))
 		{
 			return false;
 		}
-		
+
 		LatLon that = (LatLon) obj;
 		return lat == that.lat && lon == that.lon;
 	}
-	
+
 	public int compareTo(LatLon that)
 	{
 		if (lat < that.lat)
@@ -81,7 +81,7 @@ public class LatLon implements Comparable<LatLon>, Distance<LatLon>
 	 * and this coordinate, in kilometers.
      * Implemented using the Haversine formula.
 	 */
-	public double distance(LatLon that) 
+	public double distance(LatLon that)
 	{
         double earthRadius = EARTH_RADIUS;
         double dLat = toRadians(that.lat - lat);
@@ -93,7 +93,7 @@ public class LatLon implements Comparable<LatLon>, Distance<LatLon>
         double dist = earthRadius * c;
         return dist;
 	}
-	
+
 	public String toString()
 	{
         return String.format("%s, %s", CellInfo.formatForEditing(lat), CellInfo.formatForEditing(lon));

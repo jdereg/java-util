@@ -84,7 +84,7 @@ public class HtmlFormatter implements NCubeFormatter
         }
         // Step 1. Sort axes from smallest to largest.
         // Hypercubes look best when the smaller axes are on the inside, and the larger axes are on the outside.
-        List<Axis> axes = new ArrayList<Axis>(ncube.getAxes());
+        List<Axis> axes = new ArrayList<>(ncube.getAxes());
         Collections.sort(axes, new Comparator<Axis>()
         {
             public int compare(Axis a1, Axis a2)

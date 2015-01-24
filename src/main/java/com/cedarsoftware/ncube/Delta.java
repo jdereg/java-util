@@ -23,9 +23,9 @@ package com.cedarsoftware.ncube;
  */
 public class Delta
 {
-    private String desc;
-    private Location loc;
-    private Type type;
+    private final String desc;
+    private final Location loc;
+    private final Type type;
 
     public enum Location
     {

@@ -939,7 +939,7 @@ public class NCubeManager
         }
     }
 
-    static NCube ncubeFromJson(String json) throws IOException
+    static NCube ncubeFromJson(String json)
     {
         try
         {

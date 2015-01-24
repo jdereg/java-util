@@ -323,7 +323,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         writeObjectKeyValue("id", longId, addComma);
     }
 
-    void writeIdValue(Long longId, boolean addComma) throws IOException
+    void writeIdValue(Long longId, boolean addComma)
     {
         builder.append(longId);
 

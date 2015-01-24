@@ -24,8 +24,8 @@ import java.sql.Connection;
  */
 public class NCubeJdbcPersisterAdapter implements NCubePersister
 {
-    private NCubeJdbcPersister persister = new NCubeJdbcPersister();
-    private JdbcConnectionProvider connectionProvider;
+    private final NCubeJdbcPersister persister = new NCubeJdbcPersister();
+    private final JdbcConnectionProvider connectionProvider;
 
     public NCubeJdbcPersisterAdapter(JdbcConnectionProvider provider)
     {

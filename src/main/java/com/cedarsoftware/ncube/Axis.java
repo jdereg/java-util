@@ -70,16 +70,16 @@ public class Axis
     public static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
 
     // used to get O(1) on SET axis for the discrete elements in the Set
-    transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
+    final transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
 
     // used to get O(1) on Ranges for SET access
-    transient List<RangeToColumn> rangeToCol = new ArrayList<>();
+    final transient List<RangeToColumn> rangeToCol = new ArrayList<>();
 
     // used to get O(1) access to columns by ID
-    transient Map<Long, Column> idToCol = new HashMap<>();
+    final transient Map<Long, Column> idToCol = new HashMap<>();
 
     // used to get O(1) access to columns by rule-name
-    transient Map<String, Column> colNameToCol = new CaseInsensitiveMap<>();
+    final transient Map<String, Column> colNameToCol = new CaseInsensitiveMap<>();
 
     // for testing
     Axis(String name, AxisType type, AxisValueType valueType, boolean hasDefault)
@@ -1313,10 +1313,10 @@ public class Axis
         return columns;
     }
 
-    private static class RangeToColumn implements Comparable<RangeToColumn>
+    private static final class RangeToColumn implements Comparable<RangeToColumn>
     {
-        private Range range;
-        private Column column;
+        private final Range range;
+        private final Column column;
 
         private RangeToColumn(Range range, Column column)
         {

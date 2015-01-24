@@ -96,7 +96,7 @@ class GroovyTemplate extends ContentCmdCell
 
     protected Object executeInternal(final Object data, final Map ctx)
     {
-        // args.input, args.output, args.ncube, and args.stack,
+        // ctx.input, ctx.output, ctx.ncube
         // are ALWAYS set by NCube before the execution gets here.
         try
         {

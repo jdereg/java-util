@@ -24,7 +24,6 @@ import java.util.Date;
  */
 public class NCubeInfoDto
 {
-	public String id;
 	public String tenant;
 	public String app;
 	public String version;
@@ -43,6 +42,6 @@ public class NCubeInfoDto
 
 	public String toString()
 	{
-		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + revision + "/" + id + "/" + sha1;
+		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + revision + "/" + sha1;
 	}
 }

@@ -245,7 +245,6 @@ public class NCubeJdbcPersister
                 NCubeInfoDto dto = new NCubeInfoDto();
                 dto.name = rs.getString("n_cube_nm");
                 dto.tenant = appId.getTenant();
-                dto.id = Long.toString(rs.getLong("n_cube_id"));
                 byte[] notes = rs.getBytes("notes_bin");
                 dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
                 dto.version = appId.getVersion();

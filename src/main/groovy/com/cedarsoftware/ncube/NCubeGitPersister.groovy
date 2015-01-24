@@ -151,31 +151,32 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         long start = System.nanoTime()
         Git git = new Git(repo)
 
+        def revisions = getFileLog(git, "cubes");
+
         while (treeWalk.next())
         {
             NCubeInfoDto info = new NCubeInfoDto()
             Matcher m = Regexes.gitCubeNames.matcher(treeWalk.pathString)
             if (m.find() && m.groupCount() > 0)
             {
-                info.id = treeWalk.getObjectId(0).name
                 info.tenant = appId.tenant
                 info.app = appId.app
                 info.version = appId.version
                 info.status = appId.status
                 info.name = m.group(1)
                 info.notes = ''  // another file with similar name
-                info.revision = treeWalk.depth
+                info.revision = -1
                 info.createDate = new Date()
                 info.createHid = 'jdirt'
-                info.sha1 = ''
-                def revisions = getFileLog(git, treeWalk.pathString)
+                info.sha1 = treeWalk.getObjectId(0).name
+                revisions = getFileLog(git, treeWalk.pathString)
 //                println revisions;
 //                println '-------------------------'
                 cubes.add(info)
 
 //                FileMode fileMode = treeWalk.getFileMode(0);
 //                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
-//                println info.name
+//                println info
 //                println loader.getSize()
 //                InputStream input = loader.openStream();
 //                byte[] bytes = IOUtilities.inputStreamToBytes(input)
@@ -188,8 +189,8 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
         long stop = System.nanoTime()
         long ms = (stop - start) / 1000000
-//        println 'read all files = ' + ms
-//        println 'count = ' + count
+        println 'read all files = ' + ms
+        println 'count = ' + count
         walk.dispose()
         return cubes.toArray()
     }
@@ -278,11 +279,11 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
     static List getFileLog(Git git, String qualifiedFilename)
     {
-        def logs = git.log().addPath(qualifiedFilename).call()
+        def logs = git.log().setMaxCount(1).addPath(qualifiedFilename).call()
         def history = [];
         for (RevCommit rev : logs)
         {
-            history.add([id: rev.id.name, comment: rev.fullMessage])
+            history.add([id: rev.id.name, comment: rev.fullMessage, revision:rev])
         }
         return history;
     }

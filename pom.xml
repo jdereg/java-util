@@ -33,7 +33,7 @@
     </developers>
 
     <properties>
-        <version.json.io>2.9.0</version.json.io>
+        <version.json.io>2.9.1</version.json.io>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.11</version.junit>
         <version.guava>16.0.1</version.guava>

@@ -1,0 +1,164 @@
+{
+  "ncube": "sys.bootstrap.version",
+  "axes": [
+    {
+      "name": "businessDivisionCode",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "fireAll": true,
+      "columns": [
+        {"id" : "A"},
+        {"id" : "B"}
+      ]
+    },
+    {
+      "name": "env",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "fireAll": true,
+      "columns": [
+        { "id": "SAND" },
+        { "id": "DEV" },
+        { "id": "TESTING" },
+        { "id": "INT" },
+        { "id": "CERT" },
+        { "id": "UAT"},
+        { "id": "PROD" }
+      ]
+    },
+    {
+      "name": "key",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "fireAll": true,
+      "columns": [
+        { "id": "version" },
+        { "id": "status" }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": [ "SAND", "version" ],
+      "value": "1.28.0"
+    },
+    {
+      "id": [ "SAND", "version", "A" ],
+      "value": "1.15.0"
+    },
+    {
+      "id": [ "SAND", "version", "B" ],
+      "value": "1.19.0"
+    },
+    {
+      "id": [ "DEV", "version" ],
+      "type": "exp",
+      "value": "@[env:'SAND']"
+    },
+    {
+      "id": [ "TESTING", "version" ],
+      "type": "exp",
+      "value": "@[env:'SAND']"
+    },
+    {
+      "id": [ "INT", "version" ],
+      "value": "1.27.0"
+    },
+    {
+      "id": [ "INT", "version", "A" ],
+      "value": "1.25.0"
+    },
+    {
+      "id": [ "INT", "version", "B" ],
+      "value": "1.26.0"
+    },
+    {
+      "id": [ "UAT", "version" ],
+      "type": "exp",
+      "value": "@[env:'INT']"
+    },
+    {
+      "id": [ "CERT", "version" ],
+      "type": "exp",
+      "value": "@[env:'INT']"
+    },
+    {
+      "id": [ "PROD", "version" ],
+      "type": "exp",
+      "value": "@[env:'INT']"
+    },
+    {
+      "id": [ "SAND", "status" ],
+      "value": "SNAPSHOT"
+    },
+    {
+      "id": [ "SAND", "status", "A" ],
+      "type": "exp",
+      "value": "@[businessDivisionCode:null]"
+    },
+    {
+      "id": [ "SAND", "status", "B" ],
+      "type": "exp",
+      "value": "@[businessDivisionCode:null]"
+    },
+    {
+      "id": [ "DEV", "status" ],
+      "type": "exp",
+      "value": "@[env:'SAND']"
+    },
+    {
+      "id": [ "TESTING", "status" ],
+      "type": "exp",
+      "value": "@[env:'SAND']"
+    },
+    {
+      "id": [ "INT", "status" ],
+      "value": "RELEASE"
+    },
+    {
+      "id": [ "INT", "status", "A" ],
+      "type": "exp",
+      "value": "@[businessDivisionCode:null]"
+    },
+    {
+      "id": [ "INT", "status", "B" ],
+      "type": "exp",
+      "value": "@[businessDivisionCode:null]"
+    },
+    {
+      "id": [ "INT", "status" ],
+      "value": "RELEASE"
+    },
+    {
+      "id": [ "UAT", "status" ],
+      "type": "exp",
+      "value": "@[env:'INT']"
+    },
+    {
+      "id": [ "CERT", "status" ],
+      "type": "exp",
+      "value": "@[env:'INT']"
+    },
+    {
+      "id": [ "PROD", "status" ],
+      "type": "exp",
+      "value": "@[env:'INT']"
+    },
+    {
+      "id": [ "version" ],
+      "type": "exp",
+      "value": "@[env:'SAND']"
+    },
+    {
+      "id": [ "status" ],
+      "type": "exp",
+      "value": "@[env:'SAND']"
+    }
+  ]
+}

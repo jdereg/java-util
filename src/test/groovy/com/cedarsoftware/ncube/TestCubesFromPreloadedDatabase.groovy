@@ -324,5 +324,36 @@ public class TestCubesFromPreloadedDatabase
         manager.removeCubes(appId, USER_ID, ncubes)
     }
 
+    @Test
+    public void testMultiTenantApplicationIdBootstrap()
+    {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
+
+        // add cubes for this test.
+        manager.addCubes(appId, USER_ID, ncubes)
+
+        NCube cube = NCubeManager.getCube(appId, 'sys.bootstrap');
+
+        def input = [:];
+        input.env = "SAND";
+
+        Map<String, ApplicationID> map = cube.getCell(input)
+        assertEquals(new ApplicationID("NONE", "APP", "1.15.0", "SNAPSHOT"), map.get("A"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.19.0", "SNAPSHOT"), map.get("B"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.28.0", "SNAPSHOT"), map.get("C"));
+
+        input.env = "INT"
+        map = cube.getCell(input)
+
+        assertEquals(new ApplicationID("NONE", "APP", "1.25.0", "RELEASE"), map.get("A"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.26.0", "RELEASE"), map.get("B"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.27.0", "RELEASE"), map.get("C"));
+
+
+        // remove cubes for this test.
+        manager.removeCubes(appId, USER_ID, ncubes)
+
+    }
+
 
 }

@@ -1,8 +1,9 @@
 package com.cedarsoftware.ncube;
 
+import java.util.Date;
+
 /**
- * Class used to carry the NCube meta-information
- * to the client.
+ * Class used to carry the NCube date, revision, user, and notes.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -20,22 +21,15 @@ package com.cedarsoftware.ncube;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class NCubeInfoDto
+public class NCubeInfoDetailsDto extends NCubeInfoDto
 {
-	public String tenant;
-	public String app;
-	public String version;
-	public String status;
-	public String name;
-	public String sha1;
-
-	public ApplicationID getApplicationID()
-	{
-		return new ApplicationID(tenant, app, version, status);
-	}
+	public String notes;
+	public String revision;
+	public Date createDate;
+	public String createHid;
 
 	public String toString()
 	{
-		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + sha1;
+		return super.toString() + "/" + revision + "/" + createDate + "/" + createHid;
 	}
 }

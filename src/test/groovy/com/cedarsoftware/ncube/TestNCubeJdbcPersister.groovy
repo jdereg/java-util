@@ -142,7 +142,6 @@ public class TestNCubeJdbcPersister
         assertTrue(cubeList.length == 0)
     }
 
-
     @Test
     public void testDoesCubeExistWithException() throws Exception
     {
@@ -402,20 +401,22 @@ public class TestNCubeJdbcPersister
     @Test
     public void testLoadCubesWithSQLException() throws Exception
     {
-
         Connection c = getConnectionThatThrowsSQLException()
-
         NCubeInfoDto dto = new NCubeInfoDto()
-        dto.name = "foo";
+        dto.tenant = ApplicationID.DEFAULT_TENANT
+        dto.app = ApplicationID.DEFAULT_APP
+        dto.version = ApplicationID.DEFAULT_VERSION
+        dto.status = 'SNAPSHOT'
+        dto.name = 'foo'
 
         try
         {
             new NCubeJdbcPersister().loadCube(c, dto)
             fail()
         }
-        catch (IllegalStateException e)
+        catch (RuntimeException e)
         {
-            assertTrue(e.message.contains("Unable to load cube"))
+            assert e.message.toLowerCase().contains("unable to load")
         }
     }
 
@@ -724,7 +725,7 @@ public class TestNCubeJdbcPersister
         catch (RuntimeException e)
         {
             assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.contains("Unable to restore cube"))
+            assertTrue(e.message.toLowerCase().contains("unable to restore cube"))
         }
     }
 

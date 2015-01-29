@@ -164,12 +164,8 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
                 info.version = appId.version
                 info.status = appId.status
                 info.name = m.group(1)
-                info.notes = ''  // another file with similar name
-                info.revision = -1
-                info.createDate = new Date()
-                info.createHid = 'jdirt'
                 info.sha1 = treeWalk.getObjectId(0).name
-                revisions = getFileLog(git, treeWalk.pathString)
+//                revisions = getFileLog(git, treeWalk.pathString)
 //                println revisions;
 //                println '-------------------------'
                 cubes.add(info)

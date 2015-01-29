@@ -68,7 +68,7 @@ abstract class ContentCmdCell extends UrlCommandCell
 
     public Object execute(Map<String, Object> ctx)
     {
-        failOnErrors();
+        failOnErrors()
 
         Object data;
 
@@ -78,11 +78,11 @@ abstract class ContentCmdCell extends UrlCommandCell
         }
         else
         {
-            expandUrl(ctx);
-            data = fetch(ctx);
+            expandUrl(ctx)
+            data = fetch(ctx)
         }
 
-        return executeInternal(data, ctx);
+        return executeInternal(data, ctx)
     }
 
     protected Object fetch(Map ctx)

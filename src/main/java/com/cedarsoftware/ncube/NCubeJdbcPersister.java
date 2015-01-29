@@ -75,7 +75,7 @@ public class NCubeJdbcPersister
                 }
             }
         }
-        catch (IllegalStateException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -135,7 +135,7 @@ public class NCubeJdbcPersister
         }
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
+                "SELECT n.n_cube_nm, status_cd, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
@@ -155,7 +155,7 @@ public class NCubeJdbcPersister
             stmt.setString(8, appId.getVersion());
             stmt.setString(9, appId.getStatus());
             stmt.setString(10, appId.getTenant());
-            return getCubeInfoRecords(appId, stmt);
+            return getCubeInfoRecords(appId, stmt, false);
         }
         catch (Exception e)
         {
@@ -173,7 +173,7 @@ public class NCubeJdbcPersister
         }
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
+                "SELECT n.n_cube_nm, status_cd, n.cube_value_bin FROM n_cube n, " +
                         "( " +
                         "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                         "  FROM n_cube " +
@@ -191,7 +191,7 @@ public class NCubeJdbcPersister
             stmt.setString(6, appId.getApp());
             stmt.setString(7, appId.getVersion());
             stmt.setString(8, appId.getTenant());
-            return getCubeInfoRecords(appId, stmt);
+            return getCubeInfoRecords(appId, stmt, false);
         }
         catch (Exception e)
         {
@@ -214,14 +214,14 @@ public class NCubeJdbcPersister
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
 
-            Object[] records = getCubeInfoRecords(appId, stmt);
+            Object[] records = getCubeInfoRecords(appId, stmt, true);
             if (records.length == 0)
             {
                 throw new IllegalArgumentException("Cannot fetch revision history for cube:  " + cubeName + " as it does not exist in app:  " + appId);
             }
             return records;
         }
-        catch (IllegalArgumentException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -233,24 +233,19 @@ public class NCubeJdbcPersister
         }
     }
 
-    private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
+    private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, boolean useDetailed) throws Exception
     {
         List<NCubeInfoDto> records = new ArrayList<>();
         try (ResultSet rs = stmt.executeQuery())
         {
             while (rs.next())
             {
-                NCubeInfoDto dto = new NCubeInfoDto();
+                NCubeInfoDto dto = (useDetailed) ? new NCubeInfoDetailsDto() : new NCubeInfoDto();
                 dto.name = rs.getString("n_cube_nm");
                 dto.tenant = appId.getTenant();
-                byte[] notes = rs.getBytes("notes_bin");
-                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
                 dto.version = appId.getVersion();
                 dto.status = rs.getString("status_cd");
                 dto.app = appId.getApp();
-                dto.createDate = rs.getDate("create_dt");
-                dto.createHid = rs.getString("create_hid");
-                dto.revision = Long.toString(rs.getLong("revision_number"));
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
 
                 if (!ArrayUtilities.isEmpty(jsonBytes))
@@ -262,6 +257,17 @@ public class NCubeJdbcPersister
                         dto.sha1 = m.group(1);
                     }
                 }
+
+                if (useDetailed)
+                {
+                    byte[] notes = rs.getBytes("notes_bin");
+                    NCubeInfoDetailsDto detailedDto = (NCubeInfoDetailsDto) dto;
+                    detailedDto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                    detailedDto.createDate = rs.getDate("create_dt");
+                    detailedDto.createHid = rs.getString("create_hid");
+                    detailedDto.revision = Long.toString(rs.getLong("revision_number"));
+                }
+
                 records.add(dto);
             }
         }
@@ -270,16 +276,31 @@ public class NCubeJdbcPersister
 
     public NCube loadCube(Connection c, NCubeInfoDto cubeInfo)
     {
+        final ApplicationID appId = cubeInfo.getApplicationID();
+        appId.validate();
+        String cubeName = cubeInfo.name;
+
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT cube_value_bin FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND revision_number = ? AND tenant_cd = RPAD(?, 10, ' ')"))
+                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
+                        "( " +
+                        "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                        "  FROM n_cube " +
+                        "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') " +
+                        "  GROUP BY n_cube_nm " +
+                        ") m " +
+                        "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
+                        "n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ')"))
         {
-            stmt.setString(1, cubeInfo.name);
-            stmt.setString(2, cubeInfo.app);
-            stmt.setString(3, cubeInfo.version);
-            stmt.setString(4, cubeInfo.status);
-            stmt.setString(5, cubeInfo.revision);
-            stmt.setString(6, cubeInfo.tenant);
+            stmt.setString(1, cubeName);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getStatus());
+            stmt.setString(5, appId.getTenant());
+            stmt.setString(6, cubeName);
+            stmt.setString(7, appId.getApp());
+            stmt.setString(8, appId.getVersion());
+            stmt.setString(9, appId.getStatus());
+            stmt.setString(10, appId.getTenant());
 
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -324,7 +345,6 @@ public class NCubeJdbcPersister
             cubeInfo.app = appId.getApp();
             cubeInfo.version = appId.getVersion();
             cubeInfo.status = appId.getStatus();
-            cubeInfo.revision = String.valueOf(maxRev);
 
             NCube ncube = loadCube(c, cubeInfo);
             String testData = getTestData(c, appId, cubeName);
@@ -359,7 +379,7 @@ public class NCubeJdbcPersister
                 }
             }
         }
-        catch (IllegalStateException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -440,7 +460,7 @@ public class NCubeJdbcPersister
                     return true;
                 }
             }
-            catch (IllegalStateException e)
+            catch (RuntimeException e)
             {
                 throw e;
             }
@@ -507,7 +527,7 @@ public class NCubeJdbcPersister
             }
             throw new IllegalArgumentException("Could not fetch notes, no cube: " + cubeName + " in app: " + appId);
         }
-        catch (IllegalArgumentException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -580,7 +600,7 @@ public class NCubeJdbcPersister
                 }
             }
         }
-        catch (IllegalStateException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -647,7 +667,7 @@ public class NCubeJdbcPersister
                 return count;
             }
         }
-        catch (IllegalStateException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -682,7 +702,7 @@ public class NCubeJdbcPersister
             }
             throw new IllegalArgumentException("Unable to fetch test data, cube: " + cubeName + ", app: " + appId + " does not exist.");
         }
-        catch (IllegalArgumentException e)
+        catch (RuntimeException e)
         {
             throw e;
         }
@@ -755,7 +775,7 @@ public class NCubeJdbcPersister
 
             return true;
         }
-        catch (IllegalArgumentException e)
+        catch (RuntimeException e)
         {
             cube.name = oldName;
             throw e;

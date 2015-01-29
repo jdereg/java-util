@@ -1053,6 +1053,7 @@ public class TestNCubeManager
             dto.name = 'does_not_exist'
             dto.app = 'NONE'
             dto.tenant = 'NONE'
+            dto.status = 'SNAPSHOT'
             dto.version = '1.0.0'
 
             NCubeManager.ensureLoaded(dto)
@@ -1060,7 +1061,7 @@ public class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains('Unable to load'))
+            assertTrue(e.message.toLowerCase().contains('unable to load'))
         }
     }
 
@@ -1168,10 +1169,6 @@ public class TestNCubeManager
         NCubeManager.restoreCube(defaultSnapshotApp, [cube.name] as Object[], USER_ID)
         records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test%')
         assertEquals(1, records.length)
-        NCubeInfoDto cubeInfo = (NCubeInfoDto) records[0]
-        assertTrue(cubeInfo.notes.contains('restored'))
-        assertTrue(cubeInfo.notes.contains('on '))
-        assertTrue(cubeInfo.notes.contains('by '))
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
     }
@@ -1249,6 +1246,33 @@ public class TestNCubeManager
         assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
+    }
+
+    @Test
+    public void testRevisionHistory() throws Exception
+    {
+        NCube cube = createCube()
+        def history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        assertEquals(1, history.length)
+        assert history[0].name == 'test.Age-Gender'
+        assert history[0] instanceof NCubeInfoDetailsDto
+        assert history[0].revision == '0'
+        assert history[0].createHid == 'jdirt'
+        assert history[0].notes == 'notes follow'
+
+        Axis oddAxis = NCubeBuilder.getOddAxis(true)
+        cube.addAxis(oddAxis)
+
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
+        history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        assertEquals(2, history.length)
+        assert history[1] instanceof NCubeInfoDetailsDto
+        assert history[1].name == 'test.Age-Gender'
+        assert history[1] instanceof NCubeInfoDetailsDto
+        assert history[0].revision == '1'
+        assert history[1].revision == '0'
+        assert history[1].createHid == 'jdirt'
+        assert history[1].notes == 'notes follow'
     }
 
     @Test

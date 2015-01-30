@@ -151,7 +151,7 @@ public class NCubeManager
         }
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
-            NCube cube = getPersister().loadCube((NCubeInfoDto) value);
+            NCube cube = getPersister().loadCube((NCubeInfoDto) value, null);
             applyAdvices(cube.getApplicationID(), cube);
             String cubeName = cube.name.toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))

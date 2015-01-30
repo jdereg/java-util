@@ -274,11 +274,12 @@ public class NCubeJdbcPersister
         return records.toArray();
     }
 
-    public NCube loadCube(Connection c, NCubeInfoDto cubeInfo)
+    public NCube loadCube(Connection c, NCubeInfoDto cubeInfo, Integer revision)
     {
         final ApplicationID appId = cubeInfo.getApplicationID();
         appId.validate();
         String cubeName = cubeInfo.name;
+        String rev = revision == null ? "abs(n.revision_number)" : revision.toString();
 
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
@@ -288,8 +289,8 @@ public class NCubeJdbcPersister
                         "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') " +
                         "  GROUP BY n_cube_nm " +
                         ") m " +
-                        "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
-                        "n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ')"))
+                        "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = " + rev +
+                        " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ')"))
         {
             stmt.setString(1, cubeName);
             stmt.setString(2, appId.getApp());
@@ -346,7 +347,7 @@ public class NCubeJdbcPersister
             cubeInfo.version = appId.getVersion();
             cubeInfo.status = appId.getStatus();
 
-            NCube ncube = loadCube(c, cubeInfo);
+            NCube ncube = loadCube(c, cubeInfo, null);
             String testData = getTestData(c, appId, cubeName);
 
             String insertSql =
@@ -426,7 +427,7 @@ public class NCubeJdbcPersister
             {
                 throw new IllegalArgumentException("Cannot delete cube: " + cubeName + ", unable to find it in app: " + appId);
             }
-            NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0]);
+            NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0], null);
             String testData = getTestData(c, appId, cubeName);
 
             try

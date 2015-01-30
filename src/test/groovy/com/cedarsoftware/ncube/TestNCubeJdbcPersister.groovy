@@ -411,7 +411,7 @@ public class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().loadCube(c, dto)
+            new NCubeJdbcPersister().loadCube(c, dto, null)
             fail()
         }
         catch (RuntimeException e)

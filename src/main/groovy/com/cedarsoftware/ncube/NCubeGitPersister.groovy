@@ -125,8 +125,18 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         }
     }
 
-    NCube loadCube(NCubeInfoDto cubeInfo)
+    NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)
     {
+//                FileMode fileMode = treeWalk.getFileMode(0);
+//                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
+//                println info
+//                println loader.getSize()
+//                InputStream input = loader.openStream();
+//                byte[] bytes = IOUtilities.inputStreamToBytes(input)
+//                IOUtilities.close(input)
+//                StringUtilities.createString(bytes, 'UTF-8')
+//                println '----------------'
+
         return null
     }
 
@@ -140,18 +150,12 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         RevCommit commit = walk.parseCommit(lastCommitId)
         RevTree tree = commit.tree
 
-        // now use a TreeWalk to iterate over all files in the Tree recursively
+        // Now use a TreeWalk to iterate over all files in the Tree recursively
         // you can set Filters to narrow down the results if needed
         TreeWalk treeWalk = new TreeWalk(repo)
         treeWalk.addTree(tree)
         treeWalk.recursive = true
         List<NCubeInfoDto> cubes = new ArrayList()
-
-        int count = 0;
-        long start = System.nanoTime()
-        Git git = new Git(repo)
-
-        def revisions = getFileLog(git, "cubes");
 
         while (treeWalk.next())
         {
@@ -165,28 +169,10 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
                 info.status = appId.status
                 info.name = m.group(1)
                 info.sha1 = treeWalk.getObjectId(0).name
-//                revisions = getFileLog(git, treeWalk.pathString)
-//                println revisions;
-//                println '-------------------------'
                 cubes.add(info)
-
-//                FileMode fileMode = treeWalk.getFileMode(0);
-//                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
-//                println info
-//                println loader.getSize()
-//                InputStream input = loader.openStream();
-//                byte[] bytes = IOUtilities.inputStreamToBytes(input)
-//                IOUtilities.close(input)
-//                StringUtilities.createString(bytes, 'UTF-8')
-//                println '----------------'
-                count++;
             }
         }
 
-        long stop = System.nanoTime()
-        long ms = (stop - start) / 1000000
-        println 'read all files = ' + ms
-        println 'count = ' + count
         walk.dispose()
         return cubes.toArray()
     }
@@ -213,6 +199,10 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
     Object[] getRevisions(ApplicationID appId, String cubeName)
     {
+//                revisions = getFileLog(git, treeWalk.pathString)
+//                println revisions;
+//                println '-------------------------'
+
         return new Object[0]
     }
 

@@ -1,10 +1,15 @@
 package com.cedarsoftware.ncube
 
+import com.cedarsoftware.util.IOUtilities
+import com.cedarsoftware.util.StringUtilities
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
+import org.eclipse.jgit.errors.IncorrectObjectTypeException
+import org.eclipse.jgit.errors.MissingObjectException
 import org.eclipse.jgit.lib.AnyObjectId
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.lib.ObjectLoader
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
@@ -12,6 +17,7 @@ import org.eclipse.jgit.revwalk.RevTree
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.treewalk.TreeWalk
+import org.eclipse.jgit.treewalk.filter.TreeFilter
 
 import java.util.regex.Matcher
 
@@ -127,17 +133,66 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
     NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)
     {
-//                FileMode fileMode = treeWalk.getFileMode(0);
-//                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
-//                println info
-//                println loader.getSize()
-//                InputStream input = loader.openStream();
-//                byte[] bytes = IOUtilities.inputStreamToBytes(input)
-//                IOUtilities.close(input)
-//                StringUtilities.createString(bytes, 'UTF-8')
-//                println '----------------'
+        ObjectId lastCommitId = repository.resolve(Constants.HEAD)
 
-        return null
+        final ApplicationID appId = cubeInfo.applicationID
+        Repository repo = getRepoByAppId(appId)
+        RevWalk walk = new RevWalk(repo)
+
+        RevCommit commit = walk.parseCommit(lastCommitId)
+        RevTree tree = commit.tree
+
+        final String fname = cubeInfo.name + '.json'
+        // Now use a TreeWalk to iterate over all files in the Tree recursively
+        // you can set Filters to narrow down the results if needed
+        TreeWalk treeWalk = new TreeWalk(repo)
+        treeWalk.addTree(tree)
+        TreeFilter filter = new TreeFilter() {
+            boolean include(TreeWalk walker) throws MissingObjectException, IncorrectObjectTypeException, IOException
+            {
+                if (walker.subtree)
+                {
+                    return true;
+
+                }
+                return fname.equalsIgnoreCase(walker.nameString)
+            }
+
+            boolean shouldBeRecursive()
+            {
+                return true
+            }
+
+            TreeFilter clone()
+            {
+                return null
+            }
+        }
+        treeWalk.filter = filter
+        treeWalk.recursive = true
+        NCube ncube = null
+
+        while (treeWalk.next())
+        {
+            Matcher m = Regexes.gitCubeNames.matcher(treeWalk.pathString)
+            if (m.find() && m.groupCount() > 0)
+            {
+                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
+                InputStream input = loader.openStream();
+                byte[] bytes = IOUtilities.inputStreamToBytes(input)
+                IOUtilities.close(input)
+
+                ncube = NCube.fromSimpleJson(StringUtilities.createString(bytes, 'UTF-8'))
+
+            }
+        }
+
+        walk.dispose()
+        if (ncube == null)
+        {
+            throw new IllegalArgumentException('Cube: ' + cubeInfo + ' not found.');
+        }
+        return ncube
     }
 
     Object[] getCubeRecords(ApplicationID appId, String pattern)
@@ -265,7 +320,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
     static List getFileLog(Git git, String qualifiedFilename)
     {
-        def logs = git.log().setMaxCount(1).addPath(qualifiedFilename).call()
+        def logs = git.log().addPath(qualifiedFilename).call()
         def history = [];
         for (RevCommit rev : logs)
         {

@@ -1276,6 +1276,29 @@ public class TestNCubeManager
     }
 
     @Test
+    public void testNCubeInfoDto() throws Exception
+    {
+        NCube cube = createCube()
+        def history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%')
+        assertEquals(2, history.length)     // sys.classpath too
+        assertTrue history[0] instanceof NCubeInfoDto
+        assertFalse history[0] instanceof NCubeInfoDetailsDto
+        assertTrue history[1] instanceof NCubeInfoDto
+        assertFalse history[1] instanceof NCubeInfoDetailsDto
+
+        Axis oddAxis = NCubeBuilder.getOddAxis(true)
+        cube.addAxis(oddAxis)
+
+        NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
+        history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%')
+        assertEquals(2, history.length)
+        assertTrue history[0] instanceof NCubeInfoDto
+        assertFalse history[0] instanceof NCubeInfoDetailsDto
+        assertTrue history[1] instanceof NCubeInfoDto
+        assertFalse history[1] instanceof NCubeInfoDetailsDto
+    }
+
+    @Test
     public void testResolveClasspathWithInvalidUrl() throws Exception
     {
         NCubeManager.clearCache()

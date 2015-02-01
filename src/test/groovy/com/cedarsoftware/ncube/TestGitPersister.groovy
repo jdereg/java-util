@@ -4,6 +4,9 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
+
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -34,16 +37,34 @@ class TestGitPersister
     }
 
     @Test
-    void testOpenRepository()
+    void testGetCubeRecords()
     {
         NCubeGitPersister persister = new NCubeGitPersister()
         persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
         NCubeManager.NCubePersister = persister;
         Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')
+        boolean found_a = false
+        boolean found_aa = false
+        boolean found_big5D = false
         for (NCubeInfoDto info : cubes)
         {
-//            println info
+            if (info.name.equals('a'))
+            {
+                found_a = true
+            }
+            if (info.name.equals('aa'))
+            {
+                found_aa = true
+            }
+            if (info.name.equals('big5D'))
+            {
+                found_big5D = true
+            }
         }
+
+        assert found_a
+        assert found_aa
+        assert found_big5D
     }
 
     @Test
@@ -53,6 +74,18 @@ class TestGitPersister
         persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
         NCubeManager.NCubePersister = persister;
         NCube cube = NCubeManager.getCube(ApplicationID.defaultAppId, 'aa')
-        println cube.toHtml()
+        assertNotNull cube.getAxis('state').findColumn('OH')
+    }
+
+    @Test
+    void doesCubeExist()
+    {
+        NCubeGitPersister persister = new NCubeGitPersister()
+        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        NCubeManager.NCubePersister = persister;
+        assert NCubeManager.doesCubeExist(ApplicationID.defaultAppId, 'a')
+        assert NCubeManager.doesCubeExist(ApplicationID.defaultAppId, 'aa')
+        assert NCubeManager.doesCubeExist(ApplicationID.defaultAppId, 'big5D')
+        assertFalse NCubeManager.doesCubeExist(ApplicationID.defaultAppId, 'SDFdsfl')
     }
 }

@@ -19,8 +19,6 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.TreeFilter
 
-import java.util.regex.Matcher
-
 /**
  * NCube Persister implementation that stores / retrieves n-cubes directly from
  * a Git repository.
@@ -142,7 +140,8 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         RevCommit commit = walk.parseCommit(lastCommitId)
         RevTree tree = commit.tree
 
-        final String fname = cubeInfo.name + '.json'
+        final String fname = cubeInfo.name.toLowerCase() + '.json'
+
         // Now use a TreeWalk to iterate over all files in the Tree recursively
         // you can set Filters to narrow down the results if needed
         TreeWalk treeWalk = new TreeWalk(repo)
@@ -174,16 +173,14 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
         while (treeWalk.next())
         {
-            Matcher m = Regexes.gitCubeNames.matcher(treeWalk.pathString)
-            if (m.find() && m.groupCount() > 0)
+            if (treeWalk.pathString.toLowerCase().endsWith(fname))
             {
                 ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
-                InputStream input = loader.openStream();
+                InputStream input = new BufferedInputStream(loader.openStream());
                 byte[] bytes = IOUtilities.inputStreamToBytes(input)
                 IOUtilities.close(input)
-
                 ncube = NCube.fromSimpleJson(StringUtilities.createString(bytes, 'UTF-8'))
-
+                break;
             }
         }
 
@@ -215,14 +212,14 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         while (treeWalk.next())
         {
             NCubeInfoDto info = new NCubeInfoDto()
-            Matcher m = Regexes.gitCubeNames.matcher(treeWalk.pathString)
-            if (m.find() && m.groupCount() > 0)
+            // TODO Make sure name portion matches passed in pattern
+            if (treeWalk.pathString.toLowerCase().endsWith('.json'))
             {
                 info.tenant = appId.tenant
                 info.app = appId.app
                 info.version = appId.version
                 info.status = appId.status
-                info.name = m.group(1)
+                info.name = treeWalk.nameString.substring(0, treeWalk.nameString.length() - 5)   // remove .json
                 info.sha1 = treeWalk.getObjectId(0).name
                 cubes.add(info)
             }
@@ -244,7 +241,56 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
     boolean doesCubeExist(ApplicationID appId, String cubeName)
     {
-        return false
+        ObjectId lastCommitId = repository.resolve(Constants.HEAD)
+
+        Repository repo = getRepoByAppId(appId)
+        RevWalk walk = new RevWalk(repo)
+
+        RevCommit commit = walk.parseCommit(lastCommitId)
+        RevTree tree = commit.tree
+
+        final String fname = cubeName.toLowerCase() + '.json'
+
+        // Now use a TreeWalk to iterate over all files in the Tree recursively
+        // you can set Filters to narrow down the results if needed
+        TreeWalk treeWalk = new TreeWalk(repo)
+        treeWalk.addTree(tree)
+        TreeFilter filter = new TreeFilter() {
+            boolean include(TreeWalk walker) throws MissingObjectException, IncorrectObjectTypeException, IOException
+            {
+                if (walker.subtree)
+                {
+                    return true;
+
+                }
+                return fname.equalsIgnoreCase(walker.nameString)
+            }
+
+            boolean shouldBeRecursive()
+            {
+                return true
+            }
+
+            TreeFilter clone()
+            {
+                return null
+            }
+        }
+        treeWalk.filter = filter
+        treeWalk.recursive = true
+        boolean found = false
+
+        while (treeWalk.next())
+        {
+            if (treeWalk.pathString.toLowerCase().endsWith(fname))
+            {
+                found = true
+                break
+            }
+        }
+
+        walk.dispose()
+        return found
     }
 
     Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)

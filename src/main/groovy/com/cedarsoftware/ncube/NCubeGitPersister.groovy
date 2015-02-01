@@ -175,6 +175,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         {
             if (treeWalk.pathString.toLowerCase().endsWith(fname))
             {
+                // TODO: IF revision is not null, load the nth revision
                 ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
                 InputStream input = new BufferedInputStream(loader.openStream());
                 byte[] bytes = IOUtilities.inputStreamToBytes(input)

@@ -42,7 +42,7 @@ class TestGitPersister
         NCubeGitPersister persister = new NCubeGitPersister()
         persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
         NCubeManager.NCubePersister = persister;
-        Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')
+        Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, null)
         boolean found_a = false
         boolean found_aa = false
         boolean found_big5D = false
@@ -65,6 +65,54 @@ class TestGitPersister
         assert found_a
         assert found_aa
         assert found_big5D
+
+        cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, '*')
+        found_a = false
+        found_aa = false
+        found_big5D = false
+        for (NCubeInfoDto info : cubes)
+        {
+            if (info.name.equals('a'))
+            {
+                found_a = true
+            }
+            if (info.name.equals('aa'))
+            {
+                found_aa = true
+            }
+            if (info.name.equals('big5D'))
+            {
+                found_big5D = true
+            }
+        }
+
+        assert found_a
+        assert found_aa
+        assert found_big5D
+
+        cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, 'A*')
+        found_a = false
+        found_aa = false
+        found_big5D = false
+        for (NCubeInfoDto info : cubes)
+        {
+            if (info.name.equals('a'))
+            {
+                found_a = true
+            }
+            if (info.name.equals('aa'))
+            {
+                found_aa = true
+            }
+            if (info.name.equals('big5D'))
+            {
+                found_big5D = true
+            }
+        }
+
+        assert found_a
+        assert found_aa
+        assertFalse found_big5D
     }
 
     @Test

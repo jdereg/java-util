@@ -19,6 +19,9 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.TreeFilter
 
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
 /**
  * NCube Persister implementation that stores / retrieves n-cubes directly from
  * a Git repository.
@@ -209,18 +212,24 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         treeWalk.addTree(tree)
         treeWalk.recursive = true
         List<NCubeInfoDto> cubes = new ArrayList()
+        if (!pattern)
+        {   // default to all
+            pattern = '*'
+        }
+        Pattern filenamePattern = Pattern.compile(StringUtilities.wildcardToRegexString(pattern + '.json'), Pattern.CASE_INSENSITIVE)
 
         while (treeWalk.next())
         {
-            NCubeInfoDto info = new NCubeInfoDto()
-            // TODO Make sure name portion matches passed in pattern
-            if (treeWalk.pathString.toLowerCase().endsWith('.json'))
+            String filename = new File(treeWalk.pathString).getName();
+            Matcher m = filenamePattern.matcher(filename);
+            if (m.find())
             {
+                NCubeInfoDto info = new NCubeInfoDto()
                 info.tenant = appId.tenant
                 info.app = appId.app
                 info.version = appId.version
                 info.status = appId.status
-                info.name = treeWalk.nameString.substring(0, treeWalk.nameString.length() - 5)   // remove .json
+                info.name = treeWalk.nameString.replace('.json', '')
                 info.sha1 = treeWalk.getObjectId(0).name
                 cubes.add(info)
             }

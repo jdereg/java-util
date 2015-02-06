@@ -44,12 +44,41 @@ import java.util.regex.Pattern
  */
 class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 {
-    Repository repository;
-    String repoDir;
+    Repository repository
+    String repoDir
 
+    static class IgnoreCaseFilter extends TreeFilter
+    {
+        String lowName
+
+        IgnoreCaseFilter(String name)
+        {
+            lowName = name.toLowerCase()
+        }
+
+        boolean include(TreeWalk walker) throws MissingObjectException, IncorrectObjectTypeException, IOException
+        {
+            if (walker.subtree)
+            {
+                return true;
+
+            }
+            return lowName.equalsIgnoreCase(walker.nameString)
+        }
+
+        boolean shouldBeRecursive()
+        {
+            return true
+        }
+
+        TreeFilter clone()
+        {
+            return null
+        }
+    }
     private Repository getRepoByAppId(ApplicationID appId)
     {
-        return repository;
+        return repository
     }
 
     void setRepositoryDir(String dir)
@@ -59,7 +88,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         repository = builder.setGitDir(new File(dir))
                 .readEnvironment() // scan environment GIT_* variables
                 .findGitDir() // scan up the file system tree
-                .build();
+                .build()
 //
 //        println repository
 //        println '--------------------------------------------'
@@ -73,6 +102,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 //        listRepositoryContents(lastCommitId)
     }
 
+    // TODO: Delete
     private void listRepositoryContents(AnyObjectId root) throws IOException
     {
         // a RevWalk allows to walk over commits based on some filtering that is defined
@@ -92,6 +122,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         }
     }
 
+    // TODO: Delete
     private void listAllCommits()
     {
         Git git = new Git(repository)
@@ -103,106 +134,84 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
             count++
         }
         println(count)
+        git.close()
     }
 
+    // TODO: Delete
     private void listAllBranches()
     {
         println('Listing local branches:')
-        List<Ref> call = new Git(repository).branchList().call();
+        Git git = new Git(repository)
+        List<Ref> call = git.branchList().call();
         for (Ref ref : call)
         {
             println('Branch: ' + ref + ' ' + ref.name + ' ' + ref.objectId.name)
         }
 
         println('Now including remote branches:');
-        call = new Git(repository).branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
+        call = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
         for (Ref ref : call)
         {
             println('Branch: ' + ref + ' ' + ref.name + ' ' + ref.objectId.name);
         }
+        git.close()
     }
 
+    // TODO: Delete
     private void listAllTags()
     {
-        List<Ref> call = new Git(repository).tagList().call()
+        Git git = new Git(repository)
+        List<Ref> call = git.tagList().call()
         for (Ref ref : call)
         {
-            ref.
             println('Tag: ' + ref.name + ' ' + ref.objectId.name)
         }
+        git.close()
     }
 
     NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)
     {
-        ObjectId lastCommitId = repository.resolve(Constants.HEAD)
-
         final ApplicationID appId = cubeInfo.applicationID
         Repository repo = getRepoByAppId(appId)
-        RevWalk walk = new RevWalk(repo)
-
-        RevCommit commit = walk.parseCommit(lastCommitId)
-        RevTree tree = commit.tree
-
-        final String fname = cubeInfo.name.toLowerCase() + '.json'
-
-        // Now use a TreeWalk to iterate over all files in the Tree recursively
-        // you can set Filters to narrow down the results if needed
+        Git git = new Git(repo)
+        String physicalName = 'cubes/' + cubeInfo.name + '.json'
+        List history = getFileLog(git, physicalName)
+        if (history.empty)
+        {
+            throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', not found in repository.');
+        }
+        if (!revision)
+        {
+            revision = history.size() - 1;
+        }
+        if (revision >= history.size())
+        {
+            throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', revision: ' + revision + ' does not exist');
+        }
+        RevCommit rev = history[history.size() - 1 - revision]
         TreeWalk treeWalk = new TreeWalk(repo)
-        treeWalk.addTree(tree)
-        TreeFilter filter = new TreeFilter() {
-            boolean include(TreeWalk walker) throws MissingObjectException, IncorrectObjectTypeException, IOException
-            {
-                if (walker.subtree)
-                {
-                    return true;
-
-                }
-                return fname.equalsIgnoreCase(walker.nameString)
-            }
-
-            boolean shouldBeRecursive()
-            {
-                return true
-            }
-
-            TreeFilter clone()
-            {
-                return null
-            }
-        }
-        treeWalk.filter = filter
+        treeWalk.addTree(rev.tree)
         treeWalk.recursive = true
-        NCube ncube = null
+        treeWalk.filter = new IgnoreCaseFilter(cubeInfo.name + '.json')
+        treeWalk.next()
+        git.close()
+        return fetchContent(repo, treeWalk)
+    }
 
-        while (treeWalk.next())
-        {
-            if (treeWalk.pathString.toLowerCase().endsWith(fname))
-            {
-                // TODO: IF revision is not null, load the nth revision
-                ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
-                InputStream input = new BufferedInputStream(loader.openStream());
-                byte[] bytes = IOUtilities.inputStreamToBytes(input)
-                IOUtilities.close(input)
-                ncube = NCube.fromSimpleJson(StringUtilities.createString(bytes, 'UTF-8'))
-                break;
-            }
-        }
-
-        walk.dispose()
-        if (ncube == null)
-        {
-            throw new IllegalArgumentException('Cube: ' + cubeInfo + ' not found.');
-        }
-        return ncube
+    private NCube<?> fetchContent(Repository repo, TreeWalk treeWalk)
+    {
+        ObjectLoader loader = repo.open(treeWalk.getObjectId(0));
+        InputStream input = new BufferedInputStream(loader.openStream());
+        byte[] bytes = IOUtilities.inputStreamToBytes(input)
+        IOUtilities.close(input)
+        NCube.fromSimpleJson(StringUtilities.createString(bytes, 'UTF-8'))
     }
 
     Object[] getCubeRecords(ApplicationID appId, String pattern)
     {
-        ObjectId lastCommitId = repository.resolve(Constants.HEAD)
-
         Repository repo = getRepoByAppId(appId)
+        ObjectId lastCommitId = repo.resolve(Constants.HEAD)
         RevWalk walk = new RevWalk(repo)
-
         RevCommit commit = walk.parseCommit(lastCommitId)
         RevTree tree = commit.tree
 
@@ -220,7 +229,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
         while (treeWalk.next())
         {
-            String filename = new File(treeWalk.pathString).getName();
+            String filename = new File(treeWalk.pathString).name;
             Matcher m = filenamePattern.matcher(filename);
             if (m.find())
             {
@@ -251,42 +260,17 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 
     boolean doesCubeExist(ApplicationID appId, String cubeName)
     {
-        ObjectId lastCommitId = repository.resolve(Constants.HEAD)
-
         Repository repo = getRepoByAppId(appId)
+        ObjectId lastCommitId = repo.resolve(Constants.HEAD)
         RevWalk walk = new RevWalk(repo)
-
         RevCommit commit = walk.parseCommit(lastCommitId)
-        RevTree tree = commit.tree
-
         final String fname = cubeName.toLowerCase() + '.json'
 
         // Now use a TreeWalk to iterate over all files in the Tree recursively
         // you can set Filters to narrow down the results if needed
         TreeWalk treeWalk = new TreeWalk(repo)
-        treeWalk.addTree(tree)
-        TreeFilter filter = new TreeFilter() {
-            boolean include(TreeWalk walker) throws MissingObjectException, IncorrectObjectTypeException, IOException
-            {
-                if (walker.subtree)
-                {
-                    return true;
-
-                }
-                return fname.equalsIgnoreCase(walker.nameString)
-            }
-
-            boolean shouldBeRecursive()
-            {
-                return true
-            }
-
-            TreeFilter clone()
-            {
-                return null
-            }
-        }
-        treeWalk.filter = filter
+        treeWalk.addTree(commit.tree)
+        treeWalk.filter = new IgnoreCaseFilter(fname)
         treeWalk.recursive = true
         boolean found = false
 
@@ -374,13 +358,16 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         return false
     }
 
-    static List getFileLog(Git git, String qualifiedFilename)
+    /**
+     * Fetch all RevCommits for a given cube
+     */
+    static List getFileLog(Git git, String filename)
     {
-        def logs = git.log().addPath(qualifiedFilename).call()
+        def logs = git.log().addPath(filename).call()
         def history = [];
         for (RevCommit rev : logs)
         {
-            history.add([id: rev.id.name, comment: rev.fullMessage, revision:rev])
+            history.add(rev)
         }
         return history;
     }

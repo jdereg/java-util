@@ -6,6 +6,7 @@ import org.junit.Test
 
 import static org.junit.Assert.assertFalse
 import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -123,6 +124,57 @@ class TestGitPersister
         NCubeManager.NCubePersister = persister;
         NCube cube = NCubeManager.getCube(ApplicationID.defaultAppId, 'aa')
         assertNotNull cube.getAxis('state').findColumn('OH')
+    }
+
+    @Test
+    void testLoadCubeRevision()
+    {
+        NCubeGitPersister persister = new NCubeGitPersister()
+        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        NCubeManager.NCubePersister = persister;
+        Object[] cubeInfos = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, 'aA')
+        assertNotNull cubeInfos
+        assert cubeInfos.length == 1
+        NCube ncube1 = persister.loadCube(cubeInfos[0], 0)
+        assertNotNull ncube1
+        assert ncube1.getAxis("state").getName().equals('State')
+        assert 'aa'.equals(ncube1.name)
+
+        NCube ncube2 = persister.loadCube(cubeInfos[0], 1)
+        assertNotNull ncube2
+        assert ncube2.getAxis("state").getName().equals('state')
+        assert 'aa'.equals(ncube2.name)
+
+        NCube ncube3 = persister.loadCube(cubeInfos[0], 2)
+        assertNotNull ncube3
+        assert ncube3.getAxis("state").getName().equals('state')
+        assert 'aa'.equals(ncube3.name)
+
+        NCube ncube4 = persister.loadCube(cubeInfos[0], 3)
+        assertNotNull ncube4
+        assert ncube4.getAxis("state").getName().equals('state')
+        assert 'aa'.equals(ncube4.name)
+
+        NCube ncube5 = persister.loadCube(cubeInfos[0], 4)
+        assertNotNull ncube5
+        assert ncube5.getAxis("state").getName().equals('State')
+        assert 'aa'.equals(ncube5.name)
+
+        NCube ncubeLatest = persister.loadCube(cubeInfos[0], null)
+        assertNotNull ncubeLatest
+        assert ncubeLatest.getAxis("state").getName().equals('State')
+        assert 'aa'.equals(ncubeLatest.name)
+
+        try
+        {
+            persister.loadCube(cubeInfos[0], 99999)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('revision')
+            assert e.message.toLowerCase().contains('does not exist')
+        }
     }
 
     @Test

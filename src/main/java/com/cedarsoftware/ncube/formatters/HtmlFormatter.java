@@ -196,7 +196,7 @@ public class HtmlFormatter implements NCubeFormatter
                 s.append("</th>\n");
                 Set<Long> colIds = new LinkedHashSet<>();
                 colIds.add(column.getId());
-                buildCell(ncube, s, colIds);
+                buildCell(ncube, s, colIds, i % 2 == 0);
                 s.append("</tr>\n");
             }
         }
@@ -333,7 +333,7 @@ public class HtmlFormatter implements NCubeFormatter
                     Column column = topColumns.get(i);
                     colIds.put(topAxisName, column.getId());
                     // Other coordinate values are set above this for-loop
-                    buildCell(ncube, s, new LinkedHashSet<>(colIds.values()));
+                    buildCell(ncube, s, new LinkedHashSet<>(colIds.values()), h % 2 == 0);
                 }
 
                 s.append("</tr>\n");
@@ -521,10 +521,11 @@ public class HtmlFormatter implements NCubeFormatter
         return "column";
     }
 
-    private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord)
+    private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord, boolean odd)
     {
+        String oddRow = odd ? "" : "style=\"background:#e0e0e0\"";
         String id = makeCellId(coord);
-        s.append(" <td data-id=\"").append(id).append("\" class=\"td-ncube ");
+        s.append(" <td data-id=\"").append(id).append("\" " + oddRow + " class=\"td-ncube ");
 
         if (ncube.containsCellById(coord))
         {
@@ -534,13 +535,13 @@ public class HtmlFormatter implements NCubeFormatter
                 CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.getUrl()))
                 {
-                    s.append("cell cell-url\"><a class=\"cmd-url\" href=\"#\">");
+                    s.append("cell cell-url\" " + oddRow + "><a class=\"cmd-url\" href=\"#\">");
                     s.append(cmd.getUrl());
                     s.append("</a>");
                 }
                 else if (cmd instanceof GroovyBase)
                 {
-                    s.append("cell cell-code\"><pre class=\"ncube-pre\">");
+                    s.append("cell cell-code\"><pre class=\"ncube-pre\" " + oddRow + ">");
                     s.append(getCellValueAsString(cell));
                     s.append("</pre>");
                 }

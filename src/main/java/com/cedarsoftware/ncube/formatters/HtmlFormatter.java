@@ -471,6 +471,33 @@ public class HtmlFormatter implements NCubeFormatter
                 "background: white;\n" +
                 "}\n" +
                 ".ncube-pre:hover { background: #E0F0FF }\n" +
+                ".odd-row {\n" +
+                "    background-color: #e0e0e0 !important;\n" +
+                "}\n" +
+                "\n" +
+                ".odd-row:hover {\n" +
+                "    background-color: lightcyan !important;\n" +
+                "}\n" +
+                "\n" +
+                ".cell-selected {\n" +
+                "    background-color: lightblue !important;\n" +
+                "}\n" +
+                "\n" +
+                ".cell-selected:hover {\n" +
+                "    background-color: lightskyblue !important;\n" +
+                "}\n" +
+                "\n" +
+                "th.ncube-dead:hover {\n" +
+                "    background: #76A7FF;\n" +
+                "}\n" +
+                "\n" +
+                ".th-ncube a, .th-ncube-top a {\n" +
+                "    color: lightskyblue;\n" +
+                "}\n" +
+                "\n" +
+                ".th-ncube > a:hover, .th-ncube-top > a:hover {\n" +
+                "    color: lightcyan;\n" +
+                "}\n" +
                 " </style>\n" +
                 "</head>\n" +
                 "<body>\n" +
@@ -523,9 +550,9 @@ public class HtmlFormatter implements NCubeFormatter
 
     private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord, boolean odd)
     {
-        String oddRow = odd ? "" : "style=\"background:#e0e0e0\"";
+        String oddRow = odd ? "" : "odd-row ";
         String id = makeCellId(coord);
-        s.append(" <td data-id=\"").append(id).append("\" " + oddRow + " class=\"td-ncube ");
+        s.append(" <td data-id=\"").append(id).append("\" class=\"td-ncube " + oddRow);
 
         if (ncube.containsCellById(coord))
         {
@@ -535,13 +562,13 @@ public class HtmlFormatter implements NCubeFormatter
                 CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.getUrl()))
                 {
-                    s.append("cell cell-url\" " + oddRow + "><a class=\"cmd-url\" href=\"#\">");
+                    s.append("cell cell-url\"><a class=\"cmd-url\" href=\"#\">");
                     s.append(cmd.getUrl());
                     s.append("</a>");
                 }
                 else if (cmd instanceof GroovyBase)
                 {
-                    s.append("cell cell-code\"><pre class=\"ncube-pre\" " + oddRow + ">");
+                    s.append("cell cell-code\"><pre class=\"" + oddRow + "ncube-pre\">");
                     s.append(getCellValueAsString(cell));
                     s.append("</pre>");
                 }

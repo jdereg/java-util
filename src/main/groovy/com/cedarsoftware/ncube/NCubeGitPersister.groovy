@@ -76,6 +76,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
             return null
         }
     }
+
     private Repository getRepoByAppId(ApplicationID appId)
     {
         return repository
@@ -195,13 +196,8 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         treeWalk.filter = new IgnoreCaseFilter(cubeInfo.name + '.json')
         treeWalk.next()
         git.close()
-        return fetchContent(repo, treeWalk)
-    }
-
-    private NCube<?> fetchContent(Repository repo, TreeWalk treeWalk)
-    {
-        ObjectLoader loader = repo.open(treeWalk.getObjectId(0));
-        InputStream input = new BufferedInputStream(loader.openStream());
+        ObjectLoader loader = repo.open(treeWalk.getObjectId(0))
+        InputStream input = new BufferedInputStream(loader.openStream())
         byte[] bytes = IOUtilities.inputStreamToBytes(input)
         IOUtilities.close(input)
         NCube.fromSimpleJson(StringUtilities.createString(bytes, 'UTF-8'))

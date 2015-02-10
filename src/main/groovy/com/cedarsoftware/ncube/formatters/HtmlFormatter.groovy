@@ -40,7 +40,7 @@ import static java.lang.Math.abs
  */
 public class HtmlFormatter implements NCubeFormatter
 {
-    String[] _headers;
+    String[] _headers
 
     public HtmlFormatter(String... headers)
     {
@@ -81,24 +81,24 @@ public class HtmlFormatter implements NCubeFormatter
 
         // Step 2.  Now find an axis that is a good candidate for the single (top) axis.  This would be an axis
         // with the number of columns closest to 12.
-        int smallestDelta = Integer.MAX_VALUE;
-        int candidate = -1;
-        int count = 0;
+        int smallestDelta = Integer.MAX_VALUE
+        int candidate = -1
+        int count = 0
 
         for (Axis axis : axes)
         {
             if (headerStrings.keySet().contains(axis.name))
             {
-                candidate = count;
-                break;
+                candidate = count
+                break
             }
             int delta = abs(axis.size() - 12)
             if (delta < smallestDelta)
             {
-                smallestDelta = delta;
-                candidate = count;
+                smallestDelta = delta
+                candidate = count
             }
-            count++;
+            count++
         }
 
         // Step 3. Compute cell area size
@@ -121,7 +121,7 @@ public class HtmlFormatter implements NCubeFormatter
 
         for (int i = 1; i < len; i++)
         {
-            height = axes.get(i).size() * height;
+            height = axes.get(i).size() * height
         }
 
         [axes, height, width] as Object[]
@@ -277,7 +277,7 @@ public class HtmlFormatter implements NCubeFormatter
                         long span = rowspan[(axisName)]
                         String columnId = String.valueOf(column.id)
                         String colCssClass = getColumnCssClass(column)
-                        
+
                         if (span == 1)
                         {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
                             // Use column's ID as TH element's ID
@@ -463,7 +463,7 @@ background: white;
 }
 
 .odd-row:hover {
-    background-color: lightcyan !important;
+    background-color: #E0F0FF !important;
 }
 
 .cell-selected {
@@ -700,5 +700,4 @@ th.ncube-dead:hover {
 
         s.toString()
     }
-
 }

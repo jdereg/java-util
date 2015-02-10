@@ -16,13 +16,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -858,12 +860,11 @@ public class NCubeManager
     }
 
     // ----------------------------------------- Resource APIs ---------------------------------------------------------
-    public static String getResourceAsString(String name) throws IOException
+    public static String getResourceAsString(String name) throws Exception
     {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-        URL url = NCubeManager.class.getResource("/" + name);
-        IOUtilities.transfer(new File(url.getFile()), out);
-        return new String(out.toByteArray(), "UTF-8");
+        URL url = NCubeManager.class.getResource('/' + name);
+        Path resPath = Paths.get(url.toURI());
+        return new String(Files.readAllBytes(resPath), "UTF-8");
     }
 
     static NCube getNCubeFromResource(String name)

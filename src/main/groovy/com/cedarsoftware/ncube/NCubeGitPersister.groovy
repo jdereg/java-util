@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube
 
 import com.cedarsoftware.util.IOUtilities
 import com.cedarsoftware.util.StringUtilities
+import groovy.transform.CompileStatic
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.errors.IncorrectObjectTypeException
@@ -42,6 +43,7 @@ import java.util.regex.Pattern
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
 {
     Repository repository
@@ -129,9 +131,10 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         Git git = new Git(repository)
         Iterable<RevCommit> commits = git.log().all().call()
         int count = 0;
-        for (RevCommit commit : commits)
+        Iterator i = commits.iterator()
+        while (i.hasNext())
         {
-            println('LogCommit: ' + commit)
+            println('LogCommit: ' + i.next())
             count++
         }
         println(count)
@@ -176,7 +179,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         Repository repo = getRepoByAppId(appId)
         Git git = new Git(repo)
         String physicalName = 'cubes/' + cubeInfo.name + '.json'
-        List history = getFileLog(git, physicalName)
+        List<RevCommit> history = getFileLog(git, physicalName)
         if (history.empty)
         {
             throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', not found in repository.');
@@ -216,7 +219,7 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         TreeWalk treeWalk = new TreeWalk(repo)
         treeWalk.addTree(tree)
         treeWalk.recursive = true
-        List<NCubeInfoDto> cubes = new ArrayList()
+        List<NCubeInfoDto> cubes = []
         if (!pattern)
         {   // default to all
             pattern = '*'
@@ -357,14 +360,16 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
     /**
      * Fetch all RevCommits for a given cube
      */
-    static List getFileLog(Git git, String filename)
+    static List<RevCommit> getFileLog(Git git, String filename)
     {
-        def logs = git.log().addPath(filename).call()
-        def history = [];
-        for (RevCommit rev : logs)
+        Iterable<RevCommit> logs = git.log().addPath(filename).call()
+        List<RevCommit> history = []
+        Iterator i = logs.iterator()
+        while (i.hasNext())
         {
+            RevCommit rev = i.next()
             history.add(rev)
         }
-        return history;
+        return history
     }
 }

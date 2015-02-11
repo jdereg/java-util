@@ -14,6 +14,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap
 import com.cedarsoftware.util.StringUtilities
 import com.cedarsoftware.util.io.JsonReader
 import com.cedarsoftware.util.io.JsonWriter
+import groovy.transform.CompileStatic
 
 import java.lang.reflect.Array
 
@@ -38,6 +39,7 @@ import static java.lang.Math.abs
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 public class HtmlFormatter implements NCubeFormatter
 {
     String[] _headers
@@ -64,10 +66,10 @@ public class HtmlFormatter implements NCubeFormatter
         {
             _headers = [] as String[]
         }
-        Map headerStrings = new CaseInsensitiveMap()
+        Map<String, Object> headerStrings = new CaseInsensitiveMap()
         for (String header : _headers)
         {
-            headerStrings.put(header, null)
+            headerStrings[header] = null
         }
         // Step 1. Sort axes from smallest to largest.
         // Hypercubes look best when the smaller axes are on the inside, and the larger axes are on the outside.
@@ -115,13 +117,13 @@ public class HtmlFormatter implements NCubeFormatter
         {
             axes.add(0, top)
         }
-        long width = axes.get(0).size()
+        long width = axes[0].size()
         long height = 1;
         final int len = axes.size()
 
         for (int i = 1; i < len; i++)
         {
-            height = axes.get(i).size() * height
+            height = axes[i].size() * height
         }
 
         [axes, height, width] as Object[]
@@ -151,7 +153,7 @@ public class HtmlFormatter implements NCubeFormatter
         s.append(html)
 
         // Top row (special case)
-        Axis topAxis = axes.get(0)
+        Axis topAxis = axes[0]
         List<Column> topColumns = topAxis.columns
         final int topColumnSize = topColumns.size()
         final String topAxisName = topAxis.name
@@ -188,7 +190,7 @@ public class HtmlFormatter implements NCubeFormatter
         }
         else
         {   // 2D+ shows as one column on the X axis and all other dimensions on the Y axis.
-            int deadCols = axes.size() - 1;
+            int deadCols = axes.size() - 1
             if (deadCols > 0)
             {
                 s.append(' <th class="th-ncube ncube-dead" colspan="').append(deadCols).append("\">")
@@ -232,10 +234,10 @@ public class HtmlFormatter implements NCubeFormatter
                     colspan *= axes[j].size()
                 }
 
-                rowspan[(axisName)] = colspan
-                rowspanCounter[(axisName)] = 0L
-                columnCounter[(axisName)] = 0L
-                columns[(axisName)] = axis.columns
+                rowspan[axisName] = colspan
+                rowspanCounter[axisName] = 0L
+                columnCounter[axisName] = 0L
+                columns[axisName] = axis.columns
             }
 
             for (Column column : topColumns)
@@ -267,14 +269,14 @@ public class HtmlFormatter implements NCubeFormatter
                 {
                     Axis axis = axes[i]
                     String axisName = axis.name
-                    Long count = rowspanCounter.get(axisName)
+                    Long count = rowspanCounter[axisName]
 
                     if (count == 0)
                     {
-                        Long colIdx = columnCounter[(axisName)]
-                        Column column = columns[(axisName)][colIdx.intValue()]
-                        colIds[(axisName)] = column.id
-                        long span = rowspan[(axisName)]
+                        Long colIdx = columnCounter[axisName]
+                        Column column = columns[axisName][colIdx.intValue()]
+                        colIds[axisName] = column.id
+                        long span = rowspan[axisName]
                         String columnId = String.valueOf(column.id)
                         String colCssClass = getColumnCssClass(column)
 
@@ -302,22 +304,22 @@ public class HtmlFormatter implements NCubeFormatter
                         {
                             colIdx = 0L
                         }
-                        columnCounter[(axisName)] = colIdx
+                        columnCounter[axisName] = colIdx
                     }
                     // Increment row counter (counts from 0 to rowspan of subordinate axes)
                     count++;
-                    if (count >= rowspan[(axisName)])
+                    if (count >= rowspan[axisName])
                     {
                         count = 0L
                     }
-                    rowspanCounter[(axisName)] = count
+                    rowspanCounter[axisName] = count
                 }
 
                 // Cells for the row
                 for (int i = 0; i < width; i++)
                 {
                     Column column = topColumns[i]
-                    colIds[(topAxisName)] = column.id
+                    colIds[topAxisName] = column.id
                     // Other coordinate values are set above this for-loop
                     buildCell(ncube, s, new LinkedHashSet<>(colIds.values()), h % 2 == 0)
                 }
@@ -540,7 +542,7 @@ th.ncube-dead:hover {
 
     private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord, boolean odd)
     {
-        String oddRow = odd ? "" : "odd-row ";
+        String oddRow = odd ? '' : 'odd-row '
         String id = makeCellId(coord)
         s.append(' <td data-id="').append(id).append('" class="td-ncube ' + oddRow)
 
@@ -628,7 +630,7 @@ th.ncube-dead:hover {
             str.append(']')
             return str.toString()
         }
-        else if (isArray && Object[].class.equals(cellValue.getClass()))
+        else if (isArray && ([] as Object[]).class.equals(cellValue.getClass()))
         {
             StringBuilder str = new StringBuilder()
             str.append('[')

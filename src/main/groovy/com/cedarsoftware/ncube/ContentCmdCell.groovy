@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube
 import com.cedarsoftware.ncube.util.CdnRouter
 import com.cedarsoftware.util.IOUtilities
 import com.cedarsoftware.util.UrlUtilities
+import groovy.transform.CompileStatic
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
@@ -31,11 +32,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 abstract class ContentCmdCell extends UrlCommandCell
 {
     private AtomicBoolean hasBeenFetched = new AtomicBoolean(false)
-    private boolean cacheable;
-    private Object cache;
+    private boolean cacheable
+    private Object cache
     private static Map<String, String> extToMimeType = new ConcurrentHashMap<>()
     private static final Logger LOG = LogManager.getLogger(CdnRouter.class)
 
@@ -58,7 +60,7 @@ abstract class ContentCmdCell extends UrlCommandCell
     public ContentCmdCell(String cmd, String url, boolean cacheContent)
     {
         super(cmd, url)
-        this.cacheable = cacheContent;
+        cacheable = cacheContent;
     }
 
     public boolean isCacheable()
@@ -207,13 +209,13 @@ abstract class ContentCmdCell extends UrlCommandCell
             }
             catch (IOException ignored) { }
         }
-        return null;
+        return null
     }
 
     private static void transferToServer(URLConnection conn, HttpServletRequest request) throws IOException
     {
-        OutputStream out = null;
-        InputStream input = null;
+        OutputStream out = null
+        InputStream input = null
 
         try
         {
@@ -242,7 +244,7 @@ abstract class ContentCmdCell extends UrlCommandCell
             out = response.outputStream
             IOUtilities.transfer(input, out)
 
-            return cacheable ? ((CachingInputStream) input).streamCache : null;
+            return cacheable ? ((CachingInputStream) input).getStreamCache() : null     // must call .getStreamCache() with CompileStatic
         }
         finally
         {
@@ -281,7 +283,7 @@ abstract class ContentCmdCell extends UrlCommandCell
 
     private static String getExtension(String urlPath)
     {
-        int index = urlPath == null ? -1 : urlPath.lastIndexOf(EXTENSION_SEPARATOR as int)
+        int index = urlPath == null ? -1 : urlPath.lastIndexOf(UrlCommandCell.EXTENSION_SEPARATOR as int)   // Must fully quality with CompileStatic
         return index == -1 ? null : urlPath.substring(index).intern()
     }
 
@@ -289,14 +291,15 @@ abstract class ContentCmdCell extends UrlCommandCell
     {
         if (actualUrl == null)
         {
-            return;
+            return
         }
 
         String ext = getExtension(actualUrl.toString().toLowerCase())
         String mime = extToMimeType.get(ext)
 
-        if (mime == null) {
-            return;
+        if (mime == null)
+        {
+            return
         }
 
         response.addHeader("content-type", mime)
@@ -326,7 +329,7 @@ abstract class ContentCmdCell extends UrlCommandCell
             {
                 streamCache.write(b, off, count)
             }
-            return count;
+            return count
         }
 
         public int read() throws IOException
@@ -336,7 +339,7 @@ abstract class ContentCmdCell extends UrlCommandCell
             {
                 streamCache.write(result)
             }
-            return result;
+            return result
         }
 
         public byte[] getStreamCache()

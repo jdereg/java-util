@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube
 
+import groovy.transform.CompileStatic
+
 /**
  * Class used to carry the NCube meta-information
  * to the client.
@@ -20,6 +22,7 @@ package com.cedarsoftware.ncube
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 interface NCubeReadOnlyPersister
 {
     NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)

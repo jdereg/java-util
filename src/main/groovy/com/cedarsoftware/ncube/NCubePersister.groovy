@@ -1,4 +1,6 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube
+
+import groovy.transform.CompileStatic;
 
 /**
  * Class used to carry the NCube meta-information
@@ -20,6 +22,7 @@ package com.cedarsoftware.ncube;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 interface NCubePersister extends NCubeReadOnlyPersister
 {
     void createCube(ApplicationID appId, NCube cube, String username);

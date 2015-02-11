@@ -182,15 +182,15 @@ class NCubeGitPersister implements NCubePersister, NCubeReadOnlyPersister
         List<RevCommit> history = getFileLog(git, physicalName)
         if (history.empty)
         {
-            throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', not found in repository.');
+            throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', not found in repository.')
         }
         if (!revision)
         {
-            revision = history.size() - 1;
+            revision = history.size() - 1
         }
         if (revision >= history.size())
         {
-            throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', revision: ' + revision + ' does not exist');
+            throw new IllegalArgumentException('Unable to load cube: ' + cubeInfo.name + ', revision: ' + revision + ' does not exist')
         }
         RevCommit rev = history[history.size() - 1 - revision]
         TreeWalk treeWalk = new TreeWalk(repo)

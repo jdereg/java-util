@@ -1,6 +1,6 @@
 n-cube
 ======
-n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN Proxy Router, and Enterprise Spreadsheet, built as a hyper-space.  To include in your project:
+n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN Proxy Router, and Enterprise Spreadsheet, built as a hyper-space.  The Domain Specific Language (**DSL**) for the Rules Engine is **Groovy**. To include in your project:
 
 ```
 <dependency>

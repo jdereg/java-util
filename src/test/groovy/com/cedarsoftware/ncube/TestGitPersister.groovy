@@ -4,9 +4,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import java.nio.file.Path
-import java.nio.file.Paths
-
 import static org.junit.Assert.assertFalse
 import static org.junit.Assert.assertNotNull
 import static org.junit.Assert.fail
@@ -43,14 +40,13 @@ class TestGitPersister
     @Test
     void testGetCubeRecords()
     {
-        URL url = NCubeManager.class.getResource('/repos/pas/git')
-        Path resPath = Paths.get(url.toURI())
+        // TODO: Where can I place this .git repo inside n-cube's repo and not have it mess things up?
+//        URL url = NCubeManager.class.getResource('/repos/pas/git')
+//        Path resPath = Paths.get(url.toURI())
 //        return new String(Files.readAllBytes(resPath), "UTF-8")
 
-
-
         NCubeGitPersister persister = new NCubeGitPersister()
-        persister.repositoryDir = resPath.toRealPath()
+        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
         NCubeManager.NCubePersister = persister;
         Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, null)
         boolean found_a = false

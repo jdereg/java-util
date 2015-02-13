@@ -1,0 +1,3 @@
+[submodule "src/test/resources/repos/cubes"]
+	path = src/test/resources/repos/cubes
+	url = https://github.com/jdereg/cubes

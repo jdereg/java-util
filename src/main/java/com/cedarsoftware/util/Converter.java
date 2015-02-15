@@ -66,7 +66,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return Byte.valueOf((String) fromInstance);
+                        return Byte.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
                     {
@@ -93,7 +93,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return Short.valueOf((String) fromInstance);
+                        return Short.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
                     {
@@ -120,7 +120,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return Integer.valueOf((String) fromInstance);
+                        return Integer.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
                     {
@@ -147,7 +147,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return Long.valueOf((String) fromInstance);
+                        return Long.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Date)
                     {
@@ -208,7 +208,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return new BigDecimal((String) fromInstance);
+                        return new BigDecimal(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Number)
                     {
@@ -246,7 +246,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return new BigInteger((String) fromInstance);
+                        return new BigInteger(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Number)
                     {
@@ -284,7 +284,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return DateUtilities.parseDate((String) fromInstance);
+                        return DateUtilities.parseDate(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Calendar)
                     {
@@ -314,7 +314,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        Date date = DateUtilities.parseDate((String) fromInstance);
+                        Date date = DateUtilities.parseDate(((String) fromInstance).trim());
                         return new java.sql.Date(date.getTime());
                     }
                     else if (fromInstance instanceof Calendar)
@@ -346,7 +346,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return Float.valueOf((String) fromInstance);
+                        return Float.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
                     {
@@ -373,7 +373,7 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
-                        return Double.valueOf((String) fromInstance);
+                        return Double.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
                     {

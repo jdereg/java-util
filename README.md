@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.16.0</version>
+  <version>1.16.1</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Feed hungry developers...</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -35,6 +35,8 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.16.1
+ * In Converter.convert(value, type), the value is trimmed of leading / trailing white-space if it is a String and the type is a Number.
 * 1.16.0
  * Added Converter.convert() API.  Allows converting instances of one type to another.  Handles all primitives, primitive wrappers, Date, java.sql.Date, String, BigDecimal, and BigInteger.  Additionally, input (from) argument accepts Calendar.
  * Added static getDateFormat() to SafeSimpleDateFormat for quick access to thread local formatter (per format String).

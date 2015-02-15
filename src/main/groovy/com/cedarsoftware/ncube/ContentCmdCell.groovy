@@ -60,12 +60,12 @@ abstract class ContentCmdCell extends UrlCommandCell
     public ContentCmdCell(String cmd, String url, boolean cacheContent)
     {
         super(cmd, url)
-        cacheable = cacheContent;
+        cacheable = cacheContent
     }
 
     public boolean isCacheable()
     {
-        return cacheable;
+        return cacheable
     }
 
     public Object execute(Map<String, Object> ctx)
@@ -76,7 +76,7 @@ abstract class ContentCmdCell extends UrlCommandCell
 
         if (url == null)
         {
-            data = cmd;
+            data = cmd
         }
         else
         {
@@ -187,7 +187,7 @@ abstract class ContentCmdCell extends UrlCommandCell
             {
                 UrlUtilities.readErrorResponse(conn)
                 response.sendError(resCode, conn.responseMessage)
-                return null;
+                return null
             }
         }
         catch (SocketTimeoutException e)
@@ -232,8 +232,8 @@ abstract class ContentCmdCell extends UrlCommandCell
 
     private Object transferFromServer(URLConnection conn, HttpServletResponse response) throws IOException
     {
-        InputStream input = null;
-        OutputStream out = null;
+        InputStream input = null
+        OutputStream out = null
         try
         {
             input = new BufferedInputStream(conn.inputStream, 32768)

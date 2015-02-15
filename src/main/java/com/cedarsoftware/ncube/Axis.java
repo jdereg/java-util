@@ -67,7 +67,9 @@ public class Axis
 	public static final int SORTED = 0;
 	public static final int DISPLAY = 1;
     private static final AtomicLong baseAxisIdForTesting = new AtomicLong(1);
-    public static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
+    private static final Pattern setPattern = Pattern.compile("(?:([^ \\[,][^,\\[]+)|(?:\\[\\s*([^,]+?)\\s*,\\s*([^\\[]+?)\\s*\\])|(?:,)|(?:\\s*))+?");
+    private static final Pattern rangePattern = Pattern.compile("\\s*([^,]+)[,](.*)\\s*$");
+
 
     // used to get O(1) on SET axis for the discrete elements in the Set
     final transient Map<Comparable, Column> discreteToCol = new TreeMap<>();
@@ -780,50 +782,36 @@ public class Axis
                 return standardizeColumnValue(value);
 
             case RANGE:
-                Matcher matcher = rangePattern.matcher(value);
-                if (matcher.matches())
-                {
-                    String one = matcher.group(1);
-                    String two = matcher.group(2);
-                    return standardizeColumnValue(new Range(one.trim(), two.trim()));
-                }
-                else
-                {
-                    throw new IllegalArgumentException("Value (" + value + ") cannot be parsed as a Range.  Use [value1, value2], axis: " + name);
-                }
+                return standardizeColumnValue(parseRange(value));
 
             case SET:
-                value = "[" + value + "]";
                 try
                 {
-                    Object[] array = (Object[])JsonReader.jsonToJava(value);
-                    RangeSet set = new RangeSet();
-                    for (Object pt : array)
+                    final RangeSet set = new RangeSet();
+                    Matcher matcher = setPattern.matcher(value);
+                    while (matcher.find())
                     {
-                        if (pt instanceof Object[])
-                        {
-                            Object[] rangeValues = (Object[]) pt;
-                            if (rangeValues.length != 2)
-                            {
-                                throw new IllegalArgumentException("Set Ranges must have two values only, range length: " + rangeValues.length + ", axis: " + name);
-                            }
-                            if (!(rangeValues[0] instanceof Comparable) || !(rangeValues[1] instanceof Comparable))
-                            {
-                                throw new IllegalArgumentException("Set Ranges must have two Comparable values, axis: " + name);
-                            }
-                            Range range = new Range((Comparable)rangeValues[0], (Comparable)rangeValues[1]);
-                            set.add(range);
+                        // Determine range or single value
+                        if (matcher.groupCount() > 2 && matcher.group(2) != null && matcher.group(3) != null)
+                        {   // Range
+                            String one = matcher.group(2);
+                            String two = matcher.group(3);
+                            set.add(new Range(trimQuotes(one), trimQuotes(two)));
                         }
                         else
                         {
-                            if (!(pt instanceof Comparable))
+                            String v = matcher.group(1);
+                            if (StringUtilities.hasContent(v))
                             {
-                                throw new IllegalArgumentException("Set values must implement Comparable, axis: " + name);
+                                set.add(trimQuotes(v));
                             }
-                            set.add((Comparable)pt);
                         }
                     }
-                    return standardizeColumnValue(set);
+                    if (set.size() > 0)
+                    {
+                        return standardizeColumnValue(set);
+                    }
+                    throw new IllegalArgumentException("Value: " + value + " cannot be parsed as a Set. Must have at least one element within the set, axis: " + name);
                 }
                 catch (Exception e)
                 {
@@ -839,6 +827,39 @@ public class Axis
             default:
                 throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to parse value: " + value);
         }
+    }
+
+    private Range parseRange(String value)
+    {
+        value = value.trim();
+        if (value.startsWith("[") && value.endsWith("]"))
+        {   // Remove surrounding brackets
+            value = value.substring(1, value.length() - 1);
+        }
+        Matcher matcher = rangePattern.matcher(value);
+        if (matcher.matches())
+        {
+            String one = matcher.group(1);
+            String two = matcher.group(2);
+            return new Range(trimQuotes(one), trimQuotes(two));
+        }
+        else
+        {
+            throw new IllegalArgumentException("Value (" + value + ") cannot be parsed as a Range.  Use [value1, value2], axis: " + name);
+        }
+    }
+
+    private static String trimQuotes(String value)
+    {
+        if (value.startsWith("\"") && value.endsWith("\""))
+        {
+            return value.substring(1, value.length() - 1);
+        }
+        if (value.startsWith("'") && value.endsWith("'"))
+        {
+            return value.substring(1, value.length() - 1);
+        }
+        return value.trim();
     }
 
 	public int getColumnOrder()

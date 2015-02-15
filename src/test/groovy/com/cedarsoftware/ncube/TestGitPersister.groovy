@@ -2,7 +2,7 @@ package com.cedarsoftware.ncube
 
 import org.junit.After
 import org.junit.Before
-import org.junit.Test
+import org.junit.Ignore
 
 import static org.junit.Assert.assertFalse
 import static org.junit.Assert.assertNotNull
@@ -37,7 +37,7 @@ class TestGitPersister
     {
     }
 
-    @Test
+    @Ignore
     void testGetCubeRecords()
     {
         // TODO: Where can I place this .git repo inside n-cube's repo and not have it mess things up?
@@ -46,7 +46,7 @@ class TestGitPersister
 //        return new String(Files.readAllBytes(resPath), "UTF-8")
 
         NCubeGitPersister persister = new NCubeGitPersister()
-        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        persister.repositoryDir = '/repos/cubes/.git'
         NCubeManager.NCubePersister = persister;
         Object[] cubes = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, null)
         boolean found_a = false
@@ -121,21 +121,21 @@ class TestGitPersister
         assertFalse found_big5D
     }
 
-    @Test
+    @Ignore
     void testLoadCube()
     {
         NCubeGitPersister persister = new NCubeGitPersister()
-        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        persister.repositoryDir = '/repos/cubes/.git'
         NCubeManager.NCubePersister = persister;
         NCube cube = NCubeManager.getCube(ApplicationID.defaultAppId, 'aa')
         assertNotNull cube.getAxis('state').findColumn('OH')
     }
 
-    @Test
+    @Ignore
     void testLoadCubeRevision()
     {
         NCubeGitPersister persister = new NCubeGitPersister()
-        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        persister.repositoryDir = '/repos/cubes/.git'
         NCubeManager.NCubePersister = persister;
         Object[] cubeInfos = NCubeManager.getCubeRecordsFromDatabase(ApplicationID.defaultAppId, 'aA')
         assertNotNull cubeInfos
@@ -182,11 +182,11 @@ class TestGitPersister
         }
     }
 
-    @Test
+    @Ignore
     void doesCubeExist()
     {
         NCubeGitPersister persister = new NCubeGitPersister()
-        persister.repositoryDir = '/Users/jderegnaucourt/Development/cubes/.git'
+        persister.repositoryDir = '/repos/cubes/.git'
         NCubeManager.NCubePersister = persister;
         assert NCubeManager.doesCubeExist(ApplicationID.defaultAppId, 'a')
         assert NCubeManager.doesCubeExist(ApplicationID.defaultAppId, 'aa')

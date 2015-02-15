@@ -5,6 +5,7 @@ import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import com.cedarsoftware.ncube.proximity.LatLon
 import com.cedarsoftware.ncube.proximity.Point3D
 import com.cedarsoftware.util.CaseInsensitiveMap
+import com.cedarsoftware.util.Converter
 import com.cedarsoftware.util.io.JsonWriter
 import org.junit.After
 import org.junit.Before
@@ -779,6 +780,19 @@ public class TestAxis
         assert calendar.time == range.high
     }
 
+    @Test 
+    void testRangeWithBrackets()
+    {
+        Axis axis = new Axis('brackets', AxisType.RANGE, AxisValueType.LONG, true, Axis.SORTED)
+        Range range = (Range) axis.convertStringToColumnValue('[10,20]')
+        assert 10L == range.low
+        assert 20L == range.high
+
+        range = (Range) axis.convertStringToColumnValue('  [  10 ,  20  ]  ')
+        assert 10L == range.low
+        assert 20L == range.high
+    }
+
     @Test
     public void testDiscreteSetParsing()
     {
@@ -806,7 +820,7 @@ public class TestAxis
         calendar.set 2016, 11, 25
         assert calendar.time == set.get(1)
 
-        set = (RangeSet) axis.convertStringToColumnValue(' "Dec 25, 2014", "Dec 25, 2016"')
+        set = (RangeSet) axis.convertStringToColumnValue(' "Dec 25th 2014", "Dec 25th 2016"')
         calendar = calendar.instance
         calendar.clear()
         calendar.set 2014, 11, 25
@@ -1892,6 +1906,88 @@ public class TestAxis
 
         diff = (stop - start) / 1000.0  // usec
 //        println("lookup 10,000 times large number of columns = " + (diff / 1000.0) + " ms")
+    }
+
+    @Test
+    public void testIntSetParsing()
+    {
+        Axis axis = new Axis('ages', AxisType.SET, AxisValueType.LONG, true, Axis.SORTED)
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue('10, 20, [50, 90], 100')
+        assert set.size() == 4
+        assert set.get(0) == 10
+        assert set.get(1) == 20
+        assert set.get(2) == new Range(50L, 90L)
+        assert set.get(3) == 100
+
+        set = (RangeSet) axis.convertStringToColumnValue('10, 20, [50, 90]')
+        assert set.size() == 3
+        assert set.get(0) == 10
+        assert set.get(1) == 20
+        assert set.get(2) == new Range(50L, 90L)
+
+        set = (RangeSet) axis.convertStringToColumnValue('[50, 90], 94')
+        assert set.size() == 2
+        assert set.get(0) == new Range(50L, 90L)
+        assert set.get(1) == 94
+
+        set = (RangeSet) axis.convertStringToColumnValue('[50, 90]')
+        assert set.size() == 1
+        assert set.get(0) == new Range(50L, 90L)
+
+        set = (RangeSet) axis.convertStringToColumnValue('[50, 90], [20, 60]')
+        assert set.size() == 2
+        assert set.get(0) == new Range(50L, 90L)
+        assert set.get(1) == new Range(20L, 60L)
+
+        set = (RangeSet) axis.convertStringToColumnValue('[50, 90], 789, [20, 60]')
+        assert set.size() == 3
+        assert set.get(0) == new Range(50L, 90L)
+        assert set.get(1) == 789
+        assert set.get(2) == new Range(20L, 60L)
+    }
+
+    @Test
+    public void testFloatSetParsing()
+    {
+        Axis axis = new Axis('ages', AxisType.SET, AxisValueType.BIG_DECIMAL, true, Axis.SORTED)
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue('10.1, 20, [50, 90.5], 100.1')
+        assert set.size() == 4
+        assert set.get(0) == 10.1
+        assert set.get(1) == 20
+        assert set.get(2) == new Range(50.0, 90.5)
+        assert set.get(3) == 100.1
+    }
+
+    @Test
+    public void testDateSetParsing()
+    {
+        Axis axis = new Axis('dates', AxisType.SET, AxisValueType.DATE, true, Axis.SORTED)
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue('10 Dec 1995, 1995/12/25, [1996 dec 17, 2001-01-31], Jun 10th 2010')
+        assert set.size() == 4
+        assert set.get(0) == Converter.convert("10 Dec 1995", Date.class)
+        assert set.get(1) == Converter.convert("25 Dec 1995", Date.class)
+        assert set.get(2) == new Range(Converter.convert("1996 dec 17", Date.class), Converter.convert('2001-01-31', Date.class))
+        assert set.get(3) == Converter.convert("Jun 10th 2010", Date.class)
+    }
+
+    @Test
+    public void testStringSetParsing()
+    {
+        Axis axis = new Axis('strings', AxisType.SET, AxisValueType.STRING, true, Axis.SORTED)
+        RangeSet set = (RangeSet) axis.convertStringToColumnValue('10 Dec 1995, 1995/12/25, [1996 dec 17, 2001-01-31], Jun 10th 2010')
+        assert set.size() == 4
+        assert set.get(0) == "10 Dec 1995"
+        assert set.get(1) == "1995/12/25"
+        assert set.get(2) == new Range("1996 dec 17", '2001-01-31')
+        assert set.get(3) == "Jun 10th 2010"
+
+        set = (RangeSet) axis.convertStringToColumnValue('  The quick, "brown fox", [ "jumps over", the lazy dog], I\'m dead serious, ""this is quoted""')
+        assert set.size() == 5
+        assert set.get(0) == "The quick"
+        assert set.get(1) == "brown fox"
+        assert set.get(2) == new Range('jumps over', 'the lazy dog')
+        assert set.get(3) == "I'm dead serious"
+        assert set.get(4) == '"this is quoted"'
     }
 
     private static boolean isValidRange(Axis axis, Range range)

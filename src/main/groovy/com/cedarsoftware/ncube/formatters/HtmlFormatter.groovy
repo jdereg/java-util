@@ -540,7 +540,7 @@ th.ncube-dead:hover {
         return "column";
     }
 
-    private static void buildCell(NCube ncube, StringBuilder s, Set<Long> coord, boolean odd)
+    private void buildCell(NCube ncube, StringBuilder s, Set<Long> coord, boolean odd)
     {
         String oddRow = odd ? '' : 'odd-row '
         String id = makeCellId(coord)
@@ -583,17 +583,23 @@ th.ncube-dead:hover {
         s.append('</td>\n')
     }
 
+    // TODO: Match cube names in String, CommandCell, and Object[] and
+    // substitute in HTML anchor tag
     static String getCellValueAsString(Object cellValue)
     {
         if (cellValue == null)
         {
-            return "null";
+            return 'null'
         }
         boolean isArray = cellValue.getClass().array
 
-        if (cellValue instanceof Date || cellValue instanceof String)
+        if (cellValue instanceof Date || cellValue instanceof String || cellValue instanceof Number)
         {
             return CellInfo.formatForDisplay((Comparable) cellValue)
+        }
+        else if (cellValue instanceof CommandCell)
+        {
+            return ((CommandCell) cellValue).cmd
         }
         else if (cellValue instanceof Boolean || cellValue instanceof Character)
         {
@@ -603,17 +609,13 @@ th.ncube-dead:hover {
         {
             return cellValue.toString()
         }
-        else if (cellValue instanceof Number)
-        {
-            return CellInfo.formatForDisplay((Comparable) cellValue)
-        }
         else if (cellValue instanceof byte[])
         {
             return StringUtilities.encode((byte[]) cellValue)
         }
         else if (isArray && JsonReader.isPrimitive(cellValue.getClass().componentType))
         {
-            StringBuilder str = new StringBuilder()
+            final StringBuilder str = new StringBuilder()
             str.append('[')
             final int len = Array.getLength(cellValue)
             final int len1 = len - 1;
@@ -632,7 +634,7 @@ th.ncube-dead:hover {
         }
         else if (isArray && ([] as Object[]).class.equals(cellValue.getClass()))
         {
-            StringBuilder str = new StringBuilder()
+            final StringBuilder str = new StringBuilder()
             str.append('[')
             final int len = Array.getLength(cellValue)
             final int len1 = len - 1;
@@ -649,16 +651,12 @@ th.ncube-dead:hover {
             str.append(']')
             return str.toString()
         }
-        else if (cellValue instanceof CommandCell)
-        {
-            return ((CommandCell) cellValue).cmd
-        }
         else if (cellValue instanceof URLClassLoader)
         {   // Turn URLClassLoader back into the [] of String URL it was built from.
             URLClassLoader urlClassLoader = (URLClassLoader) cellValue;
-            StringBuilder s = new StringBuilder()
+            final StringBuilder s = new StringBuilder()
             s.append('[')
-            URL[] urls = urlClassLoader.URLs
+            final URL[] urls = urlClassLoader.URLs
             for (int i=0; i < urls.length; i++)
             {
                 URL url = urls[i]

@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.1.3</version>
+  <version>3.1.4</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="1eb8ea37a2609606bb825ab2d4d3692f" data-button-style="custom_small" data-custom="NCUBE" href="https://coinbase.com/checkouts/1eb8ea37a2609606bb825ab2d4d3692f">Purchase Life-time License</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -83,6 +83,11 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.1.4
+ * Range and Set parsing for Axis values less picky and much more robust.  Useful when input for these columns are passed in from a GUI.
+ * All unit tests are now completely written in Groovy.
+ * Any .groovy file that is used internally for the implementation of the library now uses @CompileStatic for improved speed.
+ * Further development on GitPersister (not complete, unaccessible).
 * 3.1.3
  * Bug fix: Fixed bug in rule engine where Boolean.equals() was being called instead of isTrue() - which uses proper Groovy Truth.  This bug was introduced in 3.1.1.
 * 3.1.2

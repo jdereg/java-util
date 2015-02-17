@@ -896,7 +896,7 @@ public class NCube<T>
         // Ensure that the specified coordinate matches a column on each axis
         final Set<Axis> axisRef = new HashSet<>();
         final Set<Axis> allAxes = new HashSet<>(axisList.values());
-        final Set<Column> point = new LinkedHashSet<>();
+        final Set<Column> point = new HashSet<>();
 
         // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
         // but not more than one column ID per axis.  Also, too few can be supplied, if and

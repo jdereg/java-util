@@ -1,5 +1,8 @@
 package com.cedarsoftware.util;
 
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamWriter;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -178,6 +181,26 @@ public final class IOUtilities
             flush(out);
             close(in);
         }
+    }
+
+    public static void close(XMLStreamReader reader)
+    {
+        try
+        {
+            reader.close();
+        }
+        catch (XMLStreamException ignore)
+        { }
+    }
+
+    public static void close(XMLStreamWriter writer)
+    {
+        try
+        {
+            writer.close();
+        }
+        catch (XMLStreamException ignore)
+        { }
     }
 
     public static void close(Closeable c)

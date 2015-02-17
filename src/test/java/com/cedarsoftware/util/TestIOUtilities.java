@@ -2,6 +2,11 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamWriter;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -21,6 +26,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -254,4 +260,33 @@ public class TestIOUtilities
         IOUtilities.close(out);
     }
 
+    @Test
+    public void testXmlStreamReaderClose()
+    {
+        XMLInputFactory factory = XMLInputFactory.newInstance();
+        try
+        {
+            XMLStreamReader reader = factory.createXMLStreamReader(new ByteArrayInputStream("<root></root>".getBytes("UTF-8")));
+            IOUtilities.close(reader);
+        }
+        catch (Exception e)
+        {
+            fail();
+        }
+    }
+
+    @Test
+    public void testXmlStreamWriterClose()
+    {
+        XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newFactory();
+        try
+        {
+            XMLStreamWriter writer = xmlOutputFactory.createXMLStreamWriter(new BufferedOutputStream(new ByteArrayOutputStream()), "UTF-8");
+            IOUtilities.close(writer);
+        }
+        catch (Exception e)
+        {
+            fail();
+        }
+    }
 }

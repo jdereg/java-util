@@ -46,7 +46,7 @@ public class HtmlFormatter implements NCubeFormatter
 
     public HtmlFormatter(String... headers)
     {
-        _headers = headers;
+        _headers = headers
     }
 
     /**
@@ -142,20 +142,17 @@ public class HtmlFormatter implements NCubeFormatter
             return getNoAxisHtml()
         }
 
-        String html = getHtmlPreamble()
+        final StringBuilder s = new StringBuilder()
+        final Object[] displayValues = getDisplayValues(ncube)
+        final List<Axis> axes = (List<Axis>) displayValues[0]
+        final long height = (Long) displayValues[1]
+        final long width = (Long) displayValues[2]
 
-        StringBuilder s = new StringBuilder()
-        Object[] displayValues = getDisplayValues(ncube)
-        List<Axis> axes = (List<Axis>) displayValues[0]
-        long height = (Long) displayValues[1]
-        long width = (Long) displayValues[2]
-
-        s.append(html)
+        s.append(getHtmlPreamble())
 
         // Top row (special case)
-        Axis topAxis = axes[0]
-        List<Column> topColumns = topAxis.columns
-        final int topColumnSize = topColumns.size()
+        final Axis topAxis = axes[0]
+        final List<Column> topColumns = topAxis.columns
         final String topAxisName = topAxis.name
 
         if (axes.size() == 1)
@@ -176,16 +173,16 @@ public class HtmlFormatter implements NCubeFormatter
                 s.append("<tr>\n")
                 Column column = topColumns[i]
                 String colId = String.valueOf(column.id)
-                s.append(" <th data-id=\"").append(colId)
+                s.append(' <th data-id="').append(colId)
                 s.append('" data-axis="').append(topAxisName).append('" class="th-ncube ')
                 s.append(getColumnCssClass(column))
-                s.append("\">")
+                s.append('">')
                 buildColumnGuts(s, column)
-                s.append("</th>\n")
+                s.append('</th>\n')
                 Set<Long> colIds = new LinkedHashSet<>()
                 colIds.add(column.id)
                 buildCell(ncube, s, colIds, i % 2 == 0)
-                s.append("</tr>\n")
+                s.append('</tr>\n')
             }
         }
         else
@@ -195,12 +192,12 @@ public class HtmlFormatter implements NCubeFormatter
             {
                 s.append(' <th class="th-ncube ncube-dead" colspan="').append(deadCols).append("\">")
                 s.append(ncube.name)
-                s.append("</th>\n")
+                s.append('</th>\n')
             }
             s.append(' <th data-id="a').append(topAxis.id).append('" class="th-ncube ncube-head" colspan="')
             s.append(topAxis.size())
             s.append('">')
-            s.append('  <div class="btn-group axis-menu" data-id="').append(topAxisName).append("\">\n")
+            s.append('  <div class="btn-group axis-menu" data-id="').append(topAxisName).append('">\n')
             s.append('  <button type="button" class="btn-sm btn-primary dropdown-toggle axis-btn" data-toggle="dropdown">')
             s.append('   <span>').append(topAxisName).append('</span><span class="caret"></span>')
             s.append('  </button>\n')
@@ -208,7 +205,7 @@ public class HtmlFormatter implements NCubeFormatter
             s.append(' </th>\n</tr>\n')
 
             // Second row (special case)
-            s.append("<tr>\n")
+            s.append('<tr>\n')
             Map<String, Long> rowspanCounter = [:]
             Map<String, Long> rowspan = [:]
             Map<String, Long> columnCounter = [:]
@@ -218,8 +215,8 @@ public class HtmlFormatter implements NCubeFormatter
 
             for (int i = 1; i < axisCount; i++)
             {
-                Axis axis = axes[i]
-                String axisName = axis.name
+                final Axis axis = axes[i]
+                final String axisName = axis.name
                 s.append(' <th data-id="a').append(axis.id).append('" class="th-ncube ncube-head">\n')
                 s.append('  <div class="btn-group axis-menu" data-id="').append(axisName).append('">\n')
                 s.append('   <button type="button" class="btn-sm btn-primary dropdown-toggle axis-btn" data-toggle="dropdown">')
@@ -227,7 +224,7 @@ public class HtmlFormatter implements NCubeFormatter
                 s.append('   </button>\n')
                 s.append('   </div>\n')
                 s.append(' </th>\n')
-                long colspan = 1;
+                long colspan = 1
 
                 for (int j = i + 1; j < axisCount; j++)
                 {
@@ -250,6 +247,8 @@ public class HtmlFormatter implements NCubeFormatter
                 s.append('</th>\n')
             }
 
+            final int topColumnSize = topColumns.size()
+
             if (topAxis.size() != topColumnSize)
             {
                 s.append(' <th class="th-ncube-top ')
@@ -267,30 +266,22 @@ public class HtmlFormatter implements NCubeFormatter
                 // Column headers for the row
                 for (int i = 1; i < axisCount; i++)
                 {
-                    Axis axis = axes[i]
-                    String axisName = axis.name
-                    Long count = rowspanCounter[axisName]
+                    final Axis axis = axes[i]
+                    final String axisName = axis.name
+                    long count = rowspanCounter[axisName]
 
                     if (count == 0)
                     {
-                        Long colIdx = columnCounter[axisName]
-                        Column column = columns[axisName][colIdx.intValue()]
-                        colIds[axisName] = column.id
-                        long span = rowspan[axisName]
-                        String columnId = String.valueOf(column.id)
-                        String colCssClass = getColumnCssClass(column)
+                        long colIdx = columnCounter[axisName]
+                        final Column column = columns[axisName][(int)colIdx]
+                        colIds[axisName] = column.id    // snag column.id for cell coordinate later
+                        final long span = rowspan[axisName]
 
-                        if (span == 1)
-                        {   // drop rowspan tag since rowspan="1" is redundant and wastes space in HTML
-                            // Use column's ID as TH element's ID
-                            s.append(' <th data-id="').append(columnId).append('" data-axis="').append(axisName).append('" class="th-ncube ')
-                            s.append(colCssClass)
-                        }
-                        else
+                        // Use column's ID as TH element's ID
+                        s.append(' <th data-id="').append(column.id).append('" data-axis="').append(axisName).append('" class="th-ncube ')
+                        s.append(getColumnCssClass(column))
+                        if (span != 1)
                         {   // Need to show rowspan attribute
-                            // Use column's ID as TH element's ID
-                            s.append(' <th data-id="').append(columnId).append('" data-axis="').append(axisName).append('" class="th-ncube ')
-                            s.append(colCssClass)
                             s.append('" rowspan="')
                             s.append(span)
                         }
@@ -318,10 +309,10 @@ public class HtmlFormatter implements NCubeFormatter
                 // Cells for the row
                 for (int i = 0; i < width; i++)
                 {
-                    Column column = topColumns[i]
-                    colIds[topAxisName] = column.id
+                    // Keep replacing the column ID for the top row portion of the coordinate (Set of IDs)
+                    colIds[topAxisName] = topColumns[i].id
                     // Other coordinate values are set above this for-loop
-                    buildCell(ncube, s, new LinkedHashSet<>(colIds.values()), h % 2 == 0)
+                    buildCell(ncube, s, colIds.values(), h % 2 == 0)
                 }
 
                 s.append("</tr>\n")
@@ -336,9 +327,9 @@ public class HtmlFormatter implements NCubeFormatter
 
     private static void buildColumnGuts(StringBuilder s, Column column)
     {
-        final boolean isCmd = column.value instanceof CommandCell;
+        final boolean isCmd = column.value instanceof CommandCell
         final boolean isUrlCmd = isCmd && StringUtilities.hasContent(((CommandCell) column.value).url)
-        final boolean isInlineCmd = isCmd && !isUrlCmd;
+        final boolean isInlineCmd = isCmd && !isUrlCmd
 
         if (isInlineCmd)
         {
@@ -506,7 +497,7 @@ th.ncube-dead:hover {
   </head>
   <body/>
 </html>
-""";
+"""
     }
 
     private static void addColumnPrefixText(StringBuilder s, Column column)
@@ -530,28 +521,27 @@ th.ncube-dead:hover {
             CommandCell cmd = (CommandCell) col.value
             if (StringUtilities.hasContent(cmd.url))
             {
-                return "column column-url";
+                return "column column-url"
             }
             else if (cmd instanceof GroovyBase)
             {
-                return "column column-code";
+                return "column column-code"
             }
         }
-        return "column";
+        return "column"
     }
 
-    private void buildCell(NCube ncube, StringBuilder s, Set<Long> coord, boolean odd)
+    private static void buildCell(NCube ncube, StringBuilder s, Collection<Long> coord, boolean odd)
     {
-        String oddRow = odd ? '' : 'odd-row '
-        String id = makeCellId(coord)
-        s.append(' <td data-id="').append(id).append('" class="td-ncube ' + oddRow)
+        final String oddRow = odd ? '' : 'odd-row '
+        s.append(' <td data-id="').append(makeCellId(coord)).append('" class="td-ncube ' + oddRow)
 
         if (ncube.containsCellById(coord))
         {
-            Object cell = ncube.getCellByIdNoExecute(coord)
+            final Object cell = ncube.getCellByIdNoExecute(coord)
             if (cell instanceof CommandCell)
             {
-                CommandCell cmd = (CommandCell) cell;
+                final CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.url))
                 {
                     s.append('cell cell-url"><a class="cmd-url" href="#">')
@@ -583,7 +573,6 @@ th.ncube-dead:hover {
         s.append('</td>\n')
     }
 
-    // TODO: Match cube names in String, CommandCell, and Object[] and
     // substitute in HTML anchor tag
     static String getCellValueAsString(Object cellValue)
     {
@@ -618,7 +607,7 @@ th.ncube-dead:hover {
             final StringBuilder str = new StringBuilder()
             str.append('[')
             final int len = Array.getLength(cellValue)
-            final int len1 = len - 1;
+            final int len1 = len - 1
 
             for (int i = 0; i < len; i++)
             {
@@ -626,7 +615,7 @@ th.ncube-dead:hover {
                 str.append(elem.toString())
                 if (i < len1)
                 {
-                    str.append(", ")
+                    str.append(', ')
                 }
             }
             str.append(']')
@@ -637,7 +626,7 @@ th.ncube-dead:hover {
             final StringBuilder str = new StringBuilder()
             str.append('[')
             final int len = Array.getLength(cellValue)
-            final int len1 = len - 1;
+            final int len1 = len - 1
 
             for (int i = 0; i < len; i++)
             {
@@ -653,10 +642,11 @@ th.ncube-dead:hover {
         }
         else if (cellValue instanceof URLClassLoader)
         {   // Turn URLClassLoader back into the [] of String URL it was built from.
-            URLClassLoader urlClassLoader = (URLClassLoader) cellValue;
+            final URLClassLoader urlClassLoader = (URLClassLoader) cellValue
+            final URL[] urls = urlClassLoader.URLs
             final StringBuilder s = new StringBuilder()
             s.append('[')
-            final URL[] urls = urlClassLoader.URLs
+
             for (int i=0; i < urls.length; i++)
             {
                 URL url = urls[i]
@@ -685,10 +675,11 @@ th.ncube-dead:hover {
         }
     }
 
-    private static String makeCellId(Set<Long> colIds)
+    private static String makeCellId(Collection<Long> colIds)
     {
-        StringBuilder s = new StringBuilder()
-        Iterator<Long> i = colIds.iterator()
+        final StringBuilder s = new StringBuilder()
+        final Iterator<Long> i = colIds.iterator()
+
         while (i.hasNext())
         {
             s.append(i.next())

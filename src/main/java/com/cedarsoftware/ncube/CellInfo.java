@@ -46,6 +46,22 @@ public class CellInfo
     static final SafeSimpleDateFormat dateTimeFormat = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final Pattern DECIMAL_REGEX = Pattern.compile("[.]");
     private static final Pattern HEX_DIGIT = Pattern.compile("[0-9a-fA-F]+");
+    private static final ThreadLocal<DecimalFormat> decimalIntFormat = new ThreadLocal<DecimalFormat>()
+    {
+        public DecimalFormat initialValue()
+        {
+            return new DecimalFormat("#,##0");
+        }
+    };
+
+    private static final ThreadLocal<DecimalFormat> decimalFormat = new ThreadLocal<DecimalFormat>()
+    {
+        public DecimalFormat initialValue()
+        {
+            return new DecimalFormat("#,##0.0##############");
+        }
+    };
+
 
     public CellInfo(String type, String value, Object isUrl, Object isCached)
     {
@@ -570,13 +586,9 @@ public class CellInfo
 
     public static String formatForDisplay(Comparable val)
     {
-        if (val instanceof Date)
+        if (val instanceof Double || val instanceof Float)
         {
-            return getDateAsString((Date)val);
-        }
-        else if (val instanceof Double || val instanceof Float)
-        {
-            return new DecimalFormat("#,##0.0##############").format(val);
+            return decimalFormat.get().format(val);
         }
         else if (val instanceof BigDecimal)
         {
@@ -585,16 +597,20 @@ public class CellInfo
             if (s.contains("."))
             {
                 String[] pieces = DECIMAL_REGEX.split(s);
-                return new DecimalFormat("#,##0").format(new BigInteger(pieces[0])) + "." + pieces[1];
+                return decimalIntFormat.get().format(new BigInteger(pieces[0])) + "." + pieces[1];
             }
             else
             {
-                return new DecimalFormat("#,##0").format(val);
+                return decimalIntFormat.get().format(val);
             }
         }
         else if (val instanceof Number)
         {
-            return new DecimalFormat("#,##0").format(val);
+            return decimalIntFormat.get().format(val);
+        }
+        else if (val instanceof Date)
+        {
+            return getDateAsString((Date) val);
         }
         else if (val == null)
         {

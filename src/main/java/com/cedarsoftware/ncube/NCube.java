@@ -894,27 +894,26 @@ public class NCube<T>
     Set<Column> getColumnsAndCoordinateFromIds(final Collection<Long> coordinate, Map<String, CellInfo> coord)
     {
         // Ensure that the specified coordinate matches a column on each axis
-        final Set<String> axisNamesRef = new CaseInsensitiveSet<>();
-        final Set<String> allAxes = new CaseInsensitiveSet<>(axisList.keySet());
+        final Set<Axis> axisRef = new HashSet<>();
+        final Set<Axis> allAxes = new HashSet<>(axisList.values());
         final Set<Column> point = new LinkedHashSet<>();
 
         // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
         // but not more than one column ID per axis.  Also, too few can be supplied, if and
         // only if, the axes that are not bound too have a Default column (which will be chosen).
-        for (final Axis axis : axisList.values())
+        for (final Axis axis : allAxes)
         {
-            final String axisName = axis.getName();
             for (final Long id : coordinate)
             {
-                Column column = axis.getColumnById(id);
+                final Column column = axis.getColumnById(id);
                 if (column != null)
                 {
-                    if (axisNamesRef.contains(axisName))
+                    if (axisRef.contains(axis))
                     {
-                        throw new IllegalArgumentException("Cannot have more than one column ID per axis, axis '" + axisName + "', NCube '" + name + "'");
+                        throw new IllegalArgumentException("Cannot have more than one column ID per axis, axis '" + axis.getName() + "', cube: " + name);
                     }
 
-                    axisNamesRef.add(axisName);
+                    axisRef.add(axis);
                     point.add(column);
                     addCoordinateToColumnEntry(coord, column, axis);
                 }
@@ -922,20 +921,19 @@ public class NCube<T>
         }
 
         // Remove the referenced axes from allAxes set.  This leaves axes to be resolved.
-        allAxes.removeAll(axisNamesRef);
+        allAxes.removeAll(axisRef);
 
         // For the unbound axes, bind them to the Default Column (if the axis has one)
-        axisNamesRef.clear();   // use Set again, this time to hold unbound axes
-        axisNamesRef.addAll(allAxes);
+        axisRef.clear();   // use Set again, this time to hold unbound axes
+        axisRef.addAll(allAxes);
 
         // allAxes at this point, is the unbound axis (not referenced by an id in input coordinate)
-        for (final String axisName : allAxes)
+        for (final Axis axis : allAxes)
         {
-            Axis axis = getAxis(axisName);
             if (axis.hasDefaultColumn())
             {
-                Column defCol = axis.getDefaultColumn();
-                axisNamesRef.remove(axisName);
+                final Column defCol = axis.getDefaultColumn();
+                axisRef.remove(axis);
                 point.add(defCol);
                 addCoordinateToColumnEntry(coord, defCol, axis);
             }
@@ -953,9 +951,14 @@ public class NCube<T>
             }
         }
 
-        if (!axisNamesRef.isEmpty())
+        if (!axisRef.isEmpty())
         {
-            throw new IllegalArgumentException("Column IDs missing for the axes: " + axisNamesRef + ", NCube '" + name + "'");
+            final StringBuilder s = new StringBuilder();
+            for (Axis axis : axisRef)
+            {
+                s.append(axis.getName());
+            }
+            throw new IllegalArgumentException("Column IDs missing for the axes: " + s + ", cube: " + name);
         }
 
         return point;

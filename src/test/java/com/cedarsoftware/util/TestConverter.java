@@ -10,6 +10,7 @@ import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -496,6 +497,31 @@ public class TestConverter
         catch (Exception e)
         {
             assertTrue(e.getMessage().toLowerCase().contains("unsupported type"));
+        }
+    }
+
+    @Test
+    public void testNullInstance()
+    {
+        assertNull(Converter.convert(null, int.class));
+        assertNull(Converter.convert(null, Integer.class));
+        assertNull(Converter.convert(null, long.class));
+        assertNull(Converter.convert(null, Long.class));
+        assertNull(Converter.convert(null, Date.class));
+        assertNull(Converter.convert(null, String.class));
+    }
+
+    @Test
+    public void testNullType()
+    {
+        try
+        {
+            Converter.convert("123", null);
+            fail();
+        }
+        catch (Exception e)
+        {
+            e.getMessage().toLowerCase().contains("type cannot be null");
         }
     }
 }

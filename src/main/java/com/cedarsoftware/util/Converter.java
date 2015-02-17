@@ -50,6 +50,14 @@ public final class Converter
      */
     public static Object convert(Object fromInstance, Class toType)
     {
+        if (toType == null)
+        {
+            throw new IllegalArgumentException("Type cannot be null in Converter.convert(value, type)");
+        }
+        if (fromInstance == null)
+        {
+            return null;
+        }
         switch(toType.getName())
         {
             case "byte":

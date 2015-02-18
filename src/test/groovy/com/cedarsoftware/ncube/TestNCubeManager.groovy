@@ -654,8 +654,8 @@ public class TestNCubeManager
         NCubeInfoDto nc1 = (NCubeInfoDto) cubeList[0]
         NCubeInfoDto nc2 = (NCubeInfoDto) cubeList[1]
 
-        assertTrue(nc1.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/test.Age-Gender'))
-        assertTrue(nc2.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/test.Floppy'))
+        assertTrue(nc1.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/null/test.Age-Gender'))
+        assertTrue(nc2.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/null/test.Floppy'))
 
         assertTrue(nc1.name.equals('test.Floppy') || nc2.name.equals('test.Floppy'))
         assertFalse(nc1.name.equals('test.Floppy') && nc2.name.equals('test.Floppy'))

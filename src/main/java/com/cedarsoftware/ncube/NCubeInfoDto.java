@@ -26,16 +26,17 @@ public class NCubeInfoDto
 	public String app;
 	public String version;
 	public String status;
+    public String changeSet;
 	public String name;
 	public String sha1;
 
 	public ApplicationID getApplicationID()
 	{
-		return new ApplicationID(tenant, app, version, status);
+		return new ApplicationID(tenant, app, version, status, changeSet);
 	}
 
 	public String toString()
 	{
-		return tenant + "/" + app + "/" + version + "/" + status + "/" + name + "/" + sha1;
+		return tenant + '/' + app + '/' + version + '/' + status + '/' + changeSet + '/' + name + '/' + sha1;
 	}
 }

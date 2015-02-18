@@ -148,7 +148,7 @@ public class TestCdnRouter
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         new CdnRouter().route request, response
 
-        verify(response, times(1)).sendError 500, 'CdnRouter - Error occurred: Could not load routing cube using app: none/default_app/999.99.9/, cube name: foo'
+        verify(response, times(1)).sendError 500, 'CdnRouter - Error occurred: Could not load routing cube using app: none/default_app/999.99.9/null/, cube name: foo'
     }
 
     @Test

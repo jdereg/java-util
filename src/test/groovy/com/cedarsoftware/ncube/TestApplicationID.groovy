@@ -7,6 +7,7 @@ import org.junit.Test
 import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertFalse
 import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNotNull
 import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 
@@ -149,8 +150,8 @@ public class TestApplicationID
     public void testAppKey()
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        assertEquals 'sears/inventory/1.0.0/', appId.cacheKey('')
-        assertEquals 'sears/inventory/1.0.0/', appId.toString()
+        assertEquals 'sears/inventory/1.0.0/null/', appId.cacheKey('')
+        assertEquals 'sears/inventory/1.0.0/null/', appId.toString()
     }
 
     @Test
@@ -190,6 +191,11 @@ public class TestApplicationID
         appId1 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name())
         appId2 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name())
         assertEquals appId1, appId2
+
+        appId1 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name(), 'JIRA-555')
+        appId2 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name(), 'Jira-555')
+        assertEquals appId1, appId2
+        assert appId1.hashCode() == appId2.hashCode()
     }
 
     // Want to know if this assumption ever changes
@@ -410,6 +416,61 @@ public class TestApplicationID
             assertTrue e.message.toLowerCase().contains('invalid version')
             assertTrue e.message.toLowerCase().contains('must follow')
         }
+    }
+
+    @Test
+    void testBadChangeSetName()
+    {
+        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), null)
+        assertNotNull appId
+        appId.validate()
+
+        appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), '_alpha-')
+        assertNotNull appId
+        appId.validate()
+
+        appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), 'roger.dodger')
+        assertNotNull appId
+        appId.validate()
+
+        try
+        {
+            new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), "")
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('invalid change-set')
+        }
+
+        try
+        {
+            new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), '   ')
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('invalid change-set')
+        }
+
+        try
+        {
+            new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), 'alpha/bravo')
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('invalid change-set')
+        }
+    }
+
+    @Test
+    public void testGetChangeSet()
+    {
+        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), 'JIRA-555')
+        appId.validate()
+        assert appId.getChangeSet() == 'JIRA-555'
+        assert appId.cacheKey().contains('jira-555')
     }
 
     @Test

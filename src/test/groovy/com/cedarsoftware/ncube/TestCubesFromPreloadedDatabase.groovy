@@ -186,10 +186,7 @@ public class TestCubesFromPreloadedDatabase
         x = cube.getCell(input)
         assertEquals("Bar", x)
 
-
         NCubeManager.clearCache(appId)
-
-
 
         // Had to reget cube so I had a new classpath
         cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")

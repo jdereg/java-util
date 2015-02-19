@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import java.util.Date;
+
 /**
  * Class used to carry the NCube meta-information
  * to the client.
@@ -29,14 +31,18 @@ public class NCubeInfoDto
     public String changeSet;
 	public String name;
 	public String sha1;
+    public String revision;
+    public Date createDate;
+    public String createHid;
+    public String notes;
 
-	public ApplicationID getApplicationID()
+    public ApplicationID getApplicationID()
 	{
 		return new ApplicationID(tenant, app, version, status, changeSet);
 	}
 
 	public String toString()
 	{
-		return tenant + '/' + app + '/' + version + '/' + status + '/' + changeSet + '/' + name + '/' + sha1;
+		return tenant + '/' + app + '/' + version + '/' + status + '/' + changeSet + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
 }

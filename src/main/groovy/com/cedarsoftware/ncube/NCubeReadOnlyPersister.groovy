@@ -25,7 +25,7 @@ import groovy.transform.CompileStatic
 @CompileStatic
 interface NCubeReadOnlyPersister
 {
-    NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)
+    NCube loadCube(NCubeInfoDto cubeInfo)
     Object[] getCubeRecords(ApplicationID appId, String pattern)
     Object[] getAppNames(String tenant)
     Object[] getAppVersions(ApplicationID appId)

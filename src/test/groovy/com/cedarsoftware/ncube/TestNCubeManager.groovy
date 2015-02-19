@@ -1252,10 +1252,9 @@ class TestNCubeManager
     void testRevisionHistory() throws Exception
     {
         NCube cube = createCube()
-        def history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        NCubeInfoDto[] history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
         assertEquals(1, history.length)
         assert history[0].name == 'test.Age-Gender'
-        assert history[0] instanceof NCubeInfoDetailsDto
         assert history[0].revision == '0'
         assert history[0].createHid == 'jdirt'
         assert history[0].notes == 'notes follow'
@@ -1267,9 +1266,7 @@ class TestNCubeManager
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
         history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
         assertEquals(2, history.length)
-        assert history[1] instanceof NCubeInfoDetailsDto
         assert history[1].name == 'test.Age-Gender'
-        assert history[1] instanceof NCubeInfoDetailsDto
         assert history[0].revision == '1'
         assert history[1].revision == '0'
         assert history[1].createHid == 'jdirt'
@@ -1283,9 +1280,7 @@ class TestNCubeManager
         def history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%')
         assertEquals(2, history.length)     // sys.classpath too
         assertTrue history[0] instanceof NCubeInfoDto
-        assertFalse history[0] instanceof NCubeInfoDetailsDto
         assertTrue history[1] instanceof NCubeInfoDto
-        assertFalse history[1] instanceof NCubeInfoDetailsDto
 
         Axis oddAxis = NCubeBuilder.getOddAxis(true)
         cube.addAxis(oddAxis)
@@ -1294,9 +1289,7 @@ class TestNCubeManager
         history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%')
         assertEquals(2, history.length)
         assertTrue history[0] instanceof NCubeInfoDto
-        assertFalse history[0] instanceof NCubeInfoDetailsDto
         assertTrue history[1] instanceof NCubeInfoDto
-        assertFalse history[1] instanceof NCubeInfoDetailsDto
     }
 
     @Test

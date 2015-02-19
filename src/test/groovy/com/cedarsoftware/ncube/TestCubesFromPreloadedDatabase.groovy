@@ -187,7 +187,6 @@ public class TestCubesFromPreloadedDatabase
         assertEquals("Bar", x)
 
 
-        //TODO:  Uncomment this to make test work.
         NCubeManager.clearCache(appId)
 
 
@@ -195,7 +194,6 @@ public class TestCubesFromPreloadedDatabase
         // Had to reget cube so I had a new classpath
         cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")
 
-        //TODO: Move these two lines above the previous line to make this work.  The classpath is already cached by the time it gets here.
         input.env = 'UAT';
         input.put("method", "foo")
         x = cube.getCell(input)

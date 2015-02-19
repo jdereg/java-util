@@ -27,10 +27,10 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestCellTypes
+class TestCellTypes
 {
     @Test
-    public void testInvalidCellType()
+    void testInvalidCellType()
     {
         try
         {
@@ -44,7 +44,7 @@ public class TestCellTypes
     }
 
     @Test
-    public void testGetType()
+    void testGetType()
     {
         assertEquals 'boolean', CellTypes.getType(Boolean.TRUE, 'cells')
         assertEquals 'int', CellTypes.getType(Integer.MAX_VALUE, 'cells')
@@ -55,7 +55,7 @@ public class TestCellTypes
     }
 
     @Test
-    public void testGetTypeFromString()
+    void testGetTypeFromString()
     {
         assertEquals CellTypes.String, CellTypes.getTypeFromString(null)
         assertEquals CellTypes.String, CellTypes.getTypeFromString('string')
@@ -79,13 +79,13 @@ public class TestCellTypes
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testInvalidType()
+    void testInvalidType()
     {
         CellTypes.getTypeFromString('foo')
     }
 
     @Test
-    public void testRecreate()
+    void testRecreate()
     {
         assertNull new CellInfo(null).recreate()
 
@@ -116,7 +116,7 @@ public class TestCellTypes
     }
 
     @Test
-    public void testRecreateExceptions()
+    void testRecreateExceptions()
     {
         try
         {

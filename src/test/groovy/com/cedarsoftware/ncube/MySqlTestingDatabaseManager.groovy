@@ -21,14 +21,14 @@ import java.sql.Statement
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
+class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 {
-    public MySqlTestingDatabaseManager(JdbcConnectionProvider p)
+    MySqlTestingDatabaseManager(JdbcConnectionProvider p)
     {
         super(p);
     }
 
-    public void setUp() throws SQLException
+    void setUp() throws SQLException
     {
         Connection c = provider.connection
         Statement s = null
@@ -67,7 +67,7 @@ public class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseMana
         }
     }
 
-    public void tearDown() throws SQLException
+    void tearDown() throws SQLException
     {
         // don't accidentally erase your MySql database.
     }

@@ -8,6 +8,7 @@ import org.junit.Test
 
 import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
 import static org.junit.Assert.assertNull
 import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
@@ -31,7 +32,7 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestRuleEngine
+class TestRuleEngine
 {
     @Before
     void setUp() throws Exception
@@ -722,6 +723,7 @@ public class TestRuleEngine
         assert html.contains(' fancy')
         assert html.contains('value')
         assert html.contains('null')
+        assertNotNull binding.toString()
     }
 
     @Test

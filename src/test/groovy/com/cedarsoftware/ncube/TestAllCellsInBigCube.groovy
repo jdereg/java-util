@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue
 class TestAllCellsInBigCube
 {
     @Test
-    public void testAllCellsInBigCube()
+    void testAllCellsInBigCube()
     {
         for (int qq=0; qq < 1; qq++)
         {

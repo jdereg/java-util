@@ -20,10 +20,10 @@ import org.junit.Test
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestRoutingCapabilities
+class TestRoutingCapabilities
 {
     @Test
-    public void testNormalCase() throws Exception
+    void testNormalCase() throws Exception
     {
         String url = "http://www.cedarsoftware.com/tests/ncube/CS415P6.TXT"
 

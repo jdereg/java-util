@@ -36,10 +36,10 @@ import static org.mockito.Mockito.when
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestUrlCommandCell
+class TestUrlCommandCell
 {
     @Test
-    public void testDefaultConstructorIsProtected() throws Exception
+    void testDefaultConstructorIsProtected() throws Exception
     {
         Class c = UrlCommandCell.class
         Constructor<UrlCommandCell> con = c.getDeclaredConstructor()
@@ -60,7 +60,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testCachingInputStreamRead() throws Exception
+    void testCachingInputStreamRead() throws Exception
     {
         String s = 'foo-bar';
         ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes('UTF-8'))
@@ -77,7 +77,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testCachingInputStreamReadBytes() throws Exception
+    void testCachingInputStreamReadBytes() throws Exception
     {
         String s = 'foo-bar';
         ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes('UTF-8'))
@@ -103,7 +103,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testBadUrlCommandCell()
+    void testBadUrlCommandCell()
     {
         try
         {
@@ -149,7 +149,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testProxyFetchSocketTimeout() throws Exception
+    void testProxyFetchSocketTimeout() throws Exception
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
@@ -170,7 +170,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testProxyFetchSocketTimeoutWithResponseSendErrorIssue() throws Exception
+    void testProxyFetchSocketTimeoutWithResponseSendErrorIssue() throws Exception
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
@@ -190,7 +190,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testAddFileHeaderWithNullUrl() throws Exception
+    void testAddFileHeaderWithNullUrl() throws Exception
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.  Verify the method was never called
@@ -200,7 +200,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testAddFileHeaderWithExtensionNotFound() throws Exception
+    void testAddFileHeaderWithExtensionNotFound() throws Exception
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
@@ -210,7 +210,7 @@ public class TestUrlCommandCell
     }
 
     @Test
-    public void testAddFileWithNoExtensionAndDotDomainAhead() throws Exception
+    void testAddFileWithNoExtensionAndDotDomainAhead() throws Exception
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.

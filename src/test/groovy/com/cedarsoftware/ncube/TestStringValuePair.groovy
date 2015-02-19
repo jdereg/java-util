@@ -22,10 +22,10 @@ import static org.junit.Assert.assertNotEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestStringValuePair
+class TestStringValuePair
 {
     @Test
-    public void testStringValuePair()
+    void testStringValuePair()
     {
         StringValuePair one = new StringValuePair('foo', 'bar')
         StringValuePair two = new StringValuePair('boo', 'far')
@@ -53,5 +53,14 @@ public class TestStringValuePair
 
         two.key = null
         assertEquals 0xbabe, two.hashCode()
+    }
+
+    @Test
+    void testEquals()
+    {
+        StringValuePair one = new StringValuePair('foo', 'bar')
+        assert one.equals(one)
+
+        assert one == 'foo'
     }
 }

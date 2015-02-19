@@ -30,10 +30,10 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestApplicationID
+class TestApplicationID
 {
     @Test
-    public void testBadConstructorArgs()
+    void testBadConstructorArgs()
     {
         try
         {
@@ -137,7 +137,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testApplicationIDConstructorAndGetters()
+    void testApplicationIDConstructorAndGetters()
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         assertEquals 'Sears', appId.tenant
@@ -147,7 +147,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testAppKey()
+    void testAppKey()
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         assertEquals 'sears/inventory/1.0.0/null/', appId.cacheKey('')
@@ -155,7 +155,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testEqualsAndHashcode()
+    void testEqualsAndHashcode()
     {
         ApplicationID appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         ApplicationID appId2 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
@@ -200,7 +200,7 @@ public class TestApplicationID
 
     // Want to know if this assumption ever changes
     @Test
-    public void testAppStrSameAsToString()
+    void testAppStrSameAsToString()
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         assertEquals appId.toString(), appId.cacheKey('')
@@ -208,7 +208,7 @@ public class TestApplicationID
 
     // Want to know if this assumption ever changes
     @Test
-    public void testApplicationIDSerialize() throws Exception
+    void testApplicationIDSerialize() throws Exception
     {
         ApplicationID appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         String json = JsonWriter.objectToJson(appId1)
@@ -217,7 +217,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testIsSnapshotOrRelease()
+    void testIsSnapshotOrRelease()
     {
         ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         assertTrue snapshot.snapshot
@@ -229,7 +229,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testValidateSnapshot()
+    void testValidateSnapshot()
     {
         ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         snapshot.validate()
@@ -246,7 +246,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testCreateReleaseId()
+    void testCreateReleaseId()
     {
         ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         snapshot.validate()
@@ -259,7 +259,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testCreateNewSnapshotId()
+    void testCreateNewSnapshotId()
     {
         ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
 
@@ -271,7 +271,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testValidateStatus() throws Exception
+    void testValidateStatus() throws Exception
     {
         ApplicationID.validateStatus ReleaseStatus.SNAPSHOT.name()
         ApplicationID.validateStatus ReleaseStatus.RELEASE.name()
@@ -288,7 +288,7 @@ public class TestApplicationID
 
 
     @Test
-    public void testValidateIsSnapshot()
+    void testValidateIsSnapshot()
     {
         ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         snapshot.validate()
@@ -306,7 +306,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testValidateTenant()
+    void testValidateTenant()
     {
         ApplicationID.validateTenant 'foo'
         try
@@ -335,7 +335,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testValidateApp()
+    void testValidateApp()
     {
         String msg = 'App cannot be null or empty';
         ApplicationID.validateApp 'foo'
@@ -361,7 +361,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testValidateVersionNumbers()
+    void testValidateVersionNumbers()
     {
         String nullMessage = 'n-cube version cannot be null or empty';
 
@@ -465,7 +465,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testGetChangeSet()
+    void testGetChangeSet()
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), 'JIRA-555')
         appId.validate()
@@ -474,7 +474,7 @@ public class TestApplicationID
     }
 
     @Test
-    public void testGetBootstrapVersion()
+    void testGetBootstrapVersion()
     {
         ApplicationID id = ApplicationID.getBootVersion 'foo', 'bar'
         assertEquals 'foo', id.tenant

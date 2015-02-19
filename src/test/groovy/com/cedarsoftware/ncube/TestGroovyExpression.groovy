@@ -23,10 +23,10 @@ import java.lang.reflect.Modifier
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestGroovyExpression
+class TestGroovyExpression
 {
     @Test
-    public void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization() throws Exception
     {
         Class c = GroovyExpression.class
         Constructor<GroovyExpression> con = c.getDeclaredConstructor()

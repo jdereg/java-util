@@ -22,10 +22,10 @@ import static org.junit.Assert.assertNull
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestColumn
+class TestColumn
 {
     @Test
-    public void testSetValue()
+    void testSetValue()
     {
         Column c = new Column(0, 5)
         assertEquals 0, c.value
@@ -34,7 +34,7 @@ public class TestColumn
     }
 
     @Test
-    public void testMetaProperties()
+    void testMetaProperties()
     {
         Column c = new Column(true, 5)
 

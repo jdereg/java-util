@@ -21,7 +21,7 @@ import java.sql.SQLException
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestingDatabaseHelper
+class TestingDatabaseHelper
 {
     public static int MYSQL = 1
     public static int HSQL = 2

@@ -37,10 +37,10 @@ import static org.mockito.Matchers.eq
 @PowerMockIgnore("javax.management.*")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest([UrlUtilities.class])
-public class TestBinaryUrlCmd
+class TestBinaryUrlCmd
 {
     @Test
-    public void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization() throws Exception
     {
         Class c = BinaryUrlCmd.class
         Constructor<BinaryUrlCmd> con = c.getDeclaredConstructor()
@@ -50,7 +50,7 @@ public class TestBinaryUrlCmd
     }
 
     @Test
-    public void testSimpleFetchException()
+    void testSimpleFetchException()
     {
         NCube cube = NCubeBuilder.getTestNCube2D true
         BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false)

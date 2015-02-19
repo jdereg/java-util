@@ -19,10 +19,10 @@ import org.junit.Test
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestLatLon
+class TestLatLon
 {
     @Test
-    public void testEquals()
+    void testEquals()
     {
         LatLon l = new LatLon(1.0, 2.0)
         assert l != new Long(5)
@@ -30,7 +30,7 @@ public class TestLatLon
     }
 
     @Test
-    public void testCompareTo()
+    void testCompareTo()
     {
         LatLon l = new LatLon(10.0, 10.0)
         assert l.compareTo(new LatLon(1, 10)) > 0

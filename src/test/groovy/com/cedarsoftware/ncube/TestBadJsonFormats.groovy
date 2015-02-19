@@ -21,64 +21,64 @@ import org.junit.Test;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestBadJsonFormats
+class TestBadJsonFormats
 {
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingColumnParserError()
+    void testNCubeMissingColumnParserError()
     {
         NCubeManager.getNCubeFromResource("ncube-missing-column-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyColumnsError()
+    void testNCubeEmptyColumnsError()
     {
         NCubeManager.getNCubeFromResource("ncube-column-not-array-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeEmptyAxesParseError()
+    void testNCubeEmptyAxesParseError()
     {
         NCubeManager.getNCubeFromResource("ncube-empty-axes-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingAxesParseError()
+    void testNCubeMissingAxesParseError()
     {
         NCubeManager.getNCubeFromResource("ncube-missing-axes-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testNCubeMissingNameParseError()
+    void testNCubeMissingNameParseError()
     {
         NCubeManager.getNCubeFromResource("ncube-missing-name-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testLatLongParseError()
+    void testLatLongParseError()
     {
         NCubeManager.getNCubeFromResource("lat-lon-parse-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testDateParseError()
+    void testDateParseError()
     {
         NCubeManager.getNCubeFromResource("date-parse-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testPoint2dParseError()
+    void testPoint2dParseError()
     {
         NCubeManager.getNCubeFromResource("point2d-parse-error.json")
     }
 
     @Test(expected=RuntimeException.class)
-    public void testPoint3dParseError()
+    void testPoint3dParseError()
     {
         NCubeManager.getNCubeFromResource("point3d-parse-error.json")
     }
 
     @Test
-    public void testNoCells()
+    void testNoCells()
     {
         NCube cube = NCubeManager.getNCubeFromResource("no-cells.json")
         assert cube.sha1().length() == 40

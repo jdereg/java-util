@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestGroovySourceParsing
+class TestGroovySourceParsing
 {
     @Before
     public void setUp() throws Exception
@@ -41,7 +41,7 @@ public class TestGroovySourceParsing
     }
 
     @Test
-    public void testFindCubeName()
+    void testFindCubeName()
     {
         NCube cube = NCubeManager.getNCubeFromResource 'inlineExpression.json'
         Set<String> names = cube.referencedCubeNames

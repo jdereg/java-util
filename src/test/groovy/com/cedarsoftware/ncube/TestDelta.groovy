@@ -24,7 +24,7 @@ import org.junit.Test
 class TestDelta
 {
     @Test
-    public void testDeltaApis()
+    void testDeltaApis()
     {
         Delta x = new Delta(Delta.Location.AXIS, Delta.Type.ADD, "foo")
         assert x.location == Delta.Location.AXIS

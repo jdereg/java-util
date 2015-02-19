@@ -24,12 +24,12 @@ import static org.junit.Assert.assertEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestNCubeTestWriter
+class TestNCubeTestWriter
 {
     private NCubeTest verySimpleTest = new NCubeTest("foo", new StringValuePair[0], [] as CellInfo[])
 
     @Test
-    public void testVerySimpleCase() throws Exception
+    void testVerySimpleCase() throws Exception
     {
         NCubeTest[] tests = [verySimpleTest] as NCubeTest[]
         String s = new NCubeTestWriter().format tests
@@ -37,14 +37,14 @@ public class TestNCubeTestWriter
     }
 
     @Test
-    public void testNullCase() throws Exception
+    void testNullCase() throws Exception
     {
         String s = new NCubeTestWriter().format null
         assertEquals '[]', s
     }
 
     @Test
-    public void testEmptyCase() throws Exception
+    void testEmptyCase() throws Exception
     {
         String s = new NCubeTestWriter().format new NCubeTest[0]
         assertEquals '[]', s

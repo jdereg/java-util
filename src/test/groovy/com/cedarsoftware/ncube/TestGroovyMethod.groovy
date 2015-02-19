@@ -25,10 +25,10 @@ import static org.junit.Assert.assertEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestGroovyMethod
+class TestGroovyMethod
 {
     @Test
-    public void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization() throws Exception
     {
         Class c = GroovyMethod.class;
         Constructor<GroovyMethod> con = c.getDeclaredConstructor()
@@ -38,7 +38,7 @@ public class TestGroovyMethod
     }
 
     @Test
-    public void testGetCubeNamesFromTestWhenEmpty()
+    void testGetCubeNamesFromTestWhenEmpty()
     {
         Set set = new HashSet()
         GroovyBase.getCubeNamesFromText set, ''
@@ -46,14 +46,14 @@ public class TestGroovyMethod
     }
 
     @Test
-    public void testGroovyMethod()
+    void testGroovyMethod()
     {
         GroovyMethod m = new GroovyMethod('cmd', null)
         assertEquals 'foo', m.getMethodToExecute([input:[method:'foo']])
     }
 
     @Test
-    public void testGetCubeNamesFromTestWithEmptyString()
+    void testGetCubeNamesFromTestWithEmptyString()
     {
         GroovyMethod m = new GroovyMethod('cmd', null)
         Set<String> set = [] as Set
@@ -62,7 +62,7 @@ public class TestGroovyMethod
     }
 
     @Test
-    public void testConstructionState()
+    void testConstructionState()
     {
         GroovyMethod m = new GroovyMethod('cmd', 'com/foo/not/found/bar.groovy')
         assertEquals 'cmd', m.cmd
@@ -71,7 +71,7 @@ public class TestGroovyMethod
     }
 
     @Test
-    public void testGroovyMethodClearCache() throws Exception
+    void testGroovyMethodClearCache() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
@@ -112,7 +112,7 @@ public class TestGroovyMethod
     }
 
     @Test
-    public void testGroovyMethodClearCacheExplicitly() throws Exception
+    void testGroovyMethodClearCacheExplicitly() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())

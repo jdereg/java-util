@@ -20,7 +20,7 @@ import java.sql.DriverManager
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestingConnectionProvider implements JdbcConnectionProvider
+class TestingConnectionProvider implements JdbcConnectionProvider
 {
     private String databaseUrl
     private String user

@@ -21,14 +21,14 @@ import java.sql.Statement
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
+class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 {
-    public HsqlTestingDatabaseManager(JdbcConnectionProvider p)
+    HsqlTestingDatabaseManager(JdbcConnectionProvider p)
     {
         super(p);
     }
 
-    public void setUp() throws SQLException
+    void setUp() throws SQLException
     {
         Connection c = provider.connection
         Statement s = null
@@ -60,7 +60,7 @@ public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManag
         }
     }
 
-    public void tearDown() throws SQLException
+    void tearDown() throws SQLException
     {
         Connection c = provider.connection
         Statement s = null

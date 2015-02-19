@@ -22,10 +22,10 @@ import static org.junit.Assert.assertNull
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestCdnClassLoader
+class TestCdnClassLoader
 {
     @Test
-    public void testLocalResources()
+    void testLocalResources()
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
         assert testLoader1.isLocalOnlyResource("META-INF/org.codehaus.groovy.transform.ASTTransformation")
@@ -44,7 +44,7 @@ public class TestCdnClassLoader
     }
 
     @Test
-    public void testGetResource()
+    void testGetResource()
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
         assertNotNull testLoader1.getResource("cdnRouter.json")
@@ -53,7 +53,7 @@ public class TestCdnClassLoader
     }
 
     @Test
-    public void testGetResources() throws Exception
+    void testGetResources() throws Exception
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
         assert testLoader1.getResources("cdnRouter.json").hasMoreElements()
@@ -62,7 +62,7 @@ public class TestCdnClassLoader
     }
 
     @Test(expected = NoSuchElementException.class)
-    public void testGetResourcesWithLocalResource() throws Exception
+    void testGetResourcesWithLocalResource() throws Exception
     {
         new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true).getResources("ncube/grv/method/NCubeGroovyController.class").nextElement()
     }

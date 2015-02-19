@@ -31,7 +31,7 @@ import static org.powermock.api.mockito.PowerMockito.when
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest([ReflectionUtils.class, Field.class])
-public class TestObjectToMapIllegalAccessException
+class TestObjectToMapIllegalAccessException
 {
     static class dto
     {
@@ -41,7 +41,7 @@ public class TestObjectToMapIllegalAccessException
     }
 
     @Test
-    public void testObjectToMapIllegalAccessException() throws Exception
+    void testObjectToMapIllegalAccessException() throws Exception
     {
         def instance = new dto()
         mockStatic(ReflectionUtils.class)

@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestNCubeConcurrency
+class TestNCubeConcurrency
 {
     @Before
     public void initialize() throws Exception
@@ -40,7 +40,7 @@ public class TestNCubeConcurrency
     }
 
     @Test
-    public void testConcurrencyWithDifferentFiles() throws Exception
+    void testConcurrencyWithDifferentFiles() throws Exception
     {
         def test1 = { concurrencyTest('StringFromRemoteUrlBig') }
         def test2 = { concurrencyTest('StringFromLocalUrl') }
@@ -129,7 +129,7 @@ public class TestNCubeConcurrency
     }
 
     @Test
-    public void testCacheFlag() throws IOException
+    void testCacheFlag() throws IOException
     {
         NCube n1 = NCubeManager.getNCubeFromResource('urlContent.json')
         def items = new IdentityHashSet()

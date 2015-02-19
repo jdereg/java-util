@@ -37,7 +37,7 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestAxis
+class TestAxis
 {
     @Before
     public void setUp() throws Exception
@@ -65,7 +65,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisNameChange()
+    void testAxisNameChange()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
         axis.name = 'bar'
@@ -73,14 +73,14 @@ public class TestAxis
     }
 
     @Test
-    public void testRemoveMetaPropertyWhenMetaPropertiesAreNull()
+    void testRemoveMetaPropertyWhenMetaPropertiesAreNull()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
         assertNull axis.removeMetaProperty('foo')
     }
 
     @Test
-    public void testRemoveMetaProperty()
+    void testRemoveMetaProperty()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
 
@@ -93,7 +93,7 @@ public class TestAxis
     }
 
     @Test
-    public void testClearMetaProperties()
+    void testClearMetaProperties()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
 
@@ -113,7 +113,7 @@ public class TestAxis
     }
 
     @Test
-    public void testGetMetaPropertyWhenMetaPropertiesAreNull()
+    void testGetMetaPropertyWhenMetaPropertiesAreNull()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
         assertNull axis.getMetaProperty('foo')
@@ -121,35 +121,35 @@ public class TestAxis
 
 
     @Test(expected = IllegalArgumentException.class)
-    public void testConvertStringToColumnValueWithEmptyString()
+    void testConvertStringToColumnValueWithEmptyString()
     {
         Axis axis = new Axis('test axis', AxisType.DISCRETE, AxisValueType.LONG, true)
         axis.convertStringToColumnValue('')
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testConvertStringToColumnValueWithNull()
+    void testConvertStringToColumnValueWithNull()
     {
         Axis axis = new Axis('test axis', AxisType.DISCRETE, AxisValueType.LONG, true)
         axis.convertStringToColumnValue(null)
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testConvertStringToColumnValueWihInvalidRangeDefinition()
+    void testConvertStringToColumnValueWihInvalidRangeDefinition()
     {
         Axis axis = new Axis('test axis', AxisType.SET, AxisValueType.LONG, true)
         axis.convertStringToColumnValue('[[5]]')
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testConvertStringToColumnValueWihRangeException()
+    void testConvertStringToColumnValueWihRangeException()
     {
         Axis axis = new Axis('test axis', AxisType.SET, AxisValueType.LONG, true)
         axis.convertStringToColumnValue('[null]')
     }
 
     @Test
-    public void testStandardizeColumnValueErrorHandling()
+    void testStandardizeColumnValueErrorHandling()
     {
         Axis states = NCubeBuilder.statesAxis
         try
@@ -165,7 +165,7 @@ public class TestAxis
     }
 
     @Test
-    public void testCONDITIONnoSort()
+    void testCONDITIONnoSort()
     {
         Axis axis = new Axis('sorted', AxisType.RULE, AxisValueType.EXPRESSION, true, Axis.SORTED)
         assert axis.columnOrder == Axis.DISPLAY
@@ -201,7 +201,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisValueOverlap()
+    void testAxisValueOverlap()
     {
         Axis axis = new Axis('test axis', AxisType.DISCRETE, AxisValueType.LONG, true)
         axis.addColumn 0
@@ -249,7 +249,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRangeOverlap()
+    void testRangeOverlap()
     {
         Axis axis = new Axis("Age", AxisType.RANGE, AxisValueType.LONG, true)
         axis.addColumn(new Range(0, 18))
@@ -390,7 +390,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisInsertAtFront()
+    void testAxisInsertAtFront()
     {
         Axis states = new Axis('States', AxisType.SET, AxisValueType.STRING, false, Axis.SORTED)
         RangeSet set = new RangeSet('GA')
@@ -406,7 +406,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisLongType()
+    void testAxisLongType()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false, Axis.DISPLAY)
         axis.addColumn 1
@@ -438,7 +438,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAddingNullToAxis()
+    void testAddingNullToAxis()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
         axis.addColumn null    // Add default column
@@ -460,7 +460,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisGetValues()
+    void testAxisGetValues()
     {
         NCube ncube = new NCube('foo')
         ncube.addAxis NCubeBuilder.longDaysOfWeekAxis
@@ -473,7 +473,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisCaseInsensitivity()
+    void testAxisCaseInsensitivity()
     {
         NCube<String> ncube = new NCube<String>('TestAxisCase')
         Axis gender = NCubeBuilder.getGenderAxis true
@@ -511,7 +511,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRangeSetAxisErrors()
+    void testRangeSetAxisErrors()
     {
         Axis age = new Axis('Age', AxisType.SET, AxisValueType.LONG, true)
         RangeSet set = new RangeSet(1)
@@ -582,7 +582,7 @@ public class TestAxis
     }
 
     @Test
-    public void testDeleteColumnFromRangeSetAxis() throws Exception
+    void testDeleteColumnFromRangeSetAxis() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'testCube4.json'
         ncube.deleteColumn 'code', 'b'
@@ -596,7 +596,7 @@ public class TestAxis
     }
 
     @Test
-    public void testDupeIdsOnAxis() throws Exception
+    void testDupeIdsOnAxis() throws Exception
     {
         try
         {
@@ -610,7 +610,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAddDefaultToNearestAxis()
+    void testAddDefaultToNearestAxis()
     {
         Axis nearest = new Axis('points', AxisType.NEAREST, AxisValueType.COMPARABLE, false)
         try
@@ -626,7 +626,7 @@ public class TestAxis
     }
 
     @Test
-    public void testMetaProperties()
+    void testMetaProperties()
     {
         Axis c = new Axis('foo', AxisType.DISCRETE, AxisValueType.STRING, true)
         assertNull c.metaProperties.get('foo')
@@ -644,7 +644,7 @@ public class TestAxis
     }
 
     @Test
-    public void testToString()
+    void testToString()
     {
         Axis axis = new Axis('foo', AxisType.DISCRETE, AxisValueType.LONG, false)
         assert 'Axis: foo [DISCRETE, LONG, no-default-column, sorted]' == axis.toString()
@@ -658,7 +658,7 @@ public class TestAxis
     }
 
     @Test
-    public void testConvertDiscreteColumnValue() throws Exception
+    void testConvertDiscreteColumnValue() throws Exception
     {
         // Strings
         Axis states = NCubeBuilder.statesAxis
@@ -731,7 +731,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRangeParsing()
+    void testRangeParsing()
     {
         Axis axis = new Axis('ages', AxisType.RANGE, AxisValueType.LONG, true, Axis.SORTED)
         Range range = (Range) axis.convertStringToColumnValue('10,20')
@@ -780,7 +780,7 @@ public class TestAxis
         assert calendar.time == range.high
     }
 
-    @Test 
+    @Test
     void testRangeWithBrackets()
     {
         Axis axis = new Axis('brackets', AxisType.RANGE, AxisValueType.LONG, true, Axis.SORTED)
@@ -794,7 +794,7 @@ public class TestAxis
     }
 
     @Test
-    public void testDiscreteSetParsing()
+    void testDiscreteSetParsing()
     {
         Axis axis = new Axis('ages', AxisType.SET, AxisValueType.LONG, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('10,20')
@@ -831,7 +831,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRangeSetParsing()
+    void testRangeSetParsing()
     {
         Axis axis = new Axis('ages', AxisType.SET, AxisValueType.LONG, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('[10,20]')
@@ -857,7 +857,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRangeAndDiscreteSetParsing()
+    void testRangeAndDiscreteSetParsing()
     {
         Axis axis = new Axis('ages', AxisType.SET, AxisValueType.LONG, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('[10,20], 1979')
@@ -888,7 +888,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRangeAndDiscreteSetParsing2()
+    void testRangeAndDiscreteSetParsing2()
     {
         Axis axis = new Axis('ages', AxisType.SET, AxisValueType.BIG_DECIMAL, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('[10,20], 1979')
@@ -905,7 +905,7 @@ public class TestAxis
     }
 
     @Test
-    public void testNearestWithDoubles()
+    void testNearestWithDoubles()
     {
         Axis axis = new Axis('loc', AxisType.NEAREST, AxisValueType.COMPARABLE, false)
         LatLon latlon = (LatLon) axis.convertStringToColumnValue('1.0, 2.0')
@@ -928,7 +928,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAddAxisSameWayAsUI()
+    void testAddAxisSameWayAsUI()
     {
         Axis axis = new Axis('loc', AxisType.SET, AxisValueType.LONG, true)
         Axis axis2 = new Axis('loc', AxisType.SET, AxisValueType.LONG, false)
@@ -943,7 +943,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpdateColumnWithMetaPropertyName()
+    void testUpdateColumnWithMetaPropertyName()
     {
         Axis axis1 = new Axis('loc', AxisType.SET, AxisValueType.LONG, true)
         axis1.addColumn('[1, 2]')
@@ -962,7 +962,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRemoveSetColumnWithMultipleRanges()
+    void testRemoveSetColumnWithMultipleRanges()
     {
         Axis axis = new Axis('loc', AxisType.SET, AxisValueType.LONG, false)
         RangeSet rs = new RangeSet()
@@ -980,7 +980,7 @@ public class TestAxis
     }
 
     @Test
-    public void testRemoveSetColumnWithMultipleDiscretes()
+    void testRemoveSetColumnWithMultipleDiscretes()
     {
         Axis axis = new Axis('loc', AxisType.SET, AxisValueType.LONG, false)
         RangeSet rs = new RangeSet()
@@ -998,7 +998,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAddAxisBadColumnIds()
+    void testAddAxisBadColumnIds()
     {
         Axis axis = new Axis('loc', AxisType.SET, AxisValueType.LONG, true)
         Axis axis2 = new Axis('loc', AxisType.SET, AxisValueType.LONG, true)
@@ -1017,7 +1017,7 @@ public class TestAxis
     }
 
     @Test
-    public void testParseBadRange()
+    void testParseBadRange()
     {
         Axis axis = new Axis('foo', AxisType.RANGE, AxisValueType.LONG, false)
         try
@@ -1033,7 +1033,7 @@ public class TestAxis
     }
 
     @Test
-    public void testParseBadSet()
+    void testParseBadSet()
     {
         Axis axis = new Axis('foo', AxisType.SET, AxisValueType.LONG, false)
         try
@@ -1058,7 +1058,7 @@ public class TestAxis
     }
 
     @Test
-    public void testFindNonExistentRuleName()
+    void testFindNonExistentRuleName()
     {
         Axis axis = new Axis('foo', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
         try
@@ -1076,7 +1076,7 @@ public class TestAxis
     }
 
     @Test
-    public void testFindRuleNameUsingNonString()
+    void testFindRuleNameUsingNonString()
     {
         Axis axis = new Axis('foo', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
         try
@@ -1093,7 +1093,7 @@ public class TestAxis
     }
 
     @Test
-    public void testGetColumnsAndCoordinateFromIds()
+    void testGetColumnsAndCoordinateFromIds()
     {
         NCube cube = NCubeBuilder.testNCube3D_Boolean
 
@@ -1153,7 +1153,7 @@ public class TestAxis
     }
 
     @Test
-    public void testSha1NotSensitiveToAxisNameCase()
+    void testSha1NotSensitiveToAxisNameCase()
     {
         NCube cube1 = new NCube("foo")
         NCube cube2 = new NCube("foo")
@@ -1170,7 +1170,7 @@ public class TestAxis
     }
 
     @Test
-    public void testStringAxis()
+    void testStringAxis()
     {
         NCube<Integer> ncube = new NCube<Integer>("SingleStringAxis")
         Axis genderAxis = NCubeBuilder.getGenderAxis(false)
@@ -1286,7 +1286,7 @@ public class TestAxis
     }
 
     @Test
-    public void testNoDefaultColumn()
+    void testNoDefaultColumn()
     {
         NCube<Boolean> ncube = NCubeBuilder.testNCube3D_Boolean
 
@@ -1317,7 +1317,7 @@ public class TestAxis
     }
 
     @Test
-    public void testDefaultColumn()
+    void testDefaultColumn()
     {
         NCube<Boolean> ncube = new NCube<Boolean>("Test.Default.Column")
         Axis axis = NCubeBuilder.getGenderAxis(true)
@@ -1355,7 +1355,7 @@ public class TestAxis
     }
 
     @Test
-    public void testNearestAxisTypePoint3D()
+    void testNearestAxisTypePoint3D()
     {
         NCube<String> ncube = new NCube<String>("Nearest3D")
 
@@ -1415,7 +1415,7 @@ public class TestAxis
     }
 
     @Test
-    public void testAxisProps()
+    void testAxisProps()
     {
         Axis axis1 = new Axis('foo', AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
         Axis axis2 = new Axis('foo', AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY)
@@ -1446,7 +1446,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpdateColumn()
+    void testUpdateColumn()
     {
         Axis dow = NCubeBuilder.shortDaysOfWeekAxis
         Column wed = dow.findColumn("Wed")
@@ -1473,7 +1473,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpdateColumnsFrontMiddleBack()
+    void testUpdateColumnsFrontMiddleBack()
     {
         Axis axis = new Axis('Age', AxisType.RANGE, AxisValueType.LONG, false, Axis.SORTED, 1)
         axis.addColumn(new Range(5, 10))
@@ -1522,7 +1522,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpdateColumnsOverlapCheck()
+    void testUpdateColumnsOverlapCheck()
     {
         Axis axis = new Axis('Age', AxisType.RANGE, AxisValueType.STRING, false, Axis.DISPLAY, 1)
         axis.addColumn new Range('2', '4')
@@ -1554,7 +1554,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpColumnsMaintainsOrder()
+    void testUpColumnsMaintainsOrder()
     {
         Axis axis = new Axis('days', AxisType.DISCRETE, AxisValueType.STRING, false, Axis.DISPLAY, 1)
         axis.addColumn 'Mon'
@@ -1593,7 +1593,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpColumnsMaintainsOrderWithDefault()
+    void testUpColumnsMaintainsOrderWithDefault()
     {
         Axis axis = new Axis('days', AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 1)
         axis.addColumn 'Mon'
@@ -1634,7 +1634,7 @@ public class TestAxis
     }
 
     @Test
-    public void testUpColumnsMaintainsIgnoresDefault()
+    void testUpColumnsMaintainsIgnoresDefault()
     {
         Axis axis = new Axis('days', AxisType.DISCRETE, AxisValueType.STRING, true, Axis.DISPLAY, 1)
         axis.addColumn 'Mon'
@@ -1673,7 +1673,7 @@ public class TestAxis
     }
 
     @Test
-    public void testProveDefaultLast()
+    void testProveDefaultLast()
     {
         Axis axis = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true, Axis.SORTED)
         axis.addColumn("alpha")
@@ -1717,7 +1717,7 @@ public class TestAxis
     }
 
     @Test
-    public void testMaxAxisId()  throws Exception
+    void testMaxAxisId()  throws Exception
     {
         NCube cube = new NCube("fourD")
         assertEquals(0, cube.maxAxisId)
@@ -1740,7 +1740,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsAxisNameMismatch()  throws Exception
+    void testEqualsAxisNameMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
         Axis axis2 = new Axis("foot", AxisType.DISCRETE, AxisValueType.STRING, true)
@@ -1754,7 +1754,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsAxisMetaMismatch()  throws Exception
+    void testEqualsAxisMetaMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
         axis1.setMetaProperty("fingers", 4)
@@ -1769,7 +1769,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsAxisTypeMismatch()  throws Exception
+    void testEqualsAxisTypeMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.RANGE, AxisValueType.STRING, true)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
@@ -1782,7 +1782,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsAxisValueTypeMismatch()  throws Exception
+    void testEqualsAxisValueTypeMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.LONG, true)
@@ -1795,7 +1795,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsAxisDefaultMismatch()  throws Exception
+    void testEqualsAxisDefaultMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
@@ -1808,7 +1808,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsColumnCountMismatch()  throws Exception
+    void testEqualsColumnCountMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
@@ -1823,7 +1823,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsColumnTypeMismatch()  throws Exception
+    void testEqualsColumnTypeMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, false)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
@@ -1838,7 +1838,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsColumnValueMismatch()  throws Exception
+    void testEqualsColumnValueMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
@@ -1854,7 +1854,7 @@ public class TestAxis
     }
 
     @Test
-    public void testEqualsColumnMetaPropertiesMismatch()  throws Exception
+    void testEqualsColumnMetaPropertiesMismatch()  throws Exception
     {
         Axis axis1 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
         Axis axis2 = new Axis("foo", AxisType.DISCRETE, AxisValueType.STRING, true)
@@ -1872,7 +1872,7 @@ public class TestAxis
     }
 
     @Test
-    public void testLargeNumberOfColumns() throws Exception
+    void testLargeNumberOfColumns() throws Exception
     {
         NCube ncube = new NCube("BigDaddy")
         Axis axis = new Axis("numbers", AxisType.SET, AxisValueType.LONG, true, Axis.DISPLAY)
@@ -1909,7 +1909,7 @@ public class TestAxis
     }
 
     @Test
-    public void testIntSetParsing()
+    void testIntSetParsing()
     {
         Axis axis = new Axis('ages', AxisType.SET, AxisValueType.LONG, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('10, 20, [50, 90], 100')
@@ -1947,7 +1947,7 @@ public class TestAxis
     }
 
     @Test
-    public void testFloatSetParsing()
+    void testFloatSetParsing()
     {
         Axis axis = new Axis('ages', AxisType.SET, AxisValueType.BIG_DECIMAL, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('10.1, 20, [50, 90.5], 100.1')
@@ -1959,7 +1959,7 @@ public class TestAxis
     }
 
     @Test
-    public void testDateSetParsing()
+    void testDateSetParsing()
     {
         Axis axis = new Axis('dates', AxisType.SET, AxisValueType.DATE, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('10 Dec 1995, 1995/12/25, [1996 dec 17, 2001-01-31], Jun 10th 2010')
@@ -1971,7 +1971,7 @@ public class TestAxis
     }
 
     @Test
-    public void testStringSetParsing()
+    void testStringSetParsing()
     {
         Axis axis = new Axis('strings', AxisType.SET, AxisValueType.STRING, true, Axis.SORTED)
         RangeSet set = (RangeSet) axis.convertStringToColumnValue('10 Dec 1995, 1995/12/25, [1996 dec 17, 2001-01-31], Jun 10th 2010')

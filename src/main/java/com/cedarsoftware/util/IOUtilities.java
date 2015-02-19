@@ -187,7 +187,10 @@ public final class IOUtilities
     {
         try
         {
-            reader.close();
+            if (reader != null)
+            {
+                reader.close();
+            }
         }
         catch (XMLStreamException ignore)
         { }
@@ -197,7 +200,10 @@ public final class IOUtilities
     {
         try
         {
-            writer.close();
+            if (writer != null)
+            {
+                writer.close();
+            }
         }
         catch (XMLStreamException ignore)
         { }
@@ -224,9 +230,20 @@ public final class IOUtilities
                 f.flush();
             }
         }
-        catch (Throwable ignore) { }
+        catch (IOException ignore)  { }
     }
 
+    public static void flush(XMLStreamWriter writer)
+    {
+        try
+        {
+            if (writer != null)
+            {
+                writer.flush();
+            }
+        }
+        catch (XMLStreamException ignore)  { }
+    }
     /**
      * Convert InputStream contents to a byte[].
      * Will return null on error.  Only use this API if you know that the stream length will be

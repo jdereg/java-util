@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Handy conversion utilities
@@ -80,6 +83,10 @@ public final class Converter
                     {
                         return (Boolean) fromInstance ? (byte) 1 : (byte) 0;
                     }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean)fromInstance).get() ? (byte) 1 : (byte) 0;
+                    }
                 }
                 catch(Exception e)
                 {
@@ -107,6 +114,10 @@ public final class Converter
                     {
                         return (Boolean) fromInstance ? (short) 1 : (short) 0;
                     }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? (short) 1 : (short) 0;
+                    }
                 }
                 catch(Exception e)
                 {
@@ -133,6 +144,10 @@ public final class Converter
                     else if (fromInstance instanceof Boolean)
                     {
                         return (Boolean) fromInstance ? 1 : 0;
+                    }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? 1 : 0;
                     }
                 }
                 catch(Exception e)
@@ -165,6 +180,10 @@ public final class Converter
                     {
                         return (Boolean) fromInstance ? 1L : 0L;
                     }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? 1L : 0L;
+                    }
                     else if (fromInstance instanceof Calendar)
                     {
                         return ((Calendar)fromInstance).getTime().getTime();
@@ -185,7 +204,7 @@ public final class Converter
                 {
                     return ((BigDecimal) fromInstance).stripTrailingZeros().toPlainString();
                 }
-                else if (fromInstance instanceof Number || fromInstance instanceof Boolean)
+                else if (fromInstance instanceof Number || fromInstance instanceof Boolean || fromInstance instanceof AtomicBoolean)
                 {
                     return fromInstance.toString();
                 }
@@ -226,6 +245,10 @@ public final class Converter
                     {
                         return (Boolean) fromInstance ? BigDecimal.ONE : BigDecimal.ZERO;
                     }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? BigDecimal.ONE : BigDecimal.ZERO;
+                    }
                     else if (fromInstance instanceof Date)
                     {
                         return new BigDecimal(((Date)fromInstance).getTime());
@@ -263,6 +286,10 @@ public final class Converter
                     else if (fromInstance instanceof Boolean)
                     {
                         return (Boolean) fromInstance ? BigInteger.ONE : BigInteger.ZERO;
+                    }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? BigInteger.ONE : BigInteger.ZERO;
                     }
                     else if (fromInstance instanceof Date)
                     {
@@ -302,6 +329,10 @@ public final class Converter
                     {
                         return new Date((Long) fromInstance);
                     }
+                    else if (fromInstance instanceof AtomicLong)
+                    {
+                        return new Date(((AtomicLong) fromInstance).get());
+                    }
                     throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Date'");
                 }
                 catch(Exception e)
@@ -333,6 +364,10 @@ public final class Converter
                     {
                         return new java.sql.Date((Long) fromInstance);
                     }
+                    else if (fromInstance instanceof AtomicLong)
+                    {
+                        return new java.sql.Date(((AtomicLong) fromInstance).get());
+                    }
                     throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'java.sql.Date'");
                 }
                 catch(Exception e)
@@ -359,6 +394,10 @@ public final class Converter
                     else if (fromInstance instanceof Boolean)
                     {
                         return (Boolean) fromInstance ? 1.0f : 0.0f;
+                    }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? 1.0f : 0.0f;
                     }
                 }
                 catch(Exception e)
@@ -387,6 +426,10 @@ public final class Converter
                     {
                         return (Boolean) fromInstance ? 1.0d : 0.0d;
                     }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? 1.0d : 0.0d;
+                    }
                 }
                 catch(Exception e)
                 {
@@ -394,6 +437,115 @@ public final class Converter
                 }
                 throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Double'");
 
+            case "java.util.concurrent.atomic.AtomicInteger":
+                try
+                {
+                    if (fromInstance instanceof AtomicInteger)
+                    {
+                        return fromInstance;
+                    }
+                    else if (fromInstance instanceof String)
+                    {
+                        return new AtomicInteger(Integer.valueOf(((String) fromInstance).trim()));
+                    }
+                    else if (fromInstance instanceof Number)
+                    {
+                        return new AtomicInteger(((Number)fromInstance).intValue());
+                    }
+                    else if (fromInstance instanceof Boolean)
+                    {
+                        return (Boolean) fromInstance ? new AtomicInteger(1) : new AtomicInteger(0);
+                    }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? new AtomicInteger(1) : new AtomicInteger(0);
+                    }
+                }
+                catch(Exception e)
+                {
+                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to an 'AtomicInteger'", e);
+                }
+                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'AtomicInteger'");
+
+            case "java.util.concurrent.atomic.AtomicLong":
+                try
+                {
+                    if (fromInstance instanceof AtomicLong)
+                    {
+                        return fromInstance;
+                    }
+                    else if (fromInstance instanceof Number)
+                    {
+                        return new AtomicLong(((Number)fromInstance).longValue());
+                    }
+                    else if (fromInstance instanceof String)
+                    {
+                        return new AtomicLong(Long.valueOf(((String) fromInstance).trim()));
+                    }
+                    else if (fromInstance instanceof Date)
+                    {
+                        return new AtomicLong(((Date)fromInstance).getTime());
+                    }
+                    else if (fromInstance instanceof Boolean)
+                    {
+                        return (Boolean) fromInstance ? new AtomicLong(1L) : new AtomicLong(0L);
+                    }
+                    else if (fromInstance instanceof AtomicBoolean)
+                    {
+                        return ((AtomicBoolean) fromInstance).get() ? new AtomicLong(1L) : new AtomicLong(0L);
+                    }
+                    else if (fromInstance instanceof Calendar)
+                    {
+                        return new AtomicLong(((Calendar)fromInstance).getTime().getTime());
+                    }
+                }
+                catch(Exception e)
+                {
+                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to an 'AtomicLong'", e);
+                }
+                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'AtomicLong'");
+
+            case "boolean":
+            case "java.lang.Boolean":
+                if (fromInstance instanceof Boolean)
+                {
+                    return fromInstance;
+                }
+                else if (fromInstance instanceof Number)
+                {
+                    return ((Number)fromInstance).longValue() != 0;
+                }
+                else if (fromInstance instanceof String)
+                {
+                    String value = (String)  fromInstance;
+                    return "true".equalsIgnoreCase(value) ? Boolean.TRUE : Boolean.FALSE;
+                }
+                else if (fromInstance instanceof AtomicBoolean)
+                {
+                    return ((AtomicBoolean) fromInstance).get();
+                }
+                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Boolean'");
+
+
+            case "java.util.concurrent.atomic.AtomicBoolean":
+                if (fromInstance instanceof AtomicBoolean)
+                {
+                    return fromInstance;
+                }
+                else if (fromInstance instanceof String)
+                {
+                    String value = (String)  fromInstance;
+                    return new AtomicBoolean("true".equalsIgnoreCase(value));
+                }
+                else if (fromInstance instanceof Number)
+                {
+                    return new AtomicBoolean(((Number)fromInstance).longValue() != 0);
+                }
+                else if (fromInstance instanceof Boolean)
+                {
+                    return new AtomicBoolean((Boolean) fromInstance);
+                }
+                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'AtomicBoolean'");
         }
         throw new IllegalArgumentException("Unsupported type '" + toType.getName() + "' for conversion");
     }

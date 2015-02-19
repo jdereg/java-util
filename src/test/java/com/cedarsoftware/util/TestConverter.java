@@ -7,6 +7,9 @@ import java.math.BigInteger;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -55,6 +58,10 @@ public class TestConverter
         assertEquals((byte)1, Converter.convert(true, Byte.class));
         assertEquals((byte)0, Converter.convert(false, byte.class));
 
+        assertEquals((byte)25, Converter.convert(new AtomicInteger(25), byte.class));
+        assertEquals((byte)100, Converter.convert(new AtomicLong(100L), byte.class));
+        assertEquals((byte)1, Converter.convert(new AtomicBoolean(true), byte.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), byte.class);
@@ -95,6 +102,10 @@ public class TestConverter
         assertEquals((short)1, Converter.convert(true, short.class));
         assertEquals((short)0, Converter.convert(false, Short.class));
 
+        assertEquals((short)25, Converter.convert(new AtomicInteger(25), short.class));
+        assertEquals((short)100, Converter.convert(new AtomicLong(100L), Short.class));
+        assertEquals((short)1, Converter.convert(new AtomicBoolean(true), Short.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), short.class);
@@ -118,22 +129,26 @@ public class TestConverter
     public void testInt()
     {
         Integer x = (Integer) Converter.convert("-450000", int.class);
-        assertEquals((Object)(-450000), x);
+        assertEquals((Object) (-450000), x);
         x = (Integer) Converter.convert("550000", Integer.class);
-        assertEquals((Object)550000, x);
+        assertEquals((Object) 550000, x);
 
         x = (Integer) Converter.convert(100000, int.class);
-        assertEquals((Object)100000, x);
+        assertEquals((Object) 100000, x);
         x = (Integer) Converter.convert(200000, Integer.class);
-        assertEquals((Object)200000, x);
+        assertEquals((Object) 200000, x);
 
         x = (Integer) Converter.convert(new BigDecimal("100000"), int.class);
-        assertEquals((Object)100000, x);
+        assertEquals((Object) 100000, x);
         x = (Integer) Converter.convert(new BigInteger("200000"), Integer.class);
-        assertEquals((Object)200000, x);
+        assertEquals((Object) 200000, x);
 
         assertEquals(1, Converter.convert(true, Integer.class));
         assertEquals(0, Converter.convert(false, int.class));
+
+        assertEquals(25, Converter.convert(new AtomicInteger(25), int.class));
+        assertEquals(100, Converter.convert(new AtomicLong(100L), Integer.class));
+        assertEquals(1, Converter.convert(new AtomicBoolean(true), Integer.class));
 
         try
         {
@@ -183,6 +198,10 @@ public class TestConverter
         now70 = today.getTime().getTime();
         assertEquals(now70, Converter.convert(today, Long.class));
 
+        assertEquals(25L, Converter.convert(new AtomicInteger(25), long.class));
+        assertEquals(100L, Converter.convert(new AtomicLong(100L), Long.class));
+        assertEquals(1L, Converter.convert(new AtomicBoolean(true), Long.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), long.class);
@@ -195,6 +214,65 @@ public class TestConverter
         try
         {
             Converter.convert("45badNumber", long.class);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+        }
+    }
+
+    @Test
+    public void testAtomicLong()
+    {
+        AtomicLong x = (AtomicLong) Converter.convert("-450000", AtomicLong.class);
+        assertEquals(-450000L, x.get());
+        x = (AtomicLong) Converter.convert("550000", AtomicLong.class);
+        assertEquals(550000L, x.get());
+
+        x = (AtomicLong) Converter.convert(100000L, AtomicLong.class);
+        assertEquals(100000L, x.get());
+        x = (AtomicLong) Converter.convert(200000L, AtomicLong.class);
+        assertEquals(200000L, x.get());
+
+        x = (AtomicLong) Converter.convert(new BigDecimal("100000"), AtomicLong.class);
+        assertEquals(100000L, x.get());
+        x = (AtomicLong) Converter.convert(new BigInteger("200000"), AtomicLong.class);
+        assertEquals(200000L, x.get());
+
+        x = (AtomicLong)Converter.convert(true, AtomicLong.class);
+        assertEquals((long)1, x.get());
+        x = (AtomicLong)Converter.convert(false, AtomicLong.class);
+        assertEquals((long)0, x.get());
+
+        Date now = new Date();
+        long now70 = now.getTime();
+        x = (AtomicLong) Converter.convert(now, AtomicLong.class);
+        assertEquals(now70, x.get());
+
+        Calendar today = Calendar.getInstance();
+        now70 = today.getTime().getTime();
+        x = (AtomicLong) Converter.convert(today, AtomicLong.class);
+        assertEquals(now70, x.get());
+
+        x = (AtomicLong)Converter.convert(new AtomicInteger(25), AtomicLong.class);
+        assertEquals(25L, x.get());
+        x = (AtomicLong)Converter.convert(new AtomicLong(100L), AtomicLong.class);
+        assertEquals(100L, x.get());
+        x = (AtomicLong)Converter.convert(new AtomicBoolean(true), AtomicLong.class);
+        assertEquals(1L, x.get());
+
+        try
+        {
+            Converter.convert(TimeZone.getDefault(), AtomicLong.class);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+        }
+
+        try
+        {
+            Converter.convert("45badNumber", AtomicLong.class);
         }
         catch (IllegalArgumentException e)
         {
@@ -216,6 +294,10 @@ public class TestConverter
         cal.set(2015, 0, 17, 8, 34, 49);
         assertEquals("2015-01-17T08:34:49", Converter.convert(cal.getTime(), String.class));
         assertEquals("2015-01-17T08:34:49", Converter.convert(cal, String.class));
+
+        assertEquals("25", Converter.convert(new AtomicInteger(25), String.class));
+        assertEquals("100", Converter.convert(new AtomicLong(100L), String.class));
+        assertEquals("true", Converter.convert(new AtomicBoolean(true), String.class));
 
         try
         {
@@ -248,6 +330,10 @@ public class TestConverter
         Calendar today = Calendar.getInstance();
         now70 = new BigDecimal(today.getTime().getTime());
         assertEquals(now70, Converter.convert(today, BigDecimal.class));
+
+        assertEquals(new BigDecimal(25), Converter.convert(new AtomicInteger(25), BigDecimal.class));
+        assertEquals(new BigDecimal(100), Converter.convert(new AtomicLong(100L), BigDecimal.class));
+        assertEquals(BigDecimal.ONE, Converter.convert(new AtomicBoolean(true), BigDecimal.class));
 
         try
         {
@@ -290,6 +376,10 @@ public class TestConverter
         now70 = new BigInteger(Long.toString(today.getTime().getTime()));
         assertEquals(now70, Converter.convert(today, BigInteger.class));
 
+        assertEquals(new BigInteger("25"), Converter.convert(new AtomicInteger(25), BigInteger.class));
+        assertEquals(new BigInteger("100"), Converter.convert(new AtomicLong(100L), BigInteger.class));
+        assertEquals(BigInteger.ONE, Converter.convert(new AtomicBoolean(true), BigInteger.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), BigInteger.class);
@@ -302,6 +392,41 @@ public class TestConverter
         try
         {
             Converter.convert("45badNumber", BigInteger.class);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+        }
+    }
+
+    @Test
+    public void testAtomicInteger()
+    {
+        AtomicInteger x = (AtomicInteger) Converter.convert("-450000", AtomicInteger.class);
+        assertEquals(-450000, x.get());
+
+        assertEquals(3, ((AtomicInteger) Converter.convert(new BigDecimal("3.14"), AtomicInteger.class)).get());
+        assertEquals(8675309, ((AtomicInteger)Converter.convert(new BigInteger("8675309"), AtomicInteger.class)).get());
+        assertEquals(75, ((AtomicInteger)Converter.convert((short) 75, AtomicInteger.class)).get());
+        assertEquals(1, ((AtomicInteger)Converter.convert(true, AtomicInteger.class)).get());
+        assertEquals(0, ((AtomicInteger)Converter.convert(false, AtomicInteger.class)).get());
+
+        assertEquals(25, ((AtomicInteger)Converter.convert(new AtomicInteger(25), AtomicInteger.class)).get());
+        assertEquals(100, ((AtomicInteger)Converter.convert(new AtomicLong(100L), AtomicInteger.class)).get());
+        assertEquals(1, ((AtomicInteger)Converter.convert(new AtomicBoolean(true), AtomicInteger.class)).get());
+
+        try
+        {
+            Converter.convert(TimeZone.getDefault(), AtomicInteger.class);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+        }
+
+        try
+        {
+            Converter.convert("45badNumber", AtomicInteger.class);
         }
         catch (IllegalArgumentException e)
         {
@@ -379,6 +504,21 @@ public class TestConverter
         assertTrue(sqlConverted instanceof Date);
         assertTrue(sqlConverted instanceof java.sql.Date);
 
+        // AtomicLong to Date
+        now = System.currentTimeMillis();
+        dateNow = new Date(now);
+        converted = (Date) Converter.convert(new AtomicLong(now), Date.class);
+        assertEquals(dateNow, converted);
+        assertTrue(converted instanceof Date);
+        assertFalse(converted instanceof java.sql.Date);
+
+        // long to java.sql.Date
+        dateNow = new java.sql.Date(now);
+        sqlConverted = (java.sql.Date) Converter.convert(new AtomicLong(now), java.sql.Date.class);
+        assertEquals(dateNow, sqlConverted);
+        assertTrue(sqlConverted instanceof Date);
+        assertTrue(sqlConverted instanceof java.sql.Date);
+
         // Invalid source type for Date
         try
         {
@@ -434,6 +574,11 @@ public class TestConverter
         assertEquals(0.0f, Converter.convert(false, float.class));
         assertEquals(0.0f, Converter.convert(false, Float.class));
 
+        assertEquals(0.0f, Converter.convert(new AtomicInteger(0), Float.class));
+        assertEquals(0.0f, Converter.convert(new AtomicLong(0), Float.class));
+        assertEquals(0.0f, Converter.convert(new AtomicBoolean(false), Float.class));
+        assertEquals(1.0f, Converter.convert(new AtomicBoolean(true), Float.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), float.class);
@@ -467,6 +612,11 @@ public class TestConverter
         assertEquals(0.0d, Converter.convert(false, double.class));
         assertEquals(0.0d, Converter.convert(false, Double.class));
 
+        assertEquals(0.0d, Converter.convert(new AtomicInteger(0), double.class));
+        assertEquals(0.0d, Converter.convert(new AtomicLong(0), double.class));
+        assertEquals(0.0d, Converter.convert(new AtomicBoolean(false), Double.class));
+        assertEquals(1.0d, Converter.convert(new AtomicBoolean(true), Double.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), double.class);
@@ -483,6 +633,70 @@ public class TestConverter
         catch (IllegalArgumentException e)
         {
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+        }
+    }
+
+    @Test
+    public void testBoolean()
+    {
+        assertEquals(true, Converter.convert(-3.14d, boolean.class));
+        assertEquals(false, Converter.convert(0.0d, boolean.class));
+        assertEquals(true, Converter.convert(-3.14f, Boolean.class));
+        assertEquals(false, Converter.convert(0.0f, Boolean.class));
+
+        assertEquals(false, Converter.convert(new AtomicInteger(0), boolean.class));
+        assertEquals(false, Converter.convert(new AtomicLong(0), boolean.class));
+        assertEquals(false, Converter.convert(new AtomicBoolean(false), Boolean.class));
+        assertEquals(true, Converter.convert(new AtomicBoolean(true), Boolean.class));
+
+        assertEquals(true, Converter.convert("TRue", Boolean.class));
+        assertEquals(false, Converter.convert("fALse", Boolean.class));
+        assertEquals(false, Converter.convert("john", Boolean.class));
+
+        assertEquals(true, Converter.convert(true, Boolean.class));
+        assertEquals(true, Converter.convert(Boolean.TRUE, Boolean.class));
+        assertEquals(false, Converter.convert(false, Boolean.class));
+        assertEquals(false, Converter.convert(Boolean.FALSE, Boolean.class));
+
+        try
+        {
+            Converter.convert(new Date(), Boolean.class);
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+        }
+    }
+
+    @Test
+    public void testAtomicBoolean()
+    {
+        assert ((AtomicBoolean)Converter.convert(-3.14d, AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert(0.0d, AtomicBoolean.class)).get();
+        assert ((AtomicBoolean)Converter.convert(-3.14f, AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert(0.0f, AtomicBoolean.class)).get();
+
+        assert !((AtomicBoolean)Converter.convert(new AtomicInteger(0), AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert(new AtomicLong(0), AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert(new AtomicBoolean(false), AtomicBoolean.class)).get();
+        assert ((AtomicBoolean)Converter.convert(new AtomicBoolean(true), AtomicBoolean.class)).get();
+
+        assert ((AtomicBoolean)Converter.convert("TRue", AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert("fALse", AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert("john", AtomicBoolean.class)).get();
+
+        assert ((AtomicBoolean)Converter.convert(true, AtomicBoolean.class)).get();
+        assert ((AtomicBoolean)Converter.convert(Boolean.TRUE, AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert(false, AtomicBoolean.class)).get();
+        assert !((AtomicBoolean)Converter.convert(Boolean.FALSE, AtomicBoolean.class)).get();
+
+        try
+        {
+            Converter.convert(new Date(), AtomicBoolean.class);
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
         }
     }
 

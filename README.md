@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.17.0</version>
+  <version>1.17.1</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Feed hungry developers...</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -35,43 +35,46 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.17.1
+ * Added full support for `AtomicBoolean`, `AtomicInteger`, and `AtomicLong` to `Converter.convert(value, AtomicXXX)`.  Any reasonable value can be converted to/from these, including Strings, Dates (`AtomicLong`), all `Number` types.
+ * `IOUtilities.flush()` now supports `XMLStreamWriter`
 * 1.17.0
- * UIUtilities.close() now supports XMLStreamReader and XMLStreamWriter in addition to Closeable.
- * Converter.convert(value, type) - a value of null is supported, and returns null.  A null type, however, throws an IllegalArgumentException.
+ * `UIUtilities.close()` now supports `XMLStreamReader` and `XMLStreamWriter` in addition to `Closeable`.
+ * `Converter.convert(value, type)` - a value of null is supported, and returns null.  A null type, however, throws an `IllegalArgumentException`.
 * 1.16.1
- * In Converter.convert(value, type), the value is trimmed of leading / trailing white-space if it is a String and the type is a Number.
+ * In `Converter.convert(value, type)`, the value is trimmed of leading / trailing white-space if it is a String and the type is a `Number`.
 * 1.16.0
- * Added Converter.convert() API.  Allows converting instances of one type to another.  Handles all primitives, primitive wrappers, Date, java.sql.Date, String, BigDecimal, and BigInteger.  Additionally, input (from) argument accepts Calendar.
- * Added static getDateFormat() to SafeSimpleDateFormat for quick access to thread local formatter (per format String).
+ * Added `Converter.convert()` API.  Allows converting instances of one type to another.  Handles all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`, and `BigInteger`.  Additionally, input (from) argument accepts `Calendar`.
+ * Added static `getDateFormat()` to `SafeSimpleDateFormat` for quick access to thread local formatter (per format `String`).
 * 1.15.0
  * Switched to use Log4J2 () for logging.
 * 1.14.1
- * bug fix: CaseInsensitiveMa.keySet() was only initialize the iterator once.  If keySet() called a 2nd time, it would no longer work.
+ * bug fix: `CaseInsensitiveMa.keySet()` was only initializing the iterator once.  If `keySet()` was called a 2nd time, it would no longer work.
 * 1.14.0
- * bug fix: CaseInsensitiveSet(), the return value for addAll(), returnAll(), and retainAll() was wrong in some cases.
+ * bug fix: `CaseInsensitiveSet()`, the return value for `addAll()`, `returnAll()`, and `retainAll()` was wrong in some cases.
 * 1.13.3
- * EncryptionUtilities - Added byte[] APIs.  Makes it easy to encrypt/decrypt byte[] data.
- * pom.xml had extraneous characters inadvertently added to the file - these are removed.
+ * `EncryptionUtilities` - Added byte[] APIs.  Makes it easy to encrypt/decrypt `byte[]` data.
+ * `pom.xml` had extraneous characters inadvertently added to the file - these are removed.
  * 1.13.1 & 13.12 - issues with sonatype
 * 1.13.0
- * DateUtilities - Day of week allowed (properly ignored).
- * DateUtilities - First (st), second (nd), third (rd), and fourth (th) ... supported.
- * DateUtilities - The default toString() standard date / time displayed by the JVM is now supported as a parseable format.
- * DateUtilities - Extra whitespace can exist within the date string.
- * DateUtilities - Full time zone support added.
- * DateUtilities - The date (or date time) is expected to be in isolation. Whitespace on either end is fine, however, once the date time is parsed from the string, no other content can be left (prevents accidently parsing dates from dates embedded in text).
- * UrlUtilities - Removed proxy from calls to URLUtilities.  These are now done through the JVM.
+ * `DateUtilities` - Day of week allowed (properly ignored).
+ * `DateUtilities` - First (st), second (nd), third (rd), and fourth (th) ... supported.
+ * `DateUtilities` - The default toString() standard date / time displayed by the JVM is now supported as a parseable format.
+ * `DateUtilities` - Extra whitespace can exist within the date string.
+ * `DateUtilities` - Full time zone support added.
+ * `DateUtilities` - The date (or date time) is expected to be in isolation. Whitespace on either end is fine, however, once the date time is parsed from the string, no other content can be left (prevents accidently parsing dates from dates embedded in text).
+ * `UrlUtilities` - Removed proxy from calls to `URLUtilities`.  These are now done through the JVM.
 * 1.12.0
- * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify JAVA_UTIL_CLUSTERID.
+ * `UniqueIdGenerator` uses 99 as the cluster id when the JAVA_UTIL_CLUSTERID environment variable or System property is not available.  This speeds up execution on developer's environments when they do not specify `JAVA_UTIL_CLUSTERID`.
  * All the 1.11.x features rolled up.
 * 1.11.3
- * UrlUtilities - separated out call that resolves res:// to a public API to allow for wider use.
+ * `UrlUtilities` - separated out call that resolves `res://` to a public API to allow for wider use.
 * 1.11.2
- * Updated so headers can be set individually by the strategy (UrlInvocationHandler)
- * InvocationHandler set to always uses POST method to allow additional HTTP headers.
+ * Updated so headers can be set individually by the strategy (`UrlInvocationHandler`)
+ * `InvocationHandler` set to always uses `POST` method to allow additional `HTTP` headers.
 * 1.11.1
- * Better IPv6 support (UniqueIdGenerator)
- * Fixed UrlUtilities.getContentFromUrl() (byte[]) no longer setting up SSLFactory when http protocol used.
+ * Better IPv6 support (`UniqueIdGenerator`)
+ * Fixed `UrlUtilities.getContentFromUrl()` (`byte[]`) no longer setting up `SSLFactory` when `HTTP` protocol used.
 * 1.11.0
  * `UrlInvocationHandler`, `UrlInvocationStrategy` - Updated to allow more generalized usage. Pass in your implementation of `UrlInvocationStrategy` which allows you to set the number of retry attempts, fill out the URL pattern, set up the POST data, and optionally set/get cookies.
  * Removed dependency on json-io.  Only remaining dependency is Apache commons-logging.

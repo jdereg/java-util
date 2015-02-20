@@ -469,7 +469,7 @@ class TestApplicationID
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), 'JIRA-555')
         appId.validate()
-        assert appId.getChangeSet() == 'JIRA-555'
+        assert appId.getBranch() == 'JIRA-555'
         assert appId.cacheKey().contains('jira-555')
     }
 

@@ -38,7 +38,7 @@ public class ApplicationID
     private final String app;
     private final String version;
     private final String status;
-    private final String changeSet;
+    private final String branch;
 
     // For serialization support only
     private ApplicationID()
@@ -47,7 +47,7 @@ public class ApplicationID
         app = DEFAULT_APP;
         version = DEFAULT_VERSION;
         status = ReleaseStatus.SNAPSHOT.name();
-        changeSet = null;
+        branch = null;
     }
 
     public ApplicationID(String tenant, String app, String version, String status)
@@ -55,13 +55,13 @@ public class ApplicationID
         this(tenant, app, version, status, DEFAULT_CHANGE_SET);
     }
 
-    public ApplicationID(String tenant, String app, String version, String status, String changeSet)
+    public ApplicationID(String tenant, String app, String version, String status, String branch)
     {
         this.tenant = tenant;
         this.app = app;
         this.version = version;
         this.status = status;
-        this.changeSet = changeSet;
+        this.branch = branch;
         validate();
     }
 
@@ -85,9 +85,9 @@ public class ApplicationID
         return status;
     }
 
-    public String getChangeSet()
+    public String getBranch()
     {
-        return changeSet;
+        return branch;
     }
 
     public String cacheKey()
@@ -97,7 +97,7 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
-        return (tenant + '/' + app + '/' + version + '/' + changeSet + '/' + name).toLowerCase();
+        return (tenant + '/' + app + '/' + version + '/' + branch + '/' + name).toLowerCase();
     }
 
     public boolean equals(Object o)
@@ -118,7 +118,7 @@ public class ApplicationID
                 StringUtilities.equalsIgnoreCase(app, that.app) &&
                 StringUtilities.equalsIgnoreCase(status, that.status) &&
                 StringUtilities.equals(version, that.version) &&
-                StringUtilities.equalsIgnoreCase(changeSet, that.changeSet);
+                StringUtilities.equalsIgnoreCase(branch, that.branch);
 
     }
 
@@ -128,9 +128,9 @@ public class ApplicationID
         result = 31 * result + app.toLowerCase().hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.toUpperCase().hashCode();
-        if (changeSet != null)
+        if (branch != null)
         {
-            result = 31 * result + changeSet.toLowerCase().hashCode();
+            result = 31 * result + branch.toLowerCase().hashCode();
         }
         return result;
     }
@@ -159,7 +159,7 @@ public class ApplicationID
     {
         //  In the Change Version the status was always SNAPSHOT when creating a new version.
         //  That is why we hardcode this to snapshot here.
-        return new ApplicationID(tenant, app, ver, ReleaseStatus.SNAPSHOT.name(), changeSet);
+        return new ApplicationID(tenant, app, ver, ReleaseStatus.SNAPSHOT.name(), branch);
     }
 
     public void validate()
@@ -168,7 +168,7 @@ public class ApplicationID
         validateApp(app);
         validateVersion(version);
         validateStatus(status);
-        validateChangeSet(changeSet);
+        validateChangeSet(branch);
     }
 
     static void validateTenant(String tenant)

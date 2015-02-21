@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -441,27 +442,38 @@ public class TestConverter
         Date utilNow = new Date();
         Date coerced = (Date) Converter.convert(utilNow, Date.class);
         assertEquals(utilNow, coerced);
-        assertTrue(coerced instanceof Date);
         assertFalse(coerced instanceof java.sql.Date);
 
         // Date to java.sql.Date
         java.sql.Date sqlCoerced = (java.sql.Date) Converter.convert(utilNow, java.sql.Date.class);
         assertEquals(utilNow, sqlCoerced);
-        assertTrue(sqlCoerced instanceof Date);
-        assertTrue(sqlCoerced instanceof java.sql.Date);
 
         // java.sql.Date to java.sql.Date
         java.sql.Date sqlNow = new java.sql.Date(utilNow.getTime());
         sqlCoerced = (java.sql.Date) Converter.convert(sqlNow, java.sql.Date.class);
         assertEquals(sqlNow, sqlCoerced);
-        assertTrue(sqlCoerced instanceof Date);
-        assertTrue(sqlCoerced instanceof java.sql.Date);
 
         // java.sql.Date to Date
         coerced = (Date) Converter.convert(sqlNow, Date.class);
         assertEquals(sqlNow, coerced);
-        assertTrue(coerced instanceof Date);
         assertFalse(coerced instanceof java.sql.Date);
+
+        // Date to Timestamp
+        Timestamp tstamp = (Timestamp) Converter.convert(utilNow, Timestamp.class);
+        assertEquals(utilNow, tstamp);
+
+        // Timestamp to Date
+        Date someDate = (Date) Converter.convert(tstamp, Date.class);
+        assertEquals(utilNow, tstamp);
+        assertFalse(someDate instanceof Timestamp);
+
+        // java.sql.Date to Timestamp
+        tstamp = (Timestamp) Converter.convert(sqlCoerced, Timestamp.class);
+        assertEquals(sqlCoerced, tstamp);
+
+        // Timestamp to java.sql.Date
+        java.sql.Date someDate1 = (java.sql.Date) Converter.convert(tstamp, java.sql.Date.class);
+        assertEquals(someDate1, utilNow);
 
         // String to Date
         Calendar cal = Calendar.getInstance();
@@ -526,7 +538,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported value type"));
         }
 
         // Invalid source type for java.sql.Date
@@ -536,7 +548,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported value type"));
         }
 
         // Invalid source date for Date
@@ -557,6 +569,48 @@ public class TestConverter
         catch (IllegalArgumentException e)
         {
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+        }
+    }
+
+    @Test
+    public void testTimestamp()
+    {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        assertEquals(now, Converter.convert(now, Timestamp.class));
+        assert Converter.convert(now, Timestamp.class) instanceof Timestamp;
+
+        Timestamp christmas = (Timestamp) Converter.convert("2015/12/25", Timestamp.class);
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(2015, 11, 25);
+        assert christmas.getTime() == c.getTime().getTime();
+
+        Timestamp christmas2 = (Timestamp) Converter.convert(c, Timestamp.class);
+
+        assertEquals(christmas, christmas2);
+        assertEquals(christmas2, Converter.convert(christmas.getTime(), Timestamp.class));
+
+        AtomicLong al = new AtomicLong(christmas.getTime());
+        assertEquals(christmas2, Converter.convert(al, Timestamp.class));
+
+        try
+        {
+            Converter.convert(Boolean.TRUE, Timestamp.class);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.getMessage().toLowerCase().contains("unsupported value type");
+        }
+
+        try
+        {
+            Converter.convert("123dhksdk", Timestamp.class);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.getMessage().toLowerCase().contains("could not be converted");
         }
     }
 
@@ -717,12 +771,29 @@ public class TestConverter
     @Test
     public void testNullInstance()
     {
-        assertNull(Converter.convert(null, int.class));
+        assertEquals(false, Converter.convert(null, boolean.class));
+        assertNull(Converter.convert(null, Boolean.class));
+        assertEquals((byte) 0, Converter.convert(null, byte.class));
+        assertNull(Converter.convert(null, Byte.class));
+        assertEquals((short) 0, Converter.convert(null, short.class));
+        assertNull(Converter.convert(null, Short.class));
+        assertEquals(0, Converter.convert(null, int.class));
         assertNull(Converter.convert(null, Integer.class));
-        assertNull(Converter.convert(null, long.class));
+        assertEquals(0L, Converter.convert(null, long.class));
         assertNull(Converter.convert(null, Long.class));
+        assertEquals(0.0f, Converter.convert(null, float.class));
+        assertNull(Converter.convert(null, Float.class));
+        assertEquals(0.0d, Converter.convert(null, double.class));
+        assertNull(Converter.convert(null, Double.class));
         assertNull(Converter.convert(null, Date.class));
+        assertNull(Converter.convert(null, java.sql.Date.class));
+        assertNull(Converter.convert(null, Timestamp.class));
         assertNull(Converter.convert(null, String.class));
+        assertNull(Converter.convert(null, BigInteger.class));
+        assertNull(Converter.convert(null, BigDecimal.class));
+        assertNull(Converter.convert(null, AtomicBoolean.class));
+        assertNull(Converter.convert(null, AtomicInteger.class));
+        assertNull(Converter.convert(null, AtomicLong.class));
     }
 
     @Test

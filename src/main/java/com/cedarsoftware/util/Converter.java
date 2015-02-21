@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -57,17 +58,21 @@ public final class Converter
         {
             throw new IllegalArgumentException("Type cannot be null in Converter.convert(value, type)");
         }
-        if (fromInstance == null)
-        {
-            return null;
-        }
         switch(toType.getName())
         {
             case "byte":
+                if (fromInstance == null)
+                {
+                    return (byte)0;
+                }
             case "java.lang.Byte":
                 try
                 {
-                    if (fromInstance instanceof Byte)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof Byte)
                     {
                         return fromInstance;
                     }
@@ -94,15 +99,23 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'Byte'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Byte'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Byte'");
+                nope(fromInstance, "Byte");
 
             case "short":
+                if (fromInstance == null)
+                {
+                    return (short)0;
+                }
             case "java.lang.Short":
                 try
                 {
-                    if (fromInstance instanceof Short)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof Short)
                     {
                         return fromInstance;
                     }
@@ -129,15 +142,23 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'Short'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Short'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Short'");
+                nope(fromInstance, "Short");
 
             case "int":
+                if (fromInstance == null)
+                {
+                    return 0;
+                }
             case "java.lang.Integer":
                 try
                 {
-                    if (fromInstance instanceof Integer)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof Integer)
                     {
                         return fromInstance;
                     }
@@ -164,15 +185,23 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to an 'Integer'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'Integer'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Integer'");
+                nope(fromInstance, "Integer");
 
             case "long":
+                if (fromInstance == null)
+                {
+                    return 0L;
+                }
             case "java.lang.Long":
                 try
                 {
-                    if (fromInstance instanceof Long)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof Long)
                     {
                         return fromInstance;
                     }
@@ -207,12 +236,16 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'Long'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Long'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Long'");
+                nope(fromInstance, "Long");
 
             case "java.lang.String":
-                if (fromInstance instanceof String)
+                if (fromInstance == null)
+                {
+                    return null;
+                }
+                else if (fromInstance instanceof String)
                 {
                     return fromInstance;
                 }
@@ -236,12 +269,16 @@ public final class Converter
                 {
                     return "" + fromInstance;
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'String'");
+                nope(fromInstance, "String");
 
             case "java.math.BigDecimal":
                 try
                 {
-                    if (fromInstance instanceof BigDecimal)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof BigDecimal)
                     {
                         return fromInstance;
                     }
@@ -280,14 +317,18 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'BigDecimal'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigDecimal'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'BigDecimal'");
+                nope(fromInstance, "BigDecimal");
 
             case "java.math.BigInteger":
                 try
                 {
-                    if (fromInstance instanceof BigInteger)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof BigInteger)
                     {
                         return fromInstance;
                     }
@@ -326,16 +367,25 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'BigInteger'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigInteger'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'BigInteger'");
+                nope(fromInstance, "BigInteger");
 
             case "java.util.Date":
                 try
                 {
-                    if (fromInstance instanceof java.sql.Date)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof java.sql.Date)
                     {   // convert from java.sql.Date to java.util.Date
                         return new Date(((java.sql.Date)fromInstance).getTime());
+                    }
+                    else if (fromInstance instanceof Timestamp)
+                    {
+                        Timestamp timestamp = (Timestamp) fromInstance;
+                        return new Date(timestamp.getTime());
                     }
                     else if (fromInstance instanceof Date)
                     {
@@ -357,19 +407,28 @@ public final class Converter
                     {
                         return new Date(((AtomicLong) fromInstance).get());
                     }
-                    throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Date'");
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'Date'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Date'", e);
                 }
+                nope(fromInstance, "Date");
 
             case "java.sql.Date":
                 try
                 {
-                    if (fromInstance instanceof java.sql.Date)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof java.sql.Date)
                     {
                         return fromInstance;
+                    }
+                    else if (fromInstance instanceof Timestamp)
+                    {
+                        Timestamp timestamp = (Timestamp) fromInstance;
+                        return new java.sql.Date(timestamp.getTime());
                     }
                     else if (fromInstance instanceof Date)
                     {   // convert from java.util.Date to java.sql.Date
@@ -392,18 +451,70 @@ public final class Converter
                     {
                         return new java.sql.Date(((AtomicLong) fromInstance).get());
                     }
-                    throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'java.sql.Date'");
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'java.sql.Date'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'java.sql.Date'", e);
                 }
+                nope(fromInstance, "java.sql.Date");
+
+
+            case "java.sql.Timestamp":
+                try
+                {
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof java.sql.Date)
+                    {   // convert from java.sql.Date to java.util.Date
+                        return new Timestamp(((java.sql.Date)fromInstance).getTime());
+                    }
+                    else if (fromInstance instanceof Timestamp)
+                    {
+                        return fromInstance;
+                    }
+                    else if (fromInstance instanceof Date)
+                    {
+                        return new Timestamp(((Date) fromInstance).getTime());
+                    }
+                    else if (fromInstance instanceof String)
+                    {
+                        Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                        return new Timestamp(date.getTime());
+                    }
+                    else if (fromInstance instanceof Calendar)
+                    {
+                        return new Timestamp(((Calendar) fromInstance).getTime().getTime());
+                    }
+                    else if (fromInstance instanceof Long)
+                    {
+                        return new Timestamp((Long) fromInstance);
+                    }
+                    else if (fromInstance instanceof AtomicLong)
+                    {
+                        return new Timestamp(((AtomicLong) fromInstance).get());
+                    }
+                }
+                catch(Exception e)
+                {
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Timestamp'", e);
+                }
+                nope(fromInstance, "Timestamp");
 
             case "float":
+                if (fromInstance == null)
+                {
+                    return 0.0f;
+                }
             case "java.lang.Float":
                 try
                 {
-                    if (fromInstance instanceof Float)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof Float)
                     {
                         return fromInstance;
                     }
@@ -430,15 +541,23 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'Float'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Float'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Float'");
+                nope(fromInstance, "Float");
 
             case "double":
+                if (fromInstance == null)
+                {
+                    return 0.0d;
+                }
             case "java.lang.Double":
                 try
                 {
-                    if (fromInstance instanceof Double)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof Double)
                     {
                         return fromInstance;
                     }
@@ -465,14 +584,18 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to a 'Double'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Double'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Double'");
+                nope(fromInstance, "Double");
 
             case "java.util.concurrent.atomic.AtomicInteger":
                 try
                 {
-                    if (fromInstance instanceof AtomicInteger)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof AtomicInteger)
                     {
                         return fromInstance;
                     }
@@ -499,14 +622,18 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to an 'AtomicInteger'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicInteger'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'AtomicInteger'");
+                nope(fromInstance, "AtomicInteger");
 
             case "java.util.concurrent.atomic.AtomicLong":
                 try
                 {
-                    if (fromInstance instanceof AtomicLong)
+                    if (fromInstance == null)
+                    {
+                        return null;
+                    }
+                    else if (fromInstance instanceof AtomicLong)
                     {
                         return fromInstance;
                     }
@@ -541,13 +668,21 @@ public final class Converter
                 }
                 catch(Exception e)
                 {
-                    throw new IllegalArgumentException("value [" + fromInstance.getClass().getName() + "] could not be converted to an 'AtomicLong'", e);
+                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicLong'", e);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'AtomicLong'");
+                nope(fromInstance, "AtomicLong");
 
             case "boolean":
+                if (fromInstance == null)
+                {
+                    return Boolean.FALSE;
+                }
             case "java.lang.Boolean":
-                if (fromInstance instanceof Boolean)
+                if (fromInstance == null)
+                {
+                    return null;
+                }
+                else if (fromInstance instanceof Boolean)
                 {
                     return fromInstance;
                 }
@@ -568,11 +703,15 @@ public final class Converter
                 {
                     return ((AtomicBoolean) fromInstance).get();
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'Boolean'");
+                nope(fromInstance, "Boolean");
 
 
             case "java.util.concurrent.atomic.AtomicBoolean":
-                if (fromInstance instanceof AtomicBoolean)
+                if (fromInstance == null)
+                {
+                    return null;
+                }
+                else if (fromInstance instanceof AtomicBoolean)
                 {
                     return fromInstance;
                 }
@@ -593,8 +732,18 @@ public final class Converter
                 {
                     return new AtomicBoolean((Boolean) fromInstance);
                 }
-                throw new IllegalArgumentException("Unsupported value type [" + fromInstance.getClass().getName() + "] attempting to convert to 'AtomicBoolean'");
+                nope(fromInstance, "AtomicBoolean");
         }
         throw new IllegalArgumentException("Unsupported type '" + toType.getName() + "' for conversion");
+    }
+
+    private static String nope(Object fromInstance, String targetType)
+    {
+        throw new IllegalArgumentException("Unsupported value type [" + name(fromInstance) + "] attempting to convert to '" + targetType + "'");
+    }
+
+    private static String name(Object fromInstance)
+    {
+        return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
     }
 }

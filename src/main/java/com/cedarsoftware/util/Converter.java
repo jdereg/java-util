@@ -77,6 +77,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return (byte)0;
+                        }
                         return Byte.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
@@ -108,6 +112,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return (short)0;
+                        }
                         return Short.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
@@ -139,6 +147,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return 0;
+                        }
                         return Integer.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
@@ -170,6 +182,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return 0L;
+                        }
                         return Long.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Date)
@@ -235,6 +251,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return BigDecimal.ZERO;
+                        }
                         return new BigDecimal(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Number)
@@ -277,6 +297,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return BigInteger.ZERO;
+                        }
                         return new BigInteger(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Number)
@@ -389,6 +413,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return 0.0f;
+                        }
                         return Float.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
@@ -420,6 +448,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return 0.0d;
+                        }
                         return Double.valueOf(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Boolean)
@@ -446,6 +478,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return new AtomicInteger(0);
+                        }
                         return new AtomicInteger(Integer.valueOf(((String) fromInstance).trim()));
                     }
                     else if (fromInstance instanceof Number)
@@ -480,6 +516,10 @@ public final class Converter
                     }
                     else if (fromInstance instanceof String)
                     {
+                        if (StringUtilities.isEmpty((String)fromInstance))
+                        {
+                            return new AtomicLong(0);
+                        }
                         return new AtomicLong(Long.valueOf(((String) fromInstance).trim()));
                     }
                     else if (fromInstance instanceof Date)
@@ -517,6 +557,10 @@ public final class Converter
                 }
                 else if (fromInstance instanceof String)
                 {
+                    if (StringUtilities.isEmpty((String)fromInstance))
+                    {
+                        return Boolean.FALSE;
+                    }
                     String value = (String)  fromInstance;
                     return "true".equalsIgnoreCase(value) ? Boolean.TRUE : Boolean.FALSE;
                 }
@@ -534,6 +578,10 @@ public final class Converter
                 }
                 else if (fromInstance instanceof String)
                 {
+                    if (StringUtilities.isEmpty((String)fromInstance))
+                    {
+                        return new AtomicBoolean(false);
+                    }
                     String value = (String)  fromInstance;
                     return new AtomicBoolean("true".equalsIgnoreCase(value));
                 }

@@ -738,4 +738,21 @@ public class TestConverter
             e.getMessage().toLowerCase().contains("type cannot be null");
         }
     }
+
+    @Test
+    public void testEmptyString()
+    {
+        assertEquals(Boolean.FALSE, Converter.convert("", boolean.class));
+        assertEquals((byte) 0, Converter.convert("", byte.class));
+        assertEquals((short) 0, Converter.convert("", short.class));
+        assertEquals((int) 0, Converter.convert("", int.class));
+        assertEquals((long) 0, Converter.convert("", long.class));
+        assertEquals(0.0f, Converter.convert("", float.class));
+        assertEquals(0.0d, Converter.convert("", double.class));
+        assertEquals(BigDecimal.ZERO, Converter.convert("", BigDecimal.class));
+        assertEquals(BigInteger.ZERO, Converter.convert("", BigInteger.class));
+        assertEquals(new AtomicBoolean(false).get(), ((AtomicBoolean)Converter.convert("", AtomicBoolean.class)).get());
+        assertEquals(new AtomicInteger(0).get(), ((AtomicInteger)Converter.convert("", AtomicInteger.class)).get());
+        assertEquals(new AtomicLong(0L).get(), ((AtomicLong)Converter.convert("", AtomicLong.class)).get());
+    }
 }

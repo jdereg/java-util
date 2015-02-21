@@ -28,7 +28,7 @@ public class NCubeInfoDto
 	public String app;
 	public String version;
 	public String status;
-    public String changeSet;
+    public String branch;
 	public String name;
 	public String sha1;
     public String revision;
@@ -38,11 +38,11 @@ public class NCubeInfoDto
 
     public ApplicationID getApplicationID()
 	{
-		return new ApplicationID(tenant, app, version, status, changeSet);
+		return new ApplicationID(tenant, app, version, status, branch);
 	}
 
 	public String toString()
 	{
-		return tenant + '/' + app + '/' + version + '/' + status + '/' + changeSet + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
+		return tenant + '/' + app + '/' + version + '/' + status + '/' + branch + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
 }

@@ -43,8 +43,8 @@ class TestNCubeManager
 {
     public static final String APP_ID = 'ncube.test'
     public static final String USER_ID = 'jdirt'
-    public static ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.SNAPSHOT.name())
-    public static ApplicationID defaultReleaseApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.RELEASE.name())
+    public static ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH)
+    public static ApplicationID defaultReleaseApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.DEFAULT_BRANCH)
 
     @Before
     public void setUp() throws Exception
@@ -654,8 +654,8 @@ class TestNCubeManager
         NCubeInfoDto nc1 = (NCubeInfoDto) cubeList[0]
         NCubeInfoDto nc2 = (NCubeInfoDto) cubeList[1]
 
-        assertTrue(nc1.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/null/test.Age-Gender'))
-        assertTrue(nc2.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/null/test.Floppy'))
+        assertTrue(nc1.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/TEST/test.Age-Gender/null/0/2015-02-22/jdirt/'))
+        assertTrue(nc2.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/TEST/test.Floppy/null/0/2015-02-22/jdirt/'))
 
         assertTrue(nc1.name.equals('test.Floppy') || nc2.name.equals('test.Floppy'))
         assertFalse(nc1.name.equals('test.Floppy') && nc2.name.equals('test.Floppy'))

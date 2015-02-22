@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
+import java.util.List;
 
 /**
  * This adapter could be replaced by an adapting proxy.  Then you could
@@ -123,7 +124,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getBranches(ApplicationID appId)
+    public List<String> getBranches(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
         try

@@ -827,7 +827,7 @@ public class NCubeManager
         broadcast(appId);
     }
 
-    public static Object[] getBranches(ApplicationID appId)
+    public static List<String> getBranches(ApplicationID appId)
     {
         validateAppId(appId);
         return getPersister().getBranches(appId);

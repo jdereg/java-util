@@ -30,9 +30,9 @@ public class ApplicationID
     public static final String DEFAULT_TENANT = "NONE";
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
-    public static final String DEFAULT_CHANGE_SET = null;
+    public static final String DEFAULT_BRANCH = "TEST";
 
-    public static final transient ApplicationID defaultAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name());
+    public static final transient ApplicationID defaultAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), DEFAULT_BRANCH);
 
     private final String tenant;
     private final String app;
@@ -52,7 +52,7 @@ public class ApplicationID
 
     public ApplicationID(String tenant, String app, String version, String status)
     {
-        this(tenant, app, version, status, DEFAULT_CHANGE_SET);
+        this(tenant, app, version, status, DEFAULT_BRANCH);
     }
 
     public ApplicationID(String tenant, String app, String version, String status, String branch)
@@ -97,7 +97,11 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
-        return (tenant + '/' + app + '/' + version + '/' + branch + '/' + name).toLowerCase();
+        if (StringUtilities.isEmpty(name))
+        {
+            return (tenant + " / " + app + " / " + version + " / " + branch + " /").toLowerCase();
+        }
+        return (tenant + " / " + app + " / " + version + " / " + branch + " / " + name).toLowerCase();
     }
 
     public boolean equals(Object o)

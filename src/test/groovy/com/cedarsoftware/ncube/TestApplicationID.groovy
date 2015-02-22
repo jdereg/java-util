@@ -150,8 +150,8 @@ class TestApplicationID
     void testAppKey()
     {
         ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        assertEquals 'sears/inventory/1.0.0/null/', appId.cacheKey('')
-        assertEquals 'sears/inventory/1.0.0/null/', appId.toString()
+        assertEquals 'sears / inventory / 1.0.0 / test /', appId.cacheKey('')
+        assertEquals 'sears / inventory / 1.0.0 / test /', appId.toString()
     }
 
     @Test

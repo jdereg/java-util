@@ -115,16 +115,16 @@ class TestGroovyMethod
     void testGroovyMethodClearCacheExplicitly() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH)
 
-        NCube cpCube = NCubeManager.getNCubeFromResource appId, 'sys.classpath.cp1.json'
-        NCubeManager.createCube appId, cpCube, TestNCubeManager.USER_ID
+        NCube cpCube = NCubeManager.getNCubeFromResource(appId, 'sys.classpath.cp1.json')
+        NCubeManager.createCube(appId, cpCube, TestNCubeManager.USER_ID)
 
-        NCube cube = NCubeManager.getNCubeFromResource appId, 'GroovyMethodClassPath1.json'
-        NCubeManager.createCube appId, cube, TestNCubeManager.USER_ID
+        NCube cube = NCubeManager.getNCubeFromResource(appId, 'GroovyMethodClassPath1.json')
+        NCubeManager.createCube(appId, cube, TestNCubeManager.USER_ID)
 
-        NCubeManager.clearCache appId
-        cube = NCubeManager.getCube appId, 'GroovyMethodClassPath1'
+        NCubeManager.clearCache(appId)
+        cube = NCubeManager.getCube(appId, 'GroovyMethodClassPath1')
 
         Object x = cube.getCell([method:'foo'])
         assertEquals 'foo', x
@@ -135,11 +135,11 @@ class TestGroovyMethod
         x = cube.getCell([method:'bar'])
         assertEquals('Bar', x)
 
-        cpCube = NCubeManager.getNCubeFromResource appId, 'sys.classpath.cp2.json'
-        NCubeManager.updateCube appId, cpCube, TestNCubeManager.USER_ID
+        cpCube = NCubeManager.getNCubeFromResource(appId, 'sys.classpath.cp2.json')
+        NCubeManager.updateCube(appId, cpCube, TestNCubeManager.USER_ID)
 
-        NCubeManager.clearCache appId
-        cube = NCubeManager.getCube appId, 'GroovyMethodClassPath1'
+        NCubeManager.clearCache(appId)
+        cube = NCubeManager.getCube(appId, 'GroovyMethodClassPath1')
 
         x = cube.getCell([method:'foo'])
         assertEquals 'boo', x

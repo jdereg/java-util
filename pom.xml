@@ -35,7 +35,7 @@
     <properties>
         <version.json.io>2.9.4-SNAPSHOT</version.json.io>
         <version.log4j>2.1</version.log4j>
-        <version.junit>4.11</version.junit>
+        <version.junit>4.12</version.junit>
         <version.guava>16.0.1</version.guava>
         <version.powermock>1.6.1</version.powermock>
         <version.mockito>1.10.8</version.mockito>

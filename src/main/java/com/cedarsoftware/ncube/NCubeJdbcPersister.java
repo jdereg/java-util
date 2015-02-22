@@ -911,4 +911,32 @@ public class NCubeJdbcPersister
             throw new RuntimeException(s, e);
         }
     }
+
+    public Object[] getBranches(Connection connection, ApplicationID appId)
+    {
+        final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')";
+        try (PreparedStatement stmt = connection.prepareStatement(sql))
+        {
+            stmt.setString(1, appId.getApp());
+            stmt.setString(2, appId.getVersion());
+            stmt.setString(3, appId.getStatus());
+            stmt.setString(4, appId.getTenant());
+
+            List<String> records = new ArrayList<>();
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                while (rs.next())
+                {
+                    records.add(rs.getString(1));
+                }
+            }
+            return records.toArray();
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch all branches for app: " + appId + " from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
 }

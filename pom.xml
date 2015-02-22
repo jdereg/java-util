@@ -33,8 +33,8 @@
     </developers>
 
     <properties>
-        <version.json-io>2.9.3</version.json-io>
-        <version.java-util>1.17.1</version.java-util>
+        <version.json-io>2.9.4-SNAPSHOT</version.json-io>
+        <version.java-util>1.17.2-SNAPSHOT</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.groovy>2.3.9</version.groovy>

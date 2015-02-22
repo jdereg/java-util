@@ -123,6 +123,19 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public Object[] getBranches(ApplicationID appId)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.getBranches(c, appId);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public boolean deleteCube(ApplicationID appId, String name, boolean allowDelete, String username)
     {
         Connection c = connectionProvider.getConnection();

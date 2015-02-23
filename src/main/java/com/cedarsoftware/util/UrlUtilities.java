@@ -553,13 +553,10 @@ public final class UrlUtilities
 
 
     /**
-     *
-     * @param url
-     * @param input
-     * @param output
-     * @param cache
-     * @return
-     * @throws IOException
+     * @param input boolean indicating whether this connection will be used for input
+     * @param output boolean indicating whether this connection will be used for output
+     * @param cache boolean allow caching (be careful setting this to true for non-static retrievals).
+     * @return URLConnection established URL connection.
      */
     public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
     {
@@ -568,12 +565,10 @@ public final class UrlUtilities
 
     /**
      *
-     * @param url
-     * @param input
-     * @param output
-     * @param cache
-     * @return UrlConnection
-     * @throws IOException
+     * @param input boolean indicating whether this connection will be used for input
+     * @param output boolean indicating whether this connection will be used for output
+     * @param cache boolean allow caching (be careful setting this to true for non-static retrievals).
+     * @return URLConnection established URL connection.
      */
     public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException
     {
@@ -582,13 +577,11 @@ public final class UrlUtilities
 
     /**
      *  Gets a connection from a url.  All getConnection calls should go through this code.
-     * @param url
-     * @param inCookies
-     * @param input
-     * @param output
-     * @param cache
-     * @return URLConnection
-     * @throws IOException
+     * @param inCookies Supply cookie Map (received from prior setCookies calls from server)
+     * @param input boolean indicating whether this connection will be used for input
+     * @param output boolean indicating whether this connection will be used for output
+     * @param cache boolean allow caching (be careful setting this to true for non-static retrievals).
+     * @return URLConnection established URL connection.
      */
     public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) throws IOException
     {
@@ -650,7 +643,7 @@ public final class UrlUtilities
 
     /**
      *
-     * @return
+     * @return String host name
      * @deprecated As of release 1.13.0, replaced by {@link com.cedarsoftware.util.InetAddressUtilities#getHostName()}
      */
     @Deprecated
@@ -664,19 +657,11 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
      *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
-     * @param url
-     * @param inCookies
-     * @param input
-     * @param output
-     * @param cache
-     * @param proxy
-     * @return URLConnection
-     * @throws IOException
      * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
      */
     @Deprecated
@@ -689,22 +674,12 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
      *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      *
-     * @param url
-     * @param server
-     * @param port
-     * @param inCookies
-     * @param input
-     * @param output
-     * @param cache
-     * @param allowAllCerts
-     * @return URLConnection
-     * @throws IOException
      * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
      */
     @Deprecated
@@ -718,21 +693,11 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
      *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
-     * @param url
-     * @param inCookies
-     * @param input
-     * @param output
-     * @param cache
-     * @param proxy
-     * @param factory
-     * @param verifier
-     * @return URLConnection
-     * @throws IOException
      * @deprecated As of release 1.13.0, replaced by {@link #getConnection(java.net.URL, java.util.Map, boolean, boolean, boolean, boolean)}
      */
     @Deprecated
@@ -746,7 +711,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
@@ -770,7 +735,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
@@ -800,14 +765,12 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
      *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
      * @param url URL to hit
-     * @param inCookies
-     * @param outCookies
      * @param proxy Proxy server to create connection (or null if not needed)
      * @param factory custom SSLSocket factory (or null if not needed)
      * @param verifier custom Hostnameverifier (or null if not needed)
@@ -831,7 +794,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
@@ -857,7 +820,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
@@ -884,7 +847,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
@@ -918,7 +881,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
+     *  http.nonProxyHosts (should always include localhost)
      *  https.proxyHost
      *  https.proxyPort
      *
@@ -955,8 +918,7 @@ public final class UrlUtilities
      *  Anyone using the proxy calls such as this one should have that managed by the jvm with -D parameters:
      *  http.proxyHost
      *  http.proxyPort (default: 80)
-     *  http.nonProxyHosts (should alwasy include localhost)
-     *  https.proxyHost
+     always     *  https.proxyHost
      *  https.proxyPort
      *
      *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg

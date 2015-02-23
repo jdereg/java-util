@@ -122,7 +122,8 @@ public class TestCaseInsensitiveSet
     public void testToArrayWithArgs()
     {
         Set set = get123();
-        String[] items = (String[]) set.toArray(new String[]{});
+        String[] empty = new String[]{};
+        String[] items = (String[]) set.toArray(empty);
         assertEquals(3, items.length);
         assertEquals(items[0], "One");
         assertEquals(items[1], "Two");
@@ -371,7 +372,7 @@ public class TestCaseInsensitiveSet
         assertTrue(addedKeys.contains("BAR"));
     }
 
-    private Set get123()
+    private static Set get123()
     {
         Set set = new CaseInsensitiveSet();
         set.add("One");

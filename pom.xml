@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.17.2-SNAPSHOT</version>
+    <version>1.18.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
     <profiles>
@@ -32,7 +32,7 @@
         <url>https://github.com/jdereg/java-util</url>
         <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
-      <tag>HEAD</tag>
+      <tag>1.18.0.201502231044</tag>
   </scm>
 
     <developers>
@@ -44,7 +44,7 @@
     </developers>
 
     <properties>
-        <version.json.io>2.9.4-SNAPSHOT</version.json.io>
+        <version.json.io>2.9.3</version.json.io>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.guava>16.0.1</version.guava>
@@ -177,9 +177,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.cedarsoftware</groupId>
-            <artifactId>json-io</artifactId>
-            <version>${version.json.io}</version>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.3</version>
             <scope>test</scope>
         </dependency>
 

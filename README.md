@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.17.1</version>
+  <version>1.17.2</version>
 </dependency>
 ```
 <a class="coinbase-button" data-code="95fd9e409d5eb4160314a7c6030be682" data-button-style="custom_large" data-custom="java-util" href="https://coinbase.com/checkouts/95fd9e409d5eb4160314a7c6030be682">Feed hungry developers...</a><script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
@@ -35,6 +35,10 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.17.2
+ * Support added for `Timestamp` in `Converter.convert()`
+ * `null` can be passed into `Converter.convert()` for primitive types, and it will return their logical 0 value (0.0f, 0.0d, etc.).  For primitive wrappers, atomics, etc, null will be returned.
+ * "" can be passed into `Converter.convert()` and it will set primitives to 0, and the object types (primitive wrappers, dates, atomics) to null.  `String` will be set to "".
 * 1.17.1
  * Added full support for `AtomicBoolean`, `AtomicInteger`, and `AtomicLong` to `Converter.convert(value, AtomicXXX)`.  Any reasonable value can be converted to/from these, including Strings, Dates (`AtomicLong`), all `Number` types.
  * `IOUtilities.flush()` now supports `XMLStreamWriter`

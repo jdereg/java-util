@@ -93,6 +93,13 @@ public class TestCubesFromPreloadedDatabase
         assertEquals('RELEASE', map.get('status'));
         assertEquals("http://www.cedarsoftware.com", map.get('classpathBase'))
 
+        String tenant = map.containsKey('tenant') ? map['tenant'] : 'NONE'
+        String app = map.containsKey('app') ? map['app'] : 'UD.REF.APP'
+        String version = map.containsKey('version') ? map['version'] : '1.28.0'
+        String status = map.containsKey('status') ? map['status'] : 'SNAPSHOT'
+        Object changeSet
+
+        new ApplicationID(tenant, app, version, status, changeSet);
     }
 
 

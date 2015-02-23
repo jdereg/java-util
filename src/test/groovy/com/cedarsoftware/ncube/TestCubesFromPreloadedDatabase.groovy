@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube
 
+import com.cedarsoftware.util.io.JsonReader
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -80,6 +81,21 @@ public class TestCubesFromPreloadedDatabase
 
         manager.removeCubes(appId, USER_ID, ncubes)
     }
+
+    @Test
+    public void testClassLoaderWithOverrides() throws Exception {
+        String s = '{"version":"1.28.0", "status":"RELEASE", "classpathBase":"http://www.cedarsoftware.com"}'
+        System.setProperty("NCUBE_BOOTSTRAP", s);
+
+        Map map = JsonReader.jsonToMaps(System.getProperty("NCUBE_BOOTSTRAP"));
+
+        assertEquals('1.28.0', map.get('version'));
+        assertEquals('RELEASE', map.get('status'));
+        assertEquals("http://www.cedarsoftware.com", map.get('classpathBase'))
+
+    }
+
+
 
     @Test
     public void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {

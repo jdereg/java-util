@@ -68,10 +68,10 @@ public class UrlInvocationHandler implements InvocationHandler
     public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
     {
         int retry = _strategy.getRetryAttempts();
+        Object result = null;
         do
         {
             HttpURLConnection c = null;
-
             try
             {
                 c = (HttpURLConnection) UrlUtilities.getConnection(_strategy.buildURL(proxy, m, args), true, true, false);
@@ -91,9 +91,7 @@ public class UrlInvocationHandler implements InvocationHandler
                 _strategy.getCookies(c);
 
                 // Get the return value of the call
-                Object result = _strategy.readResponse(c);
-                checkForThrowable(result);
-                return result;
+                result = _strategy.readResponse(c);
             }
             catch (ThreadDeath e)
             {
@@ -103,8 +101,10 @@ public class UrlInvocationHandler implements InvocationHandler
             {
                 LOG.error("Error occurred getting HTTP response from server", e);
                 UrlUtilities.readErrorResponse(c);
-                Thread.sleep(SLEEP_TIME);
-                retry--;
+                if (retry-- > 0)
+                {
+                    Thread.sleep(SLEEP_TIME);
+                }
             }
             finally
             {
@@ -112,7 +112,14 @@ public class UrlInvocationHandler implements InvocationHandler
             }
         } while (retry > 0);
 
-        return null;
+        try
+        {
+            checkForThrowable(result);
+        } catch (Throwable t) {
+            LOG.error("Error occurred on server", t);
+            return null;
+        }
+        return result;
     }
 
     protected static void checkForThrowable(Object object) throws Throwable

@@ -31,6 +31,12 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class Converter
 {
     /**
+     * Static utility class.
+     */
+    private Converter() {
+    }
+
+    /**
      * Turn the passed in value to the class indicated.  This will allow, for
      * example, a String value to be passed in and have it coerced to a Long.
      * <pre>

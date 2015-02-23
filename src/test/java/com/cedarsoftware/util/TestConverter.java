@@ -43,7 +43,7 @@ public class TestConverter
 {
     @Test
     public void testConstructorIsPrivateAndClassIsFinal() throws Exception {
-        Class c = StringUtilities.class;
+        Class c = Converter.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
         Constructor<StringUtilities> con = c.getDeclaredConstructor();

@@ -32,7 +32,7 @@ public class TestUrlInvocationHandlerWithPlainReader
     }
 
     @Test
-    public void test() {
+    public void testHappyPath() {
         TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("[\"test-passed\"]", item.foo());
     }
@@ -45,19 +45,19 @@ public class TestUrlInvocationHandlerWithPlainReader
 
     @Test
     public void testUrlInvocationHandlerWithException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithInvocationExceptionAndNoCause() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithNonInvocationException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsNullPointerException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-non-invocation-exception.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsNullPointerException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
         Assert.assertNull(item.foo());
     }
 
@@ -186,6 +186,59 @@ public class TestUrlInvocationHandlerWithPlainReader
         private String _url;
 
         public UrlInvocationHandlerStrategyThatThrowsInvocationTargetException(String url)
+        {
+            _url = url;
+        }
+
+        @Override
+        public URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException
+        {
+            return new URL(_url);
+        }
+
+        @Override
+        public int getRetryAttempts()
+        {
+            return 0;
+        }
+
+        @Override
+        public void getCookies(URLConnection c)
+        {
+        }
+
+        @Override
+        public void setRequestHeaders(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public void setCookies(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public byte[] generatePostData(Object proxy, Method m, Object[] args) throws IOException
+        {
+            return new byte[0];
+        }
+
+        public Object readResponse(URLConnection c) throws IOException
+        {
+            return new InvocationTargetException(new NullPointerException("Error"));
+        }
+    }
+
+    /**
+     * Created by kpartlow on 5/11/2014.
+     */
+    private class UrlInvocationHandlerWithTimeout implements UrlInvocationHandlerStrategy
+    {
+        private String _url;
+
+        public UrlInvocationHandlerWithTimeout(String url)
         {
             _url = url;
         }

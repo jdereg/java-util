@@ -1,15 +1,16 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.io.JsonReader;
-import com.cedarsoftware.util.io.JsonWriter;
+//import com.cedarsoftware.util.io.JsonReader;
+//import com.cedarsoftware.util.io.JsonWriter;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -33,27 +34,32 @@ public class TestUrlInvocationHandlerWithPlainReader
     @Test
     public void test() {
         TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
-        Assert.assertEquals("test-passed", item.foo());
+        Assert.assertEquals("[\"test-passed\"]", item.foo());
     }
 
     @Test
     public void testWithSessionAwareInvocationHandler() {
         TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
-        Assert.assertEquals("test-passed", item.foo());
+        Assert.assertEquals("[\"test-passed\"]", item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json", "F012982348484444")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json")));
+        Assert.assertNull(item.foo());
+    }
+
+    @Test
+    public void testUrlInvocationHandlerWithInvocationExceptionAndNoCause() {
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-exception.json")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithNonInvocationException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-non-invocation-exception.json", "F012982348484444")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsNullPointerException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-non-invocation-exception.json")));
         Assert.assertNull(item.foo());
     }
-
 
     private interface TestUrlInvocationInterface
     {
@@ -107,46 +113,175 @@ public class TestUrlInvocationHandlerWithPlainReader
         @Override
         public byte[] generatePostData(Object proxy, Method m, Object[] args) throws IOException
         {
-            ByteArrayOutputStream ba_out = new ByteArrayOutputStream();
-            JsonWriter jwr = new JsonWriter(ba_out);
-            jwr.write(new Object[]{m.getName(), args});
-            IOUtilities.close(jwr);
-
-            if (LOG.isDebugEnabled())
-            {    // DEBUG
-                String jsonCall = new String(ba_out.toByteArray(), "UTF-8");
-                LOG.debug("Calling server:\n    " + jsonCall);
-            }
-
-            return ba_out.toByteArray();
+            return new byte[0];
         }
 
         public Object readResponse(URLConnection c) throws IOException
         {
-            JsonReader reader = null;
-
-            try
-            {
-                if (LOG.isDebugEnabled())
-                {
-                    ByteArrayOutputStream input = new ByteArrayOutputStream(32768);
-                    IOUtilities.transfer(IOUtilities.getInputStream(c), input);
-                    byte[] bytes = input.toByteArray();
-                    String jsonResp = new String(bytes, "UTF-8");
-                    LOG.debug(jsonResp);
-                    reader = new JsonReader(new ByteArrayInputStream(bytes));
-                }
-                else
-                {
-                    reader = new JsonReader(IOUtilities.getInputStream(c));
-                }
-                Object[] res = (Object[]) reader.readObject();
-                return res[0];
-            }
-            finally
-            {
-                IOUtilities.close(reader);
-            }
+            ByteArrayOutputStream input = new ByteArrayOutputStream(32768);
+            IOUtilities.transfer(IOUtilities.getInputStream(c), input);
+            byte[] bytes = input.toByteArray();
+            return new String(bytes, "UTF-8");
         }
     }
+
+    /**
+     * Created by kpartlow on 5/11/2014.
+     */
+    private class UrlInvocationHandlerStrategyThatThrowsNullPointerException implements UrlInvocationHandlerStrategy
+    {
+        private String _url;
+
+        public UrlInvocationHandlerStrategyThatThrowsNullPointerException(String url)
+        {
+            _url = url;
+        }
+
+        @Override
+        public URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException
+        {
+            return new URL(_url);
+        }
+
+        @Override
+        public int getRetryAttempts()
+        {
+            return 0;
+        }
+
+        @Override
+        public void getCookies(URLConnection c)
+        {
+        }
+
+        @Override
+        public void setRequestHeaders(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public void setCookies(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public byte[] generatePostData(Object proxy, Method m, Object[] args) throws IOException
+        {
+            return new byte[0];
+        }
+
+        public Object readResponse(URLConnection c) throws IOException
+        {
+            return new NullPointerException("Error");
+        }
+    }
+
+    /**
+     * Created by kpartlow on 5/11/2014.
+     */
+    private class UrlInvocationHandlerStrategyThatThrowsInvocationTargetException implements UrlInvocationHandlerStrategy
+    {
+        private String _url;
+
+        public UrlInvocationHandlerStrategyThatThrowsInvocationTargetException(String url)
+        {
+            _url = url;
+        }
+
+        @Override
+        public URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException
+        {
+            return new URL(_url);
+        }
+
+        @Override
+        public int getRetryAttempts()
+        {
+            return 0;
+        }
+
+        @Override
+        public void getCookies(URLConnection c)
+        {
+        }
+
+        @Override
+        public void setRequestHeaders(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public void setCookies(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public byte[] generatePostData(Object proxy, Method m, Object[] args) throws IOException
+        {
+            return new byte[0];
+        }
+
+        public Object readResponse(URLConnection c) throws IOException
+        {
+            return new InvocationTargetException(new NullPointerException("Error"));
+        }
+    }
+
+    /**
+     * Created by kpartlow on 5/11/2014.
+     */
+    private class UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause implements UrlInvocationHandlerStrategy
+    {
+        private String _url;
+
+        public UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause(String url)
+        {
+            _url = url;
+        }
+
+        @Override
+        public URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException
+        {
+            return new URL(_url);
+        }
+
+        @Override
+        public int getRetryAttempts()
+        {
+            return 0;
+        }
+
+        @Override
+        public void getCookies(URLConnection c)
+        {
+        }
+
+        @Override
+        public void setRequestHeaders(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public void setCookies(URLConnection c)
+        {
+
+        }
+
+        @Override
+        public byte[] generatePostData(Object proxy, Method m, Object[] args) throws IOException
+        {
+            return new byte[0];
+        }
+
+        public Object readResponse(URLConnection c) throws IOException
+        {
+            return new InvocationTargetException(null);
+        }
+    }
+
 }

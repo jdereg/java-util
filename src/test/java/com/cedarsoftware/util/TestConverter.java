@@ -2,6 +2,8 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -14,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -38,6 +41,19 @@ import static org.junit.Assert.fail;
  */
 public class TestConverter
 {
+    @Test
+    public void testConstructorIsPrivateAndClassIsFinal() throws Exception {
+        Class c = StringUtilities.class;
+        assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+
+        Constructor<StringUtilities> con = c.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        con.setAccessible(true);
+
+        assertNotNull(con.newInstance());
+    }
+
+
     @Test
     public void testByte()
     {

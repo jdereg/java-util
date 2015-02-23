@@ -33,7 +33,6 @@
     </developers>
 
     <properties>
-        <version.json.io>2.9.4-SNAPSHOT</version.json.io>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.guava>16.0.1</version.guava>
@@ -162,13 +161,6 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>${version.log4j}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.cedarsoftware</groupId>
-            <artifactId>json-io</artifactId>
-            <version>${version.json.io}</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>

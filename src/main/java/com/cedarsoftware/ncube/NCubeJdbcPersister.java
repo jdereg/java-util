@@ -130,15 +130,7 @@ public class NCubeJdbcPersister
 
     public Object[] getCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
-        if (StringUtilities.isEmpty(pattern))
-        {
-            pattern = "%";
-        }
-        else
-        {
-            pattern = pattern.replace('*', '%');
-            pattern = pattern.replace('?', '_');
-        }
+        pattern = convertPattern(pattern);
 
         // TODO: Get needs to load with branch_ID set.
 
@@ -173,12 +165,9 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Object[] getDeletedCubeRecords(Connection c, ApplicationID appId, String sqlLike)
+    public Object[] getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
-        if (StringUtilities.isEmpty(sqlLike))
-        {
-            sqlLike = "%";
-        }
+        pattern = convertPattern(pattern);
 
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
@@ -191,11 +180,11 @@ public class NCubeJdbcPersister
                         "WHERE n.revision_number < 0 AND n.n_cube_nm like ? AND m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
                         "n.app_cd = ? AND n.version_no_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ')"))
         {
-            stmt.setString(1, sqlLike);
+            stmt.setString(1, pattern);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
-            stmt.setString(5, sqlLike);
+            stmt.setString(5, pattern);
             stmt.setString(6, appId.getApp());
             stmt.setString(7, appId.getVersion());
             stmt.setString(8, appId.getTenant());
@@ -948,5 +937,19 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
+    }
+
+    private static String convertPattern(String pattern)
+    {
+        if (StringUtilities.isEmpty(pattern))
+        {
+            pattern = "%";
+        }
+        else
+        {
+            pattern = pattern.replace('*', '%');
+            pattern = pattern.replace('?', '_');
+        }
+        return pattern;
     }
 }

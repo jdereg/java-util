@@ -240,6 +240,6 @@ public class ApplicationID
 
     public static ApplicationID getBootVersion(String tenant, String app)
     {
-        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name());
+        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), null);
     }
 }

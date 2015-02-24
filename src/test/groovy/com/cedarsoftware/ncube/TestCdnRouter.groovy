@@ -143,7 +143,7 @@ class TestCdnRouter
         when(response.outputStream).thenReturn out
         when(request.inputStream).thenReturn input
 
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, 'foo', ReleaseStatus.SNAPSHOT.name(), true
+        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), "TEST", 'foo', true
 
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         new CdnRouter().route request, response
@@ -194,7 +194,7 @@ class TestCdnRouter
         when(response.outputStream).thenReturn out
         when(request.inputStream).thenReturn input
 
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, null, ReleaseStatus.SNAPSHOT.name(), true
+        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), "TEST", null, true
 
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         CdnRouter router = new CdnRouter()
@@ -218,7 +218,7 @@ class TestCdnRouter
         when(response.outputStream).thenReturn out
         when(request.inputStream).thenReturn input
 
-        setCdnRoutingProvider null, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, 'foo', ReleaseStatus.SNAPSHOT.name(), true
+        setCdnRoutingProvider null, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), "TEST", 'foo', true
 
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         CdnRouter router = new CdnRouter()
@@ -242,7 +242,7 @@ class TestCdnRouter
         when(response.outputStream).thenReturn out
         when(request.inputStream).thenReturn input
 
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, null, ApplicationID.DEFAULT_VERSION, 'foo', ReleaseStatus.SNAPSHOT.name(), true
+        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, null, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), "TEST", 'foo', true
 
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         CdnRouter router = new CdnRouter()
@@ -266,7 +266,7 @@ class TestCdnRouter
         when(response.outputStream).thenReturn out
         when(request.inputStream).thenReturn input
 
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, null, 'foo', ReleaseStatus.SNAPSHOT.name(), true
+        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, null, ReleaseStatus.SNAPSHOT.name(), "TEST", 'foo', true
 
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         CdnRouter router = new CdnRouter()
@@ -290,7 +290,7 @@ class TestCdnRouter
         when(response.outputStream).thenReturn out
         when(request.inputStream).thenReturn input
 
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, 'foo', null, true
+        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, null, "TEST", 'foo', true
 
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         CdnRouter router = new CdnRouter()
@@ -300,30 +300,33 @@ class TestCdnRouter
 
     private static class TestCdnRoutingProvider implements CdnRoutingProvider
     {
-        final String account
+        final String tenant
         final String app
         final String version
-        final String cubeName
         final String status
+        final String branch
+        final String cubeName
         final boolean isAuthorized
 
-        TestCdnRoutingProvider(String account, String app, String version, String cubeName, String status, boolean isAuthorized)
+        TestCdnRoutingProvider(String tenant, String app, String version, String status, String branch, String cubeName, boolean isAuthorized)
         {
-            this.account = account
+            this.tenant = tenant
             this.app = app
             this.version = version
-            this.cubeName = cubeName
             this.status = status
+            this.branch = branch
+            this.cubeName = cubeName
             this.isAuthorized = isAuthorized
         }
 
         void setupCoordinate(Map coord)
         {
-            coord[CdnRouter.TENANT] = account
+            coord[CdnRouter.TENANT] = tenant
             coord[CdnRouter.APP] = app
-            coord[CdnRouter.CUBE_NAME] = cubeName
             coord[CdnRouter.CUBE_VERSION] = version
             coord[CdnRouter.STATUS] = status
+            coord[CdnRouter.BRANCH] = branch
+            coord[CdnRouter.CUBE_NAME] = cubeName
         }
 
         boolean isAuthorized(String type)
@@ -331,14 +334,14 @@ class TestCdnRouter
             return isAuthorized
         }
     }
-    private static void setCdnRoutingProvider(String account, String app, String version, String cubeName, String status, boolean isAuthorized)
+    private static void setCdnRoutingProvider(String tenant, String app, String version, String status, String branch, String cubeName, boolean isAuthorized)
     {
-        CdnRouter.cdnRoutingProvider = new TestCdnRoutingProvider(account, app, version, cubeName, status, isAuthorized)
+        CdnRouter.cdnRoutingProvider = new TestCdnRoutingProvider(tenant, app, version, status, branch, cubeName, isAuthorized)
     }
 
     private static void setDefaultCdnRoutingProvider()
     {
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, 'CdnRouterTest', ReleaseStatus.SNAPSHOT.name(), true
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), "TEST", 'CdnRouterTest', true)
     }
 
     @Test
@@ -350,7 +353,7 @@ class TestCdnRouter
         when(request.servletPath).thenReturn '/dyn/view/index'
         when(request.requestURL).thenReturn new StringBuffer('http://www.foo.com/dyn/view/index')
 
-        setCdnRoutingProvider ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, 'CdnRouterTest', ReleaseStatus.SNAPSHOT.name(), false
+        setCdnRoutingProvider(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), "TEST", 'CdnRouterTest', false)
 
         new CdnRouter().route request, response
         verify(response, times(1)).sendError 401, 'CdnRouter - Unauthorized access, request: http://www.foo.com/dyn/view/index'

@@ -520,6 +520,8 @@ public class NCubeManager
      * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
      * by an NCube if more than the name is required.
+     * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
+     * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
     public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {

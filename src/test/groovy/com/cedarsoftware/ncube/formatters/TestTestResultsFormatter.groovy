@@ -47,7 +47,7 @@ class TestTestResultsFormatter
     @Test
     void testResultsFromNCube()
     {
-        NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'idNoValue.json')
+        NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'idNoValue.json')
         def coord = [age:18, state:'OH']
         def output = [:]
         ncube.getCell coord, output
@@ -67,7 +67,7 @@ class TestTestResultsFormatter
     @Test
     void testResultsWithOutputAndError() throws Exception
     {
-        NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'idNoValue.json')
+        NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'idNoValue.json')
         def coord = [age:18, state:'OH']
         def output = ['foo.age':'56', 'foo.name':'John']
         ncube.getCell coord, output

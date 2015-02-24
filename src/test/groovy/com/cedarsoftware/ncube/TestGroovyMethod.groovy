@@ -74,7 +74,7 @@ class TestGroovyMethod
     void testGroovyMethodClearCache() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
         NCube cpCube = NCubeManager.getNCubeFromResource appId, 'sys.classpath.cp1.json'
         NCubeManager.createCube appId, cpCube, TestNCubeManager.USER_ID
@@ -115,7 +115,7 @@ class TestGroovyMethod
     void testGroovyMethodClearCacheExplicitly() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH)
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), ApplicationID.TEST_BRANCH)
 
         NCube cpCube = NCubeManager.getNCubeFromResource(appId, 'sys.classpath.cp1.json')
         NCubeManager.createCube(appId, cpCube, TestNCubeManager.USER_ID)

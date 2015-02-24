@@ -130,8 +130,8 @@ class TestingDatabaseHelper
     {
         NCube cp = NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, 'sys.classpath.tests.json')
         NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, cp, TestNCubeManager.USER_ID)
-        cp = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'sys.classpath.tests.json')
-        NCubeManager.createCube(ApplicationID.defaultAppId, cp, TestNCubeManager.USER_ID)
+        cp = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'sys.classpath.tests.json')
+        NCubeManager.createCube(ApplicationID.testAppId, cp, TestNCubeManager.USER_ID)
     }
 
     public static void tearDownDatabase() throws Exception
@@ -145,7 +145,7 @@ class TestingDatabaseHelper
 
         try
         {
-            NCubeManager.deleteCube ApplicationID.defaultAppId, 'sys.classpath', TestNCubeManager.USER_ID
+            NCubeManager.deleteCube ApplicationID.testAppId, 'sys.classpath', TestNCubeManager.USER_ID
         }
         catch (Exception ignored)
         { }

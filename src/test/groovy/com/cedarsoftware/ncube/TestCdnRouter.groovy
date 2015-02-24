@@ -96,7 +96,7 @@ class TestCdnRouter
         CdnRouter router = new CdnRouter()
         router.route request, response
 
-        verify(response, times(1)).sendError 500, 'Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, url: tests/does/not/exist/index.html, cube: CdnRouterTest, app: ' + ApplicationID.defaultAppId
+        verify(response, times(1)).sendError 500, 'Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, url: tests/does/not/exist/index.html, cube: CdnRouterTest, app: ' + ApplicationID.testAppId
     }
 
     @Test
@@ -168,7 +168,7 @@ class TestCdnRouter
 
         setDefaultCdnRoutingProvider()
 
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, ApplicationID.DEFAULT_APP, ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         NCubeManager.getUrlClassLoader(appId, [:])
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
 

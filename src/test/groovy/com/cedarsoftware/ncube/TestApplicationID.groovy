@@ -37,7 +37,7 @@ class TestApplicationID
     {
         try
         {
-            new ApplicationID(null, 'Inventory', '99.99.99', ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID(null, 'Inventory', '99.99.99', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -47,7 +47,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', null, '9.9.9', ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID('Macys', null, '9.9.9', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -57,7 +57,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', null, ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID('Macys', 'Catalog', null, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -67,7 +67,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', '1.2.3', null)
+            new ApplicationID('Macys', 'Catalog', '1.2.3', null, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -77,7 +77,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', '1.2.a', ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID('Macys', 'Catalog', '1.2.a', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -87,7 +87,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', '1.2.3.4', ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID('Macys', 'Catalog', '1.2.3.4', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -97,7 +97,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', '1.2', ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID('Macys', 'Catalog', '1.2', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -107,7 +107,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', '1.-2.3', ReleaseStatus.SNAPSHOT.name())
+            new ApplicationID('Macys', 'Catalog', '1.-2.3', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -117,7 +117,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macys', 'Catalog', '1.2.3', 'CRAPSHOT')
+            new ApplicationID('Macys', 'Catalog', '1.2.3', 'CRAPSHOT', ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -127,7 +127,7 @@ class TestApplicationID
 
         try
         {
-            new ApplicationID('Macy\'s', 'Catalog', '1.2.3', 'RELEASE')
+            new ApplicationID('Macy\'s', 'Catalog', '1.2.3', 'RELEASE', ApplicationID.TEST_BRANCH)
             fail 'should not make it here'
         }
         catch (Exception ignored)
@@ -139,7 +139,7 @@ class TestApplicationID
     @Test
     void testApplicationIDConstructorAndGetters()
     {
-        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertEquals 'Sears', appId.tenant
         assertEquals 'Inventory', appId.app
         assertEquals '1.0.0', appId.version
@@ -149,7 +149,7 @@ class TestApplicationID
     @Test
     void testAppKey()
     {
-        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertEquals 'sears / inventory / 1.0.0 / test /', appId.cacheKey('')
         assertEquals 'sears / inventory / 1.0.0 / test /', appId.toString()
     }
@@ -157,29 +157,29 @@ class TestApplicationID
     @Test
     void testEqualsAndHashcode()
     {
-        ApplicationID appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        ApplicationID appId2 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
+        ApplicationID appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+        ApplicationID appId2 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
 
         assertEquals appId1.cacheKey(''), appId2.cacheKey('')
         assertNotEquals appId1, appId2
         assertNotEquals appId1.hashCode(), appId2.hashCode()
 
-        appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        appId2 = new ApplicationID('Sears', 'Inventory', '1.0.1', ReleaseStatus.SNAPSHOT.name())
+        appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+        appId2 = new ApplicationID('Sears', 'Inventory', '1.0.1', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
         assertNotEquals appId1.cacheKey(''), appId2.cacheKey('')
         assertNotEquals appId1, appId2
         assertNotEquals appId1.hashCode(), appId2.hashCode()
 
-        appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        appId2 = new ApplicationID('Sears', 'Inventori', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+        appId2 = new ApplicationID('Sears', 'Inventori', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
         assertNotEquals appId1.cacheKey(''), appId2.cacheKey('')
         assertNotEquals appId1, appId2
         assertNotEquals appId1.hashCode(), appId2.hashCode()
 
-        appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
-        appId2 = new ApplicationID('Pears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+        appId2 = new ApplicationID('Pears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
         assertNotEquals appId1.cacheKey(''), appId2.cacheKey('')
         assertNotEquals appId1, appId2
@@ -188,8 +188,8 @@ class TestApplicationID
         assertNotEquals appId1, 'Hey'
         assertEquals appId1, appId1
 
-        appId1 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name())
-        appId2 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name())
+        appId1 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+        appId2 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertEquals appId1, appId2
 
         appId1 = new ApplicationID('Lowes', 'Inventory', '1.2.3', ReleaseStatus.SNAPSHOT.name(), 'JIRA-555')
@@ -202,7 +202,7 @@ class TestApplicationID
     @Test
     void testAppStrSameAsToString()
     {
-        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertEquals appId.toString(), appId.cacheKey('')
     }
 
@@ -210,7 +210,7 @@ class TestApplicationID
     @Test
     void testApplicationIDSerialize() throws Exception
     {
-        ApplicationID appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId1 = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         String json = JsonWriter.objectToJson(appId1)
         ApplicationID appId2 = (ApplicationID) JsonReader.jsonToJava(json)
         assertEquals appId1, appId2
@@ -219,11 +219,11 @@ class TestApplicationID
     @Test
     void testIsSnapshotOrRelease()
     {
-        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertTrue snapshot.snapshot
         assertFalse snapshot.release
 
-        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
+        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
         assertFalse releaseId.snapshot
         assertTrue releaseId.release
     }
@@ -231,10 +231,10 @@ class TestApplicationID
     @Test
     void testValidateSnapshot()
     {
-        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         snapshot.validate()
 
-        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
+        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
         try
         {
             releaseId.validate()
@@ -248,10 +248,10 @@ class TestApplicationID
     @Test
     void testCreateReleaseId()
     {
-        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         snapshot.validate()
 
-        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
+        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
         assertEquals snapshot.tenant, releaseId.tenant
         assertEquals snapshot.app, releaseId.app
         assertEquals snapshot.version, releaseId.version
@@ -261,7 +261,7 @@ class TestApplicationID
     @Test
     void testCreateNewSnapshotId()
     {
-        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
+        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
 
         ApplicationID snapshotId = releaseId.createNewSnapshotId('1.1.0')
         assertEquals releaseId.tenant, snapshotId.tenant
@@ -290,10 +290,10 @@ class TestApplicationID
     @Test
     void testValidateIsSnapshot()
     {
-        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID snapshot = new ApplicationID('Sears', 'Inventory', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         snapshot.validate()
 
-        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name())
+        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
         try
         {
             releaseId.validate()

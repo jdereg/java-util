@@ -3738,7 +3738,7 @@ class TestNCube
     {
         String base = System.getProperty("java.io.tmpdir")
 
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "reloadGroovyTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "reloadGroovyTest", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         NCube cpCube = createTempDirClassPathCube()
 
         // manually set classpath cube
@@ -4171,7 +4171,7 @@ class TestNCube
     @Test
     void testNCubeApplicationIdParts()
     {
-        ApplicationID appId = new ApplicationID("foo", "bar", "0.0.1", ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID("foo", "bar", "0.0.1", ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         NCube ncube = NCubeBuilder.testNCube3D_Boolean
         ncube.applicationID = appId
         assertEquals(appId.status, ncube.status)

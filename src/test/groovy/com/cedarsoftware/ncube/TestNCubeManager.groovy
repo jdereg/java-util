@@ -43,8 +43,8 @@ class TestNCubeManager
 {
     public static final String APP_ID = 'ncube.test'
     public static final String USER_ID = 'jdirt'
-    public static ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH)
-    public static ApplicationID defaultReleaseApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.DEFAULT_BRANCH)
+    public static ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.TEST_BRANCH)
+    public static ApplicationID defaultReleaseApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
 
     @Before
     public void setUp() throws Exception
@@ -110,7 +110,7 @@ class TestNCubeManager
         String version = '0.1.0'
         String name1 = ncube.name
 
-        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ReleaseStatus.SNAPSHOT.name())
+        ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, version, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         NCubeManager.createCube(appId, ncube, USER_ID)
         NCubeManager.updateTestData(appId, ncube.name, JsonWriter.objectToJson(coord))
         NCubeManager.updateNotes(appId, ncube.name, 'notes follow')
@@ -383,7 +383,7 @@ class TestNCubeManager
     {
         NCube n1 = NCubeManager.getNCubeFromResource('stringIds.json')
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID)
-        ApplicationID newId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.1.2', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID newId = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.1.2', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
         NCubeManager.duplicate(defaultSnapshotApp, newId, n1.name, n1.name, USER_ID)
         NCube n2 = NCubeManager.getCube(defaultSnapshotApp, n1.name)
@@ -689,7 +689,7 @@ class TestNCubeManager
     {
         String name = 'Fire'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
-        ApplicationID customId = new ApplicationID('NONE', 'updateCubeSys', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID customId = new ApplicationID('NONE', 'updateCubeSys', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(0, NCubeManager.getCacheForApp(customId).size())
 
@@ -723,7 +723,7 @@ class TestNCubeManager
     {
         String name = 'Dude'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
-        ApplicationID customId = new ApplicationID('NONE', 'renameCubeSys', '1.0.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID customId = new ApplicationID('NONE', 'renameCubeSys', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId, [:])
         assertNotNull(urlClassLoader1)
         assertEquals(0, NCubeManager.getCacheForApp(customId).size())
@@ -835,7 +835,7 @@ class TestNCubeManager
         NCube testCube = NCubeBuilder.getTestNCube2D(false)
         try
         {
-            ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+            ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
             NCubeManager.updateCube(id, testCube, USER_ID)
             fail()
         }
@@ -849,7 +849,7 @@ class TestNCubeManager
     @Test
     void testNCubeManagerCreateCubes() throws Exception
     {
-        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         try
         {
             NCubeManager.createCube(id, null, USER_ID)
@@ -908,7 +908,7 @@ class TestNCubeManager
     @Test
     void testNCubeManagerDeleteNotExistingCube() throws Exception
     {
-        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', '0.1.0', ReleaseStatus.SNAPSHOT.name())
+        ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', '0.1.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertFalse(NCubeManager.deleteCube(id, 'DashboardRoles', true, USER_ID))
     }
 
@@ -1333,10 +1333,10 @@ class TestNCubeManager
     void testResolveRelativeUrl()
     {
         // Sets App classpath to http://www.cedarsoftware.com
-        NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'sys.classpath.cedar.json')
+        NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'sys.classpath.cedar.json')
 
         // Rule cube that expects tests/ncube/hello.groovy to be relative to http://www.cedarsoftware.com
-        NCube hello = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'resolveRelativeHelloGroovy.json')
+        NCube hello = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'resolveRelativeHelloGroovy.json')
 
         // When run, it will set up the classpath (first cube loaded for App), and then
         // it will run the rule cube.  This cube has a relative URL (relative to the classpath above).
@@ -1345,7 +1345,7 @@ class TestNCubeManager
         String s = (String) hello.getCell([:])
         assertEquals('Hello, world.', s)
 
-        String absUrl = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, 'tests/ncube/hello.groovy')
+        String absUrl = NCubeManager.resolveRelativeUrl(ApplicationID.testAppId, 'tests/ncube/hello.groovy')
         assertEquals('http://www.cedarsoftware.com/tests/ncube/hello.groovy', absUrl)
     }
 
@@ -1354,7 +1354,7 @@ class TestNCubeManager
     {
         try
         {
-            NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, null)
+            NCubeManager.resolveRelativeUrl(ApplicationID.testAppId, null)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -1370,22 +1370,22 @@ class TestNCubeManager
     void testResolveUrlFullyQualified()
     {
         String url = 'http://www.cedarsoftware.com'
-        String ret = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, url)
+        String ret = NCubeManager.resolveRelativeUrl(ApplicationID.testAppId, url)
         assertEquals(url, ret)
 
         url = 'https://www.cedarsoftware.com'
-        ret = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, url)
+        ret = NCubeManager.resolveRelativeUrl(ApplicationID.testAppId, url)
         assertEquals(url, ret)
 
         url = 'file://Users/joe/Development'
-        ret = NCubeManager.resolveRelativeUrl(ApplicationID.defaultAppId, url)
+        ret = NCubeManager.resolveRelativeUrl(ApplicationID.testAppId, url)
         assertEquals(url, ret)
     }
 
     @Test
     void testResolveUrlBadApp()
     {
-        Object o = NCubeManager.resolveRelativeUrl(new ApplicationID('foo', 'bar', '1.0.0', ReleaseStatus.SNAPSHOT.name()), 'tests/ncube/hello.groovy')
+        Object o = NCubeManager.resolveRelativeUrl(new ApplicationID('foo', 'bar', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH), 'tests/ncube/hello.groovy')
         assertNull o
     }
 
@@ -1530,7 +1530,7 @@ class TestNCubeManager
 
     private static void loadTestClassPathCubes()
     {
-        NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'sys.versions.json')
+        NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'sys.versions.json')
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID)
         cube = NCubeManager.getNCubeFromResource('sys.classpath.local.json')
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID)

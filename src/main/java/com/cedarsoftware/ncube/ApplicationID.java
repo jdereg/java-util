@@ -30,9 +30,11 @@ public class ApplicationID
     public static final String DEFAULT_TENANT = "NONE";
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
-    public static final String DEFAULT_BRANCH = "TEST";
+    public static final String DEFAULT_STATUS = ReleaseStatus.SNAPSHOT.name();
+    public static final String DEFAULT_BRANCH = null;
+    public static final String TEST_BRANCH = "TEST";
 
-    public static final transient ApplicationID defaultAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), DEFAULT_BRANCH);
+    public static final transient ApplicationID testAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, DEFAULT_STATUS, TEST_BRANCH);
 
     private final String tenant;
     private final String app;
@@ -50,9 +52,13 @@ public class ApplicationID
         branch = null;
     }
 
+    /**
+     * This constructor is used only by Test Code
+     */
+    @Deprecated
     public ApplicationID(String tenant, String app, String version, String status)
     {
-        this(tenant, app, version, status, DEFAULT_BRANCH);
+        this(tenant, app, version, status, TEST_BRANCH);
     }
 
     public ApplicationID(String tenant, String app, String version, String status, String branch)

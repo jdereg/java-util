@@ -134,7 +134,7 @@ class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.defaultAppId, ncube.name + ".*()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + ".*()", advice1 as Advice)
 
         def output = [:]
         def coord = [method:'foo',state:'OH']
@@ -208,7 +208,7 @@ class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.defaultAppId, ncube.name + ".ba*()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + ".ba*()", advice1 as Advice)
 
         def output = [:]
         def coord = [method:'foo', state:'OH']
@@ -300,7 +300,7 @@ class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.defaultAppId, "*.ba*()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, "*.ba*()", advice1 as Advice)
 
         // Note: advice is added to the manager *ahead* of any cubes being loaded.
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
@@ -356,7 +356,7 @@ class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.defaultAppId, "*.run()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, "*.run()", advice1 as Advice)
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json")
 
         def output = [:]
@@ -381,7 +381,7 @@ class TestAdvice
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.defaultAppId, ncube.name + "*", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + "*", advice1 as Advice)
         assertNull(ncube.getCell([method:'foo', state:'OH']))
         ncube.clearAdvices()
     }

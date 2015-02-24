@@ -879,7 +879,7 @@ public class NCubeManager
 
     static NCube getNCubeFromResource(String name)
     {
-        return getNCubeFromResource(ApplicationID.defaultAppId, name);
+        return getNCubeFromResource(ApplicationID.testAppId, name);
     }
 
     public static NCube getNCubeFromResource(ApplicationID id, String name)

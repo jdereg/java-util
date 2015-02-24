@@ -502,6 +502,8 @@ public class NCubeManager
         }
         Set<String> subCubeList = ncube.getReferencedCubeNames();
 
+        // TODO: Use explicit stack, NOT recursion
+
         for (String cubeName : subCubeList)
         {
             if (!refs.contains(cubeName))
@@ -588,7 +590,7 @@ public class NCubeManager
     }
 
     /**
-     * Return an array [] of Strings containing all unique App names.
+     * Return an array [] of Strings containing all unique App names for the given tenant.
      */
     public static Object[] getAppNames(String tenant)
     {

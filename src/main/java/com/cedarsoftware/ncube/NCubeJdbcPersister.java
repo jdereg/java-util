@@ -279,7 +279,7 @@ public class NCubeJdbcPersister
         String rev = revision == null ? "abs(n.revision_number)" : revision.toString();
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.cube_value_bin FROM n_cube n, " +
+                "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                         "( " +
                         "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                         "  FROM n_cube " +

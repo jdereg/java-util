@@ -97,11 +97,12 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
+        String br = branch == null ? "HEAD" : branch;
         if (StringUtilities.isEmpty(name))
         {
-            return (tenant + " / " + app + " / " + version + " / " + branch + " /").toLowerCase();
+            return (tenant + " / " + app + " / " + version + " / " + br + " /").toLowerCase();
         }
-        return (tenant + " / " + app + " / " + version + " / " + branch + " / " + name).toLowerCase();
+        return (tenant + " / " + app + " / " + version + " / " + br + " / " + name).toLowerCase();
     }
 
     public boolean equals(Object o)

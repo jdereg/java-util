@@ -74,7 +74,7 @@ public class NCube<T>
     private volatile Set<String> declaredScopeKeys = null;
 
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
-    private transient ApplicationID appId = ApplicationID.defaultAppId;
+    private transient ApplicationID appId = ApplicationID.testAppId;
 
     public static final String validCubeNameChars = "0-9a-zA-Z:._-";
     public static final String RULE_EXEC_INFO = "_rule";

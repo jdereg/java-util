@@ -42,7 +42,7 @@ class TestNCubeJdbcPersister
     static final String APP_ID = "ncube.test";
     static final String USER_ID = "jdirt";
 
-    private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ReleaseStatus.SNAPSHOT.name())
+    private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
     @Before
     public void setUp() throws Exception
@@ -77,32 +77,32 @@ class TestNCubeJdbcPersister
         assertTrue(ncube2.numDimensions == 2)
 
         ncube1.deleteAxis("bu")
+        ApplicationID next = defaultSnapshotApp.createNewSnapshotId("0.2.0");
         persister.updateCube(defaultSnapshotApp, ncube1, USER_ID)
-        int numRelease = persister.releaseCubes(defaultSnapshotApp)
-        assertEquals(4, numRelease)
+        int numRelease = persister.releaseCubes(defaultSnapshotApp, "0.2.0")
+        assertEquals(0, numRelease)
 
-        // After the line below, there should be 4 test cubes in the database (2 @ version 0.1.1 and 2 @ version 0.2.0)
-        persister.createSnapshotVersion(defaultSnapshotApp, "0.2.0")
+        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%')
+        // Two cubes at the new 1.2.3 SNAPSHOT version.
+        assert cubeList.length == 2
 
-        ApplicationID newId = defaultSnapshotApp.createNewSnapshotId("0.2.0")
+        String notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
+        String notes2 = persister.getNotes(next, "test.ValidTrailorConfigs")
 
-        String notes1 = persister.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs")
-        String notes2 = persister.getNotes(newId, "test.ValidTrailorConfigs")
-
-        persister.updateNotes(defaultSnapshotApp, "test.ValidTrailorConfigs", null)
-        notes1 = persister.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs")
+        persister.updateNotes(next, "test.ValidTrailorConfigs", null)
+        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
         assertTrue("".equals(notes1))
 
-        persister.updateNotes(defaultSnapshotApp, "test.ValidTrailorConfigs", "Trailer Config Notes")
-        notes1 = persister.getNotes(defaultSnapshotApp, "test.ValidTrailorConfigs")
+        persister.updateNotes(next, "test.ValidTrailorConfigs", "Trailer Config Notes")
+        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
         assertTrue("Trailer Config Notes".equals(notes1))
 
-        persister.updateTestData(newId, "test.ValidTrailorConfigs", null)
-        String testData = persister.getTestData(newId, "test.ValidTrailorConfigs")
+        persister.updateTestData(next, "test.ValidTrailorConfigs", null)
+        String testData = persister.getTestData(next, "test.ValidTrailorConfigs")
         assertTrue("".equals(testData))
 
-        persister.updateTestData(newId, "test.ValidTrailorConfigs", "This is JSON data")
-        testData = persister.getTestData(newId, "test.ValidTrailorConfigs")
+        persister.updateTestData(next, "test.ValidTrailorConfigs", "This is JSON data")
+        testData = persister.getTestData(next, "test.ValidTrailorConfigs")
         assertTrue("This is JSON data".equals(testData))
 
         // Verify that you cannot delete a RELEASE ncube
@@ -129,13 +129,9 @@ class TestNCubeJdbcPersister
             assertTrue(e.message.contains("find"))
         }
 
-        // Delete ncubes using 'true' to allow the test to delete a released ncube.
-        assertTrue(persister.deleteCube(defaultSnapshotApp, ncube1.name, true, USER_ID))
-        assertTrue(persister.deleteCube(defaultSnapshotApp, ncube2.name, true, USER_ID))
-
         // Delete new SNAPSHOT cubes
-        assertTrue(persister.deleteCube(newId, ncube1.name, false, USER_ID))
-        assertTrue(persister.deleteCube(newId, ncube2.name, false, USER_ID))
+        assertTrue(persister.deleteCube(next, ncube1.name, false, USER_ID))
+        assertTrue(persister.deleteCube(next, ncube2.name, false, USER_ID))
 
         // Ensure that all test ncubes are deleted
         cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%")
@@ -333,7 +329,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp)
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
             fail()
         }
         catch (IllegalStateException e)
@@ -349,13 +345,14 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp)
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
             fail()
         }
         catch (RuntimeException e)
         {
+            println e.message
             assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.startsWith("Unable to release"))
+            assertTrue(e.message.startsWith("Unable to move"))
         }
     }
 
@@ -458,7 +455,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes")
+            new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH), "foo", "notes")
             fail()
         }
         catch (Exception e)
@@ -480,7 +477,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name()), "foo", "notes")
+            new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH), "foo", "notes")
             fail()
         }
         catch (Exception e)
@@ -510,24 +507,6 @@ class TestNCubeJdbcPersister
         {
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.contains("Unable to update notes"))
-        }
-    }
-
-
-    @Test
-    void testCreateSnapshotVersionWithSQLException() throws Exception
-    {
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
-
-        try
-        {
-            new NCubeJdbcPersister().createSnapshotVersion(c, defaultSnapshotApp, "1.1.1")
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.startsWith("Unable to create SNAPSHOT"))
         }
     }
 
@@ -902,7 +881,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp)
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
             fail()
         }
         catch (IllegalStateException e)

@@ -3,7 +3,6 @@ package com.cedarsoftware.ncube.formatters
 import com.cedarsoftware.ncube.ApplicationID
 import com.cedarsoftware.ncube.NCube
 import com.cedarsoftware.ncube.NCubeManager
-import com.cedarsoftware.ncube.ReleaseStatus
 import com.cedarsoftware.ncube.TestNCubeManager
 import com.cedarsoftware.ncube.TestingDatabaseHelper
 import com.cedarsoftware.ncube.TestingDatabaseManager
@@ -35,8 +34,8 @@ class TestJsonFormatter
 {
 
     public static String USER_ID = TestNCubeManager.USER_ID
-    public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
-    public static ApplicationID usedId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "usedInvalidId", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+    public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+    public static ApplicationID usedId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "usedInvalidId", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
     private TestingDatabaseManager manager;
 
@@ -71,7 +70,7 @@ class TestJsonFormatter
     {
 
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk('sys.classpath.tests.json', 'arrays.json');
-        manager.addCubes(ApplicationID.defaultAppId, 'lol', cubes);
+        manager.addCubes(ApplicationID.testAppId, 'lol', cubes);
 
         NCube ncube = cubes[1];
 
@@ -132,7 +131,7 @@ class TestJsonFormatter
         assertEquals new BigInteger('9223372036854775807'), ((Object[]) ncube.getCell(coord))[2]
         assertEquals new BigInteger('147573952589676410000'), ((Object[]) ncube.getCell(coord))[3]
 
-        manager.removeCubes(ApplicationID.defaultAppId, 'lol', cubes);
+        manager.removeCubes(ApplicationID.testAppId, 'lol', cubes);
     }
 
     @Test

@@ -502,6 +502,8 @@ public class NCubeManager
         }
         Set<String> subCubeList = ncube.getReferencedCubeNames();
 
+        // TODO: Use explicit stack, NOT recursion
+
         for (String cubeName : subCubeList)
         {
             if (!refs.contains(cubeName))
@@ -518,6 +520,8 @@ public class NCubeManager
      * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
      * by an NCube if more than the name is required.
+     * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
+     * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
     public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {
@@ -588,7 +592,7 @@ public class NCubeManager
     }
 
     /**
-     * Return an array [] of Strings containing all unique App names.
+     * Return an array [] of Strings containing all unique App names for the given tenant.
      */
     public static Object[] getAppNames(String tenant)
     {
@@ -662,25 +666,13 @@ public class NCubeManager
     /**
      * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
-    public static int releaseCubes(ApplicationID appId)
+    public static int releaseCubes(ApplicationID appId, String newSnapVer)
     {
         validateAppId(appId);
-        int rows = getPersister().releaseCubes(appId);
+        ApplicationID.validateVersion(newSnapVer);
+        int rows = getPersister().releaseCubes(appId, newSnapVer);
         broadcast(appId);
         return rows;
-    }
-
-    public static int createSnapshotCubes(ApplicationID appId, String newVersion)
-    {
-        validateAppId(appId);
-        ApplicationID.validateVersion(newVersion);
-
-        if (appId.getVersion().equals(newVersion))
-        {
-            throw new IllegalArgumentException("New SNAPSHOT version " + newVersion + " cannot be the same as the RELEASE version.");
-        }
-
-        return getPersister().createSnapshotVersion(appId, newVersion);
     }
 
     public static void changeVersionValue(ApplicationID appId, String newVersion)
@@ -842,7 +834,7 @@ public class NCubeManager
         NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
         if (bootCube == null)
         {
-            throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
+             throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
         }
         return (ApplicationID) bootCube.getCell(coord);
     }
@@ -875,7 +867,7 @@ public class NCubeManager
 
     static NCube getNCubeFromResource(String name)
     {
-        return getNCubeFromResource(ApplicationID.defaultAppId, name);
+        return getNCubeFromResource(ApplicationID.testAppId, name);
     }
 
     public static NCube getNCubeFromResource(ApplicationID id, String name)

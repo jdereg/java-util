@@ -43,6 +43,7 @@ public class NCubeInfoDto
 
 	public String toString()
 	{
-		return tenant + '/' + app + '/' + version + '/' + status + '/' + branch + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
+        String br = branch == null ? "HEAD" : branch;
+		return tenant + '/' + app + '/' + version + '/' + status + '/' + br + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
 }

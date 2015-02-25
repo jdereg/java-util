@@ -72,12 +72,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getCubeRecords(ApplicationID appId, String sqlLike)
+    public Object[] getCubeRecords(ApplicationID appId, String pattern)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getCubeRecords(c, appId, sqlLike);
+            return persister.getCubeRecords(c, appId, pattern);
         }
         finally
         {
@@ -85,12 +85,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getDeletedCubeRecords(ApplicationID appId, String sqlLike)
+    public Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getDeletedCubeRecords(c, appId, sqlLike);
+            return persister.getDeletedCubeRecords(c, appId, pattern);
         }
         finally
         {
@@ -215,19 +215,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int createSnapshotVersion(ApplicationID appId, String newVersion)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.createSnapshotVersion(c, appId, newVersion);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
     public int changeVersionValue(ApplicationID appId, String newVersion)
     {
         Connection c = connectionProvider.getConnection();
@@ -241,12 +228,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int releaseCubes(ApplicationID appId)
+    public int releaseCubes(ApplicationID appId, String newSnapVer)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.releaseCubes(c, appId);
+            return persister.releaseCubes(c, appId, newSnapVer);
         }
         finally
         {

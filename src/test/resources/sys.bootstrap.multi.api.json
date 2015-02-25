@@ -15,12 +15,12 @@
     {
       "id": [],
       "type": "exp",
-      "value": "return ['A': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'A', key:'version'], @sys.bootstrap.version[businessDivisionCode:'A', key:'status']),
-      'B': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'B', key:'version'], @sys.bootstrap.version[businessDivisionCode:'B', key:'status']),
-      'C': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'C', key:'version'], @sys.bootstrap.version[businessDivisionCode:'C', key:'status']),
-      'D': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'D', key:'version'], @sys.bootstrap.version[businessDivisionCode:'D', key:'status']),
-      'E': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'E', key:'version'], @sys.bootstrap.version[businessDivisionCode:'E', key:'status']),
-      'F': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'F', key:'version'], @sys.bootstrap.version[businessDivisionCode:'F', key:'status'])]"
+      "value": "return ['A': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'A', key:'version'], @sys.bootstrap.version[businessDivisionCode:'A', key:'status'], 'TEST'),
+      'B': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'B', key:'version'], @sys.bootstrap.version[businessDivisionCode:'B', key:'status'], 'TEST'),
+      'C': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'C', key:'version'], @sys.bootstrap.version[businessDivisionCode:'C', key:'status'], 'TEST'),
+      'D': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'D', key:'version'], @sys.bootstrap.version[businessDivisionCode:'D', key:'status'], 'TEST'),
+      'E': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'E', key:'version'], @sys.bootstrap.version[businessDivisionCode:'E', key:'status'], 'TEST'),
+      'F': new ApplicationID('NONE', 'APP', @sys.bootstrap.version[businessDivisionCode:'F', key:'version'], @sys.bootstrap.version[businessDivisionCode:'F', key:'status'], 'TEST')]"
     }
   ]
 }

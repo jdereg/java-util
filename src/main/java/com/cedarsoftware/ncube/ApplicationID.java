@@ -30,9 +30,11 @@ public class ApplicationID
     public static final String DEFAULT_TENANT = "NONE";
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
-    public static final String DEFAULT_BRANCH = "TEST";
+    public static final String DEFAULT_STATUS = ReleaseStatus.SNAPSHOT.name();
+    public static final String DEFAULT_BRANCH = null;
+    public static final String TEST_BRANCH = "TEST";
 
-    public static final transient ApplicationID defaultAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), DEFAULT_BRANCH);
+    public static final transient ApplicationID testAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, DEFAULT_STATUS, TEST_BRANCH);
 
     private final String tenant;
     private final String app;
@@ -50,9 +52,13 @@ public class ApplicationID
         branch = null;
     }
 
+    /**
+     * This constructor is used only by Test Code
+     */
+    @Deprecated
     public ApplicationID(String tenant, String app, String version, String status)
     {
-        this(tenant, app, version, status, DEFAULT_BRANCH);
+        throw new RuntimeException("Use the 5 argument constructor - add branch as the last argument");
     }
 
     public ApplicationID(String tenant, String app, String version, String status, String branch)
@@ -97,11 +103,13 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
+        // TODO: Include status in return string
+        String br = branch == null ? "HEAD" : branch;
         if (StringUtilities.isEmpty(name))
         {
-            return (tenant + " / " + app + " / " + version + " / " + branch + " /").toLowerCase();
+            return (tenant + " / " + app + " / " + version + " / " + br + " /").toLowerCase();
         }
-        return (tenant + " / " + app + " / " + version + " / " + branch + " / " + name).toLowerCase();
+        return (tenant + " / " + app + " / " + version + " / " + br + " / " + name).toLowerCase();
     }
 
     public boolean equals(Object o)
@@ -239,6 +247,6 @@ public class ApplicationID
 
     public static ApplicationID getBootVersion(String tenant, String app)
     {
-        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name());
+        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), null);
     }
 }

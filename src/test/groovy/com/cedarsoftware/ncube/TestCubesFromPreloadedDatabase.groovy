@@ -28,7 +28,7 @@ import static org.junit.Assert.assertNotNull
 class TestCubesFromPreloadedDatabase
 {
     public static String USER_ID = TestNCubeManager.USER_ID
-    public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "preloaded", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
+    public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "preloaded", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
     private TestingDatabaseManager manager;
 
@@ -356,16 +356,16 @@ class TestCubesFromPreloadedDatabase
         input.env = "SAND";
 
         Map<String, ApplicationID> map = cube.getCell(input)
-        assertEquals(new ApplicationID("NONE", "APP", "1.15.0", "SNAPSHOT"), map.get("A"));
-        assertEquals(new ApplicationID("NONE", "APP", "1.19.0", "SNAPSHOT"), map.get("B"));
-        assertEquals(new ApplicationID("NONE", "APP", "1.28.0", "SNAPSHOT"), map.get("C"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.15.0", "SNAPSHOT", ApplicationID.TEST_BRANCH), map.get("A"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.19.0", "SNAPSHOT", ApplicationID.TEST_BRANCH), map.get("B"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.28.0", "SNAPSHOT", ApplicationID.TEST_BRANCH), map.get("C"));
 
         input.env = "INT"
         map = cube.getCell(input)
 
-        assertEquals(new ApplicationID("NONE", "APP", "1.25.0", "RELEASE"), map.get("A"));
-        assertEquals(new ApplicationID("NONE", "APP", "1.26.0", "RELEASE"), map.get("B"));
-        assertEquals(new ApplicationID("NONE", "APP", "1.27.0", "RELEASE"), map.get("C"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.25.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("A"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.26.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("B"));
+        assertEquals(new ApplicationID("NONE", "APP", "1.27.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("C"));
 
 
         // remove cubes for this test.

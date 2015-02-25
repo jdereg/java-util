@@ -160,7 +160,7 @@ class TestUrlCommandCell
         when(request.headerNames).thenThrow SocketTimeoutException.class
         when(ncube.name).thenReturn 'foo-cube'
         when(ncube.version).thenReturn 'foo-version'
-        when(ncube.applicationID).thenReturn(ApplicationID.defaultAppId)
+        when(ncube.applicationID).thenReturn(ApplicationID.testAppId)
 
         def args = [ncube:ncube]
         def input = [(CdnRouter.HTTP_RESPONSE):response, (CdnRouter.HTTP_REQUEST):request]

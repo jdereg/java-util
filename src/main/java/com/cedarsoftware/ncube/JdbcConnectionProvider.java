@@ -29,7 +29,7 @@ public interface JdbcConnectionProvider
     /**
      * Obtains the connection.
      */
-    public Connection getConnection();
+    Connection getConnection();
 
-    public void releaseConnection(Connection c);
+    void releaseConnection(Connection c);
 }

@@ -666,25 +666,13 @@ public class NCubeManager
     /**
      * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
-    public static int releaseCubes(ApplicationID appId)
+    public static int releaseCubes(ApplicationID appId, String newSnapVer)
     {
         validateAppId(appId);
-        int rows = getPersister().releaseCubes(appId);
+        ApplicationID.validateVersion(newSnapVer);
+        int rows = getPersister().releaseCubes(appId, newSnapVer);
         broadcast(appId);
         return rows;
-    }
-
-    public static int createSnapshotCubes(ApplicationID appId, String newVersion)
-    {
-        validateAppId(appId);
-        ApplicationID.validateVersion(newVersion);
-
-        if (appId.getVersion().equals(newVersion))
-        {
-            throw new IllegalArgumentException("New SNAPSHOT version " + newVersion + " cannot be the same as the RELEASE version.");
-        }
-
-        return getPersister().createSnapshotVersion(appId, newVersion);
     }
 
     public static void changeVersionValue(ApplicationID appId, String newVersion)
@@ -846,7 +834,7 @@ public class NCubeManager
         NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
         if (bootCube == null)
         {
-            throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
+             throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
         }
         return (ApplicationID) bootCube.getCell(coord);
     }

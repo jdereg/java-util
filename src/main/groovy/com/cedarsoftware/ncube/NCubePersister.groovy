@@ -34,9 +34,8 @@ interface NCubePersister extends NCubeReadOnlyPersister
 
     boolean updateNotes(ApplicationID appId, String cubeName, String notes);
 
-    int createSnapshotVersion(ApplicationID appId, String newVersion);
     int changeVersionValue(ApplicationID appId, String newVersion);
-    int releaseCubes(ApplicationID appId);
+    int releaseCubes(ApplicationID appId, String newSnapVer);
 
     boolean updateTestData(ApplicationID appId, String cubeName, String testData);
 }

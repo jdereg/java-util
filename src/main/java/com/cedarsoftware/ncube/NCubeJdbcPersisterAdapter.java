@@ -215,19 +215,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int createSnapshotVersion(ApplicationID appId, String newVersion)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.createSnapshotVersion(c, appId, newVersion);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
     public int changeVersionValue(ApplicationID appId, String newVersion)
     {
         Connection c = connectionProvider.getConnection();
@@ -241,12 +228,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int releaseCubes(ApplicationID appId)
+    public int releaseCubes(ApplicationID appId, String newSnapVer)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.releaseCubes(c, appId);
+            return persister.releaseCubes(c, appId, newSnapVer);
         }
         finally
         {

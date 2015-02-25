@@ -58,7 +58,7 @@ public class ApplicationID
     @Deprecated
     public ApplicationID(String tenant, String app, String version, String status)
     {
-        this(tenant, app, version, status, TEST_BRANCH);
+        throw new RuntimeException("Use the 5 argument constructor - add branch as the last argument");
     }
 
     public ApplicationID(String tenant, String app, String version, String status, String branch)
@@ -103,6 +103,7 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
+        // TODO: Include status in return string
         String br = branch == null ? "HEAD" : branch;
         if (StringUtilities.isEmpty(name))
         {

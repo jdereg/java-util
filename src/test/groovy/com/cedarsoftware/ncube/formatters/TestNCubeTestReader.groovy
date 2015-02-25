@@ -23,10 +23,10 @@ import static org.junit.Assert.assertEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestNCubeTestReader
+class TestNCubeTestReader
 {
     @Test
-    public void testReading() throws Exception
+    void testReading() throws Exception
     {
         String s = getResourceAsString 'n-cube-tests/test.json'
         NCubeTestReader reader = new NCubeTestReader()
@@ -35,7 +35,7 @@ public class TestNCubeTestReader
     }
 
     @Test
-    public void testEmptyString() throws Exception
+    void testEmptyString() throws Exception
     {
         NCubeTestReader reader = new NCubeTestReader()
         List<NCubeTest> list = reader.convert ''
@@ -43,7 +43,7 @@ public class TestNCubeTestReader
     }
 
     @Test
-    public void testNullString() throws Exception
+    void testNullString() throws Exception
     {
         NCubeTestReader reader = new NCubeTestReader()
         List<NCubeTest> list = reader.convert null

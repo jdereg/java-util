@@ -22,10 +22,10 @@ import static org.junit.Assert.assertTrue
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestRange
+class TestRange
 {
     @Test
-    public void testRangeEquality() throws Exception
+    void testRangeEquality() throws Exception
     {
         Range a = new Range(5, 10)
         Range b = new Range(5, 10)
@@ -39,7 +39,7 @@ public class TestRange
     }
 
     @Test
-    public void testRangeSetEquality() throws Exception
+    void testRangeSetEquality() throws Exception
     {
         RangeSet a = new RangeSet(1)
         a.add(new Range(5, 10))
@@ -56,7 +56,7 @@ public class TestRange
     }
 
     @Test
-    public void testRangeSetOverlap()
+    void testRangeSetOverlap()
     {
         RangeSet set = new RangeSet(3)
         set.add(1)

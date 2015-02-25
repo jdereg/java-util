@@ -21,14 +21,14 @@ import java.sql.Statement
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
+class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 {
-    public HsqlTestingDatabaseManager(JdbcConnectionProvider p)
+    HsqlTestingDatabaseManager(JdbcConnectionProvider p)
     {
         super(p);
     }
 
-    public void setUp() throws SQLException
+    void setUp() throws SQLException
     {
         Connection c = provider.connection
         Statement s = null
@@ -48,9 +48,9 @@ public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManag
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +
                     "revision_number bigint DEFAULT '0' NOT NULL, " +
-                    "change_set_id VARCHAR(80) DEFAULT NULL,\n" +
+                    "branch_id VARCHAR(80) DEFAULT NULL, " +
                     "PRIMARY KEY (n_cube_id), " +
-                    "UNIQUE (tenant_cd, app_cd, version_no_cd, n_cube_nm, revision_number, change_set_id) " +
+                    "UNIQUE (tenant_cd, app_cd, version_no_cd, n_cube_nm, revision_number, branch_id) " +
                     ")")
         }
         finally
@@ -60,7 +60,7 @@ public class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManag
         }
     }
 
-    public void tearDown() throws SQLException
+    void tearDown() throws SQLException
     {
         Connection c = provider.connection
         Statement s = null

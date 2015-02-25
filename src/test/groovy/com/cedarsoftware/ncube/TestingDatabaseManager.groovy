@@ -19,7 +19,7 @@ import java.sql.SQLException
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public interface TestingDatabaseManager
+interface TestingDatabaseManager
 {
     public void setUp() throws SQLException
     public void tearDown() throws SQLException

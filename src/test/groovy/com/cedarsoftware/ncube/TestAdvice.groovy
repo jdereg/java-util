@@ -28,7 +28,7 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestAdvice
+class TestAdvice
 {
     static final String USER_ID = "jdirt";
 
@@ -50,7 +50,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testExpression()
+    void testExpression()
     {
         NCube ncube2 = NCubeManager.getNCubeFromResource("urlPieces.json")
         NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json")
@@ -86,7 +86,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testAdvice() throws Exception
+    void testAdvice() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
@@ -158,7 +158,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testAdviceSubsetMatching() throws Exception
+    void testAdviceSubsetMatching() throws Exception
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
@@ -252,7 +252,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testAdviceSubsetMatchingLateLoad()
+    void testAdviceSubsetMatchingLateLoad()
     {
         advice1.before = {  method, cube, input, output ->
             output.put("before", true)
@@ -345,7 +345,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testAdviceSubsetMatchingLateLoadExpressions()
+    void testAdviceSubsetMatchingLateLoadExpressions()
     {
         advice1.before = {  method, cube, input, output ->
             output.put("before", true)
@@ -369,7 +369,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testAdviceNoCallForward()
+    void testAdviceNoCallForward()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
@@ -387,7 +387,7 @@ public class TestAdvice
     }
 
     @Test
-    public void testMultiAdvice()
+    void testMultiAdvice()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
         NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)

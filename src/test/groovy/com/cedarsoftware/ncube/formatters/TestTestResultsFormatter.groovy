@@ -30,7 +30,7 @@ import org.junit.Test
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestTestResultsFormatter
+class TestTestResultsFormatter
 {
     @Before
     public void init() throws Exception
@@ -45,7 +45,7 @@ public class TestTestResultsFormatter
     }
 
     @Test
-    public void testResultsFromNCube()
+    void testResultsFromNCube()
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'idNoValue.json')
         def coord = [age:18, state:'OH']
@@ -65,7 +65,7 @@ public class TestTestResultsFormatter
     }
 
     @Test
-    public void testResultsWithOutputAndError() throws Exception
+    void testResultsWithOutputAndError() throws Exception
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.defaultAppId, 'idNoValue.json')
         def coord = [age:18, state:'OH']
@@ -94,7 +94,7 @@ public class TestTestResultsFormatter
     }
 
     @Test
-    public void testOutput() throws Exception
+    void testOutput() throws Exception
     {
         StringValuePair<CellInfo>[] coord = new StringValuePair[0]
         CellInfo[] expected = new CellInfo[3]

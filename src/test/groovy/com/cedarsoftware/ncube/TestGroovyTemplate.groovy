@@ -25,10 +25,10 @@ import static org.junit.Assert.assertNotNull
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestGroovyTemplate
+class TestGroovyTemplate
 {
     @Test
-    public void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization() throws Exception
     {
         Class c = GroovyTemplate.class
         Constructor<GroovyTemplate> con = c.getDeclaredConstructor()

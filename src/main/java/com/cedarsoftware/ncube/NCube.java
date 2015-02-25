@@ -1657,7 +1657,7 @@ public class NCube<T>
      * @return Set<String> names of all referenced cubes within this
      * specific NCube.  It is not recursive.
      */
-    Set<String> getReferencedCubeNames()
+    public Set<String> getReferencedCubeNames()
     {
         final Set<String> cubeNames = new LinkedHashSet<>();
 

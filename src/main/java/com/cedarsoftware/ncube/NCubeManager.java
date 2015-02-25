@@ -827,6 +827,12 @@ public class NCubeManager
         broadcast(appId);
     }
 
+    public static List<String> getBranches(ApplicationID appId)
+    {
+        validateAppId(appId);
+        return getPersister().getBranches(appId);
+    }
+
     public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
     {
         if (coord == null)
@@ -1001,7 +1007,6 @@ public class NCubeManager
     // ---------------------- Broadcast APIs for notifying other services in cluster of cache changes ------------------
     static void broadcast(ApplicationID appId)
     {
-        LOG.debug("Clear cache: " + appId);
         // Write to 'system' tenant, 'NCE' app, version '0.0.0', SNAPSHOT, cube: sys.cache
         // Separate thread reads from this table every 1 second, for new commands, for
         // example, clear cache

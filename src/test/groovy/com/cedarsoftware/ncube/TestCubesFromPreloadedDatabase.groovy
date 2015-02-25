@@ -25,7 +25,7 @@ import static org.junit.Assert.assertNotNull
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestCubesFromPreloadedDatabase
+class TestCubesFromPreloadedDatabase
 {
     public static String USER_ID = TestNCubeManager.USER_ID
     public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "preloaded", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
@@ -49,7 +49,7 @@ public class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testUrlClassLoader() throws Exception {
+    void testUrlClassLoader() throws Exception {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json")
 
         // add cubes for this test.
@@ -179,7 +179,7 @@ public class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testMultiCubeClassPath() throws Exception {
+    void testMultiCubeClassPath() throws Exception {
 
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
 
@@ -238,7 +238,7 @@ public class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testTwoClasspathsSameAppId() throws Exception
+    void testTwoClasspathsSameAppId() throws Exception
     {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "GroovyExpCp1.json")
 
@@ -282,7 +282,7 @@ public class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testMathControllerUsingExpressions() throws Exception
+    void testMathControllerUsingExpressions() throws Exception
     {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json")
 
@@ -321,7 +321,7 @@ public class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testClearCache()
+    void testClearCache()
     {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cedar.json", "cedar.hello.json")
 
@@ -343,7 +343,7 @@ public class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testMultiTenantApplicationIdBootstrap()
+    void testMultiTenantApplicationIdBootstrap()
     {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
 

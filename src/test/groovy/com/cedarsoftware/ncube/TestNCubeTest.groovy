@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestNCubeTest
+class TestNCubeTest
 {
     @Before
     public void setUp() throws Exception
@@ -38,7 +38,7 @@ public class TestNCubeTest
     }
 
     @Test
-    public void testNCubeTest()
+    void testNCubeTest()
     {
         String name = 'test-1';
         StringValuePair[] params = new StringValuePair[3];

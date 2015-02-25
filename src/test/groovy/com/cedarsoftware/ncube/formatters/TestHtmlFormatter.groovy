@@ -21,10 +21,10 @@ import static org.junit.Assert.assertEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestHtmlFormatter
+class TestHtmlFormatter
 {
     @Test
-    public void testGetCellValueAsString()
+    void testGetCellValueAsString()
     {
         assertEquals "null", HtmlFormatter.getCellValueAsString(null)
         assertEquals "foo", HtmlFormatter.getCellValueAsString("foo")

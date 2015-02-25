@@ -21,7 +21,7 @@ import java.sql.SQLException
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestingDatabaseHelper
+class TestingDatabaseHelper
 {
     public static int MYSQL = 1
     public static int HSQL = 2
@@ -102,19 +102,17 @@ public class TestingDatabaseHelper
         void tearDown() throws SQLException
         {
         }
-        @Override
+
         public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
         {
 
         }
 
-        @Override
         public void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
         {
 
         }
 
-        @Override
         public void updateCube(ApplicationID appId, String username, NCube cube) throws Exception
         {
 

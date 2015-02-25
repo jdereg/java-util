@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestCdnRouter
+class TestCdnRouter
 {
     @Before
     public void setUp() throws Exception
@@ -49,7 +49,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testRoute() throws Exception
+    void testRoute() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -75,7 +75,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void test500() throws Exception
+    void test500() throws Exception
     {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class)
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class)
@@ -100,7 +100,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testInvalidVersion() throws Exception
+    void testInvalidVersion() throws Exception
     {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class)
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class)
@@ -114,7 +114,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testNullServletPathThoughItMayBeImpossibleToReproduceInTomcat() throws Exception
+    void testNullServletPathThoughItMayBeImpossibleToReproduceInTomcat() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -128,7 +128,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testInvalidCubeName() throws Exception
+    void testInvalidCubeName() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -148,11 +148,11 @@ public class TestCdnRouter
         NCubeManager.getNCubeFromResource 'cdnRouterTest.json'
         new CdnRouter().route request, response
 
-        verify(response, times(1)).sendError 500, 'CdnRouter - Error occurred: Could not load routing cube using app: none/default_app/999.99.9/null/, cube name: foo'
+        verify(response, times(1)).sendError 500, 'CdnRouter - Error occurred: Could not load routing cube using app: none / default_app / 999.99.9 / test /, cube name: foo'
     }
 
     @Test
-    public void test404() throws Exception
+    void test404() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -179,7 +179,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testCdnRouterErrorHandleNoCubeName() throws Exception
+    void testCdnRouterErrorHandleNoCubeName() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -203,7 +203,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testCdnRouterErrorHandleNoTenant() throws Exception
+    void testCdnRouterErrorHandleNoTenant() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -227,7 +227,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testCdnRouterErrorHandleNoApp() throws Exception
+    void testCdnRouterErrorHandleNoApp() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -251,7 +251,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testCdnRouterErrorHandleNoVersion() throws Exception
+    void testCdnRouterErrorHandleNoVersion() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -275,7 +275,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testCdnRouterErrorHandleNoStatus() throws Exception
+    void testCdnRouterErrorHandleNoStatus() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -342,7 +342,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testNotAuthorized() throws Exception
+    void testNotAuthorized() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -358,7 +358,7 @@ public class TestCdnRouter
 
 
     @Test
-    public void testContentTypeTransfer() throws Exception
+    void testContentTypeTransfer() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -415,7 +415,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testExceptionOnException() throws Exception
+    void testExceptionOnException() throws Exception
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class
@@ -428,13 +428,13 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testFileContentTypeTransfer() throws Exception
+    void testFileContentTypeTransfer() throws Exception
     {
         cdnRouteFile 'file', false
     }
 
     @Test
-    public void testFileContentTypeCacheTransfer() throws Exception
+    void testFileContentTypeCacheTransfer() throws Exception
     {
         cdnRouteFile 'cachedFile', true
     }
@@ -480,7 +480,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testDefaultRoute() throws Exception
+    void testDefaultRoute() throws Exception
     {
         NCube router = NCubeManager.getNCubeFromResource 'cdnRouter.json'
 
@@ -505,7 +505,7 @@ public class TestCdnRouter
     }
 
     @Test
-    public void testWithNoProvider() throws IOException
+    void testWithNoProvider() throws IOException
     {
         HttpServletRequest request = Mockito.mock HttpServletRequest.class
         HttpServletResponse response = Mockito.mock HttpServletResponse.class

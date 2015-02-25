@@ -5,7 +5,7 @@ import java.sql.Connection;
 /**
  * Created by kpartlow on 12/23/2014.
  */
-public abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseManager
+abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseManager
 {
     JdbcConnectionProvider provider;
     NCubeJdbcPersister persister = new NCubeJdbcPersister();
@@ -14,7 +14,7 @@ public abstract class AbstractJdbcTestingDatabaseManager implements TestingDatab
         provider = p;
     }
 
-    public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception 
+    void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
     {
         Connection c = provider.connection;
         try
@@ -30,7 +30,7 @@ public abstract class AbstractJdbcTestingDatabaseManager implements TestingDatab
         }
     }
 
-    public void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+    void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
     {
         Connection c = provider.connection;
         try
@@ -46,7 +46,7 @@ public abstract class AbstractJdbcTestingDatabaseManager implements TestingDatab
         }
     }
 
-    public void updateCube(ApplicationID appId, String username, NCube ncube) throws Exception
+    void updateCube(ApplicationID appId, String username, NCube ncube) throws Exception
     {
         Connection c = provider.connection;
         try

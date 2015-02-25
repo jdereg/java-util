@@ -23,10 +23,10 @@ import java.lang.reflect.Modifier
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestStringUrlCmd
+class TestStringUrlCmd
 {
     @Test
-    public void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization() throws Exception
     {
         Class c = StringUrlCmd.class;
         Constructor<StringUrlCmd> con = c.getDeclaredConstructor();

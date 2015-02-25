@@ -33,6 +33,7 @@ interface NCubeReadOnlyPersister
 
     Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)
     Object[] getRevisions(ApplicationID appId, String cubeName)
+    List<String> getBranches(ApplicationID appId)
 
     String getNotes(ApplicationID appId, String cubeName)
 

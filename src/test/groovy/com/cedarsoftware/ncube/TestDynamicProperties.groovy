@@ -21,7 +21,7 @@ import org.junit.Test
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestDynamicProperties
+class TestDynamicProperties
 {
     @Before
     public void setUp() throws Exception
@@ -46,7 +46,7 @@ public class TestDynamicProperties
     }
 
     @Test
-    public void testCprStyleProperties()
+    void testCprStyleProperties()
     {
         NCube cpr = NCubeManager.getNCubeFromResource 'cpr.json'
 

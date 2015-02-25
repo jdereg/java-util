@@ -52,7 +52,7 @@ public class NCubeJdbcPersister
     {
         try
         {
-            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, revision_number, test_data_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, revision_number, branch_id, test_data_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
             {
                 insert.setLong(1, UniqueIdGenerator.getUniqueId());
                 insert.setString(2, appId.getApp());
@@ -64,9 +64,10 @@ public class NCubeJdbcPersister
                 insert.setString(7, username);
                 insert.setString(8, appId.getTenant());
                 insert.setLong(9, rev);
+                insert.setString(10, appId.getBranch());
 
                 //TODO:  should we also push the notes forward now that createCube is used for updates, etc.?
-                insert.setBytes(10, testData == null ? null : testData.getBytes("UTF-8"));
+                insert.setBytes(11, testData == null ? null : testData.getBytes("UTF-8"));
 
                 int rowCount = insert.executeUpdate();
                 if (rowCount != 1)
@@ -129,13 +130,16 @@ public class NCubeJdbcPersister
 
     public Object[] getCubeRecords(Connection c, ApplicationID appId, String sqlLike)
     {
+        // TODO: Support wildcard * ? and convert to % _
         if (StringUtilities.isEmpty(sqlLike))
         {
             sqlLike = "%";
         }
 
+        // TODO: Get needs to load with branch_ID set.
+
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n.n_cube_nm, status_cd, n.cube_value_bin FROM n_cube n, " +
+                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
@@ -155,7 +159,7 @@ public class NCubeJdbcPersister
             stmt.setString(8, appId.getVersion());
             stmt.setString(9, appId.getStatus());
             stmt.setString(10, appId.getTenant());
-            return getCubeInfoRecords(appId, stmt, false);
+            return getCubeInfoRecords(appId, stmt);
         }
         catch (Exception e)
         {
@@ -173,7 +177,7 @@ public class NCubeJdbcPersister
         }
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n.n_cube_nm, status_cd, n.cube_value_bin FROM n_cube n, " +
+                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                         "( " +
                         "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                         "  FROM n_cube " +
@@ -191,7 +195,7 @@ public class NCubeJdbcPersister
             stmt.setString(6, appId.getApp());
             stmt.setString(7, appId.getVersion());
             stmt.setString(8, appId.getTenant());
-            return getCubeInfoRecords(appId, stmt, false);
+            return getCubeInfoRecords(appId, stmt);
         }
         catch (Exception e)
         {
@@ -204,7 +208,7 @@ public class NCubeJdbcPersister
     public Object[] getRevisions(Connection c, ApplicationID appId, String cubeName)
     {
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, cube_value_bin " +
+                "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, branch_id, cube_value_bin " +
                 "FROM n_cube " +
                 "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') " +
                 "ORDER BY abs(revision_number) DESC"))
@@ -214,7 +218,7 @@ public class NCubeJdbcPersister
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
 
-            Object[] records = getCubeInfoRecords(appId, stmt, true);
+            Object[] records = getCubeInfoRecords(appId, stmt);
             if (records.length == 0)
             {
                 throw new IllegalArgumentException("Cannot fetch revision history for cube:  " + cubeName + " as it does not exist in app:  " + appId);
@@ -233,19 +237,25 @@ public class NCubeJdbcPersister
         }
     }
 
-    private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, boolean useDetailed) throws Exception
+    private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
     {
         List<NCubeInfoDto> records = new ArrayList<>();
         try (ResultSet rs = stmt.executeQuery())
         {
             while (rs.next())
             {
-                NCubeInfoDto dto = (useDetailed) ? new NCubeInfoDetailsDto() : new NCubeInfoDto();
+                NCubeInfoDto dto = new NCubeInfoDto();
                 dto.name = rs.getString("n_cube_nm");
                 dto.tenant = appId.getTenant();
+                byte[] notes = rs.getBytes("notes_bin");
+                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
                 dto.version = appId.getVersion();
                 dto.status = rs.getString("status_cd");
                 dto.app = appId.getApp();
+                dto.createDate = rs.getDate("create_dt");
+                dto.createHid = rs.getString("create_hid");
+                dto.revision = Long.toString(rs.getLong("revision_number"));
+                dto.branch = rs.getString("branch_id");
                 byte[] jsonBytes = rs.getBytes("cube_value_bin");
 
                 if (!ArrayUtilities.isEmpty(jsonBytes))
@@ -257,17 +267,6 @@ public class NCubeJdbcPersister
                         dto.sha1 = m.group(1);
                     }
                 }
-
-                if (useDetailed)
-                {
-                    byte[] notes = rs.getBytes("notes_bin");
-                    NCubeInfoDetailsDto detailedDto = (NCubeInfoDetailsDto) dto;
-                    detailedDto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-                    detailedDto.createDate = rs.getDate("create_dt");
-                    detailedDto.createHid = rs.getString("create_hid");
-                    detailedDto.revision = Long.toString(rs.getLong("revision_number"));
-                }
-
                 records.add(dto);
             }
         }
@@ -277,12 +276,10 @@ public class NCubeJdbcPersister
     public NCube loadCube(Connection c, NCubeInfoDto cubeInfo, Integer revision)
     {
         final ApplicationID appId = cubeInfo.getApplicationID();
-        appId.validate();
-        String cubeName = cubeInfo.name;
         String rev = revision == null ? "abs(n.revision_number)" : revision.toString();
 
         try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.cube_value_bin FROM n_cube n, " +
+                "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.cube_value_bin FROM n_cube n, " +
                         "( " +
                         "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                         "  FROM n_cube " +
@@ -292,12 +289,12 @@ public class NCubeJdbcPersister
                         "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = " + rev +
                         " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ')"))
         {
-            stmt.setString(1, cubeName);
+            stmt.setString(1, cubeInfo.name);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
             stmt.setString(5, appId.getTenant());
-            stmt.setString(6, cubeName);
+            stmt.setString(6, cubeInfo.name);
             stmt.setString(7, appId.getApp());
             stmt.setString(8, appId.getVersion());
             stmt.setString(9, appId.getStatus());
@@ -346,6 +343,7 @@ public class NCubeJdbcPersister
             cubeInfo.app = appId.getApp();
             cubeInfo.version = appId.getVersion();
             cubeInfo.status = appId.getStatus();
+            cubeInfo.revision = String.valueOf(maxRev);
 
             NCube ncube = loadCube(c, cubeInfo, null);
             String testData = getTestData(c, appId, cubeName);
@@ -914,6 +912,35 @@ public class NCubeJdbcPersister
         catch (Exception e)
         {
             String s = "Unable to fetch all versions for app: " + appId + " from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+    public List<String> getBranches(Connection connection, ApplicationID appId)
+    {
+        final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')";
+        try (PreparedStatement stmt = connection.prepareStatement(sql))
+        {
+            stmt.setString(1, appId.getApp());
+            stmt.setString(2, appId.getVersion());
+            stmt.setString(3, appId.getStatus());
+            stmt.setString(4, appId.getTenant());
+
+            List<String> branches = new ArrayList<>();
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                while (rs.next())
+                {
+                    branches.add(rs.getString(1));
+                }
+            }
+
+            return branches;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch all branches for app: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

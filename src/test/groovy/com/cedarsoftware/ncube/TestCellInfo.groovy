@@ -30,10 +30,10 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestCellInfo
+class TestCellInfo
 {
     @Test
-    public void testFormatForEditing()
+    void testFormatForEditing()
     {
         assertEquals '4.56', CellInfo.formatForEditing(4.56)
         assertEquals '0.0', CellInfo.formatForEditing(0.0)
@@ -49,7 +49,7 @@ public class TestCellInfo
     }
 
     @Test
-    public void testCollapseToUISupportedTypes()
+    void testCollapseToUISupportedTypes()
     {
         CellInfo info = new CellInfo(5)
         assertEquals CellTypes.Integer.desc(), info.dataType
@@ -78,7 +78,7 @@ public class TestCellInfo
     }
 
     @Test
-    public void testFormatForDisplay()
+    void testFormatForDisplay()
     {
         assertEquals '4.56', CellInfo.formatForEditing(4.560)
         assertEquals '4.5', CellInfo.formatForEditing(4.5)
@@ -93,7 +93,7 @@ public class TestCellInfo
     }
 
     @Test
-    public void testRecreate()
+    void testRecreate()
     {
         assertNull new CellInfo(null).recreate()
 
@@ -121,14 +121,14 @@ public class TestCellInfo
     }
 
     @Test
-    public void testBooleanValue()
+    void testBooleanValue()
     {
         assertTrue CellInfo.booleanValue('true')
         assertFalse CellInfo.booleanValue('false')
     }
 
     @Test
-    public void testConstructor()
+    void testConstructor()
     {
         CellInfo info = new CellInfo(new Point2D(5.0, 6.0))
         assertEquals CellTypes.Point2D.desc(), info.dataType
@@ -154,7 +154,7 @@ public class TestCellInfo
     }
 
     @Test
-    public void testConstructorWithUnrecognizedType()
+    void testConstructorWithUnrecognizedType()
     {
         try
         {
@@ -167,7 +167,7 @@ public class TestCellInfo
     }
 
     @Test
-    public void testParseJsonValue()
+    void testParseJsonValue()
     {
         assertEquals Boolean.TRUE, CellInfo.parseJsonValue('boolean', 'true')
         assertEquals Boolean.FALSE, CellInfo.parseJsonValue('boolean', 'false')
@@ -180,25 +180,25 @@ public class TestCellInfo
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testParseJsonValueBinaryWithOddNumberString()
+    void testParseJsonValueBinaryWithOddNumberString()
     {
         CellInfo.parseJsonValue 'binary', '0'
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testParseJsonValueInvalidHexString()
+    void testParseJsonValueInvalidHexString()
     {
         CellInfo.parseJsonValue 'binary', 'GF'
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testParseJsonValueWithInvalidBoolean()
+    void testParseJsonValueWithInvalidBoolean()
     {
         CellInfo.parseJsonValue 'boolean', 'yes'
     }
 
     @Test
-    public void testInvalidJsonObjectType()
+    void testInvalidJsonObjectType()
     {
         try
         {
@@ -217,31 +217,31 @@ public class TestCellInfo
     }
 
     @Test
-    public void testNullItemOnFormatForDisplay()
+    void testNullItemOnFormatForDisplay()
     {
         assertEquals 'Default', CellInfo.formatForDisplay(null)
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testParseJsonValueException() throws Exception
+    void testParseJsonValueException() throws Exception
     {
         CellInfo.parseJsonValue(Boolean.TRUE, "http://www.foo.com", "foo", true)
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testParseJsonValueNonUrlException() throws Exception
+    void testParseJsonValueNonUrlException() throws Exception
     {
         CellInfo.parseJsonValue("blah blah blah", null, "foo", true)
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testParseJsonValueWithUnknownType() throws Exception
+    void testParseJsonValueWithUnknownType() throws Exception
     {
         CellInfo.parseJsonValue(new Object(), null, "foo", true)
     }
 
     @Test
-    public void testParseJsonValueGroovyMethod() throws Exception
+    void testParseJsonValueGroovyMethod() throws Exception
     {
         GroovyMethod method = (GroovyMethod) CellInfo.parseJsonValue("def [5]", null, "method", true)
         assertEquals(new GroovyMethod("def [5]", null), method)

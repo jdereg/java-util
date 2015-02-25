@@ -31,7 +31,7 @@ import static org.junit.Assert.fail
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestJsonFormatter
+class TestJsonFormatter
 {
 
     public static String USER_ID = TestNCubeManager.USER_ID
@@ -57,7 +57,7 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testJsonFormatter() throws Exception
+    void testJsonFormatter() throws Exception
     {
         // when running a single test.
         //List<String> s = new ArrayList<String>()
@@ -67,7 +67,7 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testConvertArray() throws Exception
+    void testConvertArray() throws Exception
     {
 
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk('sys.classpath.tests.json', 'arrays.json');
@@ -136,7 +136,7 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testInvalidNCube()
+    void testInvalidNCube()
     {
         NCube ncube = new NCube(null)
         JsonFormatter formatter = new JsonFormatter()
@@ -144,7 +144,7 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testNullCube()
+    void testNullCube()
     {
         try
         {
@@ -158,7 +158,7 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testCubeWithInvalidDefaultCell()
+    void testCubeWithInvalidDefaultCell()
     {
         try
         {
@@ -175,7 +175,7 @@ public class TestJsonFormatter
     }
 
     @Test
-    public void testCubeWithInvalidDefaultCellArrayType()
+    void testCubeWithInvalidDefaultCellArrayType()
     {
         try
         {

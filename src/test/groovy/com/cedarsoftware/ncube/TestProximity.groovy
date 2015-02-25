@@ -27,16 +27,16 @@ import static org.junit.Assert.assertTrue
  *         limitations under the License.
  */
 
-public class TestProximity
+class TestProximity
 {
     @Test(expected = IllegalArgumentException.class)
-    public void testInvalidArgument()
+    void testInvalidArgument()
     {
         Proximity.distance new BigInteger('9'), new BigInteger('11')
     }
 
     @Test
-    public void testProximityBigDecimal()
+    void testProximityBigDecimal()
     {
         BigDecimal a = 1.0g
         BigDecimal b = 101.0g
@@ -45,7 +45,7 @@ public class TestProximity
     }
 
     @Test
-    public void testConstructorIsPrivate() throws Exception
+    void testConstructorIsPrivate() throws Exception
     {
         Class c = Proximity.class;
         assertEquals Modifier.FINAL, c.modifiers & Modifier.FINAL
@@ -58,7 +58,7 @@ public class TestProximity
     }
 
     @Test
-    public void testProximity()
+    void testProximity()
     {
         try
         {

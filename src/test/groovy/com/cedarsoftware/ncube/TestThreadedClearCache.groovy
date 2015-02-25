@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestThreadedClearCache
+class TestThreadedClearCache
 {
     public static String USER_ID = TestNCubeManager.USER_ID
     public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name())
@@ -48,7 +48,7 @@ public class TestThreadedClearCache
     }
 
     @Test
-    public void testCubesWithThreadedClearCacheWithAppId() throws Exception {
+    void testCubesWithThreadedClearCacheWithAppId() throws Exception {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json");
 
         // add cubes for this test.

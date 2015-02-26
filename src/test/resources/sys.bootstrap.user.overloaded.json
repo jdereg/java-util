@@ -1,5 +1,5 @@
 {
-  "ncube": "sys.classpath",
+  "ncube": "sys.bootstrap",
   "axes": [
     {
       "name": "env",
@@ -18,22 +18,22 @@
     {
       "id": ["DEV"],
       "type": "exp",
-      "value": "@['env':'DEFAULT', 'version':'1.28.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP']"
+      "value": "@['env':null, 'version':'1.28.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
     },
     {
       "id": ["SAND"],
       "type": "exp",
-      "value": "@['env':'DEFAULT', 'version':'1.29.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP']"
+      "value": "@['env':null, 'version':'1.29.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
     },
     {
       "id": ["PROD"],
       "type": "exp",
-      "value": "@['env':'DEFAULT', 'version':'1.25.0', 'status':'RELEASE', 'tenant':'NONE', 'app':'UD.REF.APP']"
+      "value": "@['env':null, 'version':'1.25.0', 'status':'RELEASE', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
     },
     {
       "id": [],
       "type": "exp",
-      "value": "def map = JsonReader.jsonToMaps(System.getProperty('NCUBE_BOOTSTRAP')); def tenant = map.containsKey('tenant') ? map['tenant'] : input.tenant; def app = map.containsKey('app') ? map['app'] : input.app; def version = map.containsKey('version') ? map['version'] : '1.28.0'; def status = map.containsKey('status') ? map['status'] : 'SNAPSHOT'; def branch = map.containsKey('branch') ? map['branch'] : null; new ApplicationID(tenant, app, version, status, branch);"
+      "value": "Map map = null; if (com.cedarsoftware.util.StringUtilities.hasContent(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP'))) { map = com.cedarsoftware.util.io.JsonReader.jsonToMaps(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP')); }; String tenant = map && map.containsKey('tenant') ? map.tenant : input.tenant; String app = map && map.containsKey('app') ? map.app : input.app; String version = map && map.containsKey('version') ? map.version : input.version; String status = map && map.containsKey('status') ? map.status : input.status; String branch = map && map.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
     }
     ]
   }

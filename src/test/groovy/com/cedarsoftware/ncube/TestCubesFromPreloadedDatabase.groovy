@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube
 
-import com.cedarsoftware.util.io.JsonReader
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -83,26 +82,27 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    public void testClassLoaderWithOverrides() throws Exception {
-        String s = '{"version":"1.28.0", "status":"RELEASE", "classpathBase":"http://www.cedarsoftware.com"}'
-        System.setProperty("NCUBE_BOOTSTRAP", s);
+    void testBootstrapWithOverrides() throws Exception {
+        ApplicationID id = ApplicationID.getBootVersion('none', 'example')
+        assertEquals(new ApplicationID('NONE', 'EXAMPLE', '0.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH), id);
 
-        Map map = JsonReader.jsonToMaps(System.getProperty("NCUBE_BOOTSTRAP"));
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.user.overloaded.json")
 
-        assertEquals('1.28.0', map.get('version'));
-        assertEquals('RELEASE', map.get('status'));
-        assertEquals("http://www.cedarsoftware.com", map.get('classpathBase'))
+        // add cubes for this test.
+        manager.addCubes(id, USER_ID, ncubes)
 
-        String tenant = map.containsKey('tenant') ? map['tenant'] : 'NONE'
-        String app = map.containsKey('app') ? map['app'] : 'UD.REF.APP'
-        String version = map.containsKey('version') ? map['version'] : '1.28.0'
-        String status = map.containsKey('status') ? map['status'] : 'SNAPSHOT'
-        Object changeSet
+        def cube = NCubeManager.getCube(id, 'sys.bootstrap')
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', null), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', null), cube.getCell([env:'PROD']));
 
-        new ApplicationID(tenant, app, version, status, changeSet);
+        System.setProperty("NCUBE_BOOTSTRAP", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
+        assertEquals(new ApplicationID('foo', 'UD', '1.28.0', 'RELEASE', 'bar'), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('foo', 'UD', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
+
+        System.setProperty("NCUBE_BOOTSTRAP", '{"branch":"bar"}')
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
     }
-
-
 
     @Test
     public void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {

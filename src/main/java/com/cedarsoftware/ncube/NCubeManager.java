@@ -67,6 +67,7 @@ public class NCubeManager
     private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
+    private static final String NCUBE_BOOTSTRAP = "NCUBE_BOOTSTRAP";
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)

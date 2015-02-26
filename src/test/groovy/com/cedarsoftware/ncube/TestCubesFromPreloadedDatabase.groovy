@@ -82,7 +82,33 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {
+    void testBootstrapWithOverrides() throws Exception {
+        ApplicationID id = ApplicationID.getBootVersion('none', 'example')
+        assertEquals(new ApplicationID('NONE', 'EXAMPLE', '0.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH), id);
+
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.user.overloaded.json")
+
+        // add cubes for this test.
+        manager.addCubes(id, USER_ID, ncubes)
+
+        def cube = NCubeManager.getCube(id, 'sys.bootstrap')
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', null), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', null), cube.getCell([env:'PROD']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'baz'), cube.getCell([env:'SAND']));
+
+        System.setProperty("NCUBE_BOOTSTRAP", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
+        assertEquals(new ApplicationID('foo', 'UD', '1.28.0', 'RELEASE', 'bar'), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('foo', 'UD', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
+        assertEquals(new ApplicationID('foo', 'UD', '1.29.0', 'RELEASE', 'bar'), cube.getCell([env:'SAND']));
+
+        System.setProperty("NCUBE_BOOTSTRAP", '{"branch":"bar"}')
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'SAND']));
+    }
+
+    @Test
+    public void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {
 
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
 
@@ -186,16 +212,11 @@ class TestCubesFromPreloadedDatabase
         x = cube.getCell(input)
         assertEquals("Bar", x)
 
-
-        //TODO:  Uncomment this to make test work.
         NCubeManager.clearCache(appId)
-
-
 
         // Had to reget cube so I had a new classpath
         cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")
 
-        //TODO: Move these two lines above the previous line to make this work.  The classpath is already cached by the time it gets here.
         input.env = 'UAT';
         input.put("method", "foo")
         x = cube.getCell(input)

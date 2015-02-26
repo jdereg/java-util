@@ -23,7 +23,7 @@
     {
       "id": ["SAND"],
       "type": "exp",
-      "value": "@['env':null, 'version':'1.29.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
+      "value": "@['env':null, 'version':'1.29.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':'baz']"
     },
     {
       "id": ["PROD"],
@@ -33,7 +33,7 @@
     {
       "id": [],
       "type": "exp",
-      "value": "Map map = null; if (com.cedarsoftware.util.StringUtilities.hasContent(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP'))) { map = com.cedarsoftware.util.io.JsonReader.jsonToMaps(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP')); }; String tenant = map && map.containsKey('tenant') ? map.tenant : input.tenant; String app = map && map.containsKey('app') ? map.app : input.app; String version = map && map.containsKey('version') ? map.version : input.version; String status = map && map.containsKey('status') ? map.status : input.status; String branch = map && map.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
+      "value": "Map map = null; if (com.cedarsoftware.util.StringUtilities.hasContent(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP'))) { map = com.cedarsoftware.util.io.JsonReader.jsonToMaps(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP')); }; String tenant = map?.containsKey('tenant') ? map.tenant : input.tenant; String app = map?.containsKey('app') ? map.app : input.app; String version = map?.containsKey('version') ? map.version : input.version; String status = map?.containsKey('status') ? map.status : input.status; String branch = map?.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
     }
     ]
   }

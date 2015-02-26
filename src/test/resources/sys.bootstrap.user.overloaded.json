@@ -1,0 +1,39 @@
+{
+  "ncube": "sys.bootstrap",
+  "axes": [
+    {
+      "name": "env",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": [
+        { "id": "SAND" },
+        { "id": "DEV" },
+        { "id": "PROD" }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": ["DEV"],
+      "type": "exp",
+      "value": "@['env':null, 'version':'1.28.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
+    },
+    {
+      "id": ["SAND"],
+      "type": "exp",
+      "value": "@['env':null, 'version':'1.29.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':'baz']"
+    },
+    {
+      "id": ["PROD"],
+      "type": "exp",
+      "value": "@['env':null, 'version':'1.25.0', 'status':'RELEASE', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
+    },
+    {
+      "id": [],
+      "type": "exp",
+      "value": "Map map = null; if (com.cedarsoftware.util.StringUtilities.hasContent(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP'))) { map = com.cedarsoftware.util.io.JsonReader.jsonToMaps(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP')); }; String tenant = map?.containsKey('tenant') ? map.tenant : input.tenant; String app = map?.containsKey('app') ? map.app : input.app; String version = map?.containsKey('version') ? map.version : input.version; String status = map?.containsKey('status') ? map.status : input.status; String branch = map?.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
+    }
+    ]
+  }

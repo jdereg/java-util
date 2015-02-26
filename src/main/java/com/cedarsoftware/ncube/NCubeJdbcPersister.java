@@ -133,29 +133,53 @@ public class NCubeJdbcPersister
     {
         pattern = convertPattern(pattern);
 
-        try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
+        String start = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
-                "  WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
+                "  WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id ";
+
+        if (appId.getBranch() == null)
+        {
+            start += "is null";
+        } else {
+            start += "= ?";
+        }
+
+        String end = "  GROUP BY n_cube_nm " +
                 ") m " +
                 "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.revision_number >= 0 AND " +
-                "n.n_cube_nm like ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') and n.branch_id = ?"))
+                "n.n_cube_nm like ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') and n.branch_id ";
+
+        if (appId.getBranch() == null)
         {
+            end += "is null";
+        } else {
+            end += "= ?";
+        }
+
+        try (PreparedStatement stmt = c.prepareStatement(start + end))
+        {
+
             stmt.setString(1, pattern);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
             stmt.setString(5, appId.getTenant());
-            stmt.setString(6, appId.getBranch());
-            stmt.setString(7, pattern);
-            stmt.setString(8, appId.getApp());
-            stmt.setString(9, appId.getVersion());
-            stmt.setString(10, appId.getStatus());
-            stmt.setString(11, appId.getTenant());
-            stmt.setString(12, appId.getBranch());
+            int i = 6;
+            if (appId.getBranch() != null)
+            {
+                stmt.setString(i++, appId.getBranch());
+            }
+            stmt.setString(i++, pattern);
+            stmt.setString(i++, appId.getApp());
+            stmt.setString(i++, appId.getVersion());
+            stmt.setString(i++, appId.getStatus());
+            stmt.setString(i++, appId.getTenant());
+            if (appId.getBranch() != null)
+            {
+                stmt.setString(i++, appId.getBranch());
+            }
             return getCubeInfoRecords(appId, stmt);
         }
         catch (Exception e)
@@ -275,29 +299,55 @@ public class NCubeJdbcPersister
         final ApplicationID appId = cubeInfo.getApplicationID();
         String rev = revision == null ? "abs(n.revision_number)" : revision.toString();
 
-        try (PreparedStatement stmt = c.prepareStatement(
-                "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
-                        "( " +
-                        "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                        "  FROM n_cube " +
-                        "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                        "  GROUP BY n_cube_nm " +
-                        ") m " +
-                        "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = " + rev +
-                        " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?"))
+        String start = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
+                "( " +
+                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                "  FROM n_cube " +
+                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id ";
+
+        if (appId.getBranch() == null)
+        {
+            start += "is null";
+        } else {
+            start += "= ?";
+        }
+
+
+
+        String end =                         "  GROUP BY n_cube_nm " +
+                ") m " +
+                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = " + rev +
+                " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id ";
+
+        if (appId.getBranch() == null)
+        {
+            end += "is null";
+        } else {
+            end += "= ?";
+        }
+
+
+        try (PreparedStatement stmt = c.prepareStatement(start + end))
         {
             stmt.setString(1, cubeInfo.name);
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
             stmt.setString(5, appId.getTenant());
-            stmt.setString(6, appId.getBranch());
-            stmt.setString(7, cubeInfo.name);
-            stmt.setString(8, appId.getApp());
-            stmt.setString(9, appId.getVersion());
-            stmt.setString(10, appId.getStatus());
-            stmt.setString(11, appId.getTenant());
-            stmt.setString(12, appId.getBranch());
+            int i = 6;
+            if (appId.getBranch() != null)
+            {
+                stmt.setString(i++, appId.getBranch());
+            }
+            stmt.setString(i++, cubeInfo.name);
+            stmt.setString(i++, appId.getApp());
+            stmt.setString(i++, appId.getVersion());
+            stmt.setString(i++, appId.getStatus());
+            stmt.setString(i++, appId.getTenant());
+            if (appId.getBranch() != null)
+            {
+                stmt.setString(i, appId.getBranch());
+            }
 
             try (ResultSet rs = stmt.executeQuery())
             {

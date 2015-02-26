@@ -31,7 +31,6 @@ public class ApplicationID
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
     public static final String DEFAULT_STATUS = ReleaseStatus.SNAPSHOT.name();
-    public static final String DEFAULT_BRANCH = null;
     public static final String TEST_BRANCH = "TEST";
 
     public static final transient ApplicationID testAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, DEFAULT_STATUS, TEST_BRANCH);
@@ -222,12 +221,12 @@ public class ApplicationID
         if (StringUtilities.hasContent(changeSet))
         {
             Matcher m = Regexes.validChangeSet.matcher(changeSet);
-            if (m.find() && changeSet.length() <= 80)
+            if (m.find() && changeSet.length() <= 80 && !"head".equalsIgnoreCase(changeSet))
             {
                 return;
             }
         }
-        throw new IllegalArgumentException("Invalid change-set string: '" + changeSet + "'. Change-set must contain only A-Z, a-z, or 0-9 dash(-), underscope (_), and dot (.) From 1 to 80 characters or null.");
+        throw new IllegalArgumentException("Invalid change-set string: '" + changeSet + "'. Change-set must contain only A-Z, a-z, or 0-9 dash(-), underscope (_), and dot (.) From 1 to 80 characters or null.  Cannot be 'HEAD'.");
     }
 
     public static void validateVersion(String version)

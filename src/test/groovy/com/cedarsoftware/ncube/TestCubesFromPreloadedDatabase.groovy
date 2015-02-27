@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube
 
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -49,6 +50,53 @@ class TestCubesFromPreloadedDatabase
 
     @Test
     void testUrlClassLoader() throws Exception {
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.cp1.json")
+
+        // nothing in cache until we try and get the classloader or load a cube.
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
+
+        //  url classloader has 1 item
+        Map input = [:]
+        URLClassLoader loader = NCubeManager.getUrlClassLoader(appId, input)
+        assertEquals(1, loader.URLs.length)
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
+        assertEquals(new URL("http://www.cedarsoftware.com/tests/ncube/cp1/"), loader.URLs[0])
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(appId)
+        assertEquals(1, cache.size())
+
+        assertNotNull(NCubeManager.getUrlClassLoader(appId, input))
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
+
+        NCubeManager.clearCache()
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
+
+        cache = NCubeManager.getCacheForApp(appId)
+        assertEquals(1, NCubeManager.getUrlClassLoader(appId, input).URLs.length)
+        assertEquals(1, cache.size())
+
+
+        manager.removeCubes(appId, USER_ID, ncubes)
+    }
+
+    @Test
+    void testCoordinateNotFoundExceptionThrown() throws Exception {
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "test.coordinate.not.found.exception.json")
+
+        NCube cube = NCubeManager.getCube(appId, "test.coordinate.not.found.exception")
+
+        try {
+            cube.getCell([:])
+            fail();
+        } catch (CoordinateNotFoundException e) {
+
+        }
+
+        manager.removeCubes(appId, USER_ID, ncubes)
+    }
+
+    @Test
+    void testGetByBranchCode() throws Exception {
         NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.cp1.json")
 
         // nothing in cache until we try and get the classloader or load a cube.

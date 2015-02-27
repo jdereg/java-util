@@ -10,11 +10,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -405,6 +401,7 @@ class TestNCubeJdbcPersister
         dto.version = ApplicationID.DEFAULT_VERSION
         dto.status = 'SNAPSHOT'
         dto.name = 'foo'
+        dto.branch = ApplicationID.DEFAULT_BRANCH
 
         try
         {
@@ -757,6 +754,7 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.DEFAULT_BRANCH);
 
         try
         {
@@ -788,6 +786,7 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.DEFAULT_BRANCH);
         when(ps.executeUpdate()).thenReturn(0)
 
         try

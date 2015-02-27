@@ -4,12 +4,7 @@ import com.cedarsoftware.util.io.JsonReader
 import com.cedarsoftware.util.io.JsonWriter
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotEquals
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * ApplicationID Tests
@@ -419,13 +414,9 @@ class TestApplicationID
     }
 
     @Test
-    void testBadChangeSetName()
+    void testBranchName()
     {
-        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), null)
-        assertNotNull appId
-        appId.validate()
-
-        appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), '_alpha-')
+        ApplicationID appId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), '_alpha-')
         assertNotNull appId
         appId.validate()
 
@@ -440,7 +431,17 @@ class TestApplicationID
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('invalid change-set')
+            assert e.message.toLowerCase().contains('branch cannot be null or empty')
+        }
+
+        try
+        {
+            new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), null)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains('branch cannot be null or empty')
         }
 
         try
@@ -450,7 +451,7 @@ class TestApplicationID
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('invalid change-set')
+            assert e.message.toLowerCase().contains('branch cannot be null or empty')
         }
 
         try
@@ -460,7 +461,7 @@ class TestApplicationID
         }
         catch (IllegalArgumentException e)
         {
-            assert e.message.toLowerCase().contains('invalid change-set')
+            assert e.message.toLowerCase().contains('invalid branch')
         }
     }
 

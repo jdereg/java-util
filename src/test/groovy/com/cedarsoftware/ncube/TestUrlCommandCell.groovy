@@ -10,14 +10,10 @@ import javax.servlet.http.HttpServletResponse
 import java.lang.reflect.Constructor
 import java.lang.reflect.Modifier
 
+import static junit.framework.Assert.assertTrue
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyString
-import static org.mockito.Mockito.doThrow
-import static org.mockito.Mockito.mock
-import static org.mockito.Mockito.never
-import static org.mockito.Mockito.times
-import static org.mockito.Mockito.verify
-import static org.mockito.Mockito.when
+import static org.mockito.Mockito.*
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -75,6 +71,39 @@ class TestUrlCommandCell
         assert 114 == input.read()
         assert -1 == input.read()
     }
+
+    @Test
+    void testUrlCommandCellCompareTo() throws Exception
+    {
+        GroovyExpression exp1 = new GroovyExpression("true", null);
+        GroovyExpression exp2 = new GroovyExpression("false", null);
+        GroovyExpression exp3 = new GroovyExpression(null, "http://www.foo.com");
+        GroovyExpression exp4 = new GroovyExpression(null, "http://www.bar.com");
+
+        GroovyExpression expDup = new GroovyExpression("true", null);
+
+        // TODO:  It looks like our comparing is wrong in
+        // TODO:  UrlCommandCell.compareTo();
+        // TODO:  Test below shows that 1 > 3 and 3 > 1
+        assertTrue(exp1.compareTo(exp2) > 1);
+        assertTrue(exp1.compareTo(exp3) > 1);
+        assertTrue(exp1.compareTo(exp4) > 1);
+        assertTrue(exp1.compareTo(expDup) == 0);
+
+        assertTrue(exp3.compareTo(exp1) > 1);
+        assertTrue(exp3.compareTo(exp2) > 1);
+        assertTrue(exp3.compareTo(exp4) > 1);
+
+        assertTrue(exp2.compareTo(exp1) < 1);
+        assertTrue(exp2.compareTo(exp3) > 1);
+        assertTrue(exp2.compareTo(exp4) > 1);
+
+
+        assertTrue(exp4.compareTo(exp1) > 1);
+        assertTrue(exp4.compareTo(exp2) > 1);
+        assertTrue(exp4.compareTo(exp3) < 1);
+    }
+
 
     @Test
     void testCachingInputStreamReadBytes() throws Exception

@@ -18,7 +18,7 @@
     {
       "id": ["DEV"],
       "type": "exp",
-      "value": "@['env':null, 'version':'1.28.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
+      "value": "@['env':null, 'version':'1.28.0', 'status':'SNAPSHOT', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':'HEAD']"
     },
     {
       "id": ["SAND"],
@@ -28,12 +28,12 @@
     {
       "id": ["PROD"],
       "type": "exp",
-      "value": "@['env':null, 'version':'1.25.0', 'status':'RELEASE', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':null]"
+      "value": "@['env':null, 'version':'1.25.0', 'status':'RELEASE', 'tenant':'NONE', 'app':'UD.REF.APP', 'branch':'HEAD']"
     },
     {
       "id": [],
       "type": "exp",
-      "value": "Map map = null; if (com.cedarsoftware.util.StringUtilities.hasContent(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP'))) { map = com.cedarsoftware.util.io.JsonReader.jsonToMaps(com.cedarsoftware.util.SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP')); }; String tenant = map?.containsKey('tenant') ? map.tenant : input.tenant; String app = map?.containsKey('app') ? map.app : input.app; String version = map?.containsKey('version') ? map.version : input.version; String status = map?.containsKey('status') ? map.status : input.status; String branch = map?.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
+      "value": "import com.cedarsoftware.util.*; import com.cedarsoftware.util.io.*; Map map = null; if (StringUtilities.hasContent(SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP'))) { map = JsonReader.jsonToMaps(SystemUtilities.getExternalVariable('NCUBE_BOOTSTRAP')); }; String tenant = map?.containsKey('tenant') ? map.tenant : input.tenant; String app = map?.containsKey('app') ? map.app : input.app; String version = map?.containsKey('version') ? map.version : input.version; String status = map?.containsKey('status') ? map.status : input.status; String branch = map?.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
     }
     ]
   }

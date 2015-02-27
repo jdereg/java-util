@@ -92,8 +92,8 @@ class TestCubesFromPreloadedDatabase
         manager.addCubes(id, USER_ID, ncubes)
 
         def cube = NCubeManager.getCube(id, 'sys.bootstrap')
-        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', null), cube.getCell([env:'DEV']));
-        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', null), cube.getCell([env:'PROD']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'HEAD'), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'HEAD'), cube.getCell([env:'PROD']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'baz'), cube.getCell([env:'SAND']));
 
         System.setProperty("NCUBE_BOOTSTRAP", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
@@ -348,10 +348,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testMultiTenantApplicationIdBootstrap()
     {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        NCube[] ncubes = loadCubes()
 
         NCube cube = NCubeManager.getCube(appId, 'sys.bootstrap');
 
@@ -373,7 +370,14 @@ class TestCubesFromPreloadedDatabase
 
         // remove cubes for this test.
         manager.removeCubes(appId, USER_ID, ncubes)
+    }
 
+    private NCube[] loadCubes() {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
+
+        // add cubes for this test.
+        manager.addCubes(appId, USER_ID, ncubes)
+        ncubes
     }
 
 

@@ -5,8 +5,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.*
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -89,7 +88,7 @@ class TestCubesFromPreloadedDatabase
             cube.getCell([:])
             fail();
         } catch (CoordinateNotFoundException e) {
-
+            assertTrue(e.getMessage().contains("not found"));
         }
 
         manager.removeCubes(appId, USER_ID, ncubes)

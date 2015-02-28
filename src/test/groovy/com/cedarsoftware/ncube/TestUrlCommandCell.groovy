@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletResponse
 import java.lang.reflect.Constructor
 import java.lang.reflect.Modifier
 
-import static junit.framework.Assert.assertTrue
+import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.doThrow

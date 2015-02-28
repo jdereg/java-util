@@ -25,7 +25,7 @@ class TestLatLon
     void testEquals()
     {
         LatLon l = new LatLon(1.0, 2.0)
-        assert l != new Long(5)
+        assert !l.equals(new Long(5))
         assert l == new LatLon(1, 2)
     }
 

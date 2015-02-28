@@ -87,16 +87,13 @@ class TestUrlCommandCell
 
         GroovyExpression expDup = new GroovyExpression("true", null);
 
-        // TODO:  It looks like our comparing is wrong in
-        // TODO:  UrlCommandCell.compareTo();
-        // TODO:  Test below shows that 1 > 3 and 3 > 1
         assertTrue(exp1.compareTo(exp2) > 1);
         assertTrue(exp1.compareTo(exp3) > 1);
         assertTrue(exp1.compareTo(exp4) > 1);
         assertTrue(exp1.compareTo(expDup) == 0);
 
-        assertTrue(exp3.compareTo(exp1) > 1);
-        assertTrue(exp3.compareTo(exp2) > 1);
+        assertTrue(exp3.compareTo(exp1) < 1);
+        assertTrue(exp3.compareTo(exp2) < 1);
         assertTrue(exp3.compareTo(exp4) > 1);
 
         assertTrue(exp2.compareTo(exp1) < 1);
@@ -104,8 +101,8 @@ class TestUrlCommandCell
         assertTrue(exp2.compareTo(exp4) > 1);
 
 
-        assertTrue(exp4.compareTo(exp1) > 1);
-        assertTrue(exp4.compareTo(exp2) > 1);
+        assertTrue(exp4.compareTo(exp1) < 1);
+        assertTrue(exp4.compareTo(exp2) < 1);
         assertTrue(exp4.compareTo(exp3) < 1);
     }
 

@@ -214,14 +214,19 @@ public abstract class UrlCommandCell implements CommandCell
 
     public int compareTo(CommandCell cmdCell)
     {
-        if (cmd != null)
+        String cmd1 = cmd == null ? "" : cmd;
+        String cmd2 = cmdCell.getCmd() == null ? "" : cmdCell.getCmd();
+
+        int comp = cmd1.compareTo(cmd2);
+
+        if (comp == 0)
         {
-            String safeCmd = cmdCell.getCmd();
-            return cmd.compareTo(safeCmd == null ? "" : safeCmd);
+            String url1 = url == null ? "" : url;
+            String url2 = cmdCell.getUrl() == null ? "" : cmdCell.getUrl();
+            return url1.compareTo(url2);
         }
 
-        String safeUrl = cmdCell.getUrl();
-        return url.compareTo(safeUrl == null ? "" : safeUrl);
+        return comp;
     }
 
     public void getCubeNamesFromCommandText(Set<String> cubeNames)

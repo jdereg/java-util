@@ -49,10 +49,7 @@ class TestCubesFromPreloadedDatabase
 
     @Test
     void testUrlClassLoader() throws Exception {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.cp1.json")
 
         // nothing in cache until we try and get the classloader or load a cube.
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
@@ -86,14 +83,11 @@ class TestCubesFromPreloadedDatabase
         ApplicationID id = ApplicationID.getBootVersion('none', 'example')
         assertEquals(new ApplicationID('NONE', 'EXAMPLE', '0.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.DEFAULT_BRANCH), id);
 
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.user.overloaded.json")
+        NCube[] ncubes = loadCubesToDatabase(id, USER_ID, "sys.bootstrap.user.overloaded.json")
 
-        // add cubes for this test.
-        manager.addCubes(id, USER_ID, ncubes)
-
-        def cube = NCubeManager.getCube(id, 'sys.bootstrap')
-        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', null), cube.getCell([env:'DEV']));
-        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', null), cube.getCell([env:'PROD']));
+        NCube cube = NCubeManager.getCube(id, 'sys.bootstrap')
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'HEAD'), cube.getCell([env:'DEV']));
+        assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'HEAD'), cube.getCell([env:'PROD']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'baz'), cube.getCell([env:'SAND']));
 
         System.setProperty("NCUBE_BOOTSTRAP", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
@@ -105,15 +99,14 @@ class TestCubesFromPreloadedDatabase
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'DEV']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'SAND']));
+
+        manager.removeCubes(appId, USER_ID, ncubes)
     }
 
     @Test
     public void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {
 
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")
@@ -184,10 +177,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testMultiCubeClassPath() throws Exception {
 
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")
@@ -243,10 +233,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testTwoClasspathsSameAppId() throws Exception
     {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "GroovyExpCp1.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.2per.app.json", "GroovyExpCp1.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "GroovyExpCp1")
@@ -287,10 +274,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testMathControllerUsingExpressions() throws Exception
     {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes);
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.2per.app.json", "math.controller.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "MathController")
@@ -326,10 +310,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testClearCache()
     {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.cedar.json", "cedar.hello.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.classpath.cedar.json", "cedar.hello.json")
 
         Map input = new HashMap()
         NCube cube = NCubeManager.getCube(appId, 'hello');
@@ -348,16 +329,12 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testMultiTenantApplicationIdBootstrap()
     {
-        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
-
-        // add cubes for this test.
-        manager.addCubes(appId, USER_ID, ncubes)
-
-        NCube cube = NCubeManager.getCube(appId, 'sys.bootstrap');
+        NCube[] ncubes = loadCubesToDatabase(appId, USER_ID, "sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
 
         def input = [:];
         input.env = "SAND";
 
+        NCube cube = NCubeManager.getCube(appId, 'sys.bootstrap');
         Map<String, ApplicationID> map = cube.getCell(input)
         assertEquals(new ApplicationID("NONE", "APP", "1.15.0", "SNAPSHOT", ApplicationID.TEST_BRANCH), map.get("A"));
         assertEquals(new ApplicationID("NONE", "APP", "1.19.0", "SNAPSHOT", ApplicationID.TEST_BRANCH), map.get("B"));
@@ -373,7 +350,12 @@ class TestCubesFromPreloadedDatabase
 
         // remove cubes for this test.
         manager.removeCubes(appId, USER_ID, ncubes)
+    }
 
+    private NCube[] loadCubesToDatabase(ApplicationID id, String userId, String ...names) {
+        NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk(names)
+        manager.addCubes(id, userId, ncubes)
+        ncubes
     }
 
 

@@ -31,6 +31,7 @@ public class ApplicationID
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
     public static final String DEFAULT_STATUS = ReleaseStatus.SNAPSHOT.name();
+    public static final String DEFAULT_BRANCH = "HEAD";
     public static final String TEST_BRANCH = "TEST";
 
     public static final transient ApplicationID testAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, DEFAULT_STATUS, TEST_BRANCH);
@@ -102,13 +103,11 @@ public class ApplicationID
 
     public String cacheKey(String name)
     {
-        // TODO: Include status in return string
-        String br = branch == null ? "HEAD" : branch;
         if (StringUtilities.isEmpty(name))
         {
-            return (tenant + " / " + app + " / " + version + " / " + br + " /").toLowerCase();
+            return (tenant + " / " + app + " / " + version + " / " + branch + " /").toLowerCase();
         }
-        return (tenant + " / " + app + " / " + version + " / " + br + " / " + name).toLowerCase();
+        return (tenant + " / " + app + " / " + version + " / " + branch + " / " + name).toLowerCase();
     }
 
     public boolean equals(Object o)
@@ -212,21 +211,18 @@ public class ApplicationID
         ReleaseStatus.valueOf(status);
     }
 
-    static void validateChangeSet(String changeSet)
+    static void validateChangeSet(String branch)
     {
-        if (changeSet == null)
+        if (StringUtilities.isEmpty(branch))
+        {
+            throw new IllegalArgumentException("n-cube branch cannot be null or empty");
+        }
+        Matcher m = Regexes.validChangeSet.matcher(branch);
+        if (m.find() && branch.length() <= 80)
         {
             return;
         }
-        if (StringUtilities.hasContent(changeSet))
-        {
-            Matcher m = Regexes.validChangeSet.matcher(changeSet);
-            if (m.find() && changeSet.length() <= 80 && !"head".equalsIgnoreCase(changeSet))
-            {
-                return;
-            }
-        }
-        throw new IllegalArgumentException("Invalid change-set string: '" + changeSet + "'. Change-set must contain only A-Z, a-z, or 0-9 dash(-), underscope (_), and dot (.) From 1 to 80 characters or null.  Cannot be 'HEAD'.");
+        throw new IllegalArgumentException("Invalid branch: '" + branch + "'. n-cube branch must contain only A-Z, a-z, or 0-9 dash(-), underscope (_), and dot (.) From 1 to 80 characters or null.");
     }
 
     public static void validateVersion(String version)
@@ -244,8 +240,9 @@ public class ApplicationID
         throw new IllegalArgumentException("Invalid version: '" + version + "'. n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
     }
 
+    //TODO:  Should we pass in the branch to this or assume this call will only be called for "HEAD"
     public static ApplicationID getBootVersion(String tenant, String app)
     {
-        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), null);
+        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), DEFAULT_BRANCH);
     }
 }

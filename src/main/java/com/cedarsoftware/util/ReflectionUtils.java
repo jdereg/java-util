@@ -132,7 +132,7 @@ public final class ReflectionUtils
         {
             return _reflectedFields.get(c);
         }
-        Collection<Field> fields = new ArrayList<Field>();
+        Collection<Field> fields = new ArrayList<>();
         Class curr = c;
 
         while (curr != null)
@@ -194,7 +194,7 @@ public final class ReflectionUtils
      */
     public static Map<String, Field> getDeepDeclaredFieldMap(Class c)
     {
-        Map<String, Field> fieldMap = new HashMap<String, Field>();
+        Map<String, Field> fieldMap = new HashMap<>();
         Collection<Field> fields = getDeepDeclaredFields(c);
         for (Field field : fields)
         {

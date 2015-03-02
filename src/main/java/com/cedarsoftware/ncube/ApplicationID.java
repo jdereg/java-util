@@ -175,7 +175,7 @@ public class ApplicationID
         validateApp(app);
         validateVersion(version);
         validateStatus(status);
-        validateChangeSet(branch);
+        validateBranch(branch);
     }
 
     static void validateTenant(String tenant)
@@ -208,18 +208,18 @@ public class ApplicationID
         ReleaseStatus.valueOf(status);
     }
 
-    static void validateChangeSet(String branch)
+    static void validateBranch(String branch)
     {
         if (StringUtilities.isEmpty(branch))
         {
             throw new IllegalArgumentException("n-cube branch cannot be null or empty");
         }
-        Matcher m = Regexes.validChangeSet.matcher(branch);
+        Matcher m = Regexes.validBranch.matcher(branch);
         if (m.find() && branch.length() <= 80)
         {
             return;
         }
-        throw new IllegalArgumentException("Invalid branch: '" + branch + "'. n-cube branch must contain only A-Z, a-z, or 0-9 dash(-), underscope (_), and dot (.) From 1 to 80 characters or null.");
+        throw new IllegalArgumentException("Invalid branch: '" + branch + "'. n-cube branch must contain only A-Z, a-z, or 0-9 dash(-), underscore (_), and dot (.) From 1 to 80 characters.");
     }
 
     public static void validateVersion(String version)
@@ -237,7 +237,7 @@ public class ApplicationID
         throw new IllegalArgumentException("Invalid version: '" + version + "'. n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
     }
 
-    //TODO:  Should we pass in the branch to this or assume this call will only be called for "HEAD"
+    //TODO: We need to allow DEFAULT_BRANCH (HEAD) to be overridden below with an environment variable (or -Dsystem.property)
     public static ApplicationID getBootVersion(String tenant, String app)
     {
         return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), HEAD);

@@ -591,6 +591,38 @@ class TestNCubeJdbcPersister
         }
     }
 
+    @Test
+    void testGetBranchesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getBranches(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch all branches"))
+        }
+    }
+
+    @Test
+    void testDeleteCubesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().deleteCubes(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to delete cubes"))
+        }
+    }
+
     private static getConnectionThatThrowsSQLException = { ->
         Connection c = mock(Connection.class)
         when(c.prepareStatement(anyString())).thenThrow(SQLException.class)

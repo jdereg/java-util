@@ -139,7 +139,7 @@ public class NCubeJdbcPersister
 
         String branchLogic = "branch_id in ('HEAD')";
         if (branch) {
-            branchLogic = "branch_id in ('HEAD', ?)";
+            branchLogic = "branch_id in (?, 'HEAD')";
         }
 
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
@@ -642,7 +642,7 @@ public class NCubeJdbcPersister
         {
             try (PreparedStatement statement = c.prepareStatement(
                     "UPDATE n_cube SET version_no_cd = ? " +
-                    "WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id is not NULL"))
+                    "WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id != 'HEAD'"))
             {
                 statement.setString(1, newSnapVer);
                 statement.setString(2, appId.getApp());
@@ -663,7 +663,7 @@ public class NCubeJdbcPersister
         {
             try (PreparedStatement statement = c.prepareStatement(
                     "UPDATE n_cube SET create_dt = ?, status_cd = ? " +
-                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id is NULL"))
+                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = 'HEAD'"))
             {
                 statement.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                 statement.setString(2, ReleaseStatus.RELEASE.name());
@@ -925,7 +925,7 @@ public class NCubeJdbcPersister
 
     public boolean doReleaseCubesExist(Connection c, ApplicationID appId)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id is NULL";
+        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = 'HEAD'";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {

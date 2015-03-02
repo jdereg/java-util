@@ -118,6 +118,9 @@ class TestCubesFromPreloadedDatabase
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
         // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(branch, "test.branch.2.json")
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
         doBasicBranchTest(branch, head)
 
         manager.removeCubes(branch)
@@ -128,20 +131,40 @@ class TestCubesFromPreloadedDatabase
     void testReleaseCubes() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
         // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(branch, "test.branch.2.json")
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
         doBasicBranchTest(branch, head)
 
         assertEquals(2, NCubeManager.releaseCubes(head, "1.29.0"));
+
+        //  after a release we need to clear the cache to ensure that all the items cached
+        //  at 1.28.0 are gone.  It looks like right now they are still there.
+        //  This cube no longer exists under these appIds.
+        assertNull(NCubeManager.getCube(branch, "TestAge"));
+        assertNull(NCubeManager.getCube(branch, "TestBranch"));
+        assertNull(NCubeManager.getCube(head, "TestAge"));
+        assertNull(NCubeManager.getCube(head, "TestBranch"));
+
+        head = new ApplicationID('NONE', "test", "1.29.0", "SNAPSHOT", ApplicationID.HEAD);
+        branch = new ApplicationID('NONE', "test", "1.29.0", "SNAPSHOT", "FOO");
+
+        doBasicBranchTest(branch, head)
+
+        head = new ApplicationID('NONE', "test", "1.28.0", "RELEASE", ApplicationID.HEAD);
+
+        NCube cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals("ABC", cube.getCell(["Code": -7]));
+        cube = NCubeManager.getCube(head, "TestAge");
+        assertEquals("youth", cube.getCell(["Code": 5]));
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
 
     private void doBasicBranchTest(ApplicationID branch, ApplicationID head) {
-        loadCubesToDatabase(branch, "test.branch.2.json")
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
-
-
         NCube cube = NCubeManager.getCube(branch, "TestBranch");
         assertEquals("FOO", cube.getCell(["Code": -7]));
         cube = NCubeManager.getCube(branch, "TestAge");

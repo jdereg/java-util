@@ -637,7 +637,7 @@ public class NCubeJdbcPersister
             throw new IllegalStateException("A RELEASE version " + appId.getVersion() + " already exists, app: " + appId);
         }
 
-        // Step 1: Update version number to new version where branch != null (and rest of appId matches) ignore revision
+        // Step 1: Update version number to new version where branch != HEAD (and rest of appId matches) ignore revision
         try
         {
             try (PreparedStatement statement = c.prepareStatement(
@@ -658,7 +658,7 @@ public class NCubeJdbcPersister
             throw new RuntimeException(s, e);
         }
 
-        // Step 2: Release cubes where branch == NULL (change their status from SNAPSHOT to RELEASE)
+        // Step 2: Release cubes where branch == HEAD (change their status from SNAPSHOT to RELEASE)
         try
         {
             try (PreparedStatement statement = c.prepareStatement(

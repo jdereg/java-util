@@ -105,6 +105,25 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
+    void testGetBranches() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        NCube cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals("ABC", cube.getCell(["Code":-7]));
+        cube = NCubeManager.getCube(head, "TestAge");
+        assertEquals("youth", cube.getCell(["Code":5]));
+
+        // load cube with same name, but different structure in TEST branch
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "kenny");
+        loadCubesToDatabase(branch, "test.branch.2.json")
+
+        List<String> list = NCubeManager.getBranches(head);
+        assertEquals(2, list.size());
+    }
+
+
+    @Test
     void testRetrievalLogicInvolvingBranches() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")

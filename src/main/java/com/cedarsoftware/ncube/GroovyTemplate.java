@@ -78,6 +78,9 @@ class GroovyTemplate extends ContentCmdCell
             Matcher m1 = Regexes.inputVar.matcher(m.group(1));
             while (m1.find())
             {
+                //TODO:  John, we should talk about why this isn't working.
+                //TODO:  I've got a good understaning why now.  This may be
+
                 scopeKeys.add(m1.group(2));
             }
         }

@@ -30,6 +30,19 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         }
     }
 
+    void removeCubes(ApplicationID appId) throws Exception
+    {
+        Connection c = provider.connection;
+        try
+        {
+            persister.deleteCubes(c, appId);
+        }
+        finally
+        {
+            provider.releaseConnection(c);
+        }
+    }
+
     void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
     {
         Connection c = provider.connection;

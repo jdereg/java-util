@@ -10,11 +10,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -339,7 +335,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testReleaseCubesWithSQLException() throws Exception
+    void testReleaseCubesWithSQLExceptionOnMovingOfBranchCubes() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
 
@@ -353,6 +349,72 @@ class TestNCubeJdbcPersister
             println e.message
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.startsWith("Unable to move"))
+        }
+    }
+
+    @Test
+    void testReleaseCubesWithSQLExceptionOnRelease() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+
+        try
+        {
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            println e.message
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to release"))
+        }
+    }
+
+    @Test
+    void testReleaseCubesWithSQLExceptionWhileCreatingNewSnapshot() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+
+        try
+        {
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to create"))
+        }
+    }
+
+    @Test
+    void testReleaseCubesWithRuntimeExceptionWhileCreatingNewSnapshot() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(NullPointerException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+
+        try
+        {
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+            assertEquals(e.message, null);
         }
     }
 
@@ -388,6 +450,8 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true).thenReturn(false)
+        when(rs.getString("n_cube_nm")).thenReturn("foo");
+        when(rs.getString("branch_id")).thenReturn("HEAD");
         when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"))
 
         Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "")
@@ -405,7 +469,7 @@ class TestNCubeJdbcPersister
         dto.version = ApplicationID.DEFAULT_VERSION
         dto.status = 'SNAPSHOT'
         dto.name = 'foo'
-        dto.branch = ApplicationID.DEFAULT_BRANCH
+        dto.branch = ApplicationID.HEAD
 
         try
         {
@@ -524,6 +588,38 @@ class TestNCubeJdbcPersister
         {
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.startsWith("Unable to fetch"))
+        }
+    }
+
+    @Test
+    void testGetBranchesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getBranches(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch all branches"))
+        }
+    }
+
+    @Test
+    void testDeleteCubesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().deleteCubes(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to delete cubes"))
         }
     }
 
@@ -758,7 +854,8 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.DEFAULT_BRANCH);
+        when(rs.getString("n_cube_nm")).thenReturn("foo")
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
 
         try
         {
@@ -790,7 +887,8 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.DEFAULT_BRANCH);
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
+        when(rs.getString("n_cube_nm")).thenReturn("foo");
         when(ps.executeUpdate()).thenReturn(0)
 
         try

@@ -1,0 +1,18 @@
+{
+  "ncube":"test.coordinate.not.found.exception",
+  "axes":[
+    {
+      "name":"condition",
+      "type":"RULE",
+      "valueType":"EXPRESSION",
+      "hasDefault":false,
+      "preferredOrder":1,
+      "columns":[
+        { "id":1, "type":"exp", "value":"true" }
+      ]
+    }
+  ],
+  "cells":[
+    { "id":[1], "type":"exp", "value":"throw new CoordinateNotFoundException('fail')" }
+  ]
+}

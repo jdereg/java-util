@@ -672,6 +672,10 @@ public class NCubeManager
         validateAppId(appId);
         ApplicationID.validateVersion(newSnapVer);
         int rows = getPersister().releaseCubes(appId, newSnapVer);
+        //TODO:  How do you force a clear cache on all branches for a given
+        //TODO:  tenant, app, version, status?
+        clearCache();
+        //TODO:  Does broadcast need to send all branches that have changed as a result of this?
         broadcast(appId);
         return rows;
     }

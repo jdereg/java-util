@@ -31,7 +31,7 @@ public class ApplicationID
     public static final String DEFAULT_APP = "DEFAULT_APP";
     public static final String DEFAULT_VERSION = "999.99.9";
     public static final String DEFAULT_STATUS = ReleaseStatus.SNAPSHOT.name();
-    public static final String DEFAULT_BRANCH = "HEAD";
+    public static final String HEAD = "HEAD";
     public static final String TEST_BRANCH = "TEST";
 
     public static final transient ApplicationID testAppId = new ApplicationID(DEFAULT_TENANT, DEFAULT_APP, DEFAULT_VERSION, DEFAULT_STATUS, TEST_BRANCH);
@@ -49,7 +49,7 @@ public class ApplicationID
         app = DEFAULT_APP;
         version = DEFAULT_VERSION;
         status = ReleaseStatus.SNAPSHOT.name();
-        branch = null;
+        branch = HEAD;
     }
 
     /**
@@ -138,10 +138,7 @@ public class ApplicationID
         result = 31 * result + app.toLowerCase().hashCode();
         result = 31 * result + version.hashCode();
         result = 31 * result + status.toUpperCase().hashCode();
-        if (branch != null)
-        {
-            result = 31 * result + branch.toLowerCase().hashCode();
-        }
+        result = 31 * result + branch.toLowerCase().hashCode();
         return result;
     }
 
@@ -243,6 +240,6 @@ public class ApplicationID
     //TODO:  Should we pass in the branch to this or assume this call will only be called for "HEAD"
     public static ApplicationID getBootVersion(String tenant, String app)
     {
-        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), DEFAULT_BRANCH);
+        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), HEAD);
     }
 }

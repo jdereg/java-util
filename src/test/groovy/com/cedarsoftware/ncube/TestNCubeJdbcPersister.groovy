@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube
 import com.cedarsoftware.util.IOUtilities
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 
 import java.sql.Connection
@@ -335,7 +336,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testReleaseCubesWithSQLException() throws Exception
+    void testReleaseCubesWithSQLExceptionOnMovingOfBranchCubes() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
 
@@ -349,6 +350,72 @@ class TestNCubeJdbcPersister
             println e.message
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.startsWith("Unable to move"))
+        }
+    }
+
+    @Test
+    void testReleaseCubesWithSQLExceptionOnRelease() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+
+        try
+        {
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            println e.message
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to release"))
+        }
+    }
+
+    @Test
+    void testReleaseCubesWithSQLExceptionWhileCreatingNewSnapshot() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+
+        try
+        {
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to create"))
+        }
+    }
+
+    @Test
+    void testReleaseCubesWithRuntimeExceptionWhileCreatingNewSnapshot() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(NullPointerException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+
+        try
+        {
+            new NCubeJdbcPersister().releaseCubes(c, defaultSnapshotApp, "1.2.3")
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+            assertEquals(e.message, null);
         }
     }
 
@@ -376,6 +443,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    @Ignore
     void testLoadCubesWithInvalidCube() throws Exception
     {
         Connection c = mock(Connection.class)
@@ -401,7 +469,7 @@ class TestNCubeJdbcPersister
         dto.version = ApplicationID.DEFAULT_VERSION
         dto.status = 'SNAPSHOT'
         dto.name = 'foo'
-        dto.branch = ApplicationID.DEFAULT_BRANCH
+        dto.branch = ApplicationID.HEAD
 
         try
         {
@@ -754,7 +822,8 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.DEFAULT_BRANCH);
+        when(rs.getString("n_cube_nm")).thenReturn("foo")
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
 
         try
         {
@@ -786,7 +855,8 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.DEFAULT_BRANCH);
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
+        when(rs.getString("n_cube_nm")).thenReturn("foo");
         when(ps.executeUpdate()).thenReturn(0)
 
         try

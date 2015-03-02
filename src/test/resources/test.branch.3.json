@@ -1,0 +1,32 @@
+{
+  "ncube":"TestBranch",
+  "defaultCellValue":"FRI",
+  "axes":[
+    {
+      "name":"Code",
+      "type":"NEAREST",
+      "valueType":"DOUBLE",
+      "hasDefault":false,
+      "preferredOrder":0,
+      "columns":[
+        { "id": -10.0 },
+        { "id":   0.0 },
+        { "id":  10.0 }
+      ]
+    }
+  ],
+  "cells":[
+    {
+      "id":[-10.0],
+      "value":"MON"
+    },
+    {
+      "id":[0.0],
+      "value":"TUE"
+    },
+    {
+      "id":[10.0],
+      "value":"WED"
+    }
+  ]
+}

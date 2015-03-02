@@ -26,5 +26,6 @@ interface TestingDatabaseManager
 
     public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception;
     public void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception;
+    public void removeCubes(ApplicationID appId) throws Exception;
     public void updateCube(ApplicationID appId, String username, NCube cube) throws Exception;
 }

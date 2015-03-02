@@ -1,0 +1,37 @@
+{
+    "ncube": "TestAge",
+    "defaultCellValue": "ZZZ",
+    "axes": [
+      {
+        "name": "Code",
+        "type": "RANGE",
+        "valueType": "LONG",
+        "hasDefault": false,
+        "preferredOrder": 0,
+        "columns": [
+          { "id":0, "value": [0, 5] },
+          { "id":1, "value": [6, 12] },
+          { "id":2, "value": [13, 20] },
+          { "id":3, "value": [21, 99] }
+        ]
+      }
+    ],
+    "cells": [
+      {
+        "id":[0],
+        "value": "baby"
+      },
+      {
+        "id":[1],
+        "value": "youth"
+      },
+      {
+        "id":[2],
+        "value": "teen"
+      },
+      {
+        "id":[3],
+        "value": "adult"
+      }
+    ]
+ }

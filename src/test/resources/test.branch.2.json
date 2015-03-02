@@ -1,0 +1,32 @@
+{
+  "ncube":"TestBranch",
+  "defaultCellValue":"ADIDAS",
+  "axes":[
+    {
+      "name":"Code",
+      "type":"NEAREST",
+      "valueType":"DOUBLE",
+      "hasDefault":false,
+      "preferredOrder":0,
+      "columns":[
+        { "id": -10.0 },
+        { "id":   0.0 },
+        { "id":  10.0 }
+      ]
+    }
+  ],
+  "cells":[
+    {
+      "id":[-10.0],
+      "value":"FOO"
+    },
+    {
+      "id":[0.0],
+      "value":"BAR"
+    },
+    {
+      "id":[10.0],
+      "value":"BAZ"
+    }
+  ]
+}

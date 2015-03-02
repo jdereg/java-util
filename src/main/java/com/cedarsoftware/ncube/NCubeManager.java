@@ -528,6 +528,30 @@ public class NCubeManager
     {
         validateAppId(appId);
         Object[] cubes = getPersister().getCubeRecords(appId, pattern);
+        cacheCubes(appId, cubes);
+        return cubes;
+    }
+
+    /**
+     * Get Object[] of n-cube record DTOs for the given ApplicationID (branch only).  If using
+     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
+     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
+     * by an NCube if more than the name is required.
+     * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
+     */
+    public static Object[] getBranchChangesFromDatabase(ApplicationID appId)
+    {
+        validateAppId(appId);
+        if (appId.getBranch().equals(ApplicationID.HEAD)) {
+            throw new IllegalArgumentException("Cannot get branch changes from HEAD");
+        }
+        Object[] cubes = getPersister().getBranchChanges(appId);
+        cacheCubes(appId, cubes);
+        return cubes;
+    }
+
+    private static void cacheCubes(ApplicationID appId, Object[] cubes)
+    {
         Map<String, Object> appCache = getCacheForApp(appId);
 
         for (Object cube : cubes)
@@ -539,7 +563,6 @@ public class NCubeManager
                 appCache.put(key, cubeInfo);
             }
         }
-        return cubes;
     }
 
     /**

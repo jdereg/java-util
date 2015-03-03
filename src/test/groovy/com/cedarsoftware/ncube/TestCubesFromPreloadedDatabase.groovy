@@ -140,9 +140,6 @@ class TestCubesFromPreloadedDatabase
 
         assertEquals(2, NCubeManager.releaseCubes(head, "1.29.0"));
 
-        //  after a release we need to clear the cache to ensure that all the items cached
-        //  at 1.28.0 are gone.  It looks like right now they are still there.
-        //  This cube no longer exists under these appIds.
         assertNull(NCubeManager.getCube(branch, "TestAge"));
         assertNull(NCubeManager.getCube(branch, "TestBranch"));
         assertNull(NCubeManager.getCube(head, "TestAge"));
@@ -159,6 +156,28 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ABC", cube.getCell(["Code": -7]));
         cube = NCubeManager.getCube(head, "TestAge");
         assertEquals("youth", cube.getCell(["Code": 5]));
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testGetBranchesCode() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(branch, "test.branch.2.json")
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        try {
+            NCubeManager.getBranchChangesFromDatabase(head)
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.message.contains('from HEAD'));
+        }
+
+        NCubeInfoDto[] dtos = (NCubeInfoDto[])NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(1, dtos.length);
 
         manager.removeCubes(branch)
         manager.removeCubes(head)

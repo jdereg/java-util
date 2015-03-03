@@ -50,6 +50,9 @@ public class NCubeJdbcPersister
         createCube(c, appId, cube, username, null, 0);
     }
 
+    public void createBranch(Connection c, ApplicationID appId) {
+    }
+
     void createCube(Connection c, ApplicationID appId, NCube ncube, String username, String testData, long rev)
     {
         try
@@ -727,7 +730,7 @@ public class NCubeJdbcPersister
                             "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
                             "  GROUP BY n_cube_nm " +
                             ") m " +
-                            "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.revision_number >= 0 AND " +
+                            "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
                             "n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?"))
             {
                 stmt.setString(1, appId.getApp());

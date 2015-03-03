@@ -138,11 +138,11 @@ public class NCubeJdbcPersister
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
-                "  WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?" +
+                "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
                 " GROUP BY n_cube_nm " +
                 ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
-                "AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') and n.branch_id = ?";
+                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) " +
+                "AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
         try (PreparedStatement stmt = c.prepareStatement(sql))
         {
 

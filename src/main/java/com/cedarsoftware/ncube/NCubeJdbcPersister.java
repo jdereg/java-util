@@ -11,9 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 
 /**
@@ -126,6 +126,41 @@ public class NCubeJdbcPersister
         catch (Exception e)
         {
             String s = "Unable to get maximum revision number for cube: " + name + ", app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+
+    public Object[] getBranchChanges(Connection c, ApplicationID appId)
+    {
+        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
+                "( " +
+                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                "  FROM n_cube " +
+                "  WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?" +
+                " GROUP BY n_cube_nm " +
+                ") m " +
+                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
+                "AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') and n.branch_id = ?";
+        try (PreparedStatement stmt = c.prepareStatement(sql))
+        {
+
+            stmt.setString(1, appId.getApp());
+            stmt.setString(2, appId.getVersion());
+            stmt.setString(3, appId.getStatus());
+            stmt.setString(4, appId.getTenant());
+            stmt.setString(5, appId.getBranch());
+            stmt.setString(6, appId.getApp());
+            stmt.setString(7, appId.getVersion());
+            stmt.setString(8, appId.getStatus());
+            stmt.setString(9, appId.getTenant());
+            stmt.setString(10, appId.getBranch());
+            return getCubeInfoRecords(appId, stmt);
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch branch cubes matching from database for app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -254,7 +289,7 @@ public class NCubeJdbcPersister
 
     private Object[] getMergedCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
     {
-        Map<String, NCubeInfoDto> map = new TreeMap<>();
+        Map<String, NCubeInfoDto> map = new LinkedHashMap<>();
 
         try (ResultSet rs = stmt.executeQuery())
         {

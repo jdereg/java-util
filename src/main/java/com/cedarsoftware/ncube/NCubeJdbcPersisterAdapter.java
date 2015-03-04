@@ -255,6 +255,19 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public int createBranch(ApplicationID appId)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.createBranch(c, appId);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public boolean renameCube(ApplicationID appId, NCube oldCube, String newName)
     {
         Connection c = connectionProvider.getConnection();

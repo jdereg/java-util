@@ -344,6 +344,38 @@ public class NCubeManager
         return ncubes;
     }
 
+    public static void clearCacheForBranches(ApplicationID appId)
+    {
+        validateAppId(appId);
+
+        String s = appId.toString();
+
+        for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
+        {
+
+            Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
+
+
+            clearGroovyClassLoaderCache(appCache);
+            applicationIDMapEntry.getValue().clear();
+            GroovyBase.clearCache(applicationIDMapEntry.getKey());
+            NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
+        }
+        ncubeCache.clear();
+
+        for (Map.Entry<ApplicationID, Map<String, Advice>> applicationIDMapEntry : advices.entrySet())
+        {
+            applicationIDMapEntry.getValue().clear();
+        }
+        advices.clear();
+
+        for (GroovyClassLoader classLoader : localClassLoaders.values())
+        {
+            classLoader.clearCache();
+        }
+        localClassLoaders.clear();
+    }
+
     public static void clearCache(ApplicationID appId)
     {
         validateAppId(appId);
@@ -688,6 +720,20 @@ public class NCubeManager
     }
 
     /**
+     * Create a branch off of a SNAPSHOT for the given ApplicationIDs n-cubes.
+     */
+    public static int createBranch(ApplicationID appId)
+    {
+        validateAppId(appId);
+        appId.validateBranchIsNotHead();
+        appId.validateStatusIsNotRelease();
+
+        int rows = getPersister().createBranch(appId);
+        broadcast(appId);
+        return rows;
+    }
+
+    /**
      * Perform release (SNAPSHOT to RELEASE) for the given ApplicationIDs n-cubes.
      */
     public static int releaseCubes(ApplicationID appId, String newSnapVer)
@@ -695,9 +741,7 @@ public class NCubeManager
         validateAppId(appId);
         ApplicationID.validateVersion(newSnapVer);
         int rows = getPersister().releaseCubes(appId, newSnapVer);
-        //TODO:  How do you force a clear cache on all branches for a given
-        //TODO:  tenant, app, version, status?
-        clearCache();
+        clearCacheForBranches(appId);
         //TODO:  Does broadcast need to send all branches that have changed as a result of this?
         broadcast(appId);
         return rows;

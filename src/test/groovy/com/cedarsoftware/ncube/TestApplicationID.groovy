@@ -4,12 +4,7 @@ import com.cedarsoftware.util.io.JsonReader
 import com.cedarsoftware.util.io.JsonWriter
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotEquals
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * ApplicationID Tests
@@ -487,5 +482,31 @@ class TestApplicationID
         assertEquals 'bar', id.app
         assertEquals '0.0.0', id.version
         assertEquals 'SNAPSHOT', id.status
+    }
+
+    @Test
+    void testValidateIsNotRelease() {
+        ApplicationID snap = new ApplicationID("NONE", "app", "1.28.0", "SNAPSHOT", "HEAD");
+        snap.validateStatusIsNotRelease()
+
+        ApplicationID rel = new ApplicationID("NONE", "app", "1.28.0", "RELEASE", "HEAD");
+        try {
+            rel.validateStatusIsNotRelease()
+        } catch (IllegalArgumentException e) {
+            assertEquals("Status cannot be 'RELEASE'", e.getMessage());
+        }
+    }
+
+    @Test
+    void testValidateIsNotHead() {
+        ApplicationID snap = new ApplicationID("NONE", "app", "1.28.0", "SNAPSHOT", "FOO");
+        snap.validateBranchIsNotHead()
+
+        ApplicationID rel = new ApplicationID("NONE", "app", "1.28.0", "SNAPSHOT", "HEAD");
+        try {
+            rel.validateBranchIsNotHead()
+        } catch (IllegalArgumentException e) {
+            assertEquals("Branch cannot be 'HEAD'", e.getMessage());
+        }
     }
 }

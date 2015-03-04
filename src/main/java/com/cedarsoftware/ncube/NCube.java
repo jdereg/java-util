@@ -2189,6 +2189,8 @@ public class NCube<T>
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
      * cell order do not affect the SHA1 value.
      */
+    //TODO:  Total sha must include test data so we don't lose test data on a commit to the branch.
+    //TODO:  This will not be able to be done here, but in NCubeManager.  (Sha of the combined Sha)
     public String sha1()
     {
         final byte sep = 0;

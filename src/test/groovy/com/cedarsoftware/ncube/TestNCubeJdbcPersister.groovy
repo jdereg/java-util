@@ -304,7 +304,7 @@ class TestNCubeJdbcPersister
     @Test
     void testChangeVersionValueWithSqlException() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(false)
 
         try
         {
@@ -321,7 +321,7 @@ class TestNCubeJdbcPersister
     @Test
     void testReleaseCubesWhereReleaseCubesDontExist() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)
 
         try
         {
@@ -337,7 +337,7 @@ class TestNCubeJdbcPersister
     @Test
     void testReleaseCubesWithSQLExceptionOnMovingOfBranchCubes() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(false)
 
         try
         {
@@ -592,6 +592,39 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testCreateBranchWithNullPointerException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(false, NullPointerException.class)
+
+        try
+        {
+            new NCubeJdbcPersister().createBranch(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+        }
+    }
+
+
+    @Test
+    void testCreateBranchWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(false)
+
+        try
+        {
+            new NCubeJdbcPersister().createBranch(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to create"))
+        }
+    }
+
+    @Test
     void testGetBranchesWithSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()
@@ -629,12 +662,12 @@ class TestNCubeJdbcPersister
         return c;
     }
 
-    private static Connection getConnectionThatThrowsSQLExceptionAfterExistenceCheck(boolean exists) throws SQLException
+    private static Connection getConnectionThatThrowsExceptionAfterExistenceCheck(boolean exists, Class exceptionClass = SQLException.class) throws SQLException
     {
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(exceptionClass)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(exists)
         return c;
@@ -644,7 +677,7 @@ class TestNCubeJdbcPersister
     void testCreateCubeWithSqlException() throws Exception
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(false)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(false)
         try
         {
             new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID)
@@ -661,7 +694,7 @@ class TestNCubeJdbcPersister
     void testCreateCubeWhenOneAlreadyExists() throws Exception
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)
 
         try
         {
@@ -978,7 +1011,7 @@ class TestNCubeJdbcPersister
     void testReleaseCubesWithCubeThatExistsAlready() throws Exception
     {
         NCubeBuilder.getTestNCube2D(true)
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)
 
         try
         {
@@ -995,7 +1028,7 @@ class TestNCubeJdbcPersister
     void testChangeVersionWhenCubeAlreadyExists() throws Exception
     {
         NCubeBuilder.getTestNCube2D(true)
-        Connection c = getConnectionThatThrowsSQLExceptionAfterExistenceCheck(true)
+        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)
         try
         {
             new NCubeJdbcPersister().changeVersionValue(c, defaultSnapshotApp, "1.1.1")

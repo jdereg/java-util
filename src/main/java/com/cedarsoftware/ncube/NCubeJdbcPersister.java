@@ -11,9 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 
 /**
@@ -48,9 +46,6 @@ public class NCubeJdbcPersister
         }
 
         createCube(c, appId, cube, username, null, 0);
-    }
-
-    public void createBranch(Connection c, ApplicationID appId) {
     }
 
     void createCube(Connection c, ApplicationID appId, NCube ncube, String username, String testData, long rev)
@@ -173,22 +168,15 @@ public class NCubeJdbcPersister
     {
         pattern = convertPattern(pattern);
 
-        boolean branch = !appId.getBranch().equals(ApplicationID.HEAD);
-
-        String branchLogic = "branch_id in ('HEAD')";
-        if (branch) {
-            branchLogic = "branch_id in (?, 'HEAD')";
-        }
-
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
-                "  WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and " + branchLogic +
+                "  WHERE n_cube_nm like ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?" +
                 " GROUP BY n_cube_nm " +
                 ") m " +
                 "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.revision_number >= 0 AND " +
-                "n.n_cube_nm like ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') and n." + branchLogic;
+                "n.n_cube_nm like ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') and n.branch_id = ?";
 
         try (PreparedStatement stmt = c.prepareStatement(sql))
         {
@@ -198,21 +186,14 @@ public class NCubeJdbcPersister
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getStatus());
             stmt.setString(5, appId.getTenant());
-            int i = 6;
-            if (branch)
-            {
-                stmt.setString(i++, appId.getBranch());
-            }
-            stmt.setString(i++, pattern);
-            stmt.setString(i++, appId.getApp());
-            stmt.setString(i++, appId.getVersion());
-            stmt.setString(i++, appId.getStatus());
-            stmt.setString(i++, appId.getTenant());
-            if (branch)
-            {
-                stmt.setString(i, appId.getBranch());
-            }
-            return getMergedCubeInfoRecords(appId, stmt);
+            stmt.setString(6, appId.getBranch());
+            stmt.setString(7, pattern);
+            stmt.setString(8, appId.getApp());
+            stmt.setString(9, appId.getVersion());
+            stmt.setString(10, appId.getStatus());
+            stmt.setString(11, appId.getTenant());
+            stmt.setString(12, appId.getBranch());
+            return getCubeInfoRecords(appId, stmt);
         }
         catch (Exception e)
         {
@@ -290,47 +271,47 @@ public class NCubeJdbcPersister
         }
     }
 
-    private Object[] getMergedCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
-    {
-        Map<String, NCubeInfoDto> map = new LinkedHashMap<>();
-
-        try (ResultSet rs = stmt.executeQuery())
-        {
-            while (rs.next())
-            {
-                NCubeInfoDto dto = new NCubeInfoDto();
-                dto.name = rs.getString("n_cube_nm");
-                dto.branch = rs.getString("branch_id");
-
-                if (dto.branch.equals(ApplicationID.HEAD) && map.containsKey(dto.name)) {
-                    continue;
-                }
-
-                dto.tenant = appId.getTenant();
-                byte[] notes = rs.getBytes("notes_bin");
-                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-                dto.version = appId.getVersion();
-                dto.status = rs.getString("status_cd");
-                dto.app = appId.getApp();
-                dto.createDate = rs.getDate("create_dt");
-                dto.createHid = rs.getString("create_hid");
-                dto.revision = Long.toString(rs.getLong("revision_number"));
-                byte[] jsonBytes = rs.getBytes("cube_value_bin");
-
-                if (!ArrayUtilities.isEmpty(jsonBytes))
-                {
-                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
-                    Matcher m = Regexes.sha1Pattern.matcher(json);
-                    if (m.find() && m.groupCount() > 0)
-                    {
-                        dto.sha1 = m.group(1);
-                    }
-                }
-                map.put(dto.name, dto);
-            }
-        }
-        return map.values().toArray();
-    }
+//    private Object[] getMergedCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
+//    {
+//        Map<String, NCubeInfoDto> map = new LinkedHashMap<>();
+//
+//        try (ResultSet rs = stmt.executeQuery())
+//        {
+//            while (rs.next())
+//            {
+//                NCubeInfoDto dto = new NCubeInfoDto();
+//                dto.name = rs.getString("n_cube_nm");
+//                dto.branch = rs.getString("branch_id");
+//
+//                if (dto.branch.equals(ApplicationID.HEAD) && map.containsKey(dto.name)) {
+//                    continue;
+//                }
+//
+//                dto.tenant = appId.getTenant();
+//                byte[] notes = rs.getBytes("notes_bin");
+//                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+//                dto.version = appId.getVersion();
+//                dto.status = rs.getString("status_cd");
+//                dto.app = appId.getApp();
+//                dto.createDate = rs.getDate("create_dt");
+//                dto.createHid = rs.getString("create_hid");
+//                dto.revision = Long.toString(rs.getLong("revision_number"));
+//                byte[] jsonBytes = rs.getBytes("cube_value_bin");
+//
+//                if (!ArrayUtilities.isEmpty(jsonBytes))
+//                {
+//                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
+//                    Matcher m = Regexes.sha1Pattern.matcher(json);
+//                    if (m.find() && m.groupCount() > 0)
+//                    {
+//                        dto.sha1 = m.group(1);
+//                    }
+//                }
+//                map.put(dto.name, dto);
+//            }
+//        }
+//        return map.values().toArray();
+//    }
 
 
     private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
@@ -668,6 +649,84 @@ public class NCubeJdbcPersister
         }
     }
 
+
+    public int createBranch(Connection c, ApplicationID appId)
+    {
+        if (doCubesExist(c, appId))
+        {
+            throw new IllegalStateException("Branch already exists, app: " + appId);
+        }
+
+        try
+        {
+            try (PreparedStatement stmt = c.prepareStatement(
+                    "SELECT n_cube_id, n.n_cube_nm, cube_value_bin, app_cd, notes_bin, version_no_cd, status_cd, branch_id, create_dt, create_hid, test_data_bin, revision_number as rev FROM n_cube n, " +
+                            "( " +
+                            "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                            "  FROM n_cube " +
+                            "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                            "  GROUP BY n_cube_nm " +
+                            ") m " +
+                            "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
+                            "n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?"))
+            {
+                stmt.setString(1, appId.getApp());
+                stmt.setString(2, appId.getVersion());
+                stmt.setString(3, ReleaseStatus.SNAPSHOT.name());
+                stmt.setString(4, appId.getTenant());
+                stmt.setString(5, ApplicationID.HEAD);
+                stmt.setString(6, appId.getApp());
+                stmt.setString(7, appId.getVersion());
+                stmt.setString(8, ReleaseStatus.SNAPSHOT.name());
+                stmt.setString(9, appId.getTenant());
+                stmt.setString(10, ApplicationID.HEAD);
+                try (ResultSet rs = stmt.executeQuery())
+                {
+                    int count = 0;
+
+                    try (PreparedStatement insert = c.prepareStatement(
+                            "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, create_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd, branch_id, revision_number) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                    {
+                        while (rs.next())
+                        {
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, rs.getString("n_cube_nm"));
+
+                            // replace sha1 adding "src" to the front of it.
+                            insert.setBytes(3, rs.getBytes("cube_value_bin"));
+                            insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+                            insert.setString(5, rs.getString("create_hid"));
+                            insert.setString(6, appId.getVersion());
+                            insert.setString(7, ReleaseStatus.SNAPSHOT.name());
+                            insert.setString(8, appId.getApp());
+                            insert.setBytes(9, rs.getBytes("test_data_bin"));
+                            insert.setBytes(10, rs.getBytes("notes_bin"));
+                            insert.setString(11, appId.getTenant());
+                            insert.setString(12, appId.getBranch());
+                            insert.setLong(13, (rs.getLong("revision_number") >= 0) ? 0 : -1);
+                            insert.addBatch();
+                            count++;
+                        }
+                        insert.executeBatch();
+                    }
+                    return count;
+                }
+            }
+        }
+        catch (RuntimeException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to create new BRANCH for app: " + appId + ", due to: " + e.getMessage();
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+
     public int releaseCubes(Connection c, ApplicationID appId, String newSnapVer)
     {
         if (doReleaseCubesExist(c, appId))
@@ -730,7 +789,7 @@ public class NCubeJdbcPersister
                             "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
                             "  GROUP BY n_cube_nm " +
                             ") m " +
-                            "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
+                            "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.revision_number >= 0 AND " +
                             "n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?"))
             {
                 stmt.setString(1, appId.getApp());

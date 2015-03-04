@@ -222,6 +222,18 @@ public class ApplicationID
         throw new IllegalArgumentException("Invalid branch: '" + branch + "'. n-cube branch must contain only A-Z, a-z, or 0-9 dash(-), underscore (_), and dot (.) From 1 to 80 characters.");
     }
 
+    void validateBranchIsNotHead() {
+        if (branch.equals(HEAD)) {
+            throw new IllegalArgumentException("Branch cannot be 'HEAD'");
+        }
+    }
+
+    void validateStatusIsNotRelease() {
+        if (isRelease()) {
+            throw new IllegalArgumentException("Status cannot be 'RELEASE'");
+        }
+    }
+
     public static void validateVersion(String version)
     {
         if (StringUtilities.isEmpty(version))

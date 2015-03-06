@@ -536,37 +536,34 @@ public class NCubeJdbcPersister
             NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0], null);
             String testData = getTestData(c, appId, cubeName);
 
-            try
+            try (PreparedStatement insert = c.prepareStatement(
+                    "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
             {
-                try (PreparedStatement insert = c.prepareStatement(
-                        "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
-                {
-                    insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                    insert.setString(2, appId.getApp());
-                    insert.setString(3, cubeName);
-                    insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
-                    insert.setString(5, appId.getVersion());
-                    java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                    insert.setDate(6, now);
-                    insert.setString(7, username);
-                    insert.setString(8, appId.getTenant());
-                    insert.setString(9, appId.getBranch());
-                    insert.setLong(10, -(maxRev + 1));
-                    String note = "deleted on " + now + " by " + username;
-                    insert.setBytes(11, note.getBytes("UTF-8"));
-                    insert.setBytes(12, testData == null ? null : testData.getBytes("UTF-8"));
+                insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                insert.setString(2, appId.getApp());
+                insert.setString(3, cubeName);
+                insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
+                insert.setString(5, appId.getVersion());
+                java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+                insert.setDate(6, now);
+                insert.setString(7, username);
+                insert.setString(8, appId.getTenant());
+                insert.setString(9, appId.getBranch());
+                insert.setLong(10, -(maxRev + 1));
+                String note = "deleted on " + now + " by " + username;
+                insert.setBytes(11, note.getBytes("UTF-8"));
+                insert.setBytes(12, testData == null ? null : testData.getBytes("UTF-8"));
 
-                    //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
-                    //TODO:  We may need to just replace this with a return of the update count and let the controllers
-                    //TODO:  handle it.  I've mocked it out anyway for now.
-                    int rowCount = insert.executeUpdate();
-                    if (rowCount != 1)
-                    {
-                        throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
-                    }
-                    return true;
+                //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
+                //TODO:  We may need to just replace this with a return of the update count and let the controllers
+                //TODO:  handle it.  I've mocked it out anyway for now.
+                int rowCount = insert.executeUpdate();
+                if (rowCount != 1)
+                {
+                    throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
                 }
+                return true;
             }
             catch (RuntimeException e)
             {

@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -344,36 +345,55 @@ public class NCubeManager
         return ncubes;
     }
 
-    public static void clearCacheForBranches(ApplicationID appId)
+    public static void clearCacheForBranches(ApplicationID appId) {
+        String key = (appId.getTenant() + " / " + appId.getApp() + " / " + appId.getVersion()).toLowerCase();
+        clearCacheByKeyStart(key);
+    }
+
+    public static void clearCacheByKeyStart(String key)
     {
-        validateAppId(appId);
 
-        String s = appId.toString();
+        Iterator<Map.Entry<ApplicationID, Map<String, Object>>> ncubeCacheIterator = ncubeCache.entrySet().iterator();
 
-        for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
+        while (ncubeCacheIterator.hasNext())
         {
+            Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry = ncubeCacheIterator.next();
 
-            Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
-
-
-            clearGroovyClassLoaderCache(appCache);
-            applicationIDMapEntry.getValue().clear();
-            GroovyBase.clearCache(applicationIDMapEntry.getKey());
-            NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
+            if (applicationIDMapEntry.getKey().toString().startsWith(key))
+            {
+                Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
+                clearGroovyClassLoaderCache(appCache);
+                applicationIDMapEntry.getValue().clear();
+                GroovyBase.clearCache(applicationIDMapEntry.getKey());
+                NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
+                ncubeCacheIterator.remove();
+            }
         }
-        ncubeCache.clear();
 
-        for (Map.Entry<ApplicationID, Map<String, Advice>> applicationIDMapEntry : advices.entrySet())
+        Iterator<Map.Entry<ApplicationID, Map<String, Advice>>> advicesIterator = advices.entrySet().iterator();
+
+        while (advicesIterator.hasNext())
         {
-            applicationIDMapEntry.getValue().clear();
-        }
-        advices.clear();
+            Map.Entry<ApplicationID, Map<String, Advice>> advicesMapEntry = advicesIterator.next();
 
-        for (GroovyClassLoader classLoader : localClassLoaders.values())
-        {
-            classLoader.clearCache();
+            if (advicesMapEntry.getKey().toString().startsWith(key))
+            {
+                advicesMapEntry.getValue().clear();
+                advicesIterator.remove();
+            }
         }
-        localClassLoaders.clear();
+
+        Iterator<Map.Entry<ApplicationID, GroovyClassLoader>> classLoadersIterator = localClassLoaders.entrySet().iterator();
+        while (classLoadersIterator.hasNext())
+        {
+            Map.Entry<ApplicationID, GroovyClassLoader> classLoadersEntry = classLoadersIterator.next();
+
+            if (classLoadersEntry.getKey().toString().startsWith(key))
+            {
+                classLoadersEntry.getValue().clearCache();
+                classLoadersIterator.remove();
+            }
+        }
     }
 
     public static void clearCache(ApplicationID appId)

@@ -12,8 +12,8 @@ import com.cedarsoftware.ncube.proximity.Point2D
 import com.cedarsoftware.ncube.proximity.Point3D
 import com.cedarsoftware.util.CaseInsensitiveMap
 import com.cedarsoftware.util.StringUtilities
-import com.cedarsoftware.util.io.JsonReader
 import com.cedarsoftware.util.io.JsonWriter
+import com.cedarsoftware.util.io.MetaUtils
 import groovy.transform.CompileStatic
 
 import java.lang.reflect.Array
@@ -602,7 +602,7 @@ th.ncube-dead:hover {
         {
             return StringUtilities.encode((byte[]) cellValue)
         }
-        else if (isArray && JsonReader.isPrimitive(cellValue.getClass().componentType))
+        else if (isArray && MetaUtils.isPrimitive(cellValue.getClass().componentType))
         {
             final StringBuilder str = new StringBuilder()
             str.append('[')

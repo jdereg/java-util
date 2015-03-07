@@ -10,15 +10,15 @@ import java.util.regex.Matcher;
  * to.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -178,7 +178,7 @@ public class ApplicationID
         validateBranch(branch);
     }
 
-    static void validateTenant(String tenant)
+    public static void validateTenant(String tenant)
     {
         if (StringUtilities.hasContent(tenant))
         {
@@ -191,7 +191,7 @@ public class ApplicationID
         throw new IllegalArgumentException("Invalid tenant string: '" + tenant + "'. Tenant must contain only A-Z, a-z, or 0-9 and dash (-). From 1 to 10 characters max.");
     }
 
-    static void validateApp(String appName)
+    public static void validateApp(String appName)
     {
         if (StringUtilities.isEmpty(appName))
         {
@@ -199,7 +199,22 @@ public class ApplicationID
         }
     }
 
-    static void validateStatus(String status)
+    public static void validateVersion(String version)
+    {
+        if (StringUtilities.isEmpty(version))
+        {
+            throw new IllegalArgumentException("n-cube version cannot be null or empty");
+        }
+
+        Matcher m = Regexes.validVersion.matcher(version);
+        if (m.find())
+        {
+            return;
+        }
+        throw new IllegalArgumentException("Invalid version: '" + version + "'. n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
+    }
+
+    public static void validateStatus(String status)
     {
         if (status == null)
         {
@@ -208,7 +223,7 @@ public class ApplicationID
         ReleaseStatus.valueOf(status);
     }
 
-    static void validateBranch(String branch)
+    public static void validateBranch(String branch)
     {
         if (StringUtilities.isEmpty(branch))
         {
@@ -232,21 +247,6 @@ public class ApplicationID
         if (isRelease()) {
             throw new IllegalArgumentException("Status cannot be 'RELEASE'");
         }
-    }
-
-    public static void validateVersion(String version)
-    {
-        if (StringUtilities.isEmpty(version))
-        {
-            throw new IllegalArgumentException("n-cube version cannot be null or empty");
-        }
-
-        Matcher m = Regexes.validVersion.matcher(version);
-        if (m.find())
-        {
-            return;
-        }
-        throw new IllegalArgumentException("Invalid version: '" + version + "'. n-cube version must follow the form n.n.n where n is a number 0 or greater. The numbers stand for major.minor.revision");
     }
 
     //TODO: We need to allow DEFAULT_BRANCH (HEAD) to be overridden below with an environment variable (or -Dsystem.property)

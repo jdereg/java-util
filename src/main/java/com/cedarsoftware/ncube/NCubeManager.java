@@ -43,15 +43,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * matching a wildcard (SQL Like) string.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -67,7 +67,6 @@ public class NCubeManager
     private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
-    private static final String NCUBE_BOOTSTRAP = "NCUBE_BOOTSTRAP";
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -899,16 +898,37 @@ public class NCubeManager
 
     public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
     {
+        ApplicationID.validateTenant(tenant);
+        ApplicationID.validateApp(tenant);
+
         if (coord == null)
         {
             coord = new HashMap();
         }
+
         NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
+
         if (bootCube == null)
         {
              throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
         }
-        return (ApplicationID) bootCube.getCell(coord);
+
+        ApplicationID bootAppId = (ApplicationID) bootCube.getCell(coord);
+        String version = bootAppId.getVersion();
+        String status = bootAppId.getStatus();
+        String branch = bootAppId.getBranch();
+
+        if (!tenant.equalsIgnoreCase(bootAppId.getTenant()))
+        {
+            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different tenant '" + bootAppId.getTenant() + "' than requested. Using '" + tenant + "' instead.");
+        }
+
+        if (!app.equalsIgnoreCase(bootAppId.getApp()))
+        {
+            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different app '" + bootAppId.getApp() + "' than requested. Using '" + app + "' instead.");
+        }
+
+        return new ApplicationID(tenant, app, version, status, branch);
     }
 
     public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)

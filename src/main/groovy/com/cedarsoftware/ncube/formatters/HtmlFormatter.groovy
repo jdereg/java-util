@@ -353,7 +353,7 @@ public class HtmlFormatter implements NCubeFormatter
 
     private static String getHtmlPreamble()
     {
-        """
+        """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -488,7 +488,7 @@ th.ncube-dead:hover {
 
     private static String getNoAxisHtml()
     {
-"""
+"""\
 <!DOCTYPE html>
 <html lang="en">
   <head>

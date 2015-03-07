@@ -149,8 +149,8 @@ abstract class ContentCmdCell extends UrlCommandCell
     protected Object proxyFetch(Map ctx)
     {
         Map input = getInput(ctx)
-        HttpServletRequest request = (HttpServletRequest) input.get(CdnRouter.HTTP_REQUEST)
-        HttpServletResponse response = (HttpServletResponse) input.get(CdnRouter.HTTP_RESPONSE)
+        HttpServletRequest request = (HttpServletRequest) input[CdnRouter.HTTP_REQUEST]
+        HttpServletResponse response = (HttpServletResponse) input[CdnRouter.HTTP_RESPONSE]
         HttpURLConnection conn = null
         URL actualUrl = null
 
@@ -283,7 +283,7 @@ abstract class ContentCmdCell extends UrlCommandCell
 
     private static String getExtension(String urlPath)
     {
-        int index = urlPath == null ? -1 : urlPath.lastIndexOf(UrlCommandCell.EXTENSION_SEPARATOR as int)   // Must fully quality with CompileStatic
+        int index = urlPath == null ? -1 : urlPath.lastIndexOf(UrlCommandCell.EXTENSION_SEPARATOR as int)   // Must fully qualify with CompileStatic
         return index == -1 ? null : urlPath.substring(index).intern()
     }
 
@@ -295,7 +295,7 @@ abstract class ContentCmdCell extends UrlCommandCell
         }
 
         String ext = getExtension(actualUrl.toString().toLowerCase())
-        String mime = extToMimeType.get(ext)
+        String mime = extToMimeType[ext]
 
         if (mime == null)
         {

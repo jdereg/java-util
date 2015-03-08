@@ -132,6 +132,7 @@ public class NCubeJdbcPersister
 
     public Object[] getBranchChanges(Connection c, ApplicationID appId)
     {
+        // TODO: This needs to get the list of changes (in terms of NCubeInfoDtos).
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +

@@ -11,7 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 
 /**
@@ -1171,7 +1173,7 @@ public class NCubeJdbcPersister
         return pattern;
     }
 
-    public int commitBranch(Connection c, ApplicationID appId, Object[] infoDtos)
+    public Map commitBranch(Connection c, ApplicationID appId, Object[] infoDtos)
     {
         // TODO: Persister needs to implement this.
         // TODO: Note, commit is not against a whole branch.  That would not allow me to select only a subset of changed
@@ -1182,7 +1184,7 @@ public class NCubeJdbcPersister
         // TODO: Need to determine what to do about unchanged files.  I think we can just move them forward, keeping
         // TODO: the user's branch alive.  They can also choose to 'update' branch, which will fill in the gaps by bringing
         // TODO: down the new cubes, and blowing away their unchanged cubes.
-        return 0;
+        return new HashMap();
     }
 
     public int rollbackBranch(Connection c, ApplicationID appId, Object[] infoDtos)

@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This adapter could be replaced by an adapting proxy.  Then you could
@@ -294,7 +295,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public int commitBranch(ApplicationID appId, Object[] infoDtos)
+    public Map commitBranch(ApplicationID appId, Object[] infoDtos)
     {
         Connection c = connectionProvider.getConnection();
         try

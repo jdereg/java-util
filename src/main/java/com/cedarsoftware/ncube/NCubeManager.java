@@ -726,7 +726,6 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-
         int rows = getPersister().createBranch(appId);
         broadcast(appId);
         return rows;
@@ -734,22 +733,25 @@ public class NCubeManager
 
     /**
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
+     * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
      */
-    public static int commitBranch(ApplicationID appId, Object[] infoDtos)
+    public static Map commitBranch(ApplicationID appId, Object[] infoDtos)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-
         return getPersister().commitBranch(appId, infoDtos);
     }
 
+    /**
+     * Commit the passed in changed cube records identified by NCubeInfoDtos.
+     * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
+     */
     public static int rollbackBranch(ApplicationID appId, Object[] infoDtos)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-
         return getPersister().rollbackBranch(appId, infoDtos);
     }
 
@@ -758,7 +760,6 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-
         return getPersister().updateBranch(appId);
     }
 

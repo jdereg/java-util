@@ -40,7 +40,7 @@ interface NCubePersister extends NCubeReadOnlyPersister
 
     boolean updateTestData(ApplicationID appId, String cubeName, String testData);
 
-    int commitBranch(ApplicationID appId, Object[] infoDtos);
+    Map commitBranch(ApplicationID appId, Object[] infoDtos);
     int rollbackBranch(ApplicationID appId, Object[] infoDtos);
     Object[] updateBranch(ApplicationID appId);
 }

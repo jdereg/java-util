@@ -84,8 +84,8 @@ n-cube can be used free for personal use.
 
 Version History
 * 3.1.5
- * This release is for development only.  Due not use for production.  Consider 3.1.4 latest production release.
- * The branch concept has be throughly introduced throughout the code base.  All tests are working with it.  However, there is more API work to be done within the persister to fully support branching.
+ * This release is for development only.  Do not use for production.  Consider 3.1.4 latest production release.
+ * The branch concept has be thoroughly introduced in the code base.  All tests are working with it.  However, there is more API work to be done within the persister to fully support branching.
  * All APIs that take a matching pattern on NCubeManager expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
 * 3.1.4
  * Range and Set parsing for Axis values less picky and much more robust.  Useful when input for these columns are passed in from a GUI.

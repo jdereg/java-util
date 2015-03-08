@@ -294,6 +294,47 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public void commit(ApplicationID appId, Object[] infoDtos)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            persister.commit(c, appId, infoDtos);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public void rollback(ApplicationID appId, Object[] infoDtos)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            persister.rollback(c, appId, infoDtos);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+
+    }
+
+    public Object[] updateBranch(ApplicationID appId)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.updateBranch(c, appId);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+
+    }
+
     public String getTestData(ApplicationID appId, String cubeName)
     {
         Connection c = connectionProvider.getConnection();

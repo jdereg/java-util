@@ -1169,4 +1169,45 @@ public class NCubeJdbcPersister
         }
         return pattern;
     }
+
+    public void commit(Connection c, ApplicationID appId, Object[] infoDtos)
+    {
+        // TODO: Persister needs to implement this.
+        // TODO: Note, commit is not against a whole branch.  That would not allow me to select only a subset of changed
+        // TODO: files to commit.  Rather, commit is based on the selected changes the user sends down via Object[] nCubeInfoDtos
+        // TODO: Note this makes commit much faster.
+        // TODO: Note that after a user commits changes, their branch will still be there, as they will still have the
+        // TODO: unchanged files sitting in their branch.
+        // TODO: Need to determine what to do about unchanged files.  I think we can just move them forward, keeping
+        // TODO: the user's branch alive.  They can also choose to 'update' branch, which will fill in the gaps by bringing
+        // TODO: down the new cubes, and blowing away their unchanged cubes.
+    }
+
+    public void rollback(Connection c, ApplicationID appId, Object[] infoDtos)
+    {
+        // TODO: Persister needs to implement this.
+        // TODO: The passed in set of cubes to rollback (identified by ncubeinfoDtos), are simply deleted, and the
+        // TODO: corresponding cube from HEAD is brought over to their branch.
+    }
+
+    public Object[] updateBranch(Connection c, ApplicationID appId)
+    {
+        // TODO: Persister needs to implement this
+        // TODO: When a user selects updateBranch, the following steps happen:
+        // TODO: 1. All cubes in the main branch are checked against the cubes in their branch.  If a cube name
+        // TODO: matches one in their branch, and they have not modified it and the SHA1's still match, move on
+        // TODO: to the next.
+        // TODO: 2. If a cube name matches a cube name in their branch and they have not modified, but the main
+        // TODO: branch has changed, then you can safely delete their cube (mark it deleted -or- replace it (newer
+        // TODO: version) and copy over the cube from the HEAD branch.
+        // TODO: 3. If a cube name exists in the main branch that does not exist in their branch, then the cube either
+        // TODO: needs to be added (or possibly restored).
+        // TODO: 4. If they have any cubes that remain, that do not match the head, and they are not changed, then those
+        // TODO: cubes need to be deleted.
+        // TODO: 5. If the cube name matches a cube name in their branch, but they have changed it, then skip it (Do
+        // TODO: not update it).  Return a list of these (we will show this list to the user letting them know they
+        // TODO: have potential conflicts.
+
+        return new Object[0];
+    }
 }

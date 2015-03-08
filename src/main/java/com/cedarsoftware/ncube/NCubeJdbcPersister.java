@@ -1171,7 +1171,7 @@ public class NCubeJdbcPersister
         return pattern;
     }
 
-    public void commit(Connection c, ApplicationID appId, Object[] infoDtos)
+    public int commitBranch(Connection c, ApplicationID appId, Object[] infoDtos)
     {
         // TODO: Persister needs to implement this.
         // TODO: Note, commit is not against a whole branch.  That would not allow me to select only a subset of changed
@@ -1182,13 +1182,16 @@ public class NCubeJdbcPersister
         // TODO: Need to determine what to do about unchanged files.  I think we can just move them forward, keeping
         // TODO: the user's branch alive.  They can also choose to 'update' branch, which will fill in the gaps by bringing
         // TODO: down the new cubes, and blowing away their unchanged cubes.
+        return 0;
     }
 
-    public void rollback(Connection c, ApplicationID appId, Object[] infoDtos)
+    public int rollbackBranch(Connection c, ApplicationID appId, Object[] infoDtos)
     {
         // TODO: Persister needs to implement this.
         // TODO: The passed in set of cubes to rollback (identified by ncubeinfoDtos), are simply deleted, and the
         // TODO: corresponding cube from HEAD is brought over to their branch.
+
+        return 0;
     }
 
     public Object[] updateBranch(Connection c, ApplicationID appId)

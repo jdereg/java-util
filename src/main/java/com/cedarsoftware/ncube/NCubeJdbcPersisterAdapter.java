@@ -294,12 +294,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public void commit(ApplicationID appId, Object[] infoDtos)
+    public int commitBranch(ApplicationID appId, Object[] infoDtos)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            persister.commit(c, appId, infoDtos);
+            return persister.commitBranch(c, appId, infoDtos);
         }
         finally
         {
@@ -307,12 +307,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public void rollback(ApplicationID appId, Object[] infoDtos)
+    public int rollbackBranch(ApplicationID appId, Object[] infoDtos)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            persister.rollback(c, appId, infoDtos);
+            return persister.rollbackBranch(c, appId, infoDtos);
         }
         finally
         {

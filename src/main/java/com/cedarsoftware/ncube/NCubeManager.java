@@ -735,22 +735,22 @@ public class NCubeManager
     /**
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
      */
-    public static void commit(ApplicationID appId, Object[] infoDtos)
+    public static int commitBranch(ApplicationID appId, Object[] infoDtos)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
 
-        getPersister().commit(appId, infoDtos);
+        return getPersister().commitBranch(appId, infoDtos);
     }
 
-    public static void rollback(ApplicationID appId, Object[] infoDtos)
+    public static int rollbackBranch(ApplicationID appId, Object[] infoDtos)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
 
-        getPersister().rollback(appId, infoDtos);
+        return getPersister().rollbackBranch(appId, infoDtos);
     }
 
     public static Object[] updateBranch(ApplicationID appId)

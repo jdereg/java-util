@@ -8,7 +8,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
@@ -49,9 +48,7 @@ import static org.mockito.Mockito.when;
  */
 public class TestUrlUtilities
 {
-//    private static final String httpsUrl = "https://www.ssllabs.com/ssltest/";
     private static final String httpsUrl = "https://gotofail.com/";
-    //private static final String httpsGoogleUrl = "https://www.google.com";
     private static final String domain  = "ssllabs";
     private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
 
@@ -273,24 +270,40 @@ public class TestUrlUtilities
     @Test
     public void testUserAgent() throws Exception
     {
+        UrlUtilities.clearGlobalUserAgent();
         UrlUtilities.setUserAgent(null);
         assertNull(UrlUtilities.getUserAgent());
-        UrlUtilities.setUserAgent("foo");
-        assertEquals("foo", UrlUtilities.getUserAgent());
+
+        UrlUtilities.setUserAgent("global");
+        assertEquals("global", UrlUtilities.getUserAgent());
+
+        UrlUtilities.setUserAgent("local");
+        assertEquals("local", UrlUtilities.getUserAgent());
+
+        UrlUtilities.setUserAgent(null);
+        assertEquals("global", UrlUtilities.getUserAgent());
+
+        UrlUtilities.clearGlobalUserAgent();
+        assertEquals(null, UrlUtilities.getUserAgent());
     }
 
     @Test
-    public void testReferer() throws Exception
+    public void testReferrer() throws Exception
     {
+        UrlUtilities.clearGlobalReferrer();
         UrlUtilities.setReferrer(null);
-        Field f = UrlUtilities.class.getDeclaredField("referrer");
-        f.setAccessible(true);
-        assertNull(f.get(null));
+        assertNull(UrlUtilities.getReferrer());
 
+        UrlUtilities.setReferrer("global");
+        assertEquals("global", UrlUtilities.getReferrer());
 
-        UrlUtilities.setReferrer("noreferrer");
-        assertEquals("noreferrer", f.get(null));
-        UrlUtilities.setReferrer("www.gai.com");
-        assertEquals("www.gai.com", f.get(null));
+        UrlUtilities.setReferrer("local");
+        assertEquals("local", UrlUtilities.getReferrer());
+
+        UrlUtilities.setReferrer(null);
+        assertEquals("global", UrlUtilities.getReferrer());
+
+        UrlUtilities.clearGlobalReferrer();
+        assertEquals(null, UrlUtilities.getReferrer());
     }
 }

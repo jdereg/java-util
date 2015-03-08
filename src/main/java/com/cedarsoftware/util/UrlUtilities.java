@@ -65,21 +65,22 @@ import java.util.regex.Pattern;
  */
 public final class UrlUtilities
 {
-    private static final Logger LOG = LogManager.getLogger(UrlUtilities.class);
-    private static String referrer = null;
-    private static String userAgent = null;
-
-    private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
-
+    public static String globalUserAgent = null;
+    public static String globalReferrer = null;
+    public static final ThreadLocal<String> userAgent = new ThreadLocal<>();
+    public static final ThreadLocal<String> referrer = new ThreadLocal<>();
     public static final String SET_COOKIE = "Set-Cookie";
+    public static final String SET_COOKIE_SEPARATOR = "; ";
+    public static final String COOKIE = "Cookie";
     public static final String COOKIE_VALUE_DELIMITER = ";";
     public static final String PATH = "path";
     public static final String EXPIRES = "expires";
     public static final SafeSimpleDateFormat DATE_FORMAT = new SafeSimpleDateFormat("EEE, dd-MMM-yyyy hh:mm:ss z");
-    public static final String SET_COOKIE_SEPARATOR = "; ";
-    public static final String COOKIE = "Cookie";
     public static final char NAME_VALUE_SEPARATOR = '=';
     public static final char DOT = '.';
+
+    private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
+    private static final Logger LOG = LogManager.getLogger(UrlUtilities.class);
 
     public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
     {
@@ -128,7 +129,6 @@ public final class UrlUtilities
         {
             LOG.warn("Failed to build Naive SSLSocketFactory", e);
         }
-
     }
 
     private UrlUtilities()
@@ -136,19 +136,52 @@ public final class UrlUtilities
         super();
     }
 
-    public static void setReferrer(String referrer)
+    public static void clearGlobalUserAgent()
     {
-        UrlUtilities.referrer = referrer;
+        globalUserAgent = null;
     }
 
-    public static void setUserAgent(String userAgent)
+    public static void clearGlobalReferrer()
     {
-        UrlUtilities.userAgent = userAgent;
+        globalReferrer = null;
+    }
+
+    public static void setReferrer(String referer)
+    {
+        if (StringUtilities.isEmpty(globalReferrer))
+        {
+            globalReferrer = referer;
+        }
+        referrer.set(referer);
+    }
+
+    public static String getReferrer()
+    {
+        String localReferrer = referrer.get();
+        if (StringUtilities.hasContent(localReferrer))
+        {
+            return localReferrer;
+        }
+        return globalReferrer;
+    }
+
+    public static void setUserAgent(String agent)
+    {
+        if (StringUtilities.isEmpty(globalUserAgent))
+        {
+            globalUserAgent = agent;
+        }
+        userAgent.set(agent);
     }
 
     public static String getUserAgent()
     {
-        return userAgent;
+        String localAgent = userAgent.get();
+        if (StringUtilities.hasContent(localAgent))
+        {
+            return localAgent;
+        }
+        return globalUserAgent;
     }
 
     public static void readErrorResponse(URLConnection c)
@@ -361,19 +394,7 @@ public final class UrlUtilities
 
     static boolean comparePaths(String cookiePath, String targetPath)
     {
-        if (cookiePath == null)
-        {
-            return true;
-        }
-        else if ("/".equals(cookiePath))
-        {
-            return true;
-        }
-        else if (targetPath.regionMatches(0, cookiePath, 0, cookiePath.length()))
-        {
-            return true;
-        }
-        return false;
+        return cookiePath == null || "/".equals(cookiePath) || targetPath.regionMatches(0, cookiePath, 0, cookiePath.length());
     }
 
     /**
@@ -535,7 +556,6 @@ public final class UrlUtilities
         }
     }
 
-
     /**
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
@@ -594,13 +614,15 @@ public final class UrlUtilities
         c.setReadTimeout(220000);
         c.setConnectTimeout(45000);
 
-        if (StringUtilities.hasContent(referrer))
+        String ref = getReferrer();
+        if (StringUtilities.hasContent(ref))
         {
-            c.setRequestProperty("Referer", referrer);
+            c.setRequestProperty("Referer", ref);
         }
-        if (StringUtilities.hasContent(userAgent))
+        String agent = getUserAgent();
+        if (StringUtilities.hasContent(agent))
         {
-            c.setRequestProperty("User-Agent", userAgent);
+            c.setRequestProperty("User-Agent", agent);
         }
 
         if (c instanceof HttpURLConnection)
@@ -634,7 +656,8 @@ public final class UrlUtilities
         sc.setHostnameVerifier(NAIVE_VERIFIER);
     }
 
-    public static URL getActualUrl(String url) throws MalformedURLException {
+    public static URL getActualUrl(String url) throws MalformedURLException
+    {
         Matcher m = resPattern.matcher(url);
         return m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
     }

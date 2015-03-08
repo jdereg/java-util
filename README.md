@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.18.1</version>
+  <version>1.18.0</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg)

@@ -276,49 +276,6 @@ public class NCubeJdbcPersister
         }
     }
 
-//    private Object[] getMergedCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
-//    {
-//        Map<String, NCubeInfoDto> map = new LinkedHashMap<>();
-//
-//        try (ResultSet rs = stmt.executeQuery())
-//        {
-//            while (rs.next())
-//            {
-//                NCubeInfoDto dto = new NCubeInfoDto();
-//                dto.name = rs.getString("n_cube_nm");
-//                dto.branch = rs.getString("branch_id");
-//
-//                if (dto.branch.equals(ApplicationID.HEAD) && map.containsKey(dto.name)) {
-//                    continue;
-//                }
-//
-//                dto.tenant = appId.getTenant();
-//                byte[] notes = rs.getBytes("notes_bin");
-//                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-//                dto.version = appId.getVersion();
-//                dto.status = rs.getString("status_cd");
-//                dto.app = appId.getApp();
-//                dto.createDate = rs.getDate("create_dt");
-//                dto.createHid = rs.getString("create_hid");
-//                dto.revision = Long.toString(rs.getLong("revision_number"));
-//                byte[] jsonBytes = rs.getBytes("cube_value_bin");
-//
-//                if (!ArrayUtilities.isEmpty(jsonBytes))
-//                {
-//                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
-//                    Matcher m = Regexes.sha1Pattern.matcher(json);
-//                    if (m.find() && m.groupCount() > 0)
-//                    {
-//                        dto.sha1 = m.group(1);
-//                    }
-//                }
-//                map.put(dto.name, dto);
-//            }
-//        }
-//        return map.values().toArray();
-//    }
-
-
     private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
     {
         List<NCubeInfoDto> list = new ArrayList<>();
@@ -542,13 +499,6 @@ public class NCubeJdbcPersister
         else
         {
             Object[] cubeInfo = getCubeRecords(c, appId, cubeName);
-            //TODO:  John, I'll delete this when I know you've seen it.
-            //TODO:  We can't hit this case because of the getMaxRevision() check above.
-            //TODO:  getMaxRevision() comes back with no cubes when there are no cubes or only deleted cube as max rev.
-//            if (ArrayUtilities.isEmpty(cubeInfo))
-//            {
-//                throw new IllegalArgumentException("Cannot delete cube: " + cubeName + ", unable to find it in app: " + appId);
-//            }
             NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0], null);
             String testData = getTestData(c, appId, cubeName);
 
@@ -707,6 +657,7 @@ public class NCubeJdbcPersister
                             insert.setString(2, rs.getString("n_cube_nm"));
 
                             byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                            insert.setBytes(3, jsonBytes);
 
                             //TODO:  is it valid to be empty?  what does that mean in terms of cubes.
                             if (!ArrayUtilities.isEmpty(jsonBytes))

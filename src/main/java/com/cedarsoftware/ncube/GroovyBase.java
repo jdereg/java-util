@@ -175,13 +175,6 @@ public abstract class GroovyBase extends UrlCommandCell
             {
                 throw (RuntimeException) cause;
             }
-            //TODO:  John, these are only thrown through a reflective call
-            //TODO:  so the above check catches them with the InvocationTargetException
-            //TODO:  I belive it is safe to remove these.
-//            if (e instanceof CoordinateNotFoundException || e instanceof RuleStop || e instanceof RuleJump)
-//            {
-//                throw (RuntimeException)e;
-//            }
             throw new RuntimeException("Exception occurred invoking method " + getMethodToExecute(ctx) + "(), n-cube: " + cubeName + ", input: " + getInput(ctx), cause != null ? cause : e) ;
         }
     }

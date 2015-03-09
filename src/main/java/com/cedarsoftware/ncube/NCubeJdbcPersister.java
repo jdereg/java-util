@@ -134,6 +134,8 @@ public class NCubeJdbcPersister
 
     public Object[] getBranchChanges(Connection c, ApplicationID appId)
     {
+        ApplicationID head = new ApplicationID(appId.getTenant(), appId.getApp(), appId.getVersion(), appId.getStatus(), ApplicationID.HEAD);
+
         // TODO: This needs to get the list of changes (in terms of NCubeInfoDtos).
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
@@ -347,6 +349,14 @@ public class NCubeJdbcPersister
                     {
                         dto.sha1 = m.group(1);
                     }
+
+                    //  Have to pull out the original head sha1 from which this branch was made.
+                    //  We cannot calculate this on saves so has to be passed back and forth.
+                    m = Regexes.headSha1Pattern.matcher(json);
+                    if (m.find() && m.groupCount() > 0)
+                    {
+                        dto.headSha1 = m.group(1);
+                    }
                 }
 
                 list.add(dto);
@@ -539,37 +549,34 @@ public class NCubeJdbcPersister
             NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0], null);
             String testData = getTestData(c, appId, cubeName);
 
-            try
+            try (PreparedStatement insert = c.prepareStatement(
+                    "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
             {
-                try (PreparedStatement insert = c.prepareStatement(
-                        "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
-                {
-                    insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                    insert.setString(2, appId.getApp());
-                    insert.setString(3, cubeName);
-                    insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
-                    insert.setString(5, appId.getVersion());
-                    java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                    insert.setDate(6, now);
-                    insert.setString(7, username);
-                    insert.setString(8, appId.getTenant());
-                    insert.setString(9, appId.getBranch());
-                    insert.setLong(10, -(maxRev + 1));
-                    String note = "deleted on " + now + " by " + username;
-                    insert.setBytes(11, note.getBytes("UTF-8"));
-                    insert.setBytes(12, testData == null ? null : testData.getBytes("UTF-8"));
+                insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                insert.setString(2, appId.getApp());
+                insert.setString(3, cubeName);
+                insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
+                insert.setString(5, appId.getVersion());
+                java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+                insert.setDate(6, now);
+                insert.setString(7, username);
+                insert.setString(8, appId.getTenant());
+                insert.setString(9, appId.getBranch());
+                insert.setLong(10, -(maxRev + 1));
+                String note = "deleted on " + now + " by " + username;
+                insert.setBytes(11, note.getBytes("UTF-8"));
+                insert.setBytes(12, testData == null ? null : testData.getBytes("UTF-8"));
 
-                    //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
-                    //TODO:  We may need to just replace this with a return of the update count and let the controllers
-                    //TODO:  handle it.  I've mocked it out anyway for now.
-                    int rowCount = insert.executeUpdate();
-                    if (rowCount != 1)
-                    {
-                        throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
-                    }
-                    return true;
+                //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
+                //TODO:  We may need to just replace this with a return of the update count and let the controllers
+                //TODO:  handle it.  I've mocked it out anyway for now.
+                int rowCount = insert.executeUpdate();
+                if (rowCount != 1)
+                {
+                    throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
                 }
+                return true;
             }
             catch (RuntimeException e)
             {
@@ -696,8 +703,28 @@ public class NCubeJdbcPersister
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
                             insert.setString(2, rs.getString("n_cube_nm"));
 
-                            // replace sha1 adding "src" to the front of it.
-                            insert.setBytes(3, rs.getBytes("cube_value_bin"));
+                            byte[] jsonBytes = rs.getBytes("cube_value_bin");
+
+                            //TODO:  is it valid to be empty?  what does that mean in terms of cubes.
+                            if (!ArrayUtilities.isEmpty(jsonBytes))
+                            {
+                                // replace sha1 adding "src" to the front of it.
+                                StringBuffer sb = new StringBuffer();
+                                String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                                Matcher m = Regexes.sha1Pattern.matcher(json);
+                                if (m.find() && m.groupCount() > 0)
+                                {
+                                    String replacement = "\"sha1\":\"" + m.group(1) + "\", \"headSha1\":\"" + m.group(1) + "\"";
+                                    m.appendReplacement(sb, replacement);
+                                }
+                                m.appendTail(sb);
+                                insert.setBytes(3, sb.toString().getBytes("UTF-8"));
+                            }
+                            else
+                            {
+                                //  This would not have headSha1 in it, so this may be undefined.
+                                insert.setBytes(3, jsonBytes);
+                            }
                             insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, appId.getVersion());

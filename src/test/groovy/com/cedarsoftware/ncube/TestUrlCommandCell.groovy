@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube
 
 import com.cedarsoftware.ncube.util.CdnRouter
+import groovy.mock.interceptor.MockFor
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -13,12 +14,7 @@ import java.lang.reflect.Modifier
 import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyString
-import static org.mockito.Mockito.doThrow
-import static org.mockito.Mockito.mock
-import static org.mockito.Mockito.never
-import static org.mockito.Mockito.times
-import static org.mockito.Mockito.verify
-import static org.mockito.Mockito.when
+import static org.mockito.Mockito.*
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -248,5 +244,23 @@ class TestUrlCommandCell
         HttpServletResponse response = mock HttpServletResponse.class
         ContentCmdCell.addFileHeader(new URL('http://www.google.com/index'), response)
         verify(response, never()).addHeader(anyString(), anyString())
+    }
+
+    @Test
+    void testGetActualUrlThatThrowsException() throws Exception
+    {
+        NCube cube = NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, "testExpressionAxisUrl.json");
+
+        MockFor mock = new MockFor(NCubeManager.class);
+        mock.demand.getUrlClassLoader(1) { appId, input ->  throw new IllegalStateException() }
+
+        mock.use
+        {
+            try {
+                cube.getCell([code: 'exp'])
+            } catch (IllegalArgumentException e) {
+                assertEquals(IllegalStateException.class, e.getCause());
+            }
+        }
     }
 }

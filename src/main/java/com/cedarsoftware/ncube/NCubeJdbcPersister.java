@@ -542,10 +542,13 @@ public class NCubeJdbcPersister
         else
         {
             Object[] cubeInfo = getCubeRecords(c, appId, cubeName);
-            if (ArrayUtilities.isEmpty(cubeInfo))
-            {
-                throw new IllegalArgumentException("Cannot delete cube: " + cubeName + ", unable to find it in app: " + appId);
-            }
+            //TODO:  John, I'll delete this when I know you've seen it.
+            //TODO:  We can't hit this case because of the getMaxRevision() check above.
+            //TODO:  getMaxRevision() comes back with no cubes when there are no cubes or only deleted cube as max rev.
+//            if (ArrayUtilities.isEmpty(cubeInfo))
+//            {
+//                throw new IllegalArgumentException("Cannot delete cube: " + cubeName + ", unable to find it in app: " + appId);
+//            }
             NCube ncube = loadCube(c, (NCubeInfoDto) cubeInfo[0], null);
             String testData = getTestData(c, appId, cubeName);
 

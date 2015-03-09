@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube
 
+import groovy.transform.CompileStatic
 import org.junit.Test
 
 import static org.junit.Assert.assertTrue
@@ -25,6 +26,7 @@ import static org.junit.Assert.assertTrue
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 class TestAllCellsInBigCube
 {
     @Test
@@ -55,19 +57,19 @@ class TestAllCellsInBigCube
             def coord = [:]
             for (int a = 1; a <= 11; a++)
             {
-                coord.put("axis0", a - 1)
+                coord.axis0 = a - 1
                 for (int b = 1; b <= 10; b++)
                 {
-                    coord.put("axis1", b - 1)
+                    coord.axis1 = b - 1
                     for (int c = 1; c <= 11; c++)
                     {
-                        coord.put("axis2", c - 1)
+                        coord.axis2 = c - 1
                         for (int d = 1; d <= 10; d++)
                         {
-                            coord.put("axis3", d - 1)
+                            coord.axis3 = d - 1
                             for (long e = 1; e <= 11; e++)
                             {
-                                coord.put("axis4", e - 1)
+                                coord.axis4 = e - 1
                                 ncube.setCell(a * b * c * d * e, coord)
                             }
                         }
@@ -77,19 +79,19 @@ class TestAllCellsInBigCube
 
             for (int a = 1; a <= 11; a++)
             {
-                coord.put("axis0", a - 1)
+                coord.axis0 = a - 1
                 for (int b = 1; b <= 10; b++)
                 {
-                    coord.put("axis1", b - 1)
+                    coord.axis1 = b - 1
                     for (int c = 1; c <= 11; c++)
                     {
-                        coord.put("axis2", c - 1)
+                        coord.axis2 = c - 1
                         for (int d = 1; d <= 10; d++)
                         {
-                            coord.put("axis3", d - 1)
+                            coord.axis3 = d - 1
                             for (long e = 1; e <= 11; e++)
                             {
-                                coord.put("axis4", e - 1)
+                                coord.axis4 = e - 1
                                 long v = ncube.getCell(coord)
                                 assertTrue(v == a * b * c * d * e)
                             }
@@ -99,7 +101,7 @@ class TestAllCellsInBigCube
             }
             long stop = System.nanoTime()
             double diff = (stop - start) / 1000000.0
-//            println("time to build and read allCellsInBigCube = " + diff)
+            println("time to build and read allCellsInBigCube = " + diff)
         }
     }
 }

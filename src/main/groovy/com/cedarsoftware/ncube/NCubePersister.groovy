@@ -39,4 +39,8 @@ interface NCubePersister extends NCubeReadOnlyPersister
     int releaseCubes(ApplicationID appId, String newSnapVer);
 
     boolean updateTestData(ApplicationID appId, String cubeName, String testData);
+
+    Map commitBranch(ApplicationID appId, Object[] infoDtos);
+    int rollbackBranch(ApplicationID appId, Object[] infoDtos);
+    Object[] updateBranch(ApplicationID appId);
 }

@@ -35,17 +35,17 @@ class TestCellInfo
     @Test
     void testFormatForEditing()
     {
-        assertEquals '4.56', CellInfo.formatForEditing(4.56)
-        assertEquals '0.0', CellInfo.formatForEditing(0.0)
-        assertEquals '4.0', CellInfo.formatForEditing(new Float(4))
-        assertEquals '4.0', CellInfo.formatForEditing(new Double(4))
+        assertEquals('4.56', CellInfo.formatForEditing(4.56g))
+//        assertEquals('0.0', CellInfo.formatForEditing(0.0g))  // JDK 1.7 returns 0.0, JDK 1.8 returns 0
+        assertEquals('4.0', CellInfo.formatForEditing(new Float(4)))
+        assertEquals('4.0', CellInfo.formatForEditing(new Double(4)))
 
-        assertEquals '4.56', CellInfo.formatForEditing(new BigDecimal('4.56000'))
-        assertEquals '4.56', CellInfo.formatForEditing(new BigDecimal('4.56'))
+        assertEquals('4.56', CellInfo.formatForEditing(new BigDecimal('4.56000')))
+        assertEquals('4.56', CellInfo.formatForEditing(new BigDecimal('4.56')))
 
         Calendar c = Calendar.instance
-        c.set 2005, 10, 21, 12, 15, 19
-        assertEquals '\"2005-11-21 12:15:19\"', CellInfo.formatForEditing(c.time)
+        c.set(2005, 10, 21, 12, 15, 19)
+        assertEquals('\"2005-11-21 12:15:19\"', CellInfo.formatForEditing(c.time))
     }
 
     @Test
@@ -175,8 +175,8 @@ class TestCellInfo
         assertEquals 5 as short, CellInfo.parseJsonValue('short', '5')
         assertEquals 9L, CellInfo.parseJsonValue('long', '9')
         assertEquals 9, CellInfo.parseJsonValue('int', '9')
-        assertEquals 9.87d, CellInfo.parseJsonValue('double', '9.87'), 0.000001d
-        assertEquals 9.65f, CellInfo.parseJsonValue('float', '9.65'), 0.000001f
+        assertEquals(9.87d, (Double)CellInfo.parseJsonValue('double', '9.87'), 0.000001d)
+        assertEquals(9.65f, (float)CellInfo.parseJsonValue('float', '9.65'), 0.000001f)
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -251,11 +251,11 @@ class TestCellInfo
     {
         if (o instanceof Float || o instanceof Double)
         {
-            assertEquals o, new CellInfo(o).recreate(), 0.00001d
+            assertEquals(o, new CellInfo(o).recreate(), 0.00001d)
         }
         else
         {
-            assertEquals o, new CellInfo(o).recreate()
+            assertEquals(o, new CellInfo(o).recreate())
         }
     }
 

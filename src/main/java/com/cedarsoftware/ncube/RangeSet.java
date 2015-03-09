@@ -11,15 +11,15 @@ import java.util.List;
  * greatly reducing having duplicate cells in an ncube.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,7 +27,7 @@ import java.util.List;
  *         limitations under the License.
  */
 public class RangeSet implements Comparable<RangeSet>
-{    
+{
 	private final List<Comparable> items = new ArrayList<>();
 	public RangeSet() { }
     public RangeSet(Comparable c)
@@ -39,12 +39,12 @@ public class RangeSet implements Comparable<RangeSet>
 	{
 		items.add(c);
 	}
-	
+
 	public Comparable get(int index)
 	{
 		return items.get(index);
 	}
-	
+
 	public int size()
 	{
 		return items.size();
@@ -59,8 +59,8 @@ public class RangeSet implements Comparable<RangeSet>
 	{
 		return items.iterator();
 	}
-	
- 	public int compareTo(RangeSet that) 
+
+ 	public int compareTo(RangeSet that)
 	{
         int size = size();
         if (items.isEmpty() || that.items.isEmpty())
@@ -92,7 +92,7 @@ public class RangeSet implements Comparable<RangeSet>
 
 	/**
 	 * @param value to compare with this RangeSet to determine if the value is
-	 * within. For example, {v1, v2, v6-v25, v30} - in this case, the passed in 
+	 * within. For example, {v1, v2, v6-v25, v30} - in this case, the passed in
 	 * value must match v1, v2, or v30, or fall within [v6, v25).
 	 * @return boolean true if the passed in value can be found within this
 	 * RangeSet instance.  That means an individual value in this set must
@@ -144,9 +144,9 @@ public class RangeSet implements Comparable<RangeSet>
 		}
 		return false;
 	}
-	
+
 	/**
-	 * @return boolean true if the points and line segments represented by these 
+	 * @return boolean true if the points and line segments represented by these
 	 * two RangeSets overlap.  Assumption that the Range objects 'low' value is less
 	 * than the 'high' value.
 	 */

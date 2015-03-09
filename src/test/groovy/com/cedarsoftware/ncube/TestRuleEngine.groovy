@@ -50,7 +50,7 @@ class TestRuleEngine
     void testLoadRuleFromUrl() throws Exception
     {
         NCube n1 = NCubeManager.getNCubeFromResource 'rule-column-loaded-with-url.json'
-        def output = [:]
+        Map output = [:]
         n1.getCell([age:17, weight:99], output)
 
         assertEquals 'light-weight', output.weight
@@ -112,9 +112,9 @@ class TestRuleEngine
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'
         Axis cond = ncube.getAxis 'condition'
-        assert cond.columns.get(0).id != 1
+        assert cond.columns[0].id != 1
         Axis state = ncube.getAxis 'state'
-        assert state.columns.get(0).id != 10
+        assert state.columns[0].id != 10
 
         Map output = [:]
         Object out = ncube.getCell([vehiclePrice:5000.0, driveAge:22, gender:'male', vehicleCylinders:8, state:'TX'], output)
@@ -128,9 +128,9 @@ class TestRuleEngine
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'expressionAxis.json'
         Axis cond = ncube.getAxis 'condition'
-        assert cond.columns.get(0).id != 1
+        assert cond.columns[0].id != 1
         Axis state = ncube.getAxis 'state'
-        assert state.columns.get(0).id != 10
+        assert state.columns[0].id != 10
         assert 'foo' == state.standardizeColumnValue('foo')
     }
 
@@ -207,28 +207,28 @@ class TestRuleEngine
 
         assert output.weight == 'medium-weight'
         assert output.age == 'adult'
-        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        RuleInfo ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 4L == ruleInfo.getNumberOfRulesExecuted()
 
         output.clear()
         ncube.getCell([age:10, weight:150], output)
         assert output.weight == 'medium-weight'
         assert output.age == 'adult'
-        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 2L == ruleInfo.getNumberOfRulesExecuted()
 
         output.clear()
         ncube.getCell([age:35, weight:150], output)
         assert output.weight == 'medium-weight'
         assert output.age == 'adult'
-        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 1L == ruleInfo.getNumberOfRulesExecuted()
 
         output.clear()
         ncube.getCell([age:42, weight:205], output)
         assert output.weight == 'heavy-weight'
         assert output.age == 'middle-aged'
-        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 1L == ruleInfo.getNumberOfRulesExecuted()
     }
 
@@ -254,13 +254,13 @@ class TestRuleEngine
         ncube.getCell([age:10, weight:60], output)
         assert output.age == 'young'
         assert output.weight == 'light-weight'
-        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        RuleInfo ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 1 == ruleInfo.getNumberOfRulesExecuted();
         assertFalse ruleInfo.wasRuleStopThrown()
 
         output.clear()
         ncube.getCell([age:25,weight:60], output)
-        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 0 == ruleInfo.getNumberOfRulesExecuted()
         assert ruleInfo.wasRuleStopThrown()
 
@@ -268,7 +268,7 @@ class TestRuleEngine
         ncube.getCell([age:45, weight:60], output)
         assert output.age== 'middle-aged'
         assert output.weight == 'light-weight'
-        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 1 == ruleInfo.getNumberOfRulesExecuted()
         assertFalse ruleInfo.wasRuleStopThrown()
     }
@@ -383,18 +383,18 @@ class TestRuleEngine
             ruleAxisDidNotBind(e)
         }
         assert 1 == output.size()
-        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        RuleInfo ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 0L == ruleInfo.getNumberOfRulesExecuted()
 
         coord.age = 22
         ncube.getCell(coord, output)
         assert output.containsKey('adult')
         assert output.containsKey('old')
-        ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 2L == ruleInfo.getNumberOfRulesExecuted()
     }
 
-    private void ruleAxisDidNotBind(CoordinateNotFoundException e)
+    private static void ruleAxisDidNotBind(CoordinateNotFoundException e)
     {
         assert e.message.toLowerCase().contains("no condition")
         assert e.message.toLowerCase().contains("fired")
@@ -482,7 +482,7 @@ class TestRuleEngine
         assert 'child' == output.group
         assert 'thang' == output.thing
 
-        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        RuleInfo ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 3 == ruleInfo.getNumberOfRulesExecuted()
 //        System.out.println('ruleInfo.getRuleExecutionTrace() = ' + ruleInfo.getRuleExecutionTrace())
 
@@ -509,7 +509,7 @@ class TestRuleEngine
         def input = [state:'OH']
         def output = [:]
         ncube.getCell input, output
-        RuleInfo ruleInfo = (RuleInfo) output.get(NCube.RULE_EXEC_INFO)
+        RuleInfo ruleInfo = (RuleInfo) output[NCube.RULE_EXEC_INFO]
         assert 1 == ruleInfo.getNumberOfRulesExecuted()
 
         // Groovy style false

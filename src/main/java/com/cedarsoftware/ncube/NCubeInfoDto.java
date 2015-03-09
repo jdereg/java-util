@@ -30,11 +30,13 @@ public class NCubeInfoDto
 	public String status;
     public String branch;
 	public String name;
-	public String sha1;
+    public String sha1;
+    public String headSha1;
     public String revision;
     public Date createDate;
     public String createHid;
     public String notes;
+    public String changeType = "NONE";
 
     public ApplicationID getApplicationID()
 	{
@@ -46,4 +48,18 @@ public class NCubeInfoDto
         String br = branch == null ? "HEAD" : branch;
 		return tenant + '/' + app + '/' + version + '/' + status + '/' + br + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
+
+    public void markAsModified() {
+        changeType = "MODIFIED";
+    }
+
+    public void markAsAdded() {
+        changeType = "ADDED";
+    }
+
+    public void markAsDeleted() {
+        changeType = "DELETED";
+    }
+
+
 }

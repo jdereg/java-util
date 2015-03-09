@@ -134,6 +134,8 @@ public class NCubeJdbcPersister
 
     public Object[] getBranchChanges(Connection c, ApplicationID appId)
     {
+        ApplicationID head = new ApplicationID(appId.getTenant(), appId.getApp(), appId.getVersion(), appId.getStatus(), ApplicationID.HEAD);
+
         // TODO: This needs to get the list of changes (in terms of NCubeInfoDtos).
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
@@ -346,6 +348,14 @@ public class NCubeJdbcPersister
                     if (m.find() && m.groupCount() > 0)
                     {
                         dto.sha1 = m.group(1);
+                    }
+
+                    //  Have to pull out the original head sha1 from which this branch was made.
+                    //  We cannot calculate this on saves so has to be passed back and forth.
+                    m = Regexes.headSha1Pattern.matcher(json);
+                    if (m.find() && m.groupCount() > 0)
+                    {
+                        dto.headSha1 = m.group(1);
                     }
                 }
 
@@ -693,8 +703,28 @@ public class NCubeJdbcPersister
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
                             insert.setString(2, rs.getString("n_cube_nm"));
 
-                            // replace sha1 adding "src" to the front of it.
-                            insert.setBytes(3, rs.getBytes("cube_value_bin"));
+                            byte[] jsonBytes = rs.getBytes("cube_value_bin");
+
+                            //TODO:  is it valid to be empty?  what does that mean in terms of cubes.
+                            if (!ArrayUtilities.isEmpty(jsonBytes))
+                            {
+                                // replace sha1 adding "src" to the front of it.
+                                StringBuffer sb = new StringBuffer();
+                                String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                                Matcher m = Regexes.sha1Pattern.matcher(json);
+                                if (m.find() && m.groupCount() > 0)
+                                {
+                                    String replacement = "\"sha1\":\"" + m.group(1) + "\", \"headSha1\":\"" + m.group(1) + "\"";
+                                    m.appendReplacement(sb, replacement);
+                                }
+                                m.appendTail(sb);
+                                insert.setBytes(3, sb.toString().getBytes("UTF-8"));
+                            }
+                            else
+                            {
+                                //  This would not have headSha1 in it, so this may be undefined.
+                                insert.setBytes(3, jsonBytes);
+                            }
                             insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, appId.getVersion());

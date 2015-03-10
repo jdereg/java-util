@@ -800,6 +800,7 @@ public class NCubeManager
     public static boolean renameCube(ApplicationID appId, String oldName, String newName)
     {
         validateAppId(appId);
+        appId.validateBranchIsNotHead();
 
         if (appId.isRelease())
         {
@@ -847,6 +848,7 @@ public class NCubeManager
      */
     public static boolean deleteCube(ApplicationID appId, String cubeName, String username)
     {
+        appId.validateBranchIsNotHead();
         return deleteCube(appId, cubeName, false, username);
     }
 

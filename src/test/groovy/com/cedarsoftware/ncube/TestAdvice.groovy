@@ -223,7 +223,7 @@ class TestAdvice
                 {
                     ret = false
                 }
-                ret
+                return ret
             }
 
             void after(Method method, NCube cube, Map input, Map output, Object returnValue)
@@ -324,7 +324,7 @@ class TestAdvice
                 {
                     ret = false
                 }
-                ret
+                return ret
             }
 
             void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
@@ -403,7 +403,7 @@ class TestAdvice
             boolean before(Method method, NCube ncube, Map input, Map output)
             {
                 output.before = true
-                true
+                return true
             }
 
             void after(Method method, NCube ncube, Map input, Map output, Object returnValue)

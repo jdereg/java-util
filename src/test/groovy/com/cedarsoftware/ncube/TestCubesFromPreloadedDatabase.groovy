@@ -162,6 +162,37 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
+    void testCommitBranch() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        // pre-branch, cubes don't exist
+        assertNull(NCubeManager.getCube(branch, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch, "TestAge"));
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch));
+
+        testValuesOnBranch(branch);
+
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.2.json");
+        assertTrue(NCubeManager.updateCube(branch, cubes[0], USER_ID));
+        Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "TestBranch");
+
+        Map map = NCubeManager.commitBranch(branch, dtos);
+        //  this test will break after first commit change.
+        assertTrue(map.isEmpty());
+
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
     void testCreateBranchThatAlreadyExists() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");

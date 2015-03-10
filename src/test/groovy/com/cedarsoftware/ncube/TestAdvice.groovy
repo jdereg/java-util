@@ -4,6 +4,8 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
+import java.lang.reflect.Method
+
 import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertFalse
 import static org.junit.Assert.assertNull
@@ -32,11 +34,6 @@ class TestAdvice
 {
     static final String USER_ID = "jdirt";
 
-    def alpha = { 'alpha' }
-    def beta = { 'beta' }
-    def advice1 = [getName:alpha,before:null, after:null]
-    def advice2 = [getName:beta,before:null, after:null]
-
     @Before
     public void setUp() throws Exception
     {
@@ -53,30 +50,53 @@ class TestAdvice
     void testExpression()
     {
         NCube ncube2 = NCubeManager.getNCubeFromResource("urlPieces.json")
-        NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json")
+        final NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json")
         NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
         NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube2, USER_ID)
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'timing advice1'
+            }
 
-        advice1.before = {  method, cube, input, output ->
-                    output.put("_btime1", System.nanoTime())
-                    true }
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime1 = System.nanoTime()
+                return true
+            }
 
-        advice1.after = { method, cube, input, output, returnVal ->  output.put("_atime1", System.nanoTime()) }
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            {
+                output._atime1 = System.nanoTime()
+            }
+        }
 
-        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, '*', advice1 as Advice)
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, '*', advice1)
 
-        advice2.before = { method, cube, input, output ->
-                    output.put("_btime2", System.nanoTime())
-                    true  }
+        Advice advice2 = new Advice() {
+            String getName()
+            {
+                return 'timing advice2'
+            }
 
-        advice2.after = { method, cube, input, output, returnVal ->  output.put("_atime2", System.nanoTime())  }
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime2 = System.nanoTime()
+                return true
+            }
 
-        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*", advice2 as Advice)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            {
+                output._atime2 = System.nanoTime()
+            }
+        }
 
-        def output = [:]
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*", advice2)
+
+        Map output = [:]
         ncube.getCell([env_level:'local', protocol:'http',content:'95'], output)
 
         assert output._atime1 > output._atime2
@@ -90,54 +110,63 @@ class TestAdvice
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
-        advice1.before = {  method, cube, input, output ->
-            output.put("before", true)
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'alpha'
+            }
 
-            // Could be 4 because of env and user.name being added to input coordinate
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output.before = true
 
-            assert input.size() == 2 || input.size() == 3 || input.size() == 4
-            boolean ret = true
-            if ("foo".equals(method.getName()))
-            {
-                assertEquals("foo", input.get("method"))
-            }
-            else if ("bar".equals(method.getName()))
-            {
-                assertEquals("bar", input.get("method"))
-            }
-            else if ("qux".equals(method.getName()))
-            {
-                assertEquals("qux", input.get("method"))
-            }
-            else if ("qaz".equals(method.getName()))
-            {
-                ret = false
-            }
-            ret
-        }
+                // Could be 4 because of env and user.name being added to input coordinate
 
-        advice1.after = { method, cube, input, output, returnVal ->
-            output.put("after", true)
-            if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
-            {
-                assertEquals(2, returnVal)
+                assert input.size() == 2 || input.size() == 3 || input.size() == 4
+                boolean ret = true
+                if ("foo".equals(method.name))
+                {
+                    assertEquals("foo", input.method)
+                }
+                else if ("bar".equals(method.name))
+                {
+                    assertEquals("bar", input.method)
+                }
+                else if ("qux".equals(method.name))
+                {
+                    assertEquals("qux", input.method)
+                }
+                else if ("qaz".equals(method.name))
+                {
+                    ret = false
+                }
+                return ret
             }
-            else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
             {
-                assertEquals(4, returnVal)
-            }
-            else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
-            {
-                assertEquals(81, returnVal)
+                output.after = true
+                if ("foo".equals(method.name) && "OH".equals(input.state))
+                {
+                    assertEquals(2, returnValue)
+                }
+                else if ("bar".equals(method.name) && "OH".equals(input.state))
+                {
+                    assertEquals(4, returnValue)
+                }
+                else if ("qux".equals(method.name) && "TX".equals(input.state))
+                {
+                    assertEquals(81, returnValue)
+                }
             }
         }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + ".*()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + ".*()", advice1)
 
-        def output = [:]
-        def coord = [method:'foo',state:'OH']
+        Map output = [:]
+        Map coord = [method:'foo',state:'OH']
         ncube.getCell(coord, output)
         assert output.containsKey("before")
         assert output.containsKey("after")
@@ -162,56 +191,65 @@ class TestAdvice
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
-        advice1.before = {  method, cube, input, output ->
-            output.put("before", true)
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'beta'
+            }
 
-            boolean ret = true
-            if ("foo".equals(method.getName()))
+            boolean before(Method method, NCube cube, Map input, Map output)
             {
-                assertEquals("foo", input.get("method"))
-            }
-            else if ("bar".equals(method.getName()))
-            {
-                output.put("bar", true)
-                assertEquals("bar", input.get("method"))
-            }
-            else if ("baz".equals(method.getName()))
-            {
-                output.put("baz", true)
-            }
-            else if ("qux".equals(method.getName()))
-            {
-                assertEquals("qux", input.get("method"))
-            }
-            else if ("qaz".equals(method.getName()))
-            {
-                ret = false
-            }
-            ret
-        }
+                output.before = true
 
-        advice1.after = { method, cube, input, output, returnVal ->
-            output.put("after", true)
-            if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
-            {
-                assertEquals(2, returnVal)
+                boolean ret = true
+                if ("foo".equals(method.name))
+                {
+                    assertEquals("foo", input.method)
+                }
+                else if ("bar".equals(method.name))
+                {
+                    output.bar = true
+                    assertEquals("bar", input.method)
+                }
+                else if ("baz".equals(method.name))
+                {
+                    output.baz = true
+                }
+                else if ("qux".equals(method.name))
+                {
+                    assertEquals("qux", input.method)
+                }
+                else if ("qaz".equals(method.name))
+                {
+                    ret = false
+                }
+                ret
             }
-            else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
             {
-                assertEquals(4, returnVal)
-            }
-            else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
-            {
-                assertEquals(81, returnVal)
+                output.after = true
+                if ("foo".equals(method.name) && "OH".equals(input.state))
+                {
+                    assertEquals(2, returnValue)
+                }
+                else if ("bar".equals(method.name) && "OH".equals(input.state))
+                {
+                    assertEquals(4, returnValue)
+                }
+                else if ("qux".equals(method.name) && "TX".equals(input.state))
+                {
+                    assertEquals(81, returnValue)
+                }
             }
         }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + ".ba*()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + ".ba*()", advice1)
 
-        def output = [:]
-        def coord = [method:'foo', state:'OH']
+        Map output = [:]
+        Map coord = [method:'foo', state:'OH']
         ncube.getCell(coord, output)
         assertFalse(output.containsKey("before"))
         assertFalse(output.containsKey("after"))
@@ -254,59 +292,68 @@ class TestAdvice
     @Test
     void testAdviceSubsetMatchingLateLoad()
     {
-        advice1.before = {  method, cube, input, output ->
-            output.put("before", true)
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'charlie'
+            }
 
-            boolean ret = true
-            if ("foo".equals(method.getName()))
+            boolean before(Method method, NCube ncube, Map input, Map output)
             {
-                assertEquals("foo", input.get("method"))
-            }
-            else if ("bar".equals(method.getName()))
-            {
-                output.put("bar", true)
-                assertEquals("bar", input.get("method"))
-            }
-            else if ("baz".equals(method.getName()))
-            {
-                output.put("baz", true)
-            }
-            else if ("qux".equals(method.getName()))
-            {
-                assertEquals("qux", input.get("method"))
-            }
-            else if ("qaz".equals(method.getName()))
-            {
-                ret = false
-            }
-            ret
-        }
+                output.before = true
 
-        advice1.after = { method, cube, input, output, returnVal ->
-            output.put("after", true)
-            if ("foo".equals(method.getName()) && "OH".equals(input.get("state")))
-            {
-                assertEquals(2, returnVal)
+                boolean ret = true
+                if ("foo".equals(method.name))
+                {
+                    assertEquals("foo", input.method)
+                }
+                else if ("bar".equals(method.name))
+                {
+                    output.bar = true
+                    assertEquals("bar", input.method)
+                }
+                else if ("baz".equals(method.name))
+                {
+                    output.baz = true
+                }
+                else if ("qux".equals(method.name))
+                {
+                    assertEquals("qux", input.method)
+                }
+                else if ("qaz".equals(method.name))
+                {
+                    ret = false
+                }
+                ret
             }
-            else if ("bar".equals(method.getName()) && "OH".equals(input.get("state")))
+
+            void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
             {
-                assertEquals(4, returnVal)
-            }
-            else if ("qux".equals(method.getName()) && "TX".equals(input.get("state")))
-            {
-                assertEquals(81, returnVal)
+                output.after = true
+                if ("foo".equals(method.name) && "OH".equals(input.state))
+                {
+                    assertEquals(2, returnValue)
+                }
+                else if ("bar".equals(method.name) && "OH".equals(input.state))
+                {
+                    assertEquals(4, returnValue)
+                }
+                else if ("qux".equals(method.name) && "TX".equals(input.state))
+                {
+                    assertEquals(81, returnValue)
+                }
             }
         }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.testAppId, "*.ba*()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, "*.ba*()", advice1)
 
         // Note: advice is added to the manager *ahead* of any cubes being loaded.
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
-        def output = [:]
-        def coord = [method:'foo', state:'OH']
+        Map output = [:]
+        Map coord = [method:'foo', state:'OH']
         ncube.getCell(coord, output)
         assertFalse(output.containsKey("before"))
         assertFalse(output.containsKey("after"))
@@ -347,16 +394,27 @@ class TestAdvice
     @Test
     void testAdviceSubsetMatchingLateLoadExpressions()
     {
-        advice1.before = {  method, cube, input, output ->
-            output.put("before", true)
-            true
-        }
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return null
+            }
 
-        advice1.after = { method, cube, input, output, returnVal ->  output.put("after", true) }
+            boolean before(Method method, NCube ncube, Map input, Map output)
+            {
+                output.before = true
+                true
+            }
+
+            void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            {
+                output.after = true
+            }
+        }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.testAppId, "*.run()", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, "*.run()", advice1)
         NCube ncube = NCubeManager.getNCubeFromResource("debugExp.json")
 
         def output = [:]
@@ -373,15 +431,26 @@ class TestAdvice
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
-        advice1.before = {  method, cube, input, output ->
-            false
-        }
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'echo'
+            }
 
-        advice1.after = { method, cube, input, output, returnVal ->  fail() }
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                return false
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            {
+                fail()
+            }
+        }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + "*", advice1 as Advice)
+        NCubeManager.addAdvice(ApplicationID.testAppId, ncube.name + "*", advice1)
         assertNull(ncube.getCell([method:'foo', state:'OH']))
         ncube.clearAdvices()
     }
@@ -392,34 +461,62 @@ class TestAdvice
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
         NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
 
-        advice1.before = {  method, cube, input, output ->
-            output.put("_btime1", System.nanoTime())
-            true
-        }
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'foxtrot'
+            }
 
-        advice1.after = { method, cube, input, output, returnVal ->  output.put("_atime1", System.nanoTime()) }
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime1 = System.nanoTime()
+                output.advice1before = true
+                return true
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            {
+                output._atime1 = System.nanoTime()
+                output.advice1after = true
+            }
+        }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.name + "*()", advice1 as Advice)
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.name + "*()", advice1)
 
-        advice2.before = {  method, cube, input, output ->
-            output.put("_btime2", System.nanoTime())
-            true
+        Advice advice2 = new Advice() {
+            String getName()
+            {
+                return 'golf'
+            }
+
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime2 = System.nanoTime()
+                output.advice2before = true
+                return true
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            {
+                output._atime2 = System.nanoTime()
+                output.advice2after = true
+            }
         }
-
-        advice2.after = { method, cube, input, output, returnVal ->  output.put("_atime2", System.nanoTime()) }
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
-        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.name + "*()", advice2 as Advice)
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.name + "*()", advice2)
 
         def output = [:]
         ncube.getCell([method:'foo', state:'OH'], output)
-        assert output.containsKey("_atime1")
-        assert output.containsKey("_btime1")
-        assert output.containsKey("_atime2")
-        assert output.containsKey("_btime2")
+
+        assert output.advice1before == true
+        assert output.advice1after == true
+        assert output.advice2before == true
+        assert output.advice2after == true
+
         assert output._atime1 > output._atime2
         assert output._btime1 < output._btime2
         assert output._btime2 < output._atime1

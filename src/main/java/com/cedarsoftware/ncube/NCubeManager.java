@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -330,7 +329,7 @@ public class NCubeManager
         Map<String, Object> ncubes = ncubeCache.get(appId);
 
         if (ncubes == null)
-        {
+        {   // Avoid synchronization unless appId cache has not yet been created.
             synchronized (ncubeCache)
             {
                 ncubes = ncubeCache.get(appId);
@@ -344,93 +343,79 @@ public class NCubeManager
         return ncubes;
     }
 
-    public static void clearCacheForBranches(ApplicationID appId) {
-        List<ApplicationID> appIds = getApplicationIdsThatStartWithKey(appId.branchAgnosticCacheKey());
-        clearCache(appIds);
-    }
-
-    public static List<ApplicationID> getApplicationIdsThatStartWithKey(String key)
+    public static void clearCacheForBranches(ApplicationID appId)
     {
-        List<ApplicationID> list = new ArrayList<>();
-
         synchronized (ncubeCache)
         {
-            Iterator<Map.Entry<ApplicationID, Map<String, Object>>> ncubeCacheIterator = ncubeCache.entrySet().iterator();
+            List<ApplicationID> list = new ArrayList<>();
 
-            while (ncubeCacheIterator.hasNext())
+            for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
             {
-                Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry = ncubeCacheIterator.next();
-
-                if (applicationIDMapEntry.getKey().toString().startsWith(key))
+                if (applicationIDMapEntry.getKey().cacheKey().startsWith(appId.branchAgnosticCacheKey()))
                 {
                     list.add(applicationIDMapEntry.getKey());
                 }
             }
-        }
 
-        return list;
+            for (ApplicationID appId1 : list)
+            {
+                clearCache(appId1);
+            }
+        }
     }
 
-    public static void clearCache(List<ApplicationID> appIds)
-    {
-        // synchronize on this, too?
-        for (ApplicationID appId : appIds)
-        {
-            clearCache(appId);
-        }
-
-    }
-
+    /**
+     * Clear the cube (and other internal caches) for a given ApplicationID.
+     * This will remove all the n-cubes from memory, compiled Groovy code,
+     * caches related to expressions, caches related to method support,
+     * advice caches, and local classes loaders (used when no sys.classpath is
+     * present).
+     *
+     * @param appId ApplicationID for which the cache is to be cleared.
+     */
     public static void clearCache(ApplicationID appId)
     {
-        validateAppId(appId);
-
-        Map<String, Object> appCache = getCacheForApp(appId);
-        clearGroovyClassLoaderCache(appCache);
-
-        appCache.clear();
-        GroovyBase.clearCache(appId);
-        NCubeGroovyController.clearCache(appId);
-
-        // Clear Advice cache
-        Map<String, Advice> adviceCache = advices.get(appId);
-        if (adviceCache != null)
+        synchronized (ncubeCache)
         {
-            adviceCache.clear();
-        }
+            validateAppId(appId);
 
-        // Clear ClassLoader cache
-        GroovyClassLoader classLoader = localClassLoaders.get(appId);
-        if (classLoader != null)
-        {
-            classLoader.clearCache();
-            localClassLoaders.remove(appId);
+            Map<String, Object> appCache = getCacheForApp(appId);
+            clearGroovyClassLoaderCache(appCache);
+
+            appCache.clear();
+            GroovyBase.clearCache(appId);
+            NCubeGroovyController.clearCache(appId);
+
+            // Clear Advice cache
+            Map<String, Advice> adviceCache = advices.get(appId);
+            if (adviceCache != null)
+            {
+                adviceCache.clear();
+            }
+
+            // Clear ClassLoader cache
+            GroovyClassLoader classLoader = localClassLoaders.get(appId);
+            if (classLoader != null)
+            {
+                classLoader.clearCache();
+                localClassLoaders.remove(appId);
+            }
         }
     }
 
+    /**
+     * This method will clear all caches for all ApplicationIDs.
+     * Do not call it for anything other than test purposes.
+     */
     public static void clearCache()
     {
-        for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
+        synchronized (ncubeCache)
         {
-            Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
-            clearGroovyClassLoaderCache(appCache);
-            applicationIDMapEntry.getValue().clear();
-            GroovyBase.clearCache(applicationIDMapEntry.getKey());
-            NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
+            for (ApplicationID appId : ncubeCache.keySet())
+            {
+                clearCache(appId);
+            }
         }
-        ncubeCache.clear();
-
-        for (Map.Entry<ApplicationID, Map<String, Advice>> applicationIDMapEntry : advices.entrySet())
-        {
-            applicationIDMapEntry.getValue().clear();
-        }
-        advices.clear();
-
-        for (GroovyClassLoader classLoader : localClassLoaders.values())
-        {
-            classLoader.clearCache();
-        }
-        localClassLoaders.clear();
     }
 
     private static void clearGroovyClassLoaderCache(Map<String, Object> appCache)

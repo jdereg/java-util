@@ -110,6 +110,12 @@ public class ApplicationID
         return (tenant + " / " + app + " / " + version + " / " + branch + " / " + name).toLowerCase();
     }
 
+    public String branchAgnosticCacheKey()
+    {
+        return (tenant + " / " + app + " / " + version + " / ").toLowerCase();
+    }
+
+
     public boolean equals(Object o)
     {
         if (this == o)

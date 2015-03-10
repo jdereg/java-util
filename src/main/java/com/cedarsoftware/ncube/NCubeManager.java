@@ -345,54 +345,40 @@ public class NCubeManager
     }
 
     public static void clearCacheForBranches(ApplicationID appId) {
-        String key = (appId.getTenant() + " / " + appId.getApp() + " / " + appId.getVersion()).toLowerCase();
-        clearCacheByKeyStart(key);
+        List<ApplicationID> appIds = getApplicationIdsThatStartWithKey(appId.branchAgnosticCacheKey());
+        clearCache(appIds);
     }
 
-    public static void clearCacheByKeyStart(String key)
+    public static List<ApplicationID> getApplicationIdsThatStartWithKey(String key)
     {
+        List<ApplicationID> list = new ArrayList<>();
 
-        Iterator<Map.Entry<ApplicationID, Map<String, Object>>> ncubeCacheIterator = ncubeCache.entrySet().iterator();
-
-        while (ncubeCacheIterator.hasNext())
+        synchronized (ncubeCache)
         {
-            Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry = ncubeCacheIterator.next();
+            Iterator<Map.Entry<ApplicationID, Map<String, Object>>> ncubeCacheIterator = ncubeCache.entrySet().iterator();
 
-            if (applicationIDMapEntry.getKey().toString().startsWith(key))
+            while (ncubeCacheIterator.hasNext())
             {
-                Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
-                clearGroovyClassLoaderCache(appCache);
-                applicationIDMapEntry.getValue().clear();
-                GroovyBase.clearCache(applicationIDMapEntry.getKey());
-                NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
-                ncubeCacheIterator.remove();
+                Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry = ncubeCacheIterator.next();
+
+                if (applicationIDMapEntry.getKey().toString().startsWith(key))
+                {
+                    list.add(applicationIDMapEntry.getKey());
+                }
             }
         }
 
-        Iterator<Map.Entry<ApplicationID, Map<String, Advice>>> advicesIterator = advices.entrySet().iterator();
+        return list;
+    }
 
-        while (advicesIterator.hasNext())
+    public static void clearCache(List<ApplicationID> appIds)
+    {
+        // synchronize on this, too?
+        for (ApplicationID appId : appIds)
         {
-            Map.Entry<ApplicationID, Map<String, Advice>> advicesMapEntry = advicesIterator.next();
-
-            if (advicesMapEntry.getKey().toString().startsWith(key))
-            {
-                advicesMapEntry.getValue().clear();
-                advicesIterator.remove();
-            }
+            clearCache(appId);
         }
 
-        Iterator<Map.Entry<ApplicationID, GroovyClassLoader>> classLoadersIterator = localClassLoaders.entrySet().iterator();
-        while (classLoadersIterator.hasNext())
-        {
-            Map.Entry<ApplicationID, GroovyClassLoader> classLoadersEntry = classLoadersIterator.next();
-
-            if (classLoadersEntry.getKey().toString().startsWith(key))
-            {
-                classLoadersEntry.getValue().clearCache();
-                classLoadersIterator.remove();
-            }
-        }
     }
 
     public static void clearCache(ApplicationID appId)
@@ -814,6 +800,7 @@ public class NCubeManager
     public static boolean renameCube(ApplicationID appId, String oldName, String newName)
     {
         validateAppId(appId);
+        appId.validateBranchIsNotHead();
 
         if (appId.isRelease())
         {
@@ -861,6 +848,7 @@ public class NCubeManager
      */
     public static boolean deleteCube(ApplicationID appId, String cubeName, String username)
     {
+        appId.validateBranchIsNotHead();
         return deleteCube(appId, cubeName, false, username);
     }
 

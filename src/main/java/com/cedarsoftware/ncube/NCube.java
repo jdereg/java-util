@@ -10,6 +10,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonObject;
@@ -2197,13 +2198,22 @@ public class NCube<T>
         sha1.update(name.getBytes());
         sha1.update(sep);
         deepSha1(sha1, defaultCellValue, sep);
-        if (metaProps != null && metaProps.size() > 0)
+        if (metaProps != null)
         {
             String storedSha1 = (String) metaProps.remove("sha1");
-            deepSha1(sha1, getMetaProperties(), sep);
+            String storedHeadSha1 = (String) metaProps.remove("headSha1");
+
+            if (metaProps.size() > 0)
+            {
+                deepSha1(sha1, new TreeMap(getMetaProperties()), sep);
+            }
             if (StringUtilities.hasContent(storedSha1))
             {
                 metaProps.put("sha1", storedSha1);
+            }
+            if (StringUtilities.hasContent(storedHeadSha1))
+            {
+                metaProps.put("headSha1", storedHeadSha1);
             }
         }
         // Need deterministic ordering (sorted by Axis name will do that)
@@ -2230,14 +2240,20 @@ public class NCube<T>
                 sha1.update("fireOnce".getBytes());
                 sha1.update(sep);
             }
-            deepSha1(sha1, axis.metaProps, sep);
+            if (!MapUtilities.isEmpty(axis.metaProps))
+            {
+                deepSha1(sha1, new TreeMap(axis.metaProps), sep);
+            }
             sha1.update(sep);
 
             for (Column column : axis.getColumnsWithoutDefault())
             {
                 sha1.update(column.getValue().toString().getBytes());
                 sha1.update(sep);
-                deepSha1(sha1, column.metaProps, sep);
+                if (!MapUtilities.isEmpty(column.metaProps))
+                {
+                    deepSha1(sha1, column.metaProps, sep);
+                }
                 sha1.update(sep);
             }
         }

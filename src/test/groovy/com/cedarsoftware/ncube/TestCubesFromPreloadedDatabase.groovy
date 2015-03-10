@@ -141,9 +141,19 @@ class TestCubesFromPreloadedDatabase
 
         testValuesOnBranch(head)
 
+        def cube1Sha1 = NCubeManager.getCube(head, "TestBranch").getMetaProperty("sha1");
+        def cube2Sha1 = NCubeManager.getCube(head, "TestAge").getMetaProperty("sha1");
+
+        assertNull(NCubeManager.getCube(head, "TestBranch").getMetaProperty("headSha1"));
+        assertNull(NCubeManager.getCube(head, "TestAge").getMetaProperty("headSha1"));
+
         assertEquals(2, NCubeManager.createBranch(branch));
 
-        // post-branch they exist on head and the branch
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getMetaProperty("sha1"));
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getMetaProperty("headSha1"));
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getMetaProperty("sha1"));
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getMetaProperty("headSha1"));
+
         testValuesOnBranch(head);
         testValuesOnBranch(branch);
 
@@ -158,12 +168,12 @@ class TestCubesFromPreloadedDatabase
 
         // load cube with same name, but different structure in TEST branch
         loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
-        loadCubesToDatabase(branch, "test.branch.1.json", "test.branch.age.1.json")
 
-        testValuesOnBranch(branch);
-        testValuesOnBranch(head)
+        //1) should work
+        NCubeManager.createBranch(branch);
 
         try {
+            //2) should already be created.
             NCubeManager.createBranch(branch);
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));
@@ -172,8 +182,6 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
-
-
 
     @Test
     void testReleaseCubes() throws Exception {

@@ -349,11 +349,11 @@ public class NCubeManager
         {
             List<ApplicationID> list = new ArrayList<>();
 
-            for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
+            for (ApplicationID id : ncubeCache.keySet())
             {
-                if (applicationIDMapEntry.getKey().cacheKey().startsWith(appId.branchAgnosticCacheKey()))
+                if (id.cacheKey().startsWith(appId.branchAgnosticCacheKey()))
                 {
-                    list.add(applicationIDMapEntry.getKey());
+                    list.add(id);
                 }
             }
 
@@ -411,9 +411,16 @@ public class NCubeManager
     {
         synchronized (ncubeCache)
         {
+            List<ApplicationID> list = new ArrayList<>();
+
             for (ApplicationID appId : ncubeCache.keySet())
             {
-                clearCache(appId);
+                list.add(appId);
+            }
+
+            for (ApplicationID appId1 : list)
+            {
+                clearCache(appId1);
             }
         }
     }

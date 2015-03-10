@@ -1,0 +1,72 @@
+{
+  "ncube": "sys.classpath",
+  "axes": [
+    {
+      "name": "businessDivisionCode",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": []
+    },
+    {
+      "name": "env",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": [
+        {"id": "SAND"},
+        {"id": "TESTING"},
+        {"id": "LOCAL"},
+        {"id": "DEV"},
+        {"id": "INT"},
+        {"id": "CERT"},
+        {"id": "UAT"},
+        {"id": "PROD"}
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": ["DEV"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": ["SAND"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": ["INT"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": ["CERT"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": ["UAT"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": ["LOCAL"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": ["TESTING"],
+      "type": "exp",
+      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+    },
+    {
+      "id": [],
+      "type": "exp",
+      "value": "import com.cedarsoftware.util.*; import com.cedarsoftware.util.io.*; Map map = null; if (StringUtilities.hasContent(SystemUtilities.getExternalVariable('NCUBE_PARAMS'))) { map = JsonReader.jsonToMaps(SystemUtilities.getExternalVariable('NCUBE_PARAMS')); }; String version = map?.containsKey('version') ? map.version : input.version; String urlBase = map?.containsKey('cpBase') ? map.cpBase : ('https://www.foo.com/' + version + '/'); [urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/'];"
+    }
+  ]
+}

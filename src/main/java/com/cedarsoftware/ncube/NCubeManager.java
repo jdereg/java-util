@@ -733,12 +733,12 @@ public class NCubeManager
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
      * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
      */
-    public static Map commitBranch(ApplicationID appId, Object[] infoDtos)
+    public static Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        return getPersister().commitBranch(appId, infoDtos);
+        return getPersister().commitBranch(appId, infoDtos, username);
     }
 
     /**
@@ -1078,7 +1078,7 @@ public class NCubeManager
                 {
                     axis.buildScaffolding();
                 }
-                ncube.setMetaProperty("sha1", ncube.sha1());
+                //ncube.setMetaProperty("sha1", ncube.sha1());
                 return ncube;
             }
             catch (Exception e1)

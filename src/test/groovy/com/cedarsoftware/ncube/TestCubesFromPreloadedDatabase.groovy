@@ -179,11 +179,15 @@ class TestCubesFromPreloadedDatabase
 
         testValuesOnBranch(branch);
 
-        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.2.json");
-        assertTrue(NCubeManager.updateCube(branch, cubes[0], USER_ID));
-        Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "TestBranch");
+        NCube cube = NCubeManager.getCube(branch, "TestBranch");
+        cube.removeCell([Code : 10.0]);
 
-        Map map = NCubeManager.commitBranch(branch, dtos);
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+        Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "*");
+
+        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
+
+
         //  this test will break after first commit change.
         assertTrue(map.isEmpty());
 

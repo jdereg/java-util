@@ -1738,16 +1738,16 @@ public class NCube<T>
             ncube.metaProps.remove("axes");
             ncube.metaProps.remove("cells");
             ncube.metaProps.remove("ruleMode");
-            String storedSha1 = (String) ncube.metaProps.get("sha1");
-            ncube.metaProps.remove("sha1");
-            if (ncube.metaProps.size() < 1)
-            {   // No additional props, don't even waste space for meta properties Map.
-                ncube.metaProps = null;
-            }
-            else
-            {
-                loadMetaProperties(ncube.metaProps);
-            }
+            //String storedSha1 = (String) ncube.metaProps.get("sha1");
+            //ncube.metaProps.remove("sha1");
+            //if (ncube.metaProps.size() < 1)
+            //{   // No additional props, don't even waste space for meta properties Map.
+            //    ncube.metaProps = null;
+            //}
+            //else
+            //{
+            loadMetaProperties(ncube.metaProps);
+            //}
 
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
@@ -1981,16 +1981,17 @@ public class NCube<T>
                 }
             }
 
-            String calcSha1 = ncube.sha1();
-            if (StringUtilities.hasContent(storedSha1))
-            {
-                if (!calcSha1.equals(storedSha1))
-                {
-                    // TODO: Add back when users are no longer manually editing JSON cubes
-//                    throw new IllegalStateException("The json file was edited directly and no longer matches the stored SHA1, n-cube: " + ncube.getName());
-                }
-            }
-            ncube.setMetaProperty("sha1", calcSha1);
+            //  Remove sha1 calculations
+//            String calcSha1 = ncube.sha1();
+//            if (StringUtilities.hasContent(storedSha1))
+//            {
+//                if (!calcSha1.equals(storedSha1))
+//                {
+//                    // TODO: Add back when users are no longer manually editing JSON cubes
+////                    throw new IllegalStateException("The json file was edited directly and no longer matches the stored SHA1, n-cube: " + ncube.getName());
+//                }
+//            }
+//            ncube.setMetaProperty("sha1", calcSha1);
             return ncube;
         }
         catch (Exception e)
@@ -2207,10 +2208,6 @@ public class NCube<T>
             {
                 deepSha1(sha1, new TreeMap(getMetaProperties()), sep);
             }
-            if (StringUtilities.hasContent(storedSha1))
-            {
-                metaProps.put("sha1", storedSha1);
-            }
             if (StringUtilities.hasContent(storedHeadSha1))
             {
                 metaProps.put("headSha1", storedHeadSha1);
@@ -2286,7 +2283,9 @@ public class NCube<T>
             idCoord.clear();
         } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));
 
-        return StringUtilities.encode(sha1.digest());
+        String newSha1 = StringUtilities.encode(sha1.digest());
+        setMetaProperty("sha1", newSha1);
+        return newSha1;
     }
 
     private static void deepSha1(MessageDigest md, Object value, byte sep)

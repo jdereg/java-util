@@ -175,6 +175,18 @@ public class ApplicationID
         return new ApplicationID(tenant, app, ver, ReleaseStatus.SNAPSHOT.name(), branch);
     }
 
+    /**
+     * Creates a new ApplicationID with HEAD as the branch using all the same parameters of
+     * this ApplicationID.
+     * @return a new ApplicationId that is on the HEAD branch.
+     */
+    public ApplicationID asHead()
+    {
+        //  In the Change Version the status was always SNAPSHOT when creating a new version.
+        //  That is why we hardcode this to snapshot here.
+        return new ApplicationID(tenant, app, version, status, HEAD);
+    }
+
     public void validate()
     {
         validateTenant(tenant);

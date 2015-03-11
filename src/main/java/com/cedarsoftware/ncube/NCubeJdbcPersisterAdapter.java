@@ -295,12 +295,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Map commitBranch(ApplicationID appId, Object[] infoDtos)
+    public Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.commitBranch(c, appId, infoDtos);
+            return persister.commitBranch(c, appId, infoDtos, username);
         }
         finally
         {

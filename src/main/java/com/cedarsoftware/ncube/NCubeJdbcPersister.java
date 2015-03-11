@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 
 /**
@@ -54,6 +55,7 @@ public class NCubeJdbcPersister
     {
         try
         {
+            ncube.sha1();
             try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
             {
                 insert.setLong(1, UniqueIdGenerator.getUniqueId());
@@ -321,6 +323,7 @@ public class NCubeJdbcPersister
         }
         return list.toArray();
     }
+
 
     public NCube loadCube(Connection c, NCubeInfoDto cubeInfo, Integer revision)
     {
@@ -1154,8 +1157,55 @@ public class NCubeJdbcPersister
         return pattern;
     }
 
-    public Map commitBranch(Connection c, ApplicationID appId, Object[] infoDtos)
+
+    public Map commitBranch(Connection c, ApplicationID appId, Object[] infoDtos, String username)
     {
+        Map<String, NCubeInfoDto> headMap = new TreeMap<>();
+
+        ApplicationID headId = appId.asHead();
+        Object[] headInfo = getCubeRecords(c, headId, "*");
+        for (Object cubeInfo : headInfo)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+            headMap.put(info.name, info);
+        }
+
+        for (Object dto : infoDtos) {
+            NCubeInfoDto info = (NCubeInfoDto)dto;
+
+            if (info.headSha1 == null)
+            {
+                // added.
+                NCube addedCube = loadCube(c, info, Integer.parseInt(info.revision));
+                createCube(c, headId, addedCube, username);
+            }
+            else if (Integer.parseInt(info.revision) < 0)
+            {
+                // check shas to see if changed?
+                // deleted
+                deleteCube(c, headId, info.name, false, username);
+            }
+            else if (!info.headSha1.equals(info.sha1))
+            {
+                // records are different, but pulled from branch
+                NCubeInfoDto head = headMap.get(info.name);
+                if (info.headSha1 != head.sha1)
+                {
+                    // sha1 has changed since we had it checked out, we have a merge conflict.
+                }
+                else
+                {
+                    NCube changedCube = loadCube(c, info, Integer.parseInt(info.revision));
+                    updateCube(c, headId, changedCube, username);
+                }
+            }
+            else
+            {
+                //unchanged.
+            }
+        }
+
+
         // TODO: Persister needs to implement this.
         // TODO: Note, commit is not against a whole branch.  That would not allow me to select only a subset of changed
         // TODO: files to commit.  Rather, commit is based on the selected changes the user sends down via Object[] nCubeInfoDtos

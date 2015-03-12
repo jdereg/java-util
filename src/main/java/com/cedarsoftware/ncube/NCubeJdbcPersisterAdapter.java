@@ -204,31 +204,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public boolean updateNotes(ApplicationID appId, String cubeName, String notes)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.updateNotes(c, appId, cubeName, notes);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-    public String getNotes(ApplicationID appId, String cubeName)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.getNotes(c, appId, cubeName);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
 
     public int changeVersionValue(ApplicationID appId, String newVersion)
     {
@@ -282,12 +257,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public boolean updateTestData(ApplicationID appId, String cubeName, String testData)
+    public boolean updateNonRuntimeData(ApplicationID appId, String cubeName, Map<String, Object> nonRuntimeData, Long revision)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateTestData(c, appId, cubeName, testData);
+            return persister.updateNonRuntimeData(c, appId, cubeName, nonRuntimeData, revision);
         }
         finally
         {
@@ -336,12 +311,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
 
     }
 
-    public String getTestData(ApplicationID appId, String cubeName)
+    public Map<String, Object> getNonRuntimeData(ApplicationID appId, String cubeName)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getTestData(c, appId, cubeName);
+            return persister.getNonRuntimeData(c, appId, cubeName);
         }
         finally
         {

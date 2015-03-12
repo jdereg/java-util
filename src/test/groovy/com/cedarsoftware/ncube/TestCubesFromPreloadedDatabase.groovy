@@ -180,13 +180,38 @@ class TestCubesFromPreloadedDatabase
         testValuesOnBranch(branch);
 
         NCube cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        // edit cube
         cube.removeCell([Code : 10.0]);
 
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // update the new edited cube.
         assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
-        Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "*");
+
+        // commit the branch
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "TestBranch");
+        Object[] history = NCubeManager.getRevisionHistory(branch, "TestBranch");
 
         Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
 
+        history = NCubeManager.getRevisionHistory(branch, "TestBranch");
+
+        // both should be updated now.
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+        cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        history = NCubeManager.getRevisionHistory(head, "TestBranch");
+        assertEquals(2, history.length);
 
         //  this test will break after first commit change.
         assertTrue(map.isEmpty());

@@ -255,8 +255,12 @@ public class ApplicationID
         throw new IllegalArgumentException("Invalid branch: '" + branch + "'. n-cube branch must contain only A-Z, a-z, or 0-9 dash(-), underscore (_), and dot (.) From 1 to 80 characters.");
     }
 
+    boolean isHead() {
+        return HEAD.equals(branch);
+    }
+
     void validateBranchIsNotHead() {
-        if (branch.equals(HEAD)) {
+        if (isHead()) {
             throw new IllegalArgumentException("Branch cannot be 'HEAD'");
         }
     }

@@ -73,6 +73,10 @@ public class NCube<T>
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
 
+    static final String HEAD_SHA_1 = "headSha1";
+    static final String SHA_1 = "sha1";
+
+
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
     private transient ApplicationID appId = ApplicationID.testAppId;
 
@@ -2178,6 +2182,8 @@ public class NCube<T>
             return true;
         }
 
+        //TODO:  sha1 won't be set until save, unless manually called on json file load
+        //
         return sha1().equalsIgnoreCase(((NCube) other).sha1());
     }
 
@@ -2202,7 +2208,7 @@ public class NCube<T>
         if (metaProps != null)
         {
             String storedSha1 = (String) metaProps.remove("sha1");
-            String storedHeadSha1 = (String) metaProps.remove("headSha1");
+            String storedHeadSha1 = (String) metaProps.remove(HEAD_SHA_1);
 
             if (metaProps.size() > 0)
             {
@@ -2210,7 +2216,7 @@ public class NCube<T>
             }
             if (StringUtilities.hasContent(storedHeadSha1))
             {
-                metaProps.put("headSha1", storedHeadSha1);
+                metaProps.put(HEAD_SHA_1, storedHeadSha1);
             }
         }
         // Need deterministic ordering (sorted by Axis name will do that)

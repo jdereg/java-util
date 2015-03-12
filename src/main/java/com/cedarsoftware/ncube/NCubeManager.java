@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -676,10 +677,9 @@ public class NCubeManager
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
         getPersister().createCube(newAppId, copy, username);
-        String json = getPersister().getTestData(oldAppId, oldName);
-        getPersister().updateTestData(newAppId, newName, json);
-        String notes = getPersister().getNotes(oldAppId, oldName);
-        getPersister().updateNotes(newAppId, newName, notes);
+
+        Map<String, Object> data = getPersister().getNonRuntimeData(oldAppId, oldName);
+        getPersister().updateNonRuntimeData(newAppId, newName, data, null);
         broadcast(newAppId);
     }
 
@@ -738,7 +738,11 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        return getPersister().commitBranch(appId, infoDtos, username);
+        Map map = getPersister().commitBranch(appId, infoDtos, username);
+        clearCache(appId);
+        clearCache(appId.asHead());
+        broadcast(appId);
+        return map;
     }
 
     /**
@@ -866,49 +870,53 @@ public class NCubeManager
         return false;
     }
 
-    /**
-     * Update the notes associated to an NCube
-     *
-     * @return true if the update succeeds, false otherwise
-     */
-    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
+
+    public static Map<String, Object> getNonRuntimeData(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        getPersister().updateNotes(appId, cubeName, notes);
-        return true;
+        return getPersister().getNonRuntimeData(appId, cubeName);
     }
 
-    /**
-     * Get the notes associated to an NCube
-     *
-     * @return String notes.
-     */
-    public static String getNotes(ApplicationID appId, String cubeName)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        return getPersister().getNotes(appId, cubeName);
-    }
-
-    /**
-     * Update the test data associated to an NCube
-     *
-     * @return true if the update succeeds, false otherwise
-     */
     public static boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
         validateAppId(appId);
-        validateTestData(testData);
         NCube.validateCubeName(cubeName);
-        return getPersister().updateTestData(appId, cubeName, testData);
+        Map map = new LinkedHashMap();
+        map.put(NCubeJdbcPersister.TEST_DATA_BIN, testData);
+        return getPersister().updateNonRuntimeData(appId, cubeName, map, null);
     }
 
     public static String getTestData(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        return getPersister().getTestData(appId, cubeName);
+        Map<String, Object> map = getPersister().getNonRuntimeData(appId, cubeName);
+        return (String)map.get(NCubeJdbcPersister.TEST_DATA_BIN);
+    }
+
+    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        Map map = new LinkedHashMap();
+        map.put(NCubeJdbcPersister.NOTES_BIN, notes);
+        return getPersister().updateNonRuntimeData(appId, cubeName, map, null);
+    }
+
+    public static String getNotes(ApplicationID appId, String cubeName)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        Map<String, Object> map = getPersister().getNonRuntimeData(appId, cubeName);
+        return (String)map.get(NCubeJdbcPersister.NOTES_BIN);
+    }
+
+    public static boolean updateNonRuntimeData(ApplicationID appId, String cubeName, Map<String, Object> data, Long revision)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        return getPersister().updateNonRuntimeData(appId, cubeName, data, revision);
     }
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)

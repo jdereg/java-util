@@ -785,10 +785,10 @@ class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
 
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
-        when(rs.getLong(anyInt())).thenReturn(new Long(-9))
+        when(rs.getLong(anyString())).thenReturn(new Long(-9))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
@@ -818,7 +818,7 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
-        when(rs.getLong(anyInt())).thenReturn(new Long(-9))
+        when(rs.getLong(anyString())).thenReturn(new Long(-9))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")

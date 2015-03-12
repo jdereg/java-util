@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -336,6 +337,7 @@ public class NCubeJdbcPersister
         final ApplicationID appId = cubeInfo.getApplicationID();
         String rev = revision == null ? "abs(n.revision_number)" : revision.toString();
 
+
         //  Specific Cube, no branch magic on HEAD vs. BRANCH
         String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
@@ -346,7 +348,6 @@ public class NCubeJdbcPersister
                 ") m " +
                 "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = " + rev +
                 " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
 
         try (PreparedStatement stmt = c.prepareStatement(sql))
         {
@@ -388,70 +389,82 @@ public class NCubeJdbcPersister
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
-        Long maxRev = getMaxRevision(c, appId, cubeName);
-        if (maxRev == null)
+        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin, n.revision_number FROM n_cube n, " +
+                "( " +
+                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                "  FROM n_cube " +
+                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                "  GROUP BY n_cube_nm " +
+                ") m " +
+                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
+
+        try (PreparedStatement stmt = c.prepareStatement(sql))
         {
-            throw new IllegalArgumentException("Cannot restore cube: " + cubeName + " as it does not exist in app: " + appId);
-        }
-        if (maxRev >= 0)
-        {
-            throw new IllegalArgumentException("Cube: " + cubeName + " is already restored in app: " + appId);
-        }
+            stmt.setString(1, cubeName);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getStatus());
+            stmt.setString(5, appId.getTenant());
+            stmt.setString(6, appId.getBranch());
+            stmt.setString(7, cubeName);
+            stmt.setString(8, appId.getApp());
+            stmt.setString(9, appId.getVersion());
+            stmt.setString(10, appId.getStatus());
+            stmt.setString(11, appId.getTenant());
+            stmt.setString(12, appId.getBranch());
 
-        try
-        {
-
-
-
-            NCubeInfoDto cubeInfo = new NCubeInfoDto();
-            cubeInfo.tenant = appId.getTenant();
-            cubeInfo.name = cubeName;
-            cubeInfo.app = appId.getApp();
-            cubeInfo.version = appId.getVersion();
-            cubeInfo.status = appId.getStatus();
-            cubeInfo.branch = appId.getBranch();
-            cubeInfo.revision = String.valueOf(maxRev);
-
-            NCube ncube = loadCube(c, cubeInfo, null);
-            final Map<String, Object> data = getNonRuntimeData(c, appId, cubeName);
-
-            String insertSql =
-                    "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement insert = c.prepareStatement(insertSql))
+            try (ResultSet rs = stmt.executeQuery())
             {
-                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                insert.setString(2, appId.getApp());
-                insert.setString(3, cubeName);
-                insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
-                insert.setString(5, appId.getVersion());
-                java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                insert.setDate(6, now);
-                insert.setString(7, username);
-                insert.setString(8, appId.getTenant());
-                insert.setString(9, appId.getBranch());
-                insert.setLong(10, Math.abs(maxRev) + 1);
-                String note = "restored on " + now + " by " + username;
-                insert.setBytes(11, note.getBytes("UTF-8"));
-                insert.setBytes(12, StringUtilities.getBytes((String)data.get(TEST_DATA_BIN), "UTF-8"));
-
-                int rowCount = insert.executeUpdate();
-
-                //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
-                //TODO:  We may need to just replace this with a return of the update count and let the controllers
-                //TODO:  handle it.  I've mocked it out anyway for now.
-                if (rowCount != 1)
+                if (rs.next())
                 {
-                    throw new IllegalStateException("Cannot restore n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    byte[] tests = rs.getBytes("test_data_bin");
+
+                    Long revision = rs.getLong("revision_number");
+
+                    if (revision >= 0)
+                    {
+                        throw new IllegalArgumentException("Cube: " + cubeName + " is already restored in app: " + appId);
+                    }
+
+
+                    String insertSql =
+                            "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    try (PreparedStatement insert = c.prepareStatement(insertSql))
+                    {
+                        insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                        insert.setString(2, appId.getApp());
+                        insert.setString(3, cubeName);
+                        insert.setBytes(4, jsonBytes);
+                        insert.setString(5, appId.getVersion());
+                        java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+                        insert.setDate(6, now);
+                        insert.setString(7, username);
+                        insert.setString(8, appId.getTenant());
+                        insert.setString(9, appId.getBranch());
+                        insert.setLong(10, Math.abs(revision) + 1);
+                        insert.setBytes(11, StringUtilities.getBytes("restored on " + now + " by " + username, "UTF-8"));
+                        insert.setBytes(12, tests);
+
+                        int rowCount = insert.executeUpdate();
+
+                        //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
+                        //TODO:  We may need to just replace this with a return of the update count and let the controllers
+                        //TODO:  handle it.  I've mocked it out anyway for now.
+                        if (rowCount != 1)
+                        {
+                            throw new IllegalStateException("Cannot restore n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
+                        }
+                        return;
+                    }
                 }
+
+                throw new IllegalArgumentException("Cannot restore cube: " + cubeName + " as it does not exist in app: " + appId);
             }
-        }
-        catch (RuntimeException e)
-        {
+        } catch (RuntimeException e) {
             throw e;
-        }
-        catch (Exception e)
-        {
+        } catch (SQLException e) {
             String s = "Unable to restore cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);

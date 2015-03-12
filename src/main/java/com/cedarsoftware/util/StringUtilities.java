@@ -419,7 +419,7 @@ public final class StringUtilities
     {
         try
         {
-            return s.getBytes(encoding);
+            return s == null ? null : s.getBytes(encoding);
         }
         catch (UnsupportedEncodingException e)
         {

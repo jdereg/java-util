@@ -75,6 +75,7 @@ public class NCube<T>
 
     static final String HEAD_SHA_1 = "headSha1";
     static final String SHA_1 = "sha1";
+    static final String CHANGE_TYPE = "changeType";
 
 
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
@@ -175,10 +176,25 @@ public class NCube<T>
      */
     public void clearMetaProperties()
     {
+
         if (metaProps != null)
         {
+            String sha = (String)metaProps.remove(SHA_1);
+            String headSha = (String)metaProps.remove(HEAD_SHA_1);
+
+            //TODO:  Won't we always have SHA_1 and possibly HEAD_SHA_1 when writing out.
+            //TODO:  I don't know if there is any case where we can set this back to null
+            //TODO:  Also, instead of removing the prop and adding it back each time
+            //TODO:  we should probably just ignore those fields while calculating the SHA-1
             metaProps.clear();
-            metaProps = null;
+            //metaProps = null;
+
+            if (sha != null) {
+                metaProps.put(SHA_1, sha);
+            }
+            if (headSha != null) {
+                metaProps.put(HEAD_SHA_1, headSha);
+            }
         }
     }
 

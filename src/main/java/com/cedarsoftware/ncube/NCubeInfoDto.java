@@ -36,7 +36,9 @@ public class NCubeInfoDto
     public Date createDate;
     public String createHid;
     public String notes;
-    public String changeType = "NONE";
+
+    // N = none, D = delete, R = restored, A = added
+    public String changeType = "N";
 
     public ApplicationID getApplicationID()
 	{
@@ -49,17 +51,7 @@ public class NCubeInfoDto
 		return tenant + '/' + app + '/' + version + '/' + status + '/' + br + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
 
-    public void markAsModified() {
-        changeType = "MODIFIED";
+    public void setChangeType(ChangeType type) {
+
     }
-
-    public void markAsAdded() {
-        changeType = "ADDED";
-    }
-
-    public void markAsDeleted() {
-        changeType = "DELETED";
-    }
-
-
 }

@@ -199,10 +199,10 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the minimum value from an array of values.
+     * Calculate the maximum value from an array of values.
      *
      * @param values Array of values.
-     * @return minimum value of the provided set.
+     * @return maximum value of the provided set.
      */
     public static BigDecimal maximum(BigDecimal... values)
     {

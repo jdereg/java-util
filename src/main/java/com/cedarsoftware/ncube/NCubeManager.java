@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -330,7 +329,7 @@ public class NCubeManager
         Map<String, Object> ncubes = ncubeCache.get(appId);
 
         if (ncubes == null)
-        {
+        {   // Avoid synchronization unless appId cache has not yet been created.
             synchronized (ncubeCache)
             {
                 ncubes = ncubeCache.get(appId);
@@ -344,107 +343,86 @@ public class NCubeManager
         return ncubes;
     }
 
-    public static void clearCacheForBranches(ApplicationID appId) {
-        String key = (appId.getTenant() + " / " + appId.getApp() + " / " + appId.getVersion()).toLowerCase();
-        clearCacheByKeyStart(key);
-    }
-
-    public static void clearCacheByKeyStart(String key)
+    public static void clearCacheForBranches(ApplicationID appId)
     {
-
-        Iterator<Map.Entry<ApplicationID, Map<String, Object>>> ncubeCacheIterator = ncubeCache.entrySet().iterator();
-
-        while (ncubeCacheIterator.hasNext())
+        synchronized (ncubeCache)
         {
-            Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry = ncubeCacheIterator.next();
+            List<ApplicationID> list = new ArrayList<>();
 
-            if (applicationIDMapEntry.getKey().toString().startsWith(key))
+            for (ApplicationID id : ncubeCache.keySet())
             {
-                Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
-                clearGroovyClassLoaderCache(appCache);
-                applicationIDMapEntry.getValue().clear();
-                GroovyBase.clearCache(applicationIDMapEntry.getKey());
-                NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
-                ncubeCacheIterator.remove();
+                if (id.cacheKey().startsWith(appId.branchAgnosticCacheKey()))
+                {
+                    list.add(id);
+                }
             }
-        }
 
-        Iterator<Map.Entry<ApplicationID, Map<String, Advice>>> advicesIterator = advices.entrySet().iterator();
-
-        while (advicesIterator.hasNext())
-        {
-            Map.Entry<ApplicationID, Map<String, Advice>> advicesMapEntry = advicesIterator.next();
-
-            if (advicesMapEntry.getKey().toString().startsWith(key))
+            for (ApplicationID appId1 : list)
             {
-                advicesMapEntry.getValue().clear();
-                advicesIterator.remove();
-            }
-        }
-
-        Iterator<Map.Entry<ApplicationID, GroovyClassLoader>> classLoadersIterator = localClassLoaders.entrySet().iterator();
-        while (classLoadersIterator.hasNext())
-        {
-            Map.Entry<ApplicationID, GroovyClassLoader> classLoadersEntry = classLoadersIterator.next();
-
-            if (classLoadersEntry.getKey().toString().startsWith(key))
-            {
-                classLoadersEntry.getValue().clearCache();
-                classLoadersIterator.remove();
+                clearCache(appId1);
             }
         }
     }
 
+    /**
+     * Clear the cube (and other internal caches) for a given ApplicationID.
+     * This will remove all the n-cubes from memory, compiled Groovy code,
+     * caches related to expressions, caches related to method support,
+     * advice caches, and local classes loaders (used when no sys.classpath is
+     * present).
+     *
+     * @param appId ApplicationID for which the cache is to be cleared.
+     */
     public static void clearCache(ApplicationID appId)
     {
-        validateAppId(appId);
-
-        Map<String, Object> appCache = getCacheForApp(appId);
-        clearGroovyClassLoaderCache(appCache);
-
-        appCache.clear();
-        GroovyBase.clearCache(appId);
-        NCubeGroovyController.clearCache(appId);
-
-        // Clear Advice cache
-        Map<String, Advice> adviceCache = advices.get(appId);
-        if (adviceCache != null)
+        synchronized (ncubeCache)
         {
-            adviceCache.clear();
-        }
+            validateAppId(appId);
 
-        // Clear ClassLoader cache
-        GroovyClassLoader classLoader = localClassLoaders.get(appId);
-        if (classLoader != null)
-        {
-            classLoader.clearCache();
-            localClassLoaders.remove(appId);
+            Map<String, Object> appCache = getCacheForApp(appId);
+            clearGroovyClassLoaderCache(appCache);
+
+            appCache.clear();
+            GroovyBase.clearCache(appId);
+            NCubeGroovyController.clearCache(appId);
+
+            // Clear Advice cache
+            Map<String, Advice> adviceCache = advices.get(appId);
+            if (adviceCache != null)
+            {
+                adviceCache.clear();
+            }
+
+            // Clear ClassLoader cache
+            GroovyClassLoader classLoader = localClassLoaders.get(appId);
+            if (classLoader != null)
+            {
+                classLoader.clearCache();
+                localClassLoaders.remove(appId);
+            }
         }
     }
 
+    /**
+     * This method will clear all caches for all ApplicationIDs.
+     * Do not call it for anything other than test purposes.
+     */
     public static void clearCache()
     {
-        for (Map.Entry<ApplicationID, Map<String, Object>> applicationIDMapEntry : ncubeCache.entrySet())
+        synchronized (ncubeCache)
         {
-            Map<String, Object> appCache = getCacheForApp(applicationIDMapEntry.getKey());
-            clearGroovyClassLoaderCache(appCache);
-            applicationIDMapEntry.getValue().clear();
-            GroovyBase.clearCache(applicationIDMapEntry.getKey());
-            NCubeGroovyController.clearCache(applicationIDMapEntry.getKey());
-        }
-        ncubeCache.clear();
+            List<ApplicationID> list = new ArrayList<>();
 
-        for (Map.Entry<ApplicationID, Map<String, Advice>> applicationIDMapEntry : advices.entrySet())
-        {
-            applicationIDMapEntry.getValue().clear();
-        }
-        advices.clear();
+            for (ApplicationID appId : ncubeCache.keySet())
+            {
+                list.add(appId);
+            }
 
-        for (GroovyClassLoader classLoader : localClassLoaders.values())
-        {
-            classLoader.clearCache();
+            for (ApplicationID appId1 : list)
+            {
+                clearCache(appId1);
+            }
         }
-        localClassLoaders.clear();
     }
 
     private static void clearGroovyClassLoaderCache(Map<String, Object> appCache)
@@ -698,10 +676,12 @@ public class NCubeManager
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
         getPersister().createCube(newAppId, copy, username);
-        String json = getPersister().getTestData(oldAppId, oldName);
-        getPersister().updateTestData(newAppId, newName, json);
+
         String notes = getPersister().getNotes(oldAppId, oldName);
+        String testData = getPersister().getTestData(oldAppId, oldName);
+
         getPersister().updateNotes(newAppId, newName, notes);
+        getPersister().updateNotes(newAppId, newName, testData);
         broadcast(newAppId);
     }
 
@@ -755,12 +735,16 @@ public class NCubeManager
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
      * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
      */
-    public static Map commitBranch(ApplicationID appId, Object[] infoDtos)
+    public static Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        return getPersister().commitBranch(appId, infoDtos);
+        Map map = getPersister().commitBranch(appId, infoDtos, username);
+        clearCache(appId);
+        clearCache(appId.asHead());
+        broadcast(appId);
+        return map;
     }
 
     /**
@@ -814,6 +798,7 @@ public class NCubeManager
     public static boolean renameCube(ApplicationID appId, String oldName, String newName)
     {
         validateAppId(appId);
+        appId.validateBranchIsNotHead();
 
         if (appId.isRelease())
         {
@@ -861,6 +846,7 @@ public class NCubeManager
      */
     public static boolean deleteCube(ApplicationID appId, String cubeName, String username)
     {
+        appId.validateBranchIsNotHead();
         return deleteCube(appId, cubeName, false, username);
     }
 
@@ -886,40 +872,9 @@ public class NCubeManager
         return false;
     }
 
-    /**
-     * Update the notes associated to an NCube
-     *
-     * @return true if the update succeeds, false otherwise
-     */
-    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        getPersister().updateNotes(appId, cubeName, notes);
-        return true;
-    }
-
-    /**
-     * Get the notes associated to an NCube
-     *
-     * @return String notes.
-     */
-    public static String getNotes(ApplicationID appId, String cubeName)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        return getPersister().getNotes(appId, cubeName);
-    }
-
-    /**
-     * Update the test data associated to an NCube
-     *
-     * @return true if the update succeeds, false otherwise
-     */
     public static boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
         validateAppId(appId);
-        validateTestData(testData);
         NCube.validateCubeName(cubeName);
         return getPersister().updateTestData(appId, cubeName, testData);
     }
@@ -929,6 +884,20 @@ public class NCubeManager
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
         return getPersister().getTestData(appId, cubeName);
+    }
+
+    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        return getPersister().updateNotes(appId, cubeName, notes);
+    }
+
+    public static String getNotes(ApplicationID appId, String cubeName)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        return getPersister().getNotes(appId, cubeName);
     }
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
@@ -1100,7 +1069,7 @@ public class NCubeManager
                 {
                     axis.buildScaffolding();
                 }
-                ncube.setMetaProperty("sha1", ncube.sha1());
+                //ncube.setMetaProperty("sha1", ncube.sha1());
                 return ncube;
             }
             catch (Exception e1)

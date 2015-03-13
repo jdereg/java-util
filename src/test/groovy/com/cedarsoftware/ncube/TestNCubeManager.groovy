@@ -625,8 +625,8 @@ class TestNCubeManager
         NCubeInfoDto nc1 = (NCubeInfoDto) cubeList[0]
         NCubeInfoDto nc2 = (NCubeInfoDto) cubeList[1]
 
-        assertTrue(nc1.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/TEST/test.Age-Gender/null/0/'))
-        assertTrue(nc2.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/TEST/test.Floppy/null/0/'))
+        assertTrue(nc1.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/TEST/test.Age-Gender'))
+        assertTrue(nc2.toString().startsWith('NONE/ncube.test/1.0.0/SNAPSHOT/TEST/test.Floppy'))
 
         assertTrue(nc1.name.equals('test.Floppy') || nc2.name.equals('test.Floppy'))
         assertFalse(nc1.name.equals('test.Floppy') && nc2.name.equals('test.Floppy'))
@@ -863,8 +863,7 @@ class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains('not'))
-            assertTrue(e.message.contains('fetch'))
+            assertTrue(e.message.contains('Could not fetch'))
             assertTrue(e.message.contains('notes'))
         }
 
@@ -893,8 +892,7 @@ class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains('not'))
-            assertTrue(e.message.contains('fetch'))
+            assertTrue(e.message.contains('Could not fetch'))
             assertTrue(e.message.contains('notes'))
         }
 

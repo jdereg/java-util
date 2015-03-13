@@ -141,11 +141,78 @@ class TestCubesFromPreloadedDatabase
 
         testValuesOnBranch(head)
 
+        def cube1Sha1 = NCubeManager.getCube(head, "TestBranch").getMetaProperty("sha1");
+        def cube2Sha1 = NCubeManager.getCube(head, "TestAge").getMetaProperty("sha1");
+
+        assertNull(NCubeManager.getCube(head, "TestBranch").getMetaProperty("headSha1"));
+        assertNull(NCubeManager.getCube(head, "TestAge").getMetaProperty("headSha1"));
+
         assertEquals(2, NCubeManager.createBranch(branch));
 
-        // post-branch they exist on head and the branch
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getMetaProperty("sha1"));
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getMetaProperty("headSha1"));
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getMetaProperty("sha1"));
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getMetaProperty("headSha1"));
+
         testValuesOnBranch(head);
         testValuesOnBranch(branch);
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testCommitBranch() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        // pre-branch, cubes don't exist
+        assertNull(NCubeManager.getCube(branch, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch, "TestAge"));
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch));
+
+        testValuesOnBranch(branch);
+
+        NCube cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        // edit cube
+        cube.removeCell([Code : 10.0]);
+
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // update the new edited cube.
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+
+        // commit the branch
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "TestBranch");
+
+        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
+
+        // both should be updated now.
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+        cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        def history = NCubeManager.getRevisionHistory(head, "TestBranch");
+        assertEquals(2, history.length);
+
+        //  this test will break after first commit change.
+        assertTrue(map.isEmpty());
+
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -158,12 +225,12 @@ class TestCubesFromPreloadedDatabase
 
         // load cube with same name, but different structure in TEST branch
         loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
-        loadCubesToDatabase(branch, "test.branch.1.json", "test.branch.age.1.json")
 
-        testValuesOnBranch(branch);
-        testValuesOnBranch(head)
+        //1) should work
+        NCubeManager.createBranch(branch);
 
         try {
+            //2) should already be created.
             NCubeManager.createBranch(branch);
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));
@@ -172,8 +239,6 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
-
-
 
     @Test
     void testReleaseCubes() throws Exception {
@@ -258,21 +323,48 @@ class TestCubesFromPreloadedDatabase
         loadCubesToDatabase(id, "sys.bootstrap.user.overloaded.json")
 
         NCube cube = NCubeManager.getCube(id, 'sys.bootstrap')
+        // ensure properties are cleared
+        System.setProperty('NCUBE_PARAMS', '');
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'HEAD'), cube.getCell([env:'DEV']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'HEAD'), cube.getCell([env:'PROD']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'baz'), cube.getCell([env:'SAND']));
 
-        System.setProperty("NCUBE_BOOTSTRAP", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
+        System.setProperty("NCUBE_PARAMS", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
         assertEquals(new ApplicationID('foo', 'UD', '1.28.0', 'RELEASE', 'bar'), cube.getCell([env:'DEV']));
         assertEquals(new ApplicationID('foo', 'UD', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
         assertEquals(new ApplicationID('foo', 'UD', '1.29.0', 'RELEASE', 'bar'), cube.getCell([env:'SAND']));
 
-        System.setProperty("NCUBE_BOOTSTRAP", '{"branch":"bar"}')
+        System.setProperty("NCUBE_PARAMS", '{"branch":"bar"}')
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'DEV']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']));
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'SAND']));
 
         manager.removeCubes(appId)
+    }
+
+    @Test
+    public void testUserOverloadedClassPath() throws Exception {
+        loadCubesToDatabase(appId, "sys.classpath.user.overloaded.json", "sys.versions.json");
+
+        // Check DEV
+        NCube cube = NCubeManager.getCube(appId, "sys.classpath");
+        // ensure properties are cleared.
+        System.setProperty('NCUBE_PARAMS', '');
+        assertEquals(['https://www.foo.com/tests/ncube/cp1/public/', 'https://www.foo.com/tests/ncube/cp1/private/', 'https://www.foo.com/tests/ncube/cp1/private/groovy/'], cube.getCell([env:"DEV"]));
+
+        // Check INT
+        assertEquals(['https://www.foo.com/tests/ncube/cp2/public/', 'https://www.foo.com/tests/ncube/cp2/private/', 'https://www.foo.com/tests/ncube/cp2/private/groovy/'], cube.getCell([env:"INT"]));
+
+        // Check with overload
+        System.setProperty("NCUBE_PARAMS", '{"cpBase":"C:/Development/"}')
+        assertEquals(['C:/Development/public/', 'C:/Development/private/', 'C:/Development/private/groovy/'], cube.getCell([env:"DEV"]));
+        assertEquals(['C:/Development/public/', 'C:/Development/private/', 'C:/Development/private/groovy/'], cube.getCell([env:"INT"]));
+
+        // Check version overload only
+        System.setProperty("NCUBE_PARAMS", '{"version":"1.28.0"}')
+        assertEquals(['https://www.foo.com/1.28.0/public/', 'https://www.foo.com/1.28.0/private/', 'https://www.foo.com/1.28.0/private/groovy/'], cube.getCell([env:"DEV"]));
+
+
     }
 
     @Test

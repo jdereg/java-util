@@ -681,7 +681,7 @@ public class NCubeManager
         String testData = getPersister().getTestData(oldAppId, oldName);
 
         getPersister().updateNotes(newAppId, newName, notes);
-        getPersister().updateNotes(newAppId, newName, testData);
+        getPersister().updateTestData(newAppId, newName, testData);
         broadcast(newAppId);
     }
 

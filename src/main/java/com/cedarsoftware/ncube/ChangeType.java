@@ -21,8 +21,20 @@ package com.cedarsoftware.ncube;
  */
 public enum ChangeType
 {
-    ADD,
-    MODIFY,
-    DELETE,
-    NONE
+    CREATED("C"),
+    RESTORED("R"),
+    UPDATED("U"),
+    DELETED("D");
+
+    private final String code;
+
+    private ChangeType(String s)
+    {
+        code = s;
+    }
+
+    public String toString()
+    {
+        return code;
+    }
 }

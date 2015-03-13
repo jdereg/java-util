@@ -198,11 +198,8 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]));
 
         Object[] dtos = NCubeManager.getCubeRecordsFromDatabase(branch, "TestBranch");
-        Object[] history = NCubeManager.getRevisionHistory(branch, "TestBranch");
 
         Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
-
-        history = NCubeManager.getRevisionHistory(branch, "TestBranch");
 
         // both should be updated now.
         cube = NCubeManager.getCube(branch, "TestBranch");
@@ -210,7 +207,7 @@ class TestCubesFromPreloadedDatabase
         cube = NCubeManager.getCube(head, "TestBranch");
         assertEquals("ZZZ", cube.getCell([Code : 10.0]));
 
-        history = NCubeManager.getRevisionHistory(head, "TestBranch");
+        def history = NCubeManager.getRevisionHistory(head, "TestBranch");
         assertEquals(2, history.length);
 
         //  this test will break after first commit change.

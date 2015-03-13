@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -678,8 +677,11 @@ public class NCubeManager
         NCube copy = ncube.duplicate(newName);
         getPersister().createCube(newAppId, copy, username);
 
-        Map<String, Object> data = getPersister().getNonRuntimeData(oldAppId, oldName);
-        getPersister().updateNonRuntimeData(newAppId, newName, data, null);
+        String notes = getPersister().getNotes(oldAppId, oldName);
+        String testData = getPersister().getTestData(oldAppId, oldName);
+
+        getPersister().updateNotes(newAppId, newName, notes);
+        getPersister().updateNotes(newAppId, newName, testData);
         broadcast(newAppId);
     }
 
@@ -870,53 +872,32 @@ public class NCubeManager
         return false;
     }
 
-
-    public static Map<String, Object> getNonRuntimeData(ApplicationID appId, String cubeName)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        return getPersister().getNonRuntimeData(appId, cubeName);
-    }
-
     public static boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Map map = new LinkedHashMap();
-        map.put(NCubeJdbcPersister.TEST_DATA_BIN, testData);
-        return getPersister().updateNonRuntimeData(appId, cubeName, map, null);
+        return getPersister().updateTestData(appId, cubeName, testData);
     }
 
     public static String getTestData(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Map<String, Object> map = getPersister().getNonRuntimeData(appId, cubeName);
-        return (String)map.get(NCubeJdbcPersister.TEST_DATA_BIN);
+        return getPersister().getTestData(appId, cubeName);
     }
 
     public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Map map = new LinkedHashMap();
-        map.put(NCubeJdbcPersister.NOTES_BIN, notes);
-        return getPersister().updateNonRuntimeData(appId, cubeName, map, null);
+        return getPersister().updateNotes(appId, cubeName, notes);
     }
 
     public static String getNotes(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Map<String, Object> map = getPersister().getNonRuntimeData(appId, cubeName);
-        return (String)map.get(NCubeJdbcPersister.NOTES_BIN);
-    }
-
-    public static boolean updateNonRuntimeData(ApplicationID appId, String cubeName, Map<String, Object> data, Long revision)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        return getPersister().updateNonRuntimeData(appId, cubeName, data, revision);
+        return getPersister().getNotes(appId, cubeName);
     }
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)

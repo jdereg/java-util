@@ -863,8 +863,8 @@ class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains('Unable to fetch'))
-            assertTrue(e.message.contains('data'))
+            assertTrue(e.message.contains('Could not fetch'))
+            assertTrue(e.message.contains('notes'))
         }
 
         createCube()
@@ -892,8 +892,8 @@ class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains('Unable to fetch'))
-            assertTrue(e.message.contains('data'))
+            assertTrue(e.message.contains('Could not fetch'))
+            assertTrue(e.message.contains('notes'))
         }
 
         NCubeManager.deleteCube(defaultSnapshotApp, 'test.Age-Gender', true, USER_ID)
@@ -904,7 +904,7 @@ class TestNCubeManager
     {
         try
         {
-            NCubeManager.getNonRuntimeData(defaultSnapshotApp, 'DashboardRoles')
+            NCubeManager.getTestData(defaultSnapshotApp, 'DashboardRoles')
             fail('should not make it here')
         }
         catch (Exception e)
@@ -913,7 +913,7 @@ class TestNCubeManager
         }
 
         createCube()
-        String testData = NCubeManager.getNonRuntimeData(defaultSnapshotApp, 'test.Age-Gender')
+        String testData = NCubeManager.getTestData(defaultSnapshotApp, 'test.Age-Gender')
         assertNotNull(testData)
         assertTrue(testData.length() > 0)
 
@@ -932,7 +932,7 @@ class TestNCubeManager
         ApplicationID newId = defaultSnapshotApp.createNewSnapshotId('0.1.1')
         try
         {
-            NCubeManager.getNonRuntimeData(newId, 'test.Age-Gender')
+            NCubeManager.getTestData(newId, 'test.Age-Gender')
             fail('Should not make it here')
         }
         catch (Exception e)

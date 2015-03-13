@@ -887,6 +887,42 @@ public class NCubeJdbcPersister
         }
     }
 
+    public String getNotes(Connection c, ApplicationID appId, String cubeName)
+    {
+        try (PreparedStatement stmt = c.prepareStatement(
+                "SELECT notes_bin FROM n_cube " +
+                        "WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "ORDER BY abs(revision_number) DESC"
+        ))
+        {
+            stmt.setString(1, appId.getApp());
+            stmt.setString(2, cubeName);
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getTenant());
+            stmt.setString(5, appId.getBranch());
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    byte[] notes = rs.getBytes("notes_bin");
+                    return new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                }
+            }
+            throw new IllegalArgumentException("Could not fetch notes, no cube: " + cubeName + " in app: " + appId);
+        }
+        catch (RuntimeException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch notes for cube: " + cubeName + ", app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+
     public int createBranch(Connection c, ApplicationID appId)
     {
         if (doCubesExist(c, appId))
@@ -1158,6 +1194,44 @@ public class NCubeJdbcPersister
             throw new RuntimeException(s, e);
         }
     }
+
+    public String getTestData(Connection c, ApplicationID appId, String cubeName)
+    {
+        try (PreparedStatement stmt = c.prepareStatement(
+                "SELECT test_data_bin FROM n_cube " +
+                        "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "ORDER BY abs(revision_number) DESC"
+        ))
+        {
+            stmt.setString(1, cubeName);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getVersion());
+            stmt.setString(4, appId.getTenant());
+            stmt.setString(5, appId.getBranch());
+
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    byte[] testData = rs.getBytes("test_data_bin");
+                    return testData == null ? "" : new String(testData, "UTF-8");
+                }
+            }
+            throw new IllegalArgumentException("Unable to fetch test data, cube: " + cubeName + ", app: " + appId + " does not exist.");
+        }
+        catch (RuntimeException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to fetch test data for cube: " + cubeName + ", app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+
 
     public Map<String, Object> getNonRuntimeData(Connection c, ApplicationID appId, String cubeName)
     {
@@ -1547,34 +1621,22 @@ public class NCubeJdbcPersister
         for (Object dto : infoDtos) {
             NCubeInfoDto info = (NCubeInfoDto)dto;
 
-            Long revision = Long.parseLong(info.revision);
+            long revision = Long.parseLong(info.revision);
 
             if (StringUtilities.isEmpty(info.headSha1))
             {
-                //  Item was added in branch only.
-                NCube addedCube = loadCube(c, info, Integer.parseInt(info.revision));
-
-                //  could do insert_cube_bin creating new max_revision cube on head instead of create cube
-                //  saves toformattedJson() call in create cube.
+                //  Item was added in branch only, should not exist on head
+                //TODO:  Is this an error condition if one exists on head?
                 copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
                 replaceHeadSha1(c, appId, info.name, info.sha1, revision);
-                //Map<String, Object> map = getNonRuntimeData(c, appId, info.name);
-                //createCube(c, headId, addedCube, username, map, 0);
-
-                // just update cube_bin instead of full update
-                updateCube(c, appId, addedCube, username);
-            }
-            else if (Integer.parseInt(info.revision) < 0)
-            {
-                // Item was deleted in branch only.
-                // check shas to see if changed?
-                // deleted
-                deleteCube(c, headId, info.name, false, username);
             }
             else if (!info.headSha1.equals(info.sha1))
             {
-                // records are different, but pulled from branch
+                // record has changed since we pulled it from head
                 NCubeInfoDto head = headMap.get(info.name);
+                Long headRevision = Long.parseLong(head.revision);
+
+
                 if (info.headSha1.equals(head.sha1))
                 {
                     copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
@@ -1588,7 +1650,24 @@ public class NCubeJdbcPersister
             }
             else
             {
-                //unchanged.
+                // need to check extraneous cases where sha1 wouldn't change.
+                NCubeInfoDto head = headMap.get(info.name);
+
+                if (head != null)
+                {
+                    Long headRevision = Long.parseLong(head.revision);
+
+                    // Item is marked as deleted in branch, check head revision
+                    // If head was already deleted, we do nothing here
+                    if (revision < 0 && headRevision >= 0)
+                    {
+                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
+                    }
+                    else if (revision >= 0 && headRevision < 0)
+                    {
+                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
+                    }
+                }
             }
         }
 

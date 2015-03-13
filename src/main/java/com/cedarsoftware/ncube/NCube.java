@@ -2207,7 +2207,7 @@ public class NCube<T>
         deepSha1(sha1, defaultCellValue, sep);
         if (metaProps != null)
         {
-            String storedSha1 = (String) metaProps.remove("sha1");
+            String storedSha1 = (String) metaProps.remove(SHA_1);
             String storedHeadSha1 = (String) metaProps.remove(HEAD_SHA_1);
 
             if (metaProps.size() > 0)

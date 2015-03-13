@@ -257,12 +257,51 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public boolean updateNonRuntimeData(ApplicationID appId, String cubeName, Map<String, Object> nonRuntimeData, Long revision)
+    public boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateNonRuntimeData(c, appId, cubeName, nonRuntimeData, revision);
+            return persister.updateNotes(c, appId, cubeName, notes);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public String getNotes(ApplicationID appId, String cubeName)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.getNotes(c, appId, cubeName);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public boolean updateTestData(ApplicationID appId, String cubeName, String testData)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.updateTestData(c, appId, cubeName, testData);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public String getTestData(ApplicationID appId, String cubeName)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.getTestData(c, appId, cubeName);
         }
         finally
         {
@@ -311,16 +350,4 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
 
     }
 
-    public Map<String, Object> getNonRuntimeData(ApplicationID appId, String cubeName)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.getNonRuntimeData(c, appId, cubeName);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
 }

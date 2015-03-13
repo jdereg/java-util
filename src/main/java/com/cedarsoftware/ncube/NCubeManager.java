@@ -283,43 +283,6 @@ public class NCubeManager
         applyAdvices(appId, ncube);
     }
 
-    private static void applyAdvices(ApplicationID appId, NCube ncube)
-    {
-        Map<String, Advice> appAdvices = advices.get(appId);
-
-        if (MapUtilities.isEmpty(appAdvices))
-        {
-            return;
-        }
-        for (Map.Entry<String, Advice> entry : appAdvices.entrySet())
-        {
-            String regex = StringUtilities.wildcardToRegexString(entry.getKey());
-            Advice advice = entry.getValue();
-            Axis axis = ncube.getAxis("method");
-
-            if (axis != null)
-            {   // Controller methods
-                for (Column column : axis.getColumnsWithoutDefault())
-                {
-                    String method = column.getValue().toString();
-                    String classMethod = ncube.getName() + '.' + method + "()";
-                    if (classMethod.matches(regex))
-                    {
-                        ncube.addAdvice(advice, method);
-                    }
-                }
-            }
-            else
-            {   // Expressions
-                String classMethod = ncube.getName() + ".run()";
-                if (classMethod.matches(regex))
-                {
-                    ncube.addAdvice(advice, "run");
-                }
-            }
-        }
-    }
-
     /**
      * Fetch the Map of n-cubes for the given ApplicationID.  If no
      * cache yet exists, a new empty cache is added.
@@ -454,12 +417,11 @@ public class NCubeManager
             synchronized (advices)
             {
                 current = new ConcurrentHashMap<>();
-                current.put(wildcard, advice);
                 advices.put(appId, current);
             }
         }
 
-        current.put(wildcard, advice);
+        current.put(advice.getName() + '/' + wildcard, advice);
 
         // Apply newly added advice to any fully loaded (hydrated) cubes.
         String regex = StringUtilities.wildcardToRegexString(wildcard);
@@ -490,6 +452,51 @@ public class NCubeManager
                     {
                         ncube.addAdvice(advice, "run");
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Apply existing advices loaded into the NCubeManager, to the passed in
+     * n-cube.  This allows advices to be added first, and then let them be
+     * applied 'on demand' as an n-cube is loaded later.
+     * @param appId ApplicationID
+     * @param ncube NCube to which all matching advices will be applied.
+     */
+    private static void applyAdvices(ApplicationID appId, NCube ncube)
+    {
+        final Map<String, Advice> appAdvices = advices.get(appId);
+
+        if (MapUtilities.isEmpty(appAdvices))
+        {
+            return;
+        }
+        for (Map.Entry<String, Advice> entry : appAdvices.entrySet())
+        {
+            final Advice advice = entry.getValue();
+            final String wildcard = entry.getKey().replace(advice.getName() + '/', "");
+            final String regex = StringUtilities.wildcardToRegexString(wildcard);
+            final Axis axis = ncube.getAxis("method");
+
+            if (axis != null)
+            {   // Controller methods
+                for (Column column : axis.getColumnsWithoutDefault())
+                {
+                    final String method = column.getValue().toString();
+                    final String classMethod = ncube.getName() + '.' + method + "()";
+                    if (classMethod.matches(regex))
+                    {
+                        ncube.addAdvice(advice, method);
+                    }
+                }
+            }
+            else
+            {   // Expressions
+                final String classMethod = ncube.getName() + ".run()";
+                if (classMethod.matches(regex))
+                {
+                    ncube.addAdvice(advice, "run");
                 }
             }
         }

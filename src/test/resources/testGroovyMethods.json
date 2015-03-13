@@ -82,6 +82,26 @@
             "id": ["qux", "TX"],
             "type": "method",
             "url": "com/acme/controllers/FooBarBazQuxController_tx.groovy"
+        },
+        {
+            "id": ["foo", "GA"],
+            "type": "exp",
+            "value": "def npe = null; npe.ouch"
+        },
+        {
+            "id": ["bar", "GA"],
+            "type": "exp",
+            "value": "def npe = null; npe.ouch"
+        },
+        {
+            "id": ["baz", "GA"],
+            "type": "exp",
+            "value": "def npe = null; npe.ouch"
+        },
+        {
+            "id": ["qux", "GA"],
+            "type": "exp",
+            "value": "def npe = null; npe.ouch"
         }
     ]
 }

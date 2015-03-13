@@ -1,5 +1,8 @@
 package com.cedarsoftware.ncube;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +42,12 @@ import java.util.regex.Matcher;
  * the coordinate that called into this cell.
  *
  * @author John DeRegnaucourt
- * Copyright (c) 2012-2014, John DeRegnaucourt.  All rights reserved.
+ * Copyright (c) 2012-2015, John DeRegnaucourt.  All rights reserved.
  */
 public class GroovyExpression extends GroovyBase
 {
+    private static final Logger LOG = LogManager.getLogger(GroovyExpression.class);
+
     //  Private constructor only for serialization.
     private GroovyExpression() { }
     public GroovyExpression(String cmd, String url)
@@ -107,7 +112,7 @@ public class GroovyExpression extends GroovyBase
         return getRunnableCode().getMethod("run");
     }
 
-    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception
+    protected Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Throwable
     {
         // If 'around' Advice has been added to n-cube, invoke it before calling Groovy expression's run() method
         NCube ncube = getNCube(args);
@@ -122,15 +127,40 @@ public class GroovyExpression extends GroovyBase
             }
         }
 
-        Object ret = runMethod.invoke(instance);
+        Throwable t = null;
+        Object ret = null;
+
+        try
+        {
+            ret = runMethod.invoke(instance);
+        }
+        catch (ThreadDeath e)
+        {
+            throw e;
+        }
+        catch (Throwable e)
+        {   // Save exception
+            t = e;
+        }
 
         // If 'around' Advice has been added to n-cube, invoke it after calling Groovy expression's run() method
         int len = advices.size();
         for (int i = len - 1; i >= 0; i--)
         {
             Advice advice = advices.get(i);
-            advice.after(runMethod, ncube, input, output, ret);
+            try
+            {
+                advice.after(runMethod, ncube, input, output, ret, t);  // pass exception (t) to advice (or null)
+            }
+            catch (Exception e)
+            {
+                LOG.error("An exception occurred calling advice: " + advice.getName() + " on method: " + runMethod.getName(), e);
+            }
         }
-        return ret;
+        if (t == null)
+        {
+            return ret;
+        }
+        throw t;
     }
 }

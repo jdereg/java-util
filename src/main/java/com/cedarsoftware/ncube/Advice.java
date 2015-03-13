@@ -53,5 +53,5 @@ public interface Advice
      * @param output Map containing the 'output' coordinate to getCell() type APIs
      * @param returnValue Object return value of the method that was called.
      */
-    void after(Method method, NCube ncube, Map input, Map output, Object returnValue);
+    void after(Method method, NCube ncube, Map input, Map output, Object returnValue, Throwable t);
 }

@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube
 
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 
 import java.lang.reflect.Method
@@ -68,7 +69,7 @@ class TestAdvice
                 return true
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output._atime1 = System.nanoTime()
             }
@@ -88,7 +89,7 @@ class TestAdvice
                 return true
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output._atime2 = System.nanoTime()
             }
@@ -143,7 +144,7 @@ class TestAdvice
                 return ret
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output.after = true
                 if ("foo".equals(method.name) && "OH".equals(input.state))
@@ -226,7 +227,7 @@ class TestAdvice
                 return ret
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output.after = true
                 if ("foo".equals(method.name) && "OH".equals(input.state))
@@ -327,7 +328,7 @@ class TestAdvice
                 return ret
             }
 
-            void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube ncube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output.after = true
                 if ("foo".equals(method.name) && "OH".equals(input.state))
@@ -406,7 +407,7 @@ class TestAdvice
                 return true
             }
 
-            void after(Method method, NCube ncube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube ncube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output.after = true
             }
@@ -442,7 +443,7 @@ class TestAdvice
                 return false
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 fail()
             }
@@ -474,7 +475,7 @@ class TestAdvice
                 return true
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output._atime1 = System.nanoTime()
                 output.advice1after = true
@@ -498,7 +499,7 @@ class TestAdvice
                 return true
             }
 
-            void after(Method method, NCube cube, Map input, Map output, Object returnValue)
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
             {
                 output._atime2 = System.nanoTime()
                 output.advice2after = true
@@ -521,6 +522,160 @@ class TestAdvice
         assert output._btime1 < output._btime2
         assert output._btime2 < output._atime1
         assert output._btime1 < output._atime1
+
+        ncube.clearAdvices()
+    }
+
+    @Test
+    void testMultiAdviceLateLoad()
+    {
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'hotel'
+            }
+
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime1 = System.nanoTime()
+                output.advice1before = true
+                return true
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
+            {
+                output._atime1 = System.nanoTime()
+                output.advice1after = true
+            }
+        }
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*()", advice1)
+
+        Advice advice2 = new Advice() {
+            String getName()
+            {
+                return 'indigo'
+            }
+
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime2 = System.nanoTime()
+                output.advice2before = true
+                return true
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
+            {
+                output._atime2 = System.nanoTime()
+                output.advice2after = true
+            }
+        }
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*()", advice2)
+
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
+
+        def output = [:]
+        ncube.getCell([method:'foo', state:'OH'], output)
+
+        assert output.advice1before == true
+        assert output.advice1after == true
+        assert output.advice2before == true
+        assert output.advice2after == true
+
+        assert output._atime1 > output._atime2
+        assert output._btime1 < output._btime2
+        assert output._btime2 < output._atime1
+        assert output._btime1 < output._atime1
+
+        ncube.clearAdvices()
+    }
+
+    @Ignore
+    void testMultiAdviceLateLoadWithMethodThatThrowsException()
+    {
+        Advice advice1 = new Advice() {
+            String getName()
+            {
+                return 'juliet'
+            }
+
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime1 = System.nanoTime()
+                output.advice1before = true
+                return true
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
+            {
+                output._atime1 = System.nanoTime()
+                output.advice1after = true
+                output.exception1 = t
+            }
+        }
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*()", advice1)
+
+        Advice advice2 = new Advice() {
+            String getName()
+            {
+                return 'lima'
+            }
+
+            boolean before(Method method, NCube cube, Map input, Map output)
+            {
+                output._btime2 = System.nanoTime()
+                output.advice2before = true
+                return true
+            }
+
+            void after(Method method, NCube cube, Map input, Map output, Object returnValue, Throwable t)
+            {
+                output._atime2 = System.nanoTime()
+                output.advice2after = true
+                output.exception2 = t
+            }
+        }
+
+        // These methods are called more than you think.  Internally, these cube call
+        // themselves, and those calls too go through the Advice.
+        NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*()", advice2)
+
+        NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
+        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
+
+        def output = [:]
+        try
+        {
+            // TODO: "exp'instead of 'method' - not getting advice put on it
+            // TODO: "method" specified as 'value' instead of 'url' should still work (as exp)
+            ncube.getCell([method:'foo', state:'GA'], output)
+        }
+        catch (Exception e)
+        {
+            assert e.message.toLowerCase().contains('error occurred executing')
+        }
+
+        assert output.advice1before == true
+        assert output.advice1after == true
+        assert output.advice2before == true
+        assert output.advice2after == true
+
+        assert output._atime1 > output._atime2
+        assert output._btime1 < output._btime2
+        assert output._btime2 < output._atime1
+        assert output._btime1 < output._atime1
+
+        assert output.exception1 instanceof Exception
+        assert output.exception2 instanceof Exception
 
         ncube.clearAdvices()
     }

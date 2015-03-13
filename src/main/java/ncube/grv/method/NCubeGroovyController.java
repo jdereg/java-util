@@ -3,6 +3,8 @@ package ncube.grv.method;
 import com.cedarsoftware.ncube.Advice;
 import com.cedarsoftware.ncube.ApplicationID;
 import ncube.grv.exp.NCubeGroovyExpression;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -11,7 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Base class for all GroovyExpression and GroovyMethod's within n-cube CommandCells.
- * @see com.cedarsoftware.ncube.GroovyBase
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -28,9 +29,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ * @see com.cedarsoftware.ncube.GroovyBase
  */
 public class NCubeGroovyController extends NCubeGroovyExpression
 {
+    private static final Logger LOG = LogManager.getLogger(NCubeGroovyController.class);
+
     // Cache reflective method look ups
     private static final Map<ApplicationID, Map<String, Method>> methodCache = new ConcurrentHashMap<>();
 
@@ -65,12 +69,13 @@ public class NCubeGroovyController extends NCubeGroovyExpression
 
     /**
      * Run the groovy method named by the column on the 'method' axis.
+     *
      * @param signature String SHA1 of the source file.  This is used to
-     * ensure the method cache 'key' is unique.  If someone uses the same
-     * package and class name for two classes, but their source is different,
-     * their methods will be keyed uniquely in the cache.
+     *                  ensure the method cache 'key' is unique.  If someone uses the same
+     *                  package and class name for two classes, but their source is different,
+     *                  their methods will be keyed uniquely in the cache.
      */
-    public Object run(String signature) throws Exception
+    public Object run(String signature) throws Throwable
     {
         String methodName = (String) input.get("method");
         String methodKey = methodName + '.' + signature;
@@ -95,7 +100,21 @@ public class NCubeGroovyController extends NCubeGroovyExpression
         }
 
         // Invoke the Groovy method named in the input Map at the key 'method'.
-        Object ret = method.invoke(this);
+        Throwable t = null;
+        Object ret = null;
+
+        try
+        {
+            ret = method.invoke(this);
+        }
+        catch (ThreadDeath e)
+        {
+            throw e;
+        }
+        catch (Throwable e)
+        {
+            t = e;  // Save exception thrown by method call
+        }
 
         // If 'around' Advice has been added to n-cube, invoke it after calling Groovy method
         // or expression
@@ -103,8 +122,19 @@ public class NCubeGroovyController extends NCubeGroovyExpression
         for (int i = len - 1; i >= 0; i--)
         {
             Advice advice = advices.get(i);
-            advice.after(method, ncube, input, output, ret);
+            try
+            {
+                advice.after(method, ncube, input, output, ret, t);  // pass exception (t) to advice (or null)
+            }
+            catch (Exception e)
+            {
+                LOG.error("An exception occurred calling advice: " + advice.getName() + " on method: " + method.getName(), e);
+            }
         }
-        return ret;
+        if (t == null)
+        {
+            return ret;
+        }
+        throw t;
     }
 }

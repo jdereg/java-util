@@ -167,7 +167,11 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             return executeGroovy(ctx);
         }
-        catch(Exception e)
+        catch (ThreadDeath t)
+        {
+            throw t;
+        }
+        catch(Throwable e)
         {
             String cubeName = getNCube(ctx).getName();
             Throwable cause = e.getCause();
@@ -182,7 +186,7 @@ public abstract class GroovyBase extends UrlCommandCell
     /**
      * Fetch constructor (from cache, if cached) and instantiate GroovyExpression
      */
-    protected Object executeGroovy(final Map ctx) throws Exception
+    protected Object executeGroovy(final Map ctx) throws Throwable
     {
         NCube cube = getNCube(ctx);
         Map<String, Constructor> constructorMap = getConstructorCache(cube.getApplicationID());
@@ -219,7 +223,7 @@ public abstract class GroovyBase extends UrlCommandCell
 
     protected abstract Method getRunMethod() throws NoSuchMethodException;
 
-    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Exception;
+    protected abstract Object invokeRunMethod(Method runMethod, Object instance, Map args) throws Throwable;
 
     /**
      * Conditionally compile the passed in command.  If it is already compiled, this method

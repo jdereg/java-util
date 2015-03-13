@@ -709,7 +709,7 @@ class TestNCubeJdbcPersister
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
@@ -846,7 +846,7 @@ class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
 
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false).thenReturn(true).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(new Long(9))
@@ -881,17 +881,12 @@ class TestNCubeJdbcPersister
 
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenReturn(rs)
-        when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false).thenReturn(true).thenReturn(true)
+        when(rs.next()).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(new Long(9))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
         IOUtilities.transfer(new File(url.file), out)
-        when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
-        when(rs.getBytes(anyInt())).thenReturn(null)
-        when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
-        when(rs.getString("n_cube_nm")).thenReturn("foo");
         when(ps.executeUpdate()).thenReturn(0)
 
         try
@@ -902,7 +897,7 @@ class TestNCubeJdbcPersister
         catch (IllegalStateException e)
         {
             assertTrue(e.message.contains("Cannot delete"))
-            assertTrue(e.message.contains("rows inserted"))
+            assertTrue(e.message.contains("not deleted"))
         }
     }
 
@@ -937,6 +932,7 @@ class TestNCubeJdbcPersister
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
+        when(rs.next()).thenReturn(true);
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(0)
         when(ps.executeQuery()).thenReturn(rs)
@@ -947,9 +943,8 @@ class TestNCubeJdbcPersister
         }
         catch (Exception e)
         {
-            assertTrue(e.message.contains("non-exist"))
-            assertTrue(e.message.contains("updat"))
-            assertTrue(e.message.contains("ube"))
+            assertTrue(e.message.contains("error updating"))
+            assertTrue(e.message.contains("not updated"))
         }
     }
 

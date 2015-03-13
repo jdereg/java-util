@@ -55,9 +55,10 @@ class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 //                    "  revision_number bigint(20) DEFAULT '1',\n" +
 //                    "  branch_id varchar(80) NOT NULL DEFAULT 'HEAD',\n" +
 //                    "  PRIMARY KEY (n_cube_id),\n" +
-//                    "  UNIQUE KEY n_cube_unique (tenant_cd, app_cd, version_no_cd, branch_id, n_cube_nm, revision_number),\n" +
-//                    "  KEY nameIdx (n_cube_nm),\n" +
+//                    "  UNIQUE KEY n_cube_unique (n_cube_nm, tenant_cd, app_cd, version_no_cd, branch_id, revision_number),\n" +
 //                    "  KEY versionIdx (version_no_cd)\n" +
+//                    "  KEY revIdx (revision_number)\n" +
+//                    "  KEY branchIdx (branch_id)\n" +
 //                    ") ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
         }

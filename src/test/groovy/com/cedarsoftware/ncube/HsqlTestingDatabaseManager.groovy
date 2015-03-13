@@ -50,8 +50,9 @@ class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
                     "revision_number bigint DEFAULT '0' NOT NULL, " +
                     "branch_id VARCHAR(80) DEFAULT 'HEAD' NOT NULL, " +
                     "PRIMARY KEY (n_cube_id), " +
-                    "UNIQUE (tenant_cd, app_cd, version_no_cd, branch_id, n_cube_nm, revision_number) " +
-                    ")")
+                    "UNIQUE (n_cube_nm, tenant_cd, app_cd, version_no_cd, branch_id, revision_number), " +
+                    ");"
+            )
         }
         finally
         {

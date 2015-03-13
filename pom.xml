@@ -45,7 +45,7 @@
 
     <properties>
         <version.json-io>3.0.0</version.json-io>
-        <version.java-util>1.18.1-SNAPSHOT</version.java-util>
+        <version.java-util>1.18.1</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.groovy>2.3.9</version.groovy>

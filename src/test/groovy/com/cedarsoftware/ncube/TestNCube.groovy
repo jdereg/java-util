@@ -3628,9 +3628,6 @@ class TestNCube
         axis.setMetaProperty("car", "cruze")
         col.setMetaProperty("one", 1)
 
-        //  loaded from json file, will not have sha1() in it.
-        assertEquals(2, ncube.metaProperties.size())
-        ncube.sha1();
         assertEquals(3, ncube.metaProperties.size());
         assertEquals(2, axis.metaProperties.size())
         assertEquals(3, col.metaProperties.size())
@@ -3649,7 +3646,7 @@ class TestNCube
         axis = ncube.getAxis("gender")
         col = axis.findColumn("Female")
 
-        //  loaded from json file, will not have sha1() in it.
+        //  removed sha1 above, so no sha1 in cube
         assertEquals(4, ncube.metaProperties.size())
         ncube.sha1();
         assertEquals(5, ncube.metaProperties.size())
@@ -3660,7 +3657,7 @@ class TestNCube
         axis.clearMetaProperties()
         col.clearMetaProperties()
 
-        assertEquals(0, ncube.metaProperties.size())
+        assertEquals(1, ncube.metaProperties.size())
         assertEquals(0, axis.metaProperties.size())
         assertEquals(0, col.metaProperties.size())
 
@@ -3669,9 +3666,6 @@ class TestNCube
         axis = ncube.getAxis("gender")
         col = axis.findColumn("Female")
 
-        //  loaded from json file, will not have sha1() in it.
-        assertEquals(0, ncube.metaProperties.size())
-        ncube.sha1();
         assertEquals(1, ncube.metaProperties.size())
         assertEquals(0, axis.metaProperties.size())
         assertEquals(0, col.metaProperties.size())

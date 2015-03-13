@@ -440,7 +440,7 @@ public final class StringUtilities
     {
         try
         {
-            return new String(bytes, encoding);
+            return bytes == null ? null : new String(bytes, encoding);
         }
         catch (UnsupportedEncodingException e)
         {

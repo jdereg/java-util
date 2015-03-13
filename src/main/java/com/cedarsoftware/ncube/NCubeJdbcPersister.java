@@ -334,7 +334,7 @@ public class NCubeJdbcPersister
                     {
                         cube.removeMetaProperty(NCube.HEAD_SHA_1);
                     } else {
-                        cube.setMetaProperty(NCube.CHANGE_TYPE, ChangeType.UPDATED);
+                        cube.setMetaProperty(NCube.CHANGE_TYPE, ChangeType.UPDATED.toString());
                     }
                     cube.sha1();
 

@@ -36,7 +36,7 @@ interface NCubeReadOnlyPersister
     Object[] getRevisions(ApplicationID appId, String cubeName)
     List<String> getBranches(ApplicationID appId)
 
+    String getTestData(ApplicationID appId, String cubeName)
     String getNotes(ApplicationID appId, String cubeName)
 
-    String getTestData(ApplicationID appId, String cubeName)
 }

@@ -175,6 +175,18 @@ public class ApplicationID
         return new ApplicationID(tenant, app, ver, ReleaseStatus.SNAPSHOT.name(), branch);
     }
 
+    /**
+     * Creates a new ApplicationID with HEAD as the branch using all the same parameters of
+     * this ApplicationID.
+     * @return a new ApplicationId that is on the HEAD branch.
+     */
+    public ApplicationID asHead()
+    {
+        //  In the Change Version the status was always SNAPSHOT when creating a new version.
+        //  That is why we hardcode this to snapshot here.
+        return new ApplicationID(tenant, app, version, status, HEAD);
+    }
+
     public void validate()
     {
         validateTenant(tenant);
@@ -243,8 +255,12 @@ public class ApplicationID
         throw new IllegalArgumentException("Invalid branch: '" + branch + "'. n-cube branch must contain only A-Z, a-z, or 0-9 dash(-), underscore (_), and dot (.) From 1 to 80 characters.");
     }
 
+    boolean isHead() {
+        return HEAD.equals(branch);
+    }
+
     void validateBranchIsNotHead() {
-        if (branch.equals(HEAD)) {
+        if (isHead()) {
             throw new IllegalArgumentException("Branch cannot be 'HEAD'");
         }
     }

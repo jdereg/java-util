@@ -1,6 +1,6 @@
 package com.cedarsoftware.ncube
 
-import groovy.transform.CompileStatic;
+import groovy.transform.CompileStatic
 
 /**
  * Class used to carry the NCube meta-information
@@ -33,14 +33,15 @@ interface NCubePersister extends NCubeReadOnlyPersister
 
     void restoreCube(ApplicationID appId, String cubeName, String username);
 
-    boolean updateNotes(ApplicationID appId, String cubeName, String notes);
-
     int changeVersionValue(ApplicationID appId, String newVersion);
     int releaseCubes(ApplicationID appId, String newSnapVer);
 
-    boolean updateTestData(ApplicationID appId, String cubeName, String testData);
+    boolean updateNotes(ApplicationID appId, String cubeName, String notes)
+    boolean updateTestData(ApplicationID appId, String cubeName, String testData)
 
-    Map commitBranch(ApplicationID appId, Object[] infoDtos);
+    Map commitBranch(ApplicationID appId, Object[] infoDtos, String username);
+
     int rollbackBranch(ApplicationID appId, Object[] infoDtos);
     Object[] updateBranch(ApplicationID appId);
+
 }

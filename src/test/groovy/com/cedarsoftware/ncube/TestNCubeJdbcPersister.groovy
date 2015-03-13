@@ -82,24 +82,24 @@ class TestNCubeJdbcPersister
         // Two cubes at the new 1.2.3 SNAPSHOT version.
         assert cubeList.length == 2
 
-        String notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
-        String notes2 = persister.getNotes(next, "test.ValidTrailorConfigs")
-
-        persister.updateNotes(next, "test.ValidTrailorConfigs", null)
-        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
-        assertTrue("".equals(notes1))
-
-        persister.updateNotes(next, "test.ValidTrailorConfigs", "Trailer Config Notes")
-        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
-        assertTrue("Trailer Config Notes".equals(notes1))
-
-        persister.updateTestData(next, "test.ValidTrailorConfigs", null)
-        String testData = persister.getTestData(next, "test.ValidTrailorConfigs")
-        assertTrue("".equals(testData))
-
-        persister.updateTestData(next, "test.ValidTrailorConfigs", "This is JSON data")
-        testData = persister.getTestData(next, "test.ValidTrailorConfigs")
-        assertTrue("This is JSON data".equals(testData))
+//        String notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
+//        String notes2 = persister.getNotes(next, "test.ValidTrailorConfigs")
+//
+//        persister.updateNotes(next, "test.ValidTrailorConfigs", null)
+//        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
+//        assertTrue("".equals(notes1))
+//
+//        persister.updateNotes(next, "test.ValidTrailorConfigs", "Trailer Config Notes")
+//        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
+//        assertTrue("Trailer Config Notes".equals(notes1))
+//
+//        persister.updateTestData(next, "test.ValidTrailorConfigs", null)
+//        String testData = persister.getNonRuntimeData(next, "test.ValidTrailorConfigs")
+//        assertTrue("".equals(testData))
+//
+//        persister.updateTestData(next, "test.ValidTrailorConfigs", "This is JSON data")
+//        testData = persister.getNonRuntimeData(next, "test.ValidTrailorConfigs")
+//        assertTrue("This is JSON data".equals(testData))
 
         // Verify that you cannot delete a RELEASE ncube
         try
@@ -213,21 +213,6 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testGetNotesWithSQLException() throws Exception
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().getNotes(c, defaultSnapshotApp, "name")
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-        }
-    }
-
-    @Test
     void testDoesCubeExistWithSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()
@@ -260,21 +245,6 @@ class TestNCubeJdbcPersister
             assertTrue(e.message.contains("rror"))
             assertTrue(e.message.contains("release"))
             assertTrue(e.message.contains("cube"))
-        }
-    }
-
-    @Test
-    void testGetTestDataWithSQLException() throws Exception
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().getTestData(c, defaultSnapshotApp, "name")
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
         }
     }
 
@@ -739,7 +709,7 @@ class TestNCubeJdbcPersister
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
@@ -815,10 +785,10 @@ class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
 
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
-        when(rs.getLong(anyInt())).thenReturn(new Long(-9))
+        when(rs.getLong(anyString())).thenReturn(new Long(-9))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
@@ -848,7 +818,7 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
-        when(rs.getLong(anyInt())).thenReturn(new Long(-9))
+        when(rs.getLong(anyString())).thenReturn(new Long(-9))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
@@ -876,7 +846,7 @@ class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
 
-        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false).thenReturn(true).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(new Long(9))
@@ -911,17 +881,12 @@ class TestNCubeJdbcPersister
 
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenReturn(rs)
-        when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false).thenReturn(true).thenReturn(true)
+        when(rs.next()).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(new Long(9))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
         IOUtilities.transfer(new File(url.file), out)
-        when(rs.getBytes(anyString())).thenReturn(out.toByteArray())
-        when(rs.getBytes(anyInt())).thenReturn(null)
-        when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
-        when(rs.getString("n_cube_nm")).thenReturn("foo");
         when(ps.executeUpdate()).thenReturn(0)
 
         try
@@ -932,7 +897,7 @@ class TestNCubeJdbcPersister
         catch (IllegalStateException e)
         {
             assertTrue(e.message.contains("Cannot delete"))
-            assertTrue(e.message.contains("rows inserted"))
+            assertTrue(e.message.contains("not deleted"))
         }
     }
 
@@ -967,6 +932,7 @@ class TestNCubeJdbcPersister
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
+        when(rs.next()).thenReturn(true);
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(0)
         when(ps.executeQuery()).thenReturn(rs)
@@ -977,9 +943,8 @@ class TestNCubeJdbcPersister
         }
         catch (Exception e)
         {
-            assertTrue(e.message.contains("non-exist"))
-            assertTrue(e.message.contains("updat"))
-            assertTrue(e.message.contains("ube"))
+            assertTrue(e.message.contains("error updating"))
+            assertTrue(e.message.contains("not updated"))
         }
     }
 

@@ -683,10 +683,12 @@ public class NCubeManager
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
         getPersister().createCube(newAppId, copy, username);
-        String json = getPersister().getTestData(oldAppId, oldName);
-        getPersister().updateTestData(newAppId, newName, json);
+
         String notes = getPersister().getNotes(oldAppId, oldName);
+        String testData = getPersister().getTestData(oldAppId, oldName);
+
         getPersister().updateNotes(newAppId, newName, notes);
+        getPersister().updateNotes(newAppId, newName, testData);
         broadcast(newAppId);
     }
 
@@ -740,12 +742,16 @@ public class NCubeManager
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
      * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
      */
-    public static Map commitBranch(ApplicationID appId, Object[] infoDtos)
+    public static Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        return getPersister().commitBranch(appId, infoDtos);
+        Map map = getPersister().commitBranch(appId, infoDtos, username);
+        clearCache(appId);
+        clearCache(appId.asHead());
+        broadcast(appId);
+        return map;
     }
 
     /**
@@ -873,40 +879,9 @@ public class NCubeManager
         return false;
     }
 
-    /**
-     * Update the notes associated to an NCube
-     *
-     * @return true if the update succeeds, false otherwise
-     */
-    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        getPersister().updateNotes(appId, cubeName, notes);
-        return true;
-    }
-
-    /**
-     * Get the notes associated to an NCube
-     *
-     * @return String notes.
-     */
-    public static String getNotes(ApplicationID appId, String cubeName)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(cubeName);
-        return getPersister().getNotes(appId, cubeName);
-    }
-
-    /**
-     * Update the test data associated to an NCube
-     *
-     * @return true if the update succeeds, false otherwise
-     */
     public static boolean updateTestData(ApplicationID appId, String cubeName, String testData)
     {
         validateAppId(appId);
-        validateTestData(testData);
         NCube.validateCubeName(cubeName);
         return getPersister().updateTestData(appId, cubeName, testData);
     }
@@ -916,6 +891,20 @@ public class NCubeManager
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
         return getPersister().getTestData(appId, cubeName);
+    }
+
+    public static boolean updateNotes(ApplicationID appId, String cubeName, String notes)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        return getPersister().updateNotes(appId, cubeName, notes);
+    }
+
+    public static String getNotes(ApplicationID appId, String cubeName)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(cubeName);
+        return getPersister().getNotes(appId, cubeName);
     }
 
     public static void createCube(ApplicationID appId, NCube ncube, String username)
@@ -1085,7 +1074,7 @@ public class NCubeManager
                 {
                     axis.buildScaffolding();
                 }
-                ncube.setMetaProperty("sha1", ncube.sha1());
+                //ncube.setMetaProperty("sha1", ncube.sha1());
                 return ncube;
             }
             catch (Exception e1)

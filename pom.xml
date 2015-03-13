@@ -8,17 +8,6 @@
     <version>1.18.1-SNAPSHOT</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
-    <!--<profiles>-->
-        <!--<profile>-->
-            <!--<id>doclint-java8-disable</id>-->
-            <!--<activation>-->
-                <!--<jdk>[1.8,)</jdk>-->
-            <!--</activation>-->
-            <!--<properties>-->
-                <!--<javadoc.opts>-Xdoclint:none</javadoc.opts>-->
-            <!--</properties>-->
-        <!--</profile>-->
-    <!--</profiles>-->
 
     <licenses>
         <license>
@@ -92,8 +81,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${version.plugin.compiler}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>1.7</source>
+                    <target>1.7</target>
                 </configuration>
             </plugin>
 

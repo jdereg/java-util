@@ -2,11 +2,12 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.LinkedList;
 import java.util.Map;
 
 /**
@@ -38,8 +39,8 @@ public class Traverser
         void process(Object o);
     }
 
-    private final Map<Object, Object> _objVisited = new IdentityHashMap<Object, Object>();
-    private final Map<Class, ClassInfo> _classCache = new HashMap<Class, ClassInfo>();
+    private final Map<Object, Object> _objVisited = new IdentityHashMap<>();
+    private final Map<Class, ClassInfo> _classCache = new HashMap<>();
 
     /**
      * @param o Any Java Object
@@ -72,7 +73,7 @@ public class Traverser
      */
     public void walk(Object root, Class[] skip, Visitor visitor)
     {
-        LinkedList stack = new LinkedList();
+        Deque stack = new ArrayDeque<>();
         stack.add(root);
 
         while (!stack.isEmpty())
@@ -119,11 +120,11 @@ public class Traverser
             {   // Process fields of an object instance
                 if (current instanceof Collection)
                 {
-                    walkCollection(stack, (Collection) current, skip);
+                    walkCollection(stack, (Collection) current);
                 }
                 else if (current instanceof Map)
                 {
-                    walkMap(stack, (Map) current, skip);
+                    walkMap(stack, (Map) current);
                 }
                 else
                 {
@@ -133,7 +134,7 @@ public class Traverser
         }
     }
 
-    private void walkFields(LinkedList stack, Object current, Class[] skip)
+    private void walkFields(Deque stack, Object current, Class[] skip)
     {
         ClassInfo classInfo = getClassInfo(current.getClass(), skip);
 
@@ -152,7 +153,7 @@ public class Traverser
         }
     }
 
-    private static void walkCollection(LinkedList stack, Collection col, Class[] skip)
+    private static void walkCollection(Deque stack, Collection col)
     {
         for (Object o : col)
         {
@@ -163,7 +164,7 @@ public class Traverser
         }
     }
 
-    private static void walkMap(LinkedList stack, Map map, Class[] skip)
+    private static void walkMap(Deque stack, Map map)
     {
         for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
         {
@@ -197,7 +198,7 @@ public class Traverser
     public static class ClassInfo
     {
         private boolean _skip = false;
-        private final Collection<Field> _refFields = new ArrayList<Field>();
+        private final Collection<Field> _refFields = new ArrayList<>();
 
         public ClassInfo(Class c, Class[] skip)
         {

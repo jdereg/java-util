@@ -47,16 +47,17 @@ import java.util.regex.Pattern;
  *
  *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
  *
- * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
- *         <br/>
+ * @author Ken Partlow
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -243,7 +244,7 @@ public final class UrlUtilities
     /**
      * Retrieves and stores cookies returned by the host on the other side of
      * the open java.net.URLConnection.
-     * <p/>
+     * <p>
      * The connection MUST have been opened using the connect() method or a
      * IOException will be thrown.
      *
@@ -315,7 +316,7 @@ public final class UrlUtilities
     /**
      * Prior to opening a URLConnection, calling this method will set all
      * unexpired cookies that match the path or subpaths for thi underlying URL
-     * <p/>
+     * <p>
      * The connection MUST NOT have been opened
      * method or an IOException will be thrown.
      *

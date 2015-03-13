@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * when the key value is a String.  Other key types can be used.
  * String keys will be treated case insensitively, yet key case will
  * be retained.  Non-string keys will work as they normally would.
- * <p/>
+ * <p>
  * The internal CaseInsentitiveString is never exposed externally
  * from this class. When requesting the keys or entries of this map,
  * or calling containsKey() or get() for example, use a String as you
@@ -24,16 +24,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * entrySet() APIs return the original Strings, not the internally
  * wrapped CaseInsensitiveString.
  *
- * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.

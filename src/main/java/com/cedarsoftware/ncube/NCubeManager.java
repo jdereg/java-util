@@ -1020,6 +1020,7 @@ public class NCubeManager
             String json = getResourceAsString(name);
             NCube ncube = ncubeFromJson(json);
             ncube.setApplicationID(id);
+            ncube.sha1();
             addCube(id, ncube);
             return ncube;
         }
@@ -1066,6 +1067,7 @@ public class NCubeManager
                 JsonObject ncube = (JsonObject) cube;
                 String json = JsonWriter.objectToJson(ncube);
                 NCube nCube = NCube.fromSimpleJson(json);
+                nCube.sha1();
                 addCube(nCube.getApplicationID(), nCube);
                 lastSuccessful = nCube.getName();
                 cubeList.add(nCube);

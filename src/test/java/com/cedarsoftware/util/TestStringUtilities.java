@@ -230,8 +230,21 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testGetBytes() {
-        assertArrayEquals(new byte[] {102, 111, 111}, StringUtilities.getBytes("foo", "UTF-8"));
+    public void testGetBytes()
+    {
+        assertArrayEquals(new byte[]{102, 111, 111}, StringUtilities.getBytes("foo", "UTF-8"));
+    }
+
+    @Test
+    public void testGetBytesWithNull()
+    {
+        assertNull(null, StringUtilities.getBytes(null, "UTF-8"));
+    }
+
+    @Test
+    public void testGetBytesWithEmptyString()
+    {
+        assert DeepEquals.deepEquals(new byte[]{}, StringUtilities.getBytes("", "UTF-8"));
     }
 
     @Test
@@ -253,8 +266,21 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testCreateString() {
+    public void testCreateString()
+    {
         assertEquals("foo", StringUtilities.createString(new byte[] {102, 111, 111}, "UTF-8"));
+    }
+
+    @Test
+    public void testCreateStringWithNull()
+    {
+        assertNull(null, StringUtilities.createString(null, "UTF-8"));
+    }
+
+    @Test
+    public void testCreateStringWithEmptyArray()
+    {
+        assertEquals("", StringUtilities.createString(new byte[]{}, "UTF-8"));
     }
 
     @Test(expected=IllegalArgumentException.class)

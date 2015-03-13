@@ -288,7 +288,7 @@ public final class StringUtilities
 
         return v1[t.length()];
     }
-    
+
     /**
      * Calculate the Damerau-Levenshtein Distance between two strings.  The basic difference
      * between this algorithm and the general Levenshtein algorithm is that damerau-Levenshtein
@@ -440,7 +440,7 @@ public final class StringUtilities
     {
         try
         {
-            return new String(bytes, encoding);
+            return bytes == null ? null : new String(bytes, encoding);
         }
         catch (UnsupportedEncodingException e)
         {

@@ -46,12 +46,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public CaseInsensitiveMap()
     {
-        map = new LinkedHashMap<K, V>();
+        map = new LinkedHashMap<>();
     }
 
     public CaseInsensitiveMap(int initialCapacity)
     {
-        map = new LinkedHashMap<K, V>(initialCapacity);
+        map = new LinkedHashMap<>(initialCapacity);
     }
 
     public CaseInsensitiveMap(Map<? extends K, ? extends V> map)
@@ -62,7 +62,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public CaseInsensitiveMap(int initialCapacity, float loadFactor)
     {
-        map = new LinkedHashMap<K, V>(initialCapacity, loadFactor);
+        map = new LinkedHashMap<>(initialCapacity, loadFactor);
     }
 
     public V get(Object key)
@@ -529,7 +529,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 public Object next()
                 {
                     lastReturned = iter.next();
-                    return new CaseInsensitiveEntry<K, V>(lastReturned);
+                    return new CaseInsensitiveEntry<>(lastReturned);
                 }
 
                 public void remove()
@@ -557,7 +557,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             {
                 return (K) super.getKey().toString();
             }
-            return (K)super.getKey();
+            return super.getKey();
         }
     }
 
@@ -566,7 +566,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * case of Strings when they are compared.  Based on known usage,
      * null checks, proper instance, etc. are dropped.
      */
-    public static class CaseInsensitiveString
+    private static final class CaseInsensitiveString
     {
         private final String caseInsensitiveString;
         private AtomicInteger hash = null;

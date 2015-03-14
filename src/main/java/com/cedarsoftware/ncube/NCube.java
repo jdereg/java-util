@@ -2213,7 +2213,7 @@ public class NCube<T>
         metaProps.put(SHA1, null);
     }
 
-    public String getHeadSha1()
+    String getHeadSha1()
     {
         return (String) metaProps.get(HEAD_SHA1);
     }

@@ -60,9 +60,9 @@ public class NCubeJdbcPersister
         try
         {
             if (appId.isHead()) {
-                ncube.removeMetaProperty(NCube.HEAD_SHA_1);
+                ncube.clearHeadSha1();
             } else {
-                ncube.setMetaProperty(NCube.CHANGE_TYPE, ChangeType.CREATED.toString());
+                ncube.setChangeType(ChangeType.CREATED.toString());
             }
             ncube.sha1();
 
@@ -332,9 +332,9 @@ public class NCubeJdbcPersister
 
                     if (appId.isHead())
                     {
-                        cube.removeMetaProperty(NCube.HEAD_SHA_1);
+                        cube.clearHeadSha1();
                     } else {
-                        cube.setMetaProperty(NCube.CHANGE_TYPE, ChangeType.UPDATED.toString());
+                        cube.setChangeType(ChangeType.UPDATED.toString());
                     }
                     cube.sha1();
 

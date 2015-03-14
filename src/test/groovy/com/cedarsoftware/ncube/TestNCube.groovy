@@ -3619,7 +3619,7 @@ class TestNCube
 
         Axis axis = ncube.getAxis("gender")
         assertTrue(axis.metaProperties.size() > 0)
-        assertEquals(2L, axis.metaProperties.get("feet"))
+        assertEquals(2L, axis.metaProperties.feet)
 
         Column col = axis.findColumn("Female")
         assertNotNull(col)
@@ -3628,18 +3628,18 @@ class TestNCube
         axis.setMetaProperty("car", "cruze")
         col.setMetaProperty("one", 1)
 
-        assertEquals(3, ncube.metaProperties.size());
+        assertEquals(2, ncube.metaProperties.size());
         assertEquals(2, axis.metaProperties.size())
         assertEquals(3, col.metaProperties.size())
 
         Map metaProps = new HashMap()
-        metaProps.put("sport", "football")
-        metaProps.put("currency", "Bitcoin")
+        metaProps.sport = "football"
+        metaProps.currency = "Bitcoin"
 
         ncube.addMetaProperties(metaProps)
         axis.addMetaProperties(metaProps)
         col.addMetaProperties(metaProps)
-        ncube.removeMetaProperty("sha1")
+        ncube.clearSha1()
 
         String json = ncube.toFormattedJson()
         ncube = NCube.fromSimpleJson(json)
@@ -3649,7 +3649,7 @@ class TestNCube
         //  removed sha1 above, so no sha1 in cube
         assertEquals(4, ncube.metaProperties.size())
         ncube.sha1();
-        assertEquals(5, ncube.metaProperties.size())
+        assertEquals(4, ncube.metaProperties.size())
         assertEquals(4, axis.metaProperties.size())
         assertEquals(5, col.metaProperties.size())
 
@@ -3657,7 +3657,7 @@ class TestNCube
         axis.clearMetaProperties()
         col.clearMetaProperties()
 
-        assertEquals(1, ncube.metaProperties.size())
+        assertEquals(0, ncube.metaProperties.size())
         assertEquals(0, axis.metaProperties.size())
         assertEquals(0, col.metaProperties.size())
 
@@ -3666,7 +3666,7 @@ class TestNCube
         axis = ncube.getAxis("gender")
         col = axis.findColumn("Female")
 
-        assertEquals(1, ncube.metaProperties.size())
+        assertEquals(0, ncube.metaProperties.size())
         assertEquals(0, axis.metaProperties.size())
         assertEquals(0, col.metaProperties.size())
     }

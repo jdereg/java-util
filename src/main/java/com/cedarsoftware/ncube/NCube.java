@@ -73,9 +73,9 @@ public class NCube<T>
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
 
-    static final String HEAD_SHA_1 = "headSha1";
-    static final String SHA_1 = "sha1";
-    static final String CHANGE_TYPE = "changeType";
+    private static final String HEAD_SHA1 = "headSha1";
+    private static final String SHA1 = "sha1";
+    private static final String CHANGE_TYPE = "changeType";
 
 
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
@@ -91,15 +91,40 @@ public class NCube<T>
         }
     };
     private final Map<String, Advice> advices = new LinkedHashMap<>();
-    private Map<String, Object> metaProps = null;
+    private Map<String, Object> metaProps = new CaseInsensitiveMap<>();
 
     /**
+     * Creata a new NCube instance with the passed in name
+     * @param name String name to use for the NCube.
+     */
+    public NCube(String name)
+    {
+        if (name != null)
+        {   // If name is null, likely being instantiated via serialization
+            validateCubeName(name);
+        }
+        this.name = name;
+    }
+
+    /**
+     * Fetch n-cube meta properties (SHA1, HEAD_SHA1, and CHANGE_TYPE are not meta-properties.
+     * Use their respective accessor functions to obtain those).
      * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
+     * Modifications to this Map do not modify the actual meta properties of n-cube.  To do that,
+     * you need to use setMetaProperty(), addMetaProperty(), or remoteMetaProperty()
      */
     public Map<String, Object> getMetaProperties()
     {
-        Map ret = metaProps == null ? new CaseInsensitiveMap() : metaProps;
-        return Collections.unmodifiableMap(ret);
+        Map<String, Object> meta = new TreeMap();
+        for (Map.Entry<String, Object> entry : metaProps.entrySet())
+        {
+            String key = entry.getKey();
+            if (!SHA1.equalsIgnoreCase(key) && !HEAD_SHA1.equalsIgnoreCase(key) && !CHANGE_TYPE.equalsIgnoreCase(key))
+            {   // Do not include SHA1, HEAD_SHA1, nor CHANGE_TYPE in returned meta properties
+                meta.put(key, entry.getValue());
+            }
+        }
+        return meta;
     }
 
     /**
@@ -108,17 +133,13 @@ public class NCube<T>
      */
     public Object getMetaProperty(String key)
     {
-        if (metaProps == null)
-        {
-            return null;
-        }
-
+        validateMetaPropertyKey(key);
         return metaProps.get(key);
     }
 
     /**
      * If a meta property value is fetched from an Axis or a Column, the value should be extracted
-     * using this API, so as to allow executable values to be retreived.
+     * using this API, so as to allow executable values to be retrieved.
      * @param value Object value to be extracted.
      */
     public Object extractMetaPropertyValue(Object value)
@@ -139,10 +160,8 @@ public class NCube<T>
      */
     public Object setMetaProperty(String key, Object value)
     {
-        if (metaProps == null)
-        {
-            metaProps = new CaseInsensitiveMap<>();
-        }
+        validateMetaPropertyKey(key);
+        clearSha1();
         return metaProps.put(key, value);
     }
 
@@ -151,11 +170,10 @@ public class NCube<T>
      */
     public Object removeMetaProperty(String key)
     {
-        if (metaProps == null)
-        {
-            return null;
-        }
-        return metaProps.remove(key);
+        validateMetaPropertyKey(key);
+        Object prop =  metaProps.remove(key);
+        clearSha1();
+        return prop;
     }
 
     /**
@@ -164,11 +182,13 @@ public class NCube<T>
      */
     public void addMetaProperties(Map<String, Object> allAtOnce)
     {
-        if (metaProps == null)
+        for (Map.Entry<String, Object> entry : allAtOnce.entrySet())
         {
-            metaProps = new CaseInsensitiveMap<>();
+            final String key = entry.getKey();
+            validateMetaPropertyKey(key);
+            metaProps.put(key, entry.getValue());
         }
-        metaProps.putAll(allAtOnce);
+        clearSha1();
     }
 
     /**
@@ -176,25 +196,21 @@ public class NCube<T>
      */
     public void clearMetaProperties()
     {
+        String headSha1 = (String)metaProps.remove(HEAD_SHA1);
 
-        if (metaProps != null)
+        metaProps.clear();
+
+        if (StringUtilities.hasContent(headSha1))
         {
-            String sha = (String)metaProps.remove(SHA_1);
-            String headSha = (String)metaProps.remove(HEAD_SHA_1);
+            metaProps.put(HEAD_SHA1, headSha1);
+        }
+    }
 
-            //TODO:  Won't we always have SHA_1 and possibly HEAD_SHA_1 when writing out.
-            //TODO:  I don't know if there is any case where we can set this back to null
-            //TODO:  Also, instead of removing the prop and adding it back each time
-            //TODO:  we should probably just ignore those fields while calculating the SHA-1
-            metaProps.clear();
-            //metaProps = null;
-
-            if (sha != null) {
-                metaProps.put(SHA_1, sha);
-            }
-            if (headSha != null) {
-                metaProps.put(HEAD_SHA_1, headSha);
-            }
+    private void validateMetaPropertyKey(String key)
+    {
+        if (SHA1.equalsIgnoreCase(key) || HEAD_SHA1.equalsIgnoreCase(key) || CHANGE_TYPE.equalsIgnoreCase(key))
+        {
+            throw new IllegalArgumentException("Use specific APIs to manipulate SHA1, HEAD_SHA1, and CHANGETYPE, cube name: " + name);
         }
     }
 
@@ -274,19 +290,6 @@ public class NCube<T>
     }
 
     /**
-     * Creata a new NCube instance with the passed in name
-     * @param name String name to use for the NCube.
-     */
-    public NCube(String name)
-    {
-        if (name != null)
-        {   // If name is null, likely being instantiated via serialization
-            validateCubeName(name);
-        }
-        this.name = name;
-    }
-
-    /**
      * @return ReleaseStatus of this n-cube as it was loaded.
      */
     public String getStatus()
@@ -334,6 +337,7 @@ public class NCube<T>
     public T removeCell(final Map<String, Object> coordinate)
     {
         clearScopeKeyCaches();
+        clearSha1();
         return cells.remove(getCoordinateKey(validateCoordinate(coordinate, true)));
     }
 
@@ -344,6 +348,7 @@ public class NCube<T>
     public T removeCellById(final Set<Long> coordinate)
     {
         clearScopeKeyCaches();
+        clearSha1();
         Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
         return cells.remove(cols);
     }
@@ -407,6 +412,7 @@ public class NCube<T>
             throw new IllegalArgumentException("Cannot set a cell to be an array type directly (except byte[]). Instead use GroovyExpression.");
         }
         clearScopeKeyCaches();
+        clearSha1();
         return cells.put(getCoordinateKey(validateCoordinate(coordinate, true)), value);
     }
 
@@ -421,6 +427,7 @@ public class NCube<T>
             throw new IllegalArgumentException("Cannot set a cell to be an array type directly (except byte[]). Instead use GroovyExpression.");
         }
         clearScopeKeyCaches();
+        clearSha1();
         Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
         return cells.put(cols, value);
     }
@@ -1260,6 +1267,7 @@ public class NCube<T>
     public void setDefaultCellValue(final T defaultCellValue)
     {
         this.defaultCellValue = defaultCellValue;
+        clearSha1();
     }
 
     /**
@@ -1268,6 +1276,8 @@ public class NCube<T>
     public void clearCells()
     {
         cells.clear();
+        clearScopeKeyCaches();
+        clearSha1();
     }
 
     /**
@@ -1297,6 +1307,7 @@ public class NCube<T>
         }
         Column newCol = axis.addColumn(value, colName);
         clearScopeKeyCaches();
+        clearSha1();
         return newCol;
     }
 
@@ -1315,6 +1326,7 @@ public class NCube<T>
             throw new IllegalArgumentException("Could not delete column. Axis name '" + axisName + "' was not found on NCube '" + name + "'");
         }
         clearScopeKeyCaches();
+        clearSha1();
         final Column column = axis.deleteColumn(value);
         if (column == null)
         {
@@ -1348,6 +1360,8 @@ public class NCube<T>
         {
             throw new IllegalArgumentException("No column exists with the id " + id + " within NCube '" + name + "'");
         }
+        clearScopeKeyCaches();
+        clearSha1();
         axis.updateColumn(id, value);
     }
 
@@ -1389,6 +1403,8 @@ public class NCube<T>
             }
         }
 
+        clearScopeKeyCaches();
+        clearSha1();
         return colsToDel;
     }
 
@@ -1454,6 +1470,7 @@ public class NCube<T>
         cells.clear();
         axisList.put(axisName, axis);
         clearScopeKeyCaches();
+        clearSha1();
     }
 
     public void renameAxis(final String oldName, final String newName)
@@ -1474,6 +1491,8 @@ public class NCube<T>
         axisList.remove(oldName);
         axis.setName(newName);
         axisList.put(newName, axis);
+        clearScopeKeyCaches();
+        clearSha1();
     }
 
     /**
@@ -1486,6 +1505,7 @@ public class NCube<T>
     {
         cells.clear();
         clearScopeKeyCaches();
+        clearSha1();
         return axisList.remove(axisName) != null;
     }
 
@@ -1758,16 +1778,9 @@ public class NCube<T>
             ncube.metaProps.remove("axes");
             ncube.metaProps.remove("cells");
             ncube.metaProps.remove("ruleMode");
-            //String storedSha1 = (String) ncube.metaProps.get("sha1");
-            //ncube.metaProps.remove("sha1");
-            //if (ncube.metaProps.size() < 1)
-            //{   // No additional props, don't even waste space for meta properties Map.
-            //    ncube.metaProps = null;
-            //}
-            //else
-            //{
+            ncube.metaProps.remove(CHANGE_TYPE);
+            ncube.metaProps.remove(SHA1);
             loadMetaProperties(ncube.metaProps);
-            //}
 
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
@@ -2001,17 +2014,6 @@ public class NCube<T>
                 }
             }
 
-            //  Remove sha1 calculations
-//            String calcSha1 = ncube.sha1();
-//            if (StringUtilities.hasContent(storedSha1))
-//            {
-//                if (!calcSha1.equals(storedSha1))
-//                {
-//                    // TODO: Add back when users are no longer manually editing JSON cubes
-////                    throw new IllegalStateException("The json file was edited directly and no longer matches the stored SHA1, n-cube: " + ncube.getName());
-//                }
-//            }
-//            ncube.setMetaProperty("sha1", calcSha1);
             return ncube;
         }
         catch (Exception e)
@@ -2084,7 +2086,7 @@ public class NCube<T>
         }
         if (val instanceof String)
         {
-            return "true".equalsIgnoreCase((String)val);
+            return "true".equalsIgnoreCase((String) val);
         }
         if (val == null)
         {
@@ -2198,8 +2200,6 @@ public class NCube<T>
             return true;
         }
 
-        //TODO:  sha1 won't be set until save, unless manually called on json file load
-        //
         return sha1().equalsIgnoreCase(((NCube) other).sha1());
     }
 
@@ -2208,33 +2208,48 @@ public class NCube<T>
         return name.hashCode();
     }
 
+    void clearSha1()
+    {
+        metaProps.put(SHA1, null);
+    }
+
+    public String getHeadSha1()
+    {
+        return (String) metaProps.get(HEAD_SHA1);
+    }
+
+    void clearHeadSha1()
+    {
+        metaProps.remove(HEAD_SHA1);
+    }
+
+    void setChangeType(String type)
+    {
+        metaProps.put(CHANGE_TYPE, type);
+    }
+
     /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
      * cell order do not affect the SHA1 value.
      */
-    //TODO:  Total sha must include test data so we don't lose test data on a commit to the branch.
-    //TODO:  This will not be able to be done here, but in NCubeManager.  (Sha of the combined Sha)
     public String sha1()
     {
+        // Check if the SHA1 is already calculated.  If so, return it.
+        // In order to cache it successfully, all mutable operations on n-cube must clear the SHA1.
+        String sha1Str = (String) metaProps.get(SHA1);
+        if (StringUtilities.hasContent(sha1Str))
+        {
+            return sha1Str;
+        }
+
         final byte sep = 0;
         MessageDigest sha1 = EncryptionUtilities.getSHA1Digest();
         sha1.update(name.getBytes());
         sha1.update(sep);
-        deepSha1(sha1, defaultCellValue, sep);
-        if (metaProps != null)
-        {
-            String storedSha1 = (String) metaProps.remove(SHA_1);
-            String storedHeadSha1 = (String) metaProps.remove(HEAD_SHA_1);
 
-            if (metaProps.size() > 0)
-            {
-                deepSha1(sha1, new TreeMap(getMetaProperties()), sep);
-            }
-            if (StringUtilities.hasContent(storedHeadSha1))
-            {
-                metaProps.put(HEAD_SHA_1, storedHeadSha1);
-            }
-        }
+        deepSha1(sha1, defaultCellValue, sep);
+        deepSha1(sha1, getMetaProperties(), sep);
+
         // Need deterministic ordering (sorted by Axis name will do that)
         Map<String, Axis> sortedAxes = new TreeMap<>(axisList);
         final Map<String, List<Column>> allCoordinates = new LinkedHashMap<>();
@@ -2306,7 +2321,7 @@ public class NCube<T>
         } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));
 
         String newSha1 = StringUtilities.encode(sha1.digest());
-        setMetaProperty("sha1", newSha1);
+        metaProps.put(SHA1, newSha1);
         return newSha1;
     }
 

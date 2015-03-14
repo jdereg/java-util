@@ -957,7 +957,7 @@ class TestNCubeManager
         NCube ncube = createCube()
         String json = ncube.toFormattedJson()
         ncube = NCube.fromSimpleJson(json)
-        assertTrue(ncube.metaProperties.size() == 1)  // sha1
+        assertTrue(ncube.metaProperties.size() == 0)
 
         List<Axis> axes = ncube.axes
         for (Axis axis : axes)

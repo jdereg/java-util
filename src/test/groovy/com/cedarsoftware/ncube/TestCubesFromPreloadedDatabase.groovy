@@ -132,7 +132,8 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    void testCreateBranch() throws Exception {
+    void testCreateBranch() throws Exception
+    {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
 
@@ -145,18 +146,18 @@ class TestCubesFromPreloadedDatabase
 
         testValuesOnBranch(head)
 
-        def cube1Sha1 = NCubeManager.getCube(head, "TestBranch").getMetaProperty("sha1");
-        def cube2Sha1 = NCubeManager.getCube(head, "TestAge").getMetaProperty("sha1");
+        def cube1Sha1 = NCubeManager.getCube(head, "TestBranch").sha1();
+        def cube2Sha1 = NCubeManager.getCube(head, "TestAge").sha1();
 
-        assertNull(NCubeManager.getCube(head, "TestBranch").getMetaProperty("headSha1"));
-        assertNull(NCubeManager.getCube(head, "TestAge").getMetaProperty("headSha1"));
+        assertNull(NCubeManager.getCube(head, "TestBranch").getHeadSha1());
+        assertNull(NCubeManager.getCube(head, "TestAge").getHeadSha1());
 
         assertEquals(2, NCubeManager.createBranch(branch));
 
-        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getMetaProperty("sha1"));
-        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getMetaProperty("headSha1"));
-        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getMetaProperty("sha1"));
-        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getMetaProperty("headSha1"));
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").sha1());
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getHeadSha1());
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").sha1());
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getHeadSha1());
 
         testValuesOnBranch(head);
         testValuesOnBranch(branch);
@@ -640,8 +641,8 @@ class TestCubesFromPreloadedDatabase
         String json = cp.toFormattedJson();
 
         NCube cp2 = NCube.fromSimpleJson(json)
-        cp.removeMetaProperty("sha1")
-        cp2.removeMetaProperty("sha1")
+        cp.clearSha1()
+        cp2.clearSha1()
         assert cp.toFormattedJson() == cp2.toFormattedJson()
 
         // Test HtmlFormatter - that it properly handles the URLClassLoader in the sys.classpath cube

@@ -128,6 +128,16 @@ public class NCube<T>
     }
 
     /**
+     * Fetch full meta-props for saving.  Use getMetaProperties() everywhere else.
+     * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
+     * Modifications to this Map do not modify the actual meta properties of n-cube.  To do that,
+     * you need to use setMetaProperty(), addMetaProperty(), or remoteMetaProperty()
+     */
+    public Map<String, Object> getAllMetaPropertiesForSaving() {
+        return new TreeMap<String, Object>(metaProps);
+    }
+
+    /**
      * Fetch the value associated to the passed in Key from the MetaProperties (if any exist).  If
      * none exist, null is returned.
      */
@@ -2223,10 +2233,16 @@ public class NCube<T>
         metaProps.remove(HEAD_SHA1);
     }
 
-    void setChangeType(String type)
+    void setChangeType(int code)
     {
-        metaProps.put(CHANGE_TYPE, type);
+        metaProps.put(CHANGE_TYPE, code);
     }
+
+    void clearChangeType()
+    {
+        metaProps.remove(CHANGE_TYPE);
+    }
+
 
     /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and

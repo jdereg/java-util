@@ -61,8 +61,9 @@ public class NCubeJdbcPersister
         {
             if (appId.isHead()) {
                 ncube.clearHeadSha1();
+                ncube.clearChangeType();
             } else {
-                ncube.setChangeType(ChangeType.CREATED.toString());
+                ncube.setChangeType(ChangeType.CREATED.ordinal());
             }
             ncube.sha1();
 
@@ -333,8 +334,9 @@ public class NCubeJdbcPersister
                     if (appId.isHead())
                     {
                         cube.clearHeadSha1();
+                        cube.clearChangeType();
                     } else {
-                        cube.setChangeType(ChangeType.UPDATED.toString());
+                        cube.setChangeType(ChangeType.UPDATED.ordinal());
                     }
                     cube.sha1();
 
@@ -1639,7 +1641,7 @@ public class NCubeJdbcPersister
             if (StringUtilities.isEmpty(info.headSha1))
             {
                 //  Item was added in branch only, should not exist on head
-                //TODO:  Is this an error condition if one exists on head?
+
                 copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
                 replaceHeadSha1(c, appId, info.name, info.sha1, revision);
             }

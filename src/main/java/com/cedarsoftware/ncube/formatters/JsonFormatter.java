@@ -77,7 +77,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                 writeObjectKeyValue("defaultCellValue", ncube.getDefaultCellValue(), true);
             }
 
-            writeMetaProperties(ncube.getMetaProperties());
+            writeMetaProperties(ncube.getAllMetaPropertiesForSaving());
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
             endObject();

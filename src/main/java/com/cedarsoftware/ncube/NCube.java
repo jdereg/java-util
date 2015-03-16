@@ -22,6 +22,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -67,16 +69,14 @@ import java.util.regex.Matcher;
 public class NCube<T>
 {
     String name;
+    private String sha1;
+    private String headSha1;
+    private String changeType;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
     final Map<Collection<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
-
-    private static final String HEAD_SHA1 = "headSha1";
-    private static final String SHA1 = "sha1";
-    private static final String CHANGE_TYPE = "changeType";
-
 
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
     private transient ApplicationID appId = ApplicationID.testAppId;
@@ -115,26 +115,7 @@ public class NCube<T>
      */
     public Map<String, Object> getMetaProperties()
     {
-        Map<String, Object> meta = new TreeMap();
-        for (Map.Entry<String, Object> entry : metaProps.entrySet())
-        {
-            String key = entry.getKey();
-            if (!SHA1.equalsIgnoreCase(key) && !HEAD_SHA1.equalsIgnoreCase(key) && !CHANGE_TYPE.equalsIgnoreCase(key))
-            {   // Do not include SHA1, HEAD_SHA1, nor CHANGE_TYPE in returned meta properties
-                meta.put(key, entry.getValue());
-            }
-        }
-        return meta;
-    }
-
-    /**
-     * Fetch full meta-props for saving.  Use getMetaProperties() everywhere else.
-     * @return Map (case insensitive keys) containing meta (additional) properties for the n-cube.
-     * Modifications to this Map do not modify the actual meta properties of n-cube.  To do that,
-     * you need to use setMetaProperty(), addMetaProperty(), or remoteMetaProperty()
-     */
-    public Map<String, Object> getAllMetaPropertiesForSaving() {
-        return new TreeMap<String, Object>(metaProps);
+        return Collections.unmodifiableMap(metaProps);
     }
 
     /**
@@ -143,7 +124,6 @@ public class NCube<T>
      */
     public Object getMetaProperty(String key)
     {
-        validateMetaPropertyKey(key);
         return metaProps.get(key);
     }
 
@@ -170,7 +150,6 @@ public class NCube<T>
      */
     public Object setMetaProperty(String key, Object value)
     {
-        validateMetaPropertyKey(key);
         clearSha1();
         return metaProps.put(key, value);
     }
@@ -180,7 +159,6 @@ public class NCube<T>
      */
     public Object removeMetaProperty(String key)
     {
-        validateMetaPropertyKey(key);
         Object prop =  metaProps.remove(key);
         clearSha1();
         return prop;
@@ -195,7 +173,6 @@ public class NCube<T>
         for (Map.Entry<String, Object> entry : allAtOnce.entrySet())
         {
             final String key = entry.getKey();
-            validateMetaPropertyKey(key);
             metaProps.put(key, entry.getValue());
         }
         clearSha1();
@@ -206,22 +183,8 @@ public class NCube<T>
      */
     public void clearMetaProperties()
     {
-        String headSha1 = (String)metaProps.remove(HEAD_SHA1);
-
         metaProps.clear();
-
-        if (StringUtilities.hasContent(headSha1))
-        {
-            metaProps.put(HEAD_SHA1, headSha1);
-        }
-    }
-
-    private void validateMetaPropertyKey(String key)
-    {
-        if (SHA1.equalsIgnoreCase(key) || HEAD_SHA1.equalsIgnoreCase(key) || CHANGE_TYPE.equalsIgnoreCase(key))
-        {
-            throw new IllegalArgumentException("Use specific APIs to manipulate SHA1, HEAD_SHA1, and CHANGETYPE, cube name: " + name);
-        }
+        clearSha1();
     }
 
     /**
@@ -1788,10 +1751,13 @@ public class NCube<T>
             ncube.metaProps.remove("axes");
             ncube.metaProps.remove("cells");
             ncube.metaProps.remove("ruleMode");
-            ncube.metaProps.remove(CHANGE_TYPE);
-            ncube.metaProps.remove(SHA1);
+            ncube.metaProps.remove("sha1");
+            ncube.metaProps.remove("headSha1");
+            ncube.metaProps.remove("changeType");
             loadMetaProperties(ncube.metaProps);
 
+            ncube.headSha1 = (String) jsonNCube.get("headSha1");
+            ncube.changeType = (String) jsonNCube.get("changeType");
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
 
@@ -2220,29 +2186,33 @@ public class NCube<T>
 
     void clearSha1()
     {
-        metaProps.put(SHA1, null);
+        sha1 = null;
     }
 
-    String getHeadSha1()
+    public String getHeadSha1()
     {
-        return (String) metaProps.get(HEAD_SHA1);
+        return headSha1;
     }
 
     void clearHeadSha1()
     {
-        metaProps.remove(HEAD_SHA1);
+        headSha1 = null;
+    }
+
+    public String getChangeType()
+    {
+        return changeType;
     }
 
     void setChangeType(int code)
     {
-        metaProps.put(CHANGE_TYPE, code);
+        changeType = "" + code;
     }
 
     void clearChangeType()
     {
-        metaProps.remove(CHANGE_TYPE);
+        changeType = "0";
     }
-
 
     /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
@@ -2252,93 +2222,124 @@ public class NCube<T>
     {
         // Check if the SHA1 is already calculated.  If so, return it.
         // In order to cache it successfully, all mutable operations on n-cube must clear the SHA1.
-        String sha1Str = (String) metaProps.get(SHA1);
-        if (StringUtilities.hasContent(sha1Str))
+        if (StringUtilities.hasContent(sha1))
         {
-            return sha1Str;
+            return sha1;
         }
 
         final byte sep = 0;
-        MessageDigest sha1 = EncryptionUtilities.getSHA1Digest();
-        sha1.update(name.getBytes());
-        sha1.update(sep);
+        MessageDigest sha1Digest = EncryptionUtilities.getSHA1Digest();
+        sha1Digest.update(name == null ? "".getBytes() : name.getBytes());
+        sha1Digest.update(sep);
 
-        deepSha1(sha1, defaultCellValue, sep);
-        deepSha1(sha1, getMetaProperties(), sep);
+        deepSha1(sha1Digest, defaultCellValue, sep);
+        deepSha1(sha1Digest, new TreeMap(getMetaProperties()), sep);
 
         // Need deterministic ordering (sorted by Axis name will do that)
         Map<String, Axis> sortedAxes = new TreeMap<>(axisList);
         final Map<String, List<Column>> allCoordinates = new LinkedHashMap<>();
-        sha1.update("axes".getBytes());
-        sha1.update(sep);
+        sha1Digest.update("axes".getBytes());
+        sha1Digest.update(sep);
         for (Map.Entry<String, Axis> entry : sortedAxes.entrySet())
         {
             Axis axis = entry.getValue();
             allCoordinates.put(axis.getName(), axis.columns);
-            sha1.update(axis.getName().toLowerCase().getBytes());
-            sha1.update(sep);
-            sha1.update(String.valueOf(axis.getColumnOrder()).getBytes());
-            sha1.update(sep);
-            sha1.update(axis.getType().name().getBytes());
-            sha1.update(sep);
-            sha1.update(axis.getValueType().name().getBytes());
-            sha1.update(sep);
-            sha1.update(axis.hasDefaultColumn() ? "t".getBytes() : "f".getBytes());
-            sha1.update(sep);
+            sha1Digest.update(axis.getName().toLowerCase().getBytes());
+            sha1Digest.update(sep);
+            sha1Digest.update(String.valueOf(axis.getColumnOrder()).getBytes());
+            sha1Digest.update(sep);
+            sha1Digest.update(axis.getType().name().getBytes());
+            sha1Digest.update(sep);
+            sha1Digest.update(axis.getValueType().name().getBytes());
+            sha1Digest.update(sep);
+            sha1Digest.update(axis.hasDefaultColumn() ? "t".getBytes() : "f".getBytes());
+            sha1Digest.update(sep);
             if (!axis.isFireAll())
             {   // non-default value, add to SHA1 because it's been changed (backwards sha1 compatible)
-                sha1.update("fireOnce".getBytes());
-                sha1.update(sep);
+                sha1Digest.update("fireOnce".getBytes());
+                sha1Digest.update(sep);
             }
             if (!MapUtilities.isEmpty(axis.metaProps))
             {
-                deepSha1(sha1, new TreeMap(axis.metaProps), sep);
+                deepSha1(sha1Digest, new TreeMap(axis.metaProps), sep);
             }
-            sha1.update(sep);
+            sha1Digest.update(sep);
 
             for (Column column : axis.getColumnsWithoutDefault())
             {
-                sha1.update(column.getValue().toString().getBytes());
-                sha1.update(sep);
+                sha1Digest.update(column.getValue().toString().getBytes());
+                sha1Digest.update(sep);
                 if (!MapUtilities.isEmpty(column.metaProps))
                 {
-                    deepSha1(sha1, column.metaProps, sep);
+                    deepSha1(sha1Digest, column.metaProps, sep);
                 }
-                sha1.update(sep);
+                sha1Digest.update(sep);
             }
         }
 
         // Need deterministic ordering of cells by walking the n-dim matrix in sorted axis order,
         // accessing each coordinate thru that ordering, rather than their order in the 'cells' Map.
-        sha1.update("cells".getBytes());
-        sha1.update(sep);
+        sha1Digest.update("cells".getBytes());
+        sha1Digest.update(sep);
         final Map<String, Integer> counters = getCountersPerAxis(allCoordinates.keySet());
         final String[] axisNames = getAxisNames(allCoordinates);
         final Set<Column> idCoord = new HashSet<>();
 
-        do
+        if (getNumCells() > 0)
         {
-            for (final String axisName : axisNames)
+            do
             {
-                final List<Column> cols = allCoordinates.get(axisName);
-                if (cols.size() > 0)
+                for (final String axisName : axisNames)
                 {
-                    final Column boundColumn = cols.get(counters.get(axisName) - 1);
-                    idCoord.add(boundColumn);
+                    final List<Column> cols = allCoordinates.get(axisName);
+                    if (cols.size() > 0)
+                    {
+                        final Column boundColumn = cols.get(counters.get(axisName) - 1);
+                        idCoord.add(boundColumn);
+                    }
                 }
-            }
 
-            if (cells.containsKey(idCoord))
-            {
-                deepSha1(sha1, cells.get(idCoord), sep);
-            }
+                if (cells.containsKey(idCoord))
+//                if (false)
+                {
+                    Object cell = cells.get(idCoord);
+                    if ("sys.classpath".equalsIgnoreCase(name))
+                    {
+                        if (cell instanceof List)
+                        {
+                            for (Object path : ((List) cell))
+                            {
+                                System.out.println("path = " + path);
+                                sha1Digest.update(((String) path).getBytes());
+                            }
+                        }
+                        else if (cell instanceof URLClassLoader)
+                        {
+                            URLClassLoader loader = (URLClassLoader) cell;
+                            URL[] urls = loader.getURLs();
+                            for (URL url : urls)
+                            {
+                                System.out.println("url = " + url.toString());
+//                                sha1Digest.update(url.toString().getBytes());
+                            }
+                        }
+                        else
+                        {
+//                            deepSha1(sha1Digest, cell, sep);
+                        }
+                    }
+                    else
+                    {
+                        deepSha1(sha1Digest, cell, sep);
+                    }
+                }
 
-            idCoord.clear();
-        } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));
+                idCoord.clear();
+            } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));
+        }
 
-        String newSha1 = StringUtilities.encode(sha1.digest());
-        metaProps.put(SHA1, newSha1);
-        return newSha1;
+        sha1 = StringUtilities.encode(sha1Digest.digest());
+        return sha1;
     }
 
     private static void deepSha1(MessageDigest md, Object value, byte sep)

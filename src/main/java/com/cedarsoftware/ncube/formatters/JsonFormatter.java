@@ -65,6 +65,15 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             builder.setLength(0);
             startObject();
             writeObjectKeyValue("ncube", name, true);
+            writeObjectKeyValue("sha1", ncube.sha1(), true);
+            if (StringUtilities.hasContent(ncube.getHeadSha1()))
+            {
+                writeObjectKeyValue("headSha1", ncube.getHeadSha1(), true);
+            }
+            if (StringUtilities.hasContent(ncube.getChangeType()))
+            {
+                writeObjectKeyValue("changeType", ncube.getChangeType(), true);
+            }
             Object defCellValue = ncube.getDefaultCellValue();
 
             if (defCellValue != null)
@@ -77,7 +86,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                 writeObjectKeyValue("defaultCellValue", ncube.getDefaultCellValue(), true);
             }
 
-            writeMetaProperties(ncube.getAllMetaPropertiesForSaving());
+            writeMetaProperties(ncube.getMetaProperties());
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
             endObject();
@@ -127,6 +136,12 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
     void writeAxes(List<Axis> axes) throws IOException
     {
+        if (axes.isEmpty())
+        {   // Make sure the formatter writes valid JSON
+            builder.append("\"axes\":[],");
+            return;
+        }
+
         writeObjectKey("axes");
         startArray();
         for (Axis item : axes)

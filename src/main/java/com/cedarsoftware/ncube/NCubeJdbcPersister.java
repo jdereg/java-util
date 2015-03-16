@@ -148,8 +148,6 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }
-
-
     }
 
     boolean copyBranchCubeToHead(Connection c, ApplicationID srcBranch, ApplicationID tgtBranch, String cubeName, String username, Long revision)
@@ -225,6 +223,7 @@ public class NCubeJdbcPersister
                         return true;
                     }
                 }
+                return false;
             }
         }
         catch (RuntimeException e)
@@ -237,7 +236,6 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }
-        return false;
     }
 
     private byte[] removeHeadSha1FromBytes(byte[] jsonBytes)
@@ -1339,85 +1337,6 @@ public class NCubeJdbcPersister
             stmt.setString(6, appId.getTenant());
             stmt.setString(7, appId.getBranch());
             stmt.setLong(8, maxRev);
-            return stmt.executeUpdate() == 1;
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to update test data for NCube: " + cubeName + ", app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
-    }
-
-    /**
-     * Updated data not included in the sha-1 and not part of the run time data, currently TEST_DATA_BIN and NOTES_BIN
-     * @param c - Connection
-     * @param appId - ApplicationID
-     * @param cubeName name of cube
-     * @param nonRuntimeData map of string objects, currently just TEST_DATA_BIN and NOTEST_BIN
-     * @param revision - pass in null if you want the max revision (requires a lookup).
-     * @return true if successful
-     */
-    public boolean updateNonRuntimeData(Connection c, ApplicationID appId, String cubeName, Map<String, Object> nonRuntimeData, Long revision)
-    {
-        if (revision == null) {
-            revision = getMaxRevision(c, appId, cubeName);
-        }
-
-        if (revision == null)
-        {
-            throw new IllegalArgumentException("Cannot update test data, cube: " + cubeName + " does not exist in app: " + appId);
-        }
-
-        if (revision < 0)
-        {
-            throw new IllegalArgumentException("Cannot update test data, cube: " + cubeName + " is deleted in app: " + appId);
-        }
-
-        final boolean hasTestData = nonRuntimeData.containsKey(TEST_DATA_BIN);
-        final boolean hasNotes = nonRuntimeData.containsKey(NOTES_BIN);
-        if (!(hasTestData || hasNotes))
-        {
-            throw new IllegalArgumentException("Missing map parameters to updateNonRuntimeData.  Needs either " + TEST_DATA_BIN + " or " + NOTES_BIN);
-        }
-
-        String sql = "UPDATE n_cube SET ";
-        if (hasTestData)
-        {
-            sql += TEST_DATA_BIN;
-            sql += "=?";
-
-            if (hasNotes) {
-                sql += ", ";
-            }
-        }
-
-        if (hasNotes) {
-            sql += NOTES_BIN;
-            sql += "=?";
-        }
-
-        sql += " WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
-
-
-        try (PreparedStatement stmt = c.prepareStatement(sql))
-        {
-            int i = 1;
-            if (hasTestData)
-            {
-                stmt.setBytes(i++, StringUtilities.getBytes((String) nonRuntimeData.get(TEST_DATA_BIN), "UTF-8"));
-            }
-            if (hasNotes)
-            {
-                stmt.setBytes(i++, StringUtilities.getBytes((String) nonRuntimeData.get(NOTES_BIN), "UTF-8"));
-            }
-            stmt.setString(i++, appId.getApp());
-            stmt.setString(i++, cubeName);
-            stmt.setString(i++, appId.getVersion());
-            stmt.setString(i++, ReleaseStatus.SNAPSHOT.name());
-            stmt.setString(i++, appId.getTenant());
-            stmt.setString(i++, appId.getBranch());
-            stmt.setLong(i++, revision);
             return stmt.executeUpdate() == 1;
         }
         catch (Exception e)

@@ -580,6 +580,40 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testGetMaxRevisionWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getMaxRevision(c, defaultSnapshotApp, "foo")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to get"))
+            assertTrue(e.message.contains("revision number"))
+        }
+    }
+
+    @Test
+    void testGetBranchChangesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getBranchChanges(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+            assertTrue(e.message.contains("branch cubes"))
+        }
+    }
+
+    @Test
     void testReplaceHeadSha1ThatThrowsSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()
@@ -635,7 +669,6 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(ps.executeUpdate()).thenReturn(0)
         when(rs.next()).thenReturn(true)
-        when(rs.getLong(1)).thenReturn(5L)
         when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"));
 
         try

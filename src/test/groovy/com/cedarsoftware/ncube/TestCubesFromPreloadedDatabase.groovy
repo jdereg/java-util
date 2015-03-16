@@ -404,6 +404,7 @@ class TestCubesFromPreloadedDatabase
         try {
             //2) should already be created.
             NCubeManager.createBranch(branch);
+            fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"));
         }
@@ -497,6 +498,52 @@ class TestCubesFromPreloadedDatabase
 
         try {
             NCubeManager.commitBranch(branch, dtos, USER_ID);
+            fail();
+        } catch (BranchMergeException e) {
+            assertTrue(e.message.contains("Error merging branch"));
+        }
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testCommitBranchWithItemThatWasChangedOnHeadAndInBranch() {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID preemptiveBranch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "PREEMPT");
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(2, NCubeManager.createBranch(branch));
+        assertEquals(2, NCubeManager.createBranch(preemptiveBranch));
+
+        NCube cube = NCubeManager.getCube(preemptiveBranch, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        cube.removeCell([Code : 10.0]);
+        assertEquals(2, cube.getCellMap().size());
+        NCubeManager.updateCube(preemptiveBranch, cube, USER_ID);
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(preemptiveBranch);
+        assertEquals(1, dtos.length);
+
+        NCubeManager.commitBranch(preemptiveBranch, dtos, USER_ID);
+
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        cube.removeCell([Code : -10.0]);
+        assertEquals(2, cube.getCellMap().size());
+        NCubeManager.updateCube(branch, cube, USER_ID);
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(1, dtos.length);
+
+        try
+        {
+            NCubeManager.commitBranch(branch, dtos, USER_ID);
+            fail();
         } catch (BranchMergeException e) {
             assertTrue(e.message.contains("Error merging branch"));
         }

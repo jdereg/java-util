@@ -59,14 +59,6 @@ public class NCubeJdbcPersister
     {
         try
         {
-            if (appId.isHead()) {
-                ncube.clearHeadSha1();
-                ncube.clearChangeType();
-            } else {
-                ncube.setChangeType(ChangeType.CREATED.ordinal());
-            }
-            ncube.sha1();
-
             try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
             {
                 insert.setLong(1, UniqueIdGenerator.getUniqueId());
@@ -125,7 +117,7 @@ public class NCubeJdbcPersister
 
                     if (!ArrayUtilities.isEmpty(jsonBytes))
                     {
-                        jsonBytes = replaceHeadSha1(jsonBytes, sha1);
+                        jsonBytes = resetHeadSha1(jsonBytes, sha1);
                     }
 
                     try (PreparedStatement insert = c.prepareStatement("UPDATE n_cube set cube_value_bin = ? WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?"))
@@ -330,15 +322,6 @@ public class NCubeJdbcPersister
                     {
                         throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update deleted cube.  Restore it first.");
                     }
-
-                    if (appId.isHead())
-                    {
-                        cube.clearHeadSha1();
-                        cube.clearChangeType();
-                    } else {
-                        cube.setChangeType(ChangeType.UPDATED.ordinal());
-                    }
-                    cube.sha1();
 
                     try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
                     {
@@ -827,6 +810,10 @@ public class NCubeJdbcPersister
                             return false;
                         }
 
+                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
+
+                        jsonBytes = setChangeType(jsonBytes, ChangeType.DELETED);
+
                         try (PreparedStatement insert = c.prepareStatement(
                                 "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
                                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
@@ -834,7 +821,7 @@ public class NCubeJdbcPersister
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
                             insert.setString(2, appId.getApp());
                             insert.setString(3, cubeName);
-                            insert.setBytes(4, rs.getBytes("cube_value_bin"));
+                            insert.setBytes(4, jsonBytes);
                             insert.setString(5, appId.getVersion());
                             java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
                             insert.setDate(6, now);
@@ -1029,23 +1016,55 @@ public class NCubeJdbcPersister
         Matcher m = Regexes.sha1Pattern.matcher(json);
         if (m.find() && m.groupCount() > 0)
         {
-            String replacement = "\"sha1\":\"" + m.group(1) + "\", \"headSha1\":\"" + m.group(1) + "\"";
+            String replacement = ", \"sha1\":\"" + m.group(1) + "\", \"headSha1\":\"" + m.group(1) + "\"";
             m.appendReplacement(sb, replacement);
         }
         m.appendTail(sb);
         return StringUtilities.getBytes(sb.toString(), "UTF-8");
     }
 
-    private byte[] replaceHeadSha1(byte[] jsonBytes, String newSha1)
+    private byte[] resetHeadSha1(byte[] jsonBytes, String newSha1)
     {
         StringBuffer sb = new StringBuffer();
         String json = StringUtilities.createString(jsonBytes, "UTF-8");
         Matcher m = Regexes.headSha1Pattern.matcher(json);
+        //  replace headSha1 with existing sha1
         if (m.find() && m.groupCount() > 0)
         {
-            m.appendReplacement(sb, ", \"headSha1\":\"" + m.group(1) + "\"");
+            m.appendReplacement(sb, ", \"headSha1\":\"" + newSha1 + "\"");
         }
         m.appendTail(sb);
+
+        // remove change type
+        m = Regexes.changeTypePattern.matcher(sb.toString());
+        if (m.find() && m.groupCount() > 0)
+        {
+            m.appendReplacement(sb, "");
+        }
+        m.appendTail(sb);
+
+        return StringUtilities.getBytes(sb.toString(), "UTF-8");
+    }
+
+    private byte[] setChangeType(byte[] jsonBytes, ChangeType type)
+    {
+        StringBuffer sb = new StringBuffer();
+        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+        Matcher m = Regexes.changeTypePattern.matcher(json);
+        if (m.find() && m.groupCount() > 0)
+        {
+            m.appendReplacement(sb, ", \"changeType\":\"" + type.toString() + "\"");
+            m.appendTail(sb);
+        }
+        else
+        {
+            m = Regexes.changeTypePattern.matcher(json);
+            if (m.find() && m.groupCount() > 0) {
+                m.appendReplacement(sb, ", \"sha1\":\"" + m.group(1) + "\", \"changeType\":\"" + type.toString() + "\"");
+                m.appendTail(sb);
+            }
+
+        }
         return StringUtilities.getBytes(sb.toString(), "UTF-8");
     }
 

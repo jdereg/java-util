@@ -10,11 +10,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -887,6 +883,7 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(new Long(9))
+        when(rs.getBytes(anyString())).thenReturn("foo".getBytes("UTF-8"));
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")

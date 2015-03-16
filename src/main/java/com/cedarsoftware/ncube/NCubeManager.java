@@ -753,6 +753,10 @@ public class NCubeManager
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
         Map map = getPersister().commitBranch(appId, infoDtos, username);
+
+
+
+
         clearCache(appId);
         clearCache(appId.asHead());
         broadcast(appId);

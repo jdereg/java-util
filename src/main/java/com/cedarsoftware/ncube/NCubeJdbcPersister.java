@@ -13,7 +13,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -1058,7 +1057,7 @@ public class NCubeJdbcPersister
         }
         else
         {
-            m = Regexes.changeTypePattern.matcher(json);
+            m = Regexes.sha1Pattern.matcher(json);
             if (m.find() && m.groupCount() > 0) {
                 m.appendReplacement(sb, ", \"sha1\":\"" + m.group(1) + "\", \"changeType\":\"" + type.toString() + "\"");
                 m.appendTail(sb);
@@ -1657,56 +1656,38 @@ public class NCubeJdbcPersister
 
             long revision = Long.parseLong(info.revision);
 
-            if (StringUtilities.isEmpty(info.headSha1))
+            // UPDATES
+            if (info.changeType != null)
             {
-                //  Item was added in branch only, should not exist on head
-
-                copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
-                replaceHeadSha1(c, appId, info.name, info.sha1, revision);
-            }
-            else if (!info.headSha1.equals(info.sha1))
-            {
-                // record has changed since we pulled it from head
+                //  we created this guy locally and don't expect to be on server update him
                 NCubeInfoDto head = headMap.get(info.name);
-                Long headRevision = Long.parseLong(head.revision);
 
-
-                if (info.headSha1.equals(head.sha1))
+                if (info.headSha1 == null)
+                {
+                    if (head == null)
+                    {
+                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
+                        replaceHeadSha1(c, appId, info.name, info.sha1, revision);
+                    }
+                    else
+                    {
+                        // item was created locally, but found on server.  unexpected
+                        throw new BranchMergeException("Error merging branch to HEAD.  Unexpected HEAD record found.  Cube:  " + head + ", appId:  " + appId);
+                    }
+                }
+                else if (head != null || info.headSha1.equals(head.sha1))
                 {
                     copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
                     replaceHeadSha1(c, appId, info.name, info.sha1, revision);
                 }
                 else
                 {
-                    // sha1 has changed since we had it checked out, we have a merge conflict.
-                    throw new BranchMergeException("Merge conflict");
-                }
-            }
-            else
-            {
-                // need to check extraneous cases where sha1 wouldn't change.
-                NCubeInfoDto head = headMap.get(info.name);
-
-                if (head != null)
-                {
-                    Long headRevision = Long.parseLong(head.revision);
-
-                    // Item is marked as deleted in branch, check head revision
-                    // If head was already deleted, we do nothing here
-                    if (revision < 0 && headRevision >= 0)
-                    {
-                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
-                    }
-                    else if (revision >= 0 && headRevision < 0)
-                    {
-                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
-                    }
+                    throw new BranchMergeException("Error merging branch to head. HEAD sha-1 doesn't match. Cube:  " + head + ", appId:  " + appId);
                 }
             }
         }
 
-
-        return new HashMap();
+        return new TreeMap();
     }
 
     public int rollbackBranch(Connection c, ApplicationID appId, Object[] infoDtos)

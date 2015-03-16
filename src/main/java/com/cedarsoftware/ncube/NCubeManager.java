@@ -682,6 +682,7 @@ public class NCubeManager
         NCube.validateCubeName(newName);
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
+        ncube.prepareForWrite(newAppId, ChangeType.CREATED);
         getPersister().createCube(newAppId, copy, username);
 
         String notes = getPersister().getNotes(oldAppId, oldName);
@@ -708,6 +709,9 @@ public class NCubeManager
             throw new IllegalArgumentException(ReleaseStatus.RELEASE + " cubes cannot be updated, cube: " + ncube.getName() + ", app: " + appId);
         }
 
+        appId.validateBranchIsNotHead();
+        ncube.prepareForWrite(appId, ChangeType.UPDATED);
+
         final String cubeName = ncube.name;
         getPersister().updateCube(appId, ncube, username);
 
@@ -718,7 +722,7 @@ public class NCubeManager
         else
         {
             Map<String, Object> appCache = getCacheForApp(appId);
-            appCache.remove(ncube.getName().toLowerCase());
+            appCache.remove(cubeName.toLowerCase());
         }
 
         broadcast(appId);
@@ -911,6 +915,8 @@ public class NCubeManager
     {
         validateCube(ncube);
         validateAppId(appId);
+        appId.validateBranchIsNotHead();
+        ncube.prepareForWrite(appId, ChangeType.CREATED);
         getPersister().createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);

@@ -36,9 +36,7 @@ public class NCubeInfoDto
     public Date createDate;
     public String createHid;
     public String notes;
-
-    // N = none, D = delete, R = restored, A = added
-    public String changeType = "N";
+    public String changeType;
 
     public ApplicationID getApplicationID()
 	{
@@ -50,8 +48,4 @@ public class NCubeInfoDto
         String br = branch == null ? "HEAD" : branch;
 		return tenant + '/' + app + '/' + version + '/' + status + '/' + br + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
-
-    public void setChangeType(ChangeType type) {
-
-    }
 }

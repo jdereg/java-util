@@ -139,7 +139,8 @@ class TestJsonFormatter
     {
         NCube ncube = new NCube(null)
         JsonFormatter formatter = new JsonFormatter()
-        assertEquals '{"ncube":null,"axes":],"cells":[]}', formatter.format(ncube)
+        String json = formatter.format(ncube)
+        assertEquals('{"ncube":null,"sha1":"8CF1FFBB4AEF6830ACE611B90DDA22CD6B072909","axes":[],"cells":[]}', json)
     }
 
     @Test

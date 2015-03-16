@@ -623,30 +623,32 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getCacheForApp(appId).size())
 
         def input = [:]
-        input.env = "a";
-        input.put("state", "OH")
+        input.env = "a"
+        input.state = "OH"
         def x = cube.getCell(input)
         assert 'Hello, world.' == x
 
         // GroovyExpCp1 and sys.classpath are now both loaded.
         assertEquals(2, NCubeManager.getCacheForApp(appId).size())
 
-        input.env = "b";
-        input.put("state", "TX")
+        input.env = "b"
+        input.state = "TX"
         def y = cube.getCell(input)
         assert 'Goodbye, world.' == y
 
         // Test JsonFormatter - that it properly handles the URLClassLoader in the sys.classpath cube
-        NCube cp = NCubeManager.getCube(appId, "sys.classpath");
-        String json = cp.toFormattedJson();
+        NCube cp1 = NCubeManager.getCube(appId, "sys.classpath");
+        String json = cp1.toFormattedJson();
 
         NCube cp2 = NCube.fromSimpleJson(json)
-        cp.clearSha1()
+        cp1.clearSha1()
         cp2.clearSha1()
-        assert cp.toFormattedJson() == cp2.toFormattedJson()
+        String json1 = cp1.toFormattedJson()
+        String json2 = cp2.toFormattedJson()
+        assertEquals(json1, json2)
 
         // Test HtmlFormatter - that it properly handles the URLClassLoader in the sys.classpath cube
-        String html = cp.toHtml()
+        String html = cp1.toHtml()
         assert html.contains('http://www.cedarsoftware.com')
 
         manager.removeCubes(appId)

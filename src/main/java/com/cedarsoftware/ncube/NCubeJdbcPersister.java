@@ -13,7 +13,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -212,16 +211,13 @@ public class NCubeJdbcPersister
 
                     Long maxRevision = getMaxRevision(c, tgtBranch, cubeName);
 
-                    if (maxRevision < 0) {
-                        //  Have to see through testing if this is illegal or not.
-                        throw new IllegalArgumentException("Copying Cube back from branch");
-                    }
-
+                    //  create case
                     if (maxRevision == null)
                     {
                         maxRevision = new Long(0);
                     }
-                    else if (originalRev < 0)
+
+                    if (originalRev < 0)
                     {
                         // cube deleted in branch
                         maxRevision = -(Math.abs(maxRevision)+1);
@@ -416,7 +412,7 @@ public class NCubeJdbcPersister
             stmt.setString(8, appId.getStatus());
             stmt.setString(9, appId.getTenant());
             stmt.setString(10, appId.getBranch());
-            return getCubeInfoRecords(appId, stmt);
+            return getChangedRecords(appId, stmt);
         }
         catch (Exception e)
         {
@@ -533,6 +529,63 @@ public class NCubeJdbcPersister
         }
     }
 
+    private Object[] getChangedRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
+    {
+        List<NCubeInfoDto> list = new ArrayList<>();
+
+        try (ResultSet rs = stmt.executeQuery())
+        {
+            while (rs.next())
+            {
+                NCubeInfoDto dto = new NCubeInfoDto();
+                dto.name = rs.getString("n_cube_nm");
+                dto.branch = rs.getString("branch_id");
+                dto.tenant = appId.getTenant();
+                byte[] notes = rs.getBytes(NOTES_BIN);
+                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                dto.version = appId.getVersion();
+                dto.status = rs.getString("status_cd");
+                dto.app = appId.getApp();
+                dto.createDate = rs.getDate("create_dt");
+                dto.createHid = rs.getString("create_hid");
+                dto.revision = Long.toString(rs.getLong("revision_number"));
+                byte[] jsonBytes = rs.getBytes("cube_value_bin");
+
+                if (!ArrayUtilities.isEmpty(jsonBytes))
+                {
+                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                    Matcher m = Regexes.changeTypePattern.matcher(json);
+                    if (m.find() && m.groupCount() > 0)
+                    {
+                        dto.changeType = m.group(1);
+                    }
+
+                    if (dto.changeType == null) {
+                        continue;
+                    }
+
+                    m = Regexes.sha1Pattern.matcher(json);
+                    if (m.find() && m.groupCount() > 0)
+                    {
+                        dto.sha1 = m.group(1);
+                    }
+
+                    //  Have to pull out the original head sha1 from which this branch was made.
+                    //  We cannot calculate this on saves so has to be stored.
+                    m = Regexes.headSha1Pattern.matcher(json);
+                    if (m.find() && m.groupCount() > 0)
+                    {
+                        dto.headSha1 = m.group(1);
+                    }
+
+                }
+
+                list.add(dto);
+            }
+        }
+        return list.toArray();
+    }
+
     private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
     {
         List<NCubeInfoDto> list = new ArrayList<>();
@@ -568,7 +621,7 @@ public class NCubeJdbcPersister
                     if (!ApplicationID.HEAD.equals(appId.getBranch()))
                     {
                         //  Have to pull out the original head sha1 from which this branch was made.
-                        //  We cannot calculate this on saves so has to be passed back and forth.
+                        //  We cannot calculate this on saves so has to be stored.
                         m = Regexes.headSha1Pattern.matcher(json);
                         if (m.find() && m.groupCount() > 0)
                         {
@@ -1034,16 +1087,19 @@ public class NCubeJdbcPersister
             m.appendReplacement(sb, ", \"headSha1\":\"" + newSha1 + "\"");
         }
         m.appendTail(sb);
+        json = sb.toString();
 
         // remove change type
-        m = Regexes.changeTypePattern.matcher(sb.toString());
+        sb = new StringBuffer();
+        m = Regexes.changeTypePattern.matcher(json);
         if (m.find() && m.groupCount() > 0)
         {
             m.appendReplacement(sb, "");
         }
         m.appendTail(sb);
+        json = sb.toString();
 
-        return StringUtilities.getBytes(sb.toString(), "UTF-8");
+        return StringUtilities.getBytes(json, "UTF-8");
     }
 
     private byte[] setChangeType(byte[] jsonBytes, ChangeType type)
@@ -1058,7 +1114,7 @@ public class NCubeJdbcPersister
         }
         else
         {
-            m = Regexes.changeTypePattern.matcher(json);
+            m = Regexes.sha1Pattern.matcher(json);
             if (m.find() && m.groupCount() > 0) {
                 m.appendReplacement(sb, ", \"sha1\":\"" + m.group(1) + "\", \"changeType\":\"" + type.toString() + "\"");
                 m.appendTail(sb);
@@ -1657,56 +1713,38 @@ public class NCubeJdbcPersister
 
             long revision = Long.parseLong(info.revision);
 
-            if (StringUtilities.isEmpty(info.headSha1))
+            // All changes go through here.
+            if (info.changeType != null)
             {
-                //  Item was added in branch only, should not exist on head
-
-                copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
-                replaceHeadSha1(c, appId, info.name, info.sha1, revision);
-            }
-            else if (!info.headSha1.equals(info.sha1))
-            {
-                // record has changed since we pulled it from head
+                //  we created this guy locally and don't expect to be on server update him
                 NCubeInfoDto head = headMap.get(info.name);
-                Long headRevision = Long.parseLong(head.revision);
 
-
-                if (info.headSha1.equals(head.sha1))
+                if (info.headSha1 == null)
+                {
+                    if (head == null)
+                    {
+                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
+                        replaceHeadSha1(c, appId, info.name, info.sha1, revision);
+                    }
+                    else
+                    {
+                        // item was created locally, but found on server.  unexpected
+                        throw new BranchMergeException("Error merging branch to HEAD.  Unexpected HEAD record found.  Cube:  " + head + ", appId:  " + appId);
+                    }
+                }
+                else if (head != null || info.headSha1.equals(head.sha1))
                 {
                     copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
                     replaceHeadSha1(c, appId, info.name, info.sha1, revision);
                 }
                 else
                 {
-                    // sha1 has changed since we had it checked out, we have a merge conflict.
-                    throw new BranchMergeException("Merge conflict");
-                }
-            }
-            else
-            {
-                // need to check extraneous cases where sha1 wouldn't change.
-                NCubeInfoDto head = headMap.get(info.name);
-
-                if (head != null)
-                {
-                    Long headRevision = Long.parseLong(head.revision);
-
-                    // Item is marked as deleted in branch, check head revision
-                    // If head was already deleted, we do nothing here
-                    if (revision < 0 && headRevision >= 0)
-                    {
-                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
-                    }
-                    else if (revision >= 0 && headRevision < 0)
-                    {
-                        copyBranchCubeToHead(c, appId, headId, info.name, username, revision);
-                    }
+                    throw new BranchMergeException("Error merging branch to head. HEAD sha-1 doesn't match. Cube:  " + head + ", appId:  " + appId);
                 }
             }
         }
 
-
-        return new HashMap();
+        return new TreeMap();
     }
 
     public int rollbackBranch(Connection c, ApplicationID appId, Object[] infoDtos)

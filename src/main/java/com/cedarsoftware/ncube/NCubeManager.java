@@ -618,6 +618,7 @@ public class NCubeManager
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
     {
         validateAppId(appId);
+        appId.validateBranchIsNotHead();
 
         if (appId.isRelease())
         {
@@ -753,6 +754,10 @@ public class NCubeManager
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
         Map map = getPersister().commitBranch(appId, infoDtos, username);
+
+
+
+
         clearCache(appId);
         clearCache(appId.asHead());
         broadcast(appId);

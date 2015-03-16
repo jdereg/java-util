@@ -618,6 +618,7 @@ public class NCubeManager
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
     {
         validateAppId(appId);
+        appId.validateBranchIsNotHead();
 
         if (appId.isRelease())
         {

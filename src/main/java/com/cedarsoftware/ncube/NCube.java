@@ -2194,24 +2194,9 @@ public class NCube<T>
         return headSha1;
     }
 
-    void clearHeadSha1()
-    {
-        headSha1 = null;
-    }
-
     public String getChangeType()
     {
         return changeType;
-    }
-
-    void setChangeType(int code)
-    {
-        changeType = "" + code;
-    }
-
-    void clearChangeType()
-    {
-        changeType = "0";
     }
 
     /**

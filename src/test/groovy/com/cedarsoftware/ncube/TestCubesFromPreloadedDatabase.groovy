@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube
 
+import com.cedarsoftware.ncube.exception.BranchMergeException
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import org.junit.After
 import org.junit.Before
@@ -464,6 +465,46 @@ class TestCubesFromPreloadedDatabase
         assertEquals(code2, cube.getCell(["Code": 5]));
     }
 
+
+    @Test
+    void testCommitBranchWithItemAddedLocallyAndOnHead() {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID preemptiveBranch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "PREEMPT");
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json")
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(1, NCubeManager.createBranch(branch));
+        assertEquals(1, NCubeManager.createBranch(preemptiveBranch));
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
+        NCubeManager.createCube(preemptiveBranch, cube, USER_ID);
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(preemptiveBranch);
+        assertEquals(1, dtos.length);
+        NCubeManager.commitBranch(preemptiveBranch, dtos, USER_ID);
+
+
+        cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+        NCubeManager.createCube(branch, cube, USER_ID);
+
+
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(1, dtos.length);
+
+        try {
+            NCubeManager.commitBranch(branch, dtos, USER_ID);
+        } catch (BranchMergeException e) {
+            assertTrue(e.message.contains("Error merging branch"));
+        }
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
     @Test
     void testGetBranchChanges() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
@@ -474,9 +515,6 @@ class TestCubesFromPreloadedDatabase
 
         // cubes were preloaded
         testValuesOnBranch(head)
-
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
 
         // pre-branch, cubes don't exist
         assertNull(NCubeManager.getCube(branch, "TestBranch"));

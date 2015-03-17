@@ -339,6 +339,7 @@ public class NCubeJdbcPersister
 
     Long getMaxRevision(Connection c, ApplicationID appId, String name)
     {
+        //TODO:  status_cd
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT revision_number FROM n_cube " +
                 "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
@@ -474,6 +475,7 @@ public class NCubeJdbcPersister
 
     public Object[] getRevisions(Connection c, ApplicationID appId, String cubeName)
     {
+        //TODO:  status_cd?
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, branch_id, cube_value_bin " +
                 "FROM n_cube " +
@@ -676,7 +678,7 @@ public class NCubeJdbcPersister
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin, n.revision_number FROM n_cube n, " +
+        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number as rev, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
@@ -704,7 +706,7 @@ public class NCubeJdbcPersister
             {
                 if (rs.next())
                 {
-                    Long revision = rs.getLong("revision_number");
+                    Long revision = rs.getLong("rev");
 
                     if (revision >= 0)
                     {
@@ -781,6 +783,7 @@ public class NCubeJdbcPersister
 
     public boolean rollbackCube(Connection c, ApplicationID appId, String cubeName)
     {
+        //TODO  AND STATUS_CD?
         String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND n_cube_nm = ? AND revision_number <> 0 AND revision_number <> -1";
 
         try (PreparedStatement ps = c.prepareStatement(sql))
@@ -825,7 +828,7 @@ public class NCubeJdbcPersister
         }
         else
         {
-            String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin, n.revision_number FROM n_cube n, " +
+            String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number as rev, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin FROM n_cube n, " +
                     "( " +
                     "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                     "  FROM n_cube " +
@@ -853,7 +856,7 @@ public class NCubeJdbcPersister
                 {
                     if (rs.next())
                     {
-                        Long revision = rs.getLong("revision_number");
+                        Long revision = rs.getLong("rev");
 
                         //  TODO:  In restoreCube() and updateCube() we throw an exception when there is nothing to update.
                         //  TODO:  For consistency do we want to do the same thing here?
@@ -1548,6 +1551,8 @@ public class NCubeJdbcPersister
 
     public Set<String> getBranches(Connection connection, ApplicationID appId)
     {
+        //  TODO: ONLY load by branch name?
+        //  TODO: NON-UNIQUE INDEX on branch in this case?
         final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {

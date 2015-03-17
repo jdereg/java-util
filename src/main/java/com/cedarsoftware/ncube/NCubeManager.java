@@ -775,8 +775,6 @@ public class NCubeManager
         for (Object dto : infoDtos) {
             NCubeInfoDto info = (NCubeInfoDto)dto;
 
-            long revision = Long.parseLong(info.revision);
-
             // All changes go through here.
             if (info.changeType != null)
             {
@@ -809,15 +807,15 @@ public class NCubeManager
             throw new BranchMergeException("Error committing branch", errors);
         }
 
-        getPersister().commitBranch(appId, dtos, username);
+        Map map = getPersister().commitBranch(appId, dtos, username);
 
 
 
 
         clearCache(appId);
-        clearCache(appId.asHead());
+        clearCache(headAppId);
         broadcast(appId);
-        return new TreeMap();
+        return map;
     }
 
     /**

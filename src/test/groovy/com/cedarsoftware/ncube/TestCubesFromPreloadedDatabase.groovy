@@ -110,8 +110,68 @@ class TestCubesFromPreloadedDatabase
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "kenny");
         loadCubesToDatabase(branch, "test.branch.2.json")
 
-        Set<String> branches = NCubeManager.getBranches(head);
-        assertEquals(2, branches.size());
+        // showing we only rely on tenant to get branches.
+        assertEquals(2, NCubeManager.getBranches(head).size());
+        assertEquals(2, NCubeManager.getBranches(branch).size());
+
+        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'someoneelse')
+        loadCubesToDatabase(branch2, "test.branch.1.json", "test.branch.age.1.json")
+        assertEquals(3, NCubeManager.getBranches(branch2).size());
+        assertEquals(3, NCubeManager.getBranches(head).size());
+        assertEquals(3, NCubeManager.getBranches(branch).size());
+    }
+
+    @Test
+    void testGetAppNames() throws Exception {
+        ApplicationID app1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID app2 = new ApplicationID('NONE', "foo", "1.29.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID app3 = new ApplicationID('NONE', "bar", "1.29.0", "SNAPSHOT", ApplicationID.HEAD);
+        loadCubesToDatabase(app1, "test.branch.1.json", "test.branch.age.1.json")
+        loadCubesToDatabase(app2, "test.branch.1.json", "test.branch.age.1.json")
+        loadCubesToDatabase(app3, "test.branch.1.json", "test.branch.age.1.json")
+
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", 'kenny');
+        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'kenny')
+        ApplicationID branch3 = new ApplicationID('NONE', 'test', '1.29.0', 'SNAPSHOT', 'someoneelse')
+        ApplicationID branch4 = new ApplicationID('NONE', 'test', '1.28.0', 'SNAPSHOT', 'someoneelse')
+
+        assertEquals(2, NCubeManager.createBranch(branch1));
+        assertEquals(2, NCubeManager.createBranch(branch2));
+        // version doesn't match one in head, nothing created.
+        assertEquals(0, NCubeManager.createBranch(branch3));
+        assertEquals(2, NCubeManager.createBranch(branch4));
+
+        // showing we only rely on tenant and branch to get app names.
+        assertEquals(3, NCubeManager.getAppNames(app1).size());
+        assertEquals(3, NCubeManager.getAppNames(app2).size());
+        assertEquals(3, NCubeManager.getAppNames(app3).size());
+        assertEquals(2, NCubeManager.getAppNames(branch1).size());
+        assertEquals(2, NCubeManager.getAppNames(branch2).size());
+        assertEquals(1, NCubeManager.getAppNames(branch3).size());
+        assertEquals(1, NCubeManager.getAppNames(branch4).size());
+
+    }
+
+    @Test
+    void testCreationWithNoHeadData() throws Exception {
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", USER_ID);
+//        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'kenny')
+//        ApplicationID branch3 = new ApplicationID('NONE', 'test', '1.29.0', 'SNAPSHOT', 'someoneelse')
+//        ApplicationID branch4 = new ApplicationID('NONE', 'test', '1.28.0', 'SNAPSHOT', 'someoneelse')
+
+        NCubeManager.createCube(branch1, cube, 'kenny');
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(1, dtos.length);
+
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertEquals(1, map.size());
+
+        ApplicationID headId = branch1.asHead();
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, null).length)
+
     }
 
 
@@ -215,8 +275,7 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -293,6 +352,8 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, dtos.length);
 
         Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
+        assertTrue(!map.isEmpty());
+
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
@@ -305,12 +366,51 @@ class TestCubesFromPreloadedDatabase
         cube = NCubeManager.getCube(head, "TestBranch");
         assertEquals("ZZZ", cube.getCell([Code : 10.0]));
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testCommitBranchWithUpdateAndWrongRevisionNumber() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        NCube cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(2, NCubeManager.createBranch(branch));
+
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        // edit branch cube
+        cube.removeCell([Code : 10.0]);
+        assertEquals(2, cube.getCellMap().size());
+
+        // default now gets loaded
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // update the new edited cube.
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+
+        //  loads in both TestAge and TestBranch through only TestBranch has changed.
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(1, dtos.length);
+        ((NCubeInfoDto)dtos[0]).revision = Long.toString(100);
+
+        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
+
+
 
     @Test
     void testRollback() throws Exception
@@ -470,8 +570,7 @@ class TestCubesFromPreloadedDatabase
         assertNull(NCubeManager.getCube(branch, "TestBranch"));
         assertNull(NCubeManager.getCube(head, "TestBranch"));
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -545,6 +644,9 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
+
+
+
 
     private void testValuesOnBranch(ApplicationID appId, String code1 = "ABC", String code2 = "youth") {
         NCube cube = NCubeManager.getCube(appId, "TestBranch");
@@ -731,8 +833,7 @@ class TestCubesFromPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch);
         assertEquals(0, dtos.length);
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)

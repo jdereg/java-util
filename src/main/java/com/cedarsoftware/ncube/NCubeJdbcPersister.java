@@ -135,7 +135,6 @@ public class NCubeJdbcPersister
                         {
                             throw new IllegalStateException("error updating n-cube: " + cubeName + "', app: " + appId + ", row was not updated");
                         }
-                        return;
                     }
                 }
 

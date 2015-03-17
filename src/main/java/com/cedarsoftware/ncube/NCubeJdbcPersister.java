@@ -258,7 +258,7 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin, n.revision_number as rev FROM n_cube n, " +
+        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number as rev, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
@@ -309,7 +309,7 @@ public class NCubeJdbcPersister
                         insert.setString(7, username);
                         insert.setString(8, appId.getTenant());
                         insert.setString(9, appId.getBranch());
-                        insert.setLong(10, Math.abs(revision) + 1);
+                        insert.setLong(10, revision + 1);
 
                         insert.setBytes(11, rs.getBytes(TEST_DATA_BIN));
                         insert.setBytes(12, rs.getBytes(NOTES_BIN));

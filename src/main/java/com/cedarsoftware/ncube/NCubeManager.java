@@ -983,10 +983,10 @@ public class NCubeManager
         broadcast(appId);
     }
 
-    public static Set<String> getBranches(ApplicationID appId)
+    public static Set<String> getBranches(String tenant)
     {
-        validateAppId(appId);
-        return getPersister().getBranches(appId);
+        ApplicationID.validateTenant(tenant);
+        return getPersister().getBranches(tenant);
     }
 
     public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)

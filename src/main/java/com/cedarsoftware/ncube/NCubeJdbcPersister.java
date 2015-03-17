@@ -1548,12 +1548,12 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Set<String> getBranches(Connection connection, ApplicationID appId)
+    public Set<String> getBranches(Connection connection, String tenant)
     {
         final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ')";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {
-            stmt.setString(1, appId.getTenant());
+            stmt.setString(1, tenant);
 
             Set<String> branches = new HashSet<>();
             try (ResultSet rs = stmt.executeQuery())
@@ -1568,7 +1568,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all branches for app: " + appId + " from database";
+            String s = "Unable to fetch all branches for tenant: " + tenant + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

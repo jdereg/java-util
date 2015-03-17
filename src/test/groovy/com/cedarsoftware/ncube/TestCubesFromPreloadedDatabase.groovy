@@ -142,13 +142,9 @@ class TestCubesFromPreloadedDatabase
         assertEquals(2, NCubeManager.createBranch(branch4));
 
         // showing we only rely on tenant and branch to get app names.
-        assertEquals(3, NCubeManager.getAppNames(app1).size());
-        assertEquals(3, NCubeManager.getAppNames(app2).size());
-        assertEquals(3, NCubeManager.getAppNames(app3).size());
-        assertEquals(2, NCubeManager.getAppNames(branch1).size());
-        assertEquals(2, NCubeManager.getAppNames(branch2).size());
-        assertEquals(1, NCubeManager.getAppNames(branch3).size());
-        assertEquals(1, NCubeManager.getAppNames(branch4).size());
+        assertEquals(3, NCubeManager.getAppNames('NONE', 'SNAPSHOT', ApplicationID.HEAD).size());
+        assertEquals(2, NCubeManager.getAppNames('NONE', 'SNAPSHOT', 'kenny').size());
+        assertEquals(1, NCubeManager.getAppNames('NONE', 'SNAPSHOT', 'someoneelse').size());
 
     }
 

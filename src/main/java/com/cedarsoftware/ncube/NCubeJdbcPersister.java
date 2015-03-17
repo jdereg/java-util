@@ -1490,15 +1490,16 @@ public class NCubeJdbcPersister
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getAppNames(Connection connection, ApplicationID appId)
+    public Object[] getAppNames(Connection connection, String tenant, String status, String branch)
     {
-        String sql = "SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ') and branch_id = ?";
+        String sql = "SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ') and status_cd = ? and branch_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {
             List<String> records = new ArrayList<>();
 
-            stmt.setString(1, appId.getTenant());
-            stmt.setString(2, appId.getBranch());
+            stmt.setString(1, tenant);
+            stmt.setString(2, status);
+            stmt.setString(3, branch);
 
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -1512,7 +1513,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all app names from database for tenant: " + appId.getTenant() + ", branch: " + appId.getBranch();
+            String s = "Unable to fetch all app names from database for tenant: " + tenant + ", branch: " + branch;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

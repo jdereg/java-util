@@ -179,12 +179,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getAppNames(ApplicationID appId)
+    public Object[] getAppNames(String tenant, String status, String branch)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getAppNames(c, appId);
+            return persister.getAppNames(c, tenant, status, branch);
         }
         finally
         {

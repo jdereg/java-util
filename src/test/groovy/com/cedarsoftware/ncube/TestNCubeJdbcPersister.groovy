@@ -170,7 +170,7 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp)
+            new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp.DEFAULT_TENANT, 'SNAPSHOT', ApplicationID.TEST_BRANCH)
             fail()
         }
         catch (RuntimeException e)

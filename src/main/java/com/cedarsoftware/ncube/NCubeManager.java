@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -753,15 +754,11 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        Map map = getPersister().commitBranch(appId, infoDtos, username);
-
-
-
-
+        getPersister().commitBranch(appId, infoDtos, username);
         clearCache(appId);
         clearCache(appId.asHead());
         broadcast(appId);
-        return map;
+        return new TreeMap();
     }
 
     /**

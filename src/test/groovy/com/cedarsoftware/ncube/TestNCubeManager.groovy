@@ -13,12 +13,7 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCubeManager Tests
@@ -472,6 +467,22 @@ class TestNCubeManager
             assertTrue(e.message.contains('attempting to update deleted cube'))
         }
     }
+
+
+    @Test
+    void testGetBranchChangesFromDatabaseWithInvalidAppIdOfHead() throws Exception
+    {
+        try
+        {
+            NCubeManager.getBranchChangesFromDatabase(defaultSnapshotApp.asHead())
+            fail 'should not make it here'
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertEquals(e.message, 'Cannot get branch changes from HEAD')
+        }
+    }
+
 
     @Test
     void testUpdateTestDataOnDeletedCube() throws Exception

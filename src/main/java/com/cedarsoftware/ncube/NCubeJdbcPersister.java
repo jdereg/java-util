@@ -1518,15 +1518,15 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Object[] getAppVersions(Connection connection, ApplicationID appId)
+    public Object[] getAppVersions(Connection connection, String tenant, String app, String status, String branch)
     {
         final String sql = "SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {
-            stmt.setString(1, appId.getApp());
-            stmt.setString(2, appId.getStatus());
-            stmt.setString(3, appId.getTenant());
-            stmt.setString(4, appId.getBranch());
+            stmt.setString(1, app);
+            stmt.setString(2, status);
+            stmt.setString(3, tenant);
+            stmt.setString(4, branch);
 
             List<String> records = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery())
@@ -1542,7 +1542,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all versions for app: " + appId + " from database";
+            String s = "Unable to fetch all versions for app: " + app + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

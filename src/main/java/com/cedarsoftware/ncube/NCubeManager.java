@@ -667,10 +667,12 @@ public class NCubeManager
      * Get all of the versions that exist for the given ApplicationID (tenant and app).
      * @return Object[] of String version numbers.
      */
-    public static Object[] getAppVersions(ApplicationID appId)
+    public static Object[] getAppVersions(String tenant, String app, String status, String branch)
     {
-        validateAppId(appId);
-        return getPersister().getAppVersions(appId);
+        ApplicationID.validateTenant(tenant);
+        ApplicationID.validateApp(app);
+        ApplicationID.validateBranch(branch);
+        return getPersister().getAppVersions(tenant, app, status, branch);
     }
 
     /**

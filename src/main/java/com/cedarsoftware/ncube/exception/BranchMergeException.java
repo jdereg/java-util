@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube.exception;
 
+import java.util.Map;
+
 /**
  * Sub-class of RuntimeException for extra clarification if needed.
  *
@@ -21,8 +23,15 @@ package com.cedarsoftware.ncube.exception;
  */
 public class BranchMergeException extends RuntimeException
 {
+    private final Map<String, String> errors;
     // placeholder later for change log or something like that.
-    public BranchMergeException(String message) {
+    public BranchMergeException(String message, Map<String, String> errors)
+    {
         super(message);
+        this.errors = errors;
+    }
+
+    public Map<String, String> getErrors() {
+        return errors;
     }
 }

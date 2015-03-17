@@ -37,4 +37,15 @@ public enum ChangeType
     {
         return code;
     }
+
+    public static String fromCode(String code) {
+        switch(code) {
+            case "C" : return "Created";
+            case "R" : return "Restored";
+            case "U" : return "Updated";
+            case "D" : return "Deleted";
+            default  : return "No change";
+        }
+
+    }
 }

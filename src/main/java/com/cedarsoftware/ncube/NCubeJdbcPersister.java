@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.BranchMergeException;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
@@ -12,12 +11,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 
 /**
@@ -258,7 +258,7 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin, n.revision_number FROM n_cube n, " +
+        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin, n.revision_number as rev FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
@@ -286,7 +286,7 @@ public class NCubeJdbcPersister
             {
                 if (rs.next())
                 {
-                    Long revision = rs.getLong("revision_number");
+                    Long revision = rs.getLong("rev");
 
                     if (revision < 0)
                     {
@@ -1590,53 +1590,19 @@ public class NCubeJdbcPersister
     }
 
 
-    public Map commitBranch(Connection c, ApplicationID appId, Object[] infoDtos, String username)
+    public Map commitBranch(Connection c, ApplicationID appId, Collection<NCubeInfoDto> dtos, String username)
     {
+        Map<String, String> changes = new LinkedHashMap<>();
         ApplicationID headAppId = appId.asHead();
-        Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] headInfo = getCubeRecords(c, headAppId, "*");
-        for (Object cubeInfo : headInfo)
+
+        for (NCubeInfoDto dto : dtos)
         {
-            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
-            headMap.put(info.name, info);
+            Long revision = Long.parseLong(dto.revision);
+            copyBranchCubeToHead(c, appId, headAppId, dto.name, username, revision);
+            replaceHeadSha1(c, appId, dto.name, dto.sha1, revision);
+            changes.put(dto.name, ChangeType.fromCode(dto.changeType));
         }
-
-        for (Object dto : infoDtos) {
-            NCubeInfoDto info = (NCubeInfoDto)dto;
-
-            long revision = Long.parseLong(info.revision);
-
-            // All changes go through here.
-            if (info.changeType != null)
-            {
-                //  we created this guy locally and don't expect to be on server update him
-                NCubeInfoDto head = headMap.get(info.name);
-
-                if (info.headSha1 == null)
-                {
-                    if (head == null)
-                    {
-                        copyBranchCubeToHead(c, appId, headAppId, info.name, username, revision);
-                        replaceHeadSha1(c, appId, info.name, info.sha1, revision);
-                    }
-                    else
-                    {
-                        // item was created locally, but found on server.  unexpected
-                        throw new BranchMergeException("Error merging branch to HEAD.  Unexpected HEAD record found.  Cube:  " + head + ", appId:  " + appId);
-                    }
-                }
-                else if (head != null && info.headSha1.equals(head.sha1))
-                {
-                    copyBranchCubeToHead(c, appId, headAppId, info.name, username, revision);
-                    replaceHeadSha1(c, appId, info.name, info.sha1, revision);
-                }
-                else
-                {
-                    throw new BranchMergeException("Error merging branch to head. HEAD sha-1 doesn't match. Cube:  " + head + ", appId:  " + appId);
-                }
-            }
-        }
-        return new TreeMap();
+        return changes;
     }
 
     public int rollbackBranch(Connection c, ApplicationID appId, Object[] infoDtos)

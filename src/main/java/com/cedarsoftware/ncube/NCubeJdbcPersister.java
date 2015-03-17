@@ -13,8 +13,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 
@@ -1036,7 +1038,7 @@ public class NCubeJdbcPersister
                             insert.setBytes(10, rs.getBytes(NOTES_BIN));
                             insert.setString(11, appId.getTenant());
                             insert.setString(12, appId.getBranch());
-                            insert.setLong(13, (rs.getLong("revision_number") >= 0) ? 0 : -1);
+                            insert.setLong(13, (rs.getLong("rev") >= 0) ? 0 : -1);
                             insert.addBatch();
                             count++;
                         }
@@ -1543,7 +1545,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public List<String> getBranches(Connection connection, ApplicationID appId)
+    public Set<String> getBranches(Connection connection, ApplicationID appId)
     {
         final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
@@ -1553,7 +1555,7 @@ public class NCubeJdbcPersister
             stmt.setString(3, appId.getStatus());
             stmt.setString(4, appId.getTenant());
 
-            List<String> branches = new ArrayList<>();
+            Set<String> branches = new HashSet<>();
             try (ResultSet rs = stmt.executeQuery())
             {
                 while (rs.next())

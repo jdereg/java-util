@@ -114,8 +114,8 @@ class TestCubesFromPreloadedDatabase
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "kenny");
         loadCubesToDatabase(branch, "test.branch.2.json")
 
-        List<String> list = NCubeManager.getBranches(head);
-        assertEquals(2, list.size());
+        Set<String> branches = NCubeManager.getBranches(head);
+        assertEquals(2, branches.size());
     }
 
 

@@ -13,7 +13,12 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCubeManager Tests
@@ -394,7 +399,7 @@ class TestNCubeManager
         NCube n1 = NCubeManager.getNCubeFromResource('stringIds.json')
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID)
 
-        Object[] names = NCubeManager.getAppNames(defaultSnapshotApp.tenant)
+        Object[] names = NCubeManager.getAppNames(defaultSnapshotApp)
         boolean foundName = false
         for (Object name : names)
         {

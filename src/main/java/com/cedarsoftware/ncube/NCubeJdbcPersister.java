@@ -366,8 +366,6 @@ public class NCubeJdbcPersister
 
     public Object[] getBranchChanges(Connection c, ApplicationID appId)
     {
-        ApplicationID head = new ApplicationID(appId.getTenant(), appId.getApp(), appId.getVersion(), appId.getStatus(), ApplicationID.HEAD);
-
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, notes_bin, version_no_cd, status_cd, create_dt, create_hid, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
@@ -1440,7 +1438,7 @@ public class NCubeJdbcPersister
 
     public boolean doReleaseCubesExist(Connection c, ApplicationID appId)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = 'HEAD'";
+        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = '" + ApplicationID.HEAD + "'";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {
@@ -1490,16 +1488,18 @@ public class NCubeJdbcPersister
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getAppNames(Connection connection, String tenant)
+    public Object[] getAppNames(Connection connection, ApplicationID appId)
     {
-        String sql = "SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ')";
+        String sql = "SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ') and branch_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {
             List<String> records = new ArrayList<>();
 
-            stmt.setString(1, tenant);
-            try (ResultSet rs = stmt.executeQuery()) {
+            stmt.setString(1, appId.getTenant());
+            stmt.setString(2, appId.getBranch());
 
+            try (ResultSet rs = stmt.executeQuery())
+            {
                 while (rs.next())
                 {
                     records.add(rs.getString(1));
@@ -1510,7 +1510,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch all app names from database for tenant: " + tenant;
+            String s = "Unable to fetch all app names from database for tenant: " + appId.getTenant() + ", branch: " + appId.getBranch();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -1518,12 +1518,13 @@ public class NCubeJdbcPersister
 
     public Object[] getAppVersions(Connection connection, ApplicationID appId)
     {
-        final String sql = "SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')";
+        final String sql = "SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {
             stmt.setString(1, appId.getApp());
             stmt.setString(2, appId.getStatus());
             stmt.setString(3, appId.getTenant());
+            stmt.setString(4, appId.getBranch());
 
             List<String> records = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery())

@@ -609,22 +609,22 @@ class TestNCube
         cal5.set(2014, 7, 1, 12, 59, 58)
 
         def coord = [:]
-        coord.put("dateRange", cal)
+        coord.dateRange = cal
         ncube.setCell("JSON", coord)
-        coord.put("dateRange", cal1.time)
+        coord.dateRange = cal1.time
         ncube.setCell("XML", coord)
-        coord.put("dateRange", cal2.time.time)
+        coord.dateRange = cal2.time.time
         ncube.setCell("YAML", coord)
-        coord.put("dateRange", cal4)
+        coord.dateRange = cal4
         ncube.setCell("PNG", coord)
 
-        coord.put("dateRange", cal)
+        coord.dateRange = cal
         assertTrue("JSON".equals(ncube.getCell(coord)))
-        coord.put("dateRange", cal1)
+        coord.dateRange = cal1
         assertTrue("XML".equals(ncube.getCell(coord)))
-        coord.put("dateRange", cal2)
+        coord.dateRange = cal2
         assertTrue("YAML".equals(ncube.getCell(coord)))
-        coord.put("dateRange", cal4)
+        coord.dateRange = cal4
         assertTrue("PNG".equals(ncube.getCell(coord)))
 
         assertFalse(axis.contains(99))

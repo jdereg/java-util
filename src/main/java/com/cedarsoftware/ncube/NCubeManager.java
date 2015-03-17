@@ -656,9 +656,9 @@ public class NCubeManager
     /**
      * Return an array [] of Strings containing all unique App names for the given tenant.
      */
-    public static Object[] getAppNames(String tenant)
+    public static Object[] getAppNames(ApplicationID appId)
     {
-        return getPersister().getAppNames(tenant);
+        return getPersister().getAppNames(appId);
     }
 
     /**

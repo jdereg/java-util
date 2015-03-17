@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.exception.BranchMergeException;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
@@ -558,7 +559,7 @@ public class NCubeJdbcPersister
                 list.add(dto);
             }
         }
-        return list.toArray();
+        return list.toArray(new NCubeInfoDto[list.size()]);
     }
 
     private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
@@ -772,6 +773,28 @@ public class NCubeJdbcPersister
         catch (Exception e)
         {
             String s = "Unable to delete cubes for app: " + appId + " from database";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+
+    }
+
+    public boolean rollbackCube(Connection c, ApplicationID appId, String cubeName)
+    {
+        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND n_cube_nm = ? AND revision_number <> 0 AND revision_number <> -1";
+
+        try (PreparedStatement ps = c.prepareStatement(sql))
+        {
+            ps.setString(1, appId.getApp());
+            ps.setString(2, appId.getVersion());
+            ps.setString(3, appId.getTenant());
+            ps.setString(4, appId.getBranch());
+            ps.setString(5, cubeName);
+            return ps.executeUpdate() > 0;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to rollback cube: " + cubeName + " for app: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -1567,23 +1590,63 @@ public class NCubeJdbcPersister
     public Map commitBranch(Connection c, ApplicationID appId, Object[] infoDtos, String username)
     {
         ApplicationID headAppId = appId.asHead();
-        for (Object o : infoDtos)
+        Map<String, NCubeInfoDto> headMap = new TreeMap<>();
+        Object[] headInfo = getCubeRecords(c, headAppId, "*");
+        for (Object cubeInfo : headInfo)
         {
-            NCubeInfoDto info = (NCubeInfoDto)o;
-            Long revision = Long.parseLong(info.revision);
-            copyBranchCubeToHead(c, appId, headAppId, info.name, username, revision);
-            replaceHeadSha1(c, appId, info.name, info.sha1, revision);
+            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+            headMap.put(info.name, info);
+        }
+
+        for (Object dto : infoDtos) {
+            NCubeInfoDto info = (NCubeInfoDto)dto;
+
+            long revision = Long.parseLong(info.revision);
+
+            // All changes go through here.
+            if (info.changeType != null)
+            {
+                //  we created this guy locally and don't expect to be on server update him
+                NCubeInfoDto head = headMap.get(info.name);
+
+                if (info.headSha1 == null)
+                {
+                    if (head == null)
+                    {
+                        copyBranchCubeToHead(c, appId, headAppId, info.name, username, revision);
+                        replaceHeadSha1(c, appId, info.name, info.sha1, revision);
+                    }
+                    else
+                    {
+                        // item was created locally, but found on server.  unexpected
+                        throw new BranchMergeException("Error merging branch to HEAD.  Unexpected HEAD record found.  Cube:  " + head + ", appId:  " + appId);
+                    }
+                }
+                else if (head != null && info.headSha1.equals(head.sha1))
+                {
+                    copyBranchCubeToHead(c, appId, headAppId, info.name, username, revision);
+                    replaceHeadSha1(c, appId, info.name, info.sha1, revision);
+                }
+                else
+                {
+                    throw new BranchMergeException("Error merging branch to head. HEAD sha-1 doesn't match. Cube:  " + head + ", appId:  " + appId);
+                }
+            }
         }
         return new TreeMap();
     }
 
     public int rollbackBranch(Connection c, ApplicationID appId, Object[] infoDtos)
     {
-        // TODO: Persister needs to implement this.
-        // TODO: The passed in set of cubes to rollback (identified by ncubeinfoDtos), are simply deleted, and the
-        // TODO: corresponding cube from HEAD is brought over to their branch.
-
-        return 0;
+        int count = 0;
+        for (Object dto : infoDtos)
+        {
+            NCubeInfoDto info = (NCubeInfoDto)dto;
+            if (rollbackCube(c, appId, info.name)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public Object[] updateBranch(Connection c, ApplicationID appId)

@@ -312,6 +312,92 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
+    void testRollback() throws Exception
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        // cubes were preloaded
+        testValuesOnBranch(head)
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+
+        // pre-branch, cubes don't exist
+        assertNull(NCubeManager.getCube(branch, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch, "TestAge"));
+
+        NCube cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(2, NCubeManager.createBranch(branch));
+
+        //  test values on branch
+        testValuesOnBranch(branch);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
+
+        cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        // edit branch cube
+        cube.removeCell([Code : 10.0]);
+        assertEquals(2, cube.getCellMap().size());
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // update the new edited cube.
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+
+        cube.setCell("FOO", [Code : 10.0]);
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("FOO", cube.getCell([Code : 10.0]));
+
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+
+        cube.removeCell([Code : 10.0]);
+        assertEquals(2, cube.getCellMap().size());
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+        assertEquals(4, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+
+        cube.setCell("FOO", [Code : 10.0]);
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("FOO", cube.getCell([Code : 10.0]));
+
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+        assertEquals(5, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+
+        //  loads in both TestAge and TestBranch through only TestBranch has changed.
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(1, dtos.length);
+
+        assertEquals(1, NCubeManager.rollbackBranch(branch, dtos));
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(0, dtos.length);
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
     void testCommitBranchOnDelete() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");

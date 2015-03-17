@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.BranchMergeException;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CaseInsensitiveSet;
@@ -755,57 +754,9 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-
-
-        Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-
-        ApplicationID headAppId = appId.asHead();
-        Object[] headInfo = getPersister().getCubeRecords(headAppId, "*");
-        for (Object cubeInfo : headInfo)
-        {
-            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
-            headMap.put(info.name, info);
-        }
-
-        List<NCubeInfoDto> changes = new ArrayList<>(infoDtos.length);
-
-        for (Object dto : infoDtos) {
-            NCubeInfoDto info = (NCubeInfoDto)dto;
-
-            long revision = Long.parseLong(info.revision);
-
-            // All changes go through here.
-            if (info.changeType != null)
-            {
-                //  we created this guy locally and don't expect to be on server update him
-                NCubeInfoDto head = headMap.get(info.name);
-
-                if (info.headSha1 == null)
-                {
-                    if (head == null)
-                    {
-                        changes.add(info);
-                    }
-                    else
-                    {
-                        // item was created locally, but found on server.  unexpected
-                        throw new BranchMergeException("Error merging branch to HEAD.  Unexpected HEAD record found.  Cube:  " + head + ", appId:  " + appId);
-                    }
-                }
-                else if (head != null && info.headSha1.equals(head.sha1))
-                {
-                    changes.add(info);
-                }
-                else
-                {
-                    throw new BranchMergeException("Error merging branch to head. HEAD sha-1 doesn't match. Cube:  " + head + ", appId:  " + appId);
-                }
-            }
-        }
-
-        getPersister().commitBranch(appId, changes.toArray(), username);
+        getPersister().commitBranch(appId, infoDtos, username);
         clearCache(appId);
-        clearCache(headAppId);
+        clearCache(appId.asHead());
         broadcast(appId);
         return new TreeMap();
     }

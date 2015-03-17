@@ -580,6 +580,26 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testRollbackBranchWithSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            NCubeInfoDto[] dtos = new NCubeInfoDto[1];
+            dtos[0] = new NCubeInfoDto();
+            dtos[0].name = "foo";
+
+            new NCubeJdbcPersister().rollbackBranch(c, defaultSnapshotApp, dtos)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to rollback cube"))
+        }
+    }
+
+    @Test
     void testGetMaxRevisionWithSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()

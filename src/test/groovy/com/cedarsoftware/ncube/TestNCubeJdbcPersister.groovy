@@ -546,6 +546,188 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testGetTestDataWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getTestData(c, defaultSnapshotApp, "foo")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+            assertTrue(e.message.contains("test data"))
+        }
+    }
+
+    @Test
+    void testGetNotesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getNotes(c, defaultSnapshotApp, "foo")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+            assertTrue(e.message.contains("notes"))
+        }
+    }
+
+    @Test
+    void testRollbackBranchWithSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            NCubeInfoDto[] dtos = new NCubeInfoDto[1];
+            dtos[0] = new NCubeInfoDto();
+            dtos[0].name = "foo";
+
+            new NCubeJdbcPersister().rollbackBranch(c, defaultSnapshotApp, dtos)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to rollback cube"))
+        }
+    }
+
+    @Test
+    void testGetMaxRevisionWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getMaxRevision(c, defaultSnapshotApp, "foo")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to get"))
+            assertTrue(e.message.contains("revision number"))
+        }
+    }
+
+    @Test
+    void testGetBranchChangesWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getBranchChanges(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+            assertTrue(e.message.contains("branch cubes"))
+        }
+    }
+
+    @Test
+    void testReplaceHeadSha1ThatThrowsSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().replaceHeadSha1(c, defaultSnapshotApp, "foo", "FFFFFFF", 1)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to replace"))
+        }
+    }
+
+    @Test
+    void testCopyBranchCubeToHeadWithInvalidRevision() throws Exception
+    {
+        try
+        {
+            new NCubeJdbcPersister().copyBranchCubeToHead(null, defaultSnapshotApp, defaultSnapshotApp.asHead(), "foo", USER_ID, null);
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.startsWith("Revision number cannot be null"))
+        }
+    }
+
+    @Test
+    void testCopyBranchCubeToHeadThatThrowsSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), "foo", USER_ID, 1);
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertEquals(SQLException.class, e.cause.class);
+            assertTrue(e.message.startsWith("Unable to copy cube"))
+        }
+    }
+
+    @Test
+    void testCopyBranchCubeToHeadThatDoesntUpdateCorrectly() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(ps.executeUpdate()).thenReturn(0)
+        when(rs.next()).thenReturn(true)
+        when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"));
+
+        try
+        {
+            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), "foo", USER_ID, 1);
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.startsWith("Unable to copy cube"))
+        }
+    }
+
+
+
+    @Test
+    void testReplaceHeadSha1ThatDoesNotUpdateCorrectly() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(ps.executeUpdate()).thenReturn(0)
+        when(rs.next()).thenReturn(true)
+        when(rs.getLong(1)).thenReturn(5L)
+
+        try
+        {
+            new NCubeJdbcPersister().replaceHeadSha1(c, defaultSnapshotApp, "foo", "FFFFFFF", 1)
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.startsWith("error updating"))
+        }
+    }
+
+    @Test
     void testGetNCubesWithSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()

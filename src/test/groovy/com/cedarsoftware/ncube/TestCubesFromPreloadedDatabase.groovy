@@ -110,8 +110,46 @@ class TestCubesFromPreloadedDatabase
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "kenny");
         loadCubesToDatabase(branch, "test.branch.2.json")
 
-        Set<String> branches = NCubeManager.getBranches(head);
-        assertEquals(2, branches.size());
+        // showing we only rely on tenant to get branches.
+        assertEquals(2, NCubeManager.getBranches(head).size());
+        assertEquals(2, NCubeManager.getBranches(branch).size());
+
+        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'someoneelse')
+        loadCubesToDatabase(branch2, "test.branch.1.json", "test.branch.age.1.json")
+        assertEquals(3, NCubeManager.getBranches(branch2).size());
+        assertEquals(3, NCubeManager.getBranches(head).size());
+        assertEquals(3, NCubeManager.getBranches(branch).size());
+    }
+
+    @Test
+    void testGetAppNames() throws Exception {
+        ApplicationID app1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID app2 = new ApplicationID('NONE', "foo", "1.29.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID app3 = new ApplicationID('NONE', "bar", "1.29.0", "SNAPSHOT", ApplicationID.HEAD);
+        loadCubesToDatabase(app1, "test.branch.1.json", "test.branch.age.1.json")
+        loadCubesToDatabase(app2, "test.branch.1.json", "test.branch.age.1.json")
+        loadCubesToDatabase(app3, "test.branch.1.json", "test.branch.age.1.json")
+
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", 'kenny');
+        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'kenny')
+        ApplicationID branch3 = new ApplicationID('NONE', 'test', '1.29.0', 'SNAPSHOT', 'someoneelse')
+        ApplicationID branch4 = new ApplicationID('NONE', 'test', '1.28.0', 'SNAPSHOT', 'someoneelse')
+
+        assertEquals(2, NCubeManager.createBranch(branch1));
+        assertEquals(2, NCubeManager.createBranch(branch2));
+        // version doesn't match one in head, nothing created.
+        assertEquals(0, NCubeManager.createBranch(branch3));
+        assertEquals(2, NCubeManager.createBranch(branch4));
+
+        // showing we only rely on tenant and branch to get app names.
+        assertEquals(3, NCubeManager.getAppNames(app1).size());
+        assertEquals(3, NCubeManager.getAppNames(app2).size());
+        assertEquals(3, NCubeManager.getAppNames(app3).size());
+        assertEquals(2, NCubeManager.getAppNames(branch1).size());
+        assertEquals(2, NCubeManager.getAppNames(branch2).size());
+        assertEquals(1, NCubeManager.getAppNames(branch3).size());
+        assertEquals(1, NCubeManager.getAppNames(branch4).size());
+
     }
 
 
@@ -545,6 +583,9 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
+
+
+
 
     private void testValuesOnBranch(ApplicationID appId, String code1 = "ABC", String code2 = "youth") {
         NCube cube = NCubeManager.getCube(appId, "TestBranch");

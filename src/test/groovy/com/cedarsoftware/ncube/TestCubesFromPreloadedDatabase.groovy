@@ -152,6 +152,28 @@ class TestCubesFromPreloadedDatabase
 
     }
 
+    @Test
+    void testCreationWithNoHeadData() throws Exception {
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", USER_ID);
+//        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'kenny')
+//        ApplicationID branch3 = new ApplicationID('NONE', 'test', '1.29.0', 'SNAPSHOT', 'someoneelse')
+//        ApplicationID branch4 = new ApplicationID('NONE', 'test', '1.28.0', 'SNAPSHOT', 'someoneelse')
+
+        NCubeManager.createCube(branch1, cube, 'kenny');
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(1, dtos.length);
+
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertEquals(1, map.size());
+
+        ApplicationID headId = branch1.asHead();
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, null).length)
+
+    }
+
 
     @Test
     void testRetrieveBranchesAtSameTimeToTestMergeLogic() throws Exception {
@@ -253,8 +275,7 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -331,6 +352,8 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, dtos.length);
 
         Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
+        assertTrue(!map.isEmpty());
+
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
@@ -342,9 +365,6 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]));
         cube = NCubeManager.getCube(head, "TestBranch");
         assertEquals("ZZZ", cube.getCell([Code : 10.0]));
-
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -508,8 +528,7 @@ class TestCubesFromPreloadedDatabase
         assertNull(NCubeManager.getCube(branch, "TestBranch"));
         assertNull(NCubeManager.getCube(head, "TestBranch"));
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -772,8 +791,7 @@ class TestCubesFromPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch);
         assertEquals(0, dtos.length);
 
-        //  this test will break after first commit change.
-        assertTrue(map.isEmpty());
+        assertTrue(!map.isEmpty());
 
         manager.removeCubes(branch)
         manager.removeCubes(head)

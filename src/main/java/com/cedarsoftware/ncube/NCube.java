@@ -2268,6 +2268,7 @@ public class NCube<T>
 
         if (getNumCells() > 0)
         {
+            // TODO: Walk cells directly (in a determistic order), only computing SHA1 against their content.
             Map<Collection<Column>, T> cellsCopy = getCellMap();
             do
             {

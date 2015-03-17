@@ -111,14 +111,14 @@ class TestCubesFromPreloadedDatabase
         loadCubesToDatabase(branch, "test.branch.2.json")
 
         // showing we only rely on tenant to get branches.
-        assertEquals(2, NCubeManager.getBranches(head).size());
-        assertEquals(2, NCubeManager.getBranches(branch).size());
+        assertEquals(2, NCubeManager.getBranches('NONE').size());
+        assertEquals(2, NCubeManager.getBranches('NONE').size());
 
         ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'someoneelse')
         loadCubesToDatabase(branch2, "test.branch.1.json", "test.branch.age.1.json")
-        assertEquals(3, NCubeManager.getBranches(branch2).size());
-        assertEquals(3, NCubeManager.getBranches(head).size());
-        assertEquals(3, NCubeManager.getBranches(branch).size());
+        assertEquals(3, NCubeManager.getBranches('NONE').size());
+        assertEquals(3, NCubeManager.getBranches('NONE').size());
+        assertEquals(3, NCubeManager.getBranches('NONE').size());
     }
 
     @Test

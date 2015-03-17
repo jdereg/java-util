@@ -140,12 +140,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Set<String> getBranches(ApplicationID appId)
+    public Set<String> getBranches(String tenant)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getBranches(c, appId);
+            return persister.getBranches(c, tenant);
         }
         finally
         {

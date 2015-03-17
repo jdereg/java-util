@@ -394,7 +394,7 @@ class TestNCubeManager
         NCube n1 = NCubeManager.getNCubeFromResource('stringIds.json')
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID)
 
-        Object[] names = NCubeManager.getAppNames(defaultSnapshotApp)
+        Object[] names = NCubeManager.getAppNames(defaultSnapshotApp.DEFAULT_TENANT, defaultSnapshotApp.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         boolean foundName = false
         for (Object name : names)
         {

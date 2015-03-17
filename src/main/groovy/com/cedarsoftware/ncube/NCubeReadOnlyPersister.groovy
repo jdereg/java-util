@@ -28,8 +28,8 @@ interface NCubeReadOnlyPersister
     NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)
     Object[] getCubeRecords(ApplicationID appId, String pattern)
     Object[] getBranchChanges(ApplicationID appId)
-    Object[] getAppNames(ApplicationID appId)
-    Object[] getAppVersions(String tenant, String app, String status, String branch);
+    Object[] getAppNames(String tenant, String status, String branch)
+    Object[] getAppVersions(String tenant, String app, String status, String branch)
     boolean doesCubeExist(ApplicationID appId, String cubeName)
 
     Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)

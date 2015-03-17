@@ -1551,15 +1551,10 @@ public class NCubeJdbcPersister
 
     public Set<String> getBranches(Connection connection, ApplicationID appId)
     {
-        //  TODO: ONLY load by branch name?
-        //  TODO: NON-UNIQUE INDEX on branch in this case?
-        final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ')";
+        final String sql = "SELECT DISTINCT branch_id FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ')";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
         {
-            stmt.setString(1, appId.getApp());
-            stmt.setString(2, appId.getVersion());
-            stmt.setString(3, appId.getStatus());
-            stmt.setString(4, appId.getTenant());
+            stmt.setString(1, appId.getTenant());
 
             Set<String> branches = new HashSet<>();
             try (ResultSet rs = stmt.executeQuery())

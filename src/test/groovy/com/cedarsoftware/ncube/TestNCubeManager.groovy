@@ -13,12 +13,7 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCubeManager Tests
@@ -410,7 +405,7 @@ class TestNCubeManager
             }
         }
 
-        Object[] vers = NCubeManager.getAppVersions(defaultSnapshotApp)
+        Object[] vers = NCubeManager.getAppVersions(defaultSnapshotApp.DEFAULT_TENANT, APP_ID, defaultSnapshotApp.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         boolean foundVer = false
         String version = '1.0.0'
         for (Object ver : vers)

@@ -192,12 +192,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getAppVersions(ApplicationID appId)
+    public Object[] getAppVersions(String tenant, String app, String status, String branch)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getAppVersions(c, appId);
+            return persister.getAppVersions(c, tenant, app, status, branch);
         }
         finally
         {

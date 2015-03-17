@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -309,12 +310,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
+    public Map commitBranch(ApplicationID appId, Collection<NCubeInfoDto> dtos, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.commitBranch(c, appId, infoDtos, username);
+            return persister.commitBranch(c, appId, dtos, username);
         }
         finally
         {

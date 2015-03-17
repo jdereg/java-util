@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.exception.BranchMergeException;
 import com.cedarsoftware.ncube.util.CdnClassLoader;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CaseInsensitiveSet;
@@ -27,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -754,7 +756,64 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        getPersister().commitBranch(appId, infoDtos, username);
+
+
+        ApplicationID headAppId = appId.asHead();
+        Map<String, NCubeInfoDto> headMap = new TreeMap<>();
+        Object[] headInfo = getPersister().getCubeRecords(headAppId, "*");
+
+        //  build map of head objects for reference.
+        for (Object cubeInfo : headInfo)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+            headMap.put(info.name, info);
+        }
+
+        List<NCubeInfoDto> dtos = new ArrayList<>(infoDtos.length);
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        for (Object dto : infoDtos) {
+            NCubeInfoDto info = (NCubeInfoDto)dto;
+
+            long revision = Long.parseLong(info.revision);
+
+            // All changes go through here.
+            if (info.changeType != null)
+            {
+                //  we created this guy locally and don't expect to be on server update him
+                NCubeInfoDto head = headMap.get(info.name);
+
+                if (info.headSha1 == null)
+                {
+                    if (head == null)
+                    {
+                        dtos.add(info);
+                    }
+                    else
+                    {
+                        errors.put(info.name, "Error merging CUBE.  Unexpected HEAD record found");
+                    }
+                }
+                else if (head != null && info.headSha1.equals(head.sha1))
+                {
+                    dtos.add(info);
+                }
+                else
+                {
+                    errors.put(info.name, "Error merging CUBE.  sha-1 doesn't match HEAD sha1-");
+                }
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            throw new BranchMergeException("Error committing branch", errors);
+        }
+
+        getPersister().commitBranch(appId, dtos, username);
+
+
+
+
         clearCache(appId);
         clearCache(appId.asHead());
         broadcast(appId);

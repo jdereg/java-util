@@ -22,8 +22,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -77,12 +75,12 @@ public class NCube<T>
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
-
-    //  Sets up the defaultApplicationId for cubes loaded in from disk.
-    private transient ApplicationID appId = ApplicationID.testAppId;
-
     public static final String validCubeNameChars = "0-9a-zA-Z:._-";
     public static final String RULE_EXEC_INFO = "_rule";
+    private final Map<String, Advice> advices = new LinkedHashMap<>();
+    private Map<String, Object> metaProps = new CaseInsensitiveMap<>();
+    //  Sets up the defaultApplicationId for cubes loaded in from disk.
+    private transient ApplicationID appId = ApplicationID.testAppId;
     private static final ThreadLocal<Deque<StackEntry>> executionStack = new ThreadLocal<Deque<StackEntry>>()
     {
         public Deque<StackEntry> initialValue()
@@ -90,8 +88,6 @@ public class NCube<T>
             return new ArrayDeque<>();
         }
     };
-    private final Map<String, Advice> advices = new LinkedHashMap<>();
-    private Map<String, Object> metaProps = new CaseInsensitiveMap<>();
 
     /**
      * Creata a new NCube instance with the passed in name
@@ -2272,6 +2268,7 @@ public class NCube<T>
 
         if (getNumCells() > 0)
         {
+            Map<Collection<Column>, T> cellsCopy = getCellMap();
             do
             {
                 for (final String axisName : axisNames)
@@ -2284,44 +2281,13 @@ public class NCube<T>
                     }
                 }
 
-                if (cells.containsKey(idCoord))
-//                if (false)
+                if (cellsCopy.containsKey(idCoord))
                 {
-                    Object cell = cells.get(idCoord);
-                    if ("sys.classpath".equalsIgnoreCase(name))
-                    {
-                        if (cell instanceof List)
-                        {
-                            for (Object path : ((List) cell))
-                            {
-                                System.out.println("path = " + path);
-                                sha1Digest.update(((String) path).getBytes());
-                            }
-                        }
-                        else if (cell instanceof URLClassLoader)
-                        {
-                            URLClassLoader loader = (URLClassLoader) cell;
-                            URL[] urls = loader.getURLs();
-                            for (URL url : urls)
-                            {
-                                System.out.println("url = " + url.toString());
-//                                sha1Digest.update(url.toString().getBytes());
-                            }
-                        }
-                        else
-                        {
-//                            deepSha1(sha1Digest, cell, sep);
-                        }
-                    }
-                    else
-                    {
-                        deepSha1(sha1Digest, cell, sep);
-                    }
+                    deepSha1(sha1Digest, cellsCopy.get(idCoord), sep);
                 }
 
                 idCoord.clear();
-            } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));
-        }
+            } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));        }
 
         sha1 = StringUtilities.encode(sha1Digest.digest());
         return sha1;
@@ -2350,6 +2316,7 @@ public class NCube<T>
             else if (value.getClass().isArray())
             {
                 int len = Array.getLength(value);
+
                 md.update("array".getBytes());
                 md.update(String.valueOf(len).getBytes());
                 md.update(sep);

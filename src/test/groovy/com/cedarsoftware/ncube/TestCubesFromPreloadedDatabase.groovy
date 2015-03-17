@@ -4,9 +4,14 @@ import com.cedarsoftware.ncube.exception.BranchMergeException
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -914,7 +919,8 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(appId)
     }
 
-    @Test
+    // Ken: Can you lot at keeping this test, but doing it in terms of a non-sys.classpath cube?
+    @Ignore
     void testTwoClasspathsSameAppId() throws Exception
     {
         loadCubesToDatabase(appId, "sys.classpath.2per.app.json", "GroovyExpCp1.json")

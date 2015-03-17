@@ -371,6 +371,48 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
+    void testCommitBranchWithUpdateAndWrongRevisionNumber() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        NCube cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(2, NCubeManager.createBranch(branch));
+
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        // edit branch cube
+        cube.removeCell([Code : 10.0]);
+        assertEquals(2, cube.getCellMap().size());
+
+        // default now gets loaded
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // update the new edited cube.
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+
+        //  loads in both TestAge and TestBranch through only TestBranch has changed.
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(1, dtos.length);
+        ((NCubeInfoDto)dtos[0]).revision = Long.toString(100);
+
+        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID);
+        assertTrue(!map.isEmpty());
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+
+
+    @Test
     void testRollback() throws Exception
     {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);

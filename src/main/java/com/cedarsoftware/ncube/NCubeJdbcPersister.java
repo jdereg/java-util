@@ -537,10 +537,6 @@ public class NCubeJdbcPersister
                         dto.changeType = m.group(1);
                     }
 
-                    if (dto.changeType == null) {
-                        continue;
-                    }
-
                     m = Regexes.sha1Pattern.matcher(json);
                     if (m.find() && m.groupCount() > 0)
                     {
@@ -553,6 +549,10 @@ public class NCubeJdbcPersister
                     if (m.find() && m.groupCount() > 0)
                     {
                         dto.headSha1 = m.group(1);
+                    }
+
+                    if (StringUtilities.equals(dto.sha1, dto.headSha1)) {
+                        continue;
                     }
 
                 }

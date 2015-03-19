@@ -149,14 +149,10 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    void testCreationWithNoHeadData() throws Exception {
+    void testCommitBranchOnCreatedCube() throws Exception {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
         ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", USER_ID);
-//        ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'kenny')
-//        ApplicationID branch3 = new ApplicationID('NONE', 'test', '1.29.0', 'SNAPSHOT', 'someoneelse')
-//        ApplicationID branch4 = new ApplicationID('NONE', 'test', '1.28.0', 'SNAPSHOT', 'someoneelse')
-
         NCubeManager.createCube(branch1, cube, 'kenny');
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
@@ -170,19 +166,25 @@ class TestCubesFromPreloadedDatabase
 
     }
 
-
     @Test
-    void testRetrieveBranchesAtSameTimeToTestMergeLogic() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
-        // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(branch, "test.branch.2.json")
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+    void testCommitBranchOnCreateThenDeleted() throws Exception {
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        testValuesOnBranch(head)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", USER_ID);
+        NCubeManager.createCube(branch1, cube, 'kenny');
+        NCubeManager.deleteCube(branch1, "TestAge", 'kenny');
 
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(1, dtos.length);
+
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertEquals(0, map.size());
+
+        ApplicationID headId = branch1.asHead();
+        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null).length)
+
+        manager.removeCubes(branch1)
+        manager.removeCubes(headId)
     }
 
     @Test
@@ -276,6 +278,85 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(head)
     }
+
+    @Test
+    void testUpdateBrachWithUpdateOnBranch() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        // cubes were preloaded
+        testValuesOnBranch(head)
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+
+        // pre-branch, cubes don't exist
+        assertNull(NCubeManager.getCube(branch, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch, "TestAge"));
+
+        NCube cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(2, NCubeManager.createBranch(branch));
+
+        //  test values on branch
+        testValuesOnBranch(branch);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
+
+        cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        // edit branch cube
+        cube.removeCell([Code : 10.0]);
+        assertEquals(2, cube.getCellMap().size());
+
+        // default now gets loaded
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // update the new edited cube.
+        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID));
+
+        // Only Branch "TestBranch" has been updated.
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
+
+        // commit the branch
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(2, cube.getCellMap().size());
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        // check head hasn't changed.
+        cube = NCubeManager.getCube(head, "TestBranch");
+        assertEquals(3, cube.getCellMap().size());
+        assertEquals("GHI", cube.getCell([Code : 10.0]));
+
+        assertEquals(0, NCubeManager.updateBranch(branch).length);
+
+        // shouldn't have changed
+        cube = NCubeManager.getCube(branch, "TestBranch");
+        assertEquals(2, cube.getCellMap().size());
+        assertEquals("ZZZ", cube.getCell([Code : 10.0]));
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+
 
     @Test
     void testCommitBranchOnUpdate() throws Exception {
@@ -653,7 +734,7 @@ class TestCubesFromPreloadedDatabase
 
 
     @Test
-    void testCommitBranchWithItemAddedLocallyAndOnHead() {
+    void testCommitBranchWithItemCreatedLocallyAndOnHead() {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD);
         ApplicationID preemptiveBranch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "PREEMPT");
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO");

@@ -787,7 +787,11 @@ public class NCubeManager
                 {
                     if (head == null)
                     {
-                        dtos.add(info);
+                        //  Only add new cube if it hasn't been deleted.
+                        if (!"D".equals(info.changeType))
+                        {
+                            dtos.add(info);
+                        }
                     }
                     else
                     {
@@ -810,10 +814,6 @@ public class NCubeManager
         }
 
         Map map = getPersister().commitBranch(appId, dtos, username);
-
-
-
-
         clearCache(appId);
         clearCache(headAppId);
         broadcast(appId);
@@ -829,7 +829,9 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        return getPersister().rollbackBranch(appId, infoDtos);
+        int ret = getPersister().rollbackBranch(appId, infoDtos);
+        clearCacheForBranches(appId);
+        return ret;
     }
 
     public static Object[] updateBranch(ApplicationID appId)
@@ -837,7 +839,102 @@ public class NCubeManager
         validateAppId(appId);
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
-        return getPersister().updateBranch(appId);
+
+        ApplicationID headAppId = appId.asHead();
+        Object[] records = getCubeRecordsFromDatabase(appId, "*");
+        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, "*");
+
+        //  build map of head objects for reference.
+        Map<String, NCubeInfoDto> headMap = new LinkedHashMap<>();
+
+        for (Object cubeInfo : headRecords)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
+            headMap.put(info.name, info);
+        }
+
+        List<NCubeInfoDto> adds = new ArrayList<>(records.length);
+        List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
+        List<NCubeInfoDto> updates = new ArrayList<>(records.length);
+
+        Map<String, String> conflicts = new LinkedHashMap<>();
+
+        // TODO: Persister needs to implement this
+        // TODO: When a user selects updateBranch, the following steps happen:
+        // TODO: 1. All cubes in the main branch are checked against the cubes in their branch.  If a cube name
+        // TODO: matches one in their branch, and they have not modified it and the SHA1's still match, move on
+        // TODO: to the next.
+        // TODO: 2. If a cube name matches a cube name in their branch and they have not modified, but the main
+        // TODO: branch has changed, then you can safely delete their cube (mark it deleted -or- replace it (newer
+        // TODO: version) and copy over the cube from the HEAD branch.
+        // TODO: 3. If a cube name exists in the main branch that does not exist in their branch, then the cube either
+        // TODO: needs to be added (or possibly restored).
+        // TODO: 4. If they have any cubes that remain, that do not match the head, and they are not changed, then those
+        // TODO: cubes need to be deleted.
+        // TODO: 5. If the cube name matches a cube name in their branch, but they have changed it, then skip it (Do
+        // TODO: not update it).  Return a list of these (we will show this list to the user letting them know they
+        // TODO: have potential conflicts.
+        for (Object dto : records)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) dto;
+            NCubeInfoDto head = (NCubeInfoDto) headMap.get(info.name);
+
+            //  handle items marked as changed.
+            if (info.changeType == null)
+            {
+                //  created while branching?
+                if (info.headSha1 != null)
+                {
+                    if (head != null)
+                    {
+                        if (!info.headSha1.equals(head.sha1))
+                        {
+                            deletes.add(info);
+                            adds.add(head);
+                        }
+                    }
+                    else
+                    {
+                        //  we didn't make any changes, but deleted on server.
+                        deletes.add(info);
+                    }
+                }
+                else if (head == null)
+                {
+                    // head was no longer found and we didn't change it.
+                    deletes.add(info);
+                }
+            }
+            else
+            {
+                if (info.headSha1 != null)
+                {
+                    if (head != null)
+                    {
+                        if (!info.headSha1.equals(head.sha1))
+                        {
+                            deletes.add(info);
+                            adds.add(head);
+                        }
+                    }
+                    else
+                    {
+                        //  we didn't make any changes, but deleted on server.
+                        deletes.add(info);
+                    }
+                }
+
+            }
+        }
+
+        if (!conflicts.isEmpty()) {
+            throw new BranchMergeException("Error committing branch", conflicts);
+        }
+
+        Object[] ret = getPersister().updateBranch(appId);
+
+        clearCacheForBranches(appId);
+        return ret;
     }
 
     /**

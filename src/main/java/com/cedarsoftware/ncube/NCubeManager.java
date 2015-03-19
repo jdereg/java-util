@@ -689,7 +689,6 @@ public class NCubeManager
         NCube ncube = getCube(oldAppId, oldName);
         NCube copy = ncube.duplicate(newName);
         newAppId.validateBranchIsNotHead();
-        ncube.prepareForWrite(ChangeType.CREATED);
         getPersister().createCube(newAppId, copy, username);
 
         String notes = getPersister().getNotes(oldAppId, oldName);
@@ -717,7 +716,6 @@ public class NCubeManager
         }
 
         appId.validateBranchIsNotHead();
-        ncube.prepareForWrite(ChangeType.UPDATED);
 
         final String cubeName = ncube.name;
         getPersister().updateCube(appId, ncube, username);
@@ -1075,7 +1073,6 @@ public class NCubeManager
         validateCube(ncube);
         validateAppId(appId);
         appId.validateBranchIsNotHead();
-        ncube.prepareForWrite(ChangeType.CREATED);
         getPersister().createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);

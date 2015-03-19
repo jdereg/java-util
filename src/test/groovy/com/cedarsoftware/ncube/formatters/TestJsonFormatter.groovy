@@ -1,11 +1,6 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.ApplicationID
-import com.cedarsoftware.ncube.NCube
-import com.cedarsoftware.ncube.NCubeManager
-import com.cedarsoftware.ncube.TestNCubeManager
-import com.cedarsoftware.ncube.TestingDatabaseHelper
-import com.cedarsoftware.ncube.TestingDatabaseManager
+import com.cedarsoftware.ncube.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -140,7 +135,7 @@ class TestJsonFormatter
         NCube ncube = new NCube(null)
         JsonFormatter formatter = new JsonFormatter()
         String json = formatter.format(ncube)
-        assertEquals('{"ncube":null,"sha1":"13D6CB7BA189087389BF4BE05329345ED7F02C65","axes":[],"cells":[]}', json)
+        assertEquals('{"ncube":null,"sha1":"8CF1FFBB4AEF6830ACE611B90DDA22CD6B072909","axes":[],"cells":[]}', json)
     }
 
     @Test

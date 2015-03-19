@@ -537,10 +537,6 @@ public class NCubeJdbcPersister
                         dto.changeType = m.group(1);
                     }
 
-                    if (dto.changeType == null) {
-                        continue;
-                    }
-
                     m = Regexes.sha1Pattern.matcher(json);
                     if (m.find() && m.groupCount() > 0)
                     {
@@ -553,6 +549,10 @@ public class NCubeJdbcPersister
                     if (m.find() && m.groupCount() > 0)
                     {
                         dto.headSha1 = m.group(1);
+                    }
+
+                    if (StringUtilities.equals(dto.sha1, dto.headSha1) && dto.changeType == null) {
+                        continue;
                     }
 
                 }
@@ -1440,7 +1440,7 @@ public class NCubeJdbcPersister
 
     public boolean doReleaseCubesExist(Connection c, ApplicationID appId)
     {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = '" + ApplicationID.HEAD + "'";
+        String statement = "SELECT n_cube_id FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
 
         try (PreparedStatement ps = c.prepareStatement(statement))
         {
@@ -1448,6 +1448,7 @@ public class NCubeJdbcPersister
             ps.setString(2, appId.getVersion());
             ps.setString(3, ReleaseStatus.RELEASE.name());
             ps.setString(4, appId.getTenant());
+            ps.setString(5, ApplicationID.HEAD);
 
             try (ResultSet rs = ps.executeQuery())
             {
@@ -1620,21 +1621,6 @@ public class NCubeJdbcPersister
 
     public Object[] updateBranch(Connection c, ApplicationID appId)
     {
-        // TODO: Persister needs to implement this
-        // TODO: When a user selects updateBranch, the following steps happen:
-        // TODO: 1. All cubes in the main branch are checked against the cubes in their branch.  If a cube name
-        // TODO: matches one in their branch, and they have not modified it and the SHA1's still match, move on
-        // TODO: to the next.
-        // TODO: 2. If a cube name matches a cube name in their branch and they have not modified, but the main
-        // TODO: branch has changed, then you can safely delete their cube (mark it deleted -or- replace it (newer
-        // TODO: version) and copy over the cube from the HEAD branch.
-        // TODO: 3. If a cube name exists in the main branch that does not exist in their branch, then the cube either
-        // TODO: needs to be added (or possibly restored).
-        // TODO: 4. If they have any cubes that remain, that do not match the head, and they are not changed, then those
-        // TODO: cubes need to be deleted.
-        // TODO: 5. If the cube name matches a cube name in their branch, but they have changed it, then skip it (Do
-        // TODO: not update it).  Return a list of these (we will show this list to the user letting them know they
-        // TODO: have potential conflicts.
 
         return new Object[0];
     }

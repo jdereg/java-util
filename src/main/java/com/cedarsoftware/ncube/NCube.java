@@ -69,7 +69,7 @@ public class NCube<T>
     String name;
     private String sha1;
     private String headSha1;
-    private String changeType;
+    private boolean active = true;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
     final Map<Collection<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
@@ -1749,11 +1749,9 @@ public class NCube<T>
             ncube.metaProps.remove("ruleMode");
             ncube.metaProps.remove("sha1");
             ncube.metaProps.remove("headSha1");
-            ncube.metaProps.remove("changeType");
             loadMetaProperties(ncube.metaProps);
 
             ncube.headSha1 = (String) jsonNCube.get("headSha1");
-            ncube.changeType = (String) jsonNCube.get("changeType");
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
 
@@ -2190,9 +2188,18 @@ public class NCube<T>
         return headSha1;
     }
 
-    public String getChangeType()
+    public boolean isActive()
     {
-        return changeType;
+        return active;
+    }
+
+    public void setActive(boolean active)
+    {
+        if (this.active != active)
+        {
+            clearSha1();
+        }
+        this.active = active;
     }
 
     /**
@@ -2212,7 +2219,8 @@ public class NCube<T>
         MessageDigest sha1Digest = EncryptionUtilities.getSHA1Digest();
         sha1Digest.update(name == null ? "".getBytes() : name.getBytes());
         sha1Digest.update(sep);
-
+        sha1Digest.update(active ? "t".getBytes() : "f".getBytes());
+        sha1Digest.update(sep);
         deepSha1(sha1Digest, defaultCellValue, sep);
         deepSha1(sha1Digest, new TreeMap(getMetaProperties()), sep);
 
@@ -2655,9 +2663,5 @@ public class NCube<T>
             }
         }
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
-    }
-
-    public void prepareForWrite(ChangeType type) {
-        changeType = type.toString();
     }
 }

@@ -551,7 +551,7 @@ public class NCubeJdbcPersister
                         dto.headSha1 = m.group(1);
                     }
 
-                    if (StringUtilities.equals(dto.sha1, dto.headSha1)) {
+                    if (StringUtilities.equals(dto.sha1, dto.headSha1) && dto.changeType == null) {
                         continue;
                     }
 

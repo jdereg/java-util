@@ -176,14 +176,46 @@ public class ApplicationID
     }
 
     /**
+     * Creates a new ApplicationID with a status of release using all the same parameters of
+     * this ApplicationID.  If the current appliationID is already RELEASE just return this.
+     * @return a new ApplicationId that is in RELEASE mode.
+     */
+    public ApplicationID asRelease()
+    {
+        if (ReleaseStatus.RELEASE.name().equals(status))
+        {
+            return this;
+        }
+
+        return new ApplicationID(tenant, app, version, ReleaseStatus.RELEASE.name(), HEAD);
+    }
+
+    /**
+     * Creates a new ApplicationID with a status of release using all the same parameters of
+     * this ApplicationID.  If the current appliationID is already RELEASE just return this.
+     * @return a new ApplicationId that is in RELEASE mode.
+     */
+    public ApplicationID asSnapshot()
+    {
+        if (ReleaseStatus.SNAPSHOT.name().equals(status))
+        {
+            return this;
+        }
+
+        return new ApplicationID(tenant, app, version, ReleaseStatus.SNAPSHOT.name(), HEAD);
+    }
+
+    /**
      * Creates a new ApplicationID with HEAD as the branch using all the same parameters of
      * this ApplicationID.
      * @return a new ApplicationId that is on the HEAD branch.
      */
     public ApplicationID asHead()
     {
-        //  In the Change Version the status was always SNAPSHOT when creating a new version.
-        //  That is why we hardcode this to snapshot here.
+        if (HEAD.equals(branch))
+        {
+            return this;
+        }
         return new ApplicationID(tenant, app, version, status, HEAD);
     }
 

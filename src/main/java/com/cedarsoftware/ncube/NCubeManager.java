@@ -830,7 +830,7 @@ public class NCubeManager
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
         int ret = getPersister().rollbackBranch(appId, infoDtos);
-        clearCacheForBranches(appId);
+        clearCache(appId);
         return ret;
     }
 

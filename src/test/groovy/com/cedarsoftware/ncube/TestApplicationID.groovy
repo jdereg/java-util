@@ -266,6 +266,22 @@ class TestApplicationID
     }
 
     @Test
+    void testAsSnapshot()
+    {
+        ApplicationID releaseId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
+
+        ApplicationID snapshotId = releaseId.asSnapshot()
+
+        assertEquals releaseId.tenant, snapshotId.tenant
+        assertEquals releaseId.app, snapshotId.app
+        assertEquals releaseId.version, snapshotId.version
+        assertEquals ReleaseStatus.SNAPSHOT.name(), snapshotId.status
+
+        ApplicationID newSnapshotId = snapshotId.asSnapshot();
+        assertSame(snapshotId, newSnapshotId);
+    }
+
+    @Test
     void testValidateStatus() throws Exception
     {
         ApplicationID.validateStatus ReleaseStatus.SNAPSHOT.name()

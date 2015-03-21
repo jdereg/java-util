@@ -287,4 +287,22 @@ public class TestStringUtilities
     public void testCreateStringWithInvalidEncoding() {
         StringUtilities.createString(new byte[] {102, 111, 111}, "baz");
     }
+
+    @Test
+    public void testCreateUtf8String()
+    {
+        assertEquals("foo", StringUtilities.createUtf8String(new byte[] {102, 111, 111}));
+    }
+
+    @Test
+    public void testCreateUtf8StringWithNull()
+    {
+        assertNull(null, StringUtilities.createUtf8String(null));
+    }
+
+    @Test
+    public void testCreateUtf8StringWithEmptyArray()
+    {
+        assertEquals("", StringUtilities.createUtf8String(new byte[]{}));
+    }
 }

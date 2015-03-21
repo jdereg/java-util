@@ -426,6 +426,19 @@ public final class StringUtilities
         }
     }
 
+
+    /**
+     * Convert a byte[] into a UTF-8 String.  Preferable used when the encoding
+     * is one of the guaranteed Java types and you don't want to have to catch
+     * the UnsupportedEncodingException required by Java
+     *
+     * @param bytes bytes to encode into a string
+     */
+    public static String createUtf8String(byte[] bytes)
+    {
+        return createString(bytes, "UTF-8");
+    }
+
     /**
      * Convert a byte[] into a String with a particular encoding.
      * Preferable used when the encoding is one of the guaranteed Java types

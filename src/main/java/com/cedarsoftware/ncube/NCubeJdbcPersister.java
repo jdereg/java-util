@@ -49,7 +49,7 @@ public class NCubeJdbcPersister
     public void createCube(Connection c, ApplicationID appId, NCube cube, String username)
     {
         if (doesCubeExist(c, appId, cube.getName())) {
-            throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists in app: " + appId);
+            throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists (or existed) in app: " + appId + ".  If it was deleted, restore it.");
         }
 
         createCube(c, appId, cube, username, 0);

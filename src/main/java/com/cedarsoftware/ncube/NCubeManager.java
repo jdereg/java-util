@@ -759,7 +759,6 @@ public class NCubeManager
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
 
-
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
         Object[] headInfo = getPersister().getCubeRecords(headAppId, "*");
@@ -774,7 +773,8 @@ public class NCubeManager
         List<NCubeInfoDto> dtos = new ArrayList<>(infoDtos.length);
         Map<String, String> errors = new LinkedHashMap<>();
 
-        for (Object dto : infoDtos) {
+        for (Object dto : infoDtos)
+        {
             NCubeInfoDto info = (NCubeInfoDto)dto;
 
             // All changes go through here.
@@ -795,7 +795,7 @@ public class NCubeManager
                     }
                     else
                     {
-                        errors.put(info.name, "Error merging CUBE.  Unexpected HEAD record found");
+                        errors.put(info.name, "Error merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.");
                     }
                 }
                 else if (head != null && info.headSha1.equals(head.sha1))
@@ -804,13 +804,14 @@ public class NCubeManager
                 }
                 else
                 {
-                    errors.put(info.name, "Error merging CUBE.  sha-1 doesn't match HEAD sha1-");
+                    errors.put(info.name, "Error merging " + info.name + ". The cube has changed since your branch version was created.");
                 }
             }
         }
 
-        if (!errors.isEmpty()) {
-            throw new BranchMergeException("Error committing branch", errors);
+        if (!errors.isEmpty())
+        {
+            throw new BranchMergeException(errors.size() + " merge error(s) committing branch.  Update your branch and retry commit.", errors);
         }
 
         Map map = getPersister().commitBranch(appId, dtos, username);

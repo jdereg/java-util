@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,7 +48,7 @@ public class NCubeJdbcPersister
     public void createCube(Connection c, ApplicationID appId, NCube cube, String username)
     {
         if (doesCubeExist(c, appId, cube.getName())) {
-            throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists in app: " + appId);
+            throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists (or existed) in app: " + appId + ".  If it was deleted, restore it.");
         }
 
         createCube(c, appId, cube, username, 0);
@@ -567,7 +566,7 @@ public class NCubeJdbcPersister
                 list.add(dto);
             }
         }
-        return list.toArray(new NCubeInfoDto[list.size()]);
+        return list.toArray();
     }
 
     private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
@@ -1499,7 +1498,6 @@ public class NCubeJdbcPersister
                     records.add(rs.getString(1));
                 }
             }
-            Collections.sort(records);
             return records.toArray();
         }
         catch (Exception e)
@@ -1529,7 +1527,6 @@ public class NCubeJdbcPersister
                 }
             }
 
-            Collections.sort(records);  // May need to enhance to ensure 2.19.1 comes after 2.2.1
             return records.toArray();
         }
         catch (Exception e)

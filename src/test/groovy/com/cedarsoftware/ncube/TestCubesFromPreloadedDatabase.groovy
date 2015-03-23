@@ -165,7 +165,14 @@ class TestCubesFromPreloadedDatabase
         Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertEquals(1, map.size())
 
-        ApplicationID headId = branch1.asHead()
+        // ensure that there are no more branch changes after create
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(0, dtos.length);
+
+        //map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        //assertEquals(1, map.size());
+
+        ApplicationID headId = branch1.asHead();
         assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, null).length)
 
     }

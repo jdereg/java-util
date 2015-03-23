@@ -21,9 +21,7 @@ package com.cedarsoftware.ncube;
  */
 public enum ChangeType
 {
-    CREATED("C"),
     RESTORED("R"),
-    UPDATED("U"),
     DELETED("D");
 
     private final String code;
@@ -36,16 +34,5 @@ public enum ChangeType
     public String toString()
     {
         return code;
-    }
-
-    public static String fromCode(String code) {
-        switch(code) {
-            case "C" : return "Created";
-            case "R" : return "Restored";
-            case "U" : return "Updated";
-            case "D" : return "Deleted";
-            default  : return "No change";
-        }
-
     }
 }

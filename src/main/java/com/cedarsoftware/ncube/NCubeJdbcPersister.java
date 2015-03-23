@@ -116,7 +116,7 @@ public class NCubeJdbcPersister
 
                     if (!ArrayUtilities.isEmpty(jsonBytes))
                     {
-                        jsonBytes = resetHeadSha1AndChangeType(jsonBytes, sha1);
+                        jsonBytes = replaceHeadSha1AndRemoveChangeType(jsonBytes, sha1);
                     }
 
                     try (PreparedStatement insert = c.prepareStatement("UPDATE n_cube set cube_value_bin = ? WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?"))
@@ -178,7 +178,7 @@ public class NCubeJdbcPersister
 
                     if (tgtBranch.isHead())
                     {
-                        jsonBytes = removeHeadSha1FromBytes(jsonBytes);
+                        jsonBytes = removeHeadSha1AndChangeType(jsonBytes);
                     }
 
                     Long maxRevision = getMaxRevision(c, tgtBranch, cubeName);
@@ -238,21 +238,6 @@ public class NCubeJdbcPersister
             throw new IllegalStateException(s, e);
         }
     }
-
-    private byte[] removeHeadSha1FromBytes(byte[] jsonBytes)
-    {
-        String json = StringUtilities.createString(jsonBytes, "UTF-8");
-        Matcher m = Regexes.headSha1Pattern.matcher(json);
-        StringBuffer sb = new StringBuffer();
-        if (m.find())
-        {
-            m.appendReplacement(sb, "");
-        }
-        m.appendTail(sb);
-        jsonBytes = StringUtilities.getBytes(sb.toString(), "UTF-8");
-        return jsonBytes;
-    }
-
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
@@ -583,12 +568,11 @@ public class NCubeJdbcPersister
                         dto.headSha1 = m.group(1);
                     }
 
-                    if (dto.changeType == null && StringUtilities.equalsIgnoreCase(dto.headSha1, dto.sha1)) {
-                        continue;
+                    if (dto.changeType != null || !dto.sha1.equals(dto.headSha1)) {
+                        list.add(dto);
                     }
                 }
 
-                list.add(dto);
             }
         }
         return list.toArray();
@@ -1031,23 +1015,13 @@ public class NCubeJdbcPersister
         return StringUtilities.getBytes(sb.toString(), "UTF-8");
     }
 
-    private byte[] resetHeadSha1AndChangeType(byte[] jsonBytes, String newSha1)
+    private byte[] removeHeadSha1AndChangeType(byte[] jsonBytes)
     {
         StringBuffer sb = new StringBuffer();
         String json = StringUtilities.createString(jsonBytes, "UTF-8");
-        Matcher m = Regexes.headSha1Pattern.matcher(json);
+        Matcher m = Regexes.headSha1orChangeTypePattern.matcher(json);
         //  replace headSha1 with existing sha1
-        if (m.find() && m.groupCount() > 0)
-        {
-            m.appendReplacement(sb, ", \"headSha1\":\"" + newSha1 + "\"");
-        }
-        m.appendTail(sb);
-        json = sb.toString();
-
-        // remove change type
-        sb = new StringBuffer();
-        m = Regexes.changeTypePattern.matcher(json);
-        if (m.find() && m.groupCount() > 0)
+        while (m.find())
         {
             m.appendReplacement(sb, "");
         }
@@ -1057,12 +1031,42 @@ public class NCubeJdbcPersister
         return StringUtilities.getBytes(json, "UTF-8");
     }
 
+    private byte[] replaceHeadSha1AndRemoveChangeType(byte[] jsonBytes, String newSha1)
+    {
+        StringBuffer sb = new StringBuffer();
+        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+
+        Matcher m = Regexes.headSha1orChangeTypePattern.matcher(json);
+        //  replace headSha1 with existing sha1
+        //  may not exist in the case of a cube created on branch.
+        while (m.find())
+        {
+            if (m.groupCount() > 0 && m.group().contains("headSha1")) {
+                m.appendReplacement(sb, ", \"headSha1\":\"" + newSha1 + "\"");
+            } else {
+                m.appendReplacement(sb, "");
+            }
+        }
+        m.appendTail(sb);
+        json = sb.toString();
+
+        //  If we don't find it, it was a create case.
+        m = Regexes.headSha1Pattern.matcher(json);
+
+        if (!m.find()) {
+            //  created on branch and after commit now needs his own headSha1 value.
+            return injectHeadSha1FromSha1(StringUtilities.getBytes(json, "UTF-8"));
+        }
+
+        return StringUtilities.getBytes(json, "UTF-8");
+    }
+
     private byte[] setChangeType(byte[] jsonBytes, ChangeType type)
     {
         StringBuffer sb = new StringBuffer();
         String json = StringUtilities.createString(jsonBytes, "UTF-8");
         Matcher m = Regexes.changeTypePattern.matcher(json);
-        if (m.find() && m.groupCount() > 0)
+        if (m.find())
         {
             m.appendReplacement(sb, ", \"changeType\":\"" + type.toString() + "\"");
             m.appendTail(sb);
@@ -1070,7 +1074,7 @@ public class NCubeJdbcPersister
         else
         {
             m = Regexes.sha1Pattern.matcher(json);
-            if (m.find() && m.groupCount() > 0) {
+            if (m.find()) {
                 m.appendReplacement(sb, ", \"sha1\":\"" + m.group(1) + "\", \"changeType\":\"" + type.toString() + "\"");
                 m.appendTail(sb);
             }
@@ -1523,7 +1527,7 @@ public class NCubeJdbcPersister
             Long revision = Long.parseLong(dto.revision);
             copyBranchCubeToHead(c, appId, headAppId, dto.name, username, revision);
             replaceHeadSha1(c, appId, dto.name, dto.sha1, revision);
-            changes.put(dto.name, ChangeType.fromCode(dto.changeType));
+            changes.put(dto.name, dto.name);
         }
         return changes;
     }

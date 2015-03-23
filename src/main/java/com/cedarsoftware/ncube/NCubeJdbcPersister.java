@@ -256,35 +256,13 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number as rev, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql))
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(connection, appId, cube.name, null))
         {
-            stmt.setString(1, cube.name);
-            stmt.setString(2, appId.getApp());
-            stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getStatus());
-            stmt.setString(5, appId.getTenant());
-            stmt.setString(6, appId.getBranch());
-            stmt.setString(7, cube.name);
-            stmt.setString(8, appId.getApp());
-            stmt.setString(9, appId.getVersion());
-            stmt.setString(10, appId.getStatus());
-            stmt.setString(11, appId.getTenant());
-            stmt.setString(12, appId.getBranch());
-
             try (ResultSet rs = stmt.executeQuery())
             {
                 if (rs.next())
                 {
-                    Long revision = rs.getLong("rev");
+                    Long revision = rs.getLong("revision_number");
 
                     if (revision < 0)
                     {
@@ -363,7 +341,55 @@ public class NCubeJdbcPersister
         }
     }
 
-    public PreparedStatement createSelectCubeStatement(Connection c, ApplicationID appId, String pattern, boolean activeOnly, boolean deletedOnly, boolean includeTests) throws SQLException
+    public PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
+    {
+        // get max revision case
+        if (revision == null)
+        {
+            String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin " +
+                        "FROM n_cube n, " +
+                        "( " +
+                        "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                        "  FROM n_cube " +
+                        "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "  GROUP BY n_cube_nm " +
+                        ") m " +
+                        "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number)" +
+                        " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
+
+            PreparedStatement s = c.prepareStatement(sql);
+            s.setString(1, cubeName);
+            s.setString(2, appId.getApp());
+            s.setString(3, appId.getVersion());
+            s.setString(4, appId.getStatus());
+            s.setString(5, appId.getTenant());
+            s.setString(6, appId.getBranch());
+            s.setString(7, cubeName);
+            s.setString(8, appId.getApp());
+            s.setString(9, appId.getVersion());
+            s.setString(10, appId.getStatus());
+            s.setString(11, appId.getTenant());
+            s.setString(12, appId.getBranch());
+            return s;
+        }
+
+        // get specific revision
+        String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin FROM n_cube " +
+                "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revison_number = ?";
+
+
+        PreparedStatement s = c.prepareStatement(sql);
+        s.setString(1, cubeName);
+        s.setString(2, appId.getApp());
+        s.setString(3, appId.getVersion());
+        s.setString(4, appId.getStatus());
+        s.setString(5, appId.getTenant());
+        s.setString(6, appId.getBranch());
+        s.setLong(7, revision);
+        return s;
+    }
+
+    public PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean activeOnly, boolean deletedOnly, boolean includeTests) throws SQLException
     {
         if (activeOnly && deletedOnly)
         {
@@ -438,7 +464,7 @@ public class NCubeJdbcPersister
 
     public Object[] getBranchChanges(Connection c, ApplicationID appId)
     {
-        try (PreparedStatement s = createSelectCubeStatement(c, appId, null, false, false, false))
+        try (PreparedStatement s = createSelectCubesStatement(c, appId, null, false, false, false))
         {
             return getChangedRecords(appId, s);
         }
@@ -452,7 +478,7 @@ public class NCubeJdbcPersister
 
     public Object[] getCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
-        try (PreparedStatement s = createSelectCubeStatement(c, appId, convertPattern(pattern), true, false, false))
+        try (PreparedStatement s = createSelectCubesStatement(c, appId, convertPattern(pattern), true, false, false))
         {
             return getCubeInfoRecords(appId, s);
         }
@@ -466,7 +492,7 @@ public class NCubeJdbcPersister
 
     public Object[] getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
-        try (PreparedStatement s = createSelectCubeStatement(c, appId, convertPattern(pattern), false, true, false))
+        try (PreparedStatement s = createSelectCubesStatement(c, appId, convertPattern(pattern), false, true, false))
         {
             return getCubeInfoRecords(appId, s);
         }
@@ -629,35 +655,8 @@ public class NCubeJdbcPersister
     public NCube loadCube(Connection c, NCubeInfoDto cubeInfo, Integer revision)
     {
         final ApplicationID appId = cubeInfo.getApplicationID();
-        String rev = revision == null ? "abs(n.revision_number)" : revision.toString();
-
-
-        //  Specific Cube, no branch magic on HEAD vs. BRANCH
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, n.branch_id, n.cube_value_bin FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = " + rev +
-                " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-        try (PreparedStatement stmt = c.prepareStatement(sql))
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeInfo.name, revision))
         {
-            stmt.setString(1, cubeInfo.name);
-            stmt.setString(2, appId.getApp());
-            stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getStatus());
-            stmt.setString(5, appId.getTenant());
-            stmt.setString(6, appId.getBranch());
-            stmt.setString(7, cubeInfo.name);
-            stmt.setString(8, appId.getApp());
-            stmt.setString(9, appId.getVersion());
-            stmt.setString(10, appId.getStatus());
-            stmt.setString(11, appId.getTenant());
-            stmt.setString(12, appId.getBranch());
-
             try (ResultSet rs = stmt.executeQuery())
             {
                 if (rs.next())
@@ -665,7 +664,6 @@ public class NCubeJdbcPersister
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = NCubeManager.ncubeFromJson(json);
-                    ncube.name = cubeInfo.name;
                     ncube.setApplicationID(cubeInfo.getApplicationID());
                     return ncube;
                 }
@@ -683,35 +681,13 @@ public class NCubeJdbcPersister
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number as rev, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-        try (PreparedStatement stmt = c.prepareStatement(sql))
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, null))
         {
-            stmt.setString(1, cubeName);
-            stmt.setString(2, appId.getApp());
-            stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getStatus());
-            stmt.setString(5, appId.getTenant());
-            stmt.setString(6, appId.getBranch());
-            stmt.setString(7, cubeName);
-            stmt.setString(8, appId.getApp());
-            stmt.setString(9, appId.getVersion());
-            stmt.setString(10, appId.getStatus());
-            stmt.setString(11, appId.getTenant());
-            stmt.setString(12, appId.getBranch());
-
             try (ResultSet rs = stmt.executeQuery())
             {
                 if (rs.next())
                 {
-                    Long revision = rs.getLong("rev");
+                    Long revision = rs.getLong("revision_number");
 
                     if (revision >= 0)
                     {
@@ -833,39 +809,17 @@ public class NCubeJdbcPersister
         }
         else
         {
-            String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number as rev, n.branch_id, n.cube_value_bin, n.test_data_bin, n.notes_bin FROM n_cube n, " +
-                    "( " +
-                    "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                    "  FROM n_cube " +
-                    "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                    "  GROUP BY n_cube_nm " +
-                    ") m " +
-                    "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.revision_number >= 0 AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-            try (PreparedStatement stmt = c.prepareStatement(sql))
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, null))
             {
-                stmt.setString(1, cubeName);
-                stmt.setString(2, appId.getApp());
-                stmt.setString(3, appId.getVersion());
-                stmt.setString(4, appId.getStatus());
-                stmt.setString(5, appId.getTenant());
-                stmt.setString(6, appId.getBranch());
-                stmt.setString(7, cubeName);
-                stmt.setString(8, appId.getApp());
-                stmt.setString(9, appId.getVersion());
-                stmt.setString(10, appId.getStatus());
-                stmt.setString(11, appId.getTenant());
-                stmt.setString(12, appId.getBranch());
-
                 try (ResultSet rs = stmt.executeQuery())
                 {
                     if (rs.next())
                     {
-                        Long revision = rs.getLong("rev");
+                        Long revision = rs.getLong("revision_number");
 
                         //  TODO:  In restoreCube() and updateCube() we throw an exception when there is nothing to update.
                         //  TODO:  For consistency do we want to do the same thing here?
-                        if (revision == null)
+                        if (revision < 0)
                         {
                             return false;
                         }
@@ -994,27 +948,9 @@ public class NCubeJdbcPersister
 
         try
         {
-            try (PreparedStatement stmt = c.prepareStatement(
-                    "SELECT n_cube_id, n.n_cube_nm, cube_value_bin, app_cd, notes_bin, version_no_cd, status_cd, branch_id, create_dt, create_hid, test_data_bin, revision_number as rev FROM n_cube n, " +
-                            "( " +
-                            "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                            "  FROM n_cube " +
-                            "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                            "  GROUP BY n_cube_nm " +
-                            ") m " +
-                            "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND " +
-                            "n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?"))
+            ApplicationID headId = appId.asHead();
+            try (PreparedStatement stmt = createSelectCubesStatement(c, headId, null, false, false, true))
             {
-                stmt.setString(1, appId.getApp());
-                stmt.setString(2, appId.getVersion());
-                stmt.setString(3, ReleaseStatus.SNAPSHOT.name());
-                stmt.setString(4, appId.getTenant());
-                stmt.setString(5, ApplicationID.HEAD);
-                stmt.setString(6, appId.getApp());
-                stmt.setString(7, appId.getVersion());
-                stmt.setString(8, ReleaseStatus.SNAPSHOT.name());
-                stmt.setString(9, appId.getTenant());
-                stmt.setString(10, ApplicationID.HEAD);
                 try (ResultSet rs = stmt.executeQuery())
                 {
                     try (PreparedStatement insert = c.prepareStatement(
@@ -1044,7 +980,7 @@ public class NCubeJdbcPersister
                             insert.setBytes(10, rs.getBytes(NOTES_BIN));
                             insert.setString(11, appId.getTenant());
                             insert.setString(12, appId.getBranch());
-                            insert.setLong(13, (rs.getLong("rev") >= 0) ? 0 : -1);
+                            insert.setLong(13, (rs.getLong("revision_number") >= 0) ? 0 : -1);
                             insert.addBatch();
                             count++;
                         }
@@ -1200,7 +1136,7 @@ public class NCubeJdbcPersister
         try
         {
             ApplicationID releaseId = appId.asRelease();
-            try (PreparedStatement stmt = createSelectCubeStatement(c, releaseId, null, true, false, true))
+            try (PreparedStatement stmt = createSelectCubesStatement(c, releaseId, null, true, false, true))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {

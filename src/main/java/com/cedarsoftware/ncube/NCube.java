@@ -2656,8 +2656,4 @@ public class NCube<T>
         }
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
-
-    public void prepareForWrite(ChangeType type) {
-        changeType = type.toString();
-    }
 }

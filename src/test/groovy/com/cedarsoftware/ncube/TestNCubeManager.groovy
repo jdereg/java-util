@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube
 
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
+import com.cedarsoftware.ncube.formatters.HtmlFormatter
 import com.cedarsoftware.ncube.formatters.NCubeTestReader
 import com.cedarsoftware.ncube.formatters.NCubeTestWriter
 import com.cedarsoftware.util.DeepEquals
@@ -300,6 +301,10 @@ class TestNCubeManager
         NCubeManager.deleteCube(defaultSnapshotApp, 'test.States', false, USER_ID)
         NCubeManager.deleteCube(defaultSnapshotApp, 'test.Provinces', false, USER_ID)
         assertEquals(1, NCubeManager.getCubeNames(defaultSnapshotApp).size())
+
+        HtmlFormatter formatter = new HtmlFormatter();
+        String s = formatter.format(continentCounty);
+        assertTrue(s.contains("column-code"));
     }
 
     @Test
@@ -1283,6 +1288,10 @@ class TestNCubeManager
         List<String> list = (List<String>) classPathCube.getCell(map)
         assertEquals(1, list.size());
         assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', list.get(0));
+//          write out UrlClassLoader?
+//        JsonFormatter formatter = new JsonFormatter();
+//        String s = formatter.format(classPathCube);
+//        assertTrue(s.contains("sys.classpath"));
     }
 
     @Test

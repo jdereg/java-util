@@ -1,5 +1,7 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.StringUtilities;
+
 import java.util.Date;
 
 /**
@@ -48,4 +50,8 @@ public class NCubeInfoDto
         String br = branch == null ? "HEAD" : branch;
 		return tenant + '/' + app + '/' + version + '/' + status + '/' + br + '/' + name + '/' + sha1 + '/' + revision + '/' + createDate + '/' + createHid + '/' + notes;
 	}
+
+    public boolean isChanged() {
+        return changeType != null || !StringUtilities.equalsIgnoreCase(sha1, headSha1);
+    }
 }

@@ -776,7 +776,7 @@ public class NCubeManager
             NCubeInfoDto info = (NCubeInfoDto)dto;
 
             // All changes go through here.
-            if (info.changeType != null || !StringUtilities.equalsIgnoreCase(info.headSha1, info.sha1))
+            if (info.isChanged())
             {
                 //  we created this guy locally and don't expect to be on server update him
                 NCubeInfoDto head = headMap.get(info.name);

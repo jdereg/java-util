@@ -583,10 +583,9 @@ public class NCubeJdbcPersister
                         dto.headSha1 = m.group(1);
                     }
 
-                    if (dto.changeType == null && !(dto.headSha1 != null && !dto.sha1.equals(dto.headSha1))) {
+                    if (dto.changeType == null && StringUtilities.equalsIgnoreCase(dto.headSha1, dto.sha1)) {
                         continue;
                     }
-
                 }
 
                 list.add(dto);

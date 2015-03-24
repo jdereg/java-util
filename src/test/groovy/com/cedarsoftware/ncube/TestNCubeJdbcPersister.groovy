@@ -10,7 +10,11 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -21,7 +25,7 @@ import static org.mockito.Mockito.when
  *         <br/>
  *         Copyright (c) Cedar Software LLC
  *         <br/><br/>
- *         Licensed under the Apache License, Version 2.0 (the 'License');
+ *         Licensed under the Apache License, Version 2.0 (the 'License')
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br/><br/>
@@ -41,13 +45,13 @@ class TestNCubeJdbcPersister
     private ApplicationID defaultSnapshotApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, "1.0.0", ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
 
     @Before
-    public void setUp() throws Exception
+    void setUp() throws Exception
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    void tearDown() throws Exception
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
@@ -73,7 +77,7 @@ class TestNCubeJdbcPersister
         assertTrue(ncube2.numDimensions == 2)
 
         ncube1.deleteAxis("bu")
-        ApplicationID next = defaultSnapshotApp.createNewSnapshotId("0.2.0");
+        ApplicationID next = defaultSnapshotApp.createNewSnapshotId("0.2.0")
         persister.updateCube(defaultSnapshotApp, ncube1, USER_ID)
         int numRelease = persister.releaseCubes(defaultSnapshotApp, "0.2.0")
         assertEquals(0, numRelease)
@@ -384,7 +388,7 @@ class TestNCubeJdbcPersister
         }
         catch (NullPointerException e)
         {
-            assertEquals(e.message, null);
+            assertEquals(e.message, null)
         }
     }
 
@@ -420,8 +424,8 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true).thenReturn(false)
-        when(rs.getString("n_cube_nm")).thenReturn("foo");
-        when(rs.getString("branch_id")).thenReturn("HEAD");
+        when(rs.getString("n_cube_nm")).thenReturn("foo")
+        when(rs.getString("branch_id")).thenReturn("HEAD")
         when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"))
 
         Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "")
@@ -586,7 +590,7 @@ class TestNCubeJdbcPersister
         try
         {
             NCubeInfoDto[] dtos = new NCubeInfoDto[1];
-            dtos[0] = new NCubeInfoDto();
+            dtos[0] = new NCubeInfoDto()
             dtos[0].name = "foo";
 
             new NCubeJdbcPersister().rollbackBranch(c, defaultSnapshotApp, dtos)
@@ -654,7 +658,7 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().copyBranchCubeToHead(null, defaultSnapshotApp, defaultSnapshotApp.asHead(), "foo", USER_ID, null);
+            new NCubeJdbcPersister().copyBranchCubeToHead(null, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, null)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -669,12 +673,12 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), "foo", USER_ID, 1);
+            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
             fail()
         }
         catch (IllegalStateException e)
         {
-            assertEquals(SQLException.class, e.cause.class);
+            assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.startsWith("Unable to copy cube"))
         }
     }
@@ -689,11 +693,11 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(ps.executeUpdate()).thenReturn(0)
         when(rs.next()).thenReturn(true)
-        when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"));
+        when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
 
         try
         {
-            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), "foo", USER_ID, 1);
+            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
             fail()
         }
         catch (IllegalStateException e)
@@ -991,7 +995,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testRestoreCubeThatFailsTheUpdate() throws Exception
+    void testRestoreCubeThatFailsTheUpdate()
     {
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
@@ -1022,7 +1026,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testDeleteCubeThatThrowsSQLException() throws Exception
+    void testDeleteCubeThatThrowsSQLException()
     {
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
@@ -1040,7 +1044,7 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(rs.getString("status_cd")).thenReturn(ReleaseStatus.SNAPSHOT.name())
         when(rs.getString("n_cube_nm")).thenReturn("foo")
-        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD);
+        when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD)
 
         try
         {
@@ -1055,7 +1059,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testDeleteCubeThatFailsTheUpdate() throws Exception
+    void testDeleteCubeThatFailsTheUpdate()
     {
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
@@ -1065,7 +1069,7 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(new Long(9))
-        when(rs.getBytes(anyString())).thenReturn("foo".getBytes("UTF-8"));
+        when(rs.getBytes(anyString())).thenReturn("foo".getBytes("UTF-8"))
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
         URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
@@ -1085,7 +1089,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testCreateCubeWithWrongUpdateCount() throws Exception
+    void testCreateCubeWithWrongUpdateCount()
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = mock(Connection.class)
@@ -1109,13 +1113,13 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testUpdateCubeWithWrongUpdateCount() throws Exception
+    void testUpdateCubeWithWrongUpdateCount()
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
-        when(rs.next()).thenReturn(true);
+        when(rs.next()).thenReturn(true)
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(0)
         when(ps.executeQuery()).thenReturn(rs)
@@ -1132,7 +1136,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testUpdateTestDataWithDuplicateCubes() throws Exception
+    void testUpdateTestDataWithDuplicateCubes()
     {
         Connection c = mock(Connection.class)
         ResultSet rs = mock(ResultSet.class)
@@ -1156,7 +1160,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testReleaseCubesWithCubeThatExistsAlready() throws Exception
+    void testReleaseCubesWithCubeThatExistsAlready()
     {
         NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)
@@ -1173,7 +1177,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testChangeVersionWhenCubeAlreadyExists() throws Exception
+    void testChangeVersionWhenCubeAlreadyExists()
     {
         NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)

@@ -213,7 +213,7 @@ public class NCubeJdbcPersister
                         insert.setLong(10, maxRevision);
 
                         insert.setBytes(11, rs.getBytes(TEST_DATA_BIN));
-                        insert.setBytes(12, rs.getBytes(NOTES_BIN));
+                        insert.setBytes(12, StringUtilities.getBytes("committed on " + now + " by " + username, "UTF-8"));
 
                         int rowCount = insert.executeUpdate();
                         if (rowCount != 1)

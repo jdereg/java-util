@@ -9,7 +9,11 @@ import org.junit.Test
 
 import java.lang.reflect.Field
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -840,7 +844,7 @@ class TestCubesFromPreloadedDatabase
         }
         catch (BranchMergeException e)
         {
-            assert e.message.toLowerCase().contains("error(s) committing branch")
+            assert e.message.toLowerCase().contains("conflict(s) committing branch")
             assert !e.errors.isEmpty()
         }
 
@@ -889,7 +893,7 @@ class TestCubesFromPreloadedDatabase
         }
         catch (BranchMergeException e)
         {
-            assertTrue(e.message.toLowerCase().contains("error(s) committing branch"))
+            assertTrue(e.message.toLowerCase().contains("conflict(s) committing branch"))
             assertTrue(!e.errors.isEmpty())
         }
 

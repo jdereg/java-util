@@ -1,6 +1,11 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.*
+import com.cedarsoftware.ncube.ApplicationID
+import com.cedarsoftware.ncube.NCube
+import com.cedarsoftware.ncube.NCubeManager
+import com.cedarsoftware.ncube.TestNCubeManager
+import com.cedarsoftware.ncube.TestingDatabaseHelper
+import com.cedarsoftware.ncube.TestingDatabaseManager
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -27,7 +32,6 @@ import static org.junit.Assert.fail
  */
 class TestJsonFormatter
 {
-
     public static String USER_ID = TestNCubeManager.USER_ID
     public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "clearCacheTest", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
     public static ApplicationID usedId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "usedInvalidId", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
@@ -135,7 +139,7 @@ class TestJsonFormatter
         NCube ncube = new NCube(null)
         JsonFormatter formatter = new JsonFormatter()
         String json = formatter.format(ncube)
-        assertEquals('{"ncube":null,"sha1":"8CF1FFBB4AEF6830ACE611B90DDA22CD6B072909","axes":[],"cells":[]}', json)
+        assertEquals('{"ncube":null,"sha1":"27AE83E2A008BED1D5536ED4A84647302B66D647","axes":[],"cells":[]}', json)
     }
 
     @Test

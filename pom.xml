@@ -48,7 +48,7 @@
         <version.java-util>1.18.1</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.groovy>2.3.9</version.groovy>
+        <version.groovy>2.4.2</version.groovy>
         <version.jgit>3.6.1.201501031845-r</version.jgit>
         <version.powermock>1.6.1</version.powermock>
         <version.mockito>1.10.8</version.mockito>

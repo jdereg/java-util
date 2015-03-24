@@ -300,11 +300,10 @@ public class NCubeJdbcPersister
 
     Long getMaxRevision(Connection c, ApplicationID appId, String name)
     {
-        //TODO:  status_cd
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT revision_number FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
-                "ORDER BY abs(revision_number) DESC"))
+                        "WHERE n_cube_nm = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
+                        "ORDER BY abs(revision_number) DESC"))
         {
             stmt.setString(1, name);
             stmt.setString(2, appId.getApp());
@@ -321,6 +320,33 @@ public class NCubeJdbcPersister
         catch (Exception e)
         {
             String s = "Unable to get maximum revision number for cube: " + name + ", app: " + appId;
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+    Long getMinRevision(Connection c, ApplicationID appId, String cubeName)
+    {
+        try (PreparedStatement stmt = c.prepareStatement(
+                "SELECT revision_number FROM n_cube " +
+                        "WHERE n_cube_nm = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
+                        "ORDER BY abs(revision_number) ASC"))
+        {
+            stmt.setString(1, cubeName);
+            stmt.setString(2, appId.getApp());
+            stmt.setString(3, appId.getStatus());
+            stmt.setString(4, appId.getVersion());
+            stmt.setString(5, appId.getTenant());
+            stmt.setString(6, appId.getBranch());
+
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                return rs.next() ? rs.getLong(1) : null;
+            }
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to get maximum revision number for cube: " + cubeName + ", app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -747,17 +773,24 @@ public class NCubeJdbcPersister
 
     public boolean rollbackCube(Connection c, ApplicationID appId, String cubeName)
     {
-        //TODO  AND STATUS_CD?
-        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND n_cube_nm = ? AND revision_number <> 0 AND revision_number <> -1";
+        Long revision = getMinRevision(c, appId, cubeName);
 
-        try (PreparedStatement ps = c.prepareStatement(sql))
+        if (revision == null) {
+            throw new IllegalArgumentException("Could not rollback cube.  Cube was not found.  App:  " + appId + ", cube: " + cubeName);
+        }
+
+        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ? AND n_cube_nm = ? AND revision_number <> ?";
+
+        try (PreparedStatement s = c.prepareStatement(sql))
         {
-            ps.setString(1, appId.getApp());
-            ps.setString(2, appId.getVersion());
-            ps.setString(3, appId.getTenant());
-            ps.setString(4, appId.getBranch());
-            ps.setString(5, cubeName);
-            return ps.executeUpdate() > 0;
+            s.setString(1, appId.getApp());
+            s.setString(2, appId.getVersion());
+            s.setString(3, appId.getTenant());
+            s.setString(4, appId.getStatus());
+            s.setString(5, appId.getBranch());
+            s.setString(6, cubeName);
+            s.setLong(7, revision);
+            return s.executeUpdate() > 0;
         }
         catch (Exception e)
         {
@@ -1538,7 +1571,10 @@ public class NCubeJdbcPersister
         for (Object dto : infoDtos)
         {
             NCubeInfoDto info = (NCubeInfoDto)dto;
-            if (rollbackCube(c, appId, info.name)) {
+            if (info.headSha1 == null) {
+                deleteCube(c, appId, info.name, true, null);
+                count++;
+            } else if (rollbackCube(c, appId, info.name)) {
                 count++;
             }
         }

@@ -844,16 +844,16 @@ public class NCubeManager
         Object[] headRecords = getCubeRecordsFromDatabase(headAppId, "*");
 
         //  build map of head objects for reference.
-        Map<String, NCubeInfoDto> headMap = new LinkedHashMap<>();
+        Map<String, NCubeInfoDto> recordMap = new LinkedHashMap<>();
 
-        for (Object cubeInfo : headRecords)
+        for (Object cubeInfo : records)
         {
             NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
-            headMap.put(info.name, info);
+            recordMap.put(info.name, info);
         }
 
         List<NCubeInfoDto> adds = new ArrayList<>(records.length);
-        List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
+        List<String> deletes = new ArrayList<>(records.length);
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
         Map<String, String> conflicts = new LinkedHashMap<>();
@@ -873,56 +873,92 @@ public class NCubeManager
         // TODO: 5. If the cube name matches a cube name in their branch, but they have changed it, then skip it (Do
         // TODO: not update it).  Return a list of these (we will show this list to the user letting them know they
         // TODO: have potential conflicts.
-        for (Object dto : records)
+        for (Object dto : headRecords)
         {
-            NCubeInfoDto info = (NCubeInfoDto) dto;
-            NCubeInfoDto head = (NCubeInfoDto) headMap.get(info.name);
+            NCubeInfoDto head = (NCubeInfoDto) dto;
+            NCubeInfoDto info = (NCubeInfoDto) recordMap.get(head.name);
 
-            //  handle items marked as changed.
-            if (info.changeType == null)
+            if (info != null)
             {
-                //  created while branching?
-                if (info.headSha1 != null)
+                long infoRev = Long.parseLong(info.revision);
+                long headRev = Long.parseLong(head.revision);
+                // match was found.
+                if (info.isChanged())
                 {
-                    if (head != null)
+                    if (StringUtilities.equalsIgnoreCase(head.sha1, info.headSha1))
                     {
-                        if (!info.headSha1.equals(head.sha1))
+                        // no conflict, (headsha1 still matches) no update since we are more recent.
+                        //  could still be delete or restore case on server.
+                        // check if sign is same
+                        if (infoRev > 0 == headRev > 0)
                         {
-                            deletes.add(info);
-                            adds.add(head);
+                            recordMap.remove(info.name);
                         }
+                        else if (info.changeType == null)
+                        {
+                            deletes.add(info.name);
+                            adds.add(head);
+                            recordMap.remove(info.name);
+                        }
+                        else
+                        {
+                            recordMap.remove(info.name);
+                            // do nothing because we cahnged it in branch.
+                        }
+
                     }
                     else
                     {
-                        //  we didn't make any changes, but deleted on server.
-                        deletes.add(info);
+                        if (StringUtilities.equalsIgnoreCase(head.sha1, info.headSha1))
+                        {
+                            // no conflict, (headsha1 still matches) no update since we are more recent.
+                            //  could still be delete or restore case on server.
+                            // check if sign is same
+                            if (infoRev > 0 == headRev > 0)
+                            {
+                                recordMap.remove(info.name);
+                            }
+                            else if (info.changeType == null)
+                            {
+                                deletes.add(info.name);
+                                adds.add(head);
+                                recordMap.remove(info.name);
+                            }
+                        }
                     }
-                }
-                else if (head == null)
-                {
-                    // head was no longer found and we didn't change it.
-                    deletes.add(info);
                 }
             }
             else
             {
-                if (info.headSha1 != null)
+                // update from HEAD
+                // copy head record to branch
+                // update headSha1.
+            }
+            //  created while branching?
+            if (info.headSha1 != null)
+            {
+                if (head != null)
                 {
-                    if (head != null)
+                    if (!info.headSha1.equals(head.sha1))
                     {
-                        if (!info.headSha1.equals(head.sha1))
-                        {
-                            deletes.add(info);
-                            adds.add(head);
-                        }
-                    }
-                    else
-                    {
-                        //  we didn't make any changes, but deleted on server.
-                        deletes.add(info);
+                        deletes.add(info.name);
+                        adds.add(head);
                     }
                 }
-
+                else
+                {
+                    //  we didn't make any changes, but deleted on server.
+                    deletes.add(info.name);
+                }
+            }
+            else if (head == null)
+            {
+                // head was no longer found and we didn't change it.
+                deletes.add(info.name);
+            }
+            else
+            {
+                // update from server
             }
         }
 

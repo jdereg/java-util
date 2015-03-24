@@ -582,12 +582,21 @@ class TestNCubeJdbcPersister
     @Test
     void testRollbackBranchWithSqlException() throws Exception
     {
-        Connection c = getConnectionThatThrowsSQLException()
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(SQLException.class)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(ps.executeUpdate()).thenReturn(0)
+        when(rs.next()).thenReturn(true)
+        when(rs.getLong(anyInt())).thenReturn(5L);
+
         try
         {
             NCubeInfoDto[] dtos = new NCubeInfoDto[1];
             dtos[0] = new NCubeInfoDto();
             dtos[0].name = "foo";
+            dtos[0].headSha1 = "F0F0F0F0"
 
             new NCubeJdbcPersister().rollbackBranch(c, defaultSnapshotApp, dtos)
             fail()

@@ -791,7 +791,7 @@ public class NCubeManager
                     }
                     else
                     {
-                        errors.put(info.name, "Error merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.");
+                        errors.put(info.name, "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.");
                     }
                 }
                 else if (head != null && info.headSha1.equals(head.sha1))
@@ -800,14 +800,14 @@ public class NCubeManager
                 }
                 else
                 {
-                    errors.put(info.name, "Error merging " + info.name + ". The cube has changed since your branch version was created.");
+                    errors.put(info.name, "Conflict merging " + info.name + ". The cube has changed since your branch version was created.");
                 }
             }
         }
 
         if (!errors.isEmpty())
         {
-            throw new BranchMergeException(errors.size() + " merge error(s) committing branch.  Update your branch and retry commit.", errors);
+            throw new BranchMergeException(errors.size() + " merge conflict(s) committing branch.  Update your branch and retry commit.", errors);
         }
 
         Map map = getPersister().commitBranch(appId, dtos, username);
@@ -960,8 +960,9 @@ public class NCubeManager
             }
         }
 
-        if (!conflicts.isEmpty()) {
-            throw new BranchMergeException("Error committing branch", conflicts);
+        if (!conflicts.isEmpty())
+        {
+            throw new BranchMergeException("Conflicts committing branch", conflicts);
         }
 
         Object[] ret = getPersister().updateBranch(appId);

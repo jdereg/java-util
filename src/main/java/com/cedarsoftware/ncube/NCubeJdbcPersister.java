@@ -1335,21 +1335,29 @@ public class NCubeJdbcPersister
 
     public boolean renameCube(Connection c, ApplicationID appId, String oldName, String newName, String username)
     {
-        //  Save in case exception happens and we have to reset proper name on the cube.
-        String oldName = cube.getName();
-
         try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, oldName, null))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
+                byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                NCube ncube = NCubeManager.ncubeFromJson(json);
+                ncube.name = newName;
+                ncube.setApplicationID(appId);
+
+                Long revision = rs.getLong("revision_number");
+
+                if (revision < 0)
+                {
+                    throw new IllegalArgumentException("Deleted cubes cannot be renamed.  AppId:  " + appId + ", " + oldName + " -> " + newName);
+                }
+
+                byte[] notes = StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8");
+
+                int rowCount;
+
                 try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
                 {
-                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
-                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
-                    NCube ncube = NCubeManager.ncubeFromJson(json);
-                    ncube.setApplicationID(appId);
-
-
                     insert.setLong(1, UniqueIdGenerator.getUniqueId());
                     insert.setString(2, appId.getApp());
                     insert.setString(3, newName);
@@ -1361,54 +1369,50 @@ public class NCubeJdbcPersister
                     insert.setString(9, appId.getBranch());
                     insert.setLong(10, rs.getLong("revision_number") < 0 ? -1 : 0);
                     insert.setBytes(11, rs.getBytes("test_data_bin"));
-                    insert.setBytes(12, StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8"));
+                    insert.setBytes(12, notes);
 
-                    int rowCount = insert.executeUpdate();
-                    if (rowCount != 1)
-                    {
-                        throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
-                    }
+                    rowCount = insert.executeUpdate();
                 }
+                if (rowCount != 1)
+                {
+                    throw new IllegalStateException("Could not rename cube: " + oldName + " -> " + newName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
+                }
+
+                jsonBytes = setChangeType(jsonBytes, ChangeType.DELETED);
+
+                try (PreparedStatement insert = c.prepareStatement(
+                        "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                {
+                    insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                    insert.setString(2, appId.getApp());
+                    insert.setString(3, oldName);
+                    insert.setBytes(4, jsonBytes);
+                    insert.setString(5, appId.getVersion());
+                    java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+                    insert.setDate(6, now);
+                    insert.setString(7, username);
+                    insert.setString(8, appId.getTenant());
+                    insert.setString(9, appId.getBranch());
+                    insert.setLong(10, -(revision + 1));
+                    insert.setBytes(11, notes);
+                    insert.setBytes(12, rs.getBytes(TEST_DATA_BIN));
+
+                    rowCount = insert.executeUpdate();
+                }
+                if (rowCount != 1)
+                {
+                    throw new IllegalStateException("Could not rename cube: " + oldName + " -> " + newName + ", app: " + appId);
+                }
+                return true;
             }
-        }
-        catch (Exception e)
-        {
-
-        }
-
-
-
-        try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? " +
-                "WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "' AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?"))
-        {
-            //  We have to set the new  name on the cube toFormatJson with the proper name on it.
-            cube.name = newName;
-
-            ps.setString(1, newName);
-            ps.setBytes(2, cube.toFormattedJson().getBytes("UTF-8"));   // Need to update cube name in JSON in bin column
-            ps.setString(3, appId.getApp());
-            ps.setString(4, appId.getVersion());
-            ps.setString(5, oldName);
-            ps.setString(6, appId.getTenant());
-            ps.setString(7, appId.getBranch());
-
-            int count = ps.executeUpdate();
-            if (count < 1)
-            {
-                throw new IllegalArgumentException("Could not rename cube, no cube found to rename, for app:" + appId + ", original name: " + oldName + ", new name: " + newName);
-            }
-
-            return true;
         }
         catch (RuntimeException e)
         {
-            cube.name = oldName;
             throw e;
         }
         catch (Exception e)
         {
-            cube.name = oldName;
             String s = "Unable to rename cube: " + oldName + ", app: " + appId + ", new name: " + newName + " due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);

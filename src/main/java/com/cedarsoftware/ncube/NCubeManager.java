@@ -1022,12 +1022,10 @@ public class NCubeManager
             throw new IllegalArgumentException("Could not rename due to name: " + oldName + " does not exist within app: " + appId);
         }
 
-        getPersister().deleteCube(appId, oldName, false, username);
+        boolean result = getPersister().renameCube(appId, oldName, newName, username);
 
-        boolean result = getPersister().renameCube(appId, ncube, newName);
         Map<String, Object> appCache = getCacheForApp(appId);
         appCache.remove(oldName.toLowerCase());
-        appCache.put(newName.toLowerCase(), ncube);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(oldName) || CLASSPATH_CUBE.equalsIgnoreCase(newName))
         {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,

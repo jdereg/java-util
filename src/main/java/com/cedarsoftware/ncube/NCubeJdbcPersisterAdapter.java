@@ -245,12 +245,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public boolean renameCube(ApplicationID appId, NCube oldCube, String newName)
+    public boolean renameCube(ApplicationID appId, String oldName, String newName, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.renameCube(c, appId, oldCube, newName);
+            return persister.renameCube(c, appId, oldName, newName, username);
         }
         finally
         {

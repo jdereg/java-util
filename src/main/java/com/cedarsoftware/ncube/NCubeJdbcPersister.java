@@ -1333,10 +1333,50 @@ public class NCubeJdbcPersister
         }
     }
 
-    public boolean renameCube(Connection c, ApplicationID appId, NCube cube, String newName)
+    public boolean renameCube(Connection c, ApplicationID appId, String oldName, String newName, String username)
     {
         //  Save in case exception happens and we have to reset proper name on the cube.
         String oldName = cube.getName();
+
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, oldName, null))
+        {
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                {
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                    NCube ncube = NCubeManager.ncubeFromJson(json);
+                    ncube.setApplicationID(appId);
+
+
+                    insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                    insert.setString(2, appId.getApp());
+                    insert.setString(3, newName);
+                    insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
+                    insert.setString(5, appId.getVersion());
+                    insert.setDate(6, new java.sql.Date(System.currentTimeMillis()));
+                    insert.setString(7, username);
+                    insert.setString(8, appId.getTenant());
+                    insert.setString(9, appId.getBranch());
+                    insert.setLong(10, rs.getLong("revision_number") < 0 ? -1 : 0);
+                    insert.setBytes(11, rs.getBytes("test_data_bin"));
+                    insert.setBytes(12, StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8"));
+
+                    int rowCount = insert.executeUpdate();
+                    if (rowCount != 1)
+                    {
+                        throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+
+        }
+
+
 
         try (PreparedStatement ps = c.prepareStatement(
                 "UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? " +

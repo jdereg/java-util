@@ -690,10 +690,8 @@ public class NCubeManager
         NCube copy = ncube.duplicate(newName);
         newAppId.validateBranchIsNotHead();
         getPersister().createCube(newAppId, copy, username);
-
         String notes = getPersister().getNotes(oldAppId, oldName);
         String testData = getPersister().getTestData(oldAppId, oldName);
-
         getPersister().updateNotes(newAppId, newName, notes);
         getPersister().updateTestData(newAppId, newName, testData);
         broadcast(newAppId);
@@ -1000,7 +998,7 @@ public class NCubeManager
         broadcast(appId);
     }
 
-    public static boolean renameCube(ApplicationID appId, String oldName, String newName)
+    public static boolean renameCube(ApplicationID appId, String oldName, String newName, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -1023,6 +1021,8 @@ public class NCubeManager
         {
             throw new IllegalArgumentException("Could not rename due to name: " + oldName + " does not exist within app: " + appId);
         }
+
+        getPersister().deleteCube(appId, oldName, false, username);
 
         boolean result = getPersister().renameCube(appId, ncube, newName);
         Map<String, Object> appCache = getCacheForApp(appId);

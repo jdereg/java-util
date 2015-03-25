@@ -180,6 +180,62 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
+    void testRollbackBranchWithPendingAdd() throws Exception {
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "branch")
+        ApplicationID headId = branch.asHead()
+
+        loadCubesToDatabase(headId, "test.branch.1.json");
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+        NCubeManager.createCube(branch, cube, 'kenny')
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        assertEquals(1, dtos.length)
+
+        NCubeManager.rollbackBranch(branch, dtos)
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        assertEquals(0, dtos.length)
+
+        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        assertEquals(0, map.size())
+
+        manager.removeCubes(branch)
+        manager.removeCubes(headId)
+    }
+
+    @Test
+    void testRollbackBranchWithDeletedCube() throws Exception {
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "branch")
+        ApplicationID headId = branch.asHead()
+
+        loadCubesToDatabase(headId, "test.branch.1.json");
+
+        NCubeManager.createBranch(branch);
+
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, "*").length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(branch, "*").length);
+
+        NCubeManager.deleteCube(branch, "TestBranch", USER_ID)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        assertEquals(1, dtos.length)
+
+        // undo delete
+        NCubeManager.rollbackBranch(branch, dtos)
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        assertEquals(0, dtos.length)
+
+        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        assertEquals(0, map.size())
+
+        manager.removeCubes(branch)
+        manager.removeCubes(headId)
+    }
+
+
+    @Test
     void testCommitBranchOnCreateThenDeleted() throws Exception {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
@@ -293,7 +349,7 @@ class TestCubesFromPreloadedDatabase
     }
 
     @Test
-    void testUpdateBrachWithUpdateOnBranch() throws Exception {
+    void testUpdateBranchWithUpdateOnBranch() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 

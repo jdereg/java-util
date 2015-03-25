@@ -1048,6 +1048,26 @@ class TestNCubeManager
     }
 
     @Test
+    void testRollbackBranchWhenCubeDoesntExist() throws Exception
+    {
+        try
+        {
+            NCubeInfoDto[] dtos = new NCubeInfoDto[2];
+            dtos[0] = new NCubeInfoDto();
+            dtos[0].name = "TestCube";
+            dtos[0].headSha1 = "FOOFOO";
+
+            NCubeManager.rollbackBranch(defaultSnapshotApp, dtos)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains('Could not rollback'))
+            assertTrue(e.message.contains('not found'))
+        }
+    }
+
+    @Test
     void testRestoreCubeWithNullArray() throws Exception
     {
         try

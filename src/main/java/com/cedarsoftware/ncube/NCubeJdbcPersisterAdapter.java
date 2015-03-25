@@ -258,6 +258,19 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public boolean duplicateCube(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.duplicateCube(c, oldAppId, newAppId, oldName, newName, username);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     {
         Connection c = connectionProvider.getConnection();

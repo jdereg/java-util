@@ -14,12 +14,7 @@ import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCubeManager Tests
@@ -224,7 +219,7 @@ class TestNCubeManager
     {
         try
         {
-            NCubeManager.renameCube(defaultSnapshotApp, 'foo', 'foo')
+            NCubeManager.renameCube(defaultSnapshotApp, 'foo', 'foo', USER_ID)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -630,19 +625,19 @@ class TestNCubeManager
 
         try
         {
-            NCubeManager.renameCube(defaultSnapshotApp, ncube1.name, 'foo')
+            NCubeManager.renameCube(defaultSnapshotApp, ncube1.name, 'foo', USER_ID)
             fail()
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains('not rename'))
+            assertTrue(e.message.contains('Could not rename'))
             assertTrue(e.message.contains('does not exist'))
         }
 
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
 
-        NCubeManager.renameCube(defaultSnapshotApp, ncube1.name, 'test.Floppy')
+        NCubeManager.renameCube(defaultSnapshotApp, ncube1.name, 'test.Floppy', USER_ID)
 
         Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%')
 
@@ -742,7 +737,7 @@ class TestNCubeManager
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.mistake'))
 
-        assertTrue(NCubeManager.renameCube(customId, 'sys.mistake', 'sys.classpath'))
+        assertTrue(NCubeManager.renameCube(customId, 'sys.mistake', 'sys.classpath', USER_ID))
         assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
@@ -1446,7 +1441,7 @@ class TestNCubeManager
 
         try
         {
-            NCubeManager.renameCube(defaultReleaseApp, cube.name, 'jumbo')
+            NCubeManager.renameCube(defaultReleaseApp, cube.name, 'jumbo', USER_ID)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -1509,6 +1504,20 @@ class TestNCubeManager
             assertTrue(e.message.contains('annot'))
             assertTrue(e.message.contains('duplicate'))
             assertTrue(e.message.contains('version'))
+        }
+    }
+
+    @Test
+    void testRenameCubeThatDoesNotExist()
+    {
+        try {
+            NCubeManager.renameCube(defaultSnapshotApp, 'foo', 'bar', USER_ID)
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Could not rename"));
+            assertTrue(e.message.contains("does not exist"))
         }
     }
 

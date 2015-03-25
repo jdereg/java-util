@@ -8,6 +8,7 @@ import org.junit.Ignore
 import org.junit.Test
 
 import java.lang.reflect.Field
+import java.sql.SQLException
 
 import static org.junit.Assert.*
 
@@ -229,7 +230,6 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(headId)
     }
-
 
     @Test
     void testCommitBranchOnCreateThenDeleted() throws Exception {
@@ -884,9 +884,9 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(head)
     }
 
+
     @Test
-    void testRenameAndThenRenameAgain()
-    {
+    void testRenameCubeWhenNewNameAlreadyExists() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 
@@ -900,26 +900,25 @@ class TestCubesFromPreloadedDatabase
         testValuesOnBranch(head)
         testValuesOnBranch(branch)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        try
+        {
+            NCubeManager.renameCube(branch, "TestBranch", "TestAge", USER_ID);
+            fail();
+        }
+        catch (RuntimeException e)
+        {
+            assertTrue(e.message.contains("Unable to rename"))
+            assertTrue(e.getCause() instanceof SQLException)
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
-
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch2", "TestBranch", USER_ID));
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"))
+        }
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
-
     }
 
+
     @Test
-    void testRenameCubeChanges() throws Exception {
+    void testRenameCubeBasicCase() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 
@@ -948,7 +947,292 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(head)
     }
 
+    @Test
+    void testRenameCubeFunctionality() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        try {
+            NCubeManager.getRevisionHistory(branch, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+
+        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.rollbackBranch(branch, dtos));
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch).length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        try {
+            NCubeManager.getRevisionHistory(branch, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+
+        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").length);
+
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+
+    @Test
+    void testDuplicateCubeFunctionality() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        ApplicationID branch2 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "BAR")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch1))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch1)
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        try {
+            NCubeManager.getRevisionHistory(branch1, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+
+        NCubeManager.duplicate(branch1, branch2, "TestBranch", "TestBranch2", USER_ID);
+        NCubeManager.duplicate(branch1, branch2, "TestAge", "TestAge", USER_ID);
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        try {
+            NCubeManager.getRevisionHistory(branch2, "TestBranch");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
+        assertEquals(1, dtos.length);
+
+        assertEquals(1, NCubeManager.rollbackBranch(branch2, dtos));
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        try {
+            NCubeManager.getRevisionHistory(branch1, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+
+        NCubeManager.duplicate(branch1, branch2, "TestBranch", "TestBranch2", USER_ID);
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").length);
+
+        try {
+            NCubeManager.getRevisionHistory(head, "TestBranch2");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
+        assertEquals(1, dtos.length);
+
+        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).size());
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").length);
+
+        try {
+            NCubeManager.getRevisionHistory(branch2, "TestBranch");
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+
+        manager.removeCubes(branch1)
+        manager.removeCubes(head)
+    }
+
+
+    @Test
+    void testDuplicateCubeWithNonExistentSource()
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        try
+        {
+            NCubeManager.duplicate(head, branch1, "foo", "bar", USER_ID);
+            fail();
+        } catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Cube to duplicate"));
+            assertTrue(e.message.contains("not found"));
+        }
+    }
 
 
     private void testValuesOnBranch(ApplicationID appId, String code1 = "ABC", String code2 = "youth") {

@@ -10,11 +10,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -389,29 +385,6 @@ class TestNCubeJdbcPersister
         catch (NullPointerException e)
         {
             assertEquals(e.message, null)
-        }
-    }
-
-    @Test
-    void testRenameCubeThatDoesNotExist() throws Exception
-    {
-        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
-
-        Connection c = mock(Connection.class)
-        ResultSet rs = mock(ResultSet.class)
-        PreparedStatement ps = mock(PreparedStatement.class)
-        when(c.prepareStatement(anyString())).thenReturn(ps)
-        when(ps.executeQuery()).thenReturn(rs)
-        try
-        {
-            new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, ncube, "bar")
-            fail()
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.message.contains("rename"))
-            assertTrue(e.message.contains("not"))
-            assertTrue(e.message.contains("found"))
         }
     }
 
@@ -924,11 +897,10 @@ class TestNCubeJdbcPersister
     @Test
     void testRenameCubeThatThrowsSQLEXception() throws Exception
     {
-        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, ncube, "foo")
+            new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, "foo", "bar", USER_ID)
             fail()
         }
         catch (RuntimeException e)

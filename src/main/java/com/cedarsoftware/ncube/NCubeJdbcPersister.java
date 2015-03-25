@@ -1333,42 +1333,168 @@ public class NCubeJdbcPersister
         }
     }
 
-    public boolean renameCube(Connection c, ApplicationID appId, NCube cube, String newName)
+    public boolean duplicateCube(Connection c, ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
     {
-        //  Save in case exception happens and we have to reset proper name on the cube.
-        String oldName = cube.getName();
-
-        try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE n_cube SET n_cube_nm = ?, cube_value_bin = ? " +
-                "WHERE app_cd = ? AND version_no_cd = ? AND n_cube_nm = ? AND status_cd = '" + ReleaseStatus.SNAPSHOT.name() + "' AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?"))
+        try
         {
-            //  We have to set the new  name on the cube toFormatJson with the proper name on it.
-            cube.name = newName;
-
-            ps.setString(1, newName);
-            ps.setBytes(2, cube.toFormattedJson().getBytes("UTF-8"));   // Need to update cube name in JSON in bin column
-            ps.setString(3, appId.getApp());
-            ps.setString(4, appId.getVersion());
-            ps.setString(5, oldName);
-            ps.setString(6, appId.getTenant());
-            ps.setString(7, appId.getBranch());
-
-            int count = ps.executeUpdate();
-            if (count < 1)
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, oldAppId, oldName, null))
             {
-                throw new IllegalArgumentException("Could not rename cube, no cube found to rename, for app:" + appId + ", original name: " + oldName + ", new name: " + newName);
-            }
+                try (ResultSet rs = stmt.executeQuery())
+                {
+                    if (rs.next())
+                    {
+                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                        Long revision = rs.getLong("revision_number");
+                        byte[] testData = rs.getBytes("test_data_bin");
 
+                        if (revision < 0)
+                        {
+                            throw new IllegalArgumentException("Deleted cubes cannot be duplicated.  AppId:  " + oldAppId + ", " + oldName + " -> " + newName);
+                        }
+
+                        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                        NCube ncube = NCubeManager.ncubeFromJson(json);
+                        ncube.name = newName;
+                        ncube.setApplicationID(newAppId);
+
+                        byte[] notes = StringUtilities.getBytes("Duplicated Cube:  " + oldName + " -> " + newName, "UTF-8");
+
+
+                        try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                        {
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, newAppId.getApp());
+                            insert.setString(3, newName);
+                            insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
+                            insert.setString(5, newAppId.getVersion());
+                            insert.setDate(6, new java.sql.Date(System.currentTimeMillis()));
+                            insert.setString(7, username);
+                            insert.setString(8, newAppId.getTenant());
+                            insert.setString(9, newAppId.getBranch());
+                            insert.setLong(10, 0);
+                            insert.setBytes(11, testData);
+                            insert.setBytes(12, notes);
+
+                            int rowCount = insert.executeUpdate();
+                            if (rowCount != 1)
+                            {
+                                throw new IllegalStateException("Could not duplicate cube: " + oldName + " -> " + newName + "', app: " + newAppId + " (" + rowCount + " rows inserted, should be 1)");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new IllegalArgumentException("Cube to duplicate was not found.  AppId:  " + oldAppId + ", " + oldName);
+                    }
+
+                }
+            }
             return true;
         }
         catch (RuntimeException e)
         {
-            cube.name = oldName;
             throw e;
         }
         catch (Exception e)
         {
-            cube.name = oldName;
+            String s = "Unable to duplicate cube: " + oldName + ", app: " + oldAppId + ", new name: " + newName + ", app: " + newAppId + " due to: " + e.getMessage();
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+
+    }
+
+    public boolean renameCube(Connection c, ApplicationID appId, String oldName, String newName, String username)
+    {
+        try
+        {
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, oldName, null))
+            {
+                try (ResultSet rs = stmt.executeQuery())
+                {
+                    if (rs.next())
+                    {
+                        byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                        Long revision = rs.getLong("revision_number");
+                        byte[] testData = rs.getBytes("test_data_bin");
+
+                        if (revision < 0)
+                        {
+                            throw new IllegalArgumentException("Deleted cubes cannot be renamed.  AppId:  " + appId + ", " + oldName + " -> " + newName);
+                        }
+
+                        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                        NCube ncube = NCubeManager.ncubeFromJson(json);
+                        ncube.name = newName;
+                        ncube.setApplicationID(appId);
+
+                        byte[] notes = StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8");
+
+
+                        try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                        {
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, appId.getApp());
+                            insert.setString(3, newName);
+                            insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
+                            insert.setString(5, appId.getVersion());
+                            insert.setDate(6, new java.sql.Date(System.currentTimeMillis()));
+                            insert.setString(7, username);
+                            insert.setString(8, appId.getTenant());
+                            insert.setString(9, appId.getBranch());
+                            insert.setLong(10, 0);
+                            insert.setBytes(11, testData);
+                            insert.setBytes(12, notes);
+
+                            int rowCount = insert.executeUpdate();
+                            if (rowCount != 1)
+                            {
+                                throw new IllegalStateException("Could not rename cube: " + oldName + " -> " + newName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
+                            }
+                        }
+
+                        jsonBytes = setChangeType(jsonBytes, ChangeType.DELETED);
+
+                        try (PreparedStatement insert = c.prepareStatement(
+                                "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
+                                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                        {
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, appId.getApp());
+                            insert.setString(3, oldName);
+                            insert.setBytes(4, jsonBytes);
+                            insert.setString(5, appId.getVersion());
+                            java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+                            insert.setDate(6, now);
+                            insert.setString(7, username);
+                            insert.setString(8, appId.getTenant());
+                            insert.setString(9, appId.getBranch());
+                            insert.setLong(10, -(revision + 1));
+                            insert.setBytes(11, notes);
+                            insert.setBytes(12, testData);
+
+                            if (insert.executeUpdate() != 1)
+                            {
+                                throw new IllegalStateException("Could not rename cube: " + oldName + " -> " + newName + ", app: " + appId);
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        throw new IllegalArgumentException("Could not rename cube because cube does not exist.  AppId:  " + appId + ", " + oldName);
+                    }
+
+                }
+            }
+            return true;
+        }
+        catch (RuntimeException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
             String s = "Unable to rename cube: " + oldName + ", app: " + appId + ", new name: " + newName + " due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);

@@ -9,11 +9,7 @@ import org.junit.Test
 
 import java.lang.reflect.Field
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -848,6 +844,71 @@ class TestCubesFromPreloadedDatabase
 
         testValuesOnBranch(head)
         testValuesOnBranch(branch, "FOO")
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+
+    @Test
+    void testDuplicateCubeChanges() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        ApplicationID branch2 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "BAR")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        NCubeManager.duplicate(head, branch2, "TestBranch", "TestBranch2", USER_ID);
+        NCubeManager.duplicate(head, branch2, "TestAge", "TestAge", USER_ID);
+
+        // assert head and branch are still there
+        testValuesOnBranch(head);
+        testValuesOnBranch(branch);
+
+        //  Test with new name.
+        NCube cube = NCubeManager.getCube(branch2, "TestBranch2")
+        assertEquals("ABC", cube.getCell(["Code": -7]))
+        cube = NCubeManager.getCube(branch2, "TestAge")
+        assertEquals("youth", cube.getCell(["Code": 5]))
+
+        manager.removeCubes(branch)
+        manager.removeCubes(branch2)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testRenameCubeChanges() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+
+        testValuesOnBranch(head);
+
+        //  Test with new name.
+        NCube cube = NCubeManager.getCube(branch, "TestBranch2")
+        assertEquals("ABC", cube.getCell(["Code": -7]))
+        cube = NCubeManager.getCube(branch, "TestAge")
+        assertEquals("youth", cube.getCell(["Code": 5]))
+        assertNull(NCubeManager.getCube(branch, "TestBranch"))
 
         manager.removeCubes(branch)
         manager.removeCubes(head)

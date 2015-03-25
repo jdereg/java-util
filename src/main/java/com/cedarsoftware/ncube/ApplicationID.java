@@ -130,10 +130,7 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        return StringUtilities.equalsIgnoreCase(tenant, that.tenant) &&
-                StringUtilities.equalsIgnoreCase(app, that.app) &&
-                StringUtilities.equalsIgnoreCase(status, that.status) &&
-                StringUtilities.equals(version, that.version) &&
+        return equalsNotIncludingBranch(that) &&
                 StringUtilities.equalsIgnoreCase(branch, that.branch);
 
     }
@@ -307,5 +304,14 @@ public class ApplicationID
     public static ApplicationID getBootVersion(String tenant, String app)
     {
         return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), HEAD);
+    }
+
+    boolean equalsNotIncludingBranch(ApplicationID that)
+    {
+        return StringUtilities.equalsIgnoreCase(tenant, that.tenant) &&
+                StringUtilities.equalsIgnoreCase(app, that.app) &&
+                StringUtilities.equalsIgnoreCase(status, that.status) &&
+                StringUtilities.equals(version, that.version);
+
     }
 }

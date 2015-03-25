@@ -1064,6 +1064,23 @@ public class NCubeJdbcPersister
         return StringUtilities.getBytes(json, "UTF-8");
     }
 
+    private byte[] removeChangeType(byte[] jsonBytes)
+    {
+        StringBuffer sb = new StringBuffer();
+        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+
+        Matcher m = Regexes.changeTypePattern.matcher(json);
+        //  replace headSha1 with existing sha1
+        //  may not exist in the case of a cube created on branch.
+        while (m.find())
+        {
+            m.appendReplacement(sb, "");
+        }
+        m.appendTail(sb);
+        json = sb.toString();
+        return StringUtilities.getBytes(json, "UTF-8");
+    }
+
     private byte[] replaceHeadSha1AndRemoveChangeType(byte[] jsonBytes, String newSha1)
     {
         StringBuffer sb = new StringBuffer();
@@ -1357,13 +1374,14 @@ public class NCubeJdbcPersister
                             String json = StringUtilities.createString(jsonBytes, "UTF-8");
                             NCube ncube = NCubeManager.ncubeFromJson(json);
                             ncube.name = newName;
-                            ncube.clearHeadSha1AndChangeType();
+                            ncube.clearChangeType();
+                            ncube.clearHeadSha1();
                             ncube.setApplicationID(newAppId);
                             jsonBytes = ncube.toFormattedJson().getBytes("UTF-8");
                         }
                         else
                         {
-                            jsonBytes = removeHeadSha1AndChangeType(jsonBytes);
+                            jsonBytes = removeChangeType(jsonBytes);
                         }
 
                         byte[] notes = StringUtilities.getBytes("Duplicated Cube:  " + oldName + " -> " + newName, "UTF-8");
@@ -1435,7 +1453,8 @@ public class NCubeJdbcPersister
                         String json = StringUtilities.createString(jsonBytes, "UTF-8");
                         NCube ncube = NCubeManager.ncubeFromJson(json);
                         ncube.name = newName;
-                        ncube.clearHeadSha1AndChangeType();
+                        ncube.clearChangeType();
+                        ncube.clearHeadSha1();
                         ncube.setApplicationID(appId);
 
                         byte[] notes = StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8");

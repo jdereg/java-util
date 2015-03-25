@@ -22,6 +22,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -2219,8 +2221,9 @@ public class NCube<T>
         // Need deterministic ordering (sorted by Axis name will do that)
         Map<String, Axis> sortedAxes = new TreeMap<>(axisList);
         final Map<String, List<Column>> allCoordinates = new LinkedHashMap<>();
-        sha1Digest.update("axes".getBytes());
+        sha1Digest.update((byte)'a');       // a=axes
         sha1Digest.update(sep);
+
         for (Map.Entry<String, Axis> entry : sortedAxes.entrySet())
         {
             Axis axis = entry.getValue();
@@ -2233,11 +2236,11 @@ public class NCube<T>
             sha1Digest.update(sep);
             sha1Digest.update(axis.getValueType().name().getBytes());
             sha1Digest.update(sep);
-            sha1Digest.update(axis.hasDefaultColumn() ? "t".getBytes() : "f".getBytes());
+            sha1Digest.update(axis.hasDefaultColumn() ? (byte)'t' : (byte)'f');
             sha1Digest.update(sep);
             if (!axis.isFireAll())
             {   // non-default value, add to SHA1 because it's been changed (backwards sha1 compatible)
-                sha1Digest.update("fireOnce".getBytes());
+                sha1Digest.update((byte)'o');
                 sha1Digest.update(sep);
             }
             if (!MapUtilities.isEmpty(axis.metaProps))
@@ -2258,40 +2261,54 @@ public class NCube<T>
             }
         }
 
-        // Need deterministic ordering of cells by walking the n-dim matrix in sorted axis order,
-        // accessing each coordinate thru that ordering, rather than their order in the 'cells' Map.
-        sha1Digest.update("cells".getBytes());
+        // Deterministic ordering of cell values with coordinates.
+        // 1. Build String SHA-1 of coordinate + SHA-1 of cell contents.
+        // 2. Combine and then sort.
+        // 3. Build SHA-1 from this.
+        sha1Digest.update((byte)'c');  // c = cells
         sha1Digest.update(sep);
-        final Map<String, Integer> counters = getCountersPerAxis(allCoordinates.keySet());
-        final String[] axisNames = getAxisNames(allCoordinates);
-        final Set<Column> idCoord = new HashSet<>();
 
         if (getNumCells() > 0)
         {
-            // TODO: Walk cells directly (in a determistic order), only computing SHA1 against their content.
-            Map<Collection<Column>, T> cellsCopy = getCellMap();
-            do
+            List<String> sha1s = new ArrayList<>();
+            MessageDigest tempDigest = EncryptionUtilities.getSHA1Digest();
+            for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
             {
-                for (final String axisName : axisNames)
-                {
-                    final List<Column> cols = allCoordinates.get(axisName);
-                    if (cols.size() > 0)
-                    {
-                        final Column boundColumn = cols.get(counters.get(axisName) - 1);
-                        idCoord.add(boundColumn);
-                    }
-                }
+                String keySha1 = columnValuesToString(entry.getKey());
 
-                if (cellsCopy.containsKey(idCoord))
-                {
-                    deepSha1(sha1Digest, cellsCopy.get(idCoord), sep);
-                }
+                deepSha1(tempDigest, entry.getValue(), sep);
+                String valueSha1 = StringUtilities.encode(tempDigest.digest());
+                sha1s.add(EncryptionUtilities.calculateSHA1Hash((keySha1 + valueSha1).getBytes()));
 
-                idCoord.clear();
-            } while (incrementVariableRadixCount(counters, allCoordinates, axisNames));        }
+                tempDigest.reset();
+            }
 
+            Collections.sort(sha1s);
+            for (String sha_1 : sha1s)
+            {
+                sha1Digest.update(sha_1.getBytes());
+            }
+        }
         sha1 = StringUtilities.encode(sha1Digest.digest());
         return sha1;
+    }
+
+    private static String columnValuesToString(Collection<Column> columns)
+    {
+        List<String> list = new ArrayList<>();
+        for (Column column : columns)
+        {
+            Object value = column.getValue();
+            list.add(value == null ? "null" : column.getValue().toString());
+        }
+        Collections.sort(list);
+        StringBuilder s = new StringBuilder();
+        for (String str : list)
+        {
+            s.append(str);
+            s.append('|');
+        }
+        return s.toString();
     }
 
     private static void deepSha1(MessageDigest md, Object value, byte sep)
@@ -2340,6 +2357,7 @@ public class NCube<T>
                 md.update("map".getBytes());
                 md.update(String.valueOf(map.size()).getBytes());
                 md.update(sep);
+
                 for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
                 {
                     stack.addFirst(entry.getValue());
@@ -2348,18 +2366,59 @@ public class NCube<T>
             }
             else
             {
-                String strKey = value.toString();
-                if (strKey == null)
+                if (value instanceof String)
                 {
-                    md.update("null".getBytes());
+                    md.update(((String)value).getBytes());
+                    md.update(sep);
                 }
-                else if (strKey.contains("@"))
+                else if (value instanceof CommandCell)
                 {
-                    md.update(toJson(value).getBytes());
+                    CommandCell cmdCell = (CommandCell) value;
+                    md.update(cmdCell.getClass().getName().getBytes());
+                    md.update(sep);
+                    if (cmdCell.getUrl() != null)
+                    {
+                        md.update(cmdCell.getUrl().getBytes());
+                        md.update(sep);
+                    }
+                    if (cmdCell.getCmd() != null)
+                    {
+                        md.update(cmdCell.getCmd().getBytes());
+                        md.update(sep);
+                    }
+                    if (value instanceof UrlCommandCell)
+                    {
+                        md.update(((UrlCommandCell)cmdCell).isCacheable() ? (byte) 't' : (byte) 'f');
+                        md.update(sep);
+                    }
+                }
+                else if (value instanceof ClassLoader)
+                {
+                    if (value instanceof URLClassLoader)
+                    {
+                        URLClassLoader cl = (URLClassLoader) value;
+                        for (URL url : cl.getURLs())
+                        {
+                            md.update(url.toString().getBytes());
+                        }
+                    }
+                    else
+                    {
+                        md.update(value.getClass().getName().getBytes());
+                    }
+                    md.update(sep);
                 }
                 else
                 {
-                    md.update(strKey.getBytes());
+                    String strKey = value.toString();
+                    if (strKey.contains("@"))
+                    {
+                        md.update(toJson(value).getBytes());
+                    }
+                    else
+                    {
+                        md.update(strKey.getBytes());
+                    }
                 }
                 md.update(sep);
             }

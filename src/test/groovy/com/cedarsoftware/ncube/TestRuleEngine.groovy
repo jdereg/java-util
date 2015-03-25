@@ -946,7 +946,7 @@ class TestRuleEngine
         assert output.A2 == 'A2 fired'
         assert ret == 'A2 fired'
 
-        axis.fireAll = false;
+        axis.fireAll = false
         axis = ncube.getAxis('ruleLetter')
         axis.fireAll = true
         input.clear()

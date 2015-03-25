@@ -231,7 +231,6 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(headId)
     }
 
-
     @Test
     void testCommitBranchOnCreateThenDeleted() throws Exception {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
@@ -1219,6 +1218,21 @@ class TestCubesFromPreloadedDatabase
     }
 
 
+    @Test
+    void testDuplicateCubeWithNonExistentSource()
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        try
+        {
+            NCubeManager.duplicate(head, branch1, "foo", "bar", USER_ID);
+            fail();
+        } catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Cube to duplicate"));
+            assertTrue(e.message.contains("not found"));
+        }
+    }
 
 
     private void testValuesOnBranch(ApplicationID appId, String code1 = "ABC", String code2 = "youth") {

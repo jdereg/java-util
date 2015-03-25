@@ -1381,7 +1381,11 @@ public class NCubeJdbcPersister
                         }
                         else
                         {
-                            jsonBytes = removeChangeType(jsonBytes);
+                            if (oldAppId.equalsNotIncludingBranch(newAppId)) {
+                                jsonBytes = removeChangeType(jsonBytes);
+                            } else {
+                                jsonBytes = removeHeadSha1AndChangeType(jsonBytes);
+                            }
                         }
 
                         byte[] notes = StringUtilities.getBytes("Duplicated Cube:  " + oldName + " -> " + newName, "UTF-8");

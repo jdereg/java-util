@@ -61,12 +61,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public NCube loadCube(NCubeInfoDto cubeInfo, Integer revision)
+    public NCube loadCube(NCubeInfoDto cubeInfo)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.loadCube(c, cubeInfo, revision);
+            return persister.loadCube(c, cubeInfo);
         }
         finally
         {

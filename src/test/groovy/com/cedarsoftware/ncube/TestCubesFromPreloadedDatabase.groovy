@@ -747,6 +747,7 @@ class TestCubesFromPreloadedDatabase
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+
         assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
 

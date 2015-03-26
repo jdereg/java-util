@@ -156,7 +156,7 @@ public class NCubeManager
         }
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
-            NCube cube = getPersister().loadCube((NCubeInfoDto) value, null);
+            NCube cube = getPersister().loadCube((NCubeInfoDto) value);
             applyAdvices(cube.getApplicationID(), cube);
             String cubeName = cube.name.toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
@@ -616,6 +616,15 @@ public class NCubeManager
         validateAppId(appId);
         Object[] cubes = getPersister().getDeletedCubeRecords(appId, pattern);
         return cubes;
+    }
+
+    /**
+     * A method to clean up all cubes in between the original pulled over from the branch and the latest.
+     * @param appId
+     */
+    public static void cleanUp(ApplicationID appId)
+    {
+
     }
 
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)

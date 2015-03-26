@@ -517,9 +517,9 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, branch_id, cube_value_bin " +
-                "FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ?" +
-                "ORDER BY abs(revision_number) DESC"))
+                        "FROM n_cube " +
+                        "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ?" +
+                        "ORDER BY abs(revision_number) DESC"))
         {
             stmt.setString(1, cubeName);
             stmt.setString(2, appId.getApp());
@@ -659,10 +659,9 @@ public class NCubeJdbcPersister
         return list.toArray();
     }
 
-    public NCube loadCube(Connection c, NCubeInfoDto cubeInfo)
+    public NCube loadCube(Connection c, ApplicationID appId, String cubeName)
     {
-        final ApplicationID appId = cubeInfo.getApplicationID();
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeInfo.name))
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -671,20 +670,46 @@ public class NCubeJdbcPersister
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     String json = new String(jsonBytes, "UTF-8");
                     NCube ncube = NCubeManager.ncubeFromJson(json);
-                    ncube.setApplicationID(cubeInfo.getApplicationID());
+                    ncube.setApplicationID(appId);
                     return ncube;
                 }
             }
         }
         catch (Exception e)
         {
-            String s = "Unable to load cube: " + cubeInfo + " from database";
+            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }
 
-        throw new IllegalArgumentException("Unable to load cube: " + cubeInfo + " from database");
-     }
+        throw new IllegalArgumentException("Unable to load cube: " + appId + ", " + cubeName + " from database");
+    }
+
+    public NCube loadCube(Connection c, ApplicationID appId, String cubeName, Integer revision)
+    {
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, revision))
+        {
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                    String json = new String(jsonBytes, "UTF-8");
+                    NCube ncube = NCubeManager.ncubeFromJson(json);
+                    ncube.setApplicationID(appId);
+                    return ncube;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
+            LOG.error(s, e);
+            throw new IllegalStateException(s, e);
+        }
+
+        throw new IllegalArgumentException("Unable to load cube revision: " + appId + ", " + cubeName + ", " + revision + " from database");
+    }
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {

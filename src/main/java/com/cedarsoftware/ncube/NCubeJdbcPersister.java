@@ -381,7 +381,7 @@ public class NCubeJdbcPersister
         return s;
     }
 
-    public PreparedStatement createSelectCubeRevisionStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
+    public PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
     {
         String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin FROM n_cube " +
                 "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revison_number = ?";

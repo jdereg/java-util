@@ -8,7 +8,6 @@ import org.junit.Ignore
 import org.junit.Test
 
 import java.lang.reflect.Field
-import java.sql.SQLException
 
 import static org.junit.Assert.*
 
@@ -230,7 +229,6 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(branch)
         manager.removeCubes(headId)
     }
-
 
     @Test
     void testCommitBranchOnCreateThenDeleted() throws Exception {
@@ -885,6 +883,36 @@ class TestCubesFromPreloadedDatabase
         manager.removeCubes(head)
     }
 
+    @Test
+    void testDuplicateWhenCubeWithNameAlreadyExists() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        try
+        {
+            NCubeManager.duplicate(branch, branch, "TestBranch", "TestAge", USER_ID);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Unable to duplicate"))
+            assertTrue(e.message.contains("already exists"))
+        }
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
 
     @Test
     void testRenameCubeWhenNewNameAlreadyExists() throws Exception {
@@ -906,12 +934,111 @@ class TestCubesFromPreloadedDatabase
             NCubeManager.renameCube(branch, "TestBranch", "TestAge", USER_ID);
             fail();
         }
-        catch (RuntimeException e)
+        catch (IllegalArgumentException e)
         {
             assertTrue(e.message.contains("Unable to rename"))
-            assertTrue(e.getCause() instanceof SQLException)
-
+            assertTrue(e.message.contains("already exists"))
         }
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testRenameCubeWhenNewNameAlreadyExistsButIsInactive() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        NCubeManager.deleteCube(branch, "TestAge", USER_ID)
+
+        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+
+        //  cube is deleted so won't throw exception
+        NCubeManager.renameCube(branch, "TestBranch", "TestAge", USER_ID)
+
+        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testDuplicateCubeWhenNewNameAlreadyExistsButIsInactive() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        NCubeManager.deleteCube(branch, "TestAge", USER_ID)
+
+        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+
+        //  cube is deleted so won't throw exception
+        NCubeManager.duplicate(branch, branch, "TestBranch", "TestAge", USER_ID)
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestAge").size())
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testRenameAndThenRenameAgain()
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch)
+
+        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+
+        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+
+        assertTrue(NCubeManager.renameCube(branch, "TestBranch2", "TestBranch", USER_ID));
+        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+
+        assertNull(NCubeManager.getCube(branch, "TestBranch2"))
 
         manager.removeCubes(branch)
         manager.removeCubes(head)
@@ -1219,6 +1346,21 @@ class TestCubesFromPreloadedDatabase
     }
 
 
+    @Test
+    void testDuplicateCubeWithNonExistentSource()
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        try
+        {
+            NCubeManager.duplicate(head, branch1, "foo", "bar", USER_ID);
+            fail();
+        } catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Cube to duplicate"));
+            assertTrue(e.message.contains("not found"));
+        }
+    }
 
 
     private void testValuesOnBranch(ApplicationID appId, String code1 = "ABC", String code2 = "youth") {

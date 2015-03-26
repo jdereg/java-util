@@ -1390,6 +1390,12 @@ public class NCubeJdbcPersister
 
                         byte[] notes = StringUtilities.getBytes("Duplicated Cube:  " + oldName + " -> " + newName, "UTF-8");
 
+                        Long newRevision = getMaxRevision(c, newAppId, newName);
+
+                        if (newRevision != null && newRevision >= 0)
+                        {
+                            throw new IllegalArgumentException("Unable to duplicate cube, a cube already exists with the new name.  appId:  " + newAppId + ", name: " + newName);
+                        }
 
                         try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
                         {
@@ -1402,7 +1408,7 @@ public class NCubeJdbcPersister
                             insert.setString(7, username);
                             insert.setString(8, newAppId.getTenant());
                             insert.setString(9, newAppId.getBranch());
-                            insert.setLong(10, 0);
+                            insert.setLong(10, newRevision == null ? 0 : Math.abs(newRevision) + 1);
                             insert.setBytes(11, testData);
                             insert.setBytes(12, notes);
 
@@ -1464,6 +1470,13 @@ public class NCubeJdbcPersister
                         byte[] notes = StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8");
 
 
+                        Long newRevision = getMaxRevision(c, appId, newName);
+
+                        if (newRevision != null && newRevision >= 0)
+                        {
+                            throw new IllegalArgumentException("Unable to rename cube, a cube already exists with the new name.  appId:  " + appId + ", name: " + newName);
+                        }
+
                         try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
                         {
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
@@ -1475,7 +1488,7 @@ public class NCubeJdbcPersister
                             insert.setString(7, username);
                             insert.setString(8, appId.getTenant());
                             insert.setString(9, appId.getBranch());
-                            insert.setLong(10, 0);
+                            insert.setLong(10, newRevision == null ? 0 : Math.abs(newRevision) + 1);
                             insert.setBytes(11, testData);
                             insert.setBytes(12, notes);
 

@@ -598,6 +598,7 @@ public class NCubeManager
         {
             NCubeInfoDto cubeInfo = (NCubeInfoDto) cube;
             String key = cubeInfo.name.toLowerCase();
+
             if (!cubeInfo.revision.startsWith("-"))
             {
                 if (!appCache.containsKey(key))

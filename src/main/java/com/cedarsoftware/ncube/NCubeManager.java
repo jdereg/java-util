@@ -598,9 +598,12 @@ public class NCubeManager
         {
             NCubeInfoDto cubeInfo = (NCubeInfoDto) cube;
             String key = cubeInfo.name.toLowerCase();
-            if (!appCache.containsKey(key))
+            if (!cubeInfo.revision.startsWith("-"))
             {
-                appCache.put(key, cubeInfo);
+                if (!appCache.containsKey(key))
+                {
+                    appCache.put(key, cubeInfo);
+                }
             }
         }
     }
@@ -1037,10 +1040,6 @@ public class NCubeManager
 
         boolean result = getPersister().renameCube(appId, oldName, newName, username);
 
-        Map<String, Object> appCache = getCacheForApp(appId);
-        appCache.remove(oldName.toLowerCase());
-        appCache.remove(newName.toLowerCase());
-
         if (CLASSPATH_CUBE.equalsIgnoreCase(oldName) || CLASSPATH_CUBE.equalsIgnoreCase(newName))
         {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,
             // then the entire class loader must be dropped (and then lazily rebuilt).
@@ -1048,8 +1047,10 @@ public class NCubeManager
         }
         else
         {
+            Map<String, Object> appCache = getCacheForApp(appId);
             appCache = getCacheForApp(appId);
             appCache.remove(oldName.toLowerCase());
+            appCache.remove(newName.toLowerCase());
         }
 
         broadcast(appId);

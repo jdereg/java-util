@@ -156,7 +156,8 @@ public class NCubeManager
         }
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
-            NCube cube = getPersister().loadCube((NCubeInfoDto) value, null);
+            NCubeInfoDto dto = (NCubeInfoDto) value;
+            NCube cube = getPersister().loadCube(dto.getApplicationID(), dto.name);
             applyAdvices(cube.getApplicationID(), cube);
             String cubeName = cube.name.toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
@@ -597,9 +598,13 @@ public class NCubeManager
         {
             NCubeInfoDto cubeInfo = (NCubeInfoDto) cube;
             String key = cubeInfo.name.toLowerCase();
-            if (!appCache.containsKey(key))
+
+            if (!cubeInfo.revision.startsWith("-"))
             {
-                appCache.put(key, cubeInfo);
+                if (!appCache.containsKey(key))
+                {
+                    appCache.put(key, cubeInfo);
+                }
             }
         }
     }
@@ -616,6 +621,15 @@ public class NCubeManager
         validateAppId(appId);
         Object[] cubes = getPersister().getDeletedCubeRecords(appId, pattern);
         return cubes;
+    }
+
+    /**
+     * A method to clean up all cubes in between the original pulled over from the branch and the latest.
+     * @param appId
+     */
+    public static void cleanUp(ApplicationID appId)
+    {
+
     }
 
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
@@ -695,8 +709,11 @@ public class NCubeManager
 
         if (oldName.equalsIgnoreCase(newName) && oldAppId.equals(newAppId))
         {
-            throw new IllegalArgumentException("Could not duplicagte, old name cannot be the same as the new name when oldAppId matches newAppId, name: " + oldName + ", app: " + oldAppId);
+            throw new IllegalArgumentException("Could not duplicate, old name cannot be the same as the new name when oldAppId matches newAppId, name: " + oldName + ", app: " + oldAppId);
         }
+
+        Map<String, Object> appCache = getCacheForApp(newAppId);
+        appCache.remove(newName.toLowerCase());
 
         getPersister().duplicateCube(oldAppId, newAppId, oldName, newName, username);
         broadcast(newAppId);
@@ -1024,9 +1041,6 @@ public class NCubeManager
 
         boolean result = getPersister().renameCube(appId, oldName, newName, username);
 
-        Map<String, Object> appCache = getCacheForApp(appId);
-        appCache.remove(oldName.toLowerCase());
-
         if (CLASSPATH_CUBE.equalsIgnoreCase(oldName) || CLASSPATH_CUBE.equalsIgnoreCase(newName))
         {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,
             // then the entire class loader must be dropped (and then lazily rebuilt).
@@ -1034,8 +1048,10 @@ public class NCubeManager
         }
         else
         {
+            Map<String, Object> appCache = getCacheForApp(appId);
             appCache = getCacheForApp(appId);
             appCache.remove(oldName.toLowerCase());
+            appCache.remove(newName.toLowerCase());
         }
 
         broadcast(appId);

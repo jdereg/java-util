@@ -747,6 +747,7 @@ class TestCubesFromPreloadedDatabase
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+
         assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
 
@@ -1033,10 +1034,12 @@ class TestCubesFromPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
 
         assertTrue(NCubeManager.renameCube(branch, "TestBranch2", "TestBranch", USER_ID));
         assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
         assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
 
         assertNull(NCubeManager.getCube(branch, "TestBranch2"))
 

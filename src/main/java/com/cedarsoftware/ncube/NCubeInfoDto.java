@@ -52,6 +52,12 @@ public class NCubeInfoDto
 	}
 
     public boolean isChanged() {
-        return changeType != null || !StringUtilities.equalsIgnoreCase(sha1, headSha1);
+        if (!StringUtilities.equalsIgnoreCase(sha1, headSha1)) {
+            if (headSha1 == null) {
+                return !"D".equals(changeType);
+            }
+            return true;
+        }
+        return changeType != null;
     }
 }

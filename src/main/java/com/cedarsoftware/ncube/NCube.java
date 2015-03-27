@@ -2725,4 +2725,9 @@ public class NCube<T>
     {
         headSha1 = null;
     }
+
+    public void setHeadSha1(String sha1)
+    {
+        headSha1 = sha1;
+    }
 }

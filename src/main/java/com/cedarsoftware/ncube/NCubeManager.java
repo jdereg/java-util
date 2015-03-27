@@ -1049,7 +1049,6 @@ public class NCubeManager
         else
         {
             Map<String, Object> appCache = getCacheForApp(appId);
-            appCache = getCacheForApp(appId);
             appCache.remove(oldName.toLowerCase());
             appCache.remove(newName.toLowerCase());
         }

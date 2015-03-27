@@ -239,7 +239,7 @@ class TestCubesFromPreloadedDatabase
         NCubeManager.deleteCube(branch1, "TestAge", 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
-        assertEquals(1, dtos.length)
+        assertEquals(0, dtos.length)
 
         Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertEquals(0, map.size())
@@ -1040,10 +1040,10 @@ class TestCubesFromPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
         assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
-        assertEquals(1, dtos.length);
+        assertEquals(0, dtos.length);
 
         assertNull(NCubeManager.getCube(branch, "TestBranch2"))
-        assertEquals(1, NCubeManager.rollbackBranch(branch, dtos));
+        assertEquals(0, NCubeManager.rollbackBranch(branch, dtos));
 
         assertNotNull(NCubeManager.getCube(branch, "TestBranch"));
         assertNull(NCubeManager.getCube(branch, "TestBranch2"));
@@ -1080,7 +1080,7 @@ class TestCubesFromPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
         assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
-        assertEquals(1, dtos.length);
+        assertEquals(0, dtos.length);
 
         assertNull(NCubeManager.getCube(branch, "TestBranch2"))
         assertEquals(0, NCubeManager.commitBranch(branch, dtos, USER_ID).size());

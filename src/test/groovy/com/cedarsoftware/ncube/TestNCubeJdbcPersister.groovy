@@ -640,7 +640,7 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().copyBranchCubeToHead(null, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, null)
+            new NCubeJdbcPersister().copyBetweenBranches(null, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, null)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -655,7 +655,7 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
+            new NCubeJdbcPersister().copyBetweenBranches(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
             fail()
         }
         catch (IllegalStateException e)
@@ -679,7 +679,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().copyBranchCubeToHead(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
+            new NCubeJdbcPersister().copyBetweenBranches(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
             fail()
         }
         catch (IllegalStateException e)

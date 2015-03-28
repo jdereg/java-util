@@ -1405,9 +1405,57 @@ class TestCubesFromPreloadedDatabase
             fail();
         } catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains("Cube to duplicate"));
-            assertTrue(e.message.contains("not found"));
+            assertTrue(e.message.contains("Unable to duplicate"));
+            assertTrue(e.message.contains("does not exist"));
         }
+        manager.removeCubes(branch1)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testDuplicateCubeWhenTargetExists()
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        loadCubesToDatabase(head, "test.branch.1.json");
+        NCubeManager.createBranch(branch1);
+
+        try
+        {
+            NCubeManager.duplicate(head, branch1, "TestBranch", "TestBranch", USER_ID);
+            fail();
+        } catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Unable to duplicate"));
+            assertTrue(e.message.contains("already exists"));
+        }
+        manager.removeCubes(branch1)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testDuplicateCubeWhenSourceCubeIsADeletedCube()
+    {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+        loadCubesToDatabase(head, "test.branch.1.json");
+        NCubeManager.createBranch(branch1);
+        NCubeManager.deleteCube(branch1, "TestBranch", USER_ID);
+
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+
+        try
+        {
+            NCubeManager.duplicate(head, branch1, "TestBranch", "TestBranch", USER_ID);
+            assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+            assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        } catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Unable to duplicate"));
+            assertTrue(e.message.contains("already exists"));
+        }
+        manager.removeCubes(branch1)
+        manager.removeCubes(head)
     }
 
 

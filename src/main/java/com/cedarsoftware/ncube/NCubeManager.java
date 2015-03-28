@@ -896,89 +896,31 @@ public class NCubeManager
         for (Object dto : headRecords)
         {
             NCubeInfoDto head = (NCubeInfoDto) dto;
-            NCubeInfoDto info = (NCubeInfoDto) recordMap.get(head.name);
+            NCubeInfoDto info = recordMap.get(head.name);
 
+            if (info == null) {
+                //  added to head.
+
+
+            }
             if (info != null)
             {
                 long infoRev = Long.parseLong(info.revision);
                 long headRev = Long.parseLong(head.revision);
-                // match was found.
+
                 if (info.isChanged())
                 {
-                    if (StringUtilities.equalsIgnoreCase(head.sha1, info.headSha1))
-                    {
-                        // no conflict, (headsha1 still matches) no update since we are more recent.
-                        //  could still be delete or restore case on server.
-                        // check if sign is same
-                        if (infoRev > 0 == headRev > 0)
-                        {
-                            recordMap.remove(info.name);
-                        }
-                        else if (info.changeType == null)
-                        {
-                            deletes.add(info.name);
-                            adds.add(head);
-                            recordMap.remove(info.name);
-                        }
-                        else
-                        {
-                            recordMap.remove(info.name);
-                            // do nothing because we cahnged it in branch.
-                        }
 
-                    }
-                    else
-                    {
-                        if (StringUtilities.equalsIgnoreCase(head.sha1, info.headSha1))
-                        {
-                            // no conflict, (headsha1 still matches) no update since we are more recent.
-                            //  could still be delete or restore case on server.
-                            // check if sign is same
-                            if (infoRev > 0 == headRev > 0)
-                            {
-                                recordMap.remove(info.name);
-                            }
-                            else if (info.changeType == null)
-                            {
-                                deletes.add(info.name);
-                                adds.add(head);
-                                recordMap.remove(info.name);
-                            }
-                        }
-                    }
                 }
-            }
-            else
-            {
-                // update from HEAD
-                // copy head record to branch
-                // update headSha1.
-            }
-            //  created while branching?
-            if (info.headSha1 != null)
-            {
-                if (head != null)
+                else if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
                 {
-                    if (!info.headSha1.equals(head.sha1))
-                    {
-                        deletes.add(info.name);
-                        adds.add(head);
-                    }
-                }
-                else
-                {
-                    //  we didn't make any changes, but deleted on server.
-                    deletes.add(info.name);
+                    //  head still same, but an update
+
                 }
             }
-            else if (head == null)
+            else  // doesn't exist in branch, but is on head.
             {
-                // head was no longer found and we didn't change it.
-                deletes.add(info.name);
-            }
-            else
-            {
-                // update from server
+                adds.add(head);
             }
         }
 

@@ -1001,8 +1001,7 @@ class TestNCubeJdbcPersister
         }
         catch (IllegalStateException e)
         {
-            assertTrue(e.message.contains("Cannot restore"))
-            assertTrue(e.message.contains("rows inserted"))
+            assertTrue(e.message.contains("Could not restore"))
         }
     }
 

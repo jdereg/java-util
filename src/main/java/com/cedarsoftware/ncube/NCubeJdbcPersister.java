@@ -58,27 +58,10 @@ public class NCubeJdbcPersister
     {
         try
         {
-            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+            byte[] cubeData = StringUtilities.getBytes(ncube.toFormattedJson(), "UTF-8");
+            if (!insertCube(c, appId, ncube.getName(), rev, cubeData, null, "Cube created", username))
             {
-                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                insert.setString(2, appId.getApp());
-                insert.setString(3, ncube.getName());
-                insert.setBytes(4, ncube.toFormattedJson().getBytes("UTF-8"));
-                insert.setString(5, appId.getVersion());
-                java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                insert.setDate(6, now);
-                insert.setString(7, username);
-                insert.setString(8, appId.getTenant());
-                insert.setString(9, appId.getBranch());
-                insert.setLong(10, rev);
-                insert.setBytes(11, null);
-                insert.setBytes(12, StringUtilities.getBytes("Cube created", "UTF-8"));
-
-                int rowCount = insert.executeUpdate();
-                if (rowCount != 1)
-                {
-                    throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
-                }
+                throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId);
             }
         }
         catch (RuntimeException e)
@@ -198,31 +181,14 @@ public class NCubeJdbcPersister
                         maxRevision = Math.abs(maxRevision)+1;
                     }
 
-                    try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                    byte[] testData = rs.getBytes(TEST_DATA_BIN);
+
+                    if (!insertCube(c, tgtBranch, cubeName, maxRevision, jsonBytes, testData, "Cube committed", username))
                     {
-                        insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                        insert.setString(2, tgtBranch.getApp());
-                        insert.setString(3, cubeName);
-                        insert.setBytes(4, jsonBytes);
-                        insert.setString(5, tgtBranch.getVersion());
-                        java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                        insert.setDate(6, now);
-                        insert.setString(7, username);
-                        insert.setString(8, tgtBranch.getTenant());
-                        insert.setString(9, tgtBranch.getBranch());
-                        insert.setLong(10, maxRevision);
-
-                        insert.setBytes(11, rs.getBytes(TEST_DATA_BIN));
-                        insert.setBytes(12, StringUtilities.getBytes("committed on " + now + " by " + username, "UTF-8"));
-
-                        int rowCount = insert.executeUpdate();
-                        if (rowCount != 1)
-                        {
-                            String s = "Unable to copy cube: " + cubeName + " from app: " + srcBranch + " into app:  " + tgtBranch;
-                            throw new IllegalStateException(s);
-                        }
-                        return true;
+                        String s = "Unable to copy cube: " + cubeName + " from app: " + srcBranch + " into app:  " + tgtBranch;
+                        throw new IllegalStateException(s);
                     }
+                    return true;
                 }
                 return false;
             }
@@ -258,29 +224,16 @@ public class NCubeJdbcPersister
 //                    String headSha1 = getHeadSha1(rs.getBytes("cube_value_bin"));
 //                    cube.setHeadSha1(headSha1);
 
-                    try (PreparedStatement insert = connection.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                    byte[] cubeData = StringUtilities.getBytes(cube.toFormattedJson(), "UTF-8");
+                    byte[] testData = rs.getBytes(TEST_DATA_BIN);
+                    byte[] notes = rs.getBytes(NOTES_BIN);
+
+                    if (!insertCube(connection, appId, cube.name, revision + 1, cubeData, testData, "Cube updated", username))
                     {
-                        insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                        insert.setString(2, appId.getApp());
-                        insert.setString(3, cube.name);
-                        insert.setBytes(4, cube.toFormattedJson().getBytes("UTF-8"));
-                        insert.setString(5, appId.getVersion());
-                        java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                        insert.setDate(6, now);
-                        insert.setString(7, username);
-                        insert.setString(8, appId.getTenant());
-                        insert.setString(9, appId.getBranch());
-                        insert.setLong(10, revision + 1);
-
-                        insert.setBytes(11, rs.getBytes(TEST_DATA_BIN));
-                        insert.setBytes(12, rs.getBytes(NOTES_BIN));
-
-                        if (insert.executeUpdate() != 1)
-                        {
-                            throw new IllegalStateException("error updating n-cube: " + cube.name + "', app: " + appId + ", row was not updated");
-                        }
-                        return;
+                        throw new IllegalStateException("error updating n-cube: " + cube.name + "', app: " + appId + ", row was not updated");
                     }
+
+                    return;
                 }
 
                 throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update non-existing cube.");
@@ -728,41 +681,18 @@ public class NCubeJdbcPersister
 
                     byte[] jsonBytes = rs.getBytes("cube_value_bin");
                     jsonBytes = setChangeType(jsonBytes, ChangeType.RESTORED);
+                    byte[] testData = rs.getBytes(TEST_DATA_BIN);
+                    String notes = "Cube restored";
 
-
-                    String insertSql =
-                            "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                    try (PreparedStatement insert = c.prepareStatement(insertSql))
+                    if (!insertCube(c, appId, cubeName, Math.abs(revision) + 1, jsonBytes, testData, notes, username))
                     {
-                        insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                        insert.setString(2, appId.getApp());
-                        insert.setString(3, cubeName);
-                        insert.setBytes(4, jsonBytes);
-                        insert.setString(5, appId.getVersion());
-                        java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                        insert.setDate(6, now);
-                        insert.setString(7, username);
-                        insert.setString(8, appId.getTenant());
-                        insert.setString(9, appId.getBranch());
-                        insert.setLong(10, Math.abs(revision) + 1);
-                        insert.setBytes(11, StringUtilities.getBytes("restored on " + now + " by " + username, "UTF-8"));
-                        insert.setBytes(12, rs.getBytes(TEST_DATA_BIN));
-
-                        int rowCount = insert.executeUpdate();
-
-                        //TODO:  This cannot happen because of the getMaxRevision() check at the beginning of the method
-                        //TODO:  We may need to just replace this with a return of the update count and let the controllers
-                        //TODO:  handle it.  I've mocked it out anyway for now.
-                        if (rowCount != 1)
-                        {
-                            throw new IllegalStateException("Cannot restore n-cube: " + cubeName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
-                        }
-                        return;
+                        throw new IllegalStateException("Could not restore n-cube: " + cubeName + "', app: " + appId);
                     }
                 }
-
-                throw new IllegalArgumentException("Cannot restore cube: " + cubeName + " as it does not exist in app: " + appId);
+                else
+                {
+                    throw new IllegalArgumentException("Cannot restore cube: " + cubeName + " as it does not exist in app: " + appId);
+                }
             }
         } catch (RuntimeException e) {
             throw e;
@@ -856,43 +786,25 @@ public class NCubeJdbcPersister
                     {
                         Long revision = rs.getLong("revision_number");
 
-                        //  TODO:  In restoreCube() and updateCube() we throw an exception when there is nothing to update.
-                        //  TODO:  For consistency do we want to do the same thing here?
                         if (revision < 0)
                         {
                             return false;
                         }
 
                         byte[] jsonBytes = rs.getBytes("cube_value_bin");
+                        byte[] testData = rs.getBytes(TEST_DATA_BIN);
 
                         jsonBytes = setChangeType(jsonBytes, ChangeType.DELETED);
 
-                        try (PreparedStatement insert = c.prepareStatement(
-                                "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
-                                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                        if (!insertCube(c, appId, cubeName, -(revision + 1), jsonBytes, testData, "Cube deleted", username))
                         {
-                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                            insert.setString(2, appId.getApp());
-                            insert.setString(3, cubeName);
-                            insert.setBytes(4, jsonBytes);
-                            insert.setString(5, appId.getVersion());
-                            java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                            insert.setDate(6, now);
-                            insert.setString(7, username);
-                            insert.setString(8, appId.getTenant());
-                            insert.setString(9, appId.getBranch());
-                            insert.setLong(10, -(revision + 1));
-                            String note = "deleted on " + now + " by " + username;
-                            insert.setBytes(11, note.getBytes("UTF-8"));
-                            insert.setBytes(12, rs.getBytes(TEST_DATA_BIN));
-
-                            if (insert.executeUpdate() != 1)
-                            {
-                                throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + ", row was not deleted");
-                            }
-                            return true;
+                            throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + ", row was not deleted");
                         }
+                        return true;
                     }
+                    //  TODO:  In restoreCube() and updateCube() we throw an exception when there is nothing to update.
+                    //  TODO:  For consistency do we want to do the same thing here?
+                    return false;
                 }
             }
             catch (RuntimeException e)
@@ -906,7 +818,6 @@ public class NCubeJdbcPersister
                 throw new RuntimeException(s, e);
             }
         }
-        return false;
     }
 
     public boolean updateNotes(Connection c, ApplicationID appId, String cubeName, String notes)
@@ -1466,28 +1377,11 @@ public class NCubeJdbcPersister
                 newBytes = removeHeadSha1AndChangeType(oldBytes);
             }
 
-            byte[] notes = StringUtilities.getBytes("Cube duplicated.  (app: " + oldAppId + ", name: " + oldName + ") -> (app:" + newAppId + ", name: " + newName + ")", "UTF-8");
+            String notes = "Cube duplicated from app: " + oldAppId + ", name: " + oldName;
 
-            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+            if (!insertCube(c, newAppId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, newBytes, oldTestData, notes, username))
             {
-                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                insert.setString(2, newAppId.getApp());
-                insert.setString(3, newName);
-                insert.setBytes(4, newBytes);
-                insert.setString(5, newAppId.getVersion());
-                insert.setDate(6, new java.sql.Date(System.currentTimeMillis()));
-                insert.setString(7, username);
-                insert.setString(8, newAppId.getTenant());
-                insert.setString(9, newAppId.getBranch());
-                insert.setLong(10, newRevision == null ? 0 : Math.abs(newRevision) + 1);
-                insert.setBytes(11, oldTestData);
-                insert.setBytes(12, notes);
-
-                int rowCount = insert.executeUpdate();
-                if (rowCount != 1)
-                {
-                    throw new IllegalStateException("Unable to duplicate cube: " + oldName + " -> " + newName + "', app: " + oldAppId + " (" + rowCount + " rows inserted, should be 1)");
-                }
+                throw new IllegalStateException("Unable to duplicate cube: " + oldName + " -> " + newName + "', app: " + oldAppId);
             }
 
             return true;
@@ -1601,56 +1495,21 @@ public class NCubeJdbcPersister
             ncube.setHeadSha1(newHeadSha1);
             ncube.setApplicationID(appId);
 
-            byte[] notes = StringUtilities.getBytes("Cube renamed:  " + oldName + " -> " + newName, "UTF-8");
+            String notes = "Cube renamed:  " + oldName + " -> " + newName;
+            byte[] cubeData = StringUtilities.getBytes(ncube.toFormattedJson(), "UTF-8");
 
-            try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+            if (!insertCube(c, appId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, cubeData, oldTestData, notes, username))
             {
-                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                insert.setString(2, appId.getApp());
-                insert.setString(3, newName);
-                insert.setBytes(4, StringUtilities.getBytes(ncube.toFormattedJson(), "UTF-8"));
-                insert.setString(5, appId.getVersion());
-                insert.setDate(6, new java.sql.Date(System.currentTimeMillis()));
-                insert.setString(7, username);
-                insert.setString(8, appId.getTenant());
-                insert.setString(9, appId.getBranch());
-                insert.setLong(10, newRevision == null ? 0 : Math.abs(newRevision) + 1);
-                insert.setBytes(11, oldTestData);
-                insert.setBytes(12, notes);
-
-                int rowCount = insert.executeUpdate();
-                if (rowCount != 1)
-                {
-                    throw new IllegalStateException("Could not rename cube: " + oldName + " -> " + newName + "', app: " + appId + " (" + rowCount + " rows inserted, should be 1)");
-                }
+                throw new IllegalStateException("Unable to rename cube: " + oldName + " -> " + newName + "', app: " + appId);
             }
 
             oldBytes = setChangeType(oldBytes, ChangeType.DELETED);
 
-            try (PreparedStatement insert = c.prepareStatement(
-                    "INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, notes_bin, test_data_bin) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+            if (!insertCube(c, appId, oldName, -(oldRevision + 1), oldBytes, oldTestData, notes, username))
             {
-                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                insert.setString(2, appId.getApp());
-                insert.setString(3, oldName);
-                insert.setBytes(4, oldBytes);
-                insert.setString(5, appId.getVersion());
-                java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-                insert.setDate(6, now);
-                insert.setString(7, username);
-                insert.setString(8, appId.getTenant());
-                insert.setString(9, appId.getBranch());
-                insert.setLong(10, -(oldRevision + 1));
-                insert.setBytes(11, notes);
-                insert.setBytes(12, oldTestData);
-
-                if (insert.executeUpdate() != 1)
-                {
-                    throw new IllegalStateException("Could not rename cube: " + oldName + " -> " + newName + ", app: " + appId);
-                }
-
+                throw new IllegalStateException("Unable to rename cube: " + oldName + " -> " + newName + ", app: " + appId);
             }
+
             return true;
         }
         catch (RuntimeException e)
@@ -1662,6 +1521,33 @@ public class NCubeJdbcPersister
             String s = "Unable to rename cube: " + oldName + ", app: " + appId + ", new name: " + newName + " due to: " + e.getMessage();
             LOG.error(s, e);
             throw new RuntimeException(s, e);
+        }
+    }
+
+    private byte[] createNote(String user, java.sql.Date date, String notes)
+    {
+        return StringUtilities.getBytes(date + " [" + user + "] " + notes, "UTF-8");
+    }
+
+    private boolean insertCube(Connection c, ApplicationID appId, String name, Long revision, byte[] cubeData, byte[] testData, String notes, String username) throws SQLException
+    {
+        try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+        {
+            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+            insert.setString(2, appId.getApp());
+            insert.setString(3, name);
+            insert.setBytes(4, cubeData);
+            insert.setString(5, appId.getVersion());
+            java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
+            insert.setDate(6, now);
+            insert.setString(7, username);
+            insert.setString(8, appId.getTenant());
+            insert.setString(9, appId.getBranch());
+            insert.setLong(10, revision);
+            insert.setBytes(11, testData);
+            insert.setBytes(12, createNote(username, now, notes));
+
+            return insert.executeUpdate() == 1;
         }
     }
 

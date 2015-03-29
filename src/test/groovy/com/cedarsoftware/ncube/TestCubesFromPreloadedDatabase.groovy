@@ -1156,12 +1156,55 @@ class TestCubesFromPreloadedDatabase
 
         testValuesOnBranch(head);
 
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+
         //  Test with new name.
         NCube cube = NCubeManager.getCube(branch, "TestBranch2")
         assertEquals("ABC", cube.getCell(["Code": -7]))
         cube = NCubeManager.getCube(branch, "TestAge")
         assertEquals("youth", cube.getCell(["Code": 5]))
         assertNull(NCubeManager.getCube(branch, "TestBranch"))
+
+        manager.removeCubes(branch)
+        manager.removeCubes(head)
+    }
+
+    @Test
+    void testRenameCubeBasicCaseWithNoHead() throws Exception {
+        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+
+        // load cube with same name, but different structure in TEST branch
+        loadCubesToDatabase(branch, "test.branch.1.json", "test.branch.age.1.json")
+        testValuesOnBranch(branch)
+
+        testValuesOnBranch(branch)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(2, dtos.length);
+
+        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+
+        //  Test with new name.
+        NCube cube = NCubeManager.getCube(branch, "TestBranch2")
+        assertEquals("ABC", cube.getCell(["Code": -7]))
+        cube = NCubeManager.getCube(branch, "TestAge")
+        assertEquals("youth", cube.getCell(["Code": 5]))
+        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+
+        cube = NCubeManager.getCube(head, "TestBranch2")
+        assertEquals("ABC", cube.getCell(["Code": -7]))
+        cube = NCubeManager.getCube(head, "TestAge")
+        assertEquals("youth", cube.getCell(["Code": 5]))
+        assertNull(NCubeManager.getCube(head, "TestBranch"))
 
         manager.removeCubes(branch)
         manager.removeCubes(head)

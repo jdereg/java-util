@@ -817,6 +817,73 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testDuplicateCubeGoingToDifferentApp() throws Exception {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
+        assertNull(NCubeManager.getCube(appId, "TestBranch"))
+        assertNull(NCubeManager.getCube(appId, "TestAge"))
+
+        assertEquals(2, NCubeManager.createBranch(branch1))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch1)
+        assertNull(NCubeManager.getCube(appId, "TestBranch"))
+        assertNull(NCubeManager.getCube(appId, "TestAge"))
+
+        NCubeManager.duplicate(branch1, appId, "TestBranch", "TestBranch", USER_ID);
+        NCubeManager.duplicate(head, appId, "TestAge", "TestAge", USER_ID);
+
+        // assert head and branch are still there
+        testValuesOnBranch(head);
+        testValuesOnBranch(branch1);
+        testValuesOnBranch(appId);
+    }
+
+    @Test
+    void testDuplicateCubeOnDeletedCube() throws Exception {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json")
+
+        assertEquals(1, NCubeManager.createBranch(branch1))
+        assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
+
+        try
+        {
+            NCubeManager.duplicate(branch1, appId, "TestBranch", "TestBranch", USER_ID);
+            fail();
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.message.contains("Unable to duplicate"));
+            assertTrue(e.message.contains("deleted"));
+        }
+    }
+
+    @Test
+    void testRenameCubeOnDeletedCube() throws Exception {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json")
+
+        assertEquals(1, NCubeManager.createBranch(branch1))
+        assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
+
+        try
+        {
+            NCubeManager.renameCube(branch1, "TestBranch", "Foo", USER_ID);
+            fail();
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.message.contains("cannot be rename"));
+            assertTrue(e.message.contains("Deleted cubes"));
+        }
+    }
+
+    @Test
     void testDuplicateWhenCubeWithNameAlreadyExists() throws Exception {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
@@ -866,6 +933,40 @@ abstract class TestWithPreloadedDatabase
             assertTrue(e.message.contains("Unable to rename"))
             assertTrue(e.message.contains("already exists"))
         }
+    }
+
+    @Test
+    void testLoadCubeByRevision()
+    {
+        preloadCubes(head, "test.branch.1.json")
+
+        assertEquals(1, NCubeManager.createBranch(branch1));
+
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "Foo", USER_ID))
+        assertTrue(NCubeManager.renameCube(branch1, "Foo", "TestBranch", USER_ID))
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "Foo", USER_ID))
+        assertTrue(NCubeManager.renameCube(branch1, "Foo", "TestBranch", USER_ID))
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "Foo", USER_ID))
+        assertTrue(NCubeManager.renameCube(branch1, "Foo", "TestBranch", USER_ID))
+
+        assertEquals(7, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", 0));
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", -1));
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", 2));
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", -3));
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", 4));
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", -5));
+        assertNotNull(NCubeManager.getCubeRevision(branch1, "TestBranch", 6));
+
+        try {
+            NCubeManager.getCubeRevision(branch1, "TestBranch", 1)
+            fail()
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.message.contains("Unable to load"));
+            assertTrue(e.message.contains("revision"));
+        }
+
     }
 
     @Test
@@ -1538,6 +1639,21 @@ abstract class TestWithPreloadedDatabase
             assertTrue(e.message.contains("Unable to duplicate"));
             assertTrue(e.message.contains("already exists"));
         }
+    }
+
+    @Test
+    void testDeleteCubeAndThenDeleteCubeAgain()
+    {
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json");
+
+        NCubeManager.createCube(branch1, cubes[0], USER_ID);
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
+
+        assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+
+        //  delete on deleted just returns false, no exception.
+        assertFalse(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
     }
 
 

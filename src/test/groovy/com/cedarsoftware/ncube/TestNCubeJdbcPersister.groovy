@@ -52,6 +52,19 @@ class TestNCubeJdbcPersister
         TestingDatabaseHelper.tearDownDatabase()
     }
 
+    @Test
+    void testSelectCubesStatementWithActiveOnlyAndDeletedOnlyBothSetToTrue()
+    {
+        try
+        {
+            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, true, true, false);
+            fail();
+        }
+        catch (Exception e)
+        {
+            assertTrue(e.message.contains("cannot both be true"));
+        }
+    }
 
     @Test
     void testDbApis() throws Exception
@@ -78,7 +91,7 @@ class TestNCubeJdbcPersister
         int numRelease = persister.releaseCubes(defaultSnapshotApp, "0.2.0")
         assertEquals(0, numRelease)
 
-        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%', true)
+        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%')
         // Two cubes at the new 1.2.3 SNAPSHOT version.
         assert cubeList.length == 2
 
@@ -152,6 +165,36 @@ class TestNCubeJdbcPersister
         try
         {
             new NCubeJdbcPersister().getAppNames(c, defaultSnapshotApp.DEFAULT_TENANT, 'SNAPSHOT', ApplicationID.TEST_BRANCH)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+        }
+    }
+
+    @Test
+    void testGetMinRevisionWithSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getMinRevision(c, defaultSnapshotApp, "foo");
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+        }
+    }
+
+    @Test
+    void testLoadCubeWithRevisionWithSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().loadCube(c, defaultSnapshotApp, "foo", 1);
             fail()
         }
         catch (RuntimeException e)
@@ -1077,6 +1120,106 @@ class TestNCubeJdbcPersister
             assertTrue(e.message.contains("error updating"))
             assertTrue(e.message.contains("not updated"))
         }
+    }
+
+
+    @Test
+    void testRenameCubeThatDidntUpdateBecauseOfDatabaseError()
+    {
+        Connection c = mock(Connection.class)
+        ResultSet rs = mock(ResultSet.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeUpdate()).thenReturn(0)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.getLong("revision_number")).thenReturn(0L);
+        when(rs.next()).thenReturn(true).thenReturn(false);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
+        URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
+        IOUtilities.transfer(new File(url.file), out)
+        when(rs.getBytes("cube_value_bin")).thenReturn(out.toByteArray())
+
+        try
+        {
+            new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, "foo", "bar", USER_ID)
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.contains("Unable to rename cube"))
+        }
+
+    }
+
+    @Test
+    void testRenameCubeThatDidntUpdateBecauseOfDatabaseError2()
+    {
+        Connection c = mock(Connection.class)
+        ResultSet rs = mock(ResultSet.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeUpdate()).thenReturn(1).thenReturn(0)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.getLong("revision_number")).thenReturn(0L);
+        when(rs.next()).thenReturn(true).thenReturn(false);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(8192)
+        URL url = TestNCubeJdbcPersister.class.getResource("/2DSimpleJson.json")
+        IOUtilities.transfer(new File(url.file), out)
+        when(rs.getBytes("cube_value_bin")).thenReturn(out.toByteArray())
+
+        try
+        {
+            new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, "foo", "bar", USER_ID)
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.contains("Unable to rename cube"))
+        }
+
+    }
+
+    @Test
+    void testDuplicateCubeThatDidntUpdate()
+    {
+        ApplicationID head = defaultSnapshotApp.asHead();
+
+        Connection c = mock(Connection.class)
+        ResultSet rs = mock(ResultSet.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeUpdate()).thenReturn(0)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.getLong("revision_number")).thenReturn(0L);
+        when(rs.next()).thenReturn(true).thenReturn(false);
+        try
+        {
+            new NCubeJdbcPersister().duplicateCube(c, head, defaultSnapshotApp, "name", "name", USER_ID)
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.contains("Unable to duplicate cube"))
+        }
+
+    }
+
+    @Test
+    void testDuplicateCubeWithSqlException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().duplicateCube(c, defaultSnapshotApp, defaultSnapshotApp, "name", "foo", USER_ID)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+        }
+
     }
 
     @Test

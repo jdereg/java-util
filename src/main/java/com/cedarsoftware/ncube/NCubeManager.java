@@ -148,6 +148,17 @@ public class NCubeManager
         return null;
     }
 
+    /**
+     * Fetch an n-cube by name from the given ApplicationID.  Returns the cube
+     * for this revision if it exists, otherwise an exception is thrown.
+     */
+    public static NCube getCubeRevision(ApplicationID appId, String name, Integer revision)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(name);
+        return getPersister().loadCube(appId, name, revision);
+    }
+
     static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)

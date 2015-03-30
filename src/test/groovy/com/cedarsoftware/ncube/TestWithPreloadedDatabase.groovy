@@ -28,32 +28,52 @@ import static org.junit.Assert.*
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-class TestCubesFromPreloadedDatabase
+abstract class TestWithPreloadedDatabase
 {
     public static String USER_ID = TestNCubeManager.USER_ID
+
     public static ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, "preloaded", ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+    private static final ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
+    private static final ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
+    private static final ApplicationID branch2 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "BAR")
+    private static final ApplicationID branch3 = new ApplicationID('NONE', "test", "1.29.0", "SNAPSHOT", "FOO")
+    private static final ApplicationID boot = new ApplicationID('NONE', "test", "0.0.0", "SNAPSHOT", ApplicationID.HEAD)
+
+    ApplicationID[] branches = [head, branch1, branch2, branch3, appId, boot] as ApplicationID[];
 
     private TestingDatabaseManager manager;
 
     @Before
     public void setup() throws Exception
     {
-        manager = TestingDatabaseHelper.testingDatabaseManager
+        manager = getTestingDatabaseManager();
         manager.setUp()
-        NCubeManager.NCubePersister = TestingDatabaseHelper.persister
+
+        NCubeManager.NCubePersister = getNCubePersister();
     }
 
     @After
     public void tearDown() throws Exception
     {
+        manager.removeBranches(branches)
         manager.tearDown()
         manager = null;
+
         NCubeManager.clearCache()
+
     }
+
+    abstract TestingDatabaseManager getTestingDatabaseManager();
+    abstract NCubePersister getNCubePersister();
+
+    private preloadCubes(ApplicationID id, String ...names) {
+        manager.addCubes(id, USER_ID, TestingDatabaseHelper.getCubesFromDisk(names))
+    }
+
 
     @Test
     void testUrlClassLoader() throws Exception {
-        loadCubesToDatabase(appId, "sys.classpath.cp1.json")
+        preloadCubes(appId, "sys.classpath.cp1.json")
 
         // nothing in cache until we try and get the classloader or load a cube.
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
@@ -77,14 +97,11 @@ class TestCubesFromPreloadedDatabase
         cache = NCubeManager.getCacheForApp(appId)
         assertEquals(1, NCubeManager.getUrlClassLoader(appId, input).URLs.length)
         assertEquals(1, cache.size())
-
-
-        manager.removeCubes(appId)
     }
 
     @Test
     void testCoordinateNotFoundExceptionThrown() throws Exception {
-        loadCubesToDatabase(appId, "test.coordinate.not.found.exception.json")
+        preloadCubes(appId, "test.coordinate.not.found.exception.json")
 
         NCube cube = NCubeManager.getCube(appId, "test.coordinate.not.found.exception")
 
@@ -94,14 +111,12 @@ class TestCubesFromPreloadedDatabase
         } catch (CoordinateNotFoundException e) {
             assertTrue(e.getMessage().contains("not found"))
         }
-
-        manager.removeCubes(appId)
     }
 
     @Test
     void testGetBranches() throws Exception {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals("ABC", cube.getCell(["Code":-7]))
@@ -110,14 +125,14 @@ class TestCubesFromPreloadedDatabase
 
         // load cube with same name, but different structure in TEST branch
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "kenny")
-        loadCubesToDatabase(branch, "test.branch.2.json")
+        preloadCubes(branch1, "test.branch.2.json")
 
         // showing we only rely on tenant to get branches.
         assertEquals(2, NCubeManager.getBranches('NONE').size())
         assertEquals(2, NCubeManager.getBranches('NONE').size())
 
         ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'someoneelse')
-        loadCubesToDatabase(branch2, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(branch2, "test.branch.1.json", "test.branch.age.1.json")
         assertEquals(3, NCubeManager.getBranches('NONE').size())
         assertEquals(3, NCubeManager.getBranches('NONE').size())
         assertEquals(3, NCubeManager.getBranches('NONE').size())
@@ -128,9 +143,9 @@ class TestCubesFromPreloadedDatabase
         ApplicationID app1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID app2 = new ApplicationID('NONE', "foo", "1.29.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID app3 = new ApplicationID('NONE', "bar", "1.29.0", "SNAPSHOT", ApplicationID.HEAD)
-        loadCubesToDatabase(app1, "test.branch.1.json", "test.branch.age.1.json")
-        loadCubesToDatabase(app2, "test.branch.1.json", "test.branch.age.1.json")
-        loadCubesToDatabase(app3, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(app1, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(app2, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(app3, "test.branch.1.json", "test.branch.age.1.json")
 
         ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", 'kenny')
         ApplicationID branch2 = new ApplicationID('NONE', 'foo', '1.29.0', 'SNAPSHOT', 'kenny')
@@ -148,13 +163,13 @@ class TestCubesFromPreloadedDatabase
         assertEquals(2, NCubeManager.getAppNames('NONE', 'SNAPSHOT', 'kenny').size())
         assertEquals(1, NCubeManager.getAppNames('NONE', 'SNAPSHOT', 'someoneelse').size())
 
+        manager.removeBranches([app1, app2, app3, branch1, branch2, branch3, branch4] as ApplicationID[])
     }
 
     @Test
-    void testCommitBranchOnCreatedCube() throws Exception {
+    void testCommitBranchOnCubeCreatedInBranch() throws Exception {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", USER_ID)
         NCubeManager.createCube(branch1, cube, 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
@@ -177,64 +192,51 @@ class TestCubesFromPreloadedDatabase
 
     @Test
     void testRollbackBranchWithPendingAdd() throws Exception {
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "branch")
-        ApplicationID headId = branch.asHead()
-
-        loadCubesToDatabase(headId, "test.branch.1.json");
+        preloadCubes(head, "test.branch.1.json");
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch, cube, 'kenny')
+        NCubeManager.createCube(branch1, cube, 'kenny')
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        NCubeManager.rollbackBranch(branch, dtos)
+        NCubeManager.rollbackBranch(branch1, dtos)
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertEquals(0, map.size())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(headId)
     }
 
     @Test
     void testRollbackBranchWithDeletedCube() throws Exception {
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "branch")
-        ApplicationID headId = branch.asHead()
+        preloadCubes(head, "test.branch.1.json");
 
-        loadCubesToDatabase(headId, "test.branch.1.json");
+        NCubeManager.createBranch(branch1);
 
-        NCubeManager.createBranch(branch);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(head, null, true).length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(branch1, null, true).length);
 
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, "*", true).length);
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(branch, "*", true).length);
+        NCubeManager.deleteCube(branch1, "TestBranch", USER_ID)
 
-        NCubeManager.deleteCube(branch, "TestBranch", USER_ID)
-
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
         // undo delete
-        NCubeManager.rollbackBranch(branch, dtos)
+        NCubeManager.rollbackBranch(branch1, dtos)
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertEquals(0, map.size())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(headId)
     }
 
     @Test
     void testCommitBranchOnCreateThenDeleted() throws Exception {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", USER_ID)
         NCubeManager.createCube(branch1, cube, 'kenny')
         NCubeManager.deleteCube(branch1, "TestAge", 'kenny')
 
@@ -246,23 +248,17 @@ class TestCubesFromPreloadedDatabase
 
         ApplicationID headId = branch1.asHead()
         assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).length)
-
-        manager.removeCubes(branch1)
-        manager.removeCubes(headId)
     }
 
     @Test
     void testCreateBranch() throws Exception
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         testValuesOnBranch(head)
 
@@ -272,84 +268,72 @@ class TestCubesFromPreloadedDatabase
         assertNull(NCubeManager.getCube(head, "TestBranch").getHeadSha1())
         assertNull(NCubeManager.getCube(head, "TestAge").getHeadSha1())
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
-        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").sha1())
-        assertEquals(cube1Sha1, NCubeManager.getCube(branch, "TestBranch").getHeadSha1())
-        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").sha1())
-        assertEquals(cube2Sha1, NCubeManager.getCube(branch, "TestAge").getHeadSha1())
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch1, "TestBranch").sha1())
+        assertEquals(cube1Sha1, NCubeManager.getCube(branch1, "TestBranch").getHeadSha1())
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch1, "TestAge").sha1())
+        assertEquals(cube2Sha1, NCubeManager.getCube(branch1, "TestAge").getHeadSha1())
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        testValuesOnBranch(branch1)
     }
 
     @Test
     void testCommitBranchWithItemCreatedInBranchOnly() throws Exception
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json")
+        preloadCubes(head, "test.branch.1.json")
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals("ABC", cube.getCell(["Code": -7]))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.createBranch(branch))
+        assertEquals(1, NCubeManager.createBranch(branch1))
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals("ABC", cube.getCell(["Code": -7]))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
         assertNotNull(cube)
-        NCubeManager.createCube(branch, cube, "jdirt")
+        NCubeManager.createCube(branch1, cube, "jdirt")
 
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         assertTrue(!map.isEmpty())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testUpdateBranchWithUpdateOnBranch() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         // cubes were preloaded
         testValuesOnBranch(head)
@@ -358,28 +342,28 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         //  test values on branch
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -391,16 +375,16 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
         // update the new edited cube.
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
 
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // commit the branch
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(2, cube.getCellMap().size())
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
@@ -409,26 +393,21 @@ class TestCubesFromPreloadedDatabase
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
-        assertEquals(0, NCubeManager.updateBranch(branch).length)
+        assertEquals(0, NCubeManager.updateBranch(branch1).length)
 
         // shouldn't have changed
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(2, cube.getCellMap().size())
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
 
 
     @Test
     void testCommitBranchOnUpdate() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         // cubes were preloaded
         testValuesOnBranch(head)
@@ -437,28 +416,28 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         //  test values on branch
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -470,16 +449,16 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
         // update the new edited cube.
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
 
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // commit the branch
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(2, cube.getCellMap().size())
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
@@ -489,33 +468,27 @@ class TestCubesFromPreloadedDatabase
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertTrue(!map.isEmpty())
 
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // both should be updated now.
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testCommitBranchOnUpdateWithOldInvalidSha1() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json")
 
@@ -530,64 +503,58 @@ class TestCubesFromPreloadedDatabase
         manager.addCubes(head, USER_ID, cubes);
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertTrue(map.isEmpty())
 
-        NCube cube = NCubeManager.getCube(branch, "TestBranch")
+        NCube cube = NCubeManager.getCube(branch1, "TestBranch")
         cube.removeCell([Code:10.0])
 
-        NCubeManager.updateCube(branch, cube, USER_ID);
+        NCubeManager.updateCube(branch1, cube, USER_ID);
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // No changes have happened yet, even though sha1 is incorrect,
         // we just copy the sha1 when we create the branch so the headsha1 won't
         // differ until we make a change.
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertTrue(!map.isEmpty())
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testCommitBranchWithUpdateAndWrongRevisionNumber() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -599,18 +566,15 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
         // update the new edited cube.
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
         ((NCubeInfoDto)dtos[0]).revision = Long.toString(100)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
         assertTrue(!map.isEmpty())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
 
@@ -618,11 +582,8 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testRollback() throws Exception
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         // cubes were preloaded
         testValuesOnBranch(head)
@@ -631,28 +592,28 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         //  test values on branch
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -662,52 +623,46 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
         // update the new edited cube.
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
 
         cube.setCell("FOO", [Code : 10.0])
         assertEquals(3, cube.getCellMap().size())
         assertEquals("FOO", cube.getCell([Code : 10.0]))
 
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
 
         cube.removeCell([Code : 10.0])
         assertEquals(2, cube.getCellMap().size())
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
-        assertEquals(4, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
+        assertEquals(4, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
 
         cube.setCell("FOO", [Code : 10.0])
         assertEquals(3, cube.getCellMap().size())
         assertEquals("FOO", cube.getCell([Code : 10.0]))
 
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
-        assertEquals(5, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
+        assertEquals(5, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        assertEquals(1, NCubeManager.rollbackBranch(branch, dtos))
+        assertEquals(1, NCubeManager.rollbackBranch(branch1, dtos))
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testCommitBranchOnDelete() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         // cubes were preloaded
         testValuesOnBranch(head)
@@ -716,43 +671,43 @@ class TestCubesFromPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         //  test values on branch
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
         // update the new edited cube.
-        assertTrue(NCubeManager.deleteCube(branch, "TestBranch", USER_ID))
+        assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
 
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // cube is deleted
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
 
         // check head hasn't changed.
         cube = NCubeManager.getCube(head, "TestBranch")
@@ -760,148 +715,122 @@ class TestCubesFromPreloadedDatabase
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
         //  loads in both TestAge and TestBranch though only TestBranch has changed.
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // both should be updated now.
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNull(NCubeManager.getCube(head, "TestBranch"))
 
         assertTrue(!map.isEmpty())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testCreateBranchThatAlreadyExists() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         //1) should work
-        NCubeManager.createBranch(branch)
+        NCubeManager.createBranch(branch1)
 
         try {
             //2) should already be created.
-            NCubeManager.createBranch(branch)
+            NCubeManager.createBranch(branch1)
             fail()
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("already exists"))
         }
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testReleaseCubes() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
-
-        testValuesOnBranch(head)
-
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+
+        assertEquals(2, NCubeManager.createBranch(branch1))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch1)
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
         assertNotNull(cube)
-        NCubeManager.updateCube(branch, cube, "jdirt")
+        NCubeManager.updateCube(branch1, cube, "jdirt")
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        testValuesOnBranch(branch, "FOO")
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        testValuesOnBranch(branch1, "FOO")
 
         assertEquals(2, NCubeManager.releaseCubes(head, "1.29.0"))
 
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNull(NCubeManager.getCube(head, "TestAge"))
         assertNull(NCubeManager.getCube(head, "TestBranch"))
 
-        head = new ApplicationID('NONE', "test", "1.29.0", "SNAPSHOT", ApplicationID.HEAD)
-        branch = new ApplicationID('NONE', "test", "1.29.0", "SNAPSHOT", "FOO")
+//        ApplicationID newSnapshot = head.createNewSnapshotId("1.29.0")
+        ApplicationID newBranchSnapshot = branch1.createNewSnapshotId("1.29.0")
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
+        ApplicationID release = head.asRelease()
 
-        head = new ApplicationID('NONE', "test", "1.28.0", "RELEASE", ApplicationID.HEAD)
+        testValuesOnBranch(release)
+        testValuesOnBranch(newBranchSnapshot, "FOO")
 
-        testValuesOnBranch(head)
-        testValuesOnBranch(branch, "FOO")
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        manager.removeBranches([release, newBranchSnapshot] as ApplicationID[])
     }
 
 
     @Test
     void testDuplicateCubeChanges() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-        ApplicationID branch2 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "BAR")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         NCubeManager.duplicate(head, branch2, "TestBranch", "TestBranch2", USER_ID);
         NCubeManager.duplicate(head, branch2, "TestAge", "TestAge", USER_ID);
 
         // assert head and branch are still there
         testValuesOnBranch(head);
-        testValuesOnBranch(branch);
+        testValuesOnBranch(branch1);
 
         //  Test with new name.
         NCube cube = NCubeManager.getCube(branch2, "TestBranch2")
         assertEquals("ABC", cube.getCell(["Code": -7]))
         cube = NCubeManager.getCube(branch2, "TestAge")
         assertEquals("youth", cube.getCell(["Code": 5]))
-
-        manager.removeCubes(branch)
-        manager.removeCubes(branch2)
-        manager.removeCubes(head)
     }
 
     @Test
     void testDuplicateWhenCubeWithNameAlreadyExists() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         try
         {
-            NCubeManager.duplicate(branch, branch, "TestBranch", "TestAge", USER_ID);
+            NCubeManager.duplicate(branch1, branch1, "TestBranch", "TestAge", USER_ID);
             fail();
         }
         catch (IllegalArgumentException e)
@@ -909,9 +838,6 @@ class TestCubesFromPreloadedDatabase
             assertTrue(e.message.contains("Unable to duplicate"))
             assertTrue(e.message.contains("already exists"))
         }
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
 
@@ -921,18 +847,18 @@ class TestCubesFromPreloadedDatabase
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         try
         {
-            NCubeManager.renameCube(branch, "TestBranch", "TestAge", USER_ID);
+            NCubeManager.renameCube(branch1, "TestBranch", "TestAge", USER_ID);
             fail();
         }
         catch (IllegalArgumentException e)
@@ -940,42 +866,36 @@ class TestCubesFromPreloadedDatabase
             assertTrue(e.message.contains("Unable to rename"))
             assertTrue(e.message.contains("already exists"))
         }
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
-    void testHeadHavingCubeAAndCubeBDeleted() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
+    void testRenameCubeWithHeadHavingCubeAAndCubeBDeleted() throws Exception {
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
 
-        assertEquals(2, NCubeManager.createBranch(branch));
+        assertEquals(2, NCubeManager.createBranch(branch1));
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, "*").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
 
-        assertTrue(NCubeManager.deleteCube(branch, "TestBranch", USER_ID))
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").length);
-        assertTrue(NCubeManager.deleteCube(branch, "TestAge", USER_ID))
-        assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(branch, "*").length);
+        assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertTrue(NCubeManager.deleteCube(branch1, "TestAge", USER_ID))
+        assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
 
-        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
         assertNull(NCubeManager.getCube(head, "TestBranch"))
         assertNull(NCubeManager.getCube(head, "TestAge"))
@@ -985,325 +905,341 @@ class TestCubesFromPreloadedDatabase
         assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
 
 
-        NCubeManager.restoreCube(branch, ["TestBranch"] as Object[], USER_ID);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").length);
-        assertNull(NCubeManager.getCube(branch, "TestAge"));
-        assertNotNull(NCubeManager.getCube(branch, "TestBranch"))
+        NCubeManager.restoreCube(branch1, ["TestBranch"] as Object[], USER_ID);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertNull(NCubeManager.getCube(branch1, "TestAge"));
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestAge", USER_ID));
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").length);
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNotNull(NCubeManager.getCube(branch, "TestAge"))
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestAge", USER_ID));
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestAge"))
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(1, dtos.length);
 
-        assertEquals(1, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
         assertNull(NCubeManager.getCube(head, "TestBranch"))
         assertNotNull(NCubeManager.getCube(head, "TestAge"))
 
-        assertTrue(NCubeManager.renameCube(branch, "TestAge", "TestBranch", USER_ID));
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").length);
-        assertNull(NCubeManager.getCube(branch, "TestAge"));
-        assertNotNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertTrue(NCubeManager.renameCube(branch1, "TestAge", "TestBranch", USER_ID));
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertNull(NCubeManager.getCube(branch1, "TestAge"));
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
+    }
+
+    @Test
+    void testRenameCubeWithBothCubesCreatedOnBranch() throws Exception {
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json");
+        NCubeManager.createCube(branch1, cubes[0], USER_ID);
+        NCubeManager.createCube(branch1, cubes[1], USER_ID);
+
+        assertNull(NCubeManager.getCube(head, "TestBranch"));
+        assertNull(NCubeManager.getCube(head, "TestAge"));
+        assertNotNull(NCubeManager.getCube(branch1, "TestAge"));
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(2, dtos.length);
+
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
+
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestAge"))
 
 
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
+
+        assertNull(NCubeManager.getCube(head, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(head, "TestBranch2"))
+        assertNotNull(NCubeManager.getCube(head, "TestAge"))
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
+
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
+
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestAge"))
+
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(2, dtos.length);
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
+
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
     }
 
 
 
     @Test
     void testRenameCubeWhenNewNameAlreadyExistsButIsInactive() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
-        NCubeManager.deleteCube(branch, "TestAge", USER_ID)
+        NCubeManager.deleteCube(branch1, "TestAge", USER_ID)
 
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestAge").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
 
         //  cube is deleted so won't throw exception
-        NCubeManager.renameCube(branch, "TestBranch", "TestAge", USER_ID)
+        NCubeManager.renameCube(branch1, "TestBranch", "TestAge", USER_ID)
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestAge").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
     }
 
     @Test
     void testDuplicateCubeWhenNewNameAlreadyExistsButIsInactive() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
-        NCubeManager.deleteCube(branch, "TestAge", USER_ID)
+        NCubeManager.deleteCube(branch1, "TestAge", USER_ID)
 
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestAge").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
 
         //  cube is deleted so won't throw exception
-        NCubeManager.duplicate(branch, branch, "TestBranch", "TestAge", USER_ID)
+        NCubeManager.duplicate(branch1, branch1, "TestBranch", "TestAge", USER_ID)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestAge").size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
     }
 
     @Test
     void testRenameAndThenRenameAgainThenRollback()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
-        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch).length)
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch2", "TestBranch", USER_ID));
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(0, dtos.length);
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"))
-        assertEquals(0, NCubeManager.rollbackBranch(branch, dtos));
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertEquals(0, NCubeManager.rollbackBranch(branch1, dtos));
 
-        assertNotNull(NCubeManager.getCube(branch, "TestBranch"));
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"));
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"));
     }
 
     @Test
     void testRenameAndThenRenameAgainThenCommit()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
-        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch).length)
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch2", "TestBranch", USER_ID));
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(0, dtos.length);
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"))
-        assertEquals(0, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
-        assertNotNull(NCubeManager.getCube(branch, "TestBranch"));
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"));
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"));
     }
 
     @Test
     void testRenameAndThenRenameAgainThenCommitWhenNotCreatedFromBranch()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json");
 
-        NCubeManager.createCube(branch, cubes[0], USER_ID)
-        NCubeManager.createCube(branch, cubes[1], USER_ID)
+        NCubeManager.createCube(branch1, cubes[0], USER_ID)
+        NCubeManager.createCube(branch1, cubes[1], USER_ID)
 
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, "*").size())
-        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch).length)
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch2", "TestBranch", USER_ID));
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch2").size())
-        assertEquals(3, NCubeManager.getRevisionHistory(branch, "TestBranch").size())
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertNotNull(NCubeManager.getCube(branch, "TestBranch"));
-        assertNotNull(NCubeManager.getCube(branch, "TestBranch"));
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"));
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"));
 
-        assertNull(NCubeManager.getCube(branch, "TestBranch2"))
-        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
         assertNotNull(NCubeManager.getCube(head, "TestBranch"));
         assertNotNull(NCubeManager.getCube(head, "TestBranch"));
         assertNull(NCubeManager.getCube(head, "TestBranch2"));
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
 
     @Test
     void testRenameCubeBasicCase() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
+
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
 
         testValuesOnBranch(head);
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
+
+        assertNotNull(NCubeManager.getCube(head, "TestBranch2"));
+        assertNotNull(NCubeManager.getCube(head, "TestAge"));
 
         //  Test with new name.
-        NCube cube = NCubeManager.getCube(branch, "TestBranch2")
+        NCube cube = NCubeManager.getCube(branch1, "TestBranch2")
         assertEquals("ABC", cube.getCell(["Code": -7]))
-        cube = NCubeManager.getCube(branch, "TestAge")
+        cube = NCubeManager.getCube(branch1, "TestAge")
         assertEquals("youth", cube.getCell(["Code": 5]))
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
     }
 
     @Test
     void testRenameCubeBasicCaseWithNoHead() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
         NCube cube1 = NCubeManager.getNCubeFromResource("test.branch.1.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch, cube1, USER_ID);
-        NCubeManager.createCube(branch, cube2, USER_ID);
-        testValuesOnBranch(branch)
+        NCubeManager.createCube(branch1, cube1, USER_ID);
+        NCubeManager.createCube(branch1, cube2, USER_ID);
+        testValuesOnBranch(branch1)
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
         //  Test with new name.
-        NCube cube = NCubeManager.getCube(branch, "TestBranch2")
+        NCube cube = NCubeManager.getCube(branch1, "TestBranch2")
         assertEquals("ABC", cube.getCell(["Code": -7]))
-        cube = NCubeManager.getCube(branch, "TestAge")
+        cube = NCubeManager.getCube(branch1, "TestAge")
         assertEquals("youth", cube.getCell(["Code": 5]))
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
 
         cube = NCubeManager.getCube(head, "TestBranch2")
         assertEquals("ABC", cube.getCell(["Code": -7]))
         cube = NCubeManager.getCube(head, "TestAge")
         assertEquals("youth", cube.getCell(["Code": 5]))
         assertNull(NCubeManager.getCube(head, "TestBranch"))
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testRenameCubeFunctionality() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
         testValuesOnBranch(head)
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
@@ -1318,26 +1254,26 @@ class TestCubesFromPreloadedDatabase
         }
 
         try {
-            NCubeManager.getRevisionHistory(branch, "TestBranch2");
+            NCubeManager.getRevisionHistory(branch1, "TestBranch2");
             fail();
         } catch (IllegalArgumentException e) {
         }
 
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
 
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length);
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1346,15 +1282,15 @@ class TestCubesFromPreloadedDatabase
         }
 
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertEquals(2, NCubeManager.rollbackBranch(branch, dtos));
+        assertEquals(2, NCubeManager.rollbackBranch(branch1, dtos));
 
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
 
-        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch).length);
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).length);
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
@@ -1369,23 +1305,23 @@ class TestCubesFromPreloadedDatabase
         }
 
         try {
-            NCubeManager.getRevisionHistory(branch, "TestBranch2");
+            NCubeManager.getRevisionHistory(branch1, "TestBranch2");
             fail();
         } catch (IllegalArgumentException e) {
         }
 
 
-        assertTrue(NCubeManager.renameCube(branch, "TestBranch", "TestBranch2", USER_ID));
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length);
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1393,35 +1329,29 @@ class TestCubesFromPreloadedDatabase
         } catch (IllegalArgumentException e) {
         }
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
 
-        assertEquals(2, NCubeManager.commitBranch(branch, dtos, USER_ID).size());
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length);
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").length);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length);
 
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch, null).length);
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
     }
 
 
     @Test
     void testDuplicateCubeFunctionality() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-        ApplicationID branch2 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "BAR")
 
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         testValuesOnBranch(head)
 
@@ -1555,17 +1485,12 @@ class TestCubesFromPreloadedDatabase
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
-
-        manager.removeCubes(branch1)
-        manager.removeCubes(head)
     }
 
 
     @Test
     void testDuplicateCubeWithNonExistentSource()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
         try
         {
             NCubeManager.duplicate(head, branch1, "foo", "bar", USER_ID);
@@ -1575,16 +1500,12 @@ class TestCubesFromPreloadedDatabase
             assertTrue(e.message.contains("Unable to duplicate"));
             assertTrue(e.message.contains("does not exist"));
         }
-        manager.removeCubes(branch1)
-        manager.removeCubes(head)
     }
 
     @Test
     void testDuplicateCubeWhenTargetExists()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-        loadCubesToDatabase(head, "test.branch.1.json");
+        preloadCubes(head, "test.branch.1.json");
         NCubeManager.createBranch(branch1);
 
         try
@@ -1596,16 +1517,12 @@ class TestCubesFromPreloadedDatabase
             assertTrue(e.message.contains("Unable to duplicate"));
             assertTrue(e.message.contains("already exists"));
         }
-        manager.removeCubes(branch1)
-        manager.removeCubes(head)
     }
 
     @Test
     void testDuplicateCubeWhenSourceCubeIsADeletedCube()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-        loadCubesToDatabase(head, "test.branch.1.json");
+        preloadCubes(head, "test.branch.1.json");
         NCubeManager.createBranch(branch1);
         NCubeManager.deleteCube(branch1, "TestBranch", USER_ID);
 
@@ -1621,8 +1538,6 @@ class TestCubesFromPreloadedDatabase
             assertTrue(e.message.contains("Unable to duplicate"));
             assertTrue(e.message.contains("already exists"));
         }
-        manager.removeCubes(branch1)
-        manager.removeCubes(head)
     }
 
 
@@ -1636,36 +1551,32 @@ class TestCubesFromPreloadedDatabase
 
     @Test
     void testCommitBranchWithItemCreatedLocallyAndOnHead() {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID preemptiveBranch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "PREEMPT")
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json")
+        preloadCubes(head, "test.branch.1.json")
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(1, NCubeManager.createBranch(branch))
-        assertEquals(1, NCubeManager.createBranch(preemptiveBranch))
+        assertEquals(1, NCubeManager.createBranch(branch1))
+        assertEquals(1, NCubeManager.createBranch(branch2))
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
-        NCubeManager.createCube(preemptiveBranch, cube, USER_ID)
+        NCubeManager.createCube(branch2, cube, USER_ID)
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(preemptiveBranch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
         assertEquals(1, dtos.length)
-        NCubeManager.commitBranch(preemptiveBranch, dtos, USER_ID)
+        NCubeManager.commitBranch(branch2, dtos, USER_ID)
 
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch, cube, USER_ID)
+        NCubeManager.createCube(branch1, cube, USER_ID)
 
 
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
         try
         {
-            NCubeManager.commitBranch(branch, dtos, USER_ID)
+            NCubeManager.commitBranch(branch1, dtos, USER_ID)
             fail()
         }
         catch (BranchMergeException e)
@@ -1673,48 +1584,41 @@ class TestCubesFromPreloadedDatabase
             assert e.message.toLowerCase().contains("conflict(s) committing branch")
             assert !e.errors.isEmpty()
         }
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testCommitBranchWithItemThatWasChangedOnHeadAndInBranch()
     {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID preemptiveBranch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "PREEMPT")
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
-        assertEquals(2, NCubeManager.createBranch(preemptiveBranch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
+        assertEquals(2, NCubeManager.createBranch(branch2))
 
-        NCube cube = NCubeManager.getCube(preemptiveBranch, "TestBranch")
+        NCube cube = NCubeManager.getCube(branch2, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         cube.removeCell([Code : 10.0])
         assertEquals(2, cube.getCellMap().size())
-        NCubeManager.updateCube(preemptiveBranch, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(preemptiveBranch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
         assertEquals(1, dtos.length)
 
-        NCubeManager.commitBranch(preemptiveBranch, dtos, USER_ID)
+        NCubeManager.commitBranch(branch2, dtos, USER_ID)
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         cube.removeCell([Code : -10.0])
         assertEquals(2, cube.getCellMap().size())
-        NCubeManager.updateCube(branch, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
         try
         {
-            NCubeManager.commitBranch(branch, dtos, USER_ID)
+            NCubeManager.commitBranch(branch1, dtos, USER_ID)
             fail()
         }
         catch (BranchMergeException e)
@@ -1722,48 +1626,42 @@ class TestCubesFromPreloadedDatabase
             assertTrue(e.message.toLowerCase().contains("conflict(s) committing branch"))
             assertTrue(!e.errors.isEmpty())
         }
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
     void testGetBranchChanges() throws Exception {
-        ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
-        ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
-
         // load cube with same name, but different structure in TEST branch
-        loadCubesToDatabase(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
         // cubes were preloaded
         testValuesOnBranch(head)
 
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch, "TestBranch"))
-        assertNull(NCubeManager.getCube(branch, "TestAge"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
         NCube cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
 
         //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch))
+        assertEquals(2, NCubeManager.createBranch(branch1))
 
-        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
         //  test values on branch
-        testValuesOnBranch(branch)
+        testValuesOnBranch(branch1)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -1775,20 +1673,20 @@ class TestCubesFromPreloadedDatabase
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
         // update the new edited cube.
-        assertTrue(NCubeManager.updateCube(branch, cube, USER_ID))
+        assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
 
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // commit the branch
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(2, cube.getCellMap().size())
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
@@ -1798,29 +1696,26 @@ class TestCubesFromPreloadedDatabase
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch, dtos, USER_ID)
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // both should be updated now.
-        cube = NCubeManager.getCube(branch, "TestBranch")
+        cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
-        dtos = NCubeManager.getBranchChangesFromDatabase(branch)
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
         assertTrue(!map.isEmpty())
-
-        manager.removeCubes(branch)
-        manager.removeCubes(head)
     }
 
     @Test
@@ -1828,7 +1723,7 @@ class TestCubesFromPreloadedDatabase
         ApplicationID id = ApplicationID.getBootVersion('none', 'example')
         assertEquals(new ApplicationID('NONE', 'EXAMPLE', '0.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.HEAD), id)
 
-        loadCubesToDatabase(id, "sys.bootstrap.user.overloaded.json")
+        preloadCubes(id, "sys.bootstrap.user.overloaded.json")
 
         NCube cube = NCubeManager.getCube(id, 'sys.bootstrap')
         // ensure properties are cleared
@@ -1846,13 +1741,11 @@ class TestCubesFromPreloadedDatabase
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'DEV']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'SAND']))
-
-        manager.removeCubes(appId)
     }
 
     @Test
     public void testUserOverloadedClassPath() throws Exception {
-        loadCubesToDatabase(appId, "sys.classpath.user.overloaded.json", "sys.versions.json")
+        preloadCubes(appId, "sys.classpath.user.overloaded.json", "sys.versions.json")
 
         // Check DEV
         NCube cube = NCubeManager.getCube(appId, "sys.classpath")
@@ -1878,7 +1771,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     public void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {
 
-        loadCubesToDatabase(appId, "sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
+        preloadCubes(appId, "sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")
@@ -1942,14 +1835,12 @@ class TestCubesFromPreloadedDatabase
         input.put("method", "bar")
         x = cube.getCell(input)
         assertEquals("far", x)
-
-        manager.removeCubes(appId)
     }
 
     @Test
     void testMultiCubeClassPath() throws Exception {
 
-        loadCubesToDatabase(appId, "sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
+        preloadCubes(appId, "sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "GroovyMethodClassPath1")
@@ -1998,15 +1889,13 @@ class TestCubesFromPreloadedDatabase
         //  clear cache so we get different answers this time.  classpath 2 has already been loaded in database.
         NCubeManager.clearCache(appId)
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
-
-        manager.removeCubes(appId)
     }
 
     // Ken: Can you lot at keeping this test, but doing it in terms of a non-sys.classpath cube?
     @Ignore
     void testTwoClasspathsSameAppId() throws Exception
     {
-        loadCubesToDatabase(appId, "sys.classpath.2per.app.json", "GroovyExpCp1.json")
+        preloadCubes(appId, "sys.classpath.2per.app.json", "GroovyExpCp1.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "GroovyExpCp1")
@@ -2042,14 +1931,12 @@ class TestCubesFromPreloadedDatabase
         // Test HtmlFormatter - that it properly handles the URLClassLoader in the sys.classpath cube
         String html = cp1.toHtml()
         assert html.contains('http://www.cedarsoftware.com')
-
-        manager.removeCubes(appId)
     }
 
     @Test
     void testMathControllerUsingExpressions() throws Exception
     {
-        loadCubesToDatabase(appId, "sys.classpath.2per.app.json", "math.controller.json")
+        preloadCubes(appId, "sys.classpath.2per.app.json", "math.controller.json")
 
         assertEquals(0, NCubeManager.getCacheForApp(appId).size())
         NCube cube = NCubeManager.getCube(appId, "MathController")
@@ -2085,7 +1972,7 @@ class TestCubesFromPreloadedDatabase
     @Test
     void testClearCache()
     {
-        loadCubesToDatabase(appId, "sys.classpath.cedar.json", "cedar.hello.json")
+        preloadCubes(appId, "sys.classpath.cedar.json", "cedar.hello.json")
 
         Map input = new HashMap()
         NCube cube = NCubeManager.getCube(appId, 'hello')
@@ -2096,15 +1983,12 @@ class TestCubesFromPreloadedDatabase
         cube = NCubeManager.getCube(appId, 'hello')
         out = cube.getCell(input)
         assertEquals('Hello, world.', out)
-
-        // remove cubes for this test.
-        manager.removeCubes(appId)
     }
 
     @Test
     void testMultiTenantApplicationIdBootstrap()
     {
-        loadCubesToDatabase(appId, "sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
+        preloadCubes(appId, "sys.bootstrap.multi.api.json", "sys.bootstrap.version.json")
 
         def input = [:];
         input.env = "SAND";
@@ -2121,13 +2005,6 @@ class TestCubesFromPreloadedDatabase
         assertEquals(new ApplicationID("NONE", "APP", "1.25.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("A"))
         assertEquals(new ApplicationID("NONE", "APP", "1.26.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("B"))
         assertEquals(new ApplicationID("NONE", "APP", "1.27.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("C"))
-
-
-        // remove cubes for this test.
-        manager.removeCubes(appId)
     }
 
-    private loadCubesToDatabase(ApplicationID id, String ...names) {
-        manager.addCubes(id, USER_ID, TestingDatabaseHelper.getCubesFromDisk(names))
-    }
 }

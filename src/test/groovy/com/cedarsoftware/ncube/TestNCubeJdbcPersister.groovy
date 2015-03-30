@@ -584,23 +584,6 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testGetBranchChangesWithSQLException() throws Exception
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().getBranchChanges(c, defaultSnapshotApp)
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.startsWith("Unable to fetch"))
-            assertTrue(e.message.contains("branch cubes"))
-        }
-    }
-
-    @Test
     void testReplaceHeadSha1ThatThrowsSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()
@@ -765,13 +748,13 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().deleteCubes(c, defaultSnapshotApp)
+            new NCubeJdbcPersister().deleteBranch(c, defaultSnapshotApp)
             fail()
         }
         catch (RuntimeException e)
         {
             assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.startsWith("Unable to delete cubes"))
+            assertTrue(e.message.startsWith("Unable to delete branch"))
         }
     }
 

@@ -1755,8 +1755,7 @@ public class NCube<T>
             loadMetaProperties(ncube.metaProps);
 
             ncube.headSha1 = (String) jsonNCube.get("headSha1");
-            Boolean changed = (Boolean)jsonNCube.get("changed");
-            ncube.changed = changed != null && changed.booleanValue();
+            ncube.changed = getBoolean(jsonNCube, "changed");
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
 

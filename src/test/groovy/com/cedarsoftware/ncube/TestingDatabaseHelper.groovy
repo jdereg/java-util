@@ -108,11 +108,7 @@ class TestingDatabaseHelper
 
         }
 
-        public void removeCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
-        {
-        }
-
-        public void removeCubes(ApplicationID appId) throws Exception
+        public void removeBranches(ApplicationID[] appId) throws Exception
         {
         }
 

@@ -148,6 +148,17 @@ public class NCubeManager
         return null;
     }
 
+    /**
+     * Fetch an n-cube by name from the given ApplicationID.  Returns the cube
+     * for this revision if it exists, otherwise an exception is thrown.
+     */
+    public static NCube getCubeRevision(ApplicationID appId, String name, Integer revision)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(name);
+        return getPersister().loadCube(appId, name, revision);
+    }
+
     static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)
@@ -564,6 +575,20 @@ public class NCubeManager
      * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
+    public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
+    {
+        return getPersister().getCubeRecords(appId, pattern, true);
+    }
+
+    /**
+     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
+     * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
+     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
+     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
+     * by an NCube if more than the name is required.
+     * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
+     * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
+     */
     public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
         validateAppId(appId);
@@ -793,10 +818,20 @@ public class NCubeManager
             throw new IllegalArgumentException("Could not duplicate, old name cannot be the same as the new name when oldAppId matches newAppId, name: " + oldName + ", app: " + oldAppId);
         }
 
-        Map<String, Object> appCache = getCacheForApp(newAppId);
-        appCache.remove(newName.toLowerCase());
-
         getPersister().duplicateCube(oldAppId, newAppId, oldName, newName, username);
+
+        if (CLASSPATH_CUBE.equalsIgnoreCase(newName))
+        {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,
+            // then the entire class loader must be dropped (and then lazily rebuilt).
+            clearCache(newAppId);
+        }
+        else
+        {
+            Map<String, Object> appCache = getCacheForApp(newAppId);
+            appCache.remove(newName.toLowerCase());
+        }
+
+
         broadcast(newAppId);
     }
 

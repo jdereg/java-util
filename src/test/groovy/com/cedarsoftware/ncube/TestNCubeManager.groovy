@@ -139,10 +139,21 @@ class TestNCubeManager
         assertFalse(NCubeManager.doesCubeExist(appId, name1))
         assertFalse(NCubeManager.doesCubeExist(appId, name2))
 
-        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1, true)
+        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1)
         assertEquals(0, cubeInfo.length)
-        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2, true)
+        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2)
         assertEquals(0, cubeInfo.length)
+    }
+
+    @Test
+    void testDuplicateWhereNameAndAppIdAreIdentical()
+    {
+        try {
+            NCubeManager.duplicate(defaultSnapshotApp, defaultSnapshotApp, 'test', 'test', USER_ID);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.message.contains('Could not duplicate'))
+        }
     }
 
     @Test

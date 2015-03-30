@@ -336,10 +336,10 @@ public class NCubeJdbcPersister
         return s;
     }
 
-    public PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
+    PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
     {
         String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revison_number = ?";
+                "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revision_number = ?";
 
 
         PreparedStatement s = c.prepareStatement(sql);
@@ -353,7 +353,7 @@ public class NCubeJdbcPersister
         return s;
     }
 
-    public PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean activeOnly, boolean deletedOnly, boolean includeTests) throws SQLException
+    PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean activeOnly, boolean deletedOnly, boolean includeTests) throws SQLException
     {
         if (activeOnly && deletedOnly)
         {
@@ -949,23 +949,6 @@ public class NCubeJdbcPersister
         m.appendTail(sb);
         json = sb.toString();
         return StringUtilities.getBytes(json, "UTF-8");
-    }
-
-    private byte[] replaceHeadSha1(byte[] bytes, String newSha1)
-    {
-        StringBuffer sb = new StringBuffer();
-
-        String json = StringUtilities.createString(bytes, "UTF-8");
-        Matcher m = Regexes.headSha1Pattern.matcher(json);
-        //  replace headSha1 with existing sha1
-        //  may not exist in the case of a cube created on branch.
-        while (m.find())
-        {
-            m.appendReplacement(sb, ", \"headSha1\":\"" + newSha1 + "\"");
-        }
-
-        m.appendTail(sb);
-        return StringUtilities.getBytes(sb.toString(), "UTF-8");
     }
 
     private byte[] replaceHeadSha1AndRemoveChanged(byte[] jsonBytes, String newSha1)

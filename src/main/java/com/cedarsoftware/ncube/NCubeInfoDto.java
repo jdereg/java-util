@@ -1,7 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.StringUtilities;
-
 import java.util.Date;
 
 /**
@@ -38,6 +36,7 @@ public class NCubeInfoDto
     public Date createDate;
     public String createHid;
     public String notes;
+    public boolean changed;
     public String changeType;
 
     public ApplicationID getApplicationID()
@@ -52,12 +51,6 @@ public class NCubeInfoDto
 	}
 
     public boolean isChanged() {
-        if (!StringUtilities.equalsIgnoreCase(sha1, headSha1)) {
-            if (headSha1 == null) {
-                return !"D".equals(changeType);
-            }
-            return true;
-        }
-        return changeType != null;
+        return changed;
     }
 }

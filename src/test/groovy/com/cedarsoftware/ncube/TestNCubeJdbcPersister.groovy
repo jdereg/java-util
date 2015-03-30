@@ -64,7 +64,7 @@ class TestNCubeJdbcPersister
         persister.createCube(defaultSnapshotApp, ncube1, USER_ID)
         persister.createCube(defaultSnapshotApp, ncube2, USER_ID)
 
-        Object[] cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%")
+        Object[] cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%", true)
 
         assertTrue(cubeList != null)
         assertTrue(cubeList.length == 2)
@@ -78,28 +78,9 @@ class TestNCubeJdbcPersister
         int numRelease = persister.releaseCubes(defaultSnapshotApp, "0.2.0")
         assertEquals(0, numRelease)
 
-        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%')
+        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%', true)
         // Two cubes at the new 1.2.3 SNAPSHOT version.
         assert cubeList.length == 2
-
-//        String notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
-//        String notes2 = persister.getNotes(next, "test.ValidTrailorConfigs")
-//
-//        persister.updateNotes(next, "test.ValidTrailorConfigs", null)
-//        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
-//        assertTrue("".equals(notes1))
-//
-//        persister.updateNotes(next, "test.ValidTrailorConfigs", "Trailer Config Notes")
-//        notes1 = persister.getNotes(next, "test.ValidTrailorConfigs")
-//        assertTrue("Trailer Config Notes".equals(notes1))
-//
-//        persister.updateTestData(next, "test.ValidTrailorConfigs", null)
-//        String testData = persister.getNonRuntimeData(next, "test.ValidTrailorConfigs")
-//        assertTrue("".equals(testData))
-//
-//        persister.updateTestData(next, "test.ValidTrailorConfigs", "This is JSON data")
-//        testData = persister.getNonRuntimeData(next, "test.ValidTrailorConfigs")
-//        assertTrue("This is JSON data".equals(testData))
 
         // Verify that you cannot delete a RELEASE ncube
         try
@@ -130,7 +111,7 @@ class TestNCubeJdbcPersister
         assertTrue(persister.deleteCube(next, ncube2.name, false, USER_ID))
 
         // Ensure that all test ncubes are deleted
-        cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%")
+        cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%", true)
         assertTrue(cubeList.length == 0)
     }
 
@@ -401,7 +382,7 @@ class TestNCubeJdbcPersister
         when(rs.getString("branch_id")).thenReturn("HEAD")
         when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"))
 
-        Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "")
+        Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "", true)
         assertNotNull(nCubes)
         assertEquals(1, nCubes.length)     // Won't know it fails until getCube() is called.
     }
@@ -719,7 +700,7 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null)
+            new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null, true)
             fail()
         }
         catch (RuntimeException e)

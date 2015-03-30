@@ -101,12 +101,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
     }
 
 
-    public Object[] getCubeRecords(ApplicationID appId, String pattern)
+    public Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.getCubeRecords(c, appId, pattern);
+            return persister.getCubeRecords(c, appId, pattern, activeOnly);
         }
         finally
         {

@@ -118,7 +118,7 @@ class TestNCubeManager
         NCubeManager.createCube(appId, ncube, USER_ID)
 
         NCubeManager.clearCache(appId)
-        NCubeManager.getCubeRecordsFromDatabase(appId, '')
+        NCubeManager.getCubeRecordsFromDatabase(appId, '', true)
 
         NCube ncube1 = NCubeManager.getCube(appId, name1)
         NCube ncube2 = NCubeManager.getCube(appId, name2)
@@ -139,9 +139,9 @@ class TestNCubeManager
         assertFalse(NCubeManager.doesCubeExist(appId, name1))
         assertFalse(NCubeManager.doesCubeExist(appId, name2))
 
-        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1)
+        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1, true)
         assertEquals(0, cubeInfo.length)
-        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2)
+        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2, true)
         assertEquals(0, cubeInfo.length)
     }
 
@@ -293,7 +293,7 @@ class TestNCubeManager
 
         NCubeManager.clearCache()
 
-        NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '')
+        NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true)
         NCube test = NCubeManager.getCube(defaultSnapshotApp, 'test.ContinentCountries')
         assertEquals((Double) test.getCell(coord1), 1.0d, 0.00001d)
 
@@ -563,7 +563,7 @@ class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
 
-        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%')
+        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%', true)
 
         assertTrue(cubeList != null)
         assertTrue(cubeList.length == 2)
@@ -579,7 +579,7 @@ class TestNCubeManager
         // 0 below, because there were no HEAD cubes, so release here, just MOVEs the existing cubes to the next snapshot version
         assertEquals(0, NCubeManager.releaseCubes(defaultSnapshotApp, "1.2.3"))
         ApplicationID next = defaultSnapshotApp.createNewSnapshotId("1.2.3");
-        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%')
+        cubeList = NCubeManager.getCubeRecordsFromDatabase(next, 'test.%', true)
         // Two cubes at the new 1.2.3 SNAPSHOT version.
         assert cubeList.length == 2
 
@@ -607,7 +607,7 @@ class TestNCubeManager
         assertTrue(NCubeManager.deleteCube(next, ncube2.name, false, USER_ID))
 
         // Ensure that all test ncubes are deleted
-        cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%')
+        cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%', true)
         assertTrue(cubeList.length == 0)
     }
 
@@ -639,7 +639,7 @@ class TestNCubeManager
 
         NCubeManager.renameCube(defaultSnapshotApp, ncube1.name, 'test.Floppy', USER_ID)
 
-        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%')
+        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test.%', true)
 
         assertTrue(cubeList.length == 2)
 
@@ -668,7 +668,7 @@ class TestNCubeManager
         NCubeManager.createCube(defaultSnapshotApp, ncube2, USER_ID)
 
         // This proves that null is turned into '%' (no exception thrown)
-        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, null)
+        Object[] cubeList = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, null, true)
 
         assertEquals(3, cubeList.length)
 
@@ -994,7 +994,7 @@ class TestNCubeManager
         try
         {
             // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
-            NCubeManager.getCubeRecordsFromDatabase(null, '')
+            NCubeManager.getCubeRecordsFromDatabase(null, '', true)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -1134,7 +1134,7 @@ class TestNCubeManager
     void testRestoreDeletedCube() throws Exception
     {
         NCube cube = createCube()
-        Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '')
+        Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true)
         assertEquals(2, records.length)
 
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
@@ -1143,12 +1143,12 @@ class TestNCubeManager
 
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
 
-        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '')
+        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true)
         assertEquals(1, records.length)
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.name))
 
         NCubeManager.restoreCube(defaultSnapshotApp, [cube.name] as Object[], USER_ID)
-        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test%')
+        records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, 'test%', true)
         assertEquals(1, records.length)
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
@@ -1188,7 +1188,7 @@ class TestNCubeManager
     void testDeleteWithRevisions() throws Exception
     {
         NCube cube = createCube()
-        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, null).length)
         assertEquals(1, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
 
@@ -1197,7 +1197,7 @@ class TestNCubeManager
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
         assertEquals(2, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
-        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
 
         Axis conAxis = NCubeBuilder.continentAxis
@@ -1206,25 +1206,25 @@ class TestNCubeManager
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
 
         assertEquals(3, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
-        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
 
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(4, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.name))
 
         NCubeManager.restoreCube(defaultSnapshotApp, [cube.name] as Object[], USER_ID)
 
-        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
+        assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
         assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(5, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
 
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '').length)
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').length)
         assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).length)
     }
@@ -1258,7 +1258,7 @@ class TestNCubeManager
     void testNCubeInfoDto() throws Exception
     {
         NCube cube = createCube()
-        def history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%')
+        def history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%', true)
         assertEquals(2, history.length)     // sys.classpath too
         assertTrue history[0] instanceof NCubeInfoDto
         assertTrue history[1] instanceof NCubeInfoDto
@@ -1267,7 +1267,7 @@ class TestNCubeManager
         cube.addAxis(oddAxis)
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
-        history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%')
+        history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%', true)
         assertEquals(2, history.length)
         assertTrue history[0] instanceof NCubeInfoDto
         assertTrue history[1] instanceof NCubeInfoDto
@@ -1422,7 +1422,7 @@ class TestNCubeManager
     {
         NCube cube = NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'latlon.json')
         NCubeManager.createCube(defaultSnapshotApp, cube, USER_ID)
-        Object[] cubeInfos = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '%')
+        Object[] cubeInfos = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '%', true)
         assertNotNull(cubeInfos)
         assertEquals(2, cubeInfos.length)
         NCubeManager.releaseCubes(defaultSnapshotApp, "1.2.3")

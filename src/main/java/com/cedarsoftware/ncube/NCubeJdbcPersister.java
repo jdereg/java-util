@@ -426,20 +426,6 @@ public class NCubeJdbcPersister
         return stmt;
     }
 
-    public Object[] getBranchChanges(Connection c, ApplicationID appId)
-    {
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, null, false, false, false))
-        {
-            return getChangedRecords(appId, s);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch branch cubes matching from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
-    }
-
     public Object[] getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
     {
         try (PreparedStatement s = createSelectCubesStatement(c, appId, convertPattern(pattern), activeOnly, false, false))
@@ -500,61 +486,6 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-    }
-
-    private Object[] getChangedRecords(ApplicationID appId, PreparedStatement stmt) throws Exception
-    {
-        List<NCubeInfoDto> list = new ArrayList<>();
-
-        try (ResultSet rs = stmt.executeQuery())
-        {
-            while (rs.next())
-            {
-                NCubeInfoDto dto = new NCubeInfoDto();
-                dto.name = rs.getString("n_cube_nm");
-                dto.branch = rs.getString("branch_id");
-                dto.tenant = appId.getTenant();
-                byte[] notes = rs.getBytes(NOTES_BIN);
-                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-                dto.version = appId.getVersion();
-                dto.status = rs.getString("status_cd");
-                dto.app = appId.getApp();
-                dto.createDate = rs.getDate("create_dt");
-                dto.createHid = rs.getString("create_hid");
-                dto.revision = Long.toString(rs.getLong("revision_number"));
-                byte[] jsonBytes = rs.getBytes("cube_value_bin");
-
-                if (!ArrayUtilities.isEmpty(jsonBytes))
-                {
-                    String json = StringUtilities.createString(jsonBytes, "UTF-8");
-                    Matcher m = Regexes.changedPattern.matcher(json);
-                    if (m.find())
-                    {
-                        dto.changed = true;
-                    }
-
-                    m = Regexes.sha1Pattern.matcher(json);
-                    if (m.find())
-                    {
-                        dto.sha1 = m.group(1);
-                    }
-
-                    //  Have to pull out the original head sha1 from which this branch was made.
-                    //  We cannot calculate this on saves so has to be stored.
-                    m = Regexes.headSha1Pattern.matcher(json);
-                    if (m.find())
-                    {
-                        dto.headSha1 = m.group(1);
-                    }
-
-                    if (dto.isChanged()) {
-                        list.add(dto);
-                    }
-                }
-
-            }
-        }
-        return list.toArray();
     }
 
     private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, boolean activeOnly) throws Exception
@@ -708,7 +639,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public boolean deleteCubes(Connection c, ApplicationID appId)
+    public boolean deleteBranch(Connection c, ApplicationID appId)
     {
         String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
 
@@ -722,7 +653,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to delete cubes for app: " + appId + " from database";
+            String s = "Unable to delete branch: " + appId + " from database";
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }

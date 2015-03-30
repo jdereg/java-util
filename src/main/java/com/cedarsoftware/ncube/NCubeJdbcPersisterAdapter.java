@@ -87,20 +87,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getBranchChanges(ApplicationID appId)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.getBranchChanges(c, appId);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-
     public Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Connection c = connectionProvider.getConnection();

@@ -57,7 +57,7 @@ class TestThreadedClearCache
         concurrencyTestWithAppId();
 
         // remove cubes
-        manager.removeCubes(usedId, USER_ID, ncubes);
+        manager.removeBranches([usedId] as ApplicationID[]);
     }
 
     private void concurrencyTestWithAppId()

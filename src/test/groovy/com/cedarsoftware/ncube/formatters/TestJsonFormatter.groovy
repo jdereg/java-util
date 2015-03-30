@@ -1,11 +1,6 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.ApplicationID
-import com.cedarsoftware.ncube.NCube
-import com.cedarsoftware.ncube.NCubeManager
-import com.cedarsoftware.ncube.TestNCubeManager
-import com.cedarsoftware.ncube.TestingDatabaseHelper
-import com.cedarsoftware.ncube.TestingDatabaseManager
+import com.cedarsoftware.ncube.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -130,7 +125,7 @@ class TestJsonFormatter
         assertEquals new BigInteger('9223372036854775807'), ((Object[]) ncube.getCell(coord))[2]
         assertEquals new BigInteger('147573952589676410000'), ((Object[]) ncube.getCell(coord))[3]
 
-        manager.removeCubes(ApplicationID.testAppId, 'lol', cubes);
+        manager.removeBranches([ApplicationID.testAppId] as ApplicationID[]);
     }
 
     @Test

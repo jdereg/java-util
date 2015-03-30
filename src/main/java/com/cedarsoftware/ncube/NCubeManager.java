@@ -577,7 +577,7 @@ public class NCubeManager
      */
     public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {
-        return getPersister().getCubeRecords(appId, pattern, true);
+        return getCubeRecordsFromDatabase(appId, pattern, true);
     }
 
     /**
@@ -1005,7 +1005,7 @@ public class NCubeManager
         }
 
         List<NCubeInfoDto> adds = new ArrayList<>(records.length);
-        List<String> deletes = new ArrayList<>(records.length);
+        List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
         Map<String, String> conflicts = new LinkedHashMap<>();
@@ -1043,15 +1043,25 @@ public class NCubeManager
 
                 if (!info.isChanged())
                 {
-                    if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1) || infoRev > 0 != headRev > 0)
+                    if (!StringUtilities.equalsIgnoreCase(info.headSha1, info.sha1) || infoRev < 0 != headRev < 0)
                     {
                         updates.add(head);
                     }
                 }
-                else if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
+                else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
                 {
-                    //  head still same, but an update
-
+                    conflicts.put(info.name, "Cube was changed in HEAD");
+                }
+                else if (infoRev < 0 != headRev < 0)
+                {
+                    if (headRev < 0)
+                    {
+                        deletes.add(head);
+                    }
+                    else
+                    {
+                        adds.add(head);
+                    }
                 }
             }
             else  // doesn't exist in branch, but is on head.
@@ -1065,7 +1075,7 @@ public class NCubeManager
             throw new BranchMergeException("Conflicts committing branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId);
+        Object[] ret = getPersister().updateBranch(appId, adds, updates, deletes);
 
         clearCacheForBranches(appId);
         return ret;

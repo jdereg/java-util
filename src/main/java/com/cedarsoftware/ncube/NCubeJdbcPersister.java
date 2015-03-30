@@ -1676,7 +1676,7 @@ public class NCubeJdbcPersister
         return count;
     }
 
-    public Object[] updateBranch(Connection c, ApplicationID appId)
+    public Object[] updateBranch(Connection c, ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> updates, List<NCubeInfoDto> deletes)
     {
 
         return new Object[0];

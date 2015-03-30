@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -349,12 +350,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
 
     }
 
-    public Object[] updateBranch(ApplicationID appId)
+    public Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> updates, List<NCubeInfoDto> deletes)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateBranch(c, appId);
+            return persister.updateBranch(c, appId, adds, updates, deletes);
         }
         finally
         {

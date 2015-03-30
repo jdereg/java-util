@@ -1186,6 +1186,37 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testRenameAndThenRollback()
+    {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
+
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.createBranch(branch1))
+
+        testValuesOnBranch(head)
+        testValuesOnBranch(branch1)
+
+        assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
+
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch2"))
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.rollbackBranch(branch1, dtos));
+
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNull(NCubeManager.getCube(branch1, "TestBranch2"))
+    }
+
+    @Test
     void testRenameAndThenCommitAndThenRenameAgainWithCommit()
     {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)

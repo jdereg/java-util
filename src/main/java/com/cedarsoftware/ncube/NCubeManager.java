@@ -98,7 +98,7 @@ public class NCubeManager
      */
     public static Set<String> getCubeNames(ApplicationID appId)
     {
-        Object[] cubeInfos = getCubeRecordsFromDatabase(appId, "");
+        Object[] cubeInfos = getCubeRecordsFromDatabase(appId, "", true);
         Set<String> names = new TreeSet<>();
 
         for (Object cubeInfo : cubeInfos)
@@ -138,7 +138,7 @@ public class NCubeManager
         }
 
         // Deep load the requested cube
-        getCubeRecordsFromDatabase(appId, name);
+        getCubeRecordsFromDatabase(appId, name, true);
 
         if (cubes.containsKey(lowerCubeName))
         {
@@ -564,10 +564,10 @@ public class NCubeManager
      * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
-    public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
+    public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
         validateAppId(appId);
-        Object[] cubes = getPersister().getCubeRecords(appId, pattern);
+        Object[] cubes = getPersister().getCubeRecords(appId, pattern, activeOnly);
         cacheCubes(appId, cubes);
         return cubes;
     }
@@ -585,7 +585,88 @@ public class NCubeManager
         if (appId.getBranch().equals(ApplicationID.HEAD)) {
             throw new IllegalArgumentException("Cannot get branch changes from HEAD");
         }
-        Object[] cubes = getPersister().getBranchChanges(appId);
+
+        ApplicationID headAppId = appId.asHead();
+        Map<String, NCubeInfoDto> headMap = new TreeMap<>();
+        Object[] branchList = getPersister().getCubeRecords(appId, null, false);
+        Object[] headList = getPersister().getCubeRecords(headAppId, null, false);
+        List<NCubeInfoDto> list = new ArrayList<>();
+
+        //  build map of head objects for reference.
+        for (Object item : headList)
+        {
+            NCubeInfoDto info = (NCubeInfoDto) item;
+            headMap.put(info.name, info);
+        }
+
+        for (Object dto : branchList)
+        {
+            NCubeInfoDto info = (NCubeInfoDto)dto;
+
+            if (!info.isChanged()) {
+                continue;
+            }
+
+            long revision = Long.parseLong(info.revision);
+            NCubeInfoDto head = headMap.get(info.name);
+
+            //  we created this guy locally
+            if (info.headSha1 == null)
+            {
+                if (head == null)
+                {
+                    //  only add if not deleted.
+                    if (revision >= 0)
+                    {
+                        info.changeType = ChangeType.CREATED.toString();
+                        list.add(info);
+                    }
+                }
+                else
+                {
+                    // someone added this one to the head already
+                    info.changeType = ChangeType.CONFLICT.toString();
+                    list.add(info);
+                }
+            }
+            else if (head != null)
+            {
+                if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
+                {
+                    if (StringUtilities.equalsIgnoreCase(info.sha1, info.headSha1))
+                    {
+                        // only net change could be revision deleted or restored.  check head.
+                        long headRev = Long.parseLong(head.revision);
+
+                        if (headRev < 0 != revision < 0)
+                        {
+                            if (revision < 0)
+                            {
+                                info.changeType = ChangeType.DELETED.toString();
+                            }
+                            else
+                            {
+                                info.changeType = ChangeType.RESTORED.toString();
+                            }
+
+                            list.add(info);
+                        }
+                    }
+                    else
+                    {
+                        info.changeType = ChangeType.UPDATED.toString();
+                        list.add(info);
+                    }
+                }
+                else
+                {
+                    info.changeType = ChangeType.CONFLICT.toString();
+                    list.add(info);
+                }
+            }
+        }
+
+        Object[] cubes = list.toArray()  ;
         cacheCubes(appId, cubes);
         return cubes;
     }
@@ -738,6 +819,7 @@ public class NCubeManager
         appId.validateBranchIsNotHead();
 
         final String cubeName = ncube.name;
+        ncube.setChanged(true);
         getPersister().updateCube(appId, ncube, username);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(cubeName))
@@ -779,7 +861,7 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] headInfo = getPersister().getCubeRecords(headAppId, "*");
+        Object[] headInfo = getPersister().getCubeRecords(headAppId, "*", false);
 
         //  build map of head objects for reference.
         for (Object cubeInfo : headInfo)
@@ -798,16 +880,18 @@ public class NCubeManager
             // All changes go through here.
             if (info.isChanged())
             {
-                //  we created this guy locally and don't expect to be on server update him
                 NCubeInfoDto head = headMap.get(info.name);
+                long revision = Long.parseLong(info.revision);
 
                 if (info.headSha1 == null)
                 {
                     if (head == null)
                     {
-                        //  Only add new cube if it hasn't been deleted.
-                        if (!"D".equals(info.changeType))
+
+                        //  only add if not deleted.
+                        if (revision >= 0)
                         {
+                            info.changeType = ChangeType.CREATED.toString();
                             dtos.add(info);
                         }
                     }
@@ -818,7 +902,20 @@ public class NCubeManager
                 }
                 else if (head != null && info.headSha1.equals(head.sha1))
                 {
-                    dtos.add(info);
+
+                    if (StringUtilities.equalsIgnoreCase(info.sha1, info.headSha1))
+                    {
+                        long newRev = Long.parseLong(info.revision);
+                        long oldRev = Long.parseLong(head.revision);
+                        if (newRev < 0 != oldRev < 0)
+                        {
+                            dtos.add(info);
+                        }
+                    }
+                    else
+                    {
+                        dtos.add(info);
+                    }
                 }
                 else
                 {
@@ -860,8 +957,8 @@ public class NCubeManager
         appId.validateStatusIsNotRelease();
 
         ApplicationID headAppId = appId.asHead();
-        Object[] records = getCubeRecordsFromDatabase(appId, "*");
-        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, "*");
+        Object[] records = getCubeRecordsFromDatabase(appId, "*", false);
+        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, "*", false);
 
         //  build map of head objects for reference.
         Map<String, NCubeInfoDto> recordMap = new LinkedHashMap<>();
@@ -898,19 +995,23 @@ public class NCubeManager
             NCubeInfoDto head = (NCubeInfoDto) dto;
             NCubeInfoDto info = recordMap.get(head.name);
 
-            if (info == null) {
-                //  added to head.
-
-
+            if (info == null)
+            {
+                adds.add(head);
+                continue;
             }
+
             if (info != null)
             {
                 long infoRev = Long.parseLong(info.revision);
                 long headRev = Long.parseLong(head.revision);
 
-                if (info.isChanged())
+                if (!info.isChanged())
                 {
-
+                    if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1) || infoRev > 0 != headRev > 0)
+                    {
+                        updates.add(head);
+                    }
                 }
                 else if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
                 {
@@ -1065,6 +1166,7 @@ public class NCubeManager
         validateCube(ncube);
         validateAppId(appId);
         appId.validateBranchIsNotHead();
+        ncube.setChanged(true);
         getPersister().createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);

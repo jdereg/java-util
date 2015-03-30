@@ -76,7 +76,7 @@ public class NCubeGroovyExpression
      */
     public Object[] getCubeRecords(String pattern)
     {
-        return NCubeManager.getCubeRecordsFromDatabase(ncube.getApplicationID(), pattern);
+        return NCubeManager.getCubeRecordsFromDatabase(ncube.getApplicationID(), pattern, true);
     }
 
     /**

@@ -61,7 +61,7 @@ public interface Regexes
     Pattern hasClassDefPattern = Pattern.compile("^(|.*?\\s+)class\\s+([a-zA-Z_0-9$\\.]+).*?\\{.*?\\}.*$", Pattern.DOTALL);
     Pattern sha1Pattern = Pattern.compile(",\\s*\"sha1\":\\s*\"(.*?)\"");
     Pattern headSha1Pattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"");
-    Pattern changeTypePattern = Pattern.compile(",\\s*\"changeType\":\\s*\"(.*?)\"");
-    Pattern headSha1orChangeTypePattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"|,\\s*\"changeType\":\\s*\"(.*?)\"");
+    Pattern changedPattern = Pattern.compile(",\\s*\"changed\":\\s*true");
+    Pattern headSha1orChangedPattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"|,\\s*\"changed\":\\s*true");
 
 }

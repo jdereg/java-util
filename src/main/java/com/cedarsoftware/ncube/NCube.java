@@ -71,7 +71,7 @@ public class NCube<T>
     String name;
     private String sha1;
     private String headSha1;
-    private String changeType;
+    private boolean changed;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
     final Map<Collection<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
@@ -1751,11 +1751,12 @@ public class NCube<T>
             ncube.metaProps.remove("ruleMode");
             ncube.metaProps.remove("sha1");
             ncube.metaProps.remove("headSha1");
-            ncube.metaProps.remove("changeType");
+            ncube.metaProps.remove("changed");
             loadMetaProperties(ncube.metaProps);
 
             ncube.headSha1 = (String) jsonNCube.get("headSha1");
-            ncube.changeType = (String) jsonNCube.get("changeType");
+            Boolean changed = (Boolean)jsonNCube.get("changed");
+            ncube.changed = changed != null && changed.booleanValue();
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
 
@@ -2192,10 +2193,7 @@ public class NCube<T>
         return headSha1;
     }
 
-    public String getChangeType()
-    {
-        return changeType;
-    }
+    public boolean isChanged() { return changed; }
 
     /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
@@ -2716,9 +2714,9 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 
-    public void clearChangeType()
+    public void setChanged(boolean changed)
     {
-        changeType = null;
+        this.changed = changed;
     }
 
     public void clearHeadSha1()

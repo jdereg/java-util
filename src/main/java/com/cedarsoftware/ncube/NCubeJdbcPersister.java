@@ -846,17 +846,48 @@ public class NCubeJdbcPersister
                         int count = 0;
                         while (rs.next())
                         {
-                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                            insert.setString(2, rs.getString("n_cube_nm"));
-
                             byte[] jsonBytes = rs.getBytes("cube_value_bin");
+
+                            //  Old cube types with no sha1 saved with them.
+                            String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                            Matcher match = Regexes.sha1Pattern.matcher(json);
+                            if (!match.find())
+                            {
+                                StringBuffer sb = new StringBuffer();
+                                Matcher cubeMatch = Regexes.ncubePattern.matcher(json);
+                                if (cubeMatch.find() && cubeMatch.groupCount () > 0)
+                                {
+                                    String replacement = "\"ncube\":\"" + cubeMatch.group(1) + "\", \"sha1\":\"XXX\"";
+                                    cubeMatch.appendReplacement(sb, replacement);
+                                    cubeMatch.appendTail(sb);
+                                }
+                                jsonBytes = StringUtilities.getBytes(sb.toString(), "UTF-8");
+
+                                insert.setLong(1, rs.getLong("n_cube_id"));
+                                insert.setString(2, rs.getString("n_cube_nm"));
+                                insert.setBytes(3, jsonBytes);
+                                insert.setDate(4, rs.getDate("create_dt"));
+                                insert.setString(5, rs.getString("create_hid"));
+                                insert.setString(6, rs.getString("version_no_cd"));
+                                insert.setString(7, rs.getString("staatus_cd"));
+                                insert.setString(8, rs.getString("app_cd"));
+                                insert.setBytes(9, rs.getBytes(TEST_DATA_BIN));
+                                insert.setBytes(10, rs.getBytes(NOTES_BIN));
+                                insert.setString(11, rs.getString("tenant_cd"));
+                                insert.setString(12, ApplicationID.HEAD);
+                                insert.setLong(13, rs.getLong("revision_number"));
+                                insert.addBatch();
+
+                            }
 
                             if (!ArrayUtilities.isEmpty(jsonBytes))
                             {
                                 jsonBytes = injectHeadSha1FromSha1(jsonBytes);
                             }
-                            insert.setBytes(3, jsonBytes);
 
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, rs.getString("n_cube_nm"));
+                            insert.setBytes(3, jsonBytes);
                             insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, appId.getVersion());
@@ -913,8 +944,8 @@ public class NCubeJdbcPersister
         {
             String replacement = ", \"sha1\":\"" + m.group(1) + "\", \"headSha1\":\"" + m.group(1) + "\"";
             m.appendReplacement(sb, replacement);
+            m.appendTail(sb);
         }
-        m.appendTail(sb);
         return StringUtilities.getBytes(sb.toString(), "UTF-8");
     }
 

@@ -488,6 +488,18 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testGetCubeNamesWithoutBeingAddedToDatabase()
+    {
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json")
+        NCubeManager.addCube(branch1, cubes[0])
+        NCubeManager.addCube(branch1, cubes[1])
+        Set<String> set = NCubeManager.getCubeNames(branch1)
+        assertEquals(2, set.size());
+        assertTrue(set.contains("TestBranch"))
+        assertTrue(set.contains("TestAge"))
+    }
+
+    @Test
     void testCommitBranchOnUpdateWithOldInvalidSha1() throws Exception {
         // load cube with same name, but different structure in TEST branch
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json")

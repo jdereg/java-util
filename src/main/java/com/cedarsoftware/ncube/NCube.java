@@ -2718,11 +2718,6 @@ public class NCube<T>
         this.changed = changed;
     }
 
-    public void clearHeadSha1()
-    {
-        headSha1 = null;
-    }
-
     public void setHeadSha1(String sha1)
     {
         headSha1 = sha1;

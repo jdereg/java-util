@@ -1,7 +1,9 @@
-package com.cedarsoftware.ncube;
+package com.cedarsoftware.ncube
+
+import com.cedarsoftware.util.StringUtilities
 
 import java.sql.Connection
-import java.util.regex.Matcher;
+import java.util.regex.Matcher
 
 /**
  * Created by kpartlow on 12/23/2014.
@@ -27,10 +29,10 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
             {
                 m.appendReplacement(buffer, "");
             }
-            m.appendTail(sb);
+            m.appendTail(buffer);
 
-            byte[] cubeData = StringUtilities.getBytes(sb.toString(), "UTF-8");
-            persister.insertCube(c, appId, cube.name, 0, cubeData, null, "Inserted without sha1-1".getBytes("UTF-8"), username)
+            byte[] cubeData = StringUtilities.getBytes(buffer.toString(), "UTF-8");
+            persister.insertCube(c, appId, cube.name, 0L, cubeData, null, "Inserted without sha1-1", username)
     }
         finally
         {

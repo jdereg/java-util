@@ -502,23 +502,16 @@ abstract class TestWithPreloadedDatabase
         // load cube with same name, but different structure in TEST branch
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json")
 
-        manager.insertCubeWithNoSha1(branch1, USER_ID, cubes[0])
+        manager.insertCubeWithNoSha1(head, USER_ID, cubes[0])
 
-        //assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         //assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        manager.addCubes(head, USER_ID, cubes);
-
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
-        //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch1))
+        assertEquals(1, NCubeManager.createBranch(branch1))
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
@@ -531,10 +524,7 @@ abstract class TestWithPreloadedDatabase
 
         NCubeManager.updateCube(branch1, cube, USER_ID);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         // No changes have happened yet, even though sha1 is incorrect,
         // we just copy the sha1 when we create the branch so the headsha1 won't

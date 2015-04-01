@@ -873,11 +873,10 @@ public class NCubeJdbcPersister
                                 insert.setString(8, rs.getString("app_cd"));
                                 insert.setBytes(9, rs.getBytes(TEST_DATA_BIN));
                                 insert.setBytes(10, rs.getBytes(NOTES_BIN));
-                                insert.setString(11, rs.getString("tenant_cd"));
+                                insert.setString(11, appId.getTenant());
                                 insert.setString(12, ApplicationID.HEAD);
                                 insert.setLong(13, rs.getLong("revision_number"));
                                 insert.addBatch();
-
                             }
 
                             if (!ArrayUtilities.isEmpty(jsonBytes))

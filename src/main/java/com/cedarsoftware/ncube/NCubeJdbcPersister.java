@@ -863,7 +863,7 @@ public class NCubeJdbcPersister
                                 }
                                 jsonBytes = StringUtilities.getBytes(sb.toString(), "UTF-8");
 
-                                insert.setLong(1, rs.getLong("n_cube_id"));
+                                insert.setLong(1, UniqueIdGenerator.getUniqueId());
                                 insert.setString(2, rs.getString("n_cube_nm"));
                                 insert.setBytes(3, jsonBytes);
                                 insert.setDate(4, rs.getDate("create_dt"));

@@ -869,7 +869,7 @@ public class NCubeJdbcPersister
                                 insert.setDate(4, rs.getDate("create_dt"));
                                 insert.setString(5, rs.getString("create_hid"));
                                 insert.setString(6, rs.getString("version_no_cd"));
-                                insert.setString(7, rs.getString("staatus_cd"));
+                                insert.setString(7, rs.getString("status_cd"));
                                 insert.setString(8, rs.getString("app_cd"));
                                 insert.setBytes(9, rs.getBytes(TEST_DATA_BIN));
                                 insert.setBytes(10, rs.getBytes(NOTES_BIN));

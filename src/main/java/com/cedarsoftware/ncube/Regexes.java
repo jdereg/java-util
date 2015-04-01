@@ -62,6 +62,7 @@ public interface Regexes
     Pattern sha1Pattern = Pattern.compile(",\\s*\"sha1\":\\s*\"(.*?)\"");
     Pattern headSha1Pattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"");
     Pattern changedPattern = Pattern.compile(",\\s*\"changed\":\\s*true");
+    Pattern ncubePattern = Pattern.compile("\"ncube\":\\s*\"(.*?)\"");
     Pattern headSha1orChangedPattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"|,\\s*\"changed\":\\s*true");
 
 }

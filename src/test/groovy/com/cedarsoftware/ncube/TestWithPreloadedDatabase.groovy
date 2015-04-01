@@ -516,24 +516,28 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(map.isEmpty())
+        NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID);
 
-        NCube cube = NCubeManager.getCube(branch1, "TestBranch")
-        cube.removeCell([Code:10.0])
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch2"))
 
-        NCubeManager.updateCube(branch1, cube, USER_ID);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(2, dtos.length);
+
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
+        assertEquals(2, dtos.length);
 
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length)
 
         // No changes have happened yet, even though sha1 is incorrect,
         // we just copy the sha1 when we create the branch so the headsha1 won't
         // differ until we make a change.
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
-        assertEquals(1, dtos.length)
+        assertEquals(0, dtos.length)
 
-        map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(!map.isEmpty())
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertTrue(map.isEmpty())
 
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)

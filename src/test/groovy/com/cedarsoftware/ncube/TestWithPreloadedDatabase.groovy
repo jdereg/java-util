@@ -7,8 +7,6 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 
-import java.lang.reflect.Field
-
 import static org.junit.Assert.*
 
 /**
@@ -502,54 +500,44 @@ abstract class TestWithPreloadedDatabase
     @Test
     void testCommitBranchOnUpdateWithOldInvalidSha1() throws Exception {
         // load cube with same name, but different structure in TEST branch
-        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json")
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json")
 
+        manager.insertCubeWithNoSha1(head, USER_ID, cubes[0])
 
-
-        Field f = NCube.class.getDeclaredField("sha1")
-        f.setAccessible(true);
-        f.set(cubes[0], "F00F00F00F00F00");
-
-        //assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         //assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        manager.addCubes(head, USER_ID, cubes);
-
         // pre-branch, cubes don't exist
-        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNull(NCubeManager.getCube(branch1, "TestAge"))
 
-        //  create the branch (TestAge, TestBranch)
-        assertEquals(2, NCubeManager.createBranch(branch1))
+        assertEquals(1, NCubeManager.createBranch(branch1))
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(map.isEmpty())
+        NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID);
 
-        NCube cube = NCubeManager.getCube(branch1, "TestBranch")
-        cube.removeCell([Code:10.0])
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+        assertNotNull(NCubeManager.getCube(branch1, "TestBranch2"))
 
-        NCubeManager.updateCube(branch1, cube, USER_ID);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(2, dtos.length);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
+        assertEquals(2, dtos.length);
+
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length)
 
         // No changes have happened yet, even though sha1 is incorrect,
         // we just copy the sha1 when we create the branch so the headsha1 won't
         // differ until we make a change.
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
-        assertEquals(1, dtos.length)
+        assertEquals(0, dtos.length)
 
-        map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(!map.isEmpty())
+        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertTrue(map.isEmpty())
 
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)

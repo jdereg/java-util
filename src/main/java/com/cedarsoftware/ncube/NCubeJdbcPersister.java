@@ -846,17 +846,41 @@ public class NCubeJdbcPersister
                         int count = 0;
                         while (rs.next())
                         {
-                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                            insert.setString(2, rs.getString("n_cube_nm"));
-
                             byte[] jsonBytes = rs.getBytes("cube_value_bin");
 
-                            if (!ArrayUtilities.isEmpty(jsonBytes))
+                            //  Old cube types with no sha1 saved with them.
+                            String json = StringUtilities.createString(jsonBytes, "UTF-8");
+                            Matcher match = Regexes.sha1Pattern.matcher(json);
+                            if (!match.find())
                             {
-                                jsonBytes = injectHeadSha1FromSha1(jsonBytes);
-                            }
-                            insert.setBytes(3, jsonBytes);
 
+                                try (PreparedStatement update = c.prepareStatement(
+                                        "UPDATE n_cube set cube_value_bin = ? " +
+                                                "WHERE n_cube_id = ?"))
+                                {
+
+                                    StringBuffer sb = new StringBuffer();
+                                    Matcher cubeMatch = Regexes.ncubePattern.matcher(json);
+                                    if (cubeMatch.find() && cubeMatch.groupCount() > 0)
+                                    {
+                                        String replacement = "\"ncube\":\"" + cubeMatch.group(1) + "\", \"sha1\":\"XXX\"";
+                                        cubeMatch.appendReplacement(sb, replacement);
+                                        cubeMatch.appendTail(sb);
+                                    }
+                                    jsonBytes = StringUtilities.getBytes(sb.toString(), "UTF-8");
+
+                                    update.setBytes(1, jsonBytes);
+                                    update.setLong(2, rs.getLong("n_cube_id"));
+                                    update.executeUpdate();
+                                }
+                            }
+
+
+                            jsonBytes = injectHeadSha1FromSha1(jsonBytes);
+
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, rs.getString("n_cube_nm"));
+                            insert.setBytes(3, jsonBytes);
                             insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, appId.getVersion());
@@ -1448,7 +1472,7 @@ public class NCubeJdbcPersister
         return StringUtilities.getBytes(date + " [" + user + "] " + notes, "UTF-8");
     }
 
-    private boolean insertCube(Connection c, ApplicationID appId, String name, Long revision, byte[] cubeData, byte[] testData, String notes, String username) throws SQLException
+    boolean insertCube(Connection c, ApplicationID appId, String name, Long revision, byte[] cubeData, byte[] testData, String notes, String username) throws SQLException
     {
         try (PreparedStatement insert = c.prepareStatement("INSERT INTO n_cube (n_cube_id, app_cd, n_cube_nm, cube_value_bin, version_no_cd, create_dt, create_hid, tenant_cd, branch_id, revision_number, test_data_bin, notes_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
         {

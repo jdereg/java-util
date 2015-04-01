@@ -103,6 +103,11 @@ class TestingDatabaseHelper
         {
         }
 
+        @Override
+        void insertCubeWithNoSha1(ApplicationID appId, String username, NCube cube) throws Exception {
+
+        }
+
         public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
         {
 

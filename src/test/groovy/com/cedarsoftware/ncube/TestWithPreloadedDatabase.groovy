@@ -7,8 +7,6 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 
-import java.lang.reflect.Field
-
 import static org.junit.Assert.*
 
 /**
@@ -502,13 +500,9 @@ abstract class TestWithPreloadedDatabase
     @Test
     void testCommitBranchOnUpdateWithOldInvalidSha1() throws Exception {
         // load cube with same name, but different structure in TEST branch
-        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json")
+        NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json")
 
-
-
-        Field f = NCube.class.getDeclaredField("sha1")
-        f.setAccessible(true);
-        f.set(cubes[0], "F00F00F00F00F00");
+        manager.insertCubeWithNoSha1(branch1, USER_ID, cubes[0])
 
         //assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         //assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)

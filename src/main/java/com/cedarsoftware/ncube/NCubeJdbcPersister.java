@@ -384,16 +384,16 @@ public class NCubeJdbcPersister
 
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.cube_value_bin" +
                 testFields +
-                    " FROM n_cube n, " +
-                    "( " +
-                    "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                    "  FROM n_cube " +
-                    "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                    nameCondition +
-                    " GROUP BY n_cube_nm " +
-                    ") m " +
-                    "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" +
-                    revisionCondition;
+                " FROM n_cube n, " +
+                "( " +
+                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                "  FROM n_cube " +
+                "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                nameCondition +
+                " GROUP BY n_cube_nm " +
+                ") m " +
+                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" +
+                revisionCondition;
 
         if (StringUtilities.hasContent(pattern)) {
             sql += " AND m.n_cube_nm like ?";
@@ -846,47 +846,17 @@ public class NCubeJdbcPersister
                         int count = 0;
                         while (rs.next())
                         {
+                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
+                            insert.setString(2, rs.getString("n_cube_nm"));
+
                             byte[] jsonBytes = rs.getBytes("cube_value_bin");
-
-                            //  Old cube types with no sha1 saved with them.
-                            String json = StringUtilities.createString(jsonBytes, "UTF-8");
-                            Matcher match = Regexes.sha1Pattern.matcher(json);
-                            if (!match.find())
-                            {
-                                StringBuffer sb = new StringBuffer();
-                                Matcher cubeMatch = Regexes.ncubePattern.matcher(json);
-                                if (cubeMatch.find() && cubeMatch.groupCount () > 0)
-                                {
-                                    String replacement = "\"ncube\":\"" + cubeMatch.group(1) + "\", \"sha1\":\"XXX\"";
-                                    cubeMatch.appendReplacement(sb, replacement);
-                                    cubeMatch.appendTail(sb);
-                                }
-                                jsonBytes = StringUtilities.getBytes(sb.toString(), "UTF-8");
-
-                                insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                                insert.setString(2, rs.getString("n_cube_nm"));
-                                insert.setBytes(3, jsonBytes);
-                                insert.setDate(4, rs.getDate("create_dt"));
-                                insert.setString(5, rs.getString("create_hid"));
-                                insert.setString(6, rs.getString("version_no_cd"));
-                                insert.setString(7, rs.getString("status_cd"));
-                                insert.setString(8, rs.getString("app_cd"));
-                                insert.setBytes(9, rs.getBytes(TEST_DATA_BIN));
-                                insert.setBytes(10, rs.getBytes(NOTES_BIN));
-                                insert.setString(11, appId.getTenant());
-                                insert.setString(12, ApplicationID.HEAD);
-                                insert.setLong(13, rs.getLong("revision_number"));
-                                insert.addBatch();
-                            }
 
                             if (!ArrayUtilities.isEmpty(jsonBytes))
                             {
                                 jsonBytes = injectHeadSha1FromSha1(jsonBytes);
                             }
-
-                            insert.setLong(1, UniqueIdGenerator.getUniqueId());
-                            insert.setString(2, rs.getString("n_cube_nm"));
                             insert.setBytes(3, jsonBytes);
+
                             insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, appId.getVersion());
@@ -943,8 +913,8 @@ public class NCubeJdbcPersister
         {
             String replacement = ", \"sha1\":\"" + m.group(1) + "\", \"headSha1\":\"" + m.group(1) + "\"";
             m.appendReplacement(sb, replacement);
-            m.appendTail(sb);
         }
+        m.appendTail(sb);
         return StringUtilities.getBytes(sb.toString(), "UTF-8");
     }
 
@@ -1046,7 +1016,7 @@ public class NCubeJdbcPersister
         {
             try (PreparedStatement statement = c.prepareStatement(
                     "UPDATE n_cube SET version_no_cd = ? " +
-                    "WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id != 'HEAD'"))
+                            "WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id != 'HEAD'"))
             {
                 statement.setString(1, newSnapVer);
                 statement.setString(2, appId.getApp());
@@ -1067,7 +1037,7 @@ public class NCubeJdbcPersister
         {
             try (PreparedStatement statement = c.prepareStatement(
                     "UPDATE n_cube SET create_dt = ?, status_cd = ? " +
-                    "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = 'HEAD'"))
+                            "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = 'HEAD'"))
             {
                 statement.setDate(1, new java.sql.Date(System.currentTimeMillis()));
                 statement.setString(2, ReleaseStatus.RELEASE.name());
@@ -1096,7 +1066,7 @@ public class NCubeJdbcPersister
                     int count = 0;
                     try (PreparedStatement insert = c.prepareStatement(
                             "INSERT INTO n_cube (n_cube_id, n_cube_nm, cube_value_bin, create_dt, create_hid, version_no_cd, status_cd, app_cd, test_data_bin, notes_bin, tenant_cd, branch_id, revision_number) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
                     {
                         while (rs.next())
                         {

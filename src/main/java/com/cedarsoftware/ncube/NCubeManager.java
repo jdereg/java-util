@@ -12,6 +12,7 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import groovy.util.XmlParser;
 import ncube.grv.method.NCubeGroovyController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -219,6 +220,7 @@ public class NCubeManager
         Object urlCpLoader = cpCube.getCell(input);
         if (urlCpLoader instanceof List)
         {
+            XmlParser foo;
             synchronized(appId.cacheKey().intern())
             {
                 urlCpLoader = cpCube.getCell(input);
@@ -1006,7 +1008,6 @@ public class NCubeManager
 
         List<NCubeInfoDto> adds = new ArrayList<>(records.length);
         List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
-        List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
         Map<String, String> conflicts = new LinkedHashMap<>();
 
@@ -1045,7 +1046,7 @@ public class NCubeManager
                 {
                     if (!StringUtilities.equalsIgnoreCase(info.headSha1, info.sha1) || infoRev < 0 != headRev < 0)
                     {
-                        updates.add(head);
+                        adds.add(head);
                     }
                 }
                 else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
@@ -1075,7 +1076,7 @@ public class NCubeManager
             throw new BranchMergeException("Conflicts committing branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, adds, updates, deletes);
+        Object[] ret = getPersister().updateBranch(appId, adds, deletes);
 
         clearCacheForBranches(appId);
         return ret;

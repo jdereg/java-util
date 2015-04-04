@@ -66,14 +66,6 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             startObject();
             writeObjectKeyValue("ncube", name, true);
             writeObjectKeyValue("sha1", ncube.sha1(), true);
-            if (StringUtilities.hasContent(ncube.getHeadSha1()))
-            {
-                writeObjectKeyValue("headSha1", ncube.getHeadSha1(), true);
-            }
-            if (ncube.isChanged())
-            {
-                writeObjectKeyValue("changed", true, true);
-            }
             Object defCellValue = ncube.getDefaultCellValue();
 
             if (defCellValue != null)

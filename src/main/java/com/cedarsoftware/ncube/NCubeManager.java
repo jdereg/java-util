@@ -114,7 +114,7 @@ public class NCubeManager
             for (Object value : getCacheForApp(appId).values())
             {
                 NCube cube = (NCube) value;
-                names.add(cube.name);
+                names.add(cube.getName());
             }
         }
         return new CaseInsensitiveSet<>(names);
@@ -171,7 +171,7 @@ public class NCubeManager
             NCubeInfoDto dto = (NCubeInfoDto) value;
             NCube cube = getPersister().loadCube(dto.getApplicationID(), dto.name);
             applyAdvices(cube.getApplicationID(), cube);
-            String cubeName = cube.name.toLowerCase();
+            String cubeName = cube.getName().toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
             {   // Allow cubes to not be cached by specified 'cache':false as a cube meta-property.
                 getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
@@ -289,7 +289,7 @@ public class NCubeManager
         validateAppId(appId);
         validateCube(ncube);
 
-        String cubeName = ncube.name.toLowerCase();
+        String cubeName = ncube.getName().toLowerCase();
 
         if (!cubeName.startsWith("tx."))
         {
@@ -855,8 +855,7 @@ public class NCubeManager
 
         appId.validateBranchIsNotHead();
 
-        final String cubeName = ncube.name;
-        ncube.setChanged(true);
+        final String cubeName = ncube.getName();
         getPersister().updateCube(appId, ncube, username);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(cubeName))
@@ -1212,7 +1211,6 @@ public class NCubeManager
         validateCube(ncube);
         validateAppId(appId);
         appId.validateBranchIsNotHead();
-        ncube.setChanged(true);
         getPersister().createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);

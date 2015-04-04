@@ -68,10 +68,8 @@ import java.util.regex.Matcher;
  */
 public class NCube<T>
 {
-    String name;
+    private String name;
     private String sha1;
-    private String headSha1;
-    private boolean changed;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
     final Map<Collection<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
@@ -1750,12 +1748,8 @@ public class NCube<T>
             ncube.metaProps.remove("cells");
             ncube.metaProps.remove("ruleMode");
             ncube.metaProps.remove("sha1");
-            ncube.metaProps.remove("headSha1");
-            ncube.metaProps.remove("changed");
             loadMetaProperties(ncube.metaProps);
 
-            ncube.headSha1 = (String) jsonNCube.get("headSha1");
-            ncube.changed = getBoolean(jsonNCube, "changed");
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
 
@@ -2186,13 +2180,6 @@ public class NCube<T>
     {
         sha1 = null;
     }
-
-    public String getHeadSha1()
-    {
-        return headSha1;
-    }
-
-    public boolean isChanged() { return changed; }
 
     /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
@@ -2713,13 +2700,8 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 
-    public void setChanged(boolean changed)
-    {
-        this.changed = changed;
-    }
-
-    public void setHeadSha1(String sha1)
-    {
-        headSha1 = sha1;
+    public void setName(String name) {
+        this.name = name;
+        clearSha1();
     }
 }

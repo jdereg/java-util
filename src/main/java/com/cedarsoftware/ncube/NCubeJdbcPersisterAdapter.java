@@ -101,6 +101,19 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public Object[] getChangedRecords(ApplicationID appId)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.getChangedRecords(c, appId);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)
     {
         Connection c = connectionProvider.getConnection();

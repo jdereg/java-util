@@ -520,13 +520,6 @@ public class NCubeManager
     }
 
     /**
-     * Validate the passed in testData
-     */
-    public static void validateTestData(String testData)
-    {
-    }
-
-    /**
      * See if the given n-cube exists for the given ApplicationID.  This
      * checks the persistent storage.
      * @return true if the n-cube exists, false otherwise.
@@ -615,7 +608,7 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] branchList = getPersister().getCubeRecords(appId, null, false);
+        Object[] branchList = getPersister().getChangedRecords(appId);
         Object[] headList = getPersister().getCubeRecords(headAppId, null, false);
         List<NCubeInfoDto> list = new ArrayList<>();
 
@@ -629,10 +622,6 @@ public class NCubeManager
         for (Object dto : branchList)
         {
             NCubeInfoDto info = (NCubeInfoDto)dto;
-
-            if (!info.isChanged()) {
-                continue;
-            }
 
             long revision = Long.parseLong(info.revision);
             NCubeInfoDto head = headMap.get(info.name);
@@ -693,7 +682,7 @@ public class NCubeManager
             }
         }
 
-        Object[] cubes = list.toArray()  ;
+        Object[] cubes = list.toArray();
         cacheCubes(appId, cubes);
         return cubes;
     }
@@ -729,15 +718,6 @@ public class NCubeManager
         validateAppId(appId);
         Object[] cubes = getPersister().getDeletedCubeRecords(appId, pattern);
         return cubes;
-    }
-
-    /**
-     * A method to clean up all cubes in between the original pulled over from the branch and the latest.
-     * @param appId
-     */
-    public static void cleanUp(ApplicationID appId)
-    {
-
     }
 
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
@@ -927,7 +907,6 @@ public class NCubeManager
                         //  only add if not deleted.
                         if (revision >= 0)
                         {
-                            info.changeType = ChangeType.CREATED.toString();
                             dtos.add(info);
                         }
                     }

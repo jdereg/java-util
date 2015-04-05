@@ -281,6 +281,17 @@ public class NCube<T>
     }
 
     /**
+     * This should only be called from NCubeManager when loading the cube from a database
+     * It is mainly to prevent an unnecessary sha1 calculation after being loaded from a
+     * db that already knows the sha1.
+     * @param sha1
+     */
+    void setSha1(String sha1)
+    {
+        this.sha1 = sha1;
+    }
+
+    /**
      * @return ApplicationID for this n-cube.  This contains the app name, version, etc. that this
      * n-cube is part of.
      */

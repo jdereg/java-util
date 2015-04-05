@@ -57,7 +57,7 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, true, true, true, false);
+            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, false, true, true, true, false);
             fail();
         }
         catch (Exception e)
@@ -694,6 +694,22 @@ class TestNCubeJdbcPersister
         try
         {
             new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null, true)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+        }
+    }
+
+    @Test
+    void testGetChangedRecordsWithSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getChangedRecords(c, defaultSnapshotApp)
             fail()
         }
         catch (RuntimeException e)

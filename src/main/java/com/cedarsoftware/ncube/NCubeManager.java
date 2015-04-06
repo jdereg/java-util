@@ -877,7 +877,7 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] headInfo = getPersister().getCubeRecords(headAppId, "*", false);
+        Object[] headInfo = getPersister().getCubeRecords(headAppId, null, false);
 
         //  build map of head objects for reference.
         for (Object cubeInfo : headInfo)
@@ -972,8 +972,8 @@ public class NCubeManager
         appId.validateStatusIsNotRelease();
 
         ApplicationID headAppId = appId.asHead();
-        Object[] records = getCubeRecordsFromDatabase(appId, "*", false);
-        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, "*", false);
+        Object[] records = getCubeRecordsFromDatabase(appId, null, false);
+        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, null, false);
 
         //  build map of head objects for reference.
         Map<String, NCubeInfoDto> recordMap = new LinkedHashMap<>();

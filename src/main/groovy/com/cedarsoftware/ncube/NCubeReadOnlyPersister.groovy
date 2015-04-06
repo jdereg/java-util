@@ -27,6 +27,7 @@ interface NCubeReadOnlyPersister
 {
     NCube loadCube(ApplicationID appId, String cubeName)
     NCube loadCube(ApplicationID appId, String cubeName, Integer revision)
+    NCube loadCube(long id)
     Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
     Object[] getChangedRecords(ApplicationID appId)
     Object[] getAppNames(String tenant, String status, String branch)

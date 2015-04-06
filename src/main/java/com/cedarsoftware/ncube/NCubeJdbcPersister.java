@@ -285,6 +285,15 @@ public class NCubeJdbcPersister
         return s;
     }
 
+    PreparedStatement createSelectSingleCubeStatement(Connection c, long id) throws SQLException
+    {
+        String sql = "SELECT n_cube_nm, tenant_cd, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, changed, sha1, head_sha1 FROM n_cube where n_cube_id = ?";
+
+        PreparedStatement s = c.prepareStatement(sql);
+        s.setLong(1, id);
+        return s;
+    }
+
     PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
     {
         String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, changed, sha1, head_sha1 FROM n_cube " +
@@ -520,13 +529,6 @@ public class NCubeJdbcPersister
         throw new IllegalArgumentException("Unable to load cube: " + appId + ", " + cubeName + " from database");
     }
 
-    private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException {
-        NCube ncube = NCube.createCubeFromBytes(rs.getBytes(CUBE_VALUE_BIN));
-        ncube.setSha1(rs.getString("sha1"));
-        ncube.setApplicationID(appId);
-        return ncube;
-    }
-
     public NCube loadCube(Connection c, ApplicationID appId, String cubeName, Integer revision)
     {
         try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, revision))
@@ -548,6 +550,44 @@ public class NCubeJdbcPersister
 
         throw new IllegalArgumentException("Unable to load cube revision: " + appId + ", " + cubeName + ", " + revision + " from database");
     }
+
+    public NCube loadCube(Connection c, long id)
+    {
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, id))
+        {
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    String tenant = rs.getString("tenant_cd");
+                    String status = rs.getString("status_cd");
+                    String app = rs.getString("app_cd");
+                    String version = rs.getString("version_no_cd");
+                    String branch = rs.getString("branch_id");
+
+                    ApplicationID appId = new ApplicationID(tenant.trim(), app, version, status, branch);
+
+                    return buildCube(appId, rs);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to load cube with id: " + id + " from database";
+            LOG.error(s, e);
+            throw new IllegalStateException(s, e);
+        }
+
+        throw new IllegalArgumentException("Unable to find cube with id: " + id + " from database");
+    }
+
+    private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException {
+        NCube ncube = NCube.createCubeFromBytes(rs.getBytes(CUBE_VALUE_BIN));
+        ncube.setSha1(rs.getString("sha1"));
+        ncube.setApplicationID(appId);
+        return ncube;
+    }
+
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {

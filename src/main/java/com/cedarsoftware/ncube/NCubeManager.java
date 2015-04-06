@@ -169,7 +169,7 @@ public class NCubeManager
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
             NCubeInfoDto dto = (NCubeInfoDto) value;
-            NCube cube = getPersister().loadCube(dto.getApplicationID(), dto.name);
+            NCube cube = getPersister().loadCube(Long.parseLong(dto.id));
             applyAdvices(cube.getApplicationID(), cube);
             String cubeName = cube.getName().toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
@@ -1185,8 +1185,7 @@ public class NCubeManager
         return getPersister().getNotes(appId, cubeName);
     }
 
-    public static void createCube(ApplicationID appId, NCube ncube, String username)
-    {
+    public static void createCube(ApplicationID appId, NCube ncube, String username) {
         validateCube(ncube);
         validateAppId(appId);
         appId.validateBranchIsNotHead();

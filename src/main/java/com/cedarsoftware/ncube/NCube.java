@@ -2729,7 +2729,7 @@ public class NCube<T>
                     jsonBytes = IOUtilities.inputStreamToBytes(gzipStream);
                 }
             }
-            catch (Exception e)
+            catch (IOException e)
             {
                 throw new RuntimeException("Error unzipping cube", e);
             }

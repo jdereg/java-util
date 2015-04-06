@@ -62,8 +62,8 @@ public class NCubeJdbcPersister
     {
         try
         {
-            byte[] cubeData = StringUtilities.getBytes(ncube.toFormattedJson(), "UTF-8");
-            if (!insertCube(c, appId, ncube.getName(), rev, cubeData, null, "Cube created", true, ncube.sha1(), null, username))
+            byte[] jsonBytes = ncube.getBytesFromCube();
+            if (!insertCube(c, appId, ncube.getName(), rev, jsonBytes, null, "Cube created", true, ncube.sha1(), null, username))
             {
                 throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId);
             }
@@ -175,9 +175,8 @@ public class NCubeJdbcPersister
                     //TODO:  This code may be necessary for supporting Ken Sayer's loading from files on disk.
 //                    String headSha1 = getHeadSha1(rs.getBytes("cube_value_bin"));
 //                    cube.setHeadSha1(headSha1);
-                    byte[] cubeData = StringUtilities.getBytes(cube.toFormattedJson(), "UTF-8");
+                    byte[] cubeData = cube.getBytesFromCube();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
-                    byte[] notes = rs.getBytes(NOTES_BIN);
                     String headSha1 = rs.getString("head_sha1");
 
                     if (!insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, username))
@@ -522,9 +521,7 @@ public class NCubeJdbcPersister
     }
 
     private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException {
-        byte[] jsonBytes = rs.getBytes("cube_value_bin");
-        String json = new String(jsonBytes, "UTF-8");
-        NCube ncube = NCubeManager.ncubeFromJson(json);
+        NCube ncube = NCube.createCubeFromBytes(rs.getBytes(CUBE_VALUE_BIN));
         ncube.setSha1(rs.getString("sha1"));
         ncube.setApplicationID(appId);
         return ncube;
@@ -1133,11 +1130,10 @@ public class NCubeJdbcPersister
             // If names are different we need to recalculate the sha-1
             if (changed)
             {
-                String json = StringUtilities.createString(jsonBytes, "UTF-8");
-                NCube ncube = NCubeManager.ncubeFromJson(json);
+                NCube ncube = NCube.createCubeFromBytes(jsonBytes);
                 ncube.setName(newName);
                 ncube.setApplicationID(newAppId);
-                jsonBytes = StringUtilities.getBytes(ncube.toFormattedJson(), "UTF-8");
+                jsonBytes = ncube.getBytesFromCube();
                 sha1 = ncube.sha1();
             }
 
@@ -1162,7 +1158,7 @@ public class NCubeJdbcPersister
         }
     }
 
-//    public int cleanUp(Connection c, ApplicationID appId)
+    //    public int cleanUp(Connection c, ApplicationID appId)
 //    {
 //        DELETE FROM posts WHERE id IN (
 //            SELECT * FROM (
@@ -1251,12 +1247,11 @@ public class NCubeJdbcPersister
                 throw new IllegalArgumentException("Unable to rename cube, a cube already exists with that name.  appId:  " + appId + ", name: " + newName);
             }
 
-            String json = StringUtilities.createString(oldBytes, "UTF-8");
-            NCube ncube = NCubeManager.ncubeFromJson(json);
+            NCube ncube = NCube.createCubeFromBytes(oldBytes);
             ncube.setName(newName);
 
             String notes = "Cube renamed:  " + oldName + " -> " + newName;
-            byte[] cubeData = StringUtilities.getBytes(ncube.toFormattedJson(), "UTF-8");
+            byte[] cubeData = ncube.getBytesFromCube();
 
             if (!insertCube(c, appId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, cubeData, oldTestData, notes, true, ncube.sha1(), newHeadSha1, username))
             {

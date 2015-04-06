@@ -10,6 +10,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
@@ -18,6 +19,9 @@ import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -43,6 +47,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Implements an n-cube.  This is a hyper (n-dimensional) cube
@@ -2710,6 +2716,49 @@ public class NCube<T>
         }
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
+
+    public static NCube createCubeFromBytes(byte[] jsonBytes)
+    {
+        if ((jsonBytes[0] == (byte)0x1f) && (jsonBytes[1] == (byte)0x8b))
+        {
+            //unzip on read of string
+            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(jsonBytes))
+            {
+                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 8192))
+                {
+                    jsonBytes = IOUtilities.inputStreamToBytes(gzipStream);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException("Error unzipping cube", e);
+            }
+        }
+        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+        return NCubeManager.ncubeFromJson(json);
+    }
+
+    public byte[] getBytesFromCube()
+    {
+        byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
+
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(jsonBytes.length))
+        {
+            try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream))
+            {
+                gzipStream.write(jsonBytes);
+                gzipStream.flush();
+            }
+            byteStream.close();
+            return byteStream.toByteArray();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Error zipping cube.", e);
+        }
+    }
+
+
 
     public void setName(String name) {
         this.name = name;

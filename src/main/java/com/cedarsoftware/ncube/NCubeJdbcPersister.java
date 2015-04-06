@@ -342,16 +342,18 @@ public class NCubeJdbcPersister
         }
 
         String testData = "";
-        if (includeTests) {
+        if (includeTests)
+        {
             testData = ", n.test_data_bin";
         }
 
         String cubeData = "";
-        if (includeCube) {
+        if (includeCube)
+        {
             cubeData = ", n.cube_value_bin";
         }
 
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.changed, n.sha1, n.head_sha1, n.cube_value_bin" +
+        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.changed, n.sha1, n.head_sha1" +
                 testData +
                 cubeData +
                 " FROM n_cube n, " +
@@ -366,7 +368,8 @@ public class NCubeJdbcPersister
                 revisionCondition +
                 changedCondition;
 
-        if (StringUtilities.hasContent(pattern)) {
+        if (StringUtilities.hasContent(pattern))
+        {
             sql += " AND m.n_cube_nm like ?";
         }
 

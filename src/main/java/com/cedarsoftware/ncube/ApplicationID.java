@@ -174,12 +174,13 @@ public class ApplicationID
 
     /**
      * Creates a new ApplicationID with a status of release using all the same parameters of
-     * this ApplicationID.  If the current appliationID is already RELEASE just return this.
+     * this ApplicationID, but forcing the branch to HEAD (release versions can only exit
+     * on HEAD).  If the current appliationID is already RELEASE just return this.
      * @return a new ApplicationId that is in RELEASE mode.
      */
     public ApplicationID asRelease()
     {
-        if (ReleaseStatus.RELEASE.name().equals(status))
+        if (ReleaseStatus.RELEASE.name().equals(status) && HEAD.equals(branch))
         {
             return this;
         }
@@ -188,9 +189,9 @@ public class ApplicationID
     }
 
     /**
-     * Creates a new ApplicationID with a status of release using all the same parameters of
-     * this ApplicationID.  If the current appliationID is already RELEASE just return this.
-     * @return a new ApplicationId that is in RELEASE mode.
+     * Creates a new ApplicationID with a status of SNAPSHOT using all the same parameters of
+     * this ApplicationID.  If the current ApplicationID is already SNAPSHOT just return this.
+     * @return a new ApplicationId that is in SNAPSHOT mode.
      */
     public ApplicationID asSnapshot()
     {
@@ -199,7 +200,7 @@ public class ApplicationID
             return this;
         }
 
-        return new ApplicationID(tenant, app, version, ReleaseStatus.SNAPSHOT.name(), HEAD);
+        return new ApplicationID(tenant, app, version, ReleaseStatus.SNAPSHOT.name(), branch);
     }
 
     /**

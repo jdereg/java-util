@@ -49,7 +49,9 @@ class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
                     "notes_bin varbinary(999999), " +
                     "revision_number bigint DEFAULT '0' NOT NULL, " +
                     "branch_id VARCHAR(80) DEFAULT 'HEAD' NOT NULL, " +
-                    "PRIMARY KEY (n_cube_id), " +
+                    "sha1 varchar(40) DEFAULT NULL, " +
+                    "head_sha1 varchar(40) DEFAULT NULL, " +
+                    "changed int DEFAULT NULL, " +
                     "UNIQUE (n_cube_nm, tenant_cd, app_cd, version_no_cd, branch_id, revision_number), " +
                     ");"
             )

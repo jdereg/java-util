@@ -10,6 +10,7 @@ import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.MapUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
@@ -18,6 +19,9 @@ import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -43,6 +47,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Implements an n-cube.  This is a hyper (n-dimensional) cube
@@ -68,10 +74,8 @@ import java.util.regex.Matcher;
  */
 public class NCube<T>
 {
-    String name;
+    private String name;
     private String sha1;
-    private String headSha1;
-    private boolean changed;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
     final Map<Collection<Column>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
@@ -280,6 +284,17 @@ public class NCube<T>
     public void setApplicationID(ApplicationID appId)
     {
         this.appId = appId;
+    }
+
+    /**
+     * This should only be called from NCubeManager when loading the cube from a database
+     * It is mainly to prevent an unnecessary sha1 calculation after being loaded from a
+     * db that already knows the sha1.
+     * @param sha1
+     */
+    void setSha1(String sha1)
+    {
+        this.sha1 = sha1;
     }
 
     /**
@@ -1750,12 +1765,8 @@ public class NCube<T>
             ncube.metaProps.remove("cells");
             ncube.metaProps.remove("ruleMode");
             ncube.metaProps.remove("sha1");
-            ncube.metaProps.remove("headSha1");
-            ncube.metaProps.remove("changed");
             loadMetaProperties(ncube.metaProps);
 
-            ncube.headSha1 = (String) jsonNCube.get("headSha1");
-            ncube.changed = getBoolean(jsonNCube, "changed");
             String defType = (String) jsonNCube.get("defaultCellValueType");
             ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
 
@@ -2186,13 +2197,6 @@ public class NCube<T>
     {
         sha1 = null;
     }
-
-    public String getHeadSha1()
-    {
-        return headSha1;
-    }
-
-    public boolean isChanged() { return changed; }
 
     /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
@@ -2713,13 +2717,51 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 
-    public void setChanged(boolean changed)
+    public static NCube createCubeFromBytes(byte[] jsonBytes)
     {
-        this.changed = changed;
+        if ((jsonBytes[0] == (byte)0x1f) && (jsonBytes[1] == (byte)0x8b))
+        {
+            //unzip on read of string
+            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(jsonBytes))
+            {
+                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 8192))
+                {
+                    jsonBytes = IOUtilities.inputStreamToBytes(gzipStream);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException("Error unzipping cube", e);
+            }
+        }
+        String json = StringUtilities.createString(jsonBytes, "UTF-8");
+        return NCubeManager.ncubeFromJson(json);
     }
 
-    public void setHeadSha1(String sha1)
+    public byte[] getBytesFromCube()
     {
-        headSha1 = sha1;
+        byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
+
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(jsonBytes.length))
+        {
+            try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream))
+            {
+                gzipStream.write(jsonBytes);
+                gzipStream.flush();
+            }
+            byteStream.close();
+            return byteStream.toByteArray();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Error zipping cube.", e);
+        }
+    }
+
+
+
+    public void setName(String name) {
+        this.name = name;
+        clearSha1();
     }
 }

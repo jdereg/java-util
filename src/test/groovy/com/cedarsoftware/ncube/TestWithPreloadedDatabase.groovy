@@ -263,15 +263,21 @@ abstract class TestWithPreloadedDatabase
         def cube1Sha1 = NCubeManager.getCube(head, "TestBranch").sha1()
         def cube2Sha1 = NCubeManager.getCube(head, "TestAge").sha1()
 
-        assertNull(NCubeManager.getCube(head, "TestBranch").getHeadSha1())
-        assertNull(NCubeManager.getCube(head, "TestAge").getHeadSha1())
+        Object[] objects = NCubeManager.getCubeRecordsFromDatabase(head, "*");
+        for (NCubeInfoDto dto : objects) {
+            assertNull(dto.headSha1);
+        }
 
         assertEquals(2, NCubeManager.createBranch(branch1))
 
         assertEquals(cube1Sha1, NCubeManager.getCube(branch1, "TestBranch").sha1())
-        assertEquals(cube1Sha1, NCubeManager.getCube(branch1, "TestBranch").getHeadSha1())
         assertEquals(cube2Sha1, NCubeManager.getCube(branch1, "TestAge").sha1())
-        assertEquals(cube2Sha1, NCubeManager.getCube(branch1, "TestAge").getHeadSha1())
+
+        objects = NCubeManager.getCubeRecordsFromDatabase(branch1, "*");
+        for (NCubeInfoDto dto : objects) {
+            assertNotNull(dto.headSha1);
+        }
+
 
         testValuesOnBranch(head)
         testValuesOnBranch(branch1)

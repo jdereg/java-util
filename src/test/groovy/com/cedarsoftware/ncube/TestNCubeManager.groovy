@@ -1021,6 +1021,7 @@ class TestNCubeManager
         {
             // This API is now package friendly and only to be used by tests or NCubeManager implementation work.
             NCubeInfoDto dto = new NCubeInfoDto()
+            dto.id = '0'
             dto.name = 'does_not_exist'
             dto.app = 'NONE'
             dto.tenant = 'NONE'
@@ -1033,7 +1034,9 @@ class TestNCubeManager
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.toLowerCase().contains('unable to load'))
+            assertTrue(e.message.toLowerCase().contains('unable'))
+            assertTrue(e.message.toLowerCase().contains('find'))
+            assertTrue(e.message.toLowerCase().contains('cube'))
         }
     }
 

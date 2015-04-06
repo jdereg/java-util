@@ -12,6 +12,7 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import groovy.util.XmlParser;
 import ncube.grv.method.NCubeGroovyController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -113,7 +114,7 @@ public class NCubeManager
             for (Object value : getCacheForApp(appId).values())
             {
                 NCube cube = (NCube) value;
-                names.add(cube.name);
+                names.add(cube.getName());
             }
         }
         return new CaseInsensitiveSet<>(names);
@@ -168,9 +169,9 @@ public class NCubeManager
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
             NCubeInfoDto dto = (NCubeInfoDto) value;
-            NCube cube = getPersister().loadCube(dto.getApplicationID(), dto.name);
+            NCube cube = getPersister().loadCube(Long.parseLong(dto.id));
             applyAdvices(cube.getApplicationID(), cube);
-            String cubeName = cube.name.toLowerCase();
+            String cubeName = cube.getName().toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
             {   // Allow cubes to not be cached by specified 'cache':false as a cube meta-property.
                 getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
@@ -219,6 +220,7 @@ public class NCubeManager
         Object urlCpLoader = cpCube.getCell(input);
         if (urlCpLoader instanceof List)
         {
+            XmlParser foo;
             synchronized(appId.cacheKey().intern())
             {
                 urlCpLoader = cpCube.getCell(input);
@@ -287,7 +289,7 @@ public class NCubeManager
         validateAppId(appId);
         validateCube(ncube);
 
-        String cubeName = ncube.name.toLowerCase();
+        String cubeName = ncube.getName().toLowerCase();
 
         if (!cubeName.startsWith("tx."))
         {
@@ -518,13 +520,6 @@ public class NCubeManager
     }
 
     /**
-     * Validate the passed in testData
-     */
-    public static void validateTestData(String testData)
-    {
-    }
-
-    /**
      * See if the given n-cube exists for the given ApplicationID.  This
      * checks the persistent storage.
      * @return true if the n-cube exists, false otherwise.
@@ -613,7 +608,7 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] branchList = getPersister().getCubeRecords(appId, null, false);
+        Object[] branchList = getPersister().getChangedRecords(appId);
         Object[] headList = getPersister().getCubeRecords(headAppId, null, false);
         List<NCubeInfoDto> list = new ArrayList<>();
 
@@ -627,10 +622,6 @@ public class NCubeManager
         for (Object dto : branchList)
         {
             NCubeInfoDto info = (NCubeInfoDto)dto;
-
-            if (!info.isChanged()) {
-                continue;
-            }
 
             long revision = Long.parseLong(info.revision);
             NCubeInfoDto head = headMap.get(info.name);
@@ -691,7 +682,7 @@ public class NCubeManager
             }
         }
 
-        Object[] cubes = list.toArray()  ;
+        Object[] cubes = list.toArray();
         cacheCubes(appId, cubes);
         return cubes;
     }
@@ -727,15 +718,6 @@ public class NCubeManager
         validateAppId(appId);
         Object[] cubes = getPersister().getDeletedCubeRecords(appId, pattern);
         return cubes;
-    }
-
-    /**
-     * A method to clean up all cubes in between the original pulled over from the branch and the latest.
-     * @param appId
-     */
-    public static void cleanUp(ApplicationID appId)
-    {
-
     }
 
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
@@ -853,8 +835,7 @@ public class NCubeManager
 
         appId.validateBranchIsNotHead();
 
-        final String cubeName = ncube.name;
-        ncube.setChanged(true);
+        final String cubeName = ncube.getName();
         getPersister().updateCube(appId, ncube, username);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(cubeName))
@@ -926,7 +907,6 @@ public class NCubeManager
                         //  only add if not deleted.
                         if (revision >= 0)
                         {
-                            info.changeType = ChangeType.CREATED.toString();
                             dtos.add(info);
                         }
                     }
@@ -1006,7 +986,6 @@ public class NCubeManager
 
         List<NCubeInfoDto> adds = new ArrayList<>(records.length);
         List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
-        List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
         Map<String, String> conflicts = new LinkedHashMap<>();
 
@@ -1045,7 +1024,7 @@ public class NCubeManager
                 {
                     if (!StringUtilities.equalsIgnoreCase(info.headSha1, info.sha1) || infoRev < 0 != headRev < 0)
                     {
-                        updates.add(head);
+                        adds.add(head);
                     }
                 }
                 else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
@@ -1075,7 +1054,7 @@ public class NCubeManager
             throw new BranchMergeException("Conflicts committing branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, adds, updates, deletes);
+        Object[] ret = getPersister().updateBranch(appId, adds, deletes);
 
         clearCacheForBranches(appId);
         return ret;
@@ -1206,12 +1185,10 @@ public class NCubeManager
         return getPersister().getNotes(appId, cubeName);
     }
 
-    public static void createCube(ApplicationID appId, NCube ncube, String username)
-    {
+    public static void createCube(ApplicationID appId, NCube ncube, String username) {
         validateCube(ncube);
         validateAppId(appId);
         appId.validateBranchIsNotHead();
-        ncube.setChanged(true);
         getPersister().createCube(appId, ncube, username);
         ncube.setApplicationID(appId);
         addCube(appId, ncube);

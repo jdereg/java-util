@@ -272,13 +272,62 @@ class TestApplicationID
 
         ApplicationID snapshotId = releaseId.asSnapshot()
 
+        assertNotSame(releaseId, snapshotId)
         assertEquals releaseId.tenant, snapshotId.tenant
         assertEquals releaseId.app, snapshotId.app
         assertEquals releaseId.version, snapshotId.version
         assertEquals ReleaseStatus.SNAPSHOT.name(), snapshotId.status
+        assertEquals releaseId.branch, snapshotId.branch
 
         ApplicationID newSnapshotId = snapshotId.asSnapshot();
         assertSame(snapshotId, newSnapshotId);
+    }
+
+    @Test
+    void teatAsRelease()
+    {
+        ApplicationID snapshotId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.TEST_BRANCH)
+
+        ApplicationID releaseId = snapshotId.asRelease()
+
+        assertNotSame(releaseId, snapshotId)
+        assertEquals releaseId.tenant, snapshotId.tenant
+        assertEquals releaseId.app, snapshotId.app
+        assertEquals releaseId.version, snapshotId.version
+        assertEquals ReleaseStatus.RELEASE.name(), releaseId.status
+        assertEquals ApplicationID.HEAD, releaseId.branch
+
+        snapshotId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
+
+        releaseId = snapshotId.asRelease()
+
+        assertNotSame(releaseId, snapshotId)
+        assertEquals releaseId.tenant, snapshotId.tenant
+        assertEquals releaseId.app, snapshotId.app
+        assertEquals releaseId.version, snapshotId.version
+        assertEquals ReleaseStatus.RELEASE.name(), releaseId.status
+        assertEquals ApplicationID.HEAD, releaseId.branch
+
+
+        ApplicationID newReleaseId = releaseId.asRelease();
+        assertSame(releaseId, newReleaseId);
+    }
+
+    @Test
+    void testAsHead()
+    {
+        ApplicationID snapshotId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.TEST_BRANCH)
+        ApplicationID headId = snapshotId.asHead();
+        assertNotSame(headId, snapshotId);
+
+        assertEquals headId.tenant, snapshotId.tenant
+        assertEquals headId.app, snapshotId.app
+        assertEquals headId.version, snapshotId.version
+        assertEquals headId.status, snapshotId.status
+        assertEquals ApplicationID.HEAD, headId.branch
+
+        ApplicationID newHeadId = headId.asHead();
+        assertSame(headId, newHeadId);
     }
 
     @Test

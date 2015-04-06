@@ -57,7 +57,7 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, true, true, false);
+            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, false, true, true, true, false);
             fail();
         }
         catch (Exception e)
@@ -149,12 +149,16 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().doCubesExist(c, defaultSnapshotApp)
+            new NCubeJdbcPersister().doCubesExist(c, defaultSnapshotApp, true)
             fail()
         }
         catch (RuntimeException e)
         {
             assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.contains("rror"))
+            assertTrue(e.message.contains("check"))
+            assertTrue(e.message.contains("exist"))
+            assertTrue(e.message.contains("cube"))
         }
     }
 
@@ -267,7 +271,8 @@ class TestNCubeJdbcPersister
         {
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.contains("rror"))
-            assertTrue(e.message.contains("release"))
+            assertTrue(e.message.contains("check"))
+            assertTrue(e.message.contains("exis"))
             assertTrue(e.message.contains("cube"))
         }
     }
@@ -627,32 +632,16 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testReplaceHeadSha1ThatThrowsSQLException() throws Exception
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().replaceHeadSha1(c, defaultSnapshotApp, "foo", "FFFFFFF", 1)
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.startsWith("Unable to replace"))
-        }
-    }
-
-    @Test
     void testCopyBranchCubeToHeadWithInvalidRevision() throws Exception
     {
         try
         {
-            new NCubeJdbcPersister().copyBetweenBranches(null, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, null)
+            new NCubeJdbcPersister().commitCube(null, null, defaultSnapshotApp.asHead(), USER_ID)
             fail()
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.startsWith("Revision number cannot be null"))
+            assertTrue(e.message.contains("cannot be null"))
         }
     }
 
@@ -662,13 +651,14 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().copyBetweenBranches(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
+            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID)
             fail()
         }
         catch (IllegalStateException e)
         {
             assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.startsWith("Unable to copy cube"))
+            assertTrue(e.message.contains("Unable"))
+            assertTrue(e.message.contains("commit"))
         }
     }
 
@@ -686,39 +676,16 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().copyBetweenBranches(c, defaultSnapshotApp, defaultSnapshotApp.asHead(), 'foo', USER_ID, 1)
+            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID)
             fail()
         }
         catch (IllegalStateException e)
         {
-            assertTrue(e.message.startsWith("Unable to copy cube"))
+            assertTrue(e.message.contains("Unable to commit"))
         }
     }
 
 
-
-    @Test
-    void testReplaceHeadSha1ThatDoesNotUpdateCorrectly() throws Exception
-    {
-        Connection c = mock(Connection.class)
-        PreparedStatement ps = mock(PreparedStatement.class)
-        ResultSet rs = mock(ResultSet.class)
-        when(c.prepareStatement(anyString())).thenReturn(ps)
-        when(ps.executeQuery()).thenReturn(rs)
-        when(ps.executeUpdate()).thenReturn(0)
-        when(rs.next()).thenReturn(true)
-        when(rs.getLong(1)).thenReturn(5L)
-
-        try
-        {
-            new NCubeJdbcPersister().replaceHeadSha1(c, defaultSnapshotApp, "foo", "FFFFFFF", 1)
-            fail()
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.message.startsWith("error updating"))
-        }
-    }
 
     @Test
     void testGetNCubesWithSQLException() throws Exception
@@ -727,6 +694,22 @@ class TestNCubeJdbcPersister
         try
         {
             new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null, true)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+        }
+    }
+
+    @Test
+    void testGetChangedRecordsWithSqlException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().getChangedRecords(c, defaultSnapshotApp)
             fail()
         }
         catch (RuntimeException e)

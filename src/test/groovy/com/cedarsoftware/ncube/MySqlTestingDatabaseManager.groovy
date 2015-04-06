@@ -54,6 +54,9 @@ class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 //                    "  notes_bin longtext,\n" +
 //                    "  revision_number bigint(20) DEFAULT '1',\n" +
 //                    "  branch_id varchar(80) NOT NULL DEFAULT 'HEAD',\n" +
+//                    "  sha1 varchar(40) DEFAULT NULL,\n" +
+//                    "  head_sha1 varchar(40) DEFAULT NULL,\n" +
+//                    "  changed int DEFAULT NULL, " +
 //                    "  PRIMARY KEY (n_cube_id),\n" +
 //                    "  UNIQUE KEY n_cube_unique (n_cube_nm, tenant_cd, app_cd, version_no_cd, branch_id, revision_number),\n" +
 //                    "  KEY versionIdx (version_no_cd)\n" +

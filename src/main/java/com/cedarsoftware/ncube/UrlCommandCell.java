@@ -133,13 +133,13 @@ public abstract class UrlCommandCell implements CommandCell
         }
         catch (Exception e)
         {
-            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.name + ", app: " + ncube.getApplicationID(), e);
+            throw new IllegalArgumentException("Invalid URL:  " + url + ", ncube: " + ncube.getName() + ", app: " + ncube.getApplicationID(), e);
         }
 
         if (actualUrl == null)
         {
             throw new IllegalStateException("Unable to resolve URL, make sure appropriate resource urls are added to the sys.classpath cube, url: " +
-                    url + ", cube: " + ncube.name + ", app: " + ncube.getApplicationID());
+                    url + ", cube: " + ncube.getName() + ", app: " + ncube.getApplicationID());
         }
         return actualUrl;
     }

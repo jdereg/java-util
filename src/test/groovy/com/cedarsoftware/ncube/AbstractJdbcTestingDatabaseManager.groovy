@@ -3,7 +3,6 @@ package com.cedarsoftware.ncube
 import com.cedarsoftware.util.StringUtilities
 
 import java.sql.Connection
-import java.util.regex.Matcher
 
 /**
  * Created by kpartlow on 12/23/2014.
@@ -22,17 +21,8 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         Connection c = provider.connection;
         try
         {
-            String s = cube.toFormattedJson();
-            Matcher m = Regexes.sha1Pattern.matcher(s);
-            StringBuffer buffer = new StringBuffer();
-            if (m.find() && m.groupCount() > 0)
-            {
-                m.appendReplacement(buffer, "");
-            }
-            m.appendTail(buffer);
-
-            byte[] cubeData = StringUtilities.getBytes(buffer.toString(), "UTF-8");
-            persister.insertCube(c, appId, cube.name, 0L, cubeData, null, "Inserted without sha1-1", username)
+            byte[] cubeData = StringUtilities.getBytes(cube.toFormattedJson(), "UTF-8");
+            persister.insertCube(c, appId, cube.name, 0L, cubeData, null, "Inserted without sha1-1", false, null, null, username)
     }
         finally
         {

@@ -24,6 +24,7 @@ import java.util.Date;
  */
 public class NCubeInfoDto
 {
+    public String id;
 	public String tenant;
 	public String app;
 	public String version;

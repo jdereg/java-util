@@ -474,7 +474,7 @@ public class NCubeJdbcPersister
             while (rs.next())
             {
                 NCubeInfoDto dto = new NCubeInfoDto();
-                dto.id = rs.getLong("n_cube_id");
+                dto.id = Long.toString(rs.getLong("n_cube_id"));
                 dto.name = rs.getString("n_cube_nm");
                 dto.branch = appId.getBranch();
                 dto.tenant = appId.getTenant();
@@ -1491,7 +1491,7 @@ public class NCubeJdbcPersister
         for (NCubeInfoDto dto : dtos)
         {
             Long revision = Long.parseLong(dto.revision);
-            commitCube(c, dto.id, headAppId, username);
+            commitCube(c, Long.parseLong(dto.id), headAppId, username);
             changes.put(dto.name, dto.name);
         }
         return changes;

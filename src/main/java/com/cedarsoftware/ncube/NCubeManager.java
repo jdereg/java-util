@@ -169,7 +169,7 @@ public class NCubeManager
         else if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
             NCubeInfoDto dto = (NCubeInfoDto) value;
-            NCube cube = getPersister().loadCube(dto.getApplicationID(), dto.name);
+            NCube cube = getPersister().loadCube(Long.parseLong(dto.id));
             applyAdvices(cube.getApplicationID(), cube);
             String cubeName = cube.getName().toLowerCase();
             if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
@@ -877,7 +877,7 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] headInfo = getPersister().getCubeRecords(headAppId, "*", false);
+        Object[] headInfo = getPersister().getCubeRecords(headAppId, null, false);
 
         //  build map of head objects for reference.
         for (Object cubeInfo : headInfo)
@@ -972,8 +972,8 @@ public class NCubeManager
         appId.validateStatusIsNotRelease();
 
         ApplicationID headAppId = appId.asHead();
-        Object[] records = getCubeRecordsFromDatabase(appId, "*", false);
-        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, "*", false);
+        Object[] records = getCubeRecordsFromDatabase(appId, null, false);
+        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, null, false);
 
         //  build map of head objects for reference.
         Map<String, NCubeInfoDto> recordMap = new LinkedHashMap<>();
@@ -1185,8 +1185,7 @@ public class NCubeManager
         return getPersister().getNotes(appId, cubeName);
     }
 
-    public static void createCube(ApplicationID appId, NCube ncube, String username)
-    {
+    public static void createCube(ApplicationID appId, NCube ncube, String username) {
         validateCube(ncube);
         validateAppId(appId);
         appId.validateBranchIsNotHead();

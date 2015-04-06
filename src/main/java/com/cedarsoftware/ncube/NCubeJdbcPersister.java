@@ -1510,7 +1510,7 @@ public class NCubeJdbcPersister
 
     private static String convertPattern(String pattern)
     {
-        if (StringUtilities.isEmpty(pattern))
+        if (StringUtilities.isEmpty(pattern) || StringUtilities.equals("*", pattern))
         {
             return null;
         }

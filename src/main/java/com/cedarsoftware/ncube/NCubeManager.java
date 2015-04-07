@@ -1022,7 +1022,21 @@ public class NCubeManager
 
                 if (!info.isChanged())
                 {
-                    if (!StringUtilities.equalsIgnoreCase(info.headSha1, info.sha1) || infoRev < 0 != headRev < 0)
+                    if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
+                    {
+                        if (infoRev < 0 != headRev < 0)
+                        {
+                            if (headRev < 0)
+                            {
+                                deletes.add(head);
+                            }
+                            else
+                            {
+                                adds.add(head);
+                            }
+                        }
+                    }
+                    else
                     {
                         adds.add(head);
                     }

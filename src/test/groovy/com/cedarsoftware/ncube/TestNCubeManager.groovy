@@ -748,6 +748,7 @@ class TestNCubeManager
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.mistake'))
 
+
         assertTrue(NCubeManager.renameCube(customId, 'sys.mistake', 'sys.classpath', USER_ID))
         assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())

@@ -354,14 +354,18 @@ abstract class TestWithPreloadedDatabase
 
         //  create the branch (TestAge, TestBranch)
         assertEquals(2, NCubeManager.createBranch(branch1))
+        assertEquals(2, NCubeManager.createBranch(branch2))
 
         //  test values on branch
         testValuesOnBranch(branch1)
+        testValuesOnBranch(branch2)
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length)
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -387,17 +391,11 @@ abstract class TestWithPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
 
-        // commit the branch
-        cube = NCubeManager.getCube(branch1, "TestBranch")
-        assertEquals(2, cube.getCellMap().size())
-        assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
-        // check head hasn't changed.
-        cube = NCubeManager.getCube(head, "TestBranch")
-        assertEquals(3, cube.getCellMap().size())
-        assertEquals("GHI", cube.getCell([Code : 10.0]))
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        NCubeManager.commitBranch(branch1, dtos, USER_ID);
 
-        assertEquals(0, NCubeManager.updateBranch(branch1).length)
+        assertEquals(1, NCubeManager.updateBranch(branch2).length)
 
         // shouldn't have changed
         cube = NCubeManager.getCube(branch1, "TestBranch")

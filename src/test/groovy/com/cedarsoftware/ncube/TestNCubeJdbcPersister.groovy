@@ -1090,9 +1090,11 @@ class TestNCubeJdbcPersister
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(rs.next()).thenReturn(true)
+        when(rs.getDate(anyString())).thenReturn(new java.sql.Date(System.currentTimeMillis()));
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(0)
         when(ps.executeQuery()).thenReturn(rs)
+
         try
         {
             new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID)

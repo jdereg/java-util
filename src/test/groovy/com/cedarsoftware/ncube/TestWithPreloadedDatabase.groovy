@@ -395,7 +395,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         NCubeManager.commitBranch(branch1, dtos, USER_ID);
 
-        assertEquals(1, NCubeManager.updateBranch(branch2).length)
+        assertEquals(1, NCubeManager.updateBranch(branch2, USER_ID).length)
 
         // shouldn't have changed
         cube = NCubeManager.getCube(branch1, "TestBranch")

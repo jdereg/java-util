@@ -965,7 +965,7 @@ public class NCubeManager
         return ret;
     }
 
-    public static Object[] updateBranch(ApplicationID appId)
+    public static Object[] updateBranch(ApplicationID appId, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -1068,7 +1068,7 @@ public class NCubeManager
             throw new BranchMergeException("Conflicts committing branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, adds, deletes);
+        Object[] ret = getPersister().updateBranch(appId, adds, deletes, username);
 
         clearCacheForBranches(appId);
         return ret;

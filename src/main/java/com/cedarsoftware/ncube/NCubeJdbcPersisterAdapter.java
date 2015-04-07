@@ -376,12 +376,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
 
     }
 
-    public Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> deletes)
+    public Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> deletes, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateBranch(c, appId, adds, deletes);
+            return persister.updateBranch(c, appId, adds, deletes, username);
         }
         finally
         {

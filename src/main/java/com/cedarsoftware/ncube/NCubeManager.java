@@ -973,8 +973,7 @@ public class NCubeManager
             recordMap.put(info.name, info);
         }
 
-        List<NCubeInfoDto> adds = new ArrayList<>(records.length);
-        List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
+        List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
         Map<String, String> conflicts = new LinkedHashMap<>();
 
@@ -985,7 +984,7 @@ public class NCubeManager
 
             if (info == null)
             {
-                adds.add(head);
+                updates.add(head);
                 continue;
             }
 
@@ -1012,7 +1011,7 @@ public class NCubeManager
                     }
                     else
                     {
-                        adds.add(head);
+                        updates.add(head);
                     }
                 }
                 else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
@@ -1022,7 +1021,7 @@ public class NCubeManager
             }
             else  // doesn't exist in branch, but is on head.
             {
-                adds.add(head);
+                updates.add(head);
             }
         }
 
@@ -1031,7 +1030,7 @@ public class NCubeManager
             throw new BranchMergeException("Conflicts updating branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, adds, deletes, username);
+        Object[] ret = getPersister().updateBranch(appId, updates, username);
 
         clearCacheForBranches(appId);
         return ret;

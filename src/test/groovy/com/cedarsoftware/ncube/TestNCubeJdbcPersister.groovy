@@ -193,21 +193,6 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testLoadCubeWithRevisionWithSqlException() throws Exception
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().loadCube(c, defaultSnapshotApp, "foo", 1);
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-        }
-    }
-
-    @Test
     void testUpdateCubeWithSqlException() throws Exception
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
@@ -275,6 +260,63 @@ class TestNCubeJdbcPersister
             assertTrue(e.message.contains("exis"))
             assertTrue(e.message.contains("cube"))
         }
+    }
+
+    @Test
+    void testUpdateBranchCube() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().updateBranchCube(c, 0, defaultSnapshotApp, USER_ID)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.toLowerCase().contains("unable"))
+            assertTrue(e.message.contains("update cube"))
+        }
+    }
+
+    @Test
+    void testUpdateBranchThatFailsToUpdate() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs).thenReturn(rs)
+        when(ps.executeUpdate()).thenReturn(0);
+        when(rs.next()).thenReturn(true).thenReturn(true)
+        when(rs.getLong(1)).thenReturn(5L)
+        when(rs.getDate(anyString())).thenReturn(new java.sql.Date(System.currentTimeMillis()))
+
+        try
+        {
+            new NCubeJdbcPersister().updateBranchCube(c, 0, defaultSnapshotApp, USER_ID)
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("unable"))
+            assertTrue(e.message.contains("update cube"))
+        }
+    }
+
+    @Test
+    void testUpdateBranchThatIsNotFound() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs).thenReturn(rs)
+        when(rs.next()).thenReturn(false)
+        when(rs.getLong(1)).thenReturn(5L)
+        when(rs.getDate(anyString())).thenReturn(new java.sql.Date(System.currentTimeMillis()))
+
+        assertFalse(new NCubeJdbcPersister().updateBranchCube(c, 0, defaultSnapshotApp, USER_ID))
     }
 
     @Test
@@ -449,7 +491,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().loadCube(c, dto.getApplicationID(), dto.name)
+            new NCubeJdbcPersister().loadCube(c, 0)
             fail()
         }
         catch (RuntimeException e)
@@ -632,7 +674,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testCopyBranchCubeToHeadWithInvalidRevision() throws Exception
+    void testCommitCubeWithInvalidRevision() throws Exception
     {
         try
         {
@@ -646,7 +688,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testCopyBranchCubeToHeadThatThrowsSqlException() throws Exception
+    void testCommitCubeThatThrowsSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()
         try
@@ -663,7 +705,7 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testCopyBranchCubeToHeadThatDoesntUpdateCorrectly() throws Exception
+    void testCommitCubeThatDoesntUpdateCorrectly() throws Exception
     {
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
@@ -683,6 +725,46 @@ class TestNCubeJdbcPersister
         {
             assertTrue(e.message.contains("Unable to commit"))
         }
+    }
+
+    @Test
+    void testCommitCubeThatThrowsExceptionOnAdd() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(ps.executeUpdate()).thenReturn(1).thenReturn(0);
+        when(rs.next()).thenReturn(true)
+        when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
+
+        try
+        {
+            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID)
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("error"))
+            assertTrue(e.message.contains("updating"))
+            assertTrue(e.message.contains("not updated"))
+        }
+    }
+
+    @Test
+    void testCommitCubeThatDoesntExist() throws Exception
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(ps.executeUpdate()).thenReturn(1).thenReturn(0);
+        when(rs.next()).thenReturn(false)
+        when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
+
+        assertFalse(new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID))
     }
 
 

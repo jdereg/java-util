@@ -206,7 +206,7 @@ public class NCubeJdbcPersister
 
                     if (!insertCube(c, appId, cubeName, maxRevision, jsonBytes, testData, "Cube updated from HEAD", false, sha1, sha1, time, username))
                     {
-                        String s = "Unable to commit cube: " + cubeName + " to app:  " + appId;
+                        String s = "Unable to update cube: " + cubeName + " to app:  " + appId;
                         throw new IllegalStateException(s);
                     }
 
@@ -235,7 +235,7 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to commit cube: " + cubeId + " to app:  " + appId;
+            String s = "Unable to update cube: " + cubeId + " to app:  " + appId;
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }
@@ -379,22 +379,22 @@ public class NCubeJdbcPersister
         return s;
     }
 
-    PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
-    {
-        String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, changed, sha1, head_sha1 FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revision_number = ?";
-
-
-        PreparedStatement s = c.prepareStatement(sql);
-        s.setString(1, cubeName);
-        s.setString(2, appId.getApp());
-        s.setString(3, appId.getVersion());
-        s.setString(4, appId.getStatus());
-        s.setString(5, appId.getTenant());
-        s.setString(6, appId.getBranch());
-        s.setLong(7, revision);
-        return s;
-    }
+//    PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
+//    {
+//        String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, changed, sha1, head_sha1 FROM n_cube " +
+//                "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revision_number = ?";
+//
+//
+//        PreparedStatement s = c.prepareStatement(sql);
+//        s.setString(1, cubeName);
+//        s.setString(2, appId.getApp());
+//        s.setString(3, appId.getVersion());
+//        s.setString(4, appId.getStatus());
+//        s.setString(5, appId.getTenant());
+//        s.setString(6, appId.getBranch());
+//        s.setLong(7, revision);
+//        return s;
+//    }
 
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean changedOnly, boolean activeOnly, boolean deletedOnly, boolean includeCube, boolean includeTests) throws SQLException
     {
@@ -593,50 +593,6 @@ public class NCubeJdbcPersister
             }
         }
         return list.toArray();
-    }
-
-    public NCube loadCube(Connection c, ApplicationID appId, String cubeName)
-    {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName))
-        {
-            try (ResultSet rs = stmt.executeQuery())
-            {
-                if (rs.next())
-                {
-                    return buildCube(appId, rs);
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
-            LOG.error(s, e);
-            throw new IllegalStateException(s, e);
-        }
-
-        throw new IllegalArgumentException("Unable to load cube: " + appId + ", " + cubeName + " from database");
-    }
-
-    public NCube loadCube(Connection c, ApplicationID appId, String cubeName, Integer revision)
-    {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, revision))
-        {
-            try (ResultSet rs = stmt.executeQuery())
-            {
-                if (rs.next())
-                {
-                    return buildCube(appId, rs);
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
-            LOG.error(s, e);
-            throw new IllegalStateException(s, e);
-        }
-
-        throw new IllegalArgumentException("Unable to load cube revision: " + appId + ", " + cubeName + ", " + revision + " from database");
     }
 
     public NCube loadCube(Connection c, long id)

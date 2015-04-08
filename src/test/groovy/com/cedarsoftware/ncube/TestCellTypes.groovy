@@ -5,10 +5,7 @@ import com.cedarsoftware.ncube.proximity.Point2D
 import com.cedarsoftware.ncube.proximity.Point3D
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -41,6 +38,12 @@ class TestCellTypes
         {
             assertEquals 'Unsupported type java.lang.StringBuilder found in cells', e.message
         }
+    }
+
+    @Test
+    void testGetTypeOnClassLoader()
+    {
+        assertEquals("exp", CellTypes.getType(TestCellTypes.getClassLoader(), 'cells'))
     }
 
     @Test

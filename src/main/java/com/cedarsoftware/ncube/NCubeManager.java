@@ -149,17 +149,6 @@ public class NCubeManager
         return null;
     }
 
-    /**
-     * Fetch an n-cube by name from the given ApplicationID.  Returns the cube
-     * for this revision if it exists, otherwise an exception is thrown.
-     */
-    public static NCube getCubeRevision(ApplicationID appId, String name, Integer revision)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(name);
-        return getPersister().loadCube(appId, name, revision);
-    }
-
     static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)
@@ -634,14 +623,14 @@ public class NCubeManager
                     //  only add if not deleted.
                     if (revision >= 0)
                     {
-                        info.changeType = ChangeType.CREATED.toString();
+                        info.changeType = ChangeType.CREATED.getCode();
                         list.add(info);
                     }
                 }
                 else
                 {
                     // someone added this one to the head already
-                    info.changeType = ChangeType.CONFLICT.toString();
+                    info.changeType = ChangeType.CONFLICT.getCode();
                     list.add(info);
                 }
             }
@@ -658,11 +647,11 @@ public class NCubeManager
                         {
                             if (revision < 0)
                             {
-                                info.changeType = ChangeType.DELETED.toString();
+                                info.changeType = ChangeType.DELETED.getCode();
                             }
                             else
                             {
-                                info.changeType = ChangeType.RESTORED.toString();
+                                info.changeType = ChangeType.RESTORED.getCode();
                             }
 
                             list.add(info);
@@ -670,13 +659,13 @@ public class NCubeManager
                     }
                     else
                     {
-                        info.changeType = ChangeType.UPDATED.toString();
+                        info.changeType = ChangeType.UPDATED.getCode();
                         list.add(info);
                     }
                 }
                 else
                 {
-                    info.changeType = ChangeType.CONFLICT.toString();
+                    info.changeType = ChangeType.CONFLICT.getCode();
                     list.add(info);
                 }
             }
@@ -803,7 +792,7 @@ public class NCubeManager
         getPersister().duplicateCube(oldAppId, newAppId, oldName, newName, username);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(newName))
-        {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,
+        {   // If another cube is renamed into sys.classpath,
             // then the entire class loader must be dropped (and then lazily rebuilt).
             clearCache(newAppId);
         }
@@ -1013,11 +1002,11 @@ public class NCubeManager
                         {
                             if (headRev < 0)
                             {
-                                deletes.add(head);
+                                conflicts.put(info.name, "Cube was deleted in HEAD");
                             }
                             else
                             {
-                                adds.add(head);
+                                conflicts.put(info.name, "Cube was deleted in HEAD");
                             }
                         }
                     }
@@ -1030,17 +1019,6 @@ public class NCubeManager
                 {
                     conflicts.put(info.name, "Cube was changed in HEAD");
                 }
-                else if (infoRev < 0 != headRev < 0)
-                {
-                    if (headRev < 0)
-                    {
-                        deletes.add(head);
-                    }
-                    else
-                    {
-                        adds.add(head);
-                    }
-                }
             }
             else  // doesn't exist in branch, but is on head.
             {
@@ -1050,7 +1028,7 @@ public class NCubeManager
 
         if (!conflicts.isEmpty())
         {
-            throw new BranchMergeException("Conflicts committing branch", conflicts);
+            throw new BranchMergeException("Conflicts updating branch", conflicts);
         }
 
         Object[] ret = getPersister().updateBranch(appId, adds, deletes, username);

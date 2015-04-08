@@ -1635,7 +1635,6 @@ public class NCubeJdbcPersister
 
         for (NCubeInfoDto dto : dtos)
         {
-            Long revision = Long.parseLong(dto.revision);
             commitCube(c, Long.parseLong(dto.id), headAppId, username);
             changes.put(dto.name, dto.name);
         }
@@ -1665,7 +1664,6 @@ public class NCubeJdbcPersister
 
         for (NCubeInfoDto dto : adds)
         {
-            Long revision = Long.parseLong(dto.revision);
             updateBranchCube(c, Long.parseLong(dto.id), appId, username);
             changes.add(dto);
         }

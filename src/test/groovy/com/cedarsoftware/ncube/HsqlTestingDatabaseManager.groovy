@@ -52,7 +52,7 @@ class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
                     "sha1 varchar(40) DEFAULT NULL, " +
                     "head_sha1 varchar(40) DEFAULT NULL, " +
                     "changed int DEFAULT NULL, " +
-                    "UNIQUE (n_cube_nm, tenant_cd, app_cd, version_no_cd, branch_id, revision_number), " +
+                    "UNIQUE (n_cube_nm, tenant_cd, app_cd, version_no_cd, branch_id, revision_number) " +
                     ");"
             )
         }

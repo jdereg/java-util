@@ -1083,6 +1083,19 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testUpdateBranchCubeWithNull()
+    {
+        try
+        {
+            new NCubeJdbcPersister().updateBranchCube(null, null, null, null);
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains('cannot be null'));
+        }
+    }
+
+    @Test
     void testUpdateCubeWithWrongUpdateCount()
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)

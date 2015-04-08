@@ -22,7 +22,7 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         try
         {
             byte[] cubeData = StringUtilities.getBytes(cube.toFormattedJson(), "UTF-8");
-            persister.insertCube(c, appId, cube.name, 0L, cubeData, null, "Inserted without sha1-1", false, null, null, username)
+            persister.insertCube(c, appId, cube.name, 0L, cubeData, null, "Inserted without sha1-1", false, null, null, System.currentTimeMillis(), username)
     }
         finally
         {

@@ -748,7 +748,48 @@ class TestNCubeManager
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.mistake'))
 
+
         assertTrue(NCubeManager.renameCube(customId, 'sys.mistake', 'sys.classpath', USER_ID))
+        assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
+
+        testCube = NCubeManager.getCube(customId, 'sys.classpath')
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
+        assertEquals(1, NCubeManager.getUrlClassLoader(customId, [:]).URLs.length)
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get('sys.classpath'))
+    }
+
+    @Test
+    void testDuplicateCubeWithSysClassPath() throws Exception
+    {
+        String name = 'Dude'
+        //  from setup, assert initial classloader condition (www.cedarsoftware.com)
+        ApplicationID customId = new ApplicationID('NONE', 'renameCubeSys', '1.0.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
+        final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId, [:])
+        assertNotNull(urlClassLoader1)
+        assertEquals(0, NCubeManager.getCacheForApp(customId).size())
+
+        NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
+
+        final URLClassLoader urlClassLoader = NCubeManager.getUrlClassLoader(customId, [:])
+        assertEquals(1, urlClassLoader.URLs.length)
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
+
+        NCubeManager.clearCache()
+        testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')        // reload so that it does not attempt to write classLoader cells (which will blow up)
+        testCube.name = 'sys.mistake'
+        NCubeManager.createCube(customId, testCube, USER_ID)
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(customId)
+        assertEquals(2, cache.size())     // both sys.mistake and sys.classpath are in the cache
+
+        //  validate item got added to cache.
+        assertEquals(testCube, cache.get('sys.mistake'))
+
+
+        NCubeManager.duplicate(customId, customId, 'sys.mistake', 'sys.classpath', USER_ID)
         assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
         assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 

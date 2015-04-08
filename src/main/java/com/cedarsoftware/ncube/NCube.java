@@ -2717,9 +2717,14 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 
+    public static boolean isCompressed(byte[] jsonBytes)
+    {
+        return jsonBytes[0] == (byte)0x1f && jsonBytes[1] == (byte)0x8b;
+    }
+
     public static NCube createCubeFromBytes(byte[] jsonBytes)
     {
-        if ((jsonBytes[0] == (byte)0x1f) && (jsonBytes[1] == (byte)0x8b))
+        if (isCompressed(jsonBytes))
         {
             //unzip on read of string
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(jsonBytes))
@@ -2729,7 +2734,7 @@ public class NCube<T>
                     jsonBytes = IOUtilities.inputStreamToBytes(gzipStream);
                 }
             }
-            catch (Exception e)
+            catch (IOException e)
             {
                 throw new RuntimeException("Error unzipping cube", e);
             }

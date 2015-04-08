@@ -40,10 +40,10 @@ public class NCubeInfoDto
     public boolean changed;
     public String changeType;
 
-    public ApplicationID getApplicationID()
-	{
-		return new ApplicationID(tenant, app, version, status, branch);
-	}
+    //public ApplicationID getApplicationID()
+	//{
+		//return new ApplicationID(tenant, app, version, status, branch);
+	//}
 
 	public String toString()
 	{

@@ -149,17 +149,6 @@ public class NCubeManager
         return null;
     }
 
-    /**
-     * Fetch an n-cube by name from the given ApplicationID.  Returns the cube
-     * for this revision if it exists, otherwise an exception is thrown.
-     */
-    public static NCube getCubeRevision(ApplicationID appId, String name, Integer revision)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(name);
-        return getPersister().loadCube(appId, name, revision);
-    }
-
     static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)
@@ -634,14 +623,14 @@ public class NCubeManager
                     //  only add if not deleted.
                     if (revision >= 0)
                     {
-                        info.changeType = ChangeType.CREATED.toString();
+                        info.changeType = ChangeType.CREATED.getCode();
                         list.add(info);
                     }
                 }
                 else
                 {
                     // someone added this one to the head already
-                    info.changeType = ChangeType.CONFLICT.toString();
+                    info.changeType = ChangeType.CONFLICT.getCode();
                     list.add(info);
                 }
             }
@@ -658,11 +647,11 @@ public class NCubeManager
                         {
                             if (revision < 0)
                             {
-                                info.changeType = ChangeType.DELETED.toString();
+                                info.changeType = ChangeType.DELETED.getCode();
                             }
                             else
                             {
-                                info.changeType = ChangeType.RESTORED.toString();
+                                info.changeType = ChangeType.RESTORED.getCode();
                             }
 
                             list.add(info);
@@ -670,13 +659,13 @@ public class NCubeManager
                     }
                     else
                     {
-                        info.changeType = ChangeType.UPDATED.toString();
+                        info.changeType = ChangeType.UPDATED.getCode();
                         list.add(info);
                     }
                 }
                 else
                 {
-                    info.changeType = ChangeType.CONFLICT.toString();
+                    info.changeType = ChangeType.CONFLICT.getCode();
                     list.add(info);
                 }
             }
@@ -803,7 +792,7 @@ public class NCubeManager
         getPersister().duplicateCube(oldAppId, newAppId, oldName, newName, username);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(newName))
-        {   // If the sys.classpath cube is renamed, or another cube is renamed into sys.classpath,
+        {   // If another cube is renamed into sys.classpath,
             // then the entire class loader must be dropped (and then lazily rebuilt).
             clearCache(newAppId);
         }
@@ -965,7 +954,7 @@ public class NCubeManager
         return ret;
     }
 
-    public static Object[] updateBranch(ApplicationID appId)
+    public static Object[] updateBranch(ApplicationID appId, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -989,21 +978,6 @@ public class NCubeManager
 
         Map<String, String> conflicts = new LinkedHashMap<>();
 
-        // TODO: Persister needs to implement this
-        // TODO: When a user selects updateBranch, the following steps happen:
-        // TODO: 1. All cubes in the main branch are checked against the cubes in their branch.  If a cube name
-        // TODO: matches one in their branch, and they have not modified it and the SHA1's still match, move on
-        // TODO: to the next.
-        // TODO: 2. If a cube name matches a cube name in their branch and they have not modified, but the main
-        // TODO: branch has changed, then you can safely delete their cube (mark it deleted -or- replace it (newer
-        // TODO: version) and copy over the cube from the HEAD branch.
-        // TODO: 3. If a cube name exists in the main branch that does not exist in their branch, then the cube either
-        // TODO: needs to be added (or possibly restored).
-        // TODO: 4. If they have any cubes that remain, that do not match the head, and they are not changed, then those
-        // TODO: cubes need to be deleted.
-        // TODO: 5. If the cube name matches a cube name in their branch, but they have changed it, then skip it (Do
-        // TODO: not update it).  Return a list of these (we will show this list to the user letting them know they
-        // TODO: have potential conflicts.
         for (Object dto : headRecords)
         {
             NCubeInfoDto head = (NCubeInfoDto) dto;
@@ -1022,7 +996,21 @@ public class NCubeManager
 
                 if (!info.isChanged())
                 {
-                    if (!StringUtilities.equalsIgnoreCase(info.headSha1, info.sha1) || infoRev < 0 != headRev < 0)
+                    if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
+                    {
+                        if (infoRev < 0 != headRev < 0)
+                        {
+                            if (headRev < 0)
+                            {
+                                conflicts.put(info.name, "Cube was deleted in HEAD");
+                            }
+                            else
+                            {
+                                conflicts.put(info.name, "Cube was deleted in HEAD");
+                            }
+                        }
+                    }
+                    else
                     {
                         adds.add(head);
                     }
@@ -1030,17 +1018,6 @@ public class NCubeManager
                 else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
                 {
                     conflicts.put(info.name, "Cube was changed in HEAD");
-                }
-                else if (infoRev < 0 != headRev < 0)
-                {
-                    if (headRev < 0)
-                    {
-                        deletes.add(head);
-                    }
-                    else
-                    {
-                        adds.add(head);
-                    }
                 }
             }
             else  // doesn't exist in branch, but is on head.
@@ -1051,10 +1028,10 @@ public class NCubeManager
 
         if (!conflicts.isEmpty())
         {
-            throw new BranchMergeException("Conflicts committing branch", conflicts);
+            throw new BranchMergeException("Conflicts updating branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, adds, deletes);
+        Object[] ret = getPersister().updateBranch(appId, adds, deletes, username);
 
         clearCacheForBranches(appId);
         return ret;

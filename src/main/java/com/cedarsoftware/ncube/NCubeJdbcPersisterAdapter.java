@@ -62,32 +62,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public NCube loadCube(ApplicationID appId, String cubeName)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.loadCube(c, appId, cubeName);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-    public NCube loadCube(ApplicationID appId, String cubeName, Integer revision)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.loadCube(c, appId, cubeName, revision);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
     public NCube loadCube(long id)
     {
         Connection c = connectionProvider.getConnection();
@@ -376,12 +350,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
 
     }
 
-    public Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> deletes)
+    public Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> deletes, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.updateBranch(c, appId, adds, deletes);
+            return persister.updateBranch(c, appId, adds, deletes, username);
         }
         finally
         {

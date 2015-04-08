@@ -43,6 +43,6 @@ interface NCubePersister extends NCubeReadOnlyPersister
     Map commitBranch(ApplicationID appId, Collection<NCubeInfoDto> dtos, String username);
 
     int rollbackBranch(ApplicationID appId, Object[] infoDtos);
-    Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> deletes);
+    Object[] updateBranch(ApplicationID appId, List<NCubeInfoDto> adds, List<NCubeInfoDto> deletes, String username);
 
 }

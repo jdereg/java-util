@@ -34,7 +34,7 @@ public enum ChangeType
         code = s;
     }
 
-    public String toString()
+    public String getCode()
     {
         return code;
     }

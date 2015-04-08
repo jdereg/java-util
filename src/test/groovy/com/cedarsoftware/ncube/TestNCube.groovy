@@ -10,13 +10,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotEquals
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCube tests.
@@ -3775,6 +3769,21 @@ class TestNCube
         String gcode = (String) ncube.getCell(coord, output)
         assertEquals(code, gcode)
     }
+
+    @Test
+    void testCreateNCubeFromBytesWithException()
+    {
+        byte[] bytes = new byte[2];
+        bytes[0] = (byte)0x1F;
+        bytes[1] = (byte)0x8b;
+        try {
+            NCube.createCubeFromBytes(bytes)
+        } catch (RuntimeException e) {
+            assertEquals(EOFException.class, e.cause.class);
+            assertEquals("Error unzipping cube", e.message);
+        }
+    }
+
 
     @Test
     void testCoordinateGetter()

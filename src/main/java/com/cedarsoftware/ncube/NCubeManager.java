@@ -892,7 +892,6 @@ public class NCubeManager
                 {
                     if (head == null)
                     {
-
                         //  only add if not deleted.
                         if (revision >= 0)
                         {

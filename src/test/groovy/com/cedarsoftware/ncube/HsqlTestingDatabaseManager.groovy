@@ -40,7 +40,7 @@ class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
                     "n_cube_nm VARCHAR(100) NOT NULL, " +
                     "tenant_cd CHAR(10) DEFAULT 'NONE', " +
                     "cube_value_bin varbinary(999999), " +
-                    "create_dt DATE NOT NULL, " +
+                    "create_dt TIMESTAMP NOT NULL, " +
                     "create_hid VARCHAR(20), " +
                     "version_no_cd VARCHAR(16) DEFAULT '0.1.0' NOT NULL, " +
                     "status_cd VARCHAR(16) DEFAULT 'SNAPSHOT' NOT NULL, " +

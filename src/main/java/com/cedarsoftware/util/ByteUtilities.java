@@ -89,11 +89,12 @@ public final class ByteUtilities
 		return _hex[(value & 0x0f)];
 	}
 
-	public static boolean isGzipped(byte[] jsonBytes)
+	/**
+	 * @param bytes byte[] of bytes to test
+	 * @return true if bytes are gzip compressed, false otherwise.
+	 */
+	public static boolean isGzipped(byte[] bytes)
 	{
-		return jsonBytes[0] == (byte)0x1f && jsonBytes[1] == (byte)0x8b;
+		return bytes[0] == (byte)0x1f && bytes[1] == (byte)0x8b;
 	}
-
-
-
 }

@@ -440,6 +440,16 @@ public final class StringUtilities
     }
 
     /**
+     * Convert a String into a byte[] encoded by UTF-8.
+     *
+     * @param s        string to encode into bytes
+     */
+    public static byte[] getUTF8Bytes(String s)
+    {
+        return getBytes(s, "UTF-8");
+    }
+
+    /**
      * Convert a byte[] into a String with a particular encoding.
      * Preferable used when the encoding is one of the guaranteed Java types
      * and you don't want to have to catch the UnsupportedEncodingException
@@ -458,5 +468,15 @@ public final class StringUtilities
         {
             throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
         }
+    }
+
+    /**
+     * Convert a byte[] into a UTF-8 encoded String.
+     *
+     * @param bytes    bytes to encode into a string
+     */
+    public static String createUTF8String(byte[] bytes)
+    {
+        return createString(bytes, "UTF-8");
     }
 }

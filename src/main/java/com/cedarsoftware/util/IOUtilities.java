@@ -5,6 +5,7 @@ import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -286,6 +287,42 @@ public final class IOUtilities
         original.writeTo(gzipStream);
         gzipStream.flush();
         gzipStream.close();
+    }
+
+    public static byte[] compressBytes(byte[] bytes)
+    {
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(bytes.length))
+        {
+            try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream))
+            {
+                gzipStream.write(bytes);
+                gzipStream.flush();
+            }
+            return byteStream.toByteArray();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Error compressing bytes.", e);
+        }
+    }
+
+    public static byte[] uncompressBytes(byte[] bytes)
+    {
+        if (ByteUtilities.isGzipped(bytes))
+        {
+            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes))
+            {
+                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 8192))
+                {
+                    return inputStreamToBytes(gzipStream);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException("Error uncompressing bytes", e);
+            }
+        }
+        return bytes;
     }
 
     public interface TransferCallback

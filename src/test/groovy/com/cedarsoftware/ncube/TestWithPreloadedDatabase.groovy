@@ -173,8 +173,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertEquals(1, map.size())
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
 
         // ensure that there are no more branch changes after create
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
@@ -217,8 +216,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertEquals(0, map.size())
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
     }
 
     @Test
@@ -241,8 +239,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertEquals(0, map.size())
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
     }
 
     @Test
@@ -255,8 +252,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertEquals(0, map.size())
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
 
         ApplicationID headId = branch1.asHead()
         assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).length)
@@ -355,14 +351,12 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length);
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
-
-        assertTrue(!map.isEmpty())
     }
 
     @Test
@@ -503,10 +497,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(!map.isEmpty())
-
-
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
@@ -570,8 +561,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(map.isEmpty())
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
 
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
@@ -607,8 +597,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, dtos.length)
         ((NCubeInfoDto)dtos[0]).revision = Long.toString(100)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
-        assertTrue(!map.isEmpty())
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
     }
 
 
@@ -752,7 +741,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
@@ -762,8 +751,20 @@ abstract class TestWithPreloadedDatabase
         // both should be updated now.
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNull(NCubeManager.getCube(head, "TestBranch"))
+    }
 
-        assertTrue(!map.isEmpty())
+    @Test
+    void testSearch() throws Exception {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.search(head, "Test*", "ZZZ").length);
+        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
+        assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
+        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
+        assertEquals(1, NCubeManager.search(head, "TestAge", "baby").length);
+        assertEquals(1, NCubeManager.search(head, null, "baby").length);
     }
 
     @Test
@@ -2067,7 +2068,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        Map map = NCubeManager.commitBranch(branch1, dtos, USER_ID)
+        Object[] values = NCubeManager.commitBranch(branch1, dtos, USER_ID)
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
@@ -2083,7 +2084,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        assertTrue(!map.isEmpty())
+        assertEquals(1, values.length);
     }
 
     @Test

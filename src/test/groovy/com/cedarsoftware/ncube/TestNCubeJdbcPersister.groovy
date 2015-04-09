@@ -316,7 +316,7 @@ class TestNCubeJdbcPersister
         when(rs.getLong(1)).thenReturn(5L)
         when(rs.getDate(anyString())).thenReturn(new java.sql.Date(System.currentTimeMillis()))
 
-        assertFalse(new NCubeJdbcPersister().updateBranchCube(c, 0, defaultSnapshotApp, USER_ID))
+        assertNull(new NCubeJdbcPersister().updateBranchCube(c, 0, defaultSnapshotApp, USER_ID))
     }
 
     @Test
@@ -764,7 +764,7 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(false)
         when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
 
-        assertFalse(new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID))
+        assertNull(new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID))
     }
 
 
@@ -776,6 +776,22 @@ class TestNCubeJdbcPersister
         try
         {
             new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null, true)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+        }
+    }
+
+    @Test
+    void testSearchThatThrowsSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test")
             fail()
         }
         catch (RuntimeException e)

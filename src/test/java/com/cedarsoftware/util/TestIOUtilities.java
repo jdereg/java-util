@@ -21,11 +21,14 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipException;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -99,11 +102,7 @@ public class TestIOUtilities
 
 
         // load expected result
-        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
-        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
-        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
-        IOUtilities.transfer(expected, expectedResult);
-        IOUtilities.close(expected);
+        ByteArrayOutputStream expectedResult = getUncompressedByteArray();
         assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
         f.delete();
     }
@@ -140,11 +139,7 @@ public class TestIOUtilities
 
 
         // load expected result
-        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
-        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
-        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
-        IOUtilities.transfer(expected, expectedResult);
-        IOUtilities.close(expected);
+        ByteArrayOutputStream expectedResult = getUncompressedByteArray();
         assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
         f.delete();
     }
@@ -153,25 +148,105 @@ public class TestIOUtilities
     public void testCompressBytes() throws Exception
     {
         // load start
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
-        ByteArrayOutputStream start = new ByteArrayOutputStream(8192);
-        FileInputStream in = new FileInputStream(inUrl.getFile());
-        IOUtilities.transfer(in, start);
-        IOUtilities.close(in);
-
-        // load expected result
-        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
-        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
-        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
-        IOUtilities.transfer(expected, expectedResult);
-        IOUtilities.close(expected);
-
+        ByteArrayOutputStream start = getUncompressedByteArray();
+        ByteArrayOutputStream expectedResult = getCompressedByteArray();
         ByteArrayOutputStream result = new ByteArrayOutputStream(8192);
         IOUtilities.compressBytes(start, result);
 
         assertArrayEquals(expectedResult.toByteArray(), result.toByteArray());
 
     }
+
+    @Test
+    public void testCompressBytes2() throws Exception
+    {
+        // load start
+        ByteArrayOutputStream start = getUncompressedByteArray();
+        ByteArrayOutputStream expectedResult = getCompressedByteArray();
+
+        byte[] result = IOUtilities.compressBytes(start.toByteArray());
+
+        assertArrayEquals(expectedResult.toByteArray(), result);
+
+    }
+
+    @Test
+    public void testCompressBytesWithException() throws Exception {
+        try
+        {
+            IOUtilities.compressBytes(null);
+            fail();
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(NullPointerException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().toLowerCase().contains("error"));
+            assertTrue(e.getMessage().toLowerCase().contains("compressing"));
+        }
+
+    }
+
+    @Test
+    public void testUncompressBytesThatDontNeedUncompressed() throws Exception
+    {
+        byte[] bytes = { 0x05, 0x10, 0x10};
+        byte[] result = IOUtilities.uncompressBytes(bytes);
+        assertSame(bytes, result);
+    }
+
+    @Test
+    public void testUncompressBytesWithException() throws Exception {
+        try
+        {
+            IOUtilities.uncompressBytes(new byte[] {(byte)0x1F, (byte)0x8b, 0x01});
+            fail();
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(ZipException.class, e.getCause().getClass());
+            assertTrue(e.getMessage().toLowerCase().contains("error"));
+            assertTrue(e.getMessage().toLowerCase().contains("uncompressing"));
+        }
+
+    }
+
+    private ByteArrayOutputStream getUncompressedByteArray() throws IOException
+    {
+        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        ByteArrayOutputStream start = new ByteArrayOutputStream(8192);
+        FileInputStream in = new FileInputStream(inUrl.getFile());
+        IOUtilities.transfer(in, start);
+        IOUtilities.close(in);
+        return start;
+    }
+
+    @Test
+    public void testUncompressBytes() throws Exception
+    {
+        ByteArrayOutputStream expectedResult = getCompressedByteArray();
+
+
+        // load start
+        ByteArrayOutputStream start = getUncompressedByteArray();
+
+        ByteArrayOutputStream result = new ByteArrayOutputStream(8192);
+        byte[] uncompressedBytes = IOUtilities.uncompressBytes(expectedResult.toByteArray());
+
+        assertArrayEquals(start.toByteArray(), uncompressedBytes);
+
+    }
+
+    private ByteArrayOutputStream getCompressedByteArray() throws IOException
+    {
+        // load expected result
+        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
+        ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
+        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
+        IOUtilities.transfer(expected, expectedResult);
+        IOUtilities.close(expected);
+        return expectedResult;
+    }
+
 
     @Test
     public void testTransferInputStreamToFile() throws Exception

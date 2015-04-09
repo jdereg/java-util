@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import org.apache.logging.log4j.LogManager;
@@ -424,7 +425,7 @@ public class NCubeJdbcPersister
                 while (rs.next())
                 {
                     // dont' hydrate the cube yet.
-                    byte[] bytes = NCube.getUncompressedBytes(rs.getBytes("cube_value_bin"));
+                    byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
                     String cubeData = StringUtilities.createString(bytes, "UTF-8");
 
                     if (cubeData.contains(searchValue))

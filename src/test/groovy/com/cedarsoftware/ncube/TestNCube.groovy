@@ -3780,7 +3780,7 @@ class TestNCube
             NCube.createCubeFromBytes(bytes)
         } catch (RuntimeException e) {
             assertEquals(EOFException.class, e.cause.class);
-            assertEquals("Error unzipping cube", e.message);
+            assertEquals("error uncompressing bytes", e.message.toLowerCase());
         }
     }
 

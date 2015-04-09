@@ -856,9 +856,9 @@ public class NCubeManager
 
     /**
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
-     * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
+     * @return array of NCubeInfoDtos that were committed.
      */
-    public static Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
+    public static Object[] commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -886,16 +886,16 @@ public class NCubeManager
             if (info.isChanged())
             {
                 NCubeInfoDto head = headMap.get(info.name);
-                long revision = Long.parseLong(info.revision);
+                long infoRev = Long.parseLong(info.revision);
 
                 if (info.headSha1 == null)
                 {
                     if (head == null)
                     {
-
                         //  only add if not deleted.
-                        if (revision >= 0)
+                        if (infoRev >= 0)
                         {
+                            info.changeType = ChangeType.CREATED.getCode();
                             dtos.add(info);
                         }
                     }
@@ -904,26 +904,30 @@ public class NCubeManager
                         errors.put(info.name, "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.");
                     }
                 }
-                else if (head != null && info.headSha1.equals(head.sha1))
+                else if (head == null)
                 {
-
+                    errors.put(info.name, "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.");
+                }
+                else if (info.headSha1.equals(head.sha1))
+                {
                     if (StringUtilities.equalsIgnoreCase(info.sha1, info.headSha1))
                     {
-                        long newRev = Long.parseLong(info.revision);
-                        long oldRev = Long.parseLong(head.revision);
-                        if (newRev < 0 != oldRev < 0)
+                        long headRev = Long.parseLong(head.revision);
+                        if (infoRev < 0 != headRev < 0)
                         {
+                            info.changeType = infoRev < 0 ? ChangeType.DELETED.getCode() : ChangeType.RESTORED.getCode();
                             dtos.add(info);
                         }
                     }
                     else
                     {
+                        info.changeType = ChangeType.UPDATED.getCode();
                         dtos.add(info);
                     }
                 }
                 else
                 {
-                    errors.put(info.name, "Conflict merging " + info.name + ". The cube has changed since your branch version was created.");
+                    errors.put(info.name, "Conflict merging " + info.name + ". The cube has changed since your last update.");
                 }
             }
         }
@@ -933,11 +937,11 @@ public class NCubeManager
             throw new BranchMergeException(errors.size() + " merge conflict(s) committing branch.  Update your branch and retry commit.", errors);
         }
 
-        Map map = getPersister().commitBranch(appId, dtos, username);
+        Object[] values = getPersister().commitBranch(appId, dtos, username);
         clearCache(appId);
         clearCache(headAppId);
         broadcast(appId);
-        return map;
+        return values;
     }
 
     /**
@@ -1032,7 +1036,7 @@ public class NCubeManager
 
         Object[] ret = getPersister().updateBranch(appId, updates, username);
 
-        clearCacheForBranches(appId);
+        clearCache(appId);
         return ret;
     }
 

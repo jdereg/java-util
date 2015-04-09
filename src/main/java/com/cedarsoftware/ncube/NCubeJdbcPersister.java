@@ -1,6 +1,5 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
 import org.apache.logging.log4j.LogManager;
@@ -125,7 +124,7 @@ public class NCubeJdbcPersister
 
                     long now = System.currentTimeMillis();
 
-                    NCubeInfo dto insertCube(c, appId, cubeName, maxRevision, jsonBytes, testData, "Cube committed", false, sha1, null, now, username);
+                    NCubeInfoDto dto = insertCube(c, appId, cubeName, maxRevision, jsonBytes, testData, "Cube committed", false, sha1, null, now, username);
 
                     if (dto == null)
                     {
@@ -146,10 +145,14 @@ public class NCubeJdbcPersister
                         }
                     }
 
-                    return true;
+                    dto.changed = false;
+                    dto.id = Long.toString(cubeId);
+                    dto.sha1 = sha1;
+                    dto.headSha1 = sha1;
+                    return dto;
                 }
 
-                return false;
+                return null;
             }
         }
         catch (RuntimeException e)
@@ -164,7 +167,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    boolean updateBranchCube(Connection c, Long cubeId, ApplicationID appId, String username)
+    NCubeInfoDto updateBranchCube(Connection c, Long cubeId, ApplicationID appId, String username)
     {
         if (cubeId == null)
         {
@@ -207,20 +210,19 @@ public class NCubeJdbcPersister
                         maxRevision = Math.abs(maxRevision)+1;
                     }
 
-                    dto.revision = Long.toString(maxRevision);
+                    NCubeInfoDto dto = insertCube(c, appId, cubeName, maxRevision, jsonBytes, testData, "Cube updated from HEAD", false, sha1, sha1, time, username);
 
-
-                    if (!insertCube(c, appId, cubeName, maxRevision, jsonBytes, testData, "Cube updated from HEAD", false, sha1, sha1, time, username))
+                    if (dto == null)
                     {
                         String s = "Unable to update cube: " + cubeName + " to app:  " + appId;
                         throw new IllegalStateException(s);
                     }
 
 
-                    return true;
+                    return dto;
                 }
 
-                return false;
+                return null;
             }
         }
         catch (RuntimeException e)
@@ -258,7 +260,7 @@ public class NCubeJdbcPersister
                     String headSha1 = rs.getString("head_sha1");
                     long time = rs.getDate("create_dt").getTime();
 
-                    if (!insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, time, username))
+                    if (insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, time, username) == null)
                     {
                         throw new IllegalStateException("error updating n-cube: " + cube.getName() + "', app: " + appId + ", row was not updated");
                     }
@@ -372,23 +374,6 @@ public class NCubeJdbcPersister
         s.setLong(1, id);
         return s;
     }
-
-//    PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, Integer revision) throws SQLException
-//    {
-//        String sql = "SELECT n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, changed, sha1, head_sha1 FROM n_cube " +
-//                "WHERE n_cube_nm = ? AND app_cd = ? and version_no_cd = ? and status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? and revision_number = ?";
-//
-//
-//        PreparedStatement s = c.prepareStatement(sql);
-//        s.setString(1, cubeName);
-//        s.setString(2, appId.getApp());
-//        s.setString(3, appId.getVersion());
-//        s.setString(4, appId.getStatus());
-//        s.setString(5, appId.getTenant());
-//        s.setString(6, appId.getBranch());
-//        s.setLong(7, revision);
-//        return s;
-//    }
 
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean changedOnly, boolean activeOnly, boolean deletedOnly, boolean includeCube, boolean includeTests) throws SQLException
     {
@@ -648,7 +633,7 @@ public class NCubeJdbcPersister
                     String sha1 = rs.getString("sha1");
                     String headSha1 = rs.getString("head_sha1");
 
-                    if (!insertCube(c, appId, cubeName, Math.abs(revision) + 1, jsonBytes, testData, notes, true, sha1, headSha1, System.currentTimeMillis(), username))
+                    if (insertCube(c, appId, cubeName, Math.abs(revision) + 1, jsonBytes, testData, notes, true, sha1, headSha1, System.currentTimeMillis(), username) == null)
                     {
                         throw new IllegalStateException("Could not restore n-cube: " + cubeName + "', app: " + appId);
                     }
@@ -760,7 +745,7 @@ public class NCubeJdbcPersister
                         String sha1 = rs.getString("sha1");
                         String headSha1 = rs.getString("head_sha1");
 
-                        if (!insertCube(c, appId, cubeName, -(revision + 1), jsonBytes, testData, "Cube deleted", true, sha1, headSha1, System.currentTimeMillis(), username))
+                        if (insertCube(c, appId, cubeName, -(revision + 1), jsonBytes, testData, "Cube deleted", true, sha1, headSha1, System.currentTimeMillis(), username) == null)
                         {
                             throw new IllegalStateException("Cannot delete n-cube: " + cubeName + "', app: " + appId + ", row was not deleted");
                         }
@@ -1226,7 +1211,7 @@ public class NCubeJdbcPersister
 
             String notes = "Cube duplicated from app: " + oldAppId + ", name: " + oldName;
 
-            if (!insertCube(c, newAppId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, jsonBytes, oldTestData, notes, changed, sha1, sameExceptBranch ? headSha1 : null, System.currentTimeMillis(), username))
+            if (insertCube(c, newAppId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, jsonBytes, oldTestData, notes, changed, sha1, sameExceptBranch ? headSha1 : null, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("Unable to duplicate cube: " + oldName + " -> " + newName + "', app: " + oldAppId);
             }
@@ -1340,12 +1325,12 @@ public class NCubeJdbcPersister
             String notes = "Cube renamed:  " + oldName + " -> " + newName;
             byte[] cubeData = ncube.getBytesFromCube();
 
-            if (!insertCube(c, appId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, cubeData, oldTestData, notes, true, ncube.sha1(), newHeadSha1, System.currentTimeMillis(), username))
+            if (insertCube(c, appId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, cubeData, oldTestData, notes, true, ncube.sha1(), newHeadSha1, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("Unable to rename cube: " + oldName + " -> " + newName + "', app: " + appId);
             }
 
-            if (!insertCube(c, appId, oldName, -(oldRevision + 1), oldBytes, oldTestData, notes, true, oldSha1, oldHeadSha1, System.currentTimeMillis(), username))
+            if (insertCube(c, appId, oldName, -(oldRevision + 1), oldBytes, oldTestData, notes, true, oldSha1, oldHeadSha1, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("Unable to rename cube: " + oldName + " -> " + newName + ", app: " + appId);
             }
@@ -1391,8 +1376,8 @@ public class NCubeJdbcPersister
             s.setLong(8, revision);
             s.setString(9, sha1);
             s.setString(10, headSha1);
-            java.sql.Date now = new java.sql.Date(time);
-            s.setDate(11, now);
+            java.sql.Timestamp now = new java.sql.Timestamp(time);
+            s.setTimestamp(11, now);
             s.setString(12, username);
             s.setBytes(13, cubeData);
             s.setBytes(14, testData);
@@ -1415,12 +1400,8 @@ public class NCubeJdbcPersister
             dto.createHid = username;
             dto.notes = note;
             dto.revision = Long.toString(revision);
-            dto.changeType = ChangeType.CREATED.getCode();
 
-            if (s.executeUpdate() == 1) {
-                return dto;
-            }
-            return null;
+            return s.executeUpdate() == 1 ? dto : null;
         }
     }
 
@@ -1602,7 +1583,7 @@ public class NCubeJdbcPersister
 
     public Object[] commitBranch(Connection c, ApplicationID appId, Collection<NCubeInfoDto> dtos, String username)
     {
-        List<NCubeInfoDto> changes = new ArrayList<>(ArrayUtilities.size(dtos));
+        List<NCubeInfoDto> changes = new ArrayList<>(dtos.size());
         ApplicationID headAppId = appId.asHead();
 
         for (NCubeInfoDto dto : dtos)
@@ -1610,6 +1591,7 @@ public class NCubeJdbcPersister
             NCubeInfoDto committed = commitCube(c, Long.parseLong(dto.id), headAppId, username);
             if (committed != null)
             {
+                committed.changeType = dto.changeType;
                 changes.add(committed);
             }
         }
@@ -1632,14 +1614,14 @@ public class NCubeJdbcPersister
         return count;
     }
 
-    public Object[] updateBranch(Connection c, ApplicationID appId, List<NCubeInfoDto> updates, String username)
+    public Object[] updateBranch(Connection c, ApplicationID appId, Collection<NCubeInfoDto> updates, String username)
     {
         List changes = new ArrayList(updates.size());
 
         for (NCubeInfoDto dto : updates)
         {
-            updateBranchCube(c, Long.parseLong(dto.id), appId, username);
-            changes.add(dto);
+            NCubeInfoDto info = updateBranchCube(c, Long.parseLong(dto.id), appId, username);
+            changes.add(info);
         }
 
         return changes.toArray();

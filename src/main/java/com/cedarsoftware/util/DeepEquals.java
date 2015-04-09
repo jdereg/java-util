@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -14,7 +15,7 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Test two objects for equivalence with a 'deep' comparison.  This will traverse 
+ * Test two objects for equivalence with a 'deep' comparison.  This will traverse
  * the Object graph and perform either a field-by-field comparison on each
  * object (if no .equals() method has been overridden from Object), or it
  * will call the customized .equals() method if it exists.  This method will
@@ -24,23 +25,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * equals.  This allows graphs containing instances of Classes that did not
  * overide .equals() / .hashCode() to be compared.  For example, testing for
  * existence in a cache.  Relying on an object's identity will not locate an
- * equivalent object in a cache.<br/><br/>
+ * equivalent object in a cache.<br><br>
  *
- * This method will handle cycles correctly, for example A->B->C->A.  Suppose a and
+ * This method will handle cycles correctly, for example A-&gt;B-&gt;C-&gt;A.  Suppose a and
  * a' are two separate instances of A with the same values for all fields on
  * A, B, and C.  Then a.deepEquals(a') will return true.  It uses cycle detection
  * storing visited objects in a Set to prevent endless loops.
  *
- * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,12 +50,12 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DeepEquals
 {
-    private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<Class, Boolean>();
-    private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<Class, Boolean>();
+    private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<>();
+    private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<>();
     private static final double doubleEplison = 1e-15;
     private static final double floatEplison = 1e-6;
 
-    private static class DualKey
+    private final static class DualKey
     {
         private final Object _key1;
         private final Object _key2;
@@ -95,9 +96,9 @@ public class DeepEquals
      * equals.  This allows graphs containing instances of Classes that did no
      * overide .equals() / .hashCode() to be compared.  For example, testing for
      * existence in a cache.  Relying on an objects identity will not locate an
-     * object in cache, yet relying on it being equivalent will.<br/><br/>
+     * object in cache, yet relying on it being equivalent will.<br><br>
      *
-     * This method will handle cycles correctly, for example A->B->C->A.  Suppose a and
+     * This method will handle cycles correctly, for example A-&gt;B-&gt;C-&gt;A.  Suppose a and
      * a' are two separate instances of the A with the same values for all fields on
      * A, B, and C.  Then a.deepEquals(a') will return true.  It uses cycle detection
      * storing visited objects in a Set to prevent endless loops.
@@ -110,8 +111,8 @@ public class DeepEquals
      */
     public static boolean deepEquals(Object a, Object b)
     {
-        Set<DualKey> visited = new HashSet<DualKey>();
-        LinkedList<DualKey> stack = new LinkedList<DualKey>();
+        Set<DualKey> visited = new HashSet<>();
+        Deque<DualKey> stack = new LinkedList<>();
         stack.addFirst(new DualKey(a, b));
 
         while (!stack.isEmpty())
@@ -165,7 +166,7 @@ public class DeepEquals
             {   // Must be same class
                 return false;
             }
-            
+
             if (dualKey._key1 instanceof Double)
             {
             	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
@@ -177,7 +178,7 @@ public class DeepEquals
                     continue;
             }
 
-            // Handle all [] types.  In order to be equal, the arrays must be the same 
+            // Handle all [] types.  In order to be equal, the arrays must be the same
             // length, be of the same type, be in the same order, and all elements within
             // the array must be deeply equivalent.
             if (dualKey._key1.getClass().isArray())
@@ -288,7 +289,7 @@ public class DeepEquals
      * @param visited Set of objects already compared (prevents cycles)
      * @return true if the two arrays are the same length and contain deeply equivalent items.
      */
-    private static boolean compareArrays(Object array1, Object array2, LinkedList stack, Set visited)
+    private static boolean compareArrays(Object array1, Object array2, Deque stack, Set visited)
     {
         // Same instance check already performed...
 
@@ -318,7 +319,7 @@ public class DeepEquals
      * value of 'true' indicates that the Collections may be equal, and the sets
      * items will be added to the Stack for further comparison.
      */
-    private static boolean compareOrderedCollection(Collection col1, Collection col2, LinkedList stack, Set visited)
+    private static boolean compareOrderedCollection(Collection col1, Collection col2, Deque stack, Set visited)
     {
         // Same instance check already performed...
 
@@ -357,7 +358,7 @@ public class DeepEquals
      * value of 'true' indicates that the Collections may be equal, and the sets
      * items will be added to the Stack for further comparison.
      */
-    private static boolean compareUnorderedCollection(Collection col1, Collection col2, LinkedList stack, Set visited)
+    private static boolean compareUnorderedCollection(Collection col1, Collection col2, Deque stack, Set visited)
     {
         // Same instance check already performed...
 
@@ -366,7 +367,7 @@ public class DeepEquals
             return false;
         }
 
-        Map<Integer, Object> fastLookup = new HashMap<Integer, Object>();
+        Map<Integer, Object> fastLookup = new HashMap<>();
         for (Object o : col2)
         {
             fastLookup.put(deepHashCode(o), o);
@@ -399,7 +400,7 @@ public class DeepEquals
      * @return false if the Maps are for certain not equals.  'true' indicates that 'on the surface' the maps
      * are equal, however, it will place the contents of the Maps on the stack for further comparisons.
      */
-    private static boolean compareSortedMap(SortedMap map1, SortedMap map2, LinkedList stack, Set visited)
+    private static boolean compareSortedMap(SortedMap map1, SortedMap map2, Deque stack, Set visited)
     {
         // Same instance check already performed...
 
@@ -442,7 +443,7 @@ public class DeepEquals
      * @return false if the Maps are for certain not equals.  'true' indicates that 'on the surface' the maps
      * are equal, however, it will place the contents of the Maps on the stack for further comparisons.
      */
-    private static boolean compareUnorderedMap(Map map1, Map map2, LinkedList stack, Set visited)
+    private static boolean compareUnorderedMap(Map map1, Map map2, Deque stack, Set visited)
     {
         // Same instance check already performed...
 
@@ -451,7 +452,7 @@ public class DeepEquals
             return false;
         }
 
-        Map<Integer, Object> fastLookup = new HashMap<Integer, Object>();
+        Map<Integer, Object> fastLookup = new HashMap<>();
 
         for (Map.Entry entry : (Set<Map.Entry>)map2.entrySet())
         {
@@ -493,12 +494,12 @@ public class DeepEquals
     }
 
     /**
-     * Correcly handles floating point comparisions. <br/>
+     * Correctly handles floating point comparisions. <br>
      * source: http://floating-point-gui.de/errors/comparison/
      *
      * @param a       first number
      * @param b       second number
-     * @param epsilon
+     * @param epsilon double tolerance value
      * @return true if a and b are close enough
      */
     private static boolean nearlyEqual(double a, double b, double epsilon)
@@ -560,9 +561,9 @@ public class DeepEquals
      * with java.lang.Object.hashCode() is that it essentially relies on
      * memory location of an object (what identity it was assigned), whereas
      * this method will produce the same hashCode for any object graph, regardless
-     * of how many times it is created.<br/><br/>
+     * of how many times it is created.<br><br>
      *
-     * This method will handle cycles correctly (A->B->C->A).  In this case,
+     * This method will handle cycles correctly (A-&gt;B-&gt;C-&gt;A).  In this case,
      * Starting with object A, B, or C would yield the same hashCode.  If an
      * object encountered (root, suboject, etc.) has a hashCode() method on it
      * (that is not Object.hashCode()), that hashCode() method will be called
@@ -572,8 +573,8 @@ public class DeepEquals
      */
     public static int deepHashCode(Object obj)
     {
-        Set<Object> visited = new HashSet<Object>();
-        LinkedList<Object> stack = new LinkedList<Object>();
+        Set<Object> visited = new HashSet<>();
+        LinkedList<Object> stack = new LinkedList<>();
         stack.addFirst(obj);
         int hash = 0;
 
@@ -609,11 +610,11 @@ public class DeepEquals
                 stack.addAll(0, ((Map)obj).values());
                 continue;
             }
-            
+
             if (obj instanceof Double || obj instanceof Float)
             {
-            	// just take the integral value for hashcode 
-            	// equality tests things more comprehensively 
+            	// just take the integral value for hashcode
+            	// equality tests things more comprehensively
             	stack.add(Math.round(((Number) obj).doubleValue()));
             	continue;
             }

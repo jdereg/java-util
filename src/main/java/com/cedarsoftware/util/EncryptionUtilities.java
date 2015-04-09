@@ -17,16 +17,16 @@ import java.security.spec.AlgorithmParameterSpec;
  * Useful encryption utilities that simplify tasks like getting an
  * encrypted String return value (or MD5 hash String) for String or
  * Stream input.
- * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -86,6 +86,8 @@ public class EncryptionUtilities
 
     /**
      * Calculate an MD5 Hash String from the passed in byte[].
+     * @param bytes byte[] for which to obtain the MD5 hash.
+     * @return String of hex digits representing MD5 hash.
      */
     public static String calculateMD5Hash(byte[] bytes)
     {

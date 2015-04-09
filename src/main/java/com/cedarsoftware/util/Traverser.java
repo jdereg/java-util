@@ -2,11 +2,12 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.LinkedList;
 import java.util.Map;
 
 /**
@@ -15,16 +16,16 @@ import java.util.Map;
  * each object encountered, including the root.  It will properly
  * detect cycles within the graph and not hang.
  *
- * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,8 +39,8 @@ public class Traverser
         void process(Object o);
     }
 
-    private final Map<Object, Object> _objVisited = new IdentityHashMap<Object, Object>();
-    private final Map<Class, ClassInfo> _classCache = new HashMap<Class, ClassInfo>();
+    private final Map<Object, Object> _objVisited = new IdentityHashMap<>();
+    private final Map<Class, ClassInfo> _classCache = new HashMap<>();
 
     /**
      * @param o Any Java Object
@@ -72,7 +73,7 @@ public class Traverser
      */
     public void walk(Object root, Class[] skip, Visitor visitor)
     {
-        LinkedList stack = new LinkedList();
+        Deque stack = new ArrayDeque<>();
         stack.add(root);
 
         while (!stack.isEmpty())
@@ -119,11 +120,11 @@ public class Traverser
             {   // Process fields of an object instance
                 if (current instanceof Collection)
                 {
-                    walkCollection(stack, (Collection) current, skip);
+                    walkCollection(stack, (Collection) current);
                 }
                 else if (current instanceof Map)
                 {
-                    walkMap(stack, (Map) current, skip);
+                    walkMap(stack, (Map) current);
                 }
                 else
                 {
@@ -133,7 +134,7 @@ public class Traverser
         }
     }
 
-    private void walkFields(LinkedList stack, Object current, Class[] skip)
+    private void walkFields(Deque stack, Object current, Class[] skip)
     {
         ClassInfo classInfo = getClassInfo(current.getClass(), skip);
 
@@ -152,7 +153,7 @@ public class Traverser
         }
     }
 
-    private static void walkCollection(LinkedList stack, Collection col, Class[] skip)
+    private static void walkCollection(Deque stack, Collection col)
     {
         for (Object o : col)
         {
@@ -163,7 +164,7 @@ public class Traverser
         }
     }
 
-    private static void walkMap(LinkedList stack, Map map, Class[] skip)
+    private static void walkMap(Deque stack, Map map)
     {
         for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
         {
@@ -197,7 +198,7 @@ public class Traverser
     public static class ClassInfo
     {
         private boolean _skip = false;
-        private final Collection<Field> _refFields = new ArrayList<Field>();
+        private final Collection<Field> _refFields = new ArrayList<>();
 
         public ClassInfo(Class c, Class[] skip)
         {

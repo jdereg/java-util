@@ -5,20 +5,9 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.18.1-SNAPSHOT</version>
+    <version>1.18.2-SNAPSHOT</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
-    <profiles>
-        <profile>
-            <id>doclint-java8-disable</id>
-            <activation>
-                <jdk>[1.8,)</jdk>
-            </activation>
-            <properties>
-                <javadoc.opts>-Xdoclint:none</javadoc.opts>
-            </properties>
-        </profile>
-    </profiles>
 
     <licenses>
         <license>
@@ -39,7 +28,7 @@
         <developer>
             <id>jdereg</id>
             <name>John DeRegnaucourt</name>
-            <email>jdereg@gmail.com</email>
+            <email>john@cedarsoftware.com</email>
         </developer>
     </developers>
 

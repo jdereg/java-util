@@ -17,7 +17,7 @@ package com.cedarsoftware.util;
 
 public final class ByteUtilities
 {
-	private static final char[] _hex = 
+	private static final char[] _hex =
     {
         '0', '1', '2', '3', '4', '5', '6', '7',
         '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
@@ -34,7 +34,7 @@ public final class ByteUtilities
 	private ByteUtilities() {
 		super();
 	}
-	
+
 	// Turn hex String into byte[]
 	// If string is not even length, return null.
 
@@ -62,8 +62,9 @@ public final class ByteUtilities
 	/**
 	 * Convert a byte array into a printable format containing a String of hex
 	 * digit characters (two per byte).
-	 * 
+	 *
 	 * @param bytes array representation
+     * @return String hex digits
 	 */
 	public static String encode(final byte[] bytes)
 	{
@@ -78,7 +79,7 @@ public final class ByteUtilities
 
 	/**
 	 * Convert the specified value (0 .. 15) to the corresponding hex digit.
-	 * 
+	 *
 	 * @param value
 	 *            to be converted
 	 * @return '0'..'F' in char format.

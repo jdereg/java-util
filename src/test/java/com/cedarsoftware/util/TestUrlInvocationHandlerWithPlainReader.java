@@ -70,7 +70,7 @@ public class TestUrlInvocationHandlerWithPlainReader
     /**
      * Created by kpartlow on 5/11/2014.
      */
-    private class UrlInvocationHandlerJsonStrategy implements UrlInvocationHandlerStrategy
+    private static class UrlInvocationHandlerJsonStrategy implements UrlInvocationHandlerStrategy
     {
         private String _url;
         private String _sessionId;
@@ -128,7 +128,7 @@ public class TestUrlInvocationHandlerWithPlainReader
     /**
      * Created by kpartlow on 5/11/2014.
      */
-    private class UrlInvocationHandlerStrategyThatThrowsNullPointerException implements UrlInvocationHandlerStrategy
+    private static class UrlInvocationHandlerStrategyThatThrowsNullPointerException implements UrlInvocationHandlerStrategy
     {
         private String _url;
 
@@ -181,7 +181,7 @@ public class TestUrlInvocationHandlerWithPlainReader
     /**
      * Created by kpartlow on 5/11/2014.
      */
-    private class UrlInvocationHandlerStrategyThatThrowsInvocationTargetException implements UrlInvocationHandlerStrategy
+    private static class UrlInvocationHandlerStrategyThatThrowsInvocationTargetException implements UrlInvocationHandlerStrategy
     {
         private String _url;
 
@@ -234,7 +234,7 @@ public class TestUrlInvocationHandlerWithPlainReader
     /**
      * Created by kpartlow on 5/11/2014.
      */
-    private class UrlInvocationHandlerWithTimeout implements UrlInvocationHandlerStrategy
+    private static class UrlInvocationHandlerWithTimeout implements UrlInvocationHandlerStrategy
     {
         private String _url;
 
@@ -287,7 +287,7 @@ public class TestUrlInvocationHandlerWithPlainReader
     /**
      * Created by kpartlow on 5/11/2014.
      */
-    private class UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause implements UrlInvocationHandlerStrategy
+    private static class UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause implements UrlInvocationHandlerStrategy
     {
         private String _url;
 

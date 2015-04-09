@@ -6,16 +6,17 @@ import java.util.Random;
 /**
  * Useful String utilities for common tasks
  *
- * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
- *         <br/>
+ * @author Ken Partlow
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -243,7 +244,7 @@ public final class StringUtilities
      */
     public static int levenshteinDistance(CharSequence s, CharSequence t)
     {
-        // degenerate cases
+        // degenerate cases          s
         if (s == null || "".equals(s))
         {
             return t == null || "".equals(t) ? 0 : t.length();
@@ -288,7 +289,7 @@ public final class StringUtilities
 
         return v1[t.length()];
     }
-    
+
     /**
      * Calculate the Damerau-Levenshtein Distance between two strings.  The basic difference
      * between this algorithm and the general Levenshtein algorithm is that damerau-Levenshtein
@@ -336,14 +337,12 @@ public final class StringUtilities
             distanceMatrix[0][targetIndex] = targetIndex;
         }
 
-        int cost = 0;
-
         for (int srcIndex = 1; srcIndex <= srcLen; srcIndex++)
         {
             for (int targetIndex = 1; targetIndex <= targetLen; targetIndex++)
             {
                 // If the current characters in both strings are equal
-                cost = source.charAt(srcIndex - 1) == target.charAt(targetIndex - 1) ? 0 : 1;
+                int cost = source.charAt(srcIndex - 1) == target.charAt(targetIndex - 1) ? 0 : 1;
 
                 // Find the current distance by determining the shortest path to a
                 // match (hence the 'minimum' calculation on distances).

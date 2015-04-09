@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.18.0</version>
+  <version>1.18.1</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg)
@@ -37,6 +37,8 @@ Including in java-util:
 Version History
 * 1.18.1
  * `UrlUtilities` now allows for per-thread `userAgent` and `referrer` as well as maintains backward compatibility for setting these values globally.
+ * `StringUtilities` `getBytes()` and `createString()` now allow null as input, and return null for output for null input.
+ * Javadoc updated to remove errors flagged by more stringent Javadoc 1.8 generator.
 * 1.18.0
  * Support added for `Timestamp` in `Converter.convert()`
  * `null` can be passed into `Converter.convert()` for primitive types, and it will return their logical 0 value (0.0f, 0.0d, etc.).  For primitive wrappers, atomics, etc, null will be returned.

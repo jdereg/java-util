@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * when the key value is a String.  Other key types can be used.
  * String keys will be treated case insensitively, yet key case will
  * be retained.  Non-string keys will work as they normally would.
- * <p/>
+ * <p>
  * The internal CaseInsentitiveString is never exposed externally
  * from this class. When requesting the keys or entries of this map,
  * or calling containsKey() or get() for example, use a String as you
@@ -24,16 +24,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * entrySet() APIs return the original Strings, not the internally
  * wrapped CaseInsensitiveString.
  *
- * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br/>
+ * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         <br>
  *         Copyright (c) Cedar Software LLC
- *         <br/><br/>
+ *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
- *         <br/><br/>
+ *         <br><br>
  *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br/><br/>
+ *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -46,12 +46,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public CaseInsensitiveMap()
     {
-        map = new LinkedHashMap<K, V>();
+        map = new LinkedHashMap<>();
     }
 
     public CaseInsensitiveMap(int initialCapacity)
     {
-        map = new LinkedHashMap<K, V>(initialCapacity);
+        map = new LinkedHashMap<>(initialCapacity);
     }
 
     public CaseInsensitiveMap(Map<? extends K, ? extends V> map)
@@ -62,7 +62,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public CaseInsensitiveMap(int initialCapacity, float loadFactor)
     {
-        map = new LinkedHashMap<K, V>(initialCapacity, loadFactor);
+        map = new LinkedHashMap<>(initialCapacity, loadFactor);
     }
 
     public V get(Object key)
@@ -529,7 +529,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 public Object next()
                 {
                     lastReturned = iter.next();
-                    return new CaseInsensitiveEntry<K, V>(lastReturned);
+                    return new CaseInsensitiveEntry<>(lastReturned);
                 }
 
                 public void remove()
@@ -557,7 +557,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             {
                 return (K) super.getKey().toString();
             }
-            return (K)super.getKey();
+            return super.getKey();
         }
     }
 
@@ -566,7 +566,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * case of Strings when they are compared.  Based on known usage,
      * null checks, proper instance, etc. are dropped.
      */
-    public static class CaseInsensitiveString
+    private static final class CaseInsensitiveString
     {
         private final String caseInsensitiveString;
         private AtomicInteger hash = null;

@@ -1216,6 +1216,11 @@ public class NCubeManager
         return new ApplicationID(tenant, app, version, status, branch);
     }
 
+    public static Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    {
+        return getPersister().search(appId, cubeNamePattern, searchValue);
+    }
+
     public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)
     {
         validateAppId(appId);

@@ -786,6 +786,22 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testSearchThatThrowsSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.startsWith("Unable to fetch"))
+        }
+    }
+
+    @Test
     void testGetChangedRecordsWithSqlException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()

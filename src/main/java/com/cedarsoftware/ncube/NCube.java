@@ -2724,6 +2724,11 @@ public class NCube<T>
 
     public static NCube createCubeFromBytes(byte[] jsonBytes)
     {
+        String json = StringUtilities.createString(getUncompressedBytes(jsonBytes), "UTF-8");
+        return NCubeManager.ncubeFromJson(json);
+    }
+
+    public static byte[] getUncompressedBytes(byte[] jsonBytes) {
         if (isCompressed(jsonBytes))
         {
             //unzip on read of string
@@ -2739,8 +2744,7 @@ public class NCube<T>
                 throw new RuntimeException("Error unzipping cube", e);
             }
         }
-        String json = StringUtilities.createString(jsonBytes, "UTF-8");
-        return NCubeManager.ncubeFromJson(json);
+        return jsonBytes;
     }
 
     public byte[] getBytesFromCube()

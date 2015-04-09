@@ -754,6 +754,20 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testSearch() throws Exception {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.search(head, "Test*", "ZZZ").length);
+        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
+        assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
+        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
+        assertEquals(1, NCubeManager.search(head, "TestAge", "baby").length);
+        assertEquals(1, NCubeManager.search(head, null, "baby").length);
+    }
+
+    @Test
     void testUpdateBranchAfterDelete() throws Exception {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")

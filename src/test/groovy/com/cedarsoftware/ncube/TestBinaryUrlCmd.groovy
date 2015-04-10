@@ -1,20 +1,14 @@
 package com.cedarsoftware.ncube
 
 import com.cedarsoftware.util.UrlUtilities
+import groovy.mock.interceptor.MockFor
 import org.junit.Assert
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.powermock.api.mockito.PowerMockito
-import org.powermock.core.classloader.annotations.PowerMockIgnore
-import org.powermock.core.classloader.annotations.PrepareForTest
-import org.powermock.modules.junit4.PowerMockRunner
 
 import java.lang.reflect.Constructor
 import java.lang.reflect.Modifier
 
 import static org.junit.Assert.assertTrue
-import static org.mockito.Matchers.any
-import static org.mockito.Matchers.eq
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -34,9 +28,6 @@ import static org.mockito.Matchers.eq
  *         limitations under the License.
  */
 
-@PowerMockIgnore("javax.management.*")
-@RunWith(PowerMockRunner.class)
-@PrepareForTest([UrlUtilities.class])
 class TestBinaryUrlCmd
 {
     @Test
@@ -50,23 +41,24 @@ class TestBinaryUrlCmd
     }
 
     @Test
-    void testSimpleFetchException()
-    {
-        NCube cube = NCubeBuilder.getTestNCube2D true
-        BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false)
+    void testSimpleFetchException() {
 
-        PowerMockito.mockStatic UrlUtilities.class
-        PowerMockito.when(UrlUtilities.getContentFromUrl(any(URL.class), (boolean) eq(true))).thenThrow IOException.class
+        MockFor mock = new MockFor(UrlUtilities);
 
-        def args = [ncube:cube]
+        mock.demand.getContentFromUrl(0..1) { throw new IOException() }
 
-        try
+        mock.use
         {
-            cmd.simpleFetch(args)
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.message.toLowerCase().contains("failed to load binary content"))
+            try {
+                NCube cube = NCubeBuilder.getTestNCube2D true
+                BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false)
+                def args = [ncube: cube]
+
+                cmd.simpleFetch(args)
+            }
+            catch (IllegalStateException e) {
+                assertTrue(e.message.toLowerCase().contains("failed to load binary content"))
+            }
         }
     }
 }

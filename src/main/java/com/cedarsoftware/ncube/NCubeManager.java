@@ -71,6 +71,7 @@ public class NCubeManager
     private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
+    static volatile Map<String, Object> ncubeParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -89,6 +90,19 @@ public class NCubeManager
         return nCubePersister;
     }
 
+    public static Map<String, Object> getNCubeParams() {
+            if(ncubeParams== null){
+                synchronized(NCubeManager.class)
+                {
+                    if(ncubeParams == null)
+                    {
+                        ncubeParams = new ConcurrentHashMap<>();
+                    }
+                }
+            }
+            return ncubeParams;
+        }
+    }
     /**
      * Fetch all the n-cube names for the given ApplicationID.  This API
      * will load all cube records for the ApplicationID (NCubeInfoDtos),

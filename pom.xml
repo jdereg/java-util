@@ -50,7 +50,6 @@
         <version.junit>4.12</version.junit>
         <version.groovy>2.4.2</version.groovy>
         <version.jgit>3.6.1.201501031845-r</version.jgit>
-        <version.powermock>1.6.1</version.powermock>
         <version.mockito>1.10.8</version.mockito>
         <version.mongo>2.12.3</version.mongo>
         <version.mysql.connector.java>5.1.28</version.mysql.connector.java>

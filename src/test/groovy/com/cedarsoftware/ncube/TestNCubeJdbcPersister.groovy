@@ -9,8 +9,14 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.sql.Timestamp
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -290,7 +296,7 @@ class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0);
         when(rs.next()).thenReturn(true).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
-        when(rs.getDate(anyString())).thenReturn(new java.sql.Date(System.currentTimeMillis()))
+        when(rs.getTimestamp(anyString())).thenReturn(new Timestamp(System.currentTimeMillis()))
 
         try
         {
@@ -470,6 +476,7 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(true).thenReturn(false)
         when(rs.getString("n_cube_nm")).thenReturn("foo")
         when(rs.getString("branch_id")).thenReturn("HEAD")
+        when(rs.getTimestamp("create_dt")).thenReturn(new Timestamp(System.currentTimeMillis()));
         when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"))
 
         Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "", true)
@@ -1201,7 +1208,7 @@ class TestNCubeJdbcPersister
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(rs.next()).thenReturn(true)
-        when(rs.getDate(anyString())).thenReturn(new java.sql.Date(System.currentTimeMillis()));
+        when(rs.getTimestamp(anyString())).thenReturn(new Timestamp(System.currentTimeMillis()));
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(0)
         when(ps.executeQuery()).thenReturn(rs)

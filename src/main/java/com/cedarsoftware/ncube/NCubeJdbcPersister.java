@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -137,7 +138,7 @@ public class NCubeJdbcPersister
                     {
                         insert.setString(1, sha1);
                         insert.setLong(2, 0);
-                        insert.setDate(3, new java.sql.Date(now));
+                        insert.setTimestamp(3, new Timestamp(now));
                         insert.setLong(4, cubeId);
 
                         if (insert.executeUpdate() != 1)
@@ -191,7 +192,7 @@ public class NCubeJdbcPersister
                     String sha1 = rs.getString("sha1");
                     String cubeName = rs.getString("n_cube_nm");
                     Long revision = rs.getLong("revision_number");
-                    long time = rs.getDate("create_dt").getTime();
+                    long time = rs.getTimestamp("create_dt").getTime();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
 
                     Long maxRevision = getMaxRevision(c, appId, cubeName);
@@ -259,9 +260,8 @@ public class NCubeJdbcPersister
                     byte[] cubeData = cube.getBytesFromCube();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     String headSha1 = rs.getString("head_sha1");
-                    long time = rs.getDate("create_dt").getTime();
 
-                    if (insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, time, username) == null)
+                    if (insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username) == null)
                     {
                         throw new IllegalStateException("error updating n-cube: " + cube.getName() + "', app: " + appId + ", row was not updated");
                     }
@@ -440,7 +440,7 @@ public class NCubeJdbcPersister
                         dto.version = appId.getVersion();
                         dto.status = rs.getString("status_cd");
                         dto.app = appId.getApp();
-                        dto.createDate = rs.getTimestamp("create_dt");
+                        dto.createDate = new Date(rs.getTimestamp("create_dt").getTime());
                         dto.createHid = rs.getString("create_hid");
                         dto.revision = Long.toString(rs.getLong("revision_number"));
                         dto.changed = rs.getBoolean("changed");
@@ -616,7 +616,6 @@ public class NCubeJdbcPersister
             stmt.setString(4, appId.getTenant());
             stmt.setString(5, appId.getStatus());
             stmt.setString(6, appId.getBranch());
-            //stmt.setMaxRows(1);
 
             Object[] records = getCubeInfoRecords(appId, stmt, false);
             if (records.length == 0)
@@ -655,7 +654,7 @@ public class NCubeJdbcPersister
                 dto.version = appId.getVersion();
                 dto.status = rs.getString("status_cd");
                 dto.app = appId.getApp();
-                dto.createDate = rs.getTimestamp("create_dt");
+                dto.createDate = new Date(rs.getTimestamp("create_dt").getTime());
                 dto.createHid = rs.getString("create_hid");
                 dto.revision = Long.toString(rs.getLong("revision_number"));
                 dto.changed = rs.getBoolean("changed");
@@ -979,7 +978,7 @@ public class NCubeJdbcPersister
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
                             insert.setString(2, rs.getString("n_cube_nm"));
                             insert.setBytes(3, jsonBytes);
-                            insert.setDate(4, rs.getDate("create_dt"));
+                            insert.setTimestamp(4, rs.getTimestamp("create_dt"));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, appId.getVersion());
                             insert.setString(7, ReleaseStatus.SNAPSHOT.name());
@@ -1055,7 +1054,7 @@ public class NCubeJdbcPersister
                     "UPDATE n_cube SET create_dt = ?, status_cd = ? " +
                             "WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = 'HEAD'"))
             {
-                statement.setDate(1, new java.sql.Date(System.currentTimeMillis()));
+                statement.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
                 statement.setString(2, ReleaseStatus.RELEASE.name());
                 statement.setString(3, appId.getApp());
                 statement.setString(4, appId.getVersion());
@@ -1089,7 +1088,7 @@ public class NCubeJdbcPersister
                             insert.setLong(1, UniqueIdGenerator.getUniqueId());
                             insert.setString(2, rs.getString("n_cube_nm"));
                             insert.setBytes(3, rs.getBytes("cube_value_bin"));
-                            insert.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+                            insert.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
                             insert.setString(5, rs.getString("create_hid"));
                             insert.setString(6, newSnapVer);
                             insert.setString(7, ReleaseStatus.SNAPSHOT.name());
@@ -1472,7 +1471,7 @@ public class NCubeJdbcPersister
             s.setLong(8, revision);
             s.setString(9, sha1);
             s.setString(10, headSha1);
-            java.sql.Timestamp now = new java.sql.Timestamp(time);
+            Timestamp now = new Timestamp(time);
             s.setTimestamp(11, now);
             s.setString(12, username);
             s.setBytes(13, cubeData);
@@ -1492,7 +1491,7 @@ public class NCubeJdbcPersister
             dto.tenant = appId.getTenant();
             dto.version = appId.getVersion();
             dto.status = appId.getStatus();
-            dto.createDate = new java.sql.Timestamp(time);
+            dto.createDate = new Date(time);
             dto.createHid = username;
             dto.notes = note;
             dto.revision = Long.toString(revision);
@@ -1504,11 +1503,9 @@ public class NCubeJdbcPersister
     /**
      * Check for existence of a cube with this appId.  You can ignoreStatus if you want to check for existence of
      * a SNAPSHOT or RELEASE cube.
-     * @param c
-     * @param appId
      * @param ignoreStatus - If you want to ignore status (check for both SNAPSHOT and RELEASE cubes in existence) pass
      *                     in true.
-     * @return
+     * @return true if any cubes exist for the given AppId, false otherwise.
      */
     public boolean doCubesExist(Connection c, ApplicationID appId, boolean ignoreStatus)
     {

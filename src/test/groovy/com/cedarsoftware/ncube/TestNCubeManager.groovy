@@ -1591,6 +1591,46 @@ class TestNCubeManager
         assertTrue(names.contains('c'))
     }
 
+    @Test
+    void testGetSystemParamsHappyPath()
+    {
+        System.setProperty("NCUBE_PARAMS", '{"branch":"foo"}')
+        assertEquals('foo', NCubeManager.getSystemParams().branch);
+        assertNull(NCubeManager.getSystemParams().status);
+        assertNull(NCubeManager.getSystemParams().app);
+        assertNull(NCubeManager.getSystemParams().tenant);
+
+        // ensure doesn't reparse second time.
+        System.setProperty('NCUBE_PARAMS', '')
+        assertEquals('foo', NCubeManager.getSystemParams().branch);
+        assertNull(NCubeManager.getSystemParams().status);
+        assertNull(NCubeManager.getSystemParams().app);
+        assertNull(NCubeManager.getSystemParams().tenant);
+
+
+        NCubeManager.systemParams = null;
+        System.setProperty("NCUBE_PARAMS", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
+        assertEquals('bar', NCubeManager.getSystemParams().branch);
+        assertEquals('RELEASE', NCubeManager.getSystemParams().status);
+        assertEquals('UD', NCubeManager.getSystemParams().app);
+        assertEquals('foo', NCubeManager.getSystemParams().tenant);
+
+        // ensure doesn't reparse second time.
+        System.setProperty('NCUBE_PARAMS', '')
+        assertEquals('bar', NCubeManager.getSystemParams().branch);
+        assertEquals('RELEASE', NCubeManager.getSystemParams().status);
+        assertEquals('UD', NCubeManager.getSystemParams().app);
+        assertEquals('foo', NCubeManager.getSystemParams().tenant);
+
+        // test invalid json, hands back nice empty map.
+        NCubeManager.systemParams = null;
+        System.setProperty("NCUBE_PARAMS", '{"status":}')
+        assertNull(NCubeManager.getSystemParams().branch);
+        assertNull(NCubeManager.getSystemParams().status);
+        assertNull(NCubeManager.getSystemParams().app);
+        assertNull(NCubeManager.getSystemParams().tenant);
+    }
+
     private static void loadTestClassPathCubes()
     {
         NCube cube = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'sys.versions.json')

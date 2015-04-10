@@ -69,9 +69,12 @@ public class NCubeManager
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
+    public static final String NCUBE_PARAMS = "NCUBE_PARAMS";
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
-    static volatile Map<String, Object> ncubeParams = null;
+
+    // not private in case we want to tweak things for testing.
+    private static volatile Map<String, Object> systemParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -90,19 +93,35 @@ public class NCubeManager
         return nCubePersister;
     }
 
-    public static Map<String, Object> getNCubeParams() {
-            if(ncubeParams== null){
-                synchronized(NCubeManager.class)
+    public static Map<String, Object> getSystemParams()
+    {
+        if(systemParams == null)
+        {
+            synchronized(NCubeManager.class)
+            {
+                if(systemParams == null)
                 {
-                    if(ncubeParams == null)
+                    String jsonParams = SystemUtilities.getExternalVariable(NCUBE_PARAMS);
+
+                    systemParams = new HashMap();
+
+                    if (StringUtilities.hasContent(jsonParams))
                     {
-                        ncubeParams = new ConcurrentHashMap<>();
+                        try
+                        {
+                            systemParams = JsonReader.jsonToMaps(jsonParams);
+                        }
+                        catch (Exception e)
+                        {
+                            LOG.warn("Parsing of NCUBE_PARAMS failed.  " + jsonParams);
+                        }
                     }
                 }
             }
-            return ncubeParams;
         }
+        return systemParams;
     }
+
     /**
      * Fetch all the n-cube names for the given ApplicationID.  This API
      * will load all cube records for the ApplicationID (NCubeInfoDtos),
@@ -241,8 +260,7 @@ public class NCubeManager
         return (URLClassLoader) urlCpLoader;
     }
 
-    static URLClassLoader getLocalClassloader(ApplicationID appId)
-    {
+    static URLClassLoader getLocalClassloader(ApplicationID appId) {
         GroovyClassLoader gcl = localClassLoaders.get(appId);
         if (gcl == null)
         {
@@ -432,8 +450,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         Map<String, Advice> current = advices.get(appId);
-        if (current == null)
-        {
+        if (current == null) {
             synchronized (advices)
             {
                 current = new ConcurrentHashMap<>();
@@ -742,7 +759,7 @@ public class NCubeManager
         {
             if ((cubeName instanceof String))
             {
-                NCube.validateCubeName((String)cubeName);
+                NCube.validateCubeName((String) cubeName);
                 getPersister().restoreCube(appId, (String) cubeName, username);
             }
             else
@@ -1032,8 +1049,7 @@ public class NCubeManager
                         updates.add(head);
                     }
                 }
-                else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
-                {
+                else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1)) {
                     conflicts.put(info.name, "Cube was changed in HEAD");
                 }
             }

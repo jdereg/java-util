@@ -3,7 +3,6 @@ package com.cedarsoftware.ncube
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.powermock.core.IdentityHashSet
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -132,14 +131,14 @@ class TestNCubeConcurrency
     void testCacheFlag() throws IOException
     {
         NCube n1 = NCubeManager.getNCubeFromResource('urlContent.json')
-        def items = new IdentityHashSet()
+        def items = new IdentityHashMap()
         def set = new LinkedHashSet()
 
         def cell = n1.getCell([sites:'StringFromRemoteUrlBig'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         cell = n1.getCell([sites:'StringFromRemoteUrlBig'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         assert items.size() == 1
         assert set.size() == 1
@@ -147,10 +146,10 @@ class TestNCubeConcurrency
         items.clear()
         set.clear()
         cell = n1.getCell([sites:'StringFromLocalUrl'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         cell = n1.getCell([sites:'StringFromLocalUrl'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         assert items.size() == 2        // Different at the Identity level, therefore IdentityHashSet creates another entry
         assert set.size() == 1          // Matches as .equals() therefore LinkedHashSet does not create another entry
@@ -158,10 +157,10 @@ class TestNCubeConcurrency
         items.clear()
         set.clear()
         cell = n1.getCell([sites:'BinaryFromRemoteUrl'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         cell = n1.getCell([sites:'BinaryFromRemoteUrl'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         assert items.size() == 1
         assert set.size() == 1
@@ -169,10 +168,10 @@ class TestNCubeConcurrency
         items.clear()
         set.clear()
         cell = n1.getCell([sites:'BinaryFromLocalUrl'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         cell = n1.getCell([sites:'BinaryFromLocalUrl'])
-        items.add(cell)
+        items.put(cell, Boolean.TRUE)
         set.add(cell)
         assert items.size() == 2
         assert set.size() == 2

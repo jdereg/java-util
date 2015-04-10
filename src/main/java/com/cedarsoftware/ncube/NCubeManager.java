@@ -71,6 +71,7 @@ public class NCubeManager
     private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
+    static volatile Map<String, Object> ncubeParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -89,6 +90,19 @@ public class NCubeManager
         return nCubePersister;
     }
 
+    public static Map<String, Object> getNCubeParams() {
+            if(ncubeParams== null){
+                synchronized(NCubeManager.class)
+                {
+                    if(ncubeParams == null)
+                    {
+                        ncubeParams = new ConcurrentHashMap<>();
+                    }
+                }
+            }
+            return ncubeParams;
+        }
+    }
     /**
      * Fetch all the n-cube names for the given ApplicationID.  This API
      * will load all cube records for the ApplicationID (NCubeInfoDtos),
@@ -856,9 +870,9 @@ public class NCubeManager
 
     /**
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
-     * @return Map ['added': 10, 'deleted': 3, 'updated': 7]
+     * @return array of NCubeInfoDtos that were committed.
      */
-    public static Map commitBranch(ApplicationID appId, Object[] infoDtos, String username)
+    public static Object[] commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -886,15 +900,16 @@ public class NCubeManager
             if (info.isChanged())
             {
                 NCubeInfoDto head = headMap.get(info.name);
-                long revision = Long.parseLong(info.revision);
+                long infoRev = Long.parseLong(info.revision);
 
                 if (info.headSha1 == null)
                 {
                     if (head == null)
                     {
                         //  only add if not deleted.
-                        if (revision >= 0)
+                        if (infoRev >= 0)
                         {
+                            info.changeType = ChangeType.CREATED.getCode();
                             dtos.add(info);
                         }
                     }
@@ -903,26 +918,30 @@ public class NCubeManager
                         errors.put(info.name, "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.");
                     }
                 }
-                else if (head != null && info.headSha1.equals(head.sha1))
+                else if (head == null)
                 {
-
+                    errors.put(info.name, "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.");
+                }
+                else if (info.headSha1.equals(head.sha1))
+                {
                     if (StringUtilities.equalsIgnoreCase(info.sha1, info.headSha1))
                     {
-                        long newRev = Long.parseLong(info.revision);
-                        long oldRev = Long.parseLong(head.revision);
-                        if (newRev < 0 != oldRev < 0)
+                        long headRev = Long.parseLong(head.revision);
+                        if (infoRev < 0 != headRev < 0)
                         {
+                            info.changeType = infoRev < 0 ? ChangeType.DELETED.getCode() : ChangeType.RESTORED.getCode();
                             dtos.add(info);
                         }
                     }
                     else
                     {
+                        info.changeType = ChangeType.UPDATED.getCode();
                         dtos.add(info);
                     }
                 }
                 else
                 {
-                    errors.put(info.name, "Conflict merging " + info.name + ". The cube has changed since your branch version was created.");
+                    errors.put(info.name, "Conflict merging " + info.name + ". The cube has changed since your last update.");
                 }
             }
         }
@@ -932,11 +951,11 @@ public class NCubeManager
             throw new BranchMergeException(errors.size() + " merge conflict(s) committing branch.  Update your branch and retry commit.", errors);
         }
 
-        Map map = getPersister().commitBranch(appId, dtos, username);
+        Object[] values = getPersister().commitBranch(appId, dtos, username);
         clearCache(appId);
         clearCache(headAppId);
         broadcast(appId);
-        return map;
+        return values;
     }
 
     /**
@@ -972,8 +991,7 @@ public class NCubeManager
             recordMap.put(info.name, info);
         }
 
-        List<NCubeInfoDto> adds = new ArrayList<>(records.length);
-        List<NCubeInfoDto> deletes = new ArrayList<>(records.length);
+        List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
         Map<String, String> conflicts = new LinkedHashMap<>();
 
@@ -984,7 +1002,7 @@ public class NCubeManager
 
             if (info == null)
             {
-                adds.add(head);
+                updates.add(head);
                 continue;
             }
 
@@ -1011,7 +1029,7 @@ public class NCubeManager
                     }
                     else
                     {
-                        adds.add(head);
+                        updates.add(head);
                     }
                 }
                 else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
@@ -1021,7 +1039,7 @@ public class NCubeManager
             }
             else  // doesn't exist in branch, but is on head.
             {
-                adds.add(head);
+                updates.add(head);
             }
         }
 
@@ -1030,9 +1048,9 @@ public class NCubeManager
             throw new BranchMergeException("Conflicts updating branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, adds, deletes, username);
+        Object[] ret = getPersister().updateBranch(appId, updates, username);
 
-        clearCacheForBranches(appId);
+        clearCache(appId);
         return ret;
     }
 
@@ -1210,6 +1228,11 @@ public class NCubeManager
         }
 
         return new ApplicationID(tenant, app, version, status, branch);
+    }
+
+    public static Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    {
+        return getPersister().search(appId, cubeNamePattern, searchValue);
     }
 
     public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)

@@ -45,12 +45,11 @@
 
     <properties>
         <version.json-io>3.0.1</version.json-io>
-        <version.java-util>1.18.1</version.java-util>
+        <version.java-util>1.19.0</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.groovy>2.4.2</version.groovy>
         <version.jgit>3.6.1.201501031845-r</version.jgit>
-        <version.powermock>1.6.1</version.powermock>
         <version.mockito>1.10.8</version.mockito>
         <version.mongo>2.12.3</version.mongo>
         <version.mysql.connector.java>5.1.28</version.mysql.connector.java>
@@ -294,20 +293,6 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
             <version>${version.mockito}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-module-junit4</artifactId>
-            <version>${version.powermock}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito</artifactId>
-            <version>${version.powermock}</version>
             <scope>test</scope>
         </dependency>
 

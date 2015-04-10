@@ -1,16 +1,11 @@
 package com.cedarsoftware.ncube
 
 import com.cedarsoftware.util.ReflectionUtils
+import groovy.mock.interceptor.MockFor
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.powermock.core.classloader.annotations.PrepareForTest
-import org.powermock.modules.junit4.PowerMockRunner
 
-import java.lang.reflect.Field
-
+import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertTrue
-import static org.powermock.api.mockito.PowerMockito.mockStatic
-import static org.powermock.api.mockito.PowerMockito.when
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,8 +24,6 @@ import static org.powermock.api.mockito.PowerMockito.when
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest([ReflectionUtils.class, Field.class])
 class TestObjectToMapIllegalAccessException
 {
     static class dto
@@ -43,18 +36,19 @@ class TestObjectToMapIllegalAccessException
     @Test
     void testObjectToMapIllegalAccessException() throws Exception
     {
-        def instance = new dto()
-        mockStatic(ReflectionUtils.class)
-        when(ReflectionUtils.getDeepDeclaredFields(instance.class)).thenThrow IllegalAccessException.class
+        MockFor mock = new MockFor(ReflectionUtils);
+        mock.demand.getDeepDeclaredFields(0..1) { throw new IllegalAccessException("foo") }
 
-        try
+        mock.use
         {
-            NCube.objectToMap instance
+            try {
+                NCube.objectToMap new dto()
+            }
+            catch (RuntimeException e) {
+                assertEquals("foo", e.message);
+                assertTrue(e.message.toLowerCase().contains("failed to access field"))
+                assertTrue(e.cause.message.toLowerCase().contains("foo"))
+            }
         }
-        catch (RuntimeException e)
-        {
-            assertTrue(e.message.toLowerCase().contains("failed to access field"))
-        }
-
     }
 }

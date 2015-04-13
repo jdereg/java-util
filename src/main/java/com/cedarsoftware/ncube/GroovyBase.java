@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 
 /**
@@ -44,13 +45,17 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
+    private AtomicBoolean hasBeenCached = new AtomicBoolean(false);
+    private boolean cacheable;
+    private Object cache;
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
 
-    public GroovyBase(String cmd, String url)
+    public GroovyBase(String cmd, String url, boolean cacheable)
     {
         super(cmd, url);
+        this.cacheable = cacheable;
     }
 
     public Class getRunnableCode()
@@ -65,14 +70,39 @@ public abstract class GroovyBase extends UrlCommandCell
 
     public boolean isCacheable()
     {
-        return true;
+        return cacheable;
     }
 
     public Object execute(Map<String, Object> ctx)
     {
         failOnErrors();
 
-        Object data;
+        if (!isCacheable())
+        {
+            return fetchResult(ctx);
+        }
+
+        if (hasBeenCached.get())
+        {
+            return cache;
+        }
+
+        synchronized (this)
+        {
+            if (hasBeenCached.get())
+            {
+                return cache;
+            }
+
+            cache = fetchResult(ctx);
+            hasBeenCached.set(true);
+            return cache;
+        }
+    }
+
+    private Object fetchResult(Map<String, Object> ctx)
+    {
+        Object data = null;
 
         if (getUrl() == null)
         {
@@ -81,7 +111,6 @@ public abstract class GroovyBase extends UrlCommandCell
         else
         {
             expandUrl(ctx);
-            data = null;
         }
 
         prepare(data, ctx);

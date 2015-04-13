@@ -11,12 +11,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotEquals
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCube Axis Tests
@@ -720,7 +715,7 @@ class TestAxis
 
         // Expression
         Axis exp = new Axis('Condition', AxisType.RULE, AxisValueType.EXPRESSION, false, Axis.DISPLAY)
-        assert new GroovyExpression('println \'Hello\'', null) == exp.convertStringToColumnValue('println \'Hello\'')
+        assert new GroovyExpression('println \'Hello\'', null, false) == exp.convertStringToColumnValue('println \'Hello\'')
 
         // Comparable (this allows user to create Java Comparable object instances as Column values!
         Axis comp = new Axis('Comparable', AxisType.DISCRETE, AxisValueType.COMPARABLE, false)

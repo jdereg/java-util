@@ -123,7 +123,7 @@ public class CellInfo
             isUrl = StringUtilities.hasContent(exp.getUrl());
             value = isUrl ? exp.getUrl() : exp.getCmd();
             dataType = CellTypes.Exp.desc();
-            isCached = true;
+            isCached = exp.isCacheable();
         }
         else if (cell instanceof Byte)
         {
@@ -293,11 +293,11 @@ public class CellInfo
         {
             if (CellTypes.Exp.desc().equalsIgnoreCase(type))
             {
-                return new GroovyExpression(null, url);
+                return new GroovyExpression(null, url, cache);
             }
             else if (CellTypes.Method.desc().equalsIgnoreCase(type))
             {
-                return new GroovyMethod(null, url);
+                return new GroovyMethod(null, url, cache);
             }
             else if (CellTypes.Template.desc().equalsIgnoreCase(type))
             {
@@ -317,10 +317,10 @@ public class CellInfo
             }
         }
 
-        return parseJsonValue(type, val);
+        return parseJsonValue(type, val, cache);
     }
 
-    static Object parseJsonValue(String type, Object val)
+    static Object parseJsonValue(String type, Object val, boolean cache)
     {
         if (CellTypes.Null.desc().equals(val) || val == null)
         {
@@ -408,11 +408,11 @@ public class CellInfo
             }
             else if (CellTypes.Exp.desc().equals(type))
             {
-                return new GroovyExpression((String)val, null);
+                return new GroovyExpression((String)val, null, cache);
             }
             else if (CellTypes.Method.desc().equals(type))
             {
-                return new GroovyMethod((String) val, null);
+                return new GroovyMethod((String) val, null, cache);
             }
             else if (CellTypes.Date.desc().equals(type) || "datetime".equals(type))
             {
@@ -496,7 +496,7 @@ public class CellInfo
             for (Object value : values)
             {
                 i++;
-                Object o = parseJsonValue(value, null, type, false);
+                Object o = parseJsonValue(value, null, type, cache);
                 exp.append(javaToGroovySource(o));
                 if (i < values.length)
                 {
@@ -504,7 +504,7 @@ public class CellInfo
                 }
             }
             exp.append("] as Object[]");
-            return new GroovyExpression(exp.toString(), null);
+            return new GroovyExpression(exp.toString(), null, cache);
         }
         else
         {

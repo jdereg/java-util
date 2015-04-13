@@ -822,7 +822,7 @@ public class Axis
                 return standardizeColumnValue(value);
 
             case RULE:
-                return new GroovyExpression(value, null);
+                return new GroovyExpression(value, null, false);
 
             default:
                 throw new IllegalStateException("Unsupported axis type (" + type + ") for axis '" + name + "', trying to parse value: " + value);

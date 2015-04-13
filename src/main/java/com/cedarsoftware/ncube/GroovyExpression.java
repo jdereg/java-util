@@ -50,9 +50,9 @@ public class GroovyExpression extends GroovyBase
 
     //  Private constructor only for serialization.
     private GroovyExpression() { }
-    public GroovyExpression(String cmd, String url)
+    public GroovyExpression(String cmd, String url, boolean cacheable)
     {
-        super(cmd, url);
+        super(cmd, url, cacheable);
     }
 
     public String buildGroovy(String theirGroovy)

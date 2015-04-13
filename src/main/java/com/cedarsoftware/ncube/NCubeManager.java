@@ -1,19 +1,40 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.*;
-import com.cedarsoftware.ncube.util.*;
-import com.cedarsoftware.util.*;
-import com.cedarsoftware.util.io.*;
-import groovy.lang.*;
-import groovy.util.*;
-import ncube.grv.method.*;
-import org.apache.logging.log4j.*;
+import com.cedarsoftware.ncube.exception.BranchMergeException;
+import com.cedarsoftware.ncube.util.CdnClassLoader;
+import com.cedarsoftware.util.ArrayUtilities;
+import com.cedarsoftware.util.CaseInsensitiveSet;
+import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.MapUtilities;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
+import com.cedarsoftware.util.io.JsonObject;
+import com.cedarsoftware.util.io.JsonReader;
+import com.cedarsoftware.util.io.JsonWriter;
+import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.io.*;
-import java.net.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -220,7 +241,6 @@ public class NCubeManager
         Object urlCpLoader = cpCube.getCell(input);
         if (urlCpLoader instanceof List)
         {
-            XmlParser foo;
             synchronized(appId.cacheKey().intern())
             {
                 urlCpLoader = cpCube.getCell(input);

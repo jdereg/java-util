@@ -84,7 +84,7 @@ class TestSha1
         axis2.addColumn("OH")
         axis2.addColumn("GA")
         ncube2.addAxis(axis2)
-        GroovyExpression exp = new GroovyExpression("return 'Hi'", null)
+        GroovyExpression exp = new GroovyExpression("return 'Hi'", null, false)
         ncube2.setCell(exp, [state:'OH'])
 
         assert ncube1.sha1() != ncube2.sha1()

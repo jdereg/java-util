@@ -102,8 +102,8 @@ class TestCellTypes
         performRecreateAssertion new BigDecimal('4.56')
         performRecreateAssertion new BigInteger('900')
         performRecreateAssertion Boolean.TRUE
-        performRecreateAssertion new GroovyExpression('0', null)
-        performRecreateAssertion new GroovyMethod('0', null)
+        performRecreateAssertion new GroovyExpression('0', null, false)
+        performRecreateAssertion new GroovyMethod('0', null, false)
         performRecreateAssertion new GroovyTemplate(null, 'http://www.google.com', false)
         performRecreateAssertion new BinaryUrlCmd('http://www.google.com', false)
         performRecreateAssertion 'foo'

@@ -272,8 +272,8 @@ class TestNCubeManager
         coord2.put('Country', 'Canada')
         coord2.put('Province', 'Quebec')
 
-        continentCounty.setCell(new GroovyExpression('@test.States([:])', null), coord1)
-        continentCounty.setCell(new GroovyExpression('\$test.Provinces(crunch)', null), coord2)
+        continentCounty.setCell(new GroovyExpression('@test.States([:])', null, false), coord1)
+        continentCounty.setCell(new GroovyExpression('\$test.Provinces(crunch)', null, false), coord2)
 
         usa.setCell(1.0, coord1)
         canada.setCell(0.78, coord2)

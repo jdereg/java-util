@@ -5,18 +5,9 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.ResultSet
-import java.sql.SQLException
-import java.sql.Timestamp
+import java.sql.*
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
@@ -677,6 +668,22 @@ class TestNCubeJdbcPersister
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.startsWith("Unable to get"))
             assertTrue(e.message.contains("revision number"))
+        }
+    }
+
+    @Test
+    void testDeleteBranchWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().deleteBranch(c, defaultSnapshotApp)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.toLowerCase().startsWith("unable to delete branch"))
         }
     }
 

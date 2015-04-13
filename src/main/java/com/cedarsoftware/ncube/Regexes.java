@@ -59,10 +59,4 @@ public interface Regexes
     Pattern cdnUrlPattern = Pattern.compile("^\\/dyn\\/([^\\/]+)\\/(.*)$");
 
     Pattern hasClassDefPattern = Pattern.compile("^(|.*?\\s+)class\\s+([a-zA-Z_0-9$\\.]+).*?\\{.*?\\}.*$", Pattern.DOTALL);
-    Pattern sha1Pattern = Pattern.compile(",\\s*\"sha1\":\\s*\"(.*?)\"");
-    Pattern headSha1Pattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"");
-    Pattern changedPattern = Pattern.compile(",\\s*\"changed\":\\s*true");
-    Pattern ncubePattern = Pattern.compile("\"ncube\":\\s*\"(.*?)\"");
-    Pattern headSha1orChangedPattern = Pattern.compile(",\\s*\"headSha1\":\\s*\"(.*?)\"|,\\s*\"changed\":\\s*true");
-
 }

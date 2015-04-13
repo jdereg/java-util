@@ -849,21 +849,6 @@ class TestNCubeManager
     }
 
     @Test
-    void testMissingBootstrapException() throws Exception
-    {
-        try
-        {
-            NCubeManager.getApplicationID('foo', 'bar', new HashMap())
-            fail()
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.message.contains('Missing sys.bootstrap cube'))
-            assertTrue(e.message.contains('0.0.0 version'))
-        }
-    }
-
-    @Test
     void testNCubeManagerUpdateCubeExceptions() throws Exception
     {
         try
@@ -1589,6 +1574,46 @@ class TestNCubeManager
         assertTrue(names.contains('a'))
         assertTrue(names.contains('b'))
         assertTrue(names.contains('c'))
+    }
+
+    @Test
+    void testGetSystemParamsHappyPath()
+    {
+        System.setProperty("NCUBE_PARAMS", '{"branch":"foo"}')
+        assertEquals('foo', NCubeManager.getSystemParams().branch);
+        assertNull(NCubeManager.getSystemParams().status);
+        assertNull(NCubeManager.getSystemParams().app);
+        assertNull(NCubeManager.getSystemParams().tenant);
+
+        // ensure doesn't reparse second time.
+        System.setProperty('NCUBE_PARAMS', '')
+        assertEquals('foo', NCubeManager.getSystemParams().branch);
+        assertNull(NCubeManager.getSystemParams().status);
+        assertNull(NCubeManager.getSystemParams().app);
+        assertNull(NCubeManager.getSystemParams().tenant);
+
+
+        NCubeManager.systemParams = null;
+        System.setProperty("NCUBE_PARAMS", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
+        assertEquals('bar', NCubeManager.getSystemParams().branch);
+        assertEquals('RELEASE', NCubeManager.getSystemParams().status);
+        assertEquals('UD', NCubeManager.getSystemParams().app);
+        assertEquals('foo', NCubeManager.getSystemParams().tenant);
+
+        // ensure doesn't reparse second time.
+        System.setProperty('NCUBE_PARAMS', '')
+        assertEquals('bar', NCubeManager.getSystemParams().branch);
+        assertEquals('RELEASE', NCubeManager.getSystemParams().status);
+        assertEquals('UD', NCubeManager.getSystemParams().app);
+        assertEquals('foo', NCubeManager.getSystemParams().tenant);
+
+        // test invalid json, hands back nice empty map.
+        NCubeManager.systemParams = null;
+        System.setProperty("NCUBE_PARAMS", '{"status":}')
+        assertNull(NCubeManager.getSystemParams().branch);
+        assertNull(NCubeManager.getSystemParams().status);
+        assertNull(NCubeManager.getSystemParams().app);
+        assertNull(NCubeManager.getSystemParams().tenant);
     }
 
     private static void loadTestClassPathCubes()

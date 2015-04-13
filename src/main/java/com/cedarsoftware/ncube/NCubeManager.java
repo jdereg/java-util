@@ -1,41 +1,19 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.BranchMergeException;
-import com.cedarsoftware.ncube.util.CdnClassLoader;
-import com.cedarsoftware.util.ArrayUtilities;
-import com.cedarsoftware.util.CaseInsensitiveSet;
-import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.MapUtilities;
-import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.SystemUtilities;
-import com.cedarsoftware.util.io.JsonObject;
-import com.cedarsoftware.util.io.JsonReader;
-import com.cedarsoftware.util.io.JsonWriter;
-import groovy.lang.GroovyClassLoader;
-import groovy.util.XmlParser;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.cedarsoftware.ncube.exception.*;
+import com.cedarsoftware.ncube.util.*;
+import com.cedarsoftware.util.*;
+import com.cedarsoftware.util.io.*;
+import groovy.lang.*;
+import groovy.util.*;
+import ncube.grv.method.*;
+import org.apache.logging.log4j.*;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.*;
+import java.net.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -69,8 +47,12 @@ public class NCubeManager
     private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
+    public static final String NCUBE_PARAMS = "NCUBE_PARAMS";
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
+
+    // not private in case we want to tweak things for testing.
+    private static volatile Map<String, Object> systemParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -87,6 +69,35 @@ public class NCubeManager
             throw new IllegalStateException("Persister not set into NCubeManager.");
         }
         return nCubePersister;
+    }
+
+    public static Map<String, Object> getSystemParams()
+    {
+        if(systemParams == null)
+        {
+            synchronized(NCubeManager.class)
+            {
+                if(systemParams == null)
+                {
+                    String jsonParams = SystemUtilities.getExternalVariable(NCUBE_PARAMS);
+
+                    systemParams = new HashMap();
+
+                    if (StringUtilities.hasContent(jsonParams))
+                    {
+                        try
+                        {
+                            systemParams = JsonReader.jsonToMaps(jsonParams);
+                        }
+                        catch (Exception e)
+                        {
+                            LOG.warn("Parsing of NCUBE_PARAMS failed.  " + jsonParams);
+                        }
+                    }
+                }
+            }
+        }
+        return systemParams;
     }
 
     /**
@@ -227,8 +238,7 @@ public class NCubeManager
         return (URLClassLoader) urlCpLoader;
     }
 
-    static URLClassLoader getLocalClassloader(ApplicationID appId)
-    {
+    static URLClassLoader getLocalClassloader(ApplicationID appId) {
         GroovyClassLoader gcl = localClassLoaders.get(appId);
         if (gcl == null)
         {
@@ -418,8 +428,7 @@ public class NCubeManager
     {
         validateAppId(appId);
         Map<String, Advice> current = advices.get(appId);
-        if (current == null)
-        {
+        if (current == null) {
             synchronized (advices)
             {
                 current = new ConcurrentHashMap<>();
@@ -728,7 +737,7 @@ public class NCubeManager
         {
             if ((cubeName instanceof String))
             {
-                NCube.validateCubeName((String)cubeName);
+                NCube.validateCubeName((String) cubeName);
                 getPersister().restoreCube(appId, (String) cubeName, username);
             }
             else
@@ -1018,14 +1027,9 @@ public class NCubeManager
                         updates.add(head);
                     }
                 }
-                else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
-                {
+                else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1)) {
                     conflicts.put(info.name, "Cube was changed in HEAD");
                 }
-            }
-            else  // doesn't exist in branch, but is on head.
-            {
-                updates.add(head);
             }
         }
 
@@ -1102,6 +1106,12 @@ public class NCubeManager
 
         broadcast(appId);
         return result;
+    }
+
+    public static boolean deleteBranch(ApplicationID appId)
+    {
+        appId.validateBranchIsNotHead();
+        return getPersister().deleteBranch(appId);
     }
 
     /**
@@ -1181,40 +1191,40 @@ public class NCubeManager
         return getPersister().getBranches(tenant);
     }
 
-    public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
-    {
-        ApplicationID.validateTenant(tenant);
-        ApplicationID.validateApp(tenant);
-
-        if (coord == null)
-        {
-            coord = new HashMap();
-        }
-
-        NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
-
-        if (bootCube == null)
-        {
-             throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
-        }
-
-        ApplicationID bootAppId = (ApplicationID) bootCube.getCell(coord);
-        String version = bootAppId.getVersion();
-        String status = bootAppId.getStatus();
-        String branch = bootAppId.getBranch();
-
-        if (!tenant.equalsIgnoreCase(bootAppId.getTenant()))
-        {
-            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different tenant '" + bootAppId.getTenant() + "' than requested. Using '" + tenant + "' instead.");
-        }
-
-        if (!app.equalsIgnoreCase(bootAppId.getApp()))
-        {
-            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different app '" + bootAppId.getApp() + "' than requested. Using '" + app + "' instead.");
-        }
-
-        return new ApplicationID(tenant, app, version, status, branch);
-    }
+//    public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
+//    {
+//        ApplicationID.validateTenant(tenant);
+//        ApplicationID.validateApp(tenant);
+//
+//        if (coord == null)
+//        {
+//            coord = new HashMap();
+//        }
+//
+//        NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
+//
+//        if (bootCube == null)
+//        {
+//             throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
+//        }
+//
+//        ApplicationID bootAppId = (ApplicationID) bootCube.getCell(coord);
+//        String version = bootAppId.getVersion();
+//        String status = bootAppId.getStatus();
+//        String branch = bootAppId.getBranch();
+//
+//        if (!tenant.equalsIgnoreCase(bootAppId.getTenant()))
+//        {
+//            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different tenant '" + bootAppId.getTenant() + "' than requested. Using '" + tenant + "' instead.");
+//        }
+//
+//        if (!app.equalsIgnoreCase(bootAppId.getApp()))
+//        {
+//            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different app '" + bootAppId.getApp() + "' than requested. Using '" + app + "' instead.");
+//        }
+//
+//        return new ApplicationID(tenant, app, version, status, branch);
+//    }
 
     public static Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
     {

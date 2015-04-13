@@ -27,6 +27,7 @@ interface NCubePersister extends NCubeReadOnlyPersister
 {
     void createCube(ApplicationID appId, NCube cube, String username);
     void updateCube(ApplicationID appId, NCube cube, String username);
+    boolean deleteBranch(ApplicationID appId);
     boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete, String username);
     boolean renameCube(ApplicationID appId, String oldName, String newName, String username);
     boolean duplicateCube(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)

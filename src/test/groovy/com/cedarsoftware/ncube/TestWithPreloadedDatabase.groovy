@@ -185,6 +185,22 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testGetBranchChangesOnceBranchIsDeleted() throws Exception {
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+
+        NCubeManager.createCube(branch1, cube, 'kenny')
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(1, dtos.length)
+
+        assertTrue(NCubeManager.deleteBranch(branch1))
+
+        // ensure that there are no more branch changes after delete
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(0, dtos.length);
+    }
+
+    @Test
     void testUpdateBranchOnCubeCreatedInBranch() throws Exception {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 

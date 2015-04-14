@@ -849,6 +849,21 @@ class TestNCubeManager
     }
 
     @Test
+    void testMissingBootstrapException() throws Exception
+    {
+        try
+        {
+            NCubeManager.getApplicationID('foo', 'bar', new HashMap())
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.contains('Missing sys.bootstrap cube'))
+            assertTrue(e.message.contains('0.0.0 version'))
+        }
+    }
+
+    @Test
     void testNCubeManagerUpdateCubeExceptions() throws Exception
     {
         try

@@ -1,13 +1,11 @@
 package com.cedarsoftware.ncube;
 
-import groovy.lang.GroovyShell;
+import groovy.lang.*;
 
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.atomic.*;
+import java.util.regex.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -36,11 +34,15 @@ public abstract class UrlCommandCell implements CommandCell
     private int hash;
     private static final GroovyShell shell = new GroovyShell();
     public static final char EXTENSION_SEPARATOR = '.';
+    private AtomicBoolean hasBeenCached = new AtomicBoolean(false);
+    private Object cache;
+    // would prefer this was a final
+    private boolean cacheable;
 
     //  Private constructor only for serialization.
     protected UrlCommandCell() { }
 
-    public UrlCommandCell(String cmd, String url)
+    public UrlCommandCell(String cmd, String url, boolean cacheable)
     {
         if (cmd == null && url == null)
         {
@@ -54,6 +56,7 @@ public abstract class UrlCommandCell implements CommandCell
 
         this.cmd = cmd;
         this.url = url;
+        this.cacheable = cacheable;
         this.hash = cmd == null ? url.hashCode() : cmd.hashCode();
     }
 
@@ -62,7 +65,11 @@ public abstract class UrlCommandCell implements CommandCell
         return url;
     }
 
-    public abstract boolean isCacheable();
+    public boolean isCacheable()
+    {
+        return cacheable;
+    }
+
 
     public void expandUrl(Map ctx)
     {
@@ -237,5 +244,32 @@ public abstract class UrlCommandCell implements CommandCell
     {
     }
 
-    public abstract Object execute(Map<String, Object> ctx);
+    public Object execute(Map<String, Object> ctx)
+    {
+        failOnErrors();
+
+        if (!cacheable)
+        {
+            return fetchResult(ctx);
+        }
+
+        if (hasBeenCached.get())
+        {
+            return cache;
+        }
+
+        synchronized (this)
+        {
+            if (hasBeenCached.get())
+            {
+                return cache;
+            }
+
+            cache = fetchResult(ctx);
+            hasBeenCached.set(true);
+            return cache;
+        }
+    }
+
+    protected abstract Object fetchResult(Map<String, Object> ctx);
 }

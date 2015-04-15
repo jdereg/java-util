@@ -1360,9 +1360,9 @@ class TestNCubeManager
         assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', baseCube.getCell(map))
 
         NCube classPathCube = NCubeManager.getCube(defaultSnapshotApp, 'sys.classpath')
-        List<String> list = (List<String>) classPathCube.getCell(map)
-        assertEquals(1, list.size());
-        assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', list.get(0));
+        URLClassLoader loader = (URLClassLoader) classPathCube.getCell(map)
+        assertEquals(1, loader.URLs.length);
+        assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', loader.URLs[0].toString());
 //          write out UrlClassLoader?
 //        JsonFormatter formatter = new JsonFormatter();
 //        String s = formatter.format(classPathCube);

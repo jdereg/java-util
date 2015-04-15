@@ -1,5 +1,5 @@
 {
-  "ncube": "sys.classpath",
+  "ncube": "sys.bootstrap",
   "axes": [
     {
       "name": "env",
@@ -14,7 +14,7 @@
     {
       "id": [],
       "type": "exp",
-      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com'] as String[])"
+      "value": "new ApplicationID('NONE', 'ncube.test', '1.28.0', 'RELEASE', 'HEAD')"
     }
   ]
 }

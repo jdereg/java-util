@@ -1,23 +1,15 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
-import com.cedarsoftware.ncube.exception.RuleJump;
-import com.cedarsoftware.ncube.exception.RuleStop;
-import com.cedarsoftware.util.EncryptionUtilities;
-import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.UrlUtilities;
-import groovy.lang.GroovyClassLoader;
-import ncube.grv.exp.NCubeGroovyExpression;
+import com.cedarsoftware.ncube.exception.*;
+import com.cedarsoftware.util.*;
+import groovy.lang.*;
+import ncube.grv.exp.*;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
+import java.lang.reflect.*;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
 
 /**
  * Base class for Groovy CommandCells.
@@ -45,17 +37,13 @@ public abstract class GroovyBase extends UrlCommandCell
     static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
     static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
-    private AtomicBoolean hasBeenCached = new AtomicBoolean(false);
-    private boolean cacheable;
-    private Object cache;
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
 
-    public GroovyBase(String cmd, String url, boolean cacheable)
+    public GroovyBase(String cmd, String url, boolean cache)
     {
-        super(cmd, url);
-        this.cacheable = cacheable;
+        super(cmd, url, cache);
     }
 
     public Class getRunnableCode()
@@ -68,39 +56,7 @@ public abstract class GroovyBase extends UrlCommandCell
         this.runnableCode = runnableCode;
     }
 
-    public boolean isCacheable()
-    {
-        return cacheable;
-    }
-
-    public Object execute(Map<String, Object> ctx)
-    {
-        failOnErrors();
-
-        if (!isCacheable())
-        {
-            return fetchResult(ctx);
-        }
-
-        if (hasBeenCached.get())
-        {
-            return cache;
-        }
-
-        synchronized (this)
-        {
-            if (hasBeenCached.get())
-            {
-                return cache;
-            }
-
-            cache = fetchResult(ctx);
-            hasBeenCached.set(true);
-            return cache;
-        }
-    }
-
-    private Object fetchResult(Map<String, Object> ctx)
+    protected Object fetchResult(Map<String, Object> ctx)
     {
         Object data = null;
 

@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * This class represents any cell that needs to return content from a URL.
@@ -35,9 +34,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 @CompileStatic
 abstract class ContentCmdCell extends UrlCommandCell
 {
-    private AtomicBoolean hasBeenFetched = new AtomicBoolean(false)
-    private boolean cacheable
-    private Object cache
     private static Map<String, String> extToMimeType = new ConcurrentHashMap<>()
     private static final Logger LOG = LogManager.getLogger(CdnRouter.class)
 
@@ -59,19 +55,11 @@ abstract class ContentCmdCell extends UrlCommandCell
 
     public ContentCmdCell(String cmd, String url, boolean cacheContent)
     {
-        super(cmd, url)
-        cacheable = cacheContent
+        super(cmd, url, cacheContent)
     }
 
-    public boolean isCacheable()
+    protected Object fetchResult(Map<String, Object> ctx)
     {
-        return cacheable
-    }
-
-    public Object execute(Map<String, Object> ctx)
-    {
-        failOnErrors()
-
         Object data;
 
         if (url == null)
@@ -81,35 +69,10 @@ abstract class ContentCmdCell extends UrlCommandCell
         else
         {
             expandUrl(ctx)
-            data = fetch(ctx)
+            data = fetchContentFromUrl(ctx)
         }
 
         return executeInternal(data, ctx)
-    }
-
-    protected Object fetch(Map ctx)
-    {
-        if (!cacheable)
-        {
-            return fetchContentFromUrl(ctx)
-        }
-
-        if (hasBeenFetched.get())
-        {
-            return cache
-        }
-
-        synchronized (this)
-        {
-            if (hasBeenFetched.get())
-            {
-                return cache
-            }
-
-            cache = fetchContentFromUrl(ctx)
-            hasBeenFetched.set(true)
-            return cache
-        }
     }
 
     protected Object executeInternal(Object data, Map<String, Object> ctx)

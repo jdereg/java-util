@@ -14,7 +14,8 @@
         {
             "id": [],
             "type": "exp",
-            "value": "[@sys.classpath.base[:]]"
+            "cache": true,
+            "value": "new com.cedarsoftware.ncube.util.CdnClassLoader([@sys.classpath.base[:]] as String[])"
         }
     ]
 }

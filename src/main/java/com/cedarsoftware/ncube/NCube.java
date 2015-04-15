@@ -1871,7 +1871,7 @@ public class NCube<T>
                         Object cmd = CellInfo.parseJsonValue(value, url, colType, cache);
                         if (!(cmd instanceof CommandCell))
                         {
-                            cmd = new GroovyExpression("false", null, false);
+                            cmd = new GroovyExpression("false", null, cache);
                         }
                         colAdded = ncube.addColumn(axis.getName(), (CommandCell)cmd, colName);
                     }

@@ -286,7 +286,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                     }
                 }
                 s.append(']');
-                writeCommandCell(new GroovyExpression(s.toString(), null));
+                writeCommandCell(new GroovyExpression(s.toString(), null, false));
             }
             else
             {

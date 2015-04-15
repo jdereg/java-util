@@ -68,10 +68,10 @@ public enum CellTypes
         new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return isUrl ? new BinaryUrlCmd(value, isCached) : StringUtilities.decode(value); }}
     ),
     Exp("exp",
-        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyExpression(isUrl ? null : value, isUrl ? value : null); }}
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyExpression(isUrl ? null : value, isUrl ? value : null, isCached); }}
     ),
     Method("method",
-        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyMethod(isUrl ? null : value, isUrl ? value : null); }}
+        new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyMethod(isUrl ? null : value, isUrl ? value : null, isCached); }}
     ),
     Template("template",
         new CellRecreator() { public Object recreate(String value, boolean isUrl, boolean isCached) { return new GroovyTemplate(isUrl ? null : value, isUrl ? value : null, isCached); }}

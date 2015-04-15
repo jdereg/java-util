@@ -31,11 +31,13 @@
     {
       "id": ["DEV"],
       "type": "exp",
+      "cache" : true,
       "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
     },
     {
       "id": ["SAND"],
       "type": "exp",
+      "cache" : true,
       "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
     },
     {
@@ -46,27 +48,31 @@
     {
       "id": ["CERT"],
       "type": "exp",
+      "cache" : true,
       "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
     },
     {
       "id": ["UAT"],
       "type": "exp",
+      "cache" : true,
       "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
     },
     {
       "id": ["LOCAL"],
       "type": "exp",
+      "cache" : true,
       "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
     },
     {
       "id": ["TESTING"],
       "type": "exp",
+      "cache" : true,
       "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
     },
     {
       "id": [],
       "type": "exp",
-      "value": "import com.cedarsoftware.util.*; import com.cedarsoftware.util.io.*; Map map = null; if (StringUtilities.hasContent(SystemUtilities.getExternalVariable('NCUBE_PARAMS'))) { map = JsonReader.jsonToMaps(SystemUtilities.getExternalVariable('NCUBE_PARAMS')); }; String version = map?.containsKey('version') ? map.version : input.version; String urlBase = map?.containsKey('cpBase') ? map.cpBase : ('https://www.foo.com/' + version + '/'); [urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/'];"
+      "value": "import com.cedarsoftware.util.*; import com.cedarsoftware.util.io.*; Map map = null; if (StringUtilities.hasContent(SystemUtilities.getExternalVariable('NCUBE_PARAMS'))) { map = JsonReader.jsonToMaps(SystemUtilities.getExternalVariable('NCUBE_PARAMS')); }; String version = map?.containsKey('version') ? map.version : input.version; String urlBase = map?.containsKey('cpBase') ? map.cpBase : ('https://www.foo.com/' + version + '/'); new com.cedarsoftware.ncube.util.CdnClassLoader([urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/'] as String[]);"
     }
   ]
 }

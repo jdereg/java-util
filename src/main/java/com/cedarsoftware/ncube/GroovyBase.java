@@ -1,22 +1,15 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
-import com.cedarsoftware.ncube.exception.RuleJump;
-import com.cedarsoftware.ncube.exception.RuleStop;
-import com.cedarsoftware.util.EncryptionUtilities;
-import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.UrlUtilities;
-import groovy.lang.GroovyClassLoader;
-import ncube.grv.exp.NCubeGroovyExpression;
+import com.cedarsoftware.ncube.exception.*;
+import com.cedarsoftware.util.*;
+import groovy.lang.*;
+import ncube.grv.exp.*;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
+import java.lang.reflect.*;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
 
 /**
  * Base class for Groovy CommandCells.
@@ -48,9 +41,9 @@ public abstract class GroovyBase extends UrlCommandCell
     //  Private constructor only for serialization.
     protected GroovyBase() {}
 
-    public GroovyBase(String cmd, String url)
+    public GroovyBase(String cmd, String url, boolean cache)
     {
-        super(cmd, url);
+        super(cmd, url, cache);
     }
 
     public Class getRunnableCode()
@@ -63,16 +56,9 @@ public abstract class GroovyBase extends UrlCommandCell
         this.runnableCode = runnableCode;
     }
 
-    public boolean isCacheable()
+    protected Object fetchResult(Map<String, Object> ctx)
     {
-        return true;
-    }
-
-    public Object execute(Map<String, Object> ctx)
-    {
-        failOnErrors();
-
-        Object data;
+        Object data = null;
 
         if (getUrl() == null)
         {
@@ -81,7 +67,6 @@ public abstract class GroovyBase extends UrlCommandCell
         else
         {
             expandUrl(ctx);
-            data = null;
         }
 
         prepare(data, ctx);

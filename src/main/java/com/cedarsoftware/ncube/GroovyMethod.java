@@ -57,9 +57,9 @@ public class GroovyMethod extends GroovyBase
     //  Private constructor only for serialization.
     private GroovyMethod() {}
 
-    public GroovyMethod(String cmd, String url)
+    public GroovyMethod(String cmd, String url, boolean cacheable)
     {
-        super(cmd, url);
+        super(cmd, url, cacheable);
     }
 
     public String buildGroovy(String theirGroovy)

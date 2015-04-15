@@ -1,11 +1,10 @@
 package com.cedarsoftware.ncube.util;
 
-import groovy.lang.GroovyClassLoader;
+import groovy.lang.*;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.Enumeration;
-import java.util.NoSuchElementException;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 /**
  *  @author Ken Partlow (kpartlow@gmail.com)
@@ -39,10 +38,45 @@ public class CdnClassLoader extends GroovyClassLoader
         _preventRemoteCustomizer = preventRemoteCustomizer;
     }
 
+    public CdnClassLoader(String... urls)
+    {
+        this(CdnClassLoader.class.getClassLoader(), true, true);
+        addURLs(urls);
+    }
+
     protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
         return super.getParent().loadClass(name);
     }
+
+    private void addURLs(String ... urls)
+    {
+        for (String url : urls)
+        {
+            addURL(url);
+        }
+    }
+
+    public void addURL(String url) {
+        if (url != null)
+        {
+            try
+            {
+                if (!url.endsWith("/"))
+                {
+                    url += "/";
+                }
+                addURL(new URL(url));
+            }
+            catch (Exception e)
+            {
+                throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url, e);
+            }
+        }
+
+    }
+
+
 
     /**
      * @param name Name of resource

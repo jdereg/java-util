@@ -1,13 +1,10 @@
 package com.cedarsoftware.ncube;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.*;
 
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.regex.*;
 
 /**
  * This class is used to hold Groovy Expressions.  This means that
@@ -50,9 +47,9 @@ public class GroovyExpression extends GroovyBase
 
     //  Private constructor only for serialization.
     private GroovyExpression() { }
-    public GroovyExpression(String cmd, String url)
+    public GroovyExpression(String cmd, String url, boolean cache)
     {
-        super(cmd, url);
+        super(cmd, url, cache);
     }
 
     public String buildGroovy(String theirGroovy)

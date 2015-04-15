@@ -6,12 +6,7 @@ import com.cedarsoftware.ncube.proximity.Point3D
 import com.cedarsoftware.util.io.JsonObject
 import org.junit.Test
 
-import static org.junit.Assert.assertArrayEquals
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -107,8 +102,8 @@ class TestCellInfo
         performRecreateAssertion new BigDecimal('4.56')
         performRecreateAssertion new BigInteger('900')
         performRecreateAssertion Boolean.TRUE
-        performRecreateAssertion new GroovyExpression('0', null)
-        performRecreateAssertion new GroovyMethod('0', null)
+        performRecreateAssertion new GroovyExpression('0', null, false)
+        performRecreateAssertion new GroovyMethod('0', null, false)
         performRecreateAssertion new GroovyTemplate(null, 'http://www.google.com', false)
         performRecreateAssertion new BinaryUrlCmd('http://www.google.com', false)
         performArrayRecreateAssertion([0, 4, 5, 6] as byte[])
@@ -169,32 +164,32 @@ class TestCellInfo
     @Test
     void testParseJsonValue()
     {
-        assertEquals Boolean.TRUE, CellInfo.parseJsonValue('boolean', 'true')
-        assertEquals Boolean.FALSE, CellInfo.parseJsonValue('boolean', 'false')
-        assertEquals 2 as byte, CellInfo.parseJsonValue('byte', '2')
-        assertEquals 5 as short, CellInfo.parseJsonValue('short', '5')
-        assertEquals 9L, CellInfo.parseJsonValue('long', '9')
-        assertEquals 9, CellInfo.parseJsonValue('int', '9')
-        assertEquals(9.87d, (Double)CellInfo.parseJsonValue('double', '9.87'), 0.000001d)
-        assertEquals(9.65f, (float)CellInfo.parseJsonValue('float', '9.65'), 0.000001f)
+        assertEquals Boolean.TRUE, CellInfo.parseJsonValue('boolean', 'true', false)
+        assertEquals Boolean.FALSE, CellInfo.parseJsonValue('boolean', 'false', false)
+        assertEquals 2 as byte, CellInfo.parseJsonValue('byte', '2', false)
+        assertEquals 5 as short, CellInfo.parseJsonValue('short', '5', false)
+        assertEquals 9L, CellInfo.parseJsonValue('long', '9', false)
+        assertEquals 9, CellInfo.parseJsonValue('int', '9', false)
+        assertEquals(9.87d, (Double)CellInfo.parseJsonValue('double', '9.87', false), 0.000001d)
+        assertEquals(9.65f, (float)CellInfo.parseJsonValue('float', '9.65', false), 0.000001f)
     }
 
     @Test(expected = IllegalArgumentException.class)
     void testParseJsonValueBinaryWithOddNumberString()
     {
-        CellInfo.parseJsonValue 'binary', '0'
+        CellInfo.parseJsonValue 'binary', '0', false
     }
 
     @Test(expected = IllegalArgumentException.class)
     void testParseJsonValueInvalidHexString()
     {
-        CellInfo.parseJsonValue 'binary', 'GF'
+        CellInfo.parseJsonValue 'binary', 'GF', true
     }
 
     @Test(expected = IllegalArgumentException.class)
     void testParseJsonValueWithInvalidBoolean()
     {
-        CellInfo.parseJsonValue 'boolean', 'yes'
+        CellInfo.parseJsonValue 'boolean', 'yes', true
     }
 
     @Test
@@ -244,7 +239,7 @@ class TestCellInfo
     void testParseJsonValueGroovyMethod() throws Exception
     {
         GroovyMethod method = (GroovyMethod) CellInfo.parseJsonValue("def [5]", null, "method", true)
-        assertEquals(new GroovyMethod("def [5]", null), method)
+        assertEquals(new GroovyMethod("def [5]", null, false), method)
     }
 
     public void performRecreateAssertion(Object o)

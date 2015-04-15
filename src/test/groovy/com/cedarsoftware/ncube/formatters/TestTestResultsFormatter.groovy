@@ -1,14 +1,6 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.ApplicationID
-import com.cedarsoftware.ncube.CellInfo
-import com.cedarsoftware.ncube.GroovyExpression
-import com.cedarsoftware.ncube.NCube
-import com.cedarsoftware.ncube.NCubeManager
-import com.cedarsoftware.ncube.NCubeTest
-import com.cedarsoftware.ncube.RuleInfo
-import com.cedarsoftware.ncube.StringValuePair
-import com.cedarsoftware.ncube.TestingDatabaseHelper
+import com.cedarsoftware.ncube.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -100,7 +92,7 @@ class TestTestResultsFormatter
         CellInfo[] expected = new CellInfo[3]
         expected[0] = new CellInfo(3.0d)
         expected[1] = new CellInfo(3.0f)
-        expected[2] = new CellInfo(new GroovyExpression('help me', null))
+        expected[2] = new CellInfo(new GroovyExpression('help me', null, false))
         NCubeTest test = new NCubeTest('testName', coord, expected)
         assert test.name == 'testName'
     }

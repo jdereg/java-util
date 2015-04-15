@@ -1,49 +1,17 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
-import com.cedarsoftware.ncube.exception.RuleJump;
-import com.cedarsoftware.ncube.exception.RuleStop;
-import com.cedarsoftware.ncube.formatters.HtmlFormatter;
-import com.cedarsoftware.ncube.formatters.JsonFormatter;
-import com.cedarsoftware.util.ArrayUtilities;
-import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.CaseInsensitiveSet;
-import com.cedarsoftware.util.DeepEquals;
-import com.cedarsoftware.util.EncryptionUtilities;
-import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.MapUtilities;
-import com.cedarsoftware.util.ReflectionUtils;
-import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.io.JsonObject;
-import com.cedarsoftware.util.io.JsonReader;
-import com.cedarsoftware.util.io.JsonWriter;
-import groovy.util.MapEntry;
+import com.cedarsoftware.ncube.exception.*;
+import com.cedarsoftware.ncube.formatters.*;
+import com.cedarsoftware.util.*;
+import com.cedarsoftware.util.io.*;
+import groovy.util.*;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.security.MessageDigest;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.regex.Matcher;
+import java.lang.reflect.*;
+import java.math.*;
+import java.net.*;
+import java.security.*;
+import java.util.*;
+import java.util.regex.*;
 
 /**
  * Implements an n-cube.  This is a hyper (n-dimensional) cube
@@ -1903,7 +1871,7 @@ public class NCube<T>
                         Object cmd = CellInfo.parseJsonValue(value, url, colType, cache);
                         if (!(cmd instanceof CommandCell))
                         {
-                            cmd = new GroovyExpression("false", null);
+                            cmd = new GroovyExpression("false", null, cache);
                         }
                         colAdded = ncube.addColumn(axis.getName(), (CommandCell)cmd, colName);
                     }
@@ -2390,6 +2358,9 @@ public class NCube<T>
                 }
                 else if (value instanceof ClassLoader)
                 {
+                    //  TODO:  This code would not longer be hit if we forced sys.classpath
+                    //  cubes to actually return a URLClassLoader instead of array of string
+                    //  and allowed natural GroovyExpression caching to do it.
                     if (value instanceof URLClassLoader)
                     {
                         URLClassLoader cl = (URLClassLoader) value;

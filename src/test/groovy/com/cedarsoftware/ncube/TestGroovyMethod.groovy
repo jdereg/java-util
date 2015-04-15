@@ -48,14 +48,14 @@ class TestGroovyMethod
     @Test
     void testGroovyMethod()
     {
-        GroovyMethod m = new GroovyMethod('cmd', null)
+        GroovyMethod m = new GroovyMethod('cmd', null, false)
         assertEquals 'foo', m.getMethodToExecute([input:[method:'foo']])
     }
 
     @Test
     void testGetCubeNamesFromTestWithEmptyString()
     {
-        GroovyMethod m = new GroovyMethod('cmd', null)
+        GroovyMethod m = new GroovyMethod('cmd', null, false)
         Set<String> set = [] as Set
         m.getCubeNamesFromCommandText set
         assertEquals 0, set.size()
@@ -64,7 +64,12 @@ class TestGroovyMethod
     @Test
     void testConstructionState()
     {
-        GroovyMethod m = new GroovyMethod('cmd', 'com/foo/not/found/bar.groovy')
+        GroovyMethod m = new GroovyMethod('cmd', 'com/foo/not/found/bar.groovy', false)
+        assertEquals 'cmd', m.cmd
+        assertEquals 'com/foo/not/found/bar.groovy', m.url
+        assertEquals false, m.cacheable
+
+        m = new GroovyMethod('cmd', 'com/foo/not/found/bar.groovy', true)
         assertEquals 'cmd', m.cmd
         assertEquals 'com/foo/not/found/bar.groovy', m.url
         assertEquals true, m.cacheable

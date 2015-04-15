@@ -75,12 +75,12 @@ class TestUrlCommandCell
     @Test
     void testUrlCommandCellCompareTo() throws Exception
     {
-        GroovyExpression exp1 = new GroovyExpression("true", null);
-        GroovyExpression exp2 = new GroovyExpression("false", null);
-        GroovyExpression exp3 = new GroovyExpression(null, "http://www.foo.com");
-        GroovyExpression exp4 = new GroovyExpression(null, "http://www.bar.com");
+        GroovyExpression exp1 = new GroovyExpression("true", null, false);
+        GroovyExpression exp2 = new GroovyExpression("false", null, false);
+        GroovyExpression exp3 = new GroovyExpression(null, "http://www.foo.com", false);
+        GroovyExpression exp4 = new GroovyExpression(null, "http://www.bar.com", false);
 
-        GroovyExpression expDup = new GroovyExpression("true", null);
+        GroovyExpression expDup = new GroovyExpression("true", null, false);
 
         assertTrue(exp1.compareTo(exp2) > 1);
         assertTrue(exp1.compareTo(exp3) > 1);

@@ -14,7 +14,8 @@
         {
             "id": [],
             "type": "exp",
-            "value": "['http://www.cedarsoftware.com/tests/ncube/cp2']"
+            "cache": true,
+            "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com/tests/ncube/cp2'] as String[])"
         }
     ]
 }

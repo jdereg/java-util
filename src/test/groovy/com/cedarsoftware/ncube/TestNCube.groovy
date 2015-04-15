@@ -105,13 +105,13 @@ class TestNCube
         def coord = [:]
         coord.put("BU", null)    // default column
         coord.put("PROD_LINE", "CommAuto")
-        ncube.setCell(new GroovyExpression("@CommAuto([:])", null), coord)
+        ncube.setCell(new GroovyExpression("@CommAuto([:])", null, false), coord)
         coord.put("PROD_LINE", "CommGL")
-        ncube.setCell(new GroovyExpression("@CommGL(input)", null), coord)
+        ncube.setCell(new GroovyExpression("@CommGL(input)", null, false), coord)
         coord.put("PROD_LINE", "CommIM")
-        ncube.setCell(new GroovyExpression("\$CommIM(input)", null), coord)
+        ncube.setCell(new GroovyExpression("\$CommIM(input)", null, false), coord)
         coord.put("PROD_LINE", "SBPProperty")
-        ncube.setCell(new GroovyExpression("\$SBPProperty(input)", null), coord)
+        ncube.setCell(new GroovyExpression("\$SBPProperty(input)", null, false), coord)
 
         coord.clear()
         coord.put("Attribute", "busType")
@@ -989,8 +989,8 @@ class TestNCube
         def coord1 = [Continent:'North America', Country:'USA', State:'OH']
         def coord2 = [Continent:'North America', Country:'Canada', Province:'Quebec']
 
-        continentCounty.setCell(new GroovyExpression("\$States(input)", null), coord1)
-        continentCounty.setCell(new GroovyExpression("\$Provinces(input)", null), coord2)
+        continentCounty.setCell(new GroovyExpression("\$States(input)", null, false), coord1)
+        continentCounty.setCell(new GroovyExpression("\$Provinces(input)", null, false), coord2)
 
         usa.setCell(1.0d, coord1)
         canada.setCell(0.78d, coord2)
@@ -1022,8 +1022,8 @@ class TestNCube
         def coord1 = [Continent:'North America', Country:'USA', State:'OH']
         def coord2 = [Continent:'North America', Country:'Canada', Province:'Quebec']
 
-        continentCounty.setCell(new GroovyExpression("\$StatesX(input)", null), coord1)
-        continentCounty.setCell(new GroovyExpression("\$Provinces(input)", null), coord2)
+        continentCounty.setCell(new GroovyExpression("\$StatesX(input)", null, false), coord1)
+        continentCounty.setCell(new GroovyExpression("\$Provinces(input)", null, false), coord2)
 
         usa.setCell(1.0d, coord1)
         canada.setCell(0.78d, coord2)
@@ -2034,19 +2034,19 @@ class TestNCube
 
         def coord = [:]
         coord.put("Continent", "Africa")
-        continents.setCell(new GroovyExpression("\$AfricaCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$AfricaCountries(input)", null, false), coord)
         coord.put("Continent", "Antarctica")
-        continents.setCell(new GroovyExpression("\$AntarticaCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$AntarticaCountries(input)", null, false), coord)
         coord.put("Continent", "Asia")
-        continents.setCell(new GroovyExpression("\$AsiaCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$AsiaCountries(input)", null, false), coord)
         coord.put("Continent", "Australia")
-        continents.setCell(new GroovyExpression("\$AustraliaCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$AustraliaCountries(input)", null, false), coord)
         coord.put("Continent", "Europe")
-        continents.setCell(new GroovyExpression("\$EuropeanCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$EuropeanCountries(input)", null, false), coord)
         coord.put("Continent", "North America")
-        continents.setCell(new GroovyExpression("\$NorthAmericaCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$NorthAmericaCountries(input)", null, false), coord)
         coord.put("Continent", "South America")
-        continents.setCell(new GroovyExpression("\$SouthAmericaCountries(input)", null), coord)
+        continents.setCell(new GroovyExpression("\$SouthAmericaCountries(input)", null, false), coord)
 
         coord.put("Continent", "North America")
         coord.put("Country", "USA")
@@ -2059,7 +2059,7 @@ class TestNCube
         country.addColumn("Mexico")
         naCountries.addAxis(country)
 
-        naCountries.setCell(new GroovyExpression("\$UsaStates(input)", null), coord)
+        naCountries.setCell(new GroovyExpression("\$UsaStates(input)", null, false), coord)
         NCubeManager.addCube(continents.applicationID, continents)
         NCubeManager.addCube(naCountries.applicationID, naCountries)
 
@@ -2343,9 +2343,9 @@ class TestNCube
 
         def coord = [:]
         coord.put("type", "good")
-        ncube.setCell(new GroovyExpression("output.out='dog'; output['ncube']=ncube; return 'great'", null), coord)
+        ncube.setCell(new GroovyExpression("output.out='dog'; output['ncube']=ncube; return 'great'", null, false), coord)
         coord.put("type", "bad")
-        ncube.setCell(new GroovyExpression("input.type='scalar'; return \$(input)", null), coord)
+        ncube.setCell(new GroovyExpression("input.type='scalar'; return \$(input)", null, false), coord)
         coord.put("type", "scalar")
         ncube.setCell(16, coord)
 
@@ -2375,7 +2375,7 @@ class TestNCube
 
         Map input = new HashMap()
         input.put("type", "bad")
-        ncube.setCell(new GroovyExpression("input['type']='scalar'; output.funny = 'bone'; return 5", null), input)
+        ncube.setCell(new GroovyExpression("input['type']='scalar'; output.funny = 'bone'; return 5", null, false), input)
 
         def output = [:]
         input.put("type", "bad")
@@ -2397,11 +2397,11 @@ class TestNCube
 
         def coord = [:]
         coord.put("type", "good")
-        ncube.setCell(new GroovyExpression("\$GroovyCube([type:'property'])", null), coord)
+        ncube.setCell(new GroovyExpression("\$GroovyCube([type:'property'])", null, false), coord)
         coord.put("type", "bad")
-        ncube.setCell(new GroovyExpression("def total = 0; (1..10).each { i -> total += i}; return total", null), coord)
+        ncube.setCell(new GroovyExpression("def total = 0; (1..10).each { i -> total += i}; return total", null, false), coord)
         coord.put("type", "property")
-        ncube.setCell(new GroovyExpression("9", null), coord)
+        ncube.setCell(new GroovyExpression("9", null, false), coord)
 
         def output = [:]
         coord.put("type", "good")
@@ -2429,7 +2429,7 @@ class TestNCube
 
         def coord = [:]
         coord.put("age", 25)
-        ncube.setCell(new GroovyExpression("def age=input['age']; return Math.abs(age - 100)", null), coord)
+        ncube.setCell(new GroovyExpression("def age=input['age']; return Math.abs(age - 100)", null, false), coord)
 
         def output = [:]
         coord.put("age", 25)
@@ -2459,7 +2459,7 @@ class TestNCube
                         " jump(x)" +
                         "}\n" +
                         "int jump(int x) { x * 2; }" +
-                        "}", null), coord)
+                        "}", null, false), coord)
 
         def output = [:]
         coord.put("method", "doIt")
@@ -2501,7 +2501,7 @@ class TestNCube
                         "static class Fargo {" +
                         "static int freeze(int d) {" +
                         "  -d" +
-                        "}}}", null), coord)
+                        "}}}", null, false), coord)
 
         def output = [:]
         coord.put("age", 25)
@@ -2538,7 +2538,7 @@ class TestNCube
         {
             ncube.setCell(new GroovyMethod(
                     "Object run(Map args whoops) " +
-                            "{ 1 }", null), coord)
+                            "{ 1 }", null, false), coord)
 
             ncube.getCell(coord, new HashMap())
             fail("Should not make it here")
@@ -2553,7 +2553,7 @@ class TestNCube
         {
             ncube.setCell(new GroovyMethod(
                     "def run(Map args whoops) " +
-                            "{ 1 }", null), coord)
+                            "{ 1 }", null, false), coord)
 
             ncube.getCell(coord, new HashMap())
             fail("Should not make it here")
@@ -2584,7 +2584,7 @@ class TestNCube
                         "def oldify() " +
                         "{" +
                         " input['age'] * 10;" +
-                        "}}", null), coord)
+                        "}}", null, false), coord)
 
         def output = [:]
         coord.put("age", 25)
@@ -2632,9 +2632,9 @@ class TestNCube
         def coord = [:]
         coord.put("type", "good")
         String className = TestNCube.class.name
-        ncube.setCell(new GroovyExpression(className + "\$CallJavaTest.testInput(input, output, input.type)", null), coord)
+        ncube.setCell(new GroovyExpression(className + "\$CallJavaTest.testInput(input, output, input.type)", null, false), coord)
         coord.put("type", "bad")
-        ncube.setCell(new GroovyExpression("return " + className + "\$CallJavaTest.testInput(input, output, input.type)", null), coord)
+        ncube.setCell(new GroovyExpression("return " + className + "\$CallJavaTest.testInput(input, output, input.type)", null, false), coord)
 
         def output = [:]
         coord.put("type", "good")
@@ -2662,9 +2662,9 @@ class TestNCube
 
         def coord = [:]
         coord.put("type", "good")
-        ncube.setCell(new GroovyExpression("\$GroovyCube([type:'alpha'])", null), coord)
+        ncube.setCell(new GroovyExpression("\$GroovyCube([type:'alpha'])", null, false), coord)
         coord.put("type", "bad")
-        ncube.setCell(new GroovyExpression("\$([type:'beta'])", null), coord)
+        ncube.setCell(new GroovyExpression("\$([type:'beta'])", null, false), coord)
         coord.put("type", "alpha")
         ncube.setCell(16, coord)
         coord.put("type", "beta")
@@ -2693,13 +2693,13 @@ class TestNCube
 
         def coord = [:]
         coord.put("type", "good")
-        ncube.setCell(new GroovyExpression("\$GroovyCube([type:'alpha'])", null), coord)
+        ncube.setCell(new GroovyExpression("\$GroovyCube([type:'alpha'])", null, false), coord)
         coord.put("type", "bad")
-        ncube.setCell(new GroovyExpression("\$([type:'beta'])", null), coord)
+        ncube.setCell(new GroovyExpression("\$([type:'beta'])", null, false), coord)
         coord.put("type", "alpha")
-        ncube.setCell(new GroovyExpression("output['stack'] = 'foo'; output.good=16", null), coord)
+        ncube.setCell(new GroovyExpression("output['stack'] = 'foo'; output.good=16", null, false), coord)
         coord.put("type", "beta")
-        ncube.setCell(new GroovyExpression("output.stack = 'foo'; output.bad=26", null), coord)
+        ncube.setCell(new GroovyExpression("output.stack = 'foo'; output.bad=26", null, false), coord)
 
         coord.put("type", "good")
         def output = [:]
@@ -2729,9 +2729,9 @@ class TestNCube
 
         def coord = [:]
         coord.put("type", "good")
-        ncube.setCell(new GroovyExpression("@JoinedCube([:])", null), coord)
+        ncube.setCell(new GroovyExpression("@JoinedCube([:])", null, false), coord)
         coord.put("type", "bad")
-        ncube.setCell(new GroovyExpression("@JoinedCube([])", null), coord)      // Can't pass an array
+        ncube.setCell(new GroovyExpression("@JoinedCube([])", null, false), coord)      // Can't pass an array
 
         NCube cube2 = new NCube("JoinedCube")
         axis = new Axis("state", AxisType.DISCRETE, AxisValueType.LONG.STRING, false)
@@ -2778,7 +2778,7 @@ class TestNCube
     {
         try
         {
-            new GroovyMethod(null, null)
+            new GroovyMethod(null, null, true)
             fail("Should not make it here.")
         }
         catch (IllegalArgumentException e)
@@ -3523,7 +3523,7 @@ class TestNCube
     @Test(expected = IllegalArgumentException.class)
     void testInvalidArgumentsToConstructor2() throws Exception
     {
-        new GroovyMethod(null, null)
+        new GroovyMethod(null, null, false)
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -3724,7 +3724,7 @@ class TestNCube
         cpCube.addAxis(axis)
 
         String base = System.getProperty("java.io.tmpdir")
-        cpCube.setCell(new GroovyExpression("['" + new File(base).toURI().toURL().toString() + "','http://www.cedarsoftware.com']", null), new HashMap())
+        cpCube.setCell(new GroovyExpression("new com.cedarsoftware.ncube.util.CdnClassLoader(['" + new File(base).toURI().toURL().toString() + "','http://www.cedarsoftware.com'] as String[])", null, false), new HashMap())
         return cpCube
     }
 

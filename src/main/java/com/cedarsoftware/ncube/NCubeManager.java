@@ -5,7 +5,6 @@ import com.cedarsoftware.ncube.util.*;
 import com.cedarsoftware.util.*;
 import com.cedarsoftware.util.io.*;
 import groovy.lang.*;
-import groovy.util.*;
 import ncube.grv.method.*;
 import org.apache.logging.log4j.*;
 
@@ -52,7 +51,7 @@ public class NCubeManager
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
 
     // not private in case we want to tweak things for testing.
-    private static volatile Map<String, Object> systemParams = null;
+    static volatile Map<String, Object> systemParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -73,27 +72,32 @@ public class NCubeManager
 
     public static Map<String, Object> getSystemParams()
     {
-        if(systemParams == null)
+        final Map<String, Object> params = systemParams;
+
+        if (params != null)
         {
-            synchronized(NCubeManager.class)
+            return params;
+        }
+
+        synchronized(NCubeManager.class)
+        {
+            if(systemParams == null)
             {
-                if(systemParams == null)
+                String jsonParams = SystemUtilities.getExternalVariable(NCUBE_PARAMS);
+
+                systemParams = new ConcurrentHashMap();
+
+                if (StringUtilities.hasContent(jsonParams))
                 {
-                    String jsonParams = SystemUtilities.getExternalVariable(NCUBE_PARAMS);
-
-                    systemParams = new HashMap();
-
-                    if (StringUtilities.hasContent(jsonParams))
+                    try
                     {
-                        try
-                        {
-                            systemParams = JsonReader.jsonToMaps(jsonParams);
-                        }
-                        catch (Exception e)
-                        {
-                            LOG.warn("Parsing of NCUBE_PARAMS failed.  " + jsonParams);
-                        }
+                        systemParams = new ConcurrentHashMap(JsonReader.jsonToMaps(jsonParams));
                     }
+                    catch (Exception e)
+                    {
+                        LOG.warn("Parsing of NCUBE_PARAMS failed.  " + jsonParams);
+                    }
+
                 }
             }
         }
@@ -218,9 +222,16 @@ public class NCubeManager
             input.put("username", System.getProperty("user.name"));
         }
         Object urlCpLoader = cpCube.getCell(input);
+
+        //  John, I believe this code can go away now that we have caching on the
+        //  GroovyExpressions.  We can force sys.classpath to return a UrlClassLoader
+        //  and mark it as cached to return the exact same loader without the cost of
+        //  rerunning each time.  That gets rid of some of the special code you were
+        //  doing in JsonFormatter and CellInfo and sha-1 calculations, etc to specially
+        //  handle UrlClassLoaders.  Those would all handle the groovy exactly the same.
+        //  but still get cached separately.
         if (urlCpLoader instanceof List)
         {
-            XmlParser foo;
             synchronized(appId.cacheKey().intern())
             {
                 urlCpLoader = cpCube.getCell(input);
@@ -229,8 +240,10 @@ public class NCubeManager
                     return (URLClassLoader) urlCpLoader;
                 }
                 List<String> urls = (List<String>) urlCpLoader;
-                GroovyClassLoader groovyClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-                addUrlsToClassLoader(urls, groovyClassLoader);
+                CdnClassLoader groovyClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
+                for (String url : urls) {
+                    groovyClassLoader.addURL(url);
+                }
                 cpCube.setCell(groovyClassLoader, input);   // Overwrite List<String> with GroovyClassLoader instance (with URLs added to it)
                 urlCpLoader = groovyClassLoader;
             }
@@ -255,28 +268,6 @@ public class NCubeManager
             }
         }
         return gcl;
-    }
-
-    static void addUrlsToClassLoader(List<String> urls, GroovyClassLoader urlClassLoader)
-    {
-        for (String url : urls)
-        {
-            try
-            {
-                if (url != null)
-                {
-                    if (!url.endsWith("/"))
-                    {
-                        url += "/";
-                    }
-                    urlClassLoader.addURL(new URL(url));
-                }
-            }
-            catch (Exception e)
-            {
-                throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url, e);
-            }
-        }
     }
 
     /**
@@ -1001,35 +992,26 @@ public class NCubeManager
                 continue;
             }
 
-            if (info != null)
-            {
-                long infoRev = Long.parseLong(info.revision);
-                long headRev = Long.parseLong(head.revision);
+            long infoRev = Long.parseLong(info.revision);
+            long headRev = Long.parseLong(head.revision);
 
-                if (!info.isChanged())
+            if (!info.isChanged())
+            {
+                if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
                 {
-                    if (StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
-                    {
-                        if (infoRev < 0 != headRev < 0)
-                        {
-                            if (headRev < 0)
-                            {
-                                conflicts.put(info.name, "Cube was deleted in HEAD");
-                            }
-                            else
-                            {
-                                conflicts.put(info.name, "Cube was deleted in HEAD");
-                            }
-                        }
-                    }
-                    else
+                    if (infoRev < 0 != headRev < 0)
                     {
                         updates.add(head);
                     }
                 }
-                else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1)) {
-                    conflicts.put(info.name, "Cube was changed in HEAD");
+                else
+                {
+                    updates.add(head);
                 }
+            }
+            else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
+            {
+                conflicts.put(info.name, "Cube was changed in HEAD");
             }
         }
 
@@ -1191,40 +1173,40 @@ public class NCubeManager
         return getPersister().getBranches(tenant);
     }
 
-//    public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
-//    {
-//        ApplicationID.validateTenant(tenant);
-//        ApplicationID.validateApp(tenant);
-//
-//        if (coord == null)
-//        {
-//            coord = new HashMap();
-//        }
-//
-//        NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
-//
-//        if (bootCube == null)
-//        {
-//             throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
-//        }
-//
-//        ApplicationID bootAppId = (ApplicationID) bootCube.getCell(coord);
-//        String version = bootAppId.getVersion();
-//        String status = bootAppId.getStatus();
-//        String branch = bootAppId.getBranch();
-//
-//        if (!tenant.equalsIgnoreCase(bootAppId.getTenant()))
-//        {
-//            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different tenant '" + bootAppId.getTenant() + "' than requested. Using '" + tenant + "' instead.");
-//        }
-//
-//        if (!app.equalsIgnoreCase(bootAppId.getApp()))
-//        {
-//            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different app '" + bootAppId.getApp() + "' than requested. Using '" + app + "' instead.");
-//        }
-//
-//        return new ApplicationID(tenant, app, version, status, branch);
-//    }
+    public static ApplicationID getApplicationID(String tenant, String app, Map<String, Object> coord)
+    {
+        ApplicationID.validateTenant(tenant);
+        ApplicationID.validateApp(tenant);
+
+        if (coord == null)
+        {
+            coord = new HashMap();
+        }
+
+        NCube bootCube = getCube(ApplicationID.getBootVersion(tenant, app), SYS_BOOTSTRAP);
+
+        if (bootCube == null)
+        {
+             throw new IllegalStateException("Missing " + SYS_BOOTSTRAP + " cube in the 0.0.0 version for the app: " + app);
+        }
+
+        ApplicationID bootAppId = (ApplicationID) bootCube.getCell(coord);
+        String version = bootAppId.getVersion();
+        String status = bootAppId.getStatus();
+        String branch = bootAppId.getBranch();
+
+        if (!tenant.equalsIgnoreCase(bootAppId.getTenant()))
+        {
+            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different tenant '" + bootAppId.getTenant() + "' than requested. Using '" + tenant + "' instead.");
+        }
+
+        if (!app.equalsIgnoreCase(bootAppId.getApp()))
+        {
+            LOG.warn("sys.bootstrap cube for tenant '" + tenant + "', app '" + app + "' is returning a different app '" + bootAppId.getApp() + "' than requested. Using '" + app + "' instead.");
+        }
+
+        return new ApplicationID(tenant, app, version, status, branch);
+    }
 
     public static Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
     {

@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube
 
 import com.cedarsoftware.ncube.exception.BranchMergeException
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
+import com.cedarsoftware.ncube.util.CdnClassLoader
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
@@ -289,6 +290,39 @@ abstract class TestWithPreloadedDatabase
 
         ApplicationID headId = branch1.asHead()
         assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).length)
+    }
+
+    @Test
+    void testUpdateBranchWhenCubeWasDeletedInDifferentBranchAndNotChangedInOurBranch() throws Exception {
+        preloadCubes(head, "test.branch.1.json")
+
+        NCubeManager.createBranch(branch1)
+        NCubeManager.createBranch(branch2)
+        NCubeManager.deleteCube(branch2, "TestBranch", USER_ID);
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
+
+        assertEquals(1, dtos.length);
+        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).length);
+
+        assertEquals(1, NCubeManager.updateBranch(branch1, USER_ID).length);
+    }
+
+    @Test
+    void testUpdateBranchWhenCubeWasDeletedInDifferentBranchAndDeletedInOurBranch() throws Exception {
+        preloadCubes(head, "test.branch.1.json")
+
+        NCubeManager.createBranch(branch1)
+        NCubeManager.createBranch(branch2)
+        NCubeManager.deleteCube(branch2, "TestBranch", USER_ID);
+        NCubeManager.deleteCube(branch1, "TestBranch", USER_ID);
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
+
+        assertEquals(1, dtos.length);
+        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).length);
+
+        assertEquals(0, NCubeManager.updateBranch(branch1, USER_ID).length);
     }
 
     @Test
@@ -775,11 +809,11 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.search(head, "Test*", "ZZZ").length);
+        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").length);
         assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
         assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
         assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
-        assertEquals(1, NCubeManager.search(head, "TestAge", "baby").length);
+        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").length);
         assertEquals(1, NCubeManager.search(head, null, "baby").length);
     }
 
@@ -2136,21 +2170,52 @@ abstract class TestWithPreloadedDatabase
         NCube cube = NCubeManager.getCube(appId, "sys.classpath")
         // ensure properties are cleared.
         System.setProperty('NCUBE_PARAMS', '')
-        assertEquals(['https://www.foo.com/tests/ncube/cp1/public/', 'https://www.foo.com/tests/ncube/cp1/private/', 'https://www.foo.com/tests/ncube/cp1/private/groovy/'], cube.getCell([env:"DEV"]))
+
+        CdnClassLoader devLoader = cube.getCell([env:"DEV"]);
+        assertEquals('https://www.foo.com/tests/ncube/cp1/public/', devLoader.URLs[0].toString())
+        assertEquals('https://www.foo.com/tests/ncube/cp1/private/', devLoader.URLs[1].toString())
+        assertEquals('https://www.foo.com/tests/ncube/cp1/private/groovy/', devLoader.URLs[2].toString())
 
         // Check INT
-        assertEquals(['https://www.foo.com/tests/ncube/cp2/public/', 'https://www.foo.com/tests/ncube/cp2/private/', 'https://www.foo.com/tests/ncube/cp2/private/groovy/'], cube.getCell([env:"INT"]))
+        CdnClassLoader intLoader = cube.getCell([env:"INT"]);
+        assertEquals('https://www.foo.com/tests/ncube/cp2/public/', intLoader.URLs[0].toString())
+        assertEquals('https://www.foo.com/tests/ncube/cp2/private/', intLoader.URLs[1].toString())
+        assertEquals('https://www.foo.com/tests/ncube/cp2/private/groovy/', intLoader.URLs[2].toString())
 
         // Check with overload
-        System.setProperty("NCUBE_PARAMS", '{"cpBase":"C:/Development/"}')
-        assertEquals(['C:/Development/public/', 'C:/Development/private/', 'C:/Development/private/groovy/'], cube.getCell([env:"DEV"]))
-        assertEquals(['C:/Development/public/', 'C:/Development/private/', 'C:/Development/private/groovy/'], cube.getCell([env:"INT"]))
+        System.setProperty("NCUBE_PARAMS", '{"cpBase":"file://C:/Development/"}')
+
+        // int loader is not marked as cached so we recreate this one each time.
+        CdnClassLoader differentIntLoader = cube.getCell([env:"INT"]);
+        assertNotSame(intLoader, differentIntLoader);
+        assertEquals('file://C:/Development/public/', differentIntLoader.URLs[0].toString())
+        assertEquals('file://C:/Development/private/', differentIntLoader.URLs[1].toString())
+        assertEquals('file://C:/Development/private/groovy/', differentIntLoader.URLs[2].toString())
+
+        // devLoader is marked as cached so we would get the same one until we clear the cache.
+        URLClassLoader devLoaderAgain = cube.getCell([env:"DEV"]);
+        assertSame(devLoader, devLoaderAgain)
+
+        assertNotEquals('file://C:/Development/public/', devLoaderAgain.URLs[0].toString())
+        assertNotEquals('file://C:/Development/private/', devLoaderAgain.URLs[1].toString())
+        assertNotEquals('file://C:/Development/private/groovy/', devLoaderAgain.URLs[2].toString())
+
+        //  force cube clear so it will auto next time we get cube
+        NCubeManager.clearCache(appId);
+        cube = NCubeManager.getCube(appId, "sys.classpath")
+        devLoaderAgain = cube.getCell([env:"DEV"]);
+
+        assertEquals('file://C:/Development/public/', devLoaderAgain.URLs[0].toString())
+        assertEquals('file://C:/Development/private/', devLoaderAgain.URLs[1].toString())
+        assertEquals('file://C:/Development/private/groovy/', devLoaderAgain.URLs[2].toString())
 
         // Check version overload only
         System.setProperty("NCUBE_PARAMS", '{"version":"1.28.0"}')
-        assertEquals(['https://www.foo.com/1.28.0/public/', 'https://www.foo.com/1.28.0/private/', 'https://www.foo.com/1.28.0/private/groovy/'], cube.getCell([env:"DEV"]))
-
-
+        // SAND hasn't been loaded yet so it should give us updated values based on the system params.
+        URLClassLoader loader = cube.getCell([env:"SAND"]);
+        assertEquals('https://www.foo.com/1.28.0/public/', loader.URLs[0].toString())
+        assertEquals('https://www.foo.com/1.28.0/private/', loader.URLs[1].toString())
+        assertEquals('https://www.foo.com/1.28.0/private/groovy/', loader.URLs[2].toString())
     }
 
     @Test
@@ -2391,5 +2456,25 @@ abstract class TestWithPreloadedDatabase
         assertEquals(new ApplicationID("NONE", "APP", "1.26.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("B"))
         assertEquals(new ApplicationID("NONE", "APP", "1.27.0", "RELEASE", ApplicationID.TEST_BRANCH), map.get("C"))
     }
+
+    @Test
+    void testBootstrapWihMismatchedTenantAndAppForcesWarning() throws Exception
+    {
+        ApplicationID zero = new ApplicationID('FOO', 'TEST', '0.0.0', 'SNAPSHOT', 'HEAD')
+
+        preloadCubes(zero, "sys.bootstrap.test.1.json")
+
+        ApplicationID appId = NCubeManager.getApplicationID('FOO', 'TEST', null)
+        // ensure cube on disk tenant and app are not loaded (saved as NONE and ncube.test
+        assertEquals('FOO', appId.tenant);
+        assertEquals('TEST', appId.app);
+        assertEquals('1.28.0', appId.version);
+        assertEquals('RELEASE', appId.status);
+        assertEquals('HEAD', appId.branch);
+
+        manager.removeBranches([zero, head] as ApplicationID[]);
+    }
+
+
 
 }

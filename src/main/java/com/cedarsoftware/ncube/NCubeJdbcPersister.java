@@ -1,23 +1,12 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.IOUtilities;
-import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.cedarsoftware.util.*;
+import org.apache.logging.log4j.*;
 
-import java.io.UnsupportedEncodingException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.io.*;
+import java.sql.*;
+import java.util.*;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Class used to carry the NCube meta-information
@@ -428,7 +417,7 @@ public class NCubeJdbcPersister
                     byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
                     String cubeData = StringUtilities.createString(bytes, "UTF-8");
 
-                    if (cubeData.contains(searchValue))
+                    if (cubeData.matches("(?i:.*" + searchValue + ".*)"))
                     {
                         NCubeInfoDto dto = new NCubeInfoDto();
                         dto.id = Long.toString(rs.getLong("n_cube_id"));

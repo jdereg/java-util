@@ -222,6 +222,14 @@ public class NCubeManager
             input.put("username", System.getProperty("user.name"));
         }
         Object urlCpLoader = cpCube.getCell(input);
+
+        //  John, I believe this code can go away now that we have caching on the
+        //  GroovyExpressions.  We can force sys.classpath to return a UrlClassLoader
+        //  and mark it as cached to return the exact same loader without the cost of
+        //  rerunning each time.  That gets rid of some of the special code you were
+        //  doing in JsonFormatter and CellInfo and sha-1 calculations, etc to specially
+        //  handle UrlClassLoaders.  Those would all handle the groovy exactly the same.
+        //  but still get cached separately.
         if (urlCpLoader instanceof List)
         {
             synchronized(appId.cacheKey().intern())

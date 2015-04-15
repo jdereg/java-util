@@ -809,11 +809,11 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.search(head, "Test*", "ZZZ").length);
+        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").length);
         assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
         assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
         assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
-        assertEquals(1, NCubeManager.search(head, "TestAge", "baby").length);
+        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").length);
         assertEquals(1, NCubeManager.search(head, null, "baby").length);
     }
 

@@ -43,7 +43,11 @@ class TestCellTypes
     @Test
     void testGetTypeOnClassLoader()
     {
-        assertEquals("exp", CellTypes.getType(TestCellTypes.getClassLoader(), 'cells'))
+        try {
+            assertEquals("exp", CellTypes.getType(TestCellTypes.getClassLoader(), 'cells'))
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.message.toLowerCase().contains("unsupported type"));
+        }
     }
 
     @Test

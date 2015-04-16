@@ -1,14 +1,11 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.proximity.LatLon;
-import com.cedarsoftware.ncube.proximity.Point2D;
-import com.cedarsoftware.ncube.proximity.Point3D;
-import com.cedarsoftware.util.DateUtilities;
-import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.ncube.proximity.*;
+import com.cedarsoftware.util.*;
 
-import java.text.MessageFormat;
-import java.util.Collection;
-import java.util.regex.Matcher;
+import java.text.*;
+import java.util.*;
+import java.util.regex.*;
 
 /**
  * Allowed cell types for n-cube.
@@ -283,11 +280,11 @@ public enum CellTypes
             return LatLon.desc();
         }
 
-        if (cell instanceof ClassLoader)
-        {   // Returned as type='exp' because the JSON is returned as a String[] of URLs
-            // The JSON and HTML formatter turn URLClassLoaders back into their URL lists.
-            return "exp";
-        }
+//        if (cell instanceof ClassLoader)
+//        {   // Returned as type='exp' because the JSON is returned as a String[] of URLs
+//            // The JSON and HTML formatter turn URLClassLoaders back into their URL lists.
+//            return "exp";
+//        }
         throw new IllegalArgumentException(MessageFormat.format("Unsupported type {0} found in {1}", cell.getClass().getName(), section));
     }
 

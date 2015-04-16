@@ -1,7 +1,5 @@
 package com.cedarsoftware.ncube
 
-import com.cedarsoftware.util.UrlUtilities
-import groovy.mock.interceptor.MockFor
 import org.junit.Assert
 import org.junit.Test
 
@@ -9,6 +7,7 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.Modifier
 
 import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -43,22 +42,17 @@ class TestBinaryUrlCmd
     @Test
     void testSimpleFetchException() {
 
-        MockFor mock = new MockFor(UrlUtilities);
+        try {
+            NCube cube = NCubeBuilder.getTestNCube2D true
+            BinaryUrlCmd cmd = new BinaryUrlCmd('v://foo' +
+                    '', false)
+            def args = [ncube: cube]
 
-        mock.demand.getContentFromUrl(0..1) { throw new IOException() }
-
-        mock.use
-        {
-            try {
-                NCube cube = NCubeBuilder.getTestNCube2D true
-                BinaryUrlCmd cmd = new BinaryUrlCmd("http://www.cedarsoftware.com", false)
-                def args = [ncube: cube]
-
-                cmd.simpleFetch(args)
-            }
-            catch (IllegalStateException e) {
-                assertTrue(e.message.toLowerCase().contains("failed to load binary content"))
-            }
+            cmd.simpleFetch(args)
+            fail();
+        }
+        catch (IllegalStateException e) {
+            assertTrue(e.message.toLowerCase().contains("failed to load binary content"))
         }
     }
 }

@@ -95,7 +95,6 @@ abstract class ContentCmdCell extends UrlCommandCell
 
     protected Object simpleFetch(Map ctx)
     {
-        NCube cube = getNCube(ctx)
 
         try
         {
@@ -104,6 +103,7 @@ abstract class ContentCmdCell extends UrlCommandCell
         }
         catch (Exception e)
         {
+            NCube cube = getNCube(ctx);
             errorMessage = "Failed to load cell contents from URL: " + url + ", n-cube: " + cube.name + "', version: " + cube.version;
             throw new IllegalStateException(errorMessage, e)
         }

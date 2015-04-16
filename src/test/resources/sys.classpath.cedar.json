@@ -15,7 +15,7 @@
       "id": [],
       "type": "exp",
       "cache" : true,
-      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com'] as String[])"
+      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com'])"
     }
   ]
 }

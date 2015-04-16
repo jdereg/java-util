@@ -1,12 +1,6 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.Axis
-import com.cedarsoftware.ncube.AxisType
-import com.cedarsoftware.ncube.CellInfo
-import com.cedarsoftware.ncube.Column
-import com.cedarsoftware.ncube.CommandCell
-import com.cedarsoftware.ncube.GroovyBase
-import com.cedarsoftware.ncube.NCube
+import com.cedarsoftware.ncube.*
 import com.cedarsoftware.ncube.proximity.LatLon
 import com.cedarsoftware.ncube.proximity.Point2D
 import com.cedarsoftware.ncube.proximity.Point3D
@@ -639,28 +633,6 @@ th.ncube-dead:hover {
             }
             str.append(']')
             return str.toString()
-        }
-        else if (cellValue instanceof URLClassLoader)
-        {   // Turn URLClassLoader back into the [] of String URL it was built from.
-            final URLClassLoader urlClassLoader = (URLClassLoader) cellValue
-            final URL[] urls = urlClassLoader.URLs
-            final StringBuilder s = new StringBuilder()
-            s.append('[')
-
-            for (int i=0; i < urls.length; i++)
-            {
-                URL url = urls[i]
-                s.append('"')
-                s.append(url.toExternalForm())
-                s.append('"')
-                if (i < urls.length - 1)
-                {
-                    s.append(',')
-                }
-            }
-            s.append(']')
-            return s.toString()
-
         }
         else
         {

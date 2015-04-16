@@ -24,13 +24,13 @@
       "id": ["a"],
       "type": "exp",
       "cache": true,
-      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com/tests/ncube/cp1'] as String[])"
+      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com/tests/ncube/cp1'])"
     },
     {
       "id": ["b"],
       "type": "exp",
       "cache": true,
-      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com/tests/ncube/cp2'] as String[])"
+      "value": "new com.cedarsoftware.ncube.util.CdnClassLoader(['http://www.cedarsoftware.com/tests/ncube/cp2'])"
     }
   ]
 }

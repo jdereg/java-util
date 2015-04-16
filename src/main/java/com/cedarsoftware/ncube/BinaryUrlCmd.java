@@ -1,9 +1,9 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.UrlUtilities;
+import com.cedarsoftware.util.*;
 
-import java.net.URL;
-import java.util.Map;
+import java.net.*;
+import java.util.*;
 
 /**
  * Process a binary type (byte[]) that is specified at a URL.
@@ -36,7 +36,6 @@ public class BinaryUrlCmd extends ContentCmdCell
 
     protected Object simpleFetch(Map ctx)
     {
-        NCube ncube = getNCube(ctx);
         try
         {
             URL u = getActualUrl(ctx);
@@ -44,7 +43,7 @@ public class BinaryUrlCmd extends ContentCmdCell
         }
         catch (Exception e)
         {
-            setErrorMessage("Failed to load binary content from URL: " + getUrl() + ", NCube '" + ncube.getName() + "'");
+            setErrorMessage("Failed to load binary content from URL: " + getUrl() + ", NCube '" + getNCube(ctx).getName() + "'");
             throw new IllegalStateException(getErrorMessage(), e);
         }
     }

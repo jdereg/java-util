@@ -14,7 +14,7 @@
         {
             "id": [],
             "type": "exp",
-            "value": "new com.cedarsoftware.ncube.util.CdnClassLoader([null] as String[])"
+            "value": "new com.cedarsoftware.ncube.util.CdnClassLoader([null])"
         }
     ]
 }

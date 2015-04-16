@@ -8,7 +8,6 @@ import groovy.util.*;
 
 import java.lang.reflect.*;
 import java.math.*;
-import java.net.*;
 import java.security.*;
 import java.util.*;
 import java.util.regex.*;
@@ -2355,25 +2354,6 @@ public class NCube<T>
                         md.update(((UrlCommandCell)cmdCell).isCacheable() ? (byte) 't' : (byte) 'f');
                         md.update(sep);
                     }
-                }
-                else if (value instanceof ClassLoader)
-                {
-                    //  TODO:  This code would not longer be hit if we forced sys.classpath
-                    //  cubes to actually return a URLClassLoader instead of array of string
-                    //  and allowed natural GroovyExpression caching to do it.
-                    if (value instanceof URLClassLoader)
-                    {
-                        URLClassLoader cl = (URLClassLoader) value;
-                        for (URL url : cl.getURLs())
-                        {
-                            md.update(url.toString().getBytes());
-                        }
-                    }
-                    else
-                    {
-                        md.update(value.getClass().getName().getBytes());
-                    }
-                    md.update(sep);
                 }
                 else
                 {

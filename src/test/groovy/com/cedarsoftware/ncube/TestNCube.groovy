@@ -3724,7 +3724,7 @@ class TestNCube
         cpCube.addAxis(axis)
 
         String base = System.getProperty("java.io.tmpdir")
-        cpCube.setCell(new GroovyExpression("new com.cedarsoftware.ncube.util.CdnClassLoader(['" + new File(base).toURI().toURL().toString() + "','http://www.cedarsoftware.com'] as String[])", null, false), new HashMap())
+        cpCube.setCell(new GroovyExpression("new com.cedarsoftware.ncube.util.CdnClassLoader(['" + new File(base).toURI().toURL().toString() + "','http://www.cedarsoftware.com'])", null, false), new HashMap())
         return cpCube
     }
 

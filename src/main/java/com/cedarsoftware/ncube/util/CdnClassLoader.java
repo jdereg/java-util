@@ -38,10 +38,10 @@ public class CdnClassLoader extends GroovyClassLoader
         _preventRemoteCustomizer = preventRemoteCustomizer;
     }
 
-    public CdnClassLoader(String... urls)
+    public CdnClassLoader(List<String> list)
     {
         this(CdnClassLoader.class.getClassLoader(), true, true);
-        addURLs(urls);
+        addURLs(list);
     }
 
     protected Class<?> findClass(final String name) throws ClassNotFoundException
@@ -49,9 +49,9 @@ public class CdnClassLoader extends GroovyClassLoader
         return super.getParent().loadClass(name);
     }
 
-    private void addURLs(String ... urls)
+    private void addURLs(List<String> list)
     {
-        for (String url : urls)
+        for (String url : list)
         {
             addURL(url);
         }
@@ -68,9 +68,9 @@ public class CdnClassLoader extends GroovyClassLoader
                 }
                 addURL(new URL(url));
             }
-            catch (Exception e)
+            catch (MalformedURLException e)
             {
-                throw new IllegalArgumentException("A URL in List of URLs is malformed: " + url, e);
+                throw new IllegalArgumentException("added url was malformed: " + url, e);
             }
         }
 

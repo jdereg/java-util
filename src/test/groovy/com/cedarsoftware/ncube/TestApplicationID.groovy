@@ -574,4 +574,14 @@ class TestApplicationID
             assertEquals("Branch cannot be 'HEAD'", e.getMessage());
         }
     }
+
+    @Test
+    void testOldConstrucgtor() {
+        try {
+            new ApplicationID("NONE", "app", "1.28.0", "SNAPSHOT");
+        } catch (RuntimeException e) {
+            assertTrue(e.message.contains("5 argument"))
+            assertTrue(e.message.contains("add branch"))
+        }
+    }
 }

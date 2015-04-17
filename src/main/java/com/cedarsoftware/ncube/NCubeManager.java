@@ -1,18 +1,16 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.ncube.exception.*;
-import com.cedarsoftware.ncube.util.*;
 import com.cedarsoftware.util.*;
 import com.cedarsoftware.util.io.*;
 import groovy.lang.*;
-import ncube.grv.method.*;
-import org.apache.logging.log4j.*;
-
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
+import ncube.grv.method.*;
+import org.apache.logging.log4j.*;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -223,32 +221,12 @@ public class NCubeManager
         }
         Object urlCpLoader = cpCube.getCell(input);
 
-        //  John, I believe this code can go away now that we have caching on the
-        //  GroovyExpressions.  We can force sys.classpath to return a UrlClassLoader
-        //  and mark it as cached to return the exact same loader without the cost of
-        //  rerunning each time.  That gets rid of some of the special code you were
-        //  doing in JsonFormatter and CellInfo and sha-1 calculations, etc to specially
-        //  handle UrlClassLoaders.  Those would all handle the groovy exactly the same.
-        //  but still get cached separately.
-        if (urlCpLoader instanceof List)
+        if (urlCpLoader instanceof URLClassLoader)
         {
-            synchronized(appId.cacheKey().intern())
-            {
-                urlCpLoader = cpCube.getCell(input);
-                if (urlCpLoader instanceof URLClassLoader)
-                {
-                    return (URLClassLoader) urlCpLoader;
-                }
-                List<String> urls = (List<String>) urlCpLoader;
-                CdnClassLoader groovyClassLoader = new CdnClassLoader(NCubeManager.class.getClassLoader(), true, true);
-                for (String url : urls) {
-                    groovyClassLoader.addURL(url);
-                }
-                cpCube.setCell(groovyClassLoader, input);   // Overwrite List<String> with GroovyClassLoader instance (with URLs added to it)
-                urlCpLoader = groovyClassLoader;
-            }
+            return (URLClassLoader)urlCpLoader;
         }
-        return (URLClassLoader) urlCpLoader;
+
+        throw new IllegalStateException("If the sys.classpath cube exists it must return a URLClassLoader.");
     }
 
     static URLClassLoader getLocalClassloader(ApplicationID appId) {

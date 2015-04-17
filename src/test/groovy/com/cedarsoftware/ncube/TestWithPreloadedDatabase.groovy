@@ -71,6 +71,37 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
+    void testToMakeSureOldStyleSysClasspathThrowsException() throws Exception {
+        preloadCubes(appId, "sys.classpath.old.style.json")
+
+        // nothing in cache until we try and get the classloader or load a cube.
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
+
+        try {
+
+        }
+        //  url classloader has 1 item
+        Map input = [:]
+        URLClassLoader loader = NCubeManager.getUrlClassLoader(appId, input)
+        assertEquals(1, loader.URLs.length)
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
+        assertEquals(new URL("http://www.cedarsoftware.com/tests/ncube/cp1/"), loader.URLs[0])
+
+        Map<String, Object> cache = NCubeManager.getCacheForApp(appId)
+        assertEquals(1, cache.size())
+
+        assertNotNull(NCubeManager.getUrlClassLoader(appId, input))
+        assertEquals(1, NCubeManager.getCacheForApp(appId).size())
+
+        NCubeManager.clearCache()
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
+
+        cache = NCubeManager.getCacheForApp(appId)
+        assertEquals(1, NCubeManager.getUrlClassLoader(appId, input).URLs.length)
+        assertEquals(1, cache.size())
+    }
+
+    @Test
     void testUrlClassLoader() throws Exception {
         preloadCubes(appId, "sys.classpath.cp1.json")
 

@@ -2,9 +2,13 @@ package com.cedarsoftware.ncube
 
 import org.junit.Assert
 import org.junit.Test
+import org.mockito.Mockito
 
 import java.lang.reflect.Constructor
+import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -33,5 +37,30 @@ class TestGroovyExpression
         Assert.assertEquals Modifier.PRIVATE, con.modifiers & Modifier.PRIVATE
         con.accessible = true
         Assert.assertNotNull con.newInstance()
+    }
+
+    @Test
+    void testThreadDeathReturnsThreadDeath() {
+        NCube cube = Mockito.mock(NCube.class);
+        Mockito.when(cube.getAdvices("run")).thenReturn([]);
+
+        GroovyExpression exp = new GroovyExpression('throw new ThreadDeath()', null, false)
+        Method m = exp.getRunMethod();
+
+        def args = [:];
+        args.ncube = cube;
+        args.input = [:];
+        args.output = [:];
+
+
+        try
+        {
+            cube.
+            exp.invokeRunMethod(m, exp, args);
+            fail();
+        }
+        catch (ThreadDeath death)
+        {
+        }
     }
 }

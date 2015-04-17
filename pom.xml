@@ -50,7 +50,8 @@
         <version.junit>4.12</version.junit>
         <version.groovy>2.4.3</version.groovy>
         <version.jgit>3.6.1.201501031845-r</version.jgit>
-        <version.mockito>1.10.8</version.mockito>
+        <version.mockito>1.10.19</version.mockito>
+        <version.powermock>1.6.2</version.powermock>
         <version.mongo>2.12.3</version.mongo>
         <version.mysql.connector.java>5.1.28</version.mysql.connector.java>
         <version.nosqlunit>0.7.9</version.nosqlunit>
@@ -293,6 +294,44 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
             <version>${version.mockito}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito</artifactId>
+            <version>${version.powermock}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.powermock</groupId>
+                    <artifactId>powermock-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.powermock</groupId>
+                    <artifactId>powermock-reflect</artifactId>
+                </exclusion>
+            </exclusions>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4-rule</artifactId>
+            <version>${version.powermock}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>${version.powermock}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-classloading-xstream</artifactId>
+            <version>${version.powermock}</version>
             <scope>test</scope>
         </dependency>
 

@@ -4,6 +4,8 @@ import org.junit.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -102,6 +105,32 @@ public class TestUrlUtilities
         assertEquals(_expected, content8);
         assertEquals(_expected, content9);
         assertEquals(_expected, content10);
+    }
+
+    @Test
+    public void testNaiveTrustManager() throws Exception
+    {
+        TrustManager[] managers = UrlUtilities.NAIVE_TRUST_MANAGER;
+
+        for (TrustManager tm : managers)
+        {
+            X509TrustManager x509Manager = (X509TrustManager)tm;
+            try {
+                x509Manager.checkClientTrusted(null, null);
+                x509Manager.checkServerTrusted(null, null);
+            } catch (Exception e) {
+                fail();
+            }
+            assertNull(x509Manager.getAcceptedIssuers());
+        }
+    }
+
+
+    @Test
+    public void testNaiveVerifier() throws Exception
+    {
+        HostnameVerifier verifier = UrlUtilities.NAIVE_VERIFIER;
+        assertTrue(verifier.verify(null, null));
     }
 
     @Test

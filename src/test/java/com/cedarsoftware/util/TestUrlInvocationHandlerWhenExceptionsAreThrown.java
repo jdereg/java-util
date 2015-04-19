@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
@@ -17,14 +16,17 @@ import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 @PowerMockIgnore("javax.management.*")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({UrlUtilities.class})
-public class TestUrlInvocationHandlerWhenThreadDeathThrown
+public class TestUrlInvocationHandlerWhenExceptionsAreThrown
 {
-    @Test(expected=ThreadDeath.class)
+    @Test
     public void testUrlInvocationHandlerWithThreadDeath() throws Exception {
         //  mock url calls
         URL input = PowerMockito.mock(URL.class);
@@ -38,8 +40,32 @@ public class TestUrlInvocationHandlerWhenThreadDeathThrown
         PowerMockito.stub(PowerMockito.method(UrlUtilities.class, "getConnection", URL.class, boolean.class, boolean.class, boolean.class)).toReturn(c);
 
 
-        AInt intf = ProxyFactory.create(AInt.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://foo")));
-        Assert.assertEquals("bar", intf.foo());
+        try {
+            AInt intf = ProxyFactory.create(AInt.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://foo", 1, 0)));
+            intf.foo();
+            fail();
+        } catch (ThreadDeath td) {
+        }
+    }
+
+    @Test
+    public void testUrlInvocationHandlerWithOtherExceptionThrown() throws Exception {
+        //  mock url calls
+        URL input = PowerMockito.mock(URL.class);
+        when(input.getHost()).thenReturn("cedarsoftware.com");
+        when(input.getPath()).thenReturn("/integration/doWork");
+
+        // mock streams
+        HttpURLConnection c = mock(HttpURLConnection.class);
+        when(c.getOutputStream()).thenThrow(IOException.class);
+
+        PowerMockito.stub(PowerMockito.method(UrlUtilities.class, "getConnection", URL.class, boolean.class, boolean.class, boolean.class)).toReturn(c);
+
+
+        AInt intf = ProxyFactory.create(AInt.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://foo", 1, 1000)));
+        long time = System.currentTimeMillis();
+        assertNull(intf.foo());
+        assertTrue(System.currentTimeMillis() - time > 1000);
     }
 
     private interface AInt {
@@ -51,12 +77,16 @@ public class TestUrlInvocationHandlerWhenThreadDeathThrown
      */
     private static class UrlInvocationHandlerJsonStrategy implements UrlInvocationHandlerStrategy
     {
-        private String _url;
+        private final String _url;
+        private final int _retries;
+        private final long _retrySleepTime;
         Map _store = new HashMap();
 
-        public UrlInvocationHandlerJsonStrategy(String url)
+        public UrlInvocationHandlerJsonStrategy(String url, int retries, long retrySleepTime)
         {
             _url = url;
+            _retries = retries;
+            _retrySleepTime = retrySleepTime;
         }
 
         public URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException
@@ -66,8 +96,9 @@ public class TestUrlInvocationHandlerWhenThreadDeathThrown
 
         public int getRetryAttempts()
         {
-            return 0;
+            return _retries;
         }
+        public long getRetrySleepTime() { return _retrySleepTime; }
 
         public void getCookies(URLConnection c)
         {

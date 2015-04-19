@@ -104,7 +104,7 @@ public class UrlInvocationHandler implements InvocationHandler
                 UrlUtilities.readErrorResponse(c);
                 if (retry-- > 0)
                 {
-                    Thread.sleep(SLEEP_TIME);
+                    Thread.sleep(_strategy.getRetrySleepTime());
                 }
             }
             finally

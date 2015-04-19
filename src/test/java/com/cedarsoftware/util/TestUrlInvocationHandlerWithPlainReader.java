@@ -94,6 +94,12 @@ public class TestUrlInvocationHandlerWithPlainReader
         }
 
         @Override
+        public long getRetrySleepTime()
+        {
+            return 0;
+        }
+
+        @Override
         public void getCookies(URLConnection c)
         {
         }
@@ -145,6 +151,12 @@ public class TestUrlInvocationHandlerWithPlainReader
 
         @Override
         public int getRetryAttempts()
+        {
+            return 0;
+        }
+
+        @Override
+        public long getRetrySleepTime()
         {
             return 0;
         }
@@ -203,6 +215,12 @@ public class TestUrlInvocationHandlerWithPlainReader
         }
 
         @Override
+        public long getRetrySleepTime()
+        {
+            return 0;
+        }
+
+        @Override
         public void getCookies(URLConnection c)
         {
         }
@@ -256,6 +274,12 @@ public class TestUrlInvocationHandlerWithPlainReader
         }
 
         @Override
+        public long getRetrySleepTime()
+        {
+            return 0;
+        }
+
+        @Override
         public void getCookies(URLConnection c)
         {
         }
@@ -304,6 +328,12 @@ public class TestUrlInvocationHandlerWithPlainReader
 
         @Override
         public int getRetryAttempts()
+        {
+            return 0;
+        }
+
+        @Override
+        public long getRetrySleepTime()
         {
             return 0;
         }

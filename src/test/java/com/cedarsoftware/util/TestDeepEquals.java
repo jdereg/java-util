@@ -189,7 +189,14 @@ public class TestDeepEquals
         // Hashcodes are different because contents of maps are different
         assertNotEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
 
+        // Inequality because ConcurrentSkipListMap is a SortedMap
         map1 = new HashMap();
+        fillMap(map1);
+        map2 = new ConcurrentSkipListMap();
+        fillMap(map2);
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+
+        map1 = new TreeMap();
         fillMap(map1);
         map2 = new ConcurrentSkipListMap();
         fillMap(map2);
@@ -268,6 +275,14 @@ public class TestDeepEquals
 		assertTrue(DeepEquals.hasCustomEquals(EmptyClassWithEquals.class));
 		assertTrue(DeepEquals.hasCustomHashCode(EmptyClassWithEquals.class));
 	}
+
+    @Test
+    public void testSymmetry()
+    {
+        boolean one = DeepEquals.deepEquals(new ArrayList<String>(), new EmptyClass());
+        boolean two = DeepEquals.deepEquals(new EmptyClass(), new ArrayList<String>());
+        assert one == two;
+    }
 
 	static class EmptyClass
     {

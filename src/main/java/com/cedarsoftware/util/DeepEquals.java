@@ -137,6 +137,10 @@ public class DeepEquals
                     return false;
                 }
             }
+            else if (dualKey._key2 instanceof Collection)
+            {   // They both must be Collection
+                return false;
+            }
 
             if (dualKey._key1 instanceof SortedSet)
             {
@@ -145,13 +149,9 @@ public class DeepEquals
                     return false;
                 }
             }
-
-            if (dualKey._key1 instanceof Map)
+            else if (dualKey._key2 instanceof SortedSet)
             {
-                if (!(dualKey._key2 instanceof Map))
-                {
-                    return false;
-                }
+                return false;
             }
 
             if (dualKey._key1 instanceof SortedMap)
@@ -161,6 +161,23 @@ public class DeepEquals
                     return false;
                 }
             }
+            else if (dualKey._key2 instanceof SortedMap)
+            {
+                return false;
+            }
+
+            if (dualKey._key1 instanceof Map)
+            {
+                if (!(dualKey._key2 instanceof Map))
+                {
+                    return false;
+                }
+            }
+            else if (dualKey._key2 instanceof Map)
+            {
+                return false;
+            }
+
 
             if (!isContainerType(dualKey._key1) && !isContainerType(dualKey._key2) && !dualKey._key1.getClass().equals(dualKey._key2.getClass()))
             {   // Must be same class
@@ -172,6 +189,7 @@ public class DeepEquals
             	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
             		continue;
             }
+
             if (dualKey._key1 instanceof Float)
             {
                 if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))

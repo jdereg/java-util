@@ -111,7 +111,7 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>${version.plugin.javadoc}</version>
                 <configuration>
-                    <additionalparam>${javadoc.opts}</additionalparam>
+                    <!--<additionalparam>${javadoc.opts}</additionalparam>-->
                 </configuration>
                 <executions>
                     <execution>

@@ -30,6 +30,7 @@ public interface UrlInvocationHandlerStrategy
     URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException;
 
     int getRetryAttempts();
+    long getRetrySleepTime();
 
     void setCookies(URLConnection c);
     void getCookies(URLConnection c);

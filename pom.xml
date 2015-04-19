@@ -36,8 +36,8 @@
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.guava>16.0.1</version.guava>
-        <version.powermock>1.6.1</version.powermock>
-        <version.mockito>1.10.8</version.mockito>
+        <version.powermock>1.6.2</version.powermock>
+        <version.mockito>1.10.19</version.mockito>
         <version.plugin.compiler>3.2</version.plugin.compiler>
         <version.plugin.deploy>2.8.2</version.plugin.deploy>
         <version.plugin.source>2.4</version.plugin.source>

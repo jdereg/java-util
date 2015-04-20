@@ -71,6 +71,24 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
+    void testToMakeSureOldStyleSysClasspathThrowsException() throws Exception {
+        preloadCubes(appId, "sys.classpath.old.style.json")
+
+        // nothing in cache until we try and get the classloader or load a cube.
+        assertEquals(0, NCubeManager.getCacheForApp(appId).size())
+
+        //  url classloader has 1 item
+        try {
+            Map input = [:]
+            URLClassLoader loader = NCubeManager.getUrlClassLoader(appId, input)
+        } catch (IllegalStateException e) {
+            assertTrue(e.message.contains('sys.classpath cube'));
+            assertTrue(e.message.contains('exists'));
+            assertTrue(e.message.toLowerCase().contains('urlclassloader'));
+        }
+    }
+
+    @Test
     void testUrlClassLoader() throws Exception {
         preloadCubes(appId, "sys.classpath.cp1.json")
 

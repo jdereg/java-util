@@ -1,10 +1,12 @@
 package com.cedarsoftware.ncube;
 
-import org.apache.logging.log4j.*;
-
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.regex.*;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class is used to hold Groovy Expressions.  This means that
@@ -54,6 +56,10 @@ public class GroovyExpression extends GroovyBase
 
     public String buildGroovy(String theirGroovy)
     {
+        return wrapGroovyIfNeeded(theirGroovy, cmdHash);
+    }
+
+    public static String wrapGroovyIfNeeded(String theirGroovy, String cmdHash) {
         Matcher m = Regexes.hasClassDefPattern.matcher(theirGroovy);
         if (m.find())
         {   // If they include a class ... { in their source, then we do not add the 'apartment' around the content.

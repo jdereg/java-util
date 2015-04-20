@@ -1,12 +1,22 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.util.*;
-import org.apache.logging.log4j.*;
-
-import java.io.*;
-import java.sql.*;
-import java.util.*;
+import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.UniqueIdGenerator;
+import java.io.UnsupportedEncodingException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -230,7 +240,7 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(connection, appId, cube.getName()))
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(connection, appId, cube.getName(), false, false))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -325,35 +335,6 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-    }
-
-    public PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName) throws SQLException
-    {
-        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
-                "FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number)" +
-                " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-        PreparedStatement s = c.prepareStatement(sql);
-        s.setString(1, cubeName);
-        s.setString(2, appId.getApp());
-        s.setString(3, appId.getVersion());
-        s.setString(4, appId.getStatus());
-        s.setString(5, appId.getTenant());
-        s.setString(6, appId.getBranch());
-        s.setString(7, cubeName);
-        s.setString(8, appId.getApp());
-        s.setString(9, appId.getVersion());
-        s.setString(10, appId.getStatus());
-        s.setString(11, appId.getTenant());
-        s.setString(12, appId.getBranch());
-        return s;
     }
 
     Object[] search(Connection c, ApplicationID appId, String cubeNamePattern, String searchValue)
@@ -458,6 +439,54 @@ public class NCubeJdbcPersister
         s.setLong(1, id);
         return s;
     }
+
+    public PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, boolean activeOnly, boolean deletedOnly) throws SQLException
+    {
+        if (activeOnly && deletedOnly)
+        {
+            throw new IllegalArgumentException("activeOnly and deletedOnly cannot both be true");
+        }
+
+        String revisionCondition = "";
+        if (activeOnly)
+        {
+            revisionCondition = " AND n.revision_number >= 0";
+        }
+
+        if (deletedOnly)
+        {
+            revisionCondition = " AND n.revision_number < 0";
+        }
+
+        String sql = "SELECT n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
+                "FROM n_cube n, " +
+                "( " +
+                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+                "  FROM n_cube " +
+                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                "  GROUP BY n_cube_nm " +
+                ") m " +
+                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number)" +
+                " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" +
+                revisionCondition;
+
+        PreparedStatement s = c.prepareStatement(sql);
+        s.setString(1, cubeName);
+        s.setString(2, appId.getApp());
+        s.setString(3, appId.getVersion());
+        s.setString(4, appId.getStatus());
+        s.setString(5, appId.getTenant());
+        s.setString(6, appId.getBranch());
+        s.setString(7, cubeName);
+        s.setString(8, appId.getApp());
+        s.setString(9, appId.getVersion());
+        s.setString(10, appId.getStatus());
+        s.setString(11, appId.getTenant());
+        s.setString(12, appId.getBranch());
+        return s;
+    }
+
+
 
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean changedOnly, boolean activeOnly, boolean deletedOnly, boolean includeCube, boolean includeTests) throws SQLException
     {
@@ -688,6 +717,29 @@ public class NCubeJdbcPersister
         throw new IllegalArgumentException("Unable to find cube with id: " + id + " from database");
     }
 
+    public NCube loadCube(Connection c, ApplicationID appId, String cubeName)
+    {
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, true, false))
+        {
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    return buildCube(appId, rs);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
+            LOG.error(s, e);
+            throw new IllegalStateException(s, e);
+        }
+        return null;
+    }
+
+
+
     private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException {
         NCube ncube = NCube.createCubeFromBytes(rs.getBytes(CUBE_VALUE_BIN));
         ncube.setSha1(rs.getString("sha1"));
@@ -698,7 +750,7 @@ public class NCubeJdbcPersister
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName))
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, false, false))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -811,19 +863,13 @@ public class NCubeJdbcPersister
         }
         else
         {
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName))
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, true, false))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
                     if (rs.next())
                     {
                         Long revision = rs.getLong("revision_number");
-
-                        if (revision < 0)
-                        {
-                            return false;
-                        }
-
                         byte[] jsonBytes = rs.getBytes(CUBE_VALUE_BIN);
                         byte[] testData = rs.getBytes(TEST_DATA_BIN);
                         String sha1 = rs.getString("sha1");
@@ -1237,7 +1283,7 @@ public class NCubeJdbcPersister
             byte[] oldTestData = null;
             String sha1 = null;
 
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, oldAppId, oldName))
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, oldAppId, oldName, false, false))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1263,7 +1309,7 @@ public class NCubeJdbcPersister
             Long newRevision = null;
             String headSha1 = null;
 
-            try (PreparedStatement ps = createSelectSingleCubeStatement(c, newAppId, newName))
+            try (PreparedStatement ps = createSelectSingleCubeStatement(c, newAppId, newName, false, false))
             {
                 try (ResultSet rs = ps.executeQuery())
                 {
@@ -1359,7 +1405,7 @@ public class NCubeJdbcPersister
             String oldHeadSha1 = null;
             byte[] oldTestData = null;
 
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, oldName))
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, oldName, false, false))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1378,7 +1424,7 @@ public class NCubeJdbcPersister
                 }
             }
 
-            if (oldRevision < 0)
+            if (oldRevision != null && oldRevision < 0)
             {
                 throw new IllegalArgumentException("Deleted cubes cannot be renamed.  AppId:  " + appId + ", " + oldName + " -> " + newName);
             }
@@ -1386,7 +1432,7 @@ public class NCubeJdbcPersister
             Long newRevision = null;
             String newHeadSha1 = null;
 
-            try (PreparedStatement ps = createSelectSingleCubeStatement(c, appId, newName))
+            try (PreparedStatement ps = createSelectSingleCubeStatement(c, appId, newName, false, false))
             {
                 try (ResultSet rs = ps.executeQuery())
                 {

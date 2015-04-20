@@ -44,7 +44,7 @@ class TestBinaryUrlCmd
 
         try {
             NCube cube = NCubeBuilder.getTestNCube2D true
-            BinaryUrlCmd cmd = new BinaryUrlCmd('v://foo' +
+            BinaryUrlCmd cmd = new BinaryUrlCmd('/foo' +
                     '', false)
             def args = [ncube: cube]
 

@@ -1,16 +1,38 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.*;
-import com.cedarsoftware.util.*;
-import com.cedarsoftware.util.io.*;
-import groovy.lang.*;
-import java.io.*;
-import java.net.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.concurrent.*;
-import ncube.grv.method.*;
-import org.apache.logging.log4j.*;
+import com.cedarsoftware.ncube.exception.BranchMergeException;
+import com.cedarsoftware.util.ArrayUtilities;
+import com.cedarsoftware.util.CaseInsensitiveSet;
+import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.MapUtilities;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.SystemUtilities;
+import com.cedarsoftware.util.io.JsonObject;
+import com.cedarsoftware.util.io.JsonReader;
+import com.cedarsoftware.util.io.JsonWriter;
+import groovy.lang.GroovyClassLoader;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -151,15 +173,15 @@ public class NCubeManager
             return ensureLoaded(cubes.get(lowerCubeName));
         }
 
-        // Deep load the requested cube
-        getCubeRecordsFromDatabase(appId, name, true);
-
-        if (cubes.containsKey(lowerCubeName))
-        {
-            return ensureLoaded(cubes.get(lowerCubeName));
+        // now even items with metaProperties(cache = 'false') can be retrieved
+        // and normal app processing doesn't do two queries anymore.
+        // used to do getCubeInfoRecords() -> dto
+        // and then dto -> loadCube(id)
+        NCube ncube = getPersister().loadCube(appId, name);
+        if (ncube == null) {
+            return null;
         }
-
-        return null;
+        return prepareCube(ncube);
     }
 
     static NCube ensureLoaded(Object value)
@@ -168,23 +190,28 @@ public class NCubeManager
         {
             return (NCube)value;
         }
-        else if (value instanceof NCubeInfoDto)
+
+        if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
             NCubeInfoDto dto = (NCubeInfoDto) value;
-            NCube cube = getPersister().loadCube(Long.parseLong(dto.id));
-            applyAdvices(cube.getApplicationID(), cube);
-            String cubeName = cube.getName().toLowerCase();
-            if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
-            {   // Allow cubes to not be cached by specified 'cache':false as a cube meta-property.
-                getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
-            }
-            return cube;
+            return prepareCube(getPersister().loadCube(Long.parseLong(dto.id)));
         }
-        else
-        {
-            throw new IllegalStateException("Failed to retrieve cube from cache, value: " + value);
-        }
+
+        throw new IllegalStateException("Failed to retrieve cube from cache, value: " + value);
     }
+
+    private static NCube prepareCube(NCube cube)
+    {
+        applyAdvices(cube.getApplicationID(), cube);
+        String cubeName = cube.getName().toLowerCase();
+        if (!cube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(cube.getMetaProperty("cache")))
+        {   // Allow cubes to not be cached by specified 'cache':false as a cube meta-property.
+            getCacheForApp(cube.getApplicationID()).put(cubeName, cube);
+        }
+        return cube;
+    }
+
+
 
     /**
      * Testing API (Cache validation)
@@ -381,10 +408,9 @@ public class NCubeManager
             NCube cpCube = (NCube) cube;
             for (Object content : cpCube.cells.values())
             {
-                if (content instanceof GroovyClassLoader)
+                if (content instanceof UrlCommandCell)
                 {
-                    GroovyClassLoader gcl = (GroovyClassLoader) content;
-                    gcl.clearCache();
+                    ((UrlCommandCell)content).clearClassLoaderCache();
                 }
             }
         }

@@ -1274,6 +1274,100 @@ public class NCubeJdbcPersister
         }
     }
 
+    boolean overwriteHeadCube(Connection c, ApplicationID appId, String cubeName, String headSha1, Integer headRevision)
+    {
+        try
+        {
+            byte[] jsonBytes = null;
+            Long branchRevision = null;
+            byte[] branchTestData = null;
+            String branchSha1 = null;
+
+            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, false, false))
+            {
+                try (ResultSet rs = stmt.executeQuery())
+                {
+                    if (rs.next())
+                    {
+                        jsonBytes = rs.getBytes("cube_value_bin");
+                        branchRevision = rs.getLong("revision_number");
+                        branchTestData = rs.getBytes("test_data_bin");
+                        branchSha1 = rs.getString("sha1");
+                    }
+                    else
+                    {
+                        throw new IllegalArgumentException("Unable to duplicate cube because source cube does not exist.  AppId:  " + appId + ", " + cubeName);
+                    }
+                }
+            }
+
+            if (branchRevision < 0)
+            {
+                throw new IllegalArgumentException("Unable to duplicate deleted cube.  AppId:  " + appId + ", " + cubeName);
+            }
+
+
+            ApplicationID headId = appId.asHead();
+
+            Long newRevision = null;
+            String headSha1 = null;
+
+            try (PreparedStatement ps = createSelectSingleCubeStatement(c, headId, cubeName, false, false))
+            {
+                try (ResultSet rs = ps.executeQuery())
+                {
+                    if (rs.next())
+                    {
+                        newRevision = rs.getLong("revision_number");
+                        headSha1 = rs.getString("head_sha1");
+                    }
+                }
+            }
+
+            if (newRevision != null && newRevision >= 0)
+            {
+                throw new IllegalArgumentException("Unable to duplicate cube, a cube already exists with the new name.  appId:  " + newAppId + ", name: " + newName);
+            }
+
+            boolean changed = !StringUtilities.equalsIgnoreCase(oldName, newName);
+            boolean sameExceptBranch = oldAppId.equalsNotIncludingBranch(newAppId);
+
+            // If names are different we need to recalculate the sha-1
+            if (changed)
+            {
+                NCube ncube = NCube.createCubeFromBytes(jsonBytes);
+                ncube.setName(newName);
+                ncube.setApplicationID(newAppId);
+                jsonBytes = ncube.getBytesFromCube();
+                sha1 = ncube.sha1();
+            }
+
+            String notes = "Cube duplicated from app: " + oldAppId + ", name: " + oldName;
+
+            if (insertCube(c, newAppId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, jsonBytes, oldTestData, notes, changed, sha1, sameExceptBranch ? headSha1 : null, System.currentTimeMillis(), username) == null)
+            {
+                throw new IllegalStateException("Unable to duplicate cube: " + oldName + " -> " + newName + "', app: " + oldAppId);
+            }
+
+            return true;
+        }
+        catch (RuntimeException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to duplicate cube: " + oldName + ", app: " + oldAppId + ", new name: " + newName + ", app: " + newAppId + " due to: " + e.getMessage();
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
+    }
+
+    boolean overwriteBranchCube(ApplicationID appId, String cubeName, String branchSha1, Integer branchRevision)
+    {
+
+    }
+
     public boolean duplicateCube(Connection c, ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
     {
         try

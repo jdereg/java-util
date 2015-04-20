@@ -92,7 +92,7 @@ class TestThreadedClearCache
         def clearCache = {
             long start = System.currentTimeMillis()
             while (System.currentTimeMillis() - start < 3000) {
-                NCubeManager.clearCache(appId);
+                NCubeManager.clearCache(usedId);
             }
         }
 

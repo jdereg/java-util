@@ -1,11 +1,13 @@
 package com.cedarsoftware.ncube;
 
-import groovy.lang.*;
-
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
-import java.util.regex.*;
+import groovy.lang.GroovyClassLoader;
+import groovy.lang.GroovyShell;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -70,6 +72,29 @@ public abstract class UrlCommandCell implements CommandCell
         return cacheable;
     }
 
+    public void clearClassLoaderCache() {
+        if (!hasBeenCached.get())
+        {
+            return;
+        }
+
+        synchronized (this)
+        {
+            if (!hasBeenCached.get())
+            {
+                return;
+            }
+
+            // classpath case, lets clear all classes before setting to null.
+            if (cache instanceof GroovyClassLoader)
+            {
+                ((GroovyClassLoader)cache).clearCache();
+            }
+
+            hasBeenCached.set(false);
+        }
+
+    }
 
     public void expandUrl(Map ctx)
     {

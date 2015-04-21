@@ -71,7 +71,7 @@ public class NCubeManager
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
 
     // not private in case we want to tweak things for testing.
-    static volatile Map<String, Object> systemParams = null;
+    private static volatile Map<String, Object> systemParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -856,6 +856,24 @@ public class NCubeManager
         int rows = getPersister().createBranch(appId);
         broadcast(appId);
         return rows;
+    }
+
+    public static boolean mergeOverwriteHeadCube(ApplicationID appId, String cubeName, String headSha1, String username)
+    {
+        validateAppId(appId);
+        appId.validateBranchIsNotHead();
+        appId.validateStatusIsNotRelease();
+
+        return getPersister().mergeOverwriteHeadCube(appId, cubeName, headSha1, username);
+    }
+
+    public static boolean mergeOverwriteBranchCube(ApplicationID appId, String cubeName, String branchSha1, String username)
+    {
+        validateAppId(appId);
+        appId.validateBranchIsNotHead();
+        appId.validateStatusIsNotRelease();
+
+        return getPersister().mergeOverwriteBranchCube(appId, cubeName, branchSha1, username);
     }
 
     /**

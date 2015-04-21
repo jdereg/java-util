@@ -282,6 +282,32 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public boolean mergeOverwriteHeadCube(ApplicationID appId, String cubeName, String headSha1, String username)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.mergeOverwriteHeadCube(c, appId, cubeName, headSha1, username);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public boolean mergeOverwriteBranchCube(ApplicationID appId, String cubeName, String branchSha1, String username)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.mergeOverwriteBranchCube(c, appId, cubeName, branchSha1, username);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public boolean duplicateCube(ApplicationID oldAppId, ApplicationID newAppId, String oldName, String newName, String username)
     {
         Connection c = connectionProvider.getConnection();

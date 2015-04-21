@@ -35,6 +35,9 @@ interface NCubePersister extends NCubeReadOnlyPersister
 
     void restoreCube(ApplicationID appId, String cubeName, String username);
 
+    boolean mergeOverwriteHeadCube(ApplicationID appId, String cubeName, String headSha1, String username);
+    boolean mergeOverwriteBranchCube(ApplicationID appId, String cubeName, String branchSha1, String username);
+
     int changeVersionValue(ApplicationID appId, String newVersion);
     int releaseCubes(ApplicationID appId, String newSnapVer);
 

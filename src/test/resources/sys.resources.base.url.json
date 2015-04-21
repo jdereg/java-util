@@ -1,0 +1,28 @@
+{
+  "ncube": "sys.resources.base.url",
+  "axes": [
+    {
+      "name": "feature",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "columns": [
+        {"id": "resources" }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": ["resources"],
+      "type": "exp",
+      "cache":true,
+      "value": "String ver = @sys.versions[:];  @[version:ver, feature:null]"
+    },
+    {
+      "id": [],
+      "type": "exp",
+      "value": "Map map = NCubeManager.systemParams; String version = map?.containsKey('version') ? map.version : input.version; return 'http://www.cedarsoftware.com/foo/' + version + '/';"
+    }
+  ]
+}

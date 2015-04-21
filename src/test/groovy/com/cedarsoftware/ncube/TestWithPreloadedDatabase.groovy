@@ -117,7 +117,8 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCoordinateNotFoundExceptionThrown() throws Exception {
+    void testCoordinateNotFoundExceptionThrown() throws Exception
+    {
         preloadCubes(appId, "test.coordinate.not.found.exception.json")
 
         NCube cube = NCubeManager.getCube(appId, "test.coordinate.not.found.exception")
@@ -823,6 +824,20 @@ abstract class TestWithPreloadedDatabase
 
     @Test
     void testSearch() throws Exception {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
+        testValuesOnBranch(head)
+
+        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").length);
+        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
+        assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
+        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
+        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").length);
+        assertEquals(1, NCubeManager.search(head, null, "baby").length);
+    }
+
+    @Test
+    void testSystemParamsCube() throws Exception {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
@@ -1860,6 +1875,29 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testOverwriteHeadWhenHeadDoesntExist()
+    {
+        preloadCubes(head, "test.branch.1.json");
+        NCubeManager.createBranch(branch1);
+        NCubeManager.deleteCube(branch1, "TestBranch", USER_ID);
+
+        assertNull(NCubeManager.getCube(branch1, "TestBranch"))
+
+        try
+        {
+            NCubeManager.duplicate(head, branch1, "TestBranch", "TestBranch", USER_ID);
+            assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
+            assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        } catch (IllegalArgumentException e)
+        {
+            assertTrue(e.message.contains("Unable to duplicate"));
+            assertTrue(e.message.contains("already exists"));
+        }
+    }
+
+
+
+    @Test
     void testDuplicateCubeWhenSourceCubeIsADeletedCube()
     {
         preloadCubes(head, "test.branch.1.json");
@@ -1942,6 +1980,112 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testOverwriteHeadCubeWhenBranchDoesNotExist()
+    {
+        try {
+            NCubeManager.mergeOverwriteHeadCube(appId, "TestBranch", "foo", USER_ID);
+            fail();
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("failed to overwrite"));
+            assertTrue(e.message.toLowerCase().contains("does not exist"));
+        }
+    }
+
+    @Test
+    void testOverwriteHeadCubeWhenHEADdoesNotExist()
+    {
+        try {
+            preloadCubes(branch1, "test.branch.1.json")
+            NCubeManager.mergeOverwriteHeadCube(appId, "TestBranch", "foo", USER_ID);
+            fail();
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("failed to overwrite"));
+            assertTrue(e.message.toLowerCase().contains("does not exist"));
+        }
+    }
+
+    @Test
+    void testOverwriteBranchCubeWhenBranchDoesNotExist()
+    {
+        try {
+            NCubeManager.mergeOverwriteBranchCube(appId, "TestBranch", "foo", USER_ID);
+            fail();
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("failed to overwrite"));
+            assertTrue(e.message.toLowerCase().contains("does not exist"));
+        }
+    }
+
+    @Test
+    void testOverwriteBranchCubeWhenHEADDoesNotExist()
+    {
+        try {
+            preloadCubes(branch1, "test.branch.1.json")
+            NCubeManager.mergeOverwriteBranchCube(appId, "TestBranch", "foo", USER_ID);
+            fail();
+        }
+        catch (IllegalStateException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("failed to overwrite"));
+            assertTrue(e.message.toLowerCase().contains("does not exist"));
+        }
+    }
+
+    @Test
+    void testOverwriteHeadOnBranchMergeException() {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json")
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(1, NCubeManager.createBranch(branch1))
+        assertEquals(1, NCubeManager.createBranch(branch2))
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
+        NCubeManager.createCube(branch2, cube, USER_ID)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
+        assertEquals(1, dtos.length)
+        NCubeManager.commitBranch(branch2, dtos, USER_ID)
+
+
+        cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+        NCubeManager.createCube(branch1, cube, USER_ID)
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(1, dtos.length)
+        String newSha1 = dtos[0].sha1;
+
+
+        try
+        {
+            NCubeManager.commitBranch(branch1, dtos, USER_ID)
+            fail()
+        }
+        catch (BranchMergeException e)
+        {
+            assert e.message.toLowerCase().contains("conflict(s) committing branch")
+            assert !e.errors.isEmpty()
+        }
+        NCubeInfoDto[] dto = (NCubeInfoDto[])NCubeManager.getCubeRecordsFromDatabase(head, "TestAge");
+        String sha1 = dto[0].sha1;
+        assertNotEquals(sha1, newSha1);
+
+        NCubeManager.mergeOverwriteHeadCube(branch1, "TestAge", sha1, USER_ID);
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(0, dtos.length)
+
+        dtos = NCubeManager.getCubeRecordsFromDatabase(head, "TestAge");
+        assertEquals(newSha1, dtos[0].sha1);
+    }
+
+    @Test
     void testUpdateBranchWithItemCreatedLocallyAndOnHead() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json")
@@ -1977,6 +2121,52 @@ abstract class TestWithPreloadedDatabase
             assertTrue(e.message.toLowerCase().contains("updating branch"))
             assert !e.errors.isEmpty()
         }
+    }
+
+    @Test
+    void testMergeOverwriteBranchWithItemsCreatedInBothPlaces() {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json")
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(1, NCubeManager.createBranch(branch1))
+        assertEquals(1, NCubeManager.createBranch(branch2))
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
+        NCubeManager.createCube(branch2, cube, USER_ID)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
+        assertEquals(1, dtos.length)
+        NCubeManager.commitBranch(branch2, dtos, USER_ID)
+
+
+        cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+        NCubeManager.createCube(branch1, cube, USER_ID)
+
+
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(1, dtos.length)
+
+        try
+        {
+            NCubeManager.updateBranch(branch1, USER_ID)
+            fail()
+        }
+        catch (BranchMergeException e)
+        {
+            assertTrue(e.message.toLowerCase().contains("conflict"))
+            assertTrue(e.message.toLowerCase().contains("updating branch"))
+            assert !e.errors.isEmpty()
+        }
+
+        dtos = NCubeManager.getCubeRecordsFromDatabase(branch1, "TestAge");
+        String sha1 = dtos[0].sha1;
+
+        NCubeManager.mergeOverwriteBranchCube(branch1, "TestAge", sha1, USER_ID);
+
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).length);
+
     }
 
     @Test
@@ -2234,6 +2424,70 @@ abstract class TestWithPreloadedDatabase
         assertEquals('https://www.foo.com/1.28.0/public/', loader.URLs[0].toString())
         assertEquals('https://www.foo.com/1.28.0/private/', loader.URLs[1].toString())
         assertEquals('https://www.foo.com/1.28.0/private/groovy/', loader.URLs[2].toString())
+    }
+
+    @Test
+    public void testSystemParamsOverloads() throws Exception {
+        preloadCubes(appId, "sys.classpath.system.params.user.overloaded.json", "sys.versions.2.json", "sys.resources.base.url.json")
+
+
+        // Check DEV
+        NCube cube = NCubeManager.getCube(appId, "sys.classpath")
+        // ensure properties are cleared.
+        System.setProperty('NCUBE_PARAMS', '')
+
+        CdnClassLoader devLoader = cube.getCell([env:"DEV"]);
+        assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/public/', devLoader.URLs[0].toString())
+        assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/private/', devLoader.URLs[1].toString())
+        assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/private/groovy/', devLoader.URLs[2].toString())
+
+        // Check INT
+        CdnClassLoader intLoader = cube.getCell([env:"INT"]);
+        assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/public/', intLoader.URLs[0].toString())
+        assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/private/', intLoader.URLs[1].toString())
+        assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/private/groovy/', intLoader.URLs[2].toString())
+
+        // Check with overload
+
+
+        cube = NCubeManager.getCube(appId, "sys.classpath")
+        System.setProperty("NCUBE_PARAMS", '{"cpBase":"file://C:/Development/"}')
+
+        // int loader is not marked as cached so we recreate this one each time.
+        NCubeManager.systemParams = null;
+        CdnClassLoader differentIntLoader = cube.getCell([env:"INT"]);
+
+        assertNotSame(intLoader, differentIntLoader);
+        assertEquals('file://C:/Development/public/', differentIntLoader.URLs[0].toString())
+        assertEquals('file://C:/Development/private/', differentIntLoader.URLs[1].toString())
+        assertEquals('file://C:/Development/private/groovy/', differentIntLoader.URLs[2].toString())
+
+        // devLoader is marked as cached so we would get the same one until we clear the cache.
+        URLClassLoader devLoaderAgain = cube.getCell([env:"DEV"]);
+        assertSame(devLoader, devLoaderAgain)
+
+        assertNotEquals('file://C:/Development/public/', devLoaderAgain.URLs[0].toString())
+        assertNotEquals('file://C:/Development/private/', devLoaderAgain.URLs[1].toString())
+        assertNotEquals('file://C:/Development/private/groovy/', devLoaderAgain.URLs[2].toString())
+
+        //  force cube clear so it will auto next time we get cube
+        NCubeManager.clearCache(appId);
+        cube = NCubeManager.getCube(appId, "sys.classpath")
+        devLoaderAgain = cube.getCell([env:"DEV"]);
+
+        assertEquals('file://C:/Development/public/', devLoaderAgain.URLs[0].toString())
+        assertEquals('file://C:/Development/private/', devLoaderAgain.URLs[1].toString())
+        assertEquals('file://C:/Development/private/groovy/', devLoaderAgain.URLs[2].toString())
+
+        // Check version overload only
+        NCubeManager.clearCache(appId);
+        NCubeManager.systemParams = null;
+        System.setProperty("NCUBE_PARAMS", '{"version":"1.28.0"}')
+        // SAND hasn't been loaded yet so it should give us updated values based on the system params.
+        URLClassLoader loader = cube.getCell([env:"SAND"]);
+        assertEquals('http://www.cedarsoftware.com/foo/1.28.0/public/', loader.URLs[0].toString())
+        assertEquals('http://www.cedarsoftware.com/foo/1.28.0/private/', loader.URLs[1].toString())
+        assertEquals('http://www.cedarsoftware.com/foo/1.28.0/private/groovy/', loader.URLs[2].toString())
     }
 
     @Test

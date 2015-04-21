@@ -32,47 +32,47 @@
       "id": ["DEV"],
       "type": "exp",
       "cache" : true,
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": ["SAND"],
       "type": "exp",
       "cache" : true,
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": ["INT"],
       "type": "exp",
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": ["CERT"],
       "type": "exp",
       "cache" : true,
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": ["UAT"],
       "type": "exp",
       "cache" : true,
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": ["LOCAL"],
       "type": "exp",
       "cache" : true,
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": ["TESTING"],
       "type": "exp",
       "cache" : true,
-      "value": "String ver = @sys.versions[feature:'resources']; @[version:ver, env:null];"
+      "value": "String url = @sys.resources.base.url[feature:'resources']; @[cpBase:url, env:null];"
     },
     {
       "id": [],
       "type": "exp",
-      "value": "Map map = NCubeManager.systemParams; String version = map?.containsKey('version') ? map.version : input.version; String urlBase = map?.containsKey('cpBase') ? map.cpBase : input.cpBase; new com.cedarsoftware.ncube.util.CdnClassLoader([urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/']);"
+      "value": "Map map = NCubeManager.systemParams; String urlBase = map?.containsKey('cpBase') ? map.cpBase : input.cpBase; new com.cedarsoftware.ncube.util.CdnClassLoader([urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/']);"
     }
   ]
 }

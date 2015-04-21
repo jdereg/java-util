@@ -476,6 +476,36 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testMergeOverwriteBranchCubeWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().mergeOverwriteBranchCube(c, defaultSnapshotApp, "TestName", "Foo", USER_ID);
+        } catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.getClass());
+            assertTrue(e.message.toLowerCase().contains("unable"));
+            assertTrue(e.message.toLowerCase().contains("overwrite cube"));
+        }
+    }
+
+    @Test
+    void testMergeOverwriteHeadCubeWithSQLException() throws Exception
+    {
+        Connection c = getConnectionThatThrowsSQLException();
+        try
+        {
+            new NCubeJdbcPersister().mergeOverwriteHeadCube(c, defaultSnapshotApp, "TestName", "Foo", USER_ID);
+        } catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.getClass());
+            assertTrue(e.message.toLowerCase().contains("unable"));
+            assertTrue(e.message.toLowerCase().contains("overwrite cube"));
+        }
+    }
+
+    @Test
     void testLoadCubesWithSQLException() throws Exception
     {
         Connection c = getConnectionThatThrowsSQLException()

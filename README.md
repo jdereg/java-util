@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.1.4</version>
+  <version>3.1.6</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg)
@@ -83,6 +83,12 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
+* 3.1.6
+ * This release adds complete support for branching.  It is essentially the upcoming 3.2 release, created to allow testing before 3.2 is released.  All branch functionality is complete and unit tested, with > 98% code coverage.
+ * The branch facility is implemented with the new branching APIs (createBranch, deleteBranch, updateBranch, merge, etc.) on NCubeManager.
+ * Support for memoization (caching) of GroovyExpression results has been added.  If the 'cache' value for an 'exp' (GroovyExpression) cell is true, the cell is executed, and the return value is cached.  Very similar to Groovy's memoize.
+ * Many small performance improvements have been made. 
+ * NCUBE_PARAMS is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the sys.bootstrap cube.
 * 3.1.5
  * This release is for development only.  Do not use for production.  Consider 3.1.4 latest production release.
  * The branch concept has be thoroughly introduced in the code base.  All tests are working with it.  However, there is more API work to be done within the persister to fully support branching.

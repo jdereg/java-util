@@ -264,6 +264,14 @@ public class NCubeJdbcPersister
                     byte[] cubeData = cube.getBytesFromCube();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     String headSha1 = rs.getString("head_sha1");
+                    String oldSha1 = rs.getString("sha1");
+
+
+                    if (StringUtilities.equals(oldSha1, cube.sha1()))
+                    {
+                        //  shas are equals and both revision values are positive.  no need for new record.
+                        return;
+                    }
 
                     if (insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username) == null)
                     {

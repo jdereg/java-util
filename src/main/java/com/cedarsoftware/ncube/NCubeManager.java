@@ -898,7 +898,7 @@ public class NCubeManager
         }
 
         List<NCubeInfoDto> dtos = new ArrayList<>(infoDtos.length);
-        Map<String, String> errors = new LinkedHashMap<>();
+        Map<String, Map> errors = new LinkedHashMap<>();
 
         for (Object dto : infoDtos)
         {
@@ -923,12 +923,14 @@ public class NCubeManager
                     }
                     else
                     {
-                        errors.put(info.name, "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.");
+                        String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
+                        errors.put(info.name, createConflictMap(message, info.sha1, head.sha1));
                     }
                 }
                 else if (head == null)
                 {
-                    errors.put(info.name, "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.");
+                    String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
+                    errors.put(info.name, createConflictMap(message, info.sha1, null));
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -949,7 +951,8 @@ public class NCubeManager
                 }
                 else
                 {
-                    errors.put(info.name, "Conflict merging " + info.name + ". The cube has changed since your last update.");
+                    String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
+                    errors.put(info.name, createConflictMap(message, info.sha1, head.sha1));
                 }
             }
         }
@@ -964,6 +967,15 @@ public class NCubeManager
         clearCache(headAppId);
         broadcast(appId);
         return values;
+    }
+
+    private static Map createConflictMap(String message, String sha1, String headSha1)
+    {
+        Map map = new LinkedHashMap();
+        map.put("message", message);
+        map.put("sha1", sha1);
+        map.put("headSha1", headSha1);
+        return map;
     }
 
     /**
@@ -1001,7 +1013,7 @@ public class NCubeManager
 
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
 
-        Map<String, String> conflicts = new LinkedHashMap<>();
+        Map<String, Map> conflicts = new LinkedHashMap<>();
 
         for (Object dto : headRecords)
         {
@@ -1033,13 +1045,13 @@ public class NCubeManager
             }
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
-                conflicts.put(info.name, "Cube was changed in HEAD");
+                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info.sha1, head.sha1));
             }
         }
 
         if (!conflicts.isEmpty())
         {
-            throw new BranchMergeException("Conflicts updating branch", conflicts);
+            throw new BranchMergeException("Conflict(s) updating branch", conflicts);
         }
 
         Object[] ret = getPersister().updateBranch(appId, updates, username);

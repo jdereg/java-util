@@ -1975,7 +1975,10 @@ abstract class TestWithPreloadedDatabase
         catch (BranchMergeException e)
         {
             assert e.message.toLowerCase().contains("conflict(s) committing branch")
-            assert !e.errors.isEmpty()
+            assert e.errors.TestAge.message.toLowerCase().contains('conflict merging')
+            assert e.errors.TestAge.message.toLowerCase().contains('same name')
+            assertEquals("1B45FBA9BD25EDE58049F0BD0CFAF1FBE7C8C0BD", e.errors.TestAge.sha1)
+            assertEquals("E38F308922AFF48EEA589C321144F2004BD9BFAC", e.errors.TestAge.headSha1)
         }
     }
 
@@ -2070,7 +2073,10 @@ abstract class TestWithPreloadedDatabase
         catch (BranchMergeException e)
         {
             assert e.message.toLowerCase().contains("conflict(s) committing branch")
-            assert !e.errors.isEmpty()
+            assert e.errors.TestAge.message.toLowerCase().contains('conflict merging')
+            assert e.errors.TestAge.message.toLowerCase().contains('same name')
+            assertEquals("1B45FBA9BD25EDE58049F0BD0CFAF1FBE7C8C0BD", e.errors.TestAge.sha1)
+            assertEquals("E38F308922AFF48EEA589C321144F2004BD9BFAC", e.errors.TestAge.headSha1)
         }
         NCubeInfoDto[] dto = (NCubeInfoDto[])NCubeManager.getCubeRecordsFromDatabase(head, "TestAge");
         String sha1 = dto[0].sha1;
@@ -2117,9 +2123,10 @@ abstract class TestWithPreloadedDatabase
         }
         catch (BranchMergeException e)
         {
-            assertTrue(e.message.toLowerCase().contains("conflict"))
-            assertTrue(e.message.toLowerCase().contains("updating branch"))
-            assert !e.errors.isEmpty()
+            assert e.message.toLowerCase().contains("conflict(s) updating branch")
+            assert e.errors.TestAge.message.toLowerCase().contains('cube was changed')
+            assertEquals("1B45FBA9BD25EDE58049F0BD0CFAF1FBE7C8C0BD", e.errors.TestAge.sha1)
+            assertEquals("E38F308922AFF48EEA589C321144F2004BD9BFAC", e.errors.TestAge.headSha1)
         }
     }
 
@@ -2155,9 +2162,10 @@ abstract class TestWithPreloadedDatabase
         }
         catch (BranchMergeException e)
         {
-            assertTrue(e.message.toLowerCase().contains("conflict"))
-            assertTrue(e.message.toLowerCase().contains("updating branch"))
-            assert !e.errors.isEmpty()
+            assert e.message.toLowerCase().contains("conflict(s) updating branch")
+            assert e.errors.TestAge.message.toLowerCase().contains('cube was changed')
+            assertEquals("1B45FBA9BD25EDE58049F0BD0CFAF1FBE7C8C0BD", e.errors.TestAge.sha1)
+            assertEquals("E38F308922AFF48EEA589C321144F2004BD9BFAC", e.errors.TestAge.headSha1)
         }
 
         dtos = NCubeManager.getCubeRecordsFromDatabase(branch1, "TestAge");
@@ -2206,9 +2214,11 @@ abstract class TestWithPreloadedDatabase
         }
         catch (BranchMergeException e)
         {
-            assertTrue(e.message.toLowerCase().contains("conflict"))
-            assertTrue(e.message.toLowerCase().contains("committing branch"))
-            assertTrue(!e.errors.isEmpty())
+            assert e.message.toLowerCase().contains("conflict(s) committing branch")
+            assert e.errors.TestBranch.message.toLowerCase().contains('conflict merging')
+            assert e.errors.TestBranch.message.toLowerCase().contains('cube has changed')
+            assertEquals("5CA932980E050E97E09543F8B79BE08696E0A1A4", e.errors.TestBranch.sha1)
+            assertEquals("75EE6BA78989BD3563B9091FFF458E620FEAFDE8", e.errors.TestBranch.headSha1)
         }
     }
 
@@ -2249,9 +2259,11 @@ abstract class TestWithPreloadedDatabase
         }
         catch (BranchMergeException e)
         {
-            assertTrue(e.message.toLowerCase().contains("conflict"))
-            assertTrue(e.message.toLowerCase().contains("updating branch"))
-            assertTrue(!e.errors.isEmpty())
+            assert e.message.toLowerCase().contains("conflict(s) updating branch")
+            assert e.errors.TestBranch.message.toLowerCase().contains('cube')
+            assert e.errors.TestBranch.message.toLowerCase().contains('changed in head')
+            assertEquals("5CA932980E050E97E09543F8B79BE08696E0A1A4", e.errors.TestBranch.sha1)
+            assertEquals("75EE6BA78989BD3563B9091FFF458E620FEAFDE8", e.errors.TestBranch.headSha1)
         }
     }
 

@@ -23,15 +23,15 @@ import java.util.Map;
  */
 public class BranchMergeException extends RuntimeException
 {
-    private final Map<String, String> errors;
+    private final Map<String, Map> errors;
     // placeholder later for change log or something like that.
-    public BranchMergeException(String message, Map<String, String> errors)
+    public BranchMergeException(String message, Map<String, Map> errors)
     {
         super(message);
         this.errors = errors;
     }
 
-    public Map<String, String> getErrors() {
+    public Map<String, Map> getErrors() {
         return errors;
     }
 }

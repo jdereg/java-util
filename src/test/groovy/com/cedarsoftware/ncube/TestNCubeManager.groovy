@@ -1594,6 +1594,7 @@ class TestNCubeManager
     @Test
     void testGetSystemParamsHappyPath()
     {
+        NCubeManager.systemParams = null;
         System.setProperty("NCUBE_PARAMS", '{"branch":"foo"}')
         assertEquals('foo', NCubeManager.getSystemParams().branch);
         assertNull(NCubeManager.getSystemParams().status);

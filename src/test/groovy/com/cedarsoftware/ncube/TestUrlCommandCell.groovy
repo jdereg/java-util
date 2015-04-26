@@ -13,7 +13,12 @@ import java.lang.reflect.Modifier
 import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyString
-import static org.mockito.Mockito.*
+import static org.mockito.Mockito.doThrow
+import static org.mockito.Mockito.mock
+import static org.mockito.Mockito.never
+import static org.mockito.Mockito.times
+import static org.mockito.Mockito.verify
+import static org.mockito.Mockito.when
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -35,7 +40,7 @@ import static org.mockito.Mockito.*
 class TestUrlCommandCell
 {
     @Test
-    void testDefaultConstructorIsProtected() throws Exception
+    void testDefaultConstructorIsProtected()
     {
         Class c = UrlCommandCell.class
         Constructor<UrlCommandCell> con = c.getDeclaredConstructor()
@@ -44,19 +49,19 @@ class TestUrlCommandCell
     }
 
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
 
     @Test
-    void testCachingInputStreamRead() throws Exception
+    void testCachingInputStreamRead()
     {
         String s = 'foo-bar';
         ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes('UTF-8'))
@@ -73,7 +78,7 @@ class TestUrlCommandCell
     }
 
     @Test
-    void testUrlCommandCellCompareTo() throws Exception
+    void testUrlCommandCellCompareTo()
     {
         GroovyExpression exp1 = new GroovyExpression("true", null, false);
         GroovyExpression exp2 = new GroovyExpression("false", null, false);
@@ -103,7 +108,7 @@ class TestUrlCommandCell
 
 
     @Test
-    void testCachingInputStreamReadBytes() throws Exception
+    void testCachingInputStreamReadBytes()
     {
         String s = 'foo-bar';
         ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes('UTF-8'))
@@ -175,7 +180,7 @@ class TestUrlCommandCell
     }
 
     @Test
-    void testProxyFetchSocketTimeout() throws Exception
+    void testProxyFetchSocketTimeout()
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
@@ -196,7 +201,7 @@ class TestUrlCommandCell
     }
 
     @Test
-    void testProxyFetchSocketTimeoutWithResponseSendErrorIssue() throws Exception
+    void testProxyFetchSocketTimeoutWithResponseSendErrorIssue()
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
 
@@ -216,7 +221,7 @@ class TestUrlCommandCell
     }
 
     @Test
-    void testAddFileHeaderWithNullUrl() throws Exception
+    void testAddFileHeaderWithNullUrl()
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.  Verify the method was never called
@@ -226,7 +231,7 @@ class TestUrlCommandCell
     }
 
     @Test
-    void testAddFileHeaderWithExtensionNotFound() throws Exception
+    void testAddFileHeaderWithExtensionNotFound()
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
@@ -236,12 +241,42 @@ class TestUrlCommandCell
     }
 
     @Test
-    void testAddFileWithNoExtensionAndDotDomainAhead() throws Exception
+    void testAddFileWithNoExtensionAndDotDomainAhead()
     {
         // Causes short-circuit return to get executed, and therefore does not get NPE on null HttpServletResponse
         // being passed in.
         HttpServletResponse response = mock HttpServletResponse.class
         ContentCmdCell.addFileHeader(new URL('http://www.google.com/index'), response)
         verify(response, never()).addHeader(anyString(), anyString())
+    }
+
+    @Test
+    void testCommandCellCaching()
+    {
+        NCube cube = new NCube('CacheTest')
+        Axis axis = new Axis('State', AxisType.DISCRETE, AxisValueType.STRING, true)
+        axis.addColumn('OH')
+        cube.addAxis(axis)
+
+        GroovyExpression exp1 = new GroovyExpression("return input.value * 2", null, true)
+        GroovyExpression exp2 = new GroovyExpression("return input.value * 3", null, true)
+        Map oh = ['state':'OH']
+        cube.setCell(exp1, oh)
+        Map other = ['state':null]
+        cube.setCell(exp2, other)
+
+        Map ohIn = [state:'OH', value:6]
+        Map otherIn = [state:'TX', value:8]
+        Number x = cube.getCell(ohIn)
+        Number y = cube.getCell(otherIn)
+        assert 12 == x
+        assert 24 == y
+
+        ohIn = [state:'OH', value:7]
+        otherIn = [state:'TX', value:9]
+        x = cube.getCell(ohIn)
+        y = cube.getCell(otherIn)
+        assert 14 == x
+        assert 27 == y
     }
 }

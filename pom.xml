@@ -60,8 +60,8 @@
         <version.hsqldb>2.3.1</version.hsqldb>
         <version.oracle>11.2.0.3</version.oracle>
         <version.plugin.compiler>3.2</version.plugin.compiler>
-        <version.plugin.groovy.eclipse.compiler>2.9.1-01</version.plugin.groovy.eclipse.compiler>
-        <version.plugin.groovy.eclipse.batch>2.3.7-01</version.plugin.groovy.eclipse.batch>
+        <version.plugin.groovy.eclipse.compiler>2.9.2-01</version.plugin.groovy.eclipse.compiler>
+        <version.plugin.groovy.eclipse.batch>2.4.3-01</version.plugin.groovy.eclipse.batch>
         <version.plugin.deploy>2.8.2</version.plugin.deploy>
         <version.plugin.source>2.4</version.plugin.source>
         <version.plugin.javadoc>2.10.1</version.plugin.javadoc>

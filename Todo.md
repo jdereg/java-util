@@ -22,3 +22,5 @@ n-cube 'ToDo' list
 // TODO: test all regex's related to finding referenced cubes
 // TODO: test CellInfo (in preparation for list, array, set, map)
 // TODO: create visualization of n-cube in NCE
+
+// TODO: Show subclasses of RpmClasses

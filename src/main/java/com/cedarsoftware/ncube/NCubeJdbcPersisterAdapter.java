@@ -60,7 +60,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public NCube loadCube(long id)
+    public NCube loadCube(String id)
     {
         Connection c = connectionProvider.getConnection();
         try

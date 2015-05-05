@@ -925,13 +925,13 @@ public class NCubeManager
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
-                        errors.put(info.name, createConflictMap(message, info.sha1, head.sha1));
+                        errors.put(info.name, createConflictMap(message, info, head));
                     }
                 }
                 else if (head == null)
                 {
                     String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
-                    errors.put(info.name, createConflictMap(message, info.sha1, null));
+                    errors.put(info.name, createConflictMap(message, info, null));
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -953,7 +953,7 @@ public class NCubeManager
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
-                    errors.put(info.name, createConflictMap(message, info.sha1, head.sha1));
+                    errors.put(info.name, createConflictMap(message, info, head));
                 }
             }
         }
@@ -970,12 +970,30 @@ public class NCubeManager
         return values;
     }
 
-    private static Map createConflictMap(String message, String sha1, String headSha1)
+    private static Map createConflictMap(String message, NCubeInfoDto info, NCubeInfoDto head)
     {
         Map map = new LinkedHashMap();
         map.put("message", message);
-        map.put("sha1", sha1);
-        map.put("headSha1", headSha1);
+        map.put("sha1", info.sha1);
+        map.put("headSha1", head != null ? head.sha1 : null);
+
+        try
+        {
+            if (head != null)
+            {
+                NCube branchCube = getPersister().loadCube(info.id);
+                NCube headCube = getPersister().loadCube(head.id);
+                map.put("diff", branchCube.getDeltaDescription(headCube));
+            }
+            else
+            {
+                map.put("diff", null);
+            }
+        }
+        catch (Exception e)
+        {
+            map.put("diff", e.getMessage());
+        }
         return map;
     }
 
@@ -1046,7 +1064,7 @@ public class NCubeManager
             }
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
-                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info.sha1, head.sha1));
+                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info, head));
             }
         }
 

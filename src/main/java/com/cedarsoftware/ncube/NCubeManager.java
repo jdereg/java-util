@@ -11,6 +11,10 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,9 +34,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -194,7 +195,7 @@ public class NCubeManager
         if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
             NCubeInfoDto dto = (NCubeInfoDto) value;
-            return prepareCube(getPersister().loadCube(Long.parseLong(dto.id)));
+            return prepareCube(getPersister().loadCube(dto.id));
         }
 
         throw new IllegalStateException("Failed to retrieve cube from cache, value: " + value);
@@ -924,13 +925,13 @@ public class NCubeManager
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
-                        errors.put(info.name, createConflictMap(message, info.sha1, head.sha1));
+                        errors.put(info.name, createConflictMap(message, info, head));
                     }
                 }
                 else if (head == null)
                 {
                     String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
-                    errors.put(info.name, createConflictMap(message, info.sha1, null));
+                    errors.put(info.name, createConflictMap(message, info, null));
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -952,7 +953,7 @@ public class NCubeManager
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
-                    errors.put(info.name, createConflictMap(message, info.sha1, head.sha1));
+                    errors.put(info.name, createConflictMap(message, info, head));
                 }
             }
         }
@@ -969,12 +970,30 @@ public class NCubeManager
         return values;
     }
 
-    private static Map createConflictMap(String message, String sha1, String headSha1)
+    private static Map createConflictMap(String message, NCubeInfoDto info, NCubeInfoDto head)
     {
         Map map = new LinkedHashMap();
         map.put("message", message);
-        map.put("sha1", sha1);
-        map.put("headSha1", headSha1);
+        map.put("sha1", info.sha1);
+        map.put("headSha1", head != null ? head.sha1 : null);
+
+        try
+        {
+            if (head != null)
+            {
+                NCube branchCube = getPersister().loadCube(info.id);
+                NCube headCube = getPersister().loadCube(head.id);
+                map.put("diff", branchCube.getDeltaDescription(headCube));
+            }
+            else
+            {
+                map.put("diff", null);
+            }
+        }
+        catch (Exception e)
+        {
+            map.put("diff", e.getMessage());
+        }
         return map;
     }
 
@@ -1045,7 +1064,7 @@ public class NCubeManager
             }
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
-                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info.sha1, head.sha1));
+                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info, head));
             }
         }
 

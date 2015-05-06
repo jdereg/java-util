@@ -3,6 +3,9 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,8 +18,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -444,12 +445,13 @@ public class NCubeJdbcPersister
 
     }
 
-    PreparedStatement createSelectSingleCubeStatement(Connection c, long id) throws SQLException
+    PreparedStatement createSelectSingleCubeStatement(Connection c, String id) throws SQLException
     {
         String sql = "SELECT n_cube_nm, tenant_cd, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, changed, sha1, head_sha1 FROM n_cube where n_cube_id = ?";
 
         PreparedStatement s = c.prepareStatement(sql);
-        s.setLong(1, id);
+        long intId = Long.parseLong(id);
+        s.setLong(1, intId);
         return s;
     }
 
@@ -689,7 +691,7 @@ public class NCubeJdbcPersister
         return list.toArray();
     }
 
-    public NCube loadCube(Connection c, long id)
+    public NCube loadCube(Connection c, String id)
     {
         try (PreparedStatement stmt = createSelectSingleCubeStatement(c, id))
         {

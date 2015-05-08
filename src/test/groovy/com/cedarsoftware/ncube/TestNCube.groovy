@@ -10,7 +10,13 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCube tests.
@@ -4588,6 +4594,42 @@ class TestNCube
         String s = changes.toString()
         assertTrue(s.contains("meta-entries deleted: foo->foot"))
         assertTrue(s.contains("bar->bart"))
+    }
+
+    @Test
+    void testGetPopulatedCells()
+    {
+        NCube cube = NCubeManager.getNCubeFromResource("urlPieces.json")
+        assert cube.getPopulatedCellCoordinates().size() == 2
+
+        cube = new NCube('Hey')
+        Axis one = new Axis('one', AxisType.DISCRETE, AxisValueType.STRING, false)
+        one.addColumn('1')
+        one.addColumn('2')
+        one.addColumn('3')
+        one.addColumn('4')
+
+        Axis two = new Axis('two', AxisType.DISCRETE, AxisValueType.STRING, false)
+        two.addColumn('a')
+        two.addColumn('b')
+        two.addColumn('c')
+        two.addColumn('d')
+        two.addColumn('e')
+
+        cube.addAxis(one)
+        cube.addAxis(two)
+
+        assert cube.getPopulatedCellCoordinates().size() == 0
+
+        cube.setCell('hi', [one:1, two:'a'])
+        List<Map<String, Object>> cells = cube.getPopulatedCellCoordinates()
+        assert cells.size() == 1
+        Map coord = cells[0]
+        assert coord.one == '1'
+        assert coord.two == 'a'
+        cube.setCell('hey', [one:2, two:'a'])
+        cells = cube.getPopulatedCellCoordinates()
+        assert cells.size() == 2
     }
 
     // ---------------------------------------------------------------------------------

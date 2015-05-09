@@ -1,16 +1,47 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.*;
-import com.cedarsoftware.ncube.formatters.*;
-import com.cedarsoftware.util.*;
-import com.cedarsoftware.util.io.*;
-import groovy.util.*;
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+import com.cedarsoftware.ncube.exception.RuleJump;
+import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.ncube.formatters.HtmlFormatter;
+import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.util.ArrayUtilities;
+import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.CaseInsensitiveSet;
+import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.MapUtilities;
+import com.cedarsoftware.util.ReflectionUtils;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.io.JsonObject;
+import com.cedarsoftware.util.io.JsonReader;
+import com.cedarsoftware.util.io.JsonWriter;
+import groovy.util.MapEntry;
 
-import java.lang.reflect.*;
-import java.math.*;
-import java.security.*;
-import java.util.*;
-import java.util.regex.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
 
 /**
  * Implements an n-cube.  This is a hyper (n-dimensional) cube
@@ -2254,6 +2285,31 @@ public class NCube<T>
         }
         sha1 = StringUtilities.encode(sha1Digest.digest());
         return sha1;
+    }
+
+    private Map<String, Object> getCoordinateFromColumnIds(Collection<Column> columns)
+    {
+        Map<String, Object> coord = new CaseInsensitiveMap<>();
+
+        for (Column column : columns)
+        {
+            Axis axis = getAxisFromColumnId(column.id);
+            coord.put(axis.getName(), column.getValueThatMatches());
+        }
+
+        return coord;
+    }
+
+    public List<Map<String, Object>> getPopulatedCellCoordinates()
+    {
+        List<Map<String, Object>> coords = new ArrayList<>();
+        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+        {
+            Collection<Column> columns = entry.getKey();
+            coords.add(getCoordinateFromColumnIds(columns));
+        }
+
+        return coords;
     }
 
     private static String columnValuesToString(Collection<Column> columns)

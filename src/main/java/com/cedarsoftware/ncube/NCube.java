@@ -311,7 +311,9 @@ public class NCube<T>
      * Clear (remove) the cell at the given coordinate.  The cell is dropped
      * from the internal sparse storage.
      * @param coordinate Map coordinate of Cell to remove.
-     * @return value of cell that was removed
+     * @return value of cell that was removed.
+     * For RULE axes, the name of the Rule Axis must be
+     * bound to a rule name (e.g. the 'name' attribute on the Column expression).
      */
     public T removeCell(final Map<String, Object> coordinate)
     {

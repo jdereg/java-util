@@ -3,9 +3,6 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,6 +15,8 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -1275,7 +1274,7 @@ public class NCubeJdbcPersister
     {
         try
         {
-            byte[] jsonBytes = null;
+            byte[] branchBytes = null;
             Long branchRevision = null;
             byte[] branchTestData = null;
             String branchSha1 = null;
@@ -1287,7 +1286,7 @@ public class NCubeJdbcPersister
                 {
                     if (rs.next())
                     {
-                        jsonBytes = rs.getBytes("cube_value_bin");
+                        branchBytes = rs.getBytes("cube_value_bin");
                         branchRevision = rs.getLong("revision_number");
                         branchTestData = rs.getBytes("test_data_bin");
                         branchSha1 = rs.getString("sha1");
@@ -1333,7 +1332,7 @@ public class NCubeJdbcPersister
 
             long rev = Math.abs(newRevision) + 1;
 
-            if (insertCube(c, headId, cubeName, branchRevision < 0 ?  -rev : rev, jsonBytes, branchTestData, notes, false, branchSha1, null, System.currentTimeMillis(), username) == null)
+            if (insertCube(c, headId, cubeName, branchRevision < 0 ?  -rev : rev, branchBytes, branchTestData, notes, false, branchSha1, null, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("Unable to overwrite cube: '" + cubeName + "', app: " + appId);
             }
@@ -1367,7 +1366,7 @@ public class NCubeJdbcPersister
         try
         {
             ApplicationID headId = appId.asHead();
-            byte[] jsonBytes = null;
+            byte[] headBytes = null;
             Long headRevision = null;
             byte[] headTestData = null;
             String headSha1 = null;
@@ -1378,7 +1377,7 @@ public class NCubeJdbcPersister
                 {
                     if (rs.next())
                     {
-                        jsonBytes = rs.getBytes("cube_value_bin");
+                        headBytes = rs.getBytes("cube_value_bin");
                         headRevision = rs.getLong("revision_number");
                         headTestData = rs.getBytes("test_data_bin");
                         headSha1 = rs.getString("sha1");
@@ -1417,11 +1416,11 @@ public class NCubeJdbcPersister
                 throw new IllegalStateException("failed to overwrite because branch cube has changed: " + cubeName + "', app: " + appId);
             }
 
-            String notes = "Cube overwritten in head: " + appId + ", name: " + cubeName;
+            String notes = "Branch cube overwritten: " + appId + ", name: " + cubeName;
 
             long rev = Math.abs(newRevision) + 1;
 
-            if (insertCube(c, appId, cubeName, headRevision < 0 ?  -rev : rev, jsonBytes, headTestData, notes, false, headSha1, headSha1, System.currentTimeMillis(), username) == null)
+            if (insertCube(c, appId, cubeName, headRevision < 0 ?  -rev : rev, headBytes, headTestData, notes, false, headSha1, headSha1, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("Unable to overwrite branch cube: '" + cubeName + "', app: " + appId);
             }

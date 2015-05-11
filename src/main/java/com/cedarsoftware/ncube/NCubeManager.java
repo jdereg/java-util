@@ -11,6 +11,10 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,9 +34,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -930,6 +931,12 @@ public class NCubeManager
                             info.changeType = ChangeType.CREATED.getCode();
                             dtos.add(info);
                         }
+                    }
+                    else if (info.sha1.equals(head.sha1))
+                    {
+                        // items changed, but shas match so identical
+                        info.changeType = ChangeType.UPDATED.getCode();
+                        dtos.add(info);
                     }
                     else
                     {

@@ -1983,6 +1983,46 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testConflictAcceptTheirs() {
+        // load cube with same name, but different structure in TEST branch
+        preloadCubes(head, "test.branch.1.json")
+
+        //  create the branch (TestAge, TestBranch)
+        assertEquals(1, NCubeManager.createBranch(branch1))
+        assertEquals(1, NCubeManager.createBranch(branch2))
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
+        NCubeManager.createCube(branch2, cube, USER_ID)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
+        assertEquals(1, dtos.length)
+        NCubeManager.commitBranch(branch2, dtos, USER_ID)
+
+
+        cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
+        NCubeManager.createCube(branch1, cube, USER_ID)
+
+
+
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
+        assertEquals(1, dtos.length)
+
+        try
+        {
+            NCubeManager.commitBranch(branch1, dtos, USER_ID)
+            fail()
+        }
+        catch (BranchMergeException e)
+        {
+            assert e.message.toLowerCase().contains("conflict(s) committing branch")
+            assert e.errors.TestAge.message.toLowerCase().contains('conflict merging')
+            assert e.errors.TestAge.message.toLowerCase().contains('same name')
+            assertEquals("1B45FBA9BD25EDE58049F0BD0CFAF1FBE7C8C0BD", e.errors.TestAge.sha1)
+            assertEquals("E38F308922AFF48EEA589C321144F2004BD9BFAC", e.errors.TestAge.headSha1)
+
+    }
+
+    @Test
     void testOverwriteHeadCubeWhenBranchDoesNotExist()
     {
         try {

@@ -442,7 +442,6 @@ public class NCubeJdbcPersister
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
-
     }
 
     PreparedStatement createSelectSingleCubeStatement(Connection c, String id) throws SQLException
@@ -489,8 +488,6 @@ public class NCubeJdbcPersister
         s.setString(12, appId.getBranch());
         return s;
     }
-
-
 
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean changedOnly, boolean activeOnly, boolean deletedOnly, boolean includeCube, boolean includeTests) throws SQLException
     {
@@ -742,15 +739,13 @@ public class NCubeJdbcPersister
         return null;
     }
 
-
-
-    private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException {
+    private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException
+    {
         NCube ncube = NCube.createCubeFromBytes(rs.getBytes(CUBE_VALUE_BIN));
         ncube.setSha1(rs.getString("sha1"));
         ncube.setApplicationID(appId);
         return ncube;
     }
-
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
@@ -1241,8 +1236,6 @@ public class NCubeJdbcPersister
         }
     }
 
-
-
     public boolean updateTestData(Connection c, ApplicationID appId, String cubeName, String testData)
     {
         Long maxRev = getMaxRevision(c, appId, cubeName);
@@ -1278,7 +1271,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    boolean mergeOverwriteHeadCube(Connection c, ApplicationID appId, String cubeName, String headSha1, String username)
+    public boolean mergeOverwriteHeadCube(Connection c, ApplicationID appId, String cubeName, String headSha1, String username)
     {
         try
         {
@@ -1307,8 +1300,6 @@ public class NCubeJdbcPersister
             {
                 throw new IllegalStateException("failed to overwrite because branch cube does not exist: " + cubeName + "', app: " + appId);
             }
-
-
 
             ApplicationID headId = appId.asHead();
 
@@ -1371,7 +1362,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    boolean mergeOverwriteBranchCube(Connection c, ApplicationID appId, String cubeName, String branchSha1, String username)
+    public boolean mergeOverwriteBranchCube(Connection c, ApplicationID appId, String cubeName, String branchSha1, String username)
     {
         try
         {
@@ -1421,10 +1412,9 @@ public class NCubeJdbcPersister
                 throw new IllegalStateException("failed to overwrite because branch cube does not exist: " + cubeName + "', app: " + appId);
             }
 
-
             if (!StringUtilities.equalsIgnoreCase(branchSha1, oldBranchSha1))
             {
-                throw new IllegalStateException("branch cube has changed: " + cubeName + "', app: " + appId);
+                throw new IllegalStateException("failed to overwrite because branch cube has changed: " + cubeName + "', app: " + appId);
             }
 
             String notes = "Cube overwritten in head: " + appId + ", name: " + cubeName;
@@ -1665,7 +1655,6 @@ public class NCubeJdbcPersister
         String sql = "INSERT INTO n_cube (n_cube_id, tenant_cd, app_cd, version_no_cd, status_cd, branch_id, n_cube_nm, revision_number, sha1, head_sha1, create_dt, create_hid, cube_value_bin, test_data_bin, notes_bin, changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return c.prepareStatement(sql);
     }
-
 
     NCubeInfoDto insertCube(Connection c, ApplicationID appId, String name, Long revision, byte[] cubeData, byte[] testData, String notes, boolean changed, String sha1, String headSha1, long time, String username) throws SQLException
     {

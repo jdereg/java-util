@@ -1,16 +1,47 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.*;
-import com.cedarsoftware.ncube.formatters.*;
-import com.cedarsoftware.util.*;
-import com.cedarsoftware.util.io.*;
-import groovy.util.*;
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+import com.cedarsoftware.ncube.exception.RuleJump;
+import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.ncube.formatters.HtmlFormatter;
+import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.util.ArrayUtilities;
+import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.CaseInsensitiveSet;
+import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.IOUtilities;
+import com.cedarsoftware.util.MapUtilities;
+import com.cedarsoftware.util.ReflectionUtils;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.io.JsonObject;
+import com.cedarsoftware.util.io.JsonReader;
+import com.cedarsoftware.util.io.JsonWriter;
+import groovy.util.MapEntry;
 
-import java.lang.reflect.*;
-import java.math.*;
-import java.security.*;
-import java.util.*;
-import java.util.regex.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
 
 /**
  * Implements an n-cube.  This is a hyper (n-dimensional) cube
@@ -252,7 +283,8 @@ public class NCube<T>
      * This should only be called from NCubeManager when loading the cube from a database
      * It is mainly to prevent an unnecessary sha1 calculation after being loaded from a
      * db that already knows the sha1.
-     * @param sha1
+     * @param sha1 String SHA-1 value to set into this n-cube.  Should only be called internally
+     * from code constructing this n-cube from a persistent store.
      */
     void setSha1(String sha1)
     {
@@ -280,7 +312,9 @@ public class NCube<T>
      * Clear (remove) the cell at the given coordinate.  The cell is dropped
      * from the internal sparse storage.
      * @param coordinate Map coordinate of Cell to remove.
-     * @return value of cell that was removed
+     * @return value of cell that was removed.
+     * For RULE axes, the name of the Rule Axis must be
+     * bound to a rule name (e.g. the 'name' attribute on the Column expression).
      */
     public T removeCell(final Map<String, Object> coordinate)
     {
@@ -838,11 +872,6 @@ public class NCube<T>
         }
 
         return bindings;
-    }
-
-    private static String[] getAxisNames(final Map<String, List<Column>> bindings)
-    {
-        return bindings.keySet().toArray(new String[bindings.size()]);
     }
 
     private static Map<String, Integer> getCountersPerAxis(final Set<String> axisNames)
@@ -1421,6 +1450,11 @@ public class NCube<T>
         clearSha1();
     }
 
+    /**
+     * Rename an axis
+     * @param oldName String old name
+     * @param newName String new name
+     */
     public void renameAxis(final String oldName, final String newName)
     {
         if (StringUtilities.isEmpty(oldName) || StringUtilities.isEmpty(newName))
@@ -1457,11 +1491,17 @@ public class NCube<T>
         return axisList.remove(axisName) != null;
     }
 
+    /**
+     * @return int the number of axis (dimensions) for this n-cube.
+     */
     public int getNumDimensions()
     {
         return axisList.size();
     }
 
+    /**
+     * @return List<Axis> a List of all axis within this n-cube.
+     */
     public List<Axis> getAxes()
     {
         return new ArrayList<>(axisList.values());
@@ -1683,6 +1723,10 @@ public class NCube<T>
         return new HtmlFormatter(headers).format(this);
     }
 
+    /**
+     * @return String JSON representing this entire n-cube.  This JSON format is designed to withstand changes to
+     * retain backward and forward compatibility.
+     */
     public String toFormattedJson()
     {
         return new JsonFormatter().format(this);
@@ -2161,6 +2205,22 @@ public class NCube<T>
     }
 
     /**
+     * @return List<Map<String, Object>> which is a List of coordinates, one for each populated cell within the
+     * n-cube.
+     */
+    public List<Map<String, Object>> getPopulatedCellCoordinates()
+    {
+        List<Map<String, Object>> coords = new ArrayList<>();
+        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+        {
+            Collection<Column> columns = entry.getKey();
+            coords.add(getCoordinateFromColumnIds(columns));
+        }
+
+        return coords;
+    }
+
+    /**
      * @return SHA1 value for this n-cube.  The value is durable in that Axis order and
      * cell order do not affect the SHA1 value.
      */
@@ -2183,14 +2243,12 @@ public class NCube<T>
 
         // Need deterministic ordering (sorted by Axis name will do that)
         Map<String, Axis> sortedAxes = new TreeMap<>(axisList);
-        final Map<String, List<Column>> allCoordinates = new LinkedHashMap<>();
         sha1Digest.update((byte)'a');       // a=axes
         sha1Digest.update(sep);
 
         for (Map.Entry<String, Axis> entry : sortedAxes.entrySet())
         {
             Axis axis = entry.getValue();
-            allCoordinates.put(axis.getName(), axis.columns);
             sha1Digest.update(axis.getName().toLowerCase().getBytes());
             sha1Digest.update(sep);
             sha1Digest.update(String.valueOf(axis.getColumnOrder()).getBytes());
@@ -2254,6 +2312,19 @@ public class NCube<T>
         }
         sha1 = StringUtilities.encode(sha1Digest.digest());
         return sha1;
+    }
+
+    private Map<String, Object> getCoordinateFromColumnIds(Collection<Column> columns)
+    {
+        Map<String, Object> coord = new CaseInsensitiveMap<>();
+
+        for (Column column : columns)
+        {
+            Axis axis = getAxisFromColumnId(column.id);
+            coord.put(axis.getName(), column.getValueThatMatches());
+        }
+
+        return coord;
     }
 
     private static String columnValuesToString(Collection<Column> columns)
@@ -2372,21 +2443,28 @@ public class NCube<T>
         }
     }
 
-    public List<Delta> getDeltaDescription(NCube<T> old)
+    /**
+     * Return a list of Delta objects describing the differences between two n-cubes.
+     * @param other NCube to compare 'this' n-cube to
+     * @return List<Delta> object.  The Delta class contains a Location (loc) which describes the
+     * part of an n-cube that differs (ncube, axis, column, or cell) and the Type (type) of difference
+     * (ADD, UPDATE, or DELETE).  Finally, it includes an English description of the difference as well.
+     */
+    public List<Delta> getDeltaDescription(NCube<T> other)
     {
         List<Delta> changes = new ArrayList<>();
 
-        if (!name.equalsIgnoreCase(old.name))
+        if (!name.equalsIgnoreCase(other.name))
         {
-            String s = "Name changed from '" + old.name + "' to '" + name + "'";
+            String s = "Name changed from '" + other.name + "' to '" + name + "'";
             changes.add(new Delta(Delta.Location.NCUBE, Delta.Type.UPDATE, s));
         }
 
-        List<Delta> metaChanges = compareMetaProperties(old.getMetaProperties(), getMetaProperties(), Delta.Location.NCUBE_META, "n-cube '" + name + "'");
+        List<Delta> metaChanges = compareMetaProperties(other.getMetaProperties(), getMetaProperties(), Delta.Location.NCUBE_META, "n-cube '" + name + "'");
         changes.addAll(metaChanges);
 
         CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
-        CaseInsensitiveSet a2 = new CaseInsensitiveSet(old.axisList.keySet());
+        CaseInsensitiveSet a2 = new CaseInsensitiveSet(other.axisList.keySet());
         a1.removeAll(a2);
 
         boolean axesChanged = false;
@@ -2408,7 +2486,7 @@ public class NCube<T>
 
         for (Axis newAxis : axisList.values())
         {
-            Axis oldAxis = old.getAxis(newAxis.getName());
+            Axis oldAxis = other.getAxis(newAxis.getName());
             if (oldAxis == null)
             {
                 continue;
@@ -2465,9 +2543,9 @@ public class NCube<T>
             Collection<Column> newCellKey = entry.getKey();
             T newCellValue = entry.getValue();
 
-            if (old.cells.containsKey(newCellKey))
+            if (other.cells.containsKey(newCellKey))
             {
-                Object oldCellValue = old.cells.get(newCellKey);
+                Object oldCellValue = other.cells.get(newCellKey);
                 if (!DeepEquals.deepEquals(newCellValue, oldCellValue))
                 {
                     Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
@@ -2485,7 +2563,7 @@ public class NCube<T>
             }
         }
 
-        for (Map.Entry<Collection<Column>, T> entry : old.cells.entrySet())
+        for (Map.Entry<Collection<Column>, T> entry : other.cells.entrySet())
         {
             Collection<Column> oldCellKey = entry.getKey();
             T oldCellValue = entry.getValue();
@@ -2675,9 +2753,8 @@ public class NCube<T>
         return IOUtilities.compressBytes(jsonBytes);
     }
 
-
-
-    public void setName(String name) {
+    public void setName(String name)
+    {
         this.name = name;
         clearSha1();
     }

@@ -1,0 +1,19 @@
+{
+    "ncube":"ruleSimpleWithDefaultForMergeTest",
+    "axes":[
+        {
+            "name":"rule",
+            "type":"RULE",
+            "valueType":"EXPRESSION",
+            "hasDefault":true,
+            "preferredOrder":1,
+            "columns":[
+                { "id":"OH", "name":"OhioRule", "type":"exp", "value":"input.state == 'OH'" }
+            ]
+        }
+    ],
+    "cells":[
+        { "id":["OH"], "type":"exp", "value":"output.text='Ohio'" },
+        { "id":[], "type":"exp", "value":"output.text='nope'" }
+    ]
+}

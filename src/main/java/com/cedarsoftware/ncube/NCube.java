@@ -2293,6 +2293,7 @@ public class NCube<T>
         {
             List<String> sha1s = new ArrayList<>();
             MessageDigest tempDigest = EncryptionUtilities.getSHA1Digest();
+
             for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
             {
                 String keySha1 = columnValuesToString(entry.getKey());
@@ -2305,6 +2306,7 @@ public class NCube<T>
             }
 
             Collections.sort(sha1s);
+
             for (String sha_1 : sha1s)
             {
                 sha1Digest.update(sha_1.getBytes());
@@ -2441,6 +2443,121 @@ public class NCube<T>
                 md.update(sep);
             }
         }
+    }
+
+    /**
+     * Merge another n-cube into this n-cube.  Merge *only* works if the cubes have the same number of axes,
+     * same columns on each axis, and the populated cells either match -or- one cube has a value where the
+     * other cube has an empty cell.  If these conditions are true, the cell contents are merged into this
+     * n-cube.
+     * @param other NCube to merge into this cube
+     * @return boolean true if the merge is successful, false otherwise.
+     */
+    public boolean merge(NCube<T> other)
+    {
+        if (getNumDimensions() != other.getNumDimensions())
+        {   // Must have same dimensionality
+            return false;
+        }
+
+        CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
+        CaseInsensitiveSet a2 = new CaseInsensitiveSet(other.axisList.keySet());
+        a1.removeAll(a2);
+
+        if (!a1.isEmpty())
+        {   // Axis names must be the same (ignoring case)
+            return false;
+        }
+
+        // Map used to map column IDs from the 'other' cube to column IDs on this cube
+        Map<Long, Long> colIdMap = new HashMap<>();
+
+        for (Axis axis : axisList.values())
+        {
+            Axis otherAxis = other.axisList.get(axis.getName());
+
+            if (axis.columns.size() != otherAxis.columns.size())
+            {   // Must have same number of columns [columns includes default]
+                return false;
+            }
+
+            int len = axis.columns.size();
+            for (int i=0; i < len; i++)
+            {
+                Column column = axis.columns.get(i);
+                Column otherColumn = otherAxis.columns.get(i);
+
+                if (column.getValue() == null)
+                {
+                    if (otherColumn.getValue() != null)
+                    {   // if one column is null, so must the other be
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (otherColumn.getValue() == null)
+                    {
+                        return false;
+                    }
+
+                    if (!column.getValue().equals(otherColumn.getValue()))
+                    {   // column values must be equivalent
+                        return false;
+                    }
+                }
+
+                colIdMap.put(otherColumn.id, column.id);
+            }
+        }
+
+        // Store updates-to-be-made so that if cell equality tests pass, these can be 'played' at the end to
+        // transactionally apply the merge.  We do not want a partial merge.
+        Map<Set<Long>, T> cellsToUpdate = new HashMap<>();
+
+        // At this point, the cubes are the same shape and size.
+        // Check for no-overlapping non-equivalent cells.
+        // If an update is needed, record it (update only after all tests pass, making it 'transactional')
+        for (Map.Entry<Collection<Column>, T> otherEntry : other.cells.entrySet())
+        {
+            Set<Long> ids = new HashSet<>();
+            for (Column otherColumn : otherEntry.getKey())
+            {
+                ids.add(colIdMap.get(otherColumn.id));
+            }
+
+            T content = getCellByIdNoExecute(ids);
+            T otherContent = otherEntry.getValue();
+
+            if (content == null)
+            {   // Possible merge
+                if (otherContent != null)
+                {
+                    cellsToUpdate.put(ids, otherContent);
+                }
+            }
+            else
+            {
+                if (otherContent != null)
+                {
+                    if (!content.equals(otherContent))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
+        for (Map.Entry<Set<Long>, T> entry : cellsToUpdate.entrySet())
+        {
+            Set<Column> cols = getColumnsAndCoordinateFromIds(entry.getKey(), null);
+            cells.put(cols, entry.getValue());
+        }
+
+        clearSha1();
+        clearScopeKeyCaches();
+        return true;
     }
 
     /**
@@ -2741,13 +2858,13 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 
-    public static NCube createCubeFromBytes(byte[] jsonBytes)
+    public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)
     {
         String json = StringUtilities.createUTF8String(IOUtilities.uncompressBytes(jsonBytes));
         return NCubeManager.ncubeFromJson(json);
     }
 
-    public byte[] getBytesFromCube()
+    public byte[] getCubeAsGzipJsonBytes()
     {
         byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
         return IOUtilities.compressBytes(jsonBytes);

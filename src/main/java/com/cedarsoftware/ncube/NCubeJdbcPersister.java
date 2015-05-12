@@ -3,6 +3,9 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,8 +18,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -64,7 +65,7 @@ public class NCubeJdbcPersister
     {
         try
         {
-            byte[] jsonBytes = ncube.getBytesFromCube();
+            byte[] jsonBytes = ncube.getCubeAsGzipJsonBytes();
             if (insertCube(c, appId, ncube.getName(), rev, jsonBytes, null, "Cube created", true, ncube.sha1(), null, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId);
@@ -261,7 +262,7 @@ public class NCubeJdbcPersister
                     //TODO:  This code may be necessary for supporting Ken Sayer's loading from files on disk.
 //                    String headSha1 = getHeadSha1(rs.getBytes("cube_value_bin"));
 //                    cube.setHeadSha1(headSha1);
-                    byte[] cubeData = cube.getBytesFromCube();
+                    byte[] cubeData = cube.getCubeAsGzipJsonBytes();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     String headSha1 = rs.getString("head_sha1");
                     String oldSha1 = rs.getString("sha1");
@@ -740,7 +741,7 @@ public class NCubeJdbcPersister
 
     private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException
     {
-        NCube ncube = NCube.createCubeFromBytes(rs.getBytes(CUBE_VALUE_BIN));
+        NCube ncube = NCube.createCubeFromGzipBytes(rs.getBytes(CUBE_VALUE_BIN));
         ncube.setSha1(rs.getString("sha1"));
         ncube.setApplicationID(appId);
         return ncube;
@@ -997,9 +998,9 @@ public class NCubeJdbcPersister
                                         "UPDATE n_cube set sha1 = ?, cube_value_bin = ? where n_cube_id = ?"))
                                 {
 
-                                    NCube cube = NCube.createCubeFromBytes(jsonBytes);
+                                    NCube cube = NCube.createCubeFromGzipBytes(jsonBytes);
                                     sha1 = cube.sha1();
-                                    jsonBytes = cube.getBytesFromCube();
+                                    jsonBytes = cube.getCubeAsGzipJsonBytes();
 
                                     update.setString(1, sha1);
                                     update.setBytes(2, jsonBytes);
@@ -1497,10 +1498,10 @@ public class NCubeJdbcPersister
             // If names are different we need to recalculate the sha-1
             if (changed)
             {
-                NCube ncube = NCube.createCubeFromBytes(jsonBytes);
+                NCube ncube = NCube.createCubeFromGzipBytes(jsonBytes);
                 ncube.setName(newName);
                 ncube.setApplicationID(newAppId);
-                jsonBytes = ncube.getBytesFromCube();
+                jsonBytes = ncube.getCubeAsGzipJsonBytes();
                 sha1 = ncube.sha1();
             }
 
@@ -1614,11 +1615,11 @@ public class NCubeJdbcPersister
                 throw new IllegalArgumentException("Unable to rename cube, a cube already exists with that name.  appId:  " + appId + ", name: " + newName);
             }
 
-            NCube ncube = NCube.createCubeFromBytes(oldBytes);
+            NCube ncube = NCube.createCubeFromGzipBytes(oldBytes);
             ncube.setName(newName);
 
             String notes = "Cube renamed:  " + oldName + " -> " + newName;
-            byte[] cubeData = ncube.getBytesFromCube();
+            byte[] cubeData = ncube.getCubeAsGzipJsonBytes();
 
             if (insertCube(c, appId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, cubeData, oldTestData, notes, true, ncube.sha1(), newHeadSha1, System.currentTimeMillis(), username) == null)
             {

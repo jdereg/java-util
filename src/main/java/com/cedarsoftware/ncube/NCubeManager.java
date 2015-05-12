@@ -1389,7 +1389,7 @@ public class NCubeManager
         }
     }
 
-    static NCube ncubeFromJson(String json)
+    static NCube<?> ncubeFromJson(String json)
     {
         try
         {

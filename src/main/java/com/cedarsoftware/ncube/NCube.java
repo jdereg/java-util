@@ -2444,6 +2444,84 @@ public class NCube<T>
     }
 
     /**
+     * Merge another n-cube into this n-cube.  Merge *only* works if the cubes have the same number of axes,
+     * same columns on each axis, and the populated cells either match *or* one cube has a value where the
+     * other cube has an empty cell.  If these conditions are true, the cell contents are merged into this
+     * n-cube.
+     * @param other NCube to merge into this cube
+     * @return boolean true if the merge is successful, false otherwise.
+     */
+    public boolean merge(NCube<T> other)
+    {
+        if (getNumDimensions() != other.getNumDimensions())
+        {   // Must have same dimensionality
+            return false;
+        }
+
+        CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
+        CaseInsensitiveSet a2 = new CaseInsensitiveSet(other.axisList.keySet());
+        a1.removeAll(a2);
+
+        if (!a1.isEmpty())
+        {   // Axis names must be the same (ignoring case)
+            return false;
+        }
+
+        for (Map.Entry<String, Axis> stringAxisEntry : axisList.entrySet())
+        {
+            Axis axis = stringAxisEntry.getValue();
+            Axis otherAxis = other.axisList.get(axis.getName());
+            if (axis.columns.size() != otherAxis.columns.size())
+            {   // Must have same number of columns [columns includes default]
+                return false;
+            }
+
+            int len = axis.columns.size();
+            for (int i=0; i < len; i++)
+            {
+                Column column = axis.columns.get(0);
+                Column otherColumn = otherAxis.columns.get(0);
+
+                if (column.getValue() == null)
+                {
+                    if (otherColumn.getValue() != null)
+                    {   // if one column is null, so must the other be
+                        return false;
+                    }
+                }
+                else if (!column.getValue().equals(otherColumn.getValue()))
+                {   // column values must be equivalent
+                    return false;
+                }
+            }
+        }
+
+        // At this point, the cubes are the same shape and size.  Check for no-overlapping non-equivalent cells.
+        for (Map<String, Object> coord : other.getPopulatedCellCoordinates())
+        {
+            T content = getCell(coord);
+            T otherContent = other.getCell(coord);
+
+            if (content == null)
+            {   // Possible merge
+                if (otherContent != null)
+                {
+                    setCell(otherContent, coord);
+                }
+            }
+            else
+            {
+                if (!content.equals(otherContent))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Return a list of Delta objects describing the differences between two n-cubes.
      * @param other NCube to compare 'this' n-cube to
      * @return List<Delta> object.  The Delta class contains a Location (loc) which describes the
@@ -2741,13 +2819,13 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
     }
 
-    public static NCube createCubeFromBytes(byte[] jsonBytes)
+    public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)
     {
         String json = StringUtilities.createUTF8String(IOUtilities.uncompressBytes(jsonBytes));
         return NCubeManager.ncubeFromJson(json);
     }
 
-    public byte[] getBytesFromCube()
+    public byte[] getCubeAsGzipJsonBytes()
     {
         byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
         return IOUtilities.compressBytes(jsonBytes);

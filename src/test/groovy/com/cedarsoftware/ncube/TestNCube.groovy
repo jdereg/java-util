@@ -3783,7 +3783,7 @@ class TestNCube
         bytes[0] = (byte)0x1F;
         bytes[1] = (byte)0x8b;
         try {
-            NCube.createCubeFromBytes(bytes)
+            NCube.createCubeFromGzipBytes(bytes)
         } catch (RuntimeException e) {
             assertEquals(EOFException.class, e.cause.class);
             assertEquals("error uncompressing bytes", e.message.toLowerCase());

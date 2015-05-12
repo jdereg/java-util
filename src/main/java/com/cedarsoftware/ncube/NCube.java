@@ -2503,14 +2503,13 @@ public class NCube<T>
         // Store updates-to-be-made so that if cell equality tests pass, these can be 'played' at the end to
         // transactionally apply the merge.  We do not want a partial merge.
         Map<Set<Long>, T> cellsToUpdate = new HashMap<>();
-        Set<Long> ids = new HashSet<>();
 
         // At this point, the cubes are the same shape and size.
         // Check for no-overlapping non-equivalent cells.
         // If an update is needed, record it (update only after all tests pass, making it 'transactional')
         for (Map.Entry<Collection<Column>, T> otherEntry : other.cells.entrySet())
         {
-            ids.clear();
+            Set<Long> ids = new HashSet<>();
             for (Column otherColumn : otherEntry.getKey())
             {
                 ids.add(colIdMap.get(otherColumn.id));

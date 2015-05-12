@@ -1,0 +1,126 @@
+{
+  "ncube": "empty",
+  "axes": [
+    {
+      "name": "Column",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "fireAll": true,
+      "columns": [
+        {
+          "id": 1000000000001,
+          "type": "string",
+          "value": "A"
+        },
+        {
+          "id": 1000000000002,
+          "type": "string",
+          "value": "B"
+        },
+        {
+          "id": 1000000000003,
+          "type": "string",
+          "value": "C"
+        },
+        {
+          "id": 1000000000004,
+          "type": "string",
+          "value": "D"
+        },
+        {
+          "id": 1000000000005,
+          "type": "string",
+          "value": "E"
+        },
+        {
+          "id": 1000000000006,
+          "type": "string",
+          "value": "F"
+        },
+        {
+          "id": 1000000000007,
+          "type": "string",
+          "value": "G"
+        },
+        {
+          "id": 1000000000008,
+          "type": "string",
+          "value": "H"
+        },
+        {
+          "id": 1000000000009,
+          "type": "string",
+          "value": "I"
+        },
+        {
+          "id": 1000000000010,
+          "type": "string",
+          "value": "J"
+        }
+      ]
+    },
+    {
+      "name": "Row",
+      "type": "DISCRETE",
+      "valueType": "LONG",
+      "preferredOrder": 1,
+      "hasDefault": false,
+      "fireAll": true,
+      "columns": [
+        {
+          "id": 2000000000001,
+          "type": "long",
+          "value": 1
+        },
+        {
+          "id": 2000000000002,
+          "type": "long",
+          "value": 2
+        },
+        {
+          "id": 2000000000003,
+          "type": "long",
+          "value": 3
+        },
+        {
+          "id": 2000000000004,
+          "type": "long",
+          "value": 4
+        },
+        {
+          "id": 2000000000005,
+          "type": "long",
+          "value": 5
+        },
+        {
+          "id": 2000000000006,
+          "type": "long",
+          "value": 6
+        },
+        {
+          "id": 2000000000007,
+          "type": "long",
+          "value": 7
+        },
+        {
+          "id": 2000000000008,
+          "type": "long",
+          "value": 8
+        },
+        {
+          "id": 2000000000009,
+          "type": "long",
+          "value": 9
+        },
+        {
+          "id": 2000000000010,
+          "type": "long",
+          "value": 10
+        }
+      ]
+    }
+  ],
+  "cells": []
+}

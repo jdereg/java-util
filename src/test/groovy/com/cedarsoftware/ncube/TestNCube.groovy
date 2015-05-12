@@ -39,7 +39,7 @@ import static org.junit.Assert.fail
  */
 class TestNCube
 {
-    private static final boolean _debug = false;
+    private static final boolean _debug = true;
 
     @Before
     public void setUp() throws Exception
@@ -4670,6 +4670,78 @@ class TestNCube
         NCube cube1 = NCubeManager.getNCubeFromResource("ruleSimpleWithNoDefault.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("ruleSimpleWithDefaultForMergeTest.json")
         assertFalse cube1.merge(cube2)
+        assertFalse cube2.merge(cube1)
+    }
+
+    @Test
+    void testMergeSameCube()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
+        assert cube1.sha1() == cube2.sha1()
+        assert cube1.merge(cube2)
+        assert cube1.sha1() == cube2.sha1()
+    }
+
+    @Test
+    void testMergeOtherWithContentIntoEmpty()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("empty2D.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("merge1.json")
+        assert cube1.merge(cube2)
+        Map coord = [row:1, column:'A']
+        assert "1" == cube1.getCell(coord)
+
+        coord = [row:2, column:'B']
+        assert 2 == cube1.getCell(coord)
+
+        coord = [row:3, column:'C']
+        assert 3.14 == cube1.getCell(coord)
+
+        coord = [row:4, column:'D']
+        assert 6.28 == cube1.getCell(coord)
+
+        coord = [row:5, column:'E']
+        assert cube1.containsCell(coord)
+
+        assert cube1.getNumCells() == 5
+    }
+
+    @Test
+    void testMergeEmptyIntoContent()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("merge1.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("empty2D.json")
+        assert cube1.merge(cube2)
+        Map coord = [row:1, column:'A']
+        assert "1" == cube1.getCell(coord)
+
+        coord = [row:2, column:'B']
+        assert 2 == cube1.getCell(coord)
+
+        coord = [row:3, column:'C']
+        assert 3.14 == cube1.getCell(coord)
+
+        coord = [row:4, column:'D']
+        assert 6.28 == cube1.getCell(coord)
+
+        coord = [row:5, column:'E']
+        assert cube1.containsCell(coord)
+
+        assert cube1.getNumCells() == 5
+    }
+
+    @Test
+    void testMergeConflictCellOverlap()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("merge1.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("merge2.json")
+        String cube1Sha = cube1.sha1()
+        String cube2Sha = cube2.sha1()
+        assertFalse cube1.merge(cube2)
+        assertFalse cube2.merge(cube1)
+        assert cube1.sha1() == cube1Sha
+        assert cube2.sha1() == cube2Sha
     }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------

@@ -39,7 +39,7 @@ import static org.junit.Assert.fail
  */
 class TestNCube
 {
-    private static final boolean _debug = true;
+    private static final boolean _debug = false;
 
     @Before
     public void setUp() throws Exception

@@ -2293,6 +2293,7 @@ public class NCube<T>
         {
             List<String> sha1s = new ArrayList<>();
             MessageDigest tempDigest = EncryptionUtilities.getSHA1Digest();
+
             for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
             {
                 String keySha1 = columnValuesToString(entry.getKey());
@@ -2305,6 +2306,7 @@ public class NCube<T>
             }
 
             Collections.sort(sha1s);
+
             for (String sha_1 : sha1s)
             {
                 sha1Digest.update(sha_1.getBytes());
@@ -2473,6 +2475,7 @@ public class NCube<T>
         for (Axis axis : axisList.values())
         {
             Axis otherAxis = other.axisList.get(axis.getName());
+
             if (axis.columns.size() != otherAxis.columns.size())
             {   // Must have same number of columns [columns includes default]
                 return false;
@@ -2491,9 +2494,17 @@ public class NCube<T>
                         return false;
                     }
                 }
-                else if (!column.getValue().equals(otherColumn.getValue()))
-                {   // column values must be equivalent
-                    return false;
+                else
+                {
+                    if (otherColumn.getValue() == null)
+                    {
+                        return false;
+                    }
+
+                    if (!column.getValue().equals(otherColumn.getValue()))
+                    {   // column values must be equivalent
+                        return false;
+                    }
                 }
 
                 colIdMap.put(otherColumn.id, column.id);

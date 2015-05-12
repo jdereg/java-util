@@ -2445,7 +2445,7 @@ public class NCube<T>
 
     /**
      * Merge another n-cube into this n-cube.  Merge *only* works if the cubes have the same number of axes,
-     * same columns on each axis, and the populated cells either match *or* one cube has a value where the
+     * same columns on each axis, and the populated cells either match -or- one cube has a value where the
      * other cube has an empty cell.  If these conditions are true, the cell contents are merged into this
      * n-cube.
      * @param other NCube to merge into this cube
@@ -2467,11 +2467,11 @@ public class NCube<T>
             return false;
         }
 
+        // Map used to map column IDs from the 'other' cube to column IDs on this cube
         Map<Long, Long> colIdMap = new HashMap<>();
 
-        for (Map.Entry<String, Axis> stringAxisEntry : axisList.entrySet())
+        for (Axis axis : axisList.values())
         {
-            Axis axis = stringAxisEntry.getValue();
             Axis otherAxis = other.axisList.get(axis.getName());
             if (axis.columns.size() != otherAxis.columns.size())
             {   // Must have same number of columns [columns includes default]
@@ -2500,21 +2500,24 @@ public class NCube<T>
             }
         }
 
+        // Store updates-to-be-made so that if cell equality tests pass, these can be 'played' at the end to
+        // transactionally apply the merge.  We do not want a partial merge.
         Map<Set<Long>, T> cellsToUpdate = new HashMap<>();
+        Set<Long> ids = new HashSet<>();
 
         // At this point, the cubes are the same shape and size.
         // Check for no-overlapping non-equivalent cells.
         // If an update is needed, record it (update only after all tests pass, making it 'transactional')
-        for (Map.Entry<Collection<Column>, T> entry : other.cells.entrySet())
+        for (Map.Entry<Collection<Column>, T> otherEntry : other.cells.entrySet())
         {
-            Set<Long> ids = new HashSet<>();
-            for (Column column : entry.getKey())
+            ids.clear();
+            for (Column otherColumn : otherEntry.getKey())
             {
-                ids.add(colIdMap.get(column.id));
+                ids.add(colIdMap.get(otherColumn.id));
             }
 
             T content = getCellByIdNoExecute(ids);
-            T otherContent = entry.getValue();
+            T otherContent = otherEntry.getValue();
 
             if (content == null)
             {   // Possible merge
@@ -2525,9 +2528,12 @@ public class NCube<T>
             }
             else
             {
-                if (!content.equals(otherContent))
+                if (otherContent != null)
                 {
-                    return false;
+                    if (!content.equals(otherContent))
+                    {
+                        return false;
+                    }
                 }
             }
         }

@@ -2467,6 +2467,8 @@ public class NCube<T>
             return false;
         }
 
+        Map<Long, Long> colIdMap = new HashMap<>();
+
         for (Map.Entry<String, Axis> stringAxisEntry : axisList.entrySet())
         {
             Axis axis = stringAxisEntry.getValue();
@@ -2493,20 +2495,32 @@ public class NCube<T>
                 {   // column values must be equivalent
                     return false;
                 }
+
+                colIdMap.put(otherColumn.id, column.id);
             }
         }
 
-        // At this point, the cubes are the same shape and size.  Check for no-overlapping non-equivalent cells.
-        for (Map<String, Object> coord : other.getPopulatedCellCoordinates())
+        Map<Set<Long>, T> cellsToUpdate = new HashMap<>();
+
+        // At this point, the cubes are the same shape and size.
+        // Check for no-overlapping non-equivalent cells.
+        // If an update is needed, record it (update only after all tests pass, making it 'transactional')
+        for (Map.Entry<Collection<Column>, T> entry : other.cells.entrySet())
         {
-            T content = getCell(coord);
-            T otherContent = other.getCell(coord);
+            Set<Long> ids = new HashSet<>();
+            for (Column column : entry.getKey())
+            {
+                ids.add(colIdMap.get(column.id));
+            }
+
+            T content = getCellByIdNoExecute(ids);
+            T otherContent = entry.getValue();
 
             if (content == null)
             {   // Possible merge
                 if (otherContent != null)
                 {
-                    setCell(otherContent, coord);
+                    cellsToUpdate.put(ids, otherContent);
                 }
             }
             else
@@ -2516,6 +2530,12 @@ public class NCube<T>
                     return false;
                 }
             }
+        }
+
+        // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
+        for (Map.Entry<Set<Long>, T> entry : cellsToUpdate.entrySet())
+        {
+            setCellById(entry.getValue(), entry.getKey());
         }
 
         return true;

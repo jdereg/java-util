@@ -2481,8 +2481,8 @@ public class NCube<T>
             int len = axis.columns.size();
             for (int i=0; i < len; i++)
             {
-                Column column = axis.columns.get(0);
-                Column otherColumn = otherAxis.columns.get(0);
+                Column column = axis.columns.get(i);
+                Column otherColumn = otherAxis.columns.get(i);
 
                 if (column.getValue() == null)
                 {

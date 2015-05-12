@@ -4632,6 +4632,45 @@ class TestNCube
         assert cells.size() == 2
     }
 
+    @Test
+    void testMergeDiffDimensions()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("debugExp.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("debugExp2D.json")
+        assertFalse cube1.merge(cube2)
+    }
+
+    @Test
+    void testMergeDiffAxisNames()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("debugExp2D.json")
+        assertFalse cube1.merge(cube2)
+    }
+
+    @Test
+    void testMergeDiffNumCols()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("basicJump.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("basicJumpRestart.json")
+        assertFalse cube1.merge(cube2)
+    }
+
+    @Test
+    void testMergeDiffColValues()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("basicJumpRestart.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("basicJumpStart.json")
+        assertFalse cube1.merge(cube2)
+    }
+
+    @Test
+    void testMergeMismatchOnDefaultCol()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("ruleSimpleWithNoDefault.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("ruleSimpleWithDefaultForMergeTest.json")
+        assertFalse cube1.merge(cube2)
+    }
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

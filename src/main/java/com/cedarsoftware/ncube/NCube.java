@@ -2548,14 +2548,15 @@ public class NCube<T>
             }
         }
 
-        clearSha1();
-
         // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
         for (Map.Entry<Set<Long>, T> entry : cellsToUpdate.entrySet())
         {
-            setCellById(entry.getValue(), entry.getKey());
+            Set<Column> cols = getColumnsAndCoordinateFromIds(entry.getKey(), null);
+            cells.put(cols, entry.getValue());
         }
 
+        clearSha1();
+        clearScopeKeyCaches();
         return true;
     }
 

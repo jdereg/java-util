@@ -18,6 +18,7 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -2447,18 +2448,16 @@ public class NCube<T>
     /**
      * Fetch the difference between this cube and the passed in cube, in terms of cells.  The two cubes must
      * have the same number of axes with the same names, and each axis must have the same columns.  If those
-     * conditions are met, then this method will return a Map of cell coordinates and associated values which
-     * contain the cells in the 'other' cube that are populated which are not in 'this' cube.  All cells in
-     * both cubes that have content at the same location must have the same value.
-     *
-     * Note this is a non-symmetric operation - A.getCellDelta(B) will not yield the same result as B.getCellDelta(A).
+     * conditions are met, then this method will return a Map of cell coordinates to the associated values.
+     * If the value is NCUBE.REMOVE_CELL, then that indicates a cell that needs to be removed.  All other cell
+     * values are actual cell value changes.
      * @param other NCube to compare to this ncube.
      * @return Map containing the coordinates and associated values from the 'other' cube where there are blank
      * cells in 'this' cube. If any of the following conditions are not met (different number of axes, different
      * axis names, different columns, or cells exist in both cubes at the same location but not with the same
      * value), then null is returned.
      */
-    public Map<Set<Long>, T> getCellDelta(NCube<T> other)
+    public Map<Set<Long>, Object> getCellDelta(NCube<T> other)
     {
         if (getNumDimensions() != other.getNumDimensions())
         {   // Must have same dimensionality
@@ -2518,11 +2517,21 @@ public class NCube<T>
 
         // Store updates-to-be-made so that if cell equality tests pass, these can be 'played' at the end to
         // transactionally apply the merge.  We do not want a partial merge.
-        Map<Set<Long>, T> cellsToUpdate = new HashMap<>();
+        Map<Set<Long>, Object> cellsToUpdate = new HashMap<>();
+        List<Set<Long>> copyCells =  new ArrayList<>();
+
+        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+        {
+            Set<Long> ids = new HashSet<>();
+            for (Column column : entry.getKey())
+            {
+                ids.add(column.id);
+            }
+            copyCells.add(ids);
+        }
 
         // At this point, the cubes are the same shape and size.
-        // Check for no-overlapping non-equivalent cells.
-        // If an update is needed, record it (update only after all tests pass, making it 'transactional')
+        // Now, compute cell deltas.
         for (Map.Entry<Collection<Column>, T> otherEntry : other.cells.entrySet())
         {
             Set<Long> ids = new HashSet<>();
@@ -2533,27 +2542,21 @@ public class NCube<T>
 
             T content = getCellByIdNoExecute(ids);
             T otherContent = otherEntry.getValue();
+            copyCells.remove(ids);
 
-            if (content == null)
-            {   // Possible merge
-                if (otherContent != null)
-                {
-                    cellsToUpdate.put(ids, otherContent);
-                }
-            }
-            else
+            CellInfo info = new CellInfo(content);
+            CellInfo otherInfo = new CellInfo(otherContent);
+
+            if (!info.equals(otherInfo))
             {
-                if (otherContent != null)
-                {
-                    CellInfo info = new CellInfo(content);
-                    CellInfo otherInfo = new CellInfo(otherContent);
-
-                    if (!info.equals(otherInfo))
-                    {
-                        return null;
-                    }
-                }
+                cellsToUpdate.put(ids, otherContent);
             }
+        }
+
+        final Object[] sentinel = new Object[] {};
+        for (Set<Long> coord : copyCells)
+        {
+            cellsToUpdate.put(coord, sentinel);
         }
 
         return cellsToUpdate;

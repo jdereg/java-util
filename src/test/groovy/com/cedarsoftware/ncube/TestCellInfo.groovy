@@ -6,7 +6,12 @@ import com.cedarsoftware.ncube.proximity.Point3D
 import com.cedarsoftware.util.io.JsonObject
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertArrayEquals
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -218,28 +223,60 @@ class TestCellInfo
     }
 
     @Test(expected = IllegalArgumentException.class)
-    void testParseJsonValueException() throws Exception
+    void testParseJsonValueException()
     {
         CellInfo.parseJsonValue(Boolean.TRUE, "http://www.foo.com", "foo", true)
     }
 
     @Test(expected = IllegalArgumentException.class)
-    void testParseJsonValueNonUrlException() throws Exception
+    void testParseJsonValueNonUrlException()
     {
         CellInfo.parseJsonValue("blah blah blah", null, "foo", true)
     }
 
     @Test(expected = IllegalArgumentException.class)
-    void testParseJsonValueWithUnknownType() throws Exception
+    void testParseJsonValueWithUnknownType()
     {
         CellInfo.parseJsonValue(new Object(), null, "foo", true)
     }
 
     @Test
-    void testParseJsonValueGroovyMethod() throws Exception
+    void testParseJsonValueGroovyMethod()
     {
         GroovyMethod method = (GroovyMethod) CellInfo.parseJsonValue("def [5]", null, "method", true)
         assertEquals(new GroovyMethod("def [5]", null, false), method)
+    }
+
+    @Test
+    void testEqualsAndHashCode()
+    {
+        CellInfo info1 = new CellInfo([1, 2, 4, 8, 16] as byte[])
+        assert info1.equals(info1)
+        CellInfo info2 = new CellInfo([1, 2, 4, 8, 16] as byte[])
+        assert info1.equals(info2)
+        assert info1.hashCode() == info2.hashCode()
+
+        info2 = new CellInfo([1, 2, 4, 8, 16, 32] as byte[])
+        assert !info1.equals(info2)
+        assert info1.hashCode() != info2.hashCode()
+
+        info2.isUrl = true
+        assert !info1.equals(info2)
+
+        info2.isUrl = false
+        info2.isCached = true
+        assert !info1.equals(info2)
+
+        info1 = new CellInfo(1.33d)
+        info2 = new CellInfo(1.33f)
+        assert info1 != info2
+        assert info1.hashCode() != info2.hashCode()
+
+        def s = "Hi"
+        info1 = new CellInfo(s)
+        assert info1 == info1
+
+        assertFalse info1.equals(13)
     }
 
     public void performRecreateAssertion(Object o)

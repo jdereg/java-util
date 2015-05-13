@@ -1,13 +1,20 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.proximity.*;
-import com.cedarsoftware.util.*;
-import com.cedarsoftware.util.io.*;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.SafeSimpleDateFormat;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.io.JsonObject;
 
-import java.math.*;
-import java.text.*;
-import java.util.*;
-import java.util.regex.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.text.DecimalFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Get information about a cell (makes it a uniform query-able object).  Optional method
@@ -647,5 +654,42 @@ public class CellInfo
             return dateFormat.format(date);
         }
         return dateTimeFormat.format(date);
+    }
+
+    public boolean equals(Object o)
+    {
+        if (this == o)
+        {
+            return true;
+        }
+        if (!(o instanceof CellInfo))
+        {
+            return false;
+        }
+
+        CellInfo cellInfo = (CellInfo) o;
+
+        if (isUrl != cellInfo.isUrl)
+        {
+            return false;
+        }
+        if (isCached != cellInfo.isCached)
+        {
+            return false;
+        }
+        if (value != null ? !value.equals(cellInfo.value) : cellInfo.value != null)
+        {
+            return false;
+        }
+        return !(dataType != null ? !dataType.equals(cellInfo.dataType) : cellInfo.dataType != null);
+    }
+
+    public int hashCode()
+    {
+        int result = value != null ? value.hashCode() : 0;
+        result = 31 * result + (dataType != null ? dataType.hashCode() : 0);
+        result = 31 * result + (isUrl ? 1 : 0);
+        result = 31 * result + (isCached ? 1 : 0);
+        return result;
     }
 }

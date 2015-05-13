@@ -2446,18 +2446,24 @@ public class NCube<T>
     }
 
     /**
-     * Merge another n-cube into this n-cube.  Merge *only* works if the cubes have the same number of axes,
-     * same columns on each axis, and the populated cells either match -or- one cube has a value where the
-     * other cube has an empty cell.  If these conditions are true, the cell contents are merged into this
-     * n-cube.
-     * @param other NCube to merge into this cube
-     * @return boolean true if the merge is successful, false otherwise.
+     * Fetch the difference between this cube and the passed in cube, in terms of cells.  The two cubes must
+     * have the same number of axes with the same names, and each axis must have the same columns.  If those
+     * conditions are met, then this method will return a Map of cell coordinates and associated values which
+     * contain the cells in the 'other' cube that are populated which are not in 'this' cube.  All cells in
+     * both cubes that have content at the same location must have the same value.
+     *
+     * Note this is a non-symmetric operation - A.getCellDelta(B) will not yield the same result as B.getCellDelta(A).
+     * @param other NCube to compare to this ncube.
+     * @return Map containing the coordinates and associated values from the 'other' cube where there are blank
+     * cells in 'this' cube. If any of the following conditions are not met (different number of axes, different
+     * axis names, different columns, or cells exist in both cubes at the same location but not with the same
+     * value), then null is returned.
      */
-    public boolean merge(NCube<T> other)
+    public Map<Set<Long>, T> getCellDelta(NCube<T> other)
     {
         if (getNumDimensions() != other.getNumDimensions())
         {   // Must have same dimensionality
-            return false;
+            return null;
         }
 
         CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
@@ -2466,7 +2472,7 @@ public class NCube<T>
 
         if (!a1.isEmpty())
         {   // Axis names must be the same (ignoring case)
-            return false;
+            return null;
         }
 
         // Map used to map column IDs from the 'other' cube to column IDs on this cube
@@ -2478,7 +2484,7 @@ public class NCube<T>
 
             if (axis.columns.size() != otherAxis.columns.size())
             {   // Must have same number of columns [columns includes default]
-                return false;
+                return null;
             }
 
             int len = axis.columns.size();
@@ -2491,19 +2497,19 @@ public class NCube<T>
                 {
                     if (otherColumn.getValue() != null)
                     {   // if one column is null, so must the other be
-                        return false;
+                        return null;
                     }
                 }
                 else
                 {
                     if (otherColumn.getValue() == null)
                     {
-                        return false;
+                        return null;
                     }
 
                     if (!column.getValue().equals(otherColumn.getValue()))
                     {   // column values must be equivalent
-                        return false;
+                        return null;
                     }
                 }
 
@@ -2540,24 +2546,40 @@ public class NCube<T>
             {
                 if (otherContent != null)
                 {
-                    if (!content.equals(otherContent))
+                    CellInfo info = new CellInfo(content);
+                    CellInfo otherInfo = new CellInfo(otherContent);
+
+                    if (!info.equals(otherInfo))
                     {
-                        return false;
+                        return null;
                     }
                 }
             }
         }
 
+        return cellsToUpdate;
+    }
+
+    /**
+     * Merge the passed in Map containing coordinates and associated values, into this n-cube.
+     * It is expected that this Map was obtained by calling the getCellDelta() API.  This API
+     * will return the 'cellsToUpdate' by comparing this cube to a passed in cube.
+     * @param cellsToUpdate Map containing coordinates and values to be applied to this n-cube.
+     */
+    public void merge(Map<Set<Long>, T> cellsToUpdate)
+    {
         // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
         for (Map.Entry<Set<Long>, T> entry : cellsToUpdate.entrySet())
         {
             Set<Column> cols = getColumnsAndCoordinateFromIds(entry.getKey(), null);
-            cells.put(cols, entry.getValue());
+            if (cols.size() > 0)
+            {
+                cells.put(cols, entry.getValue());
+            }
         }
 
         clearSha1();
         clearScopeKeyCaches();
-        return true;
     }
 
     /**

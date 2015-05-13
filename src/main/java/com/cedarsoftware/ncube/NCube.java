@@ -18,7 +18,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
-
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -2896,5 +2895,10 @@ public class NCube<T>
     {
         this.name = name;
         clearSha1();
+    }
+
+    public static boolean compareDeltas(Map delta1, Map delta2)
+    {
+        return false;
     }
 }

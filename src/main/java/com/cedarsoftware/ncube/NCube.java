@@ -2446,12 +2446,18 @@ public class NCube<T>
     }
 
     /**
-     * Merge another n-cube into this n-cube.  Merge *only* works if the cubes have the same number of axes,
-     * same columns on each axis, and the populated cells either match -or- one cube has a value where the
-     * other cube has an empty cell.  If these conditions are true, the cell contents are merged into this
-     * n-cube.
-     * @param other NCube to merge into this cube
-     * @return boolean true if the merge is successful, false otherwise.
+     * Fetch the difference between this cube and the passed in cube, in terms of cells.  The two cubes must
+     * have the same number of axes with the same names, and each axis must have the same columns.  If those
+     * conditions are met, then this method will return a Map of cell coordinates and associated values which
+     * contain the cells in the 'other' cube that are populated which are not in 'this' cube.  All cells in
+     * both cubes that have content at the same location must have the same value.
+     *
+     * Note this is a non-symmetric operation - A.getCellDelta(B) will not yield the same result as B.getCellDelta(A).
+     * @param other NCube to compare to this ncube.
+     * @return Map containing the coordinates and associated values from the 'other' cube where there are blank
+     * cells in 'this' cube. If any of the following conditions are not met (different number of axes, different
+     * axis names, different columns, or cells exist in both cubes at the same location but not with the same
+     * value), then null is returned.
      */
     public Map<Set<Long>, T> getCellDelta(NCube<T> other)
     {

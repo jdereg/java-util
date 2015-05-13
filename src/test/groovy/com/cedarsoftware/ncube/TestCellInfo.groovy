@@ -251,12 +251,21 @@ class TestCellInfo
     void testEqualsAndHashCode()
     {
         CellInfo info1 = new CellInfo([1, 2, 4, 8, 16] as byte[])
+        assert info1.equals(info1)
         CellInfo info2 = new CellInfo([1, 2, 4, 8, 16] as byte[])
-        assert info1 == info2
+        assert info1.equals(info2)
         assert info1.hashCode() == info2.hashCode()
+
         info2 = new CellInfo([1, 2, 4, 8, 16, 32] as byte[])
-        assert info1 != info2
+        assert !info1.equals(info2)
         assert info1.hashCode() != info2.hashCode()
+
+        info2.isUrl = true
+        assert !info1.equals(info2)
+
+        info2.isUrl = false
+        info2.isCached = true
+        assert !info1.equals(info2)
 
         info1 = new CellInfo(1.33d)
         info2 = new CellInfo(1.33f)

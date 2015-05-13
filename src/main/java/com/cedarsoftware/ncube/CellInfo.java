@@ -656,7 +656,6 @@ public class CellInfo
         return dateTimeFormat.format(date);
     }
 
-    @Override
     public boolean equals(Object o)
     {
         if (this == o)
@@ -683,10 +682,8 @@ public class CellInfo
             return false;
         }
         return !(dataType != null ? !dataType.equals(cellInfo.dataType) : cellInfo.dataType != null);
-
     }
 
-    @Override
     public int hashCode()
     {
         int result = value != null ? value.hashCode() : 0;

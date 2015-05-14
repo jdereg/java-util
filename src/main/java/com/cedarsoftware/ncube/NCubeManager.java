@@ -11,10 +11,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,6 +30,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -941,13 +940,13 @@ public class NCubeManager
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
-                        errors.put(info.name, createConflictMap(message, info, head));
+                        checkForConflicts(, errors, message, info, head);
                     }
                 }
                 else if (head == null)
                 {
                     String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
-                    errors.put(info.name, createConflictMap(message, info, null));
+                    checkForConflicts(, errors, message, info, null);
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -975,7 +974,7 @@ public class NCubeManager
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
-                    errors.put(info.name, createConflictMap(message, info, head));
+                    checkForConflicts(, errors, message, info, head);
                 }
             }
         }
@@ -992,7 +991,7 @@ public class NCubeManager
         return values;
     }
 
-    private static Map createConflictMap(String message, NCubeInfoDto info, NCubeInfoDto head)
+    private static boolean checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head)
     {
         Map map = new LinkedHashMap();
         map.put("message", message);
@@ -1003,9 +1002,24 @@ public class NCubeManager
         {
             if (head != null)
             {
-                NCube branchCube = getPersister().loadCube(info.id);
-                NCube headCube = getPersister().loadCube(head.id);
+                if (info.headSha1 != null)
+                {
+                    NCube branchCube = getPersister().loadCube(info.id);
+                    NCube headCube = getPersister().loadCube(head.id);
+                    NCube baseCube = getPersister().loadCube(appId, info.name, info.headSha1);
+
+                    Map delta1 = baseCube.getCellDelta(branchCube);
+                    Map delta2 = baseCube.getCellDelta(headCube);
+
+                    if (NCube.compareDeltas(delta1, delta2))
+                    {
+                        //branchCube.(delta2);
+                        return false;
+                    }
+                }
+
                 map.put("diff", branchCube.getDeltaDescription(headCube));
+
             }
             else
             {
@@ -1016,7 +1030,8 @@ public class NCubeManager
         {
             map.put("diff", e.getMessage());
         }
-        return map;
+        errors.put(info.name, map);
+        return true;
     }
 
     /**
@@ -1086,7 +1101,12 @@ public class NCubeManager
             }
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
-                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info, head));
+                String message = "Cube was changed in HEAD";
+                checkForConflicts(conflicts, info.name, message, info, head);
+            }
+            else
+            {
+
             }
         }
 

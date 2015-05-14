@@ -4637,7 +4637,7 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("debugExp.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("debugExp2D.json")
-        assert null == cube1.getCellDelta(cube2)
+        assert null == cube1.getCellChangeSet(cube2)
     }
 
     @Test
@@ -4645,7 +4645,7 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("debugExp2D.json")
-        assert null == cube1.getCellDelta(cube2)
+        assert null == cube1.getCellChangeSet(cube2)
     }
 
     @Test
@@ -4653,7 +4653,7 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("basicJump.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("basicJumpRestart.json")
-        assert null == cube1.getCellDelta(cube2)
+        assert null == cube1.getCellChangeSet(cube2)
     }
 
     @Test
@@ -4661,7 +4661,7 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("basicJumpRestart.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("basicJumpStart.json")
-        assert null == cube1.getCellDelta(cube2)
+        assert null == cube1.getCellChangeSet(cube2)
     }
 
     @Test
@@ -4669,8 +4669,8 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("ruleSimpleWithNoDefault.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("ruleSimpleWithDefaultForMergeTest.json")
-        assert null == cube1.getCellDelta(cube2)
-        assert null == cube2.getCellDelta(cube1)
+        assert null == cube1.getCellChangeSet(cube2)
+        assert null == cube2.getCellChangeSet(cube1)
     }
 
     @Test
@@ -4679,8 +4679,8 @@ class TestNCube
         NCube cube1 = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
         assert cube1.sha1() == cube2.sha1()
-        Map delta = cube1.getCellDelta(cube2)
-        cube1.merge(delta)
+        Map delta = cube1.getCellChangeSet(cube2)
+        cube1.mergeCellChangeSet(delta)
         assert cube1.sha1() == cube2.sha1()
     }
 
@@ -4689,8 +4689,9 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("empty2D.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("merge1.json")
-        Map delta = cube1.getCellDelta(cube2)
-        cube1.merge(delta)
+        Map delta = cube1.getCellChangeSet(cube2)
+        cube1.mergeCellChangeSet(delta)
+        assert delta.size() == 5
         Map coord = [row:1, column:'A']
         assert "1" == cube1.getCell(coord)
 
@@ -4714,24 +4715,10 @@ class TestNCube
     {
         NCube cube1 = NCubeManager.getNCubeFromResource("merge1.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("empty2D.json")
-        Map delta = cube1.getCellDelta(cube2)
-        cube1.merge(delta)
-        Map coord = [row:1, column:'A']
-        assert "1" == cube1.getCell(coord)
-
-        coord = [row:2, column:'B']
-        assert 2 == cube1.getCell(coord)
-
-        coord = [row:3, column:'C']
-        assert 3.14 == cube1.getCell(coord)
-
-        coord = [row:4, column:'D']
-        assert 6.28 == cube1.getCell(coord)
-
-        coord = [row:5, column:'E']
-        assert cube1.containsCell(coord)
-
-        assert cube1.getNumCells() == 5
+        Map delta = cube1.getCellChangeSet(cube2)
+        assert delta.size() == 5
+        cube1.mergeCellChangeSet(delta)
+        assert cube1.cells.size() == 0
     }
 
     @Test
@@ -4741,10 +4728,12 @@ class TestNCube
         NCube cube2 = NCubeManager.getNCubeFromResource("merge2.json")
         String cube1Sha = cube1.sha1()
         String cube2Sha = cube2.sha1()
-        Map delta1 = cube1.getCellDelta(cube2)
-        assert null == delta1
-        Map delta2 = cube2.getCellDelta(cube1)
-        assert null == delta2
+        Map delta1 = cube1.getCellChangeSet(cube2)
+        assert delta1.size() == 1
+        assert delta1.values().iterator().next() == 3.14159
+        Map delta2 = cube2.getCellChangeSet(cube1)
+        assert delta2.size() == 1
+        assert delta2.values().iterator().next() == 3.14
         assert cube1.sha1() == cube1Sha
         assert cube2.sha1() == cube2Sha
     }
@@ -4756,10 +4745,26 @@ class TestNCube
         NCube cube2 = NCubeManager.getNCubeFromResource("merge2.json")
         Map coord = [row:3, column:'C']
         cube1.removeCell(coord);
-        Map delta = cube1.getCellDelta(cube2);
-        cube1.merge(delta)
+        Map delta = cube1.getCellChangeSet(cube2);
+        cube1.mergeCellChangeSet(delta)
         Object v = cube1.getCell(coord)
         assert v == 3.14159
+    }
+
+    @Test
+    void testCellChangeSetCompatibility()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("merge1.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("merge2.json")
+        NCube cube3 = NCubeManager.getNCubeFromResource("merge3.json")
+
+        Map changeSet1 = cube2.getCellChangeSet(cube1)
+        Map changeSet2 = cube2.getCellChangeSet(cube3)
+        assertFalse NCube.areCellChangeSetsCompatible(changeSet1, changeSet2)
+
+        changeSet1 = cube1.getCellChangeSet(cube2)
+        changeSet2 = cube3.getCellChangeSet(cube2)
+        assert NCube.areCellChangeSetsCompatible(changeSet1, changeSet2)
     }
 
     // ---------------------------------------------------------------------------------

@@ -76,6 +76,7 @@ public class NCube<T>
     private volatile Set<String> declaredScopeKeys = null;
     public static final String validCubeNameChars = "0-9a-zA-Z:._-";
     public static final String RULE_EXEC_INFO = "_rule";
+    static final String REMOVE_CELL = "~remove-cell~";
     private final Map<String, Advice> advices = new LinkedHashMap<>();
     private Map<String, Object> metaProps = new CaseInsensitiveMap<>();
     //  Sets up the defaultApplicationId for cubes loaded in from disk.
@@ -2457,68 +2458,17 @@ public class NCube<T>
      * axis names, different columns, or cells exist in both cubes at the same location but not with the same
      * value), then null is returned.
      */
-    public Map<Set<Long>, Object> getCellDelta(NCube<T> other)
+    public Map<Set<Long>, Object> getCellChangeSet(NCube<T> other)
     {
-        if (getNumDimensions() != other.getNumDimensions())
-        {   // Must have same dimensionality
-            return null;
-        }
-
-        CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
-        CaseInsensitiveSet a2 = new CaseInsensitiveSet(other.axisList.keySet());
-        a1.removeAll(a2);
-
-        if (!a1.isEmpty())
-        {   // Axis names must be the same (ignoring case)
-            return null;
-        }
-
-        // Map used to map column IDs from the 'other' cube to column IDs on this cube
-        Map<Long, Long> colIdMap = new HashMap<>();
-
-        for (Axis axis : axisList.values())
+        if (!isComparableCube(other))
         {
-            Axis otherAxis = other.axisList.get(axis.getName());
-
-            if (axis.columns.size() != otherAxis.columns.size())
-            {   // Must have same number of columns [columns includes default]
-                return null;
-            }
-
-            int len = axis.columns.size();
-            for (int i=0; i < len; i++)
-            {
-                Column column = axis.columns.get(i);
-                Column otherColumn = otherAxis.columns.get(i);
-
-                if (column.getValue() == null)
-                {
-                    if (otherColumn.getValue() != null)
-                    {   // if one column is null, so must the other be
-                        return null;
-                    }
-                }
-                else
-                {
-                    if (otherColumn.getValue() == null)
-                    {
-                        return null;
-                    }
-
-                    if (!column.getValue().equals(otherColumn.getValue()))
-                    {   // column values must be equivalent
-                        return null;
-                    }
-                }
-
-                colIdMap.put(otherColumn.id, column.id);
-            }
+            return null;
         }
 
         // Store updates-to-be-made so that if cell equality tests pass, these can be 'played' at the end to
         // transactionally apply the merge.  We do not want a partial merge.
-        Map<Set<Long>, Object> cellsToUpdate = new HashMap<>();
-        List<Set<Long>> copyCells =  new ArrayList<>();
+        Map<Set<Long>, Object> delta = new HashMap<>();
+        Set<Set<Long>> copyCells =  new HashSet<>();
 
         for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
         {
@@ -2537,7 +2487,7 @@ public class NCube<T>
             Set<Long> ids = new HashSet<>();
             for (Column otherColumn : otherEntry.getKey())
             {
-                ids.add(colIdMap.get(otherColumn.id));
+                ids.add(otherColumn.id);
             }
 
             T content = getCellByIdNoExecute(ids);
@@ -2549,34 +2499,144 @@ public class NCube<T>
 
             if (!info.equals(otherInfo))
             {
-                cellsToUpdate.put(ids, otherContent);
+                delta.put(ids, otherContent);
             }
         }
 
-        final Object[] sentinel = new Object[] {};
         for (Set<Long> coord : copyCells)
         {
-            cellsToUpdate.put(coord, sentinel);
+            delta.put(coord, REMOVE_CELL);
         }
 
-        return cellsToUpdate;
+        return delta;
     }
 
     /**
-     * Merge the passed in Map containing coordinates and associated values, into this n-cube.
-     * It is expected that this Map was obtained by calling the getCellDelta() API.  This API
-     * will return the 'cellsToUpdate' by comparing this cube to a passed in cube.
-     * @param cellsToUpdate Map containing coordinates and values to be applied to this n-cube.
+     * @param other NCube to compare to this ncube.
+     * @return boolean true if the passed in cube has the same number of axes, the axes have the same names,
+     * and the columns are the same on each axis, otherwise return false.
      */
-    public void merge(Map<Set<Long>, T> cellsToUpdate)
+    public boolean isComparableCube(NCube<T> other)
+    {
+        if (getNumDimensions() != other.getNumDimensions())
+        {   // Must have same dimensionality
+            return false;
+        }
+
+        CaseInsensitiveSet a1 = new CaseInsensitiveSet(axisList.keySet());
+        CaseInsensitiveSet a2 = new CaseInsensitiveSet(other.axisList.keySet());
+        a1.removeAll(a2);
+
+        if (!a1.isEmpty())
+        {   // Axis names must be the same (ignoring case)
+            return false;
+        }
+
+        for (Axis axis : axisList.values())
+        {
+            Axis otherAxis = other.axisList.get(axis.getName());
+
+            if (axis.columns.size() != otherAxis.columns.size())
+            {   // Must have same number of columns [columns includes default]
+                return false;
+            }
+
+            int len = axis.columns.size();
+            for (int i=0; i < len; i++)
+            {
+                Column column = axis.columns.get(i);
+                Column otherColumn = otherAxis.columns.get(i);
+
+                if (column.getValue() == null)
+                {
+                    if (otherColumn.getValue() != null)
+                    {   // if one column is null, so must the other be
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (otherColumn.getValue() == null)
+                    {
+                        return false;
+                    }
+
+                    if (!column.getValue().equals(otherColumn.getValue()))
+                    {   // column values must be equivalent
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Test the compatibility of two 'cell change-set' maps.  This method determines if these two
+     * change sets intersect properly or intersect with conflicts.  Used internally when merging
+     * two ncubes together in branch-merge operations.
+     * @param delta1 Map of cell coordinates to values generated from comparing two cubes (A -> B)
+     * @param delta2 Map of cell coordinates to values generated from comparing two cubes (A -> C)
+     * @return boolean true if the two cell change-sets are compatible, false otherwise.
+     */
+    static boolean areCellChangeSetsCompatible(Map<Set<Long>, Object> delta1, Map<Set<Long>, Object> delta2)
+    {
+        Map<Set<Long>, Object> smallerChangeSet;
+        Map<Set<Long>, Object> biggerChangeSet;
+
+        // Performance optimization: determine which cell change set is smaller.
+        if (delta1.size() < delta2.size())
+        {
+            smallerChangeSet = delta1;
+            biggerChangeSet = delta2;
+        }
+        else
+        {
+            smallerChangeSet = delta2;
+            biggerChangeSet = delta1;
+        }
+
+        for (Map.Entry<Set<Long>, Object> entry : smallerChangeSet.entrySet())
+        {
+            Set<Long> coord = entry.getKey();
+
+            if (biggerChangeSet.containsKey(coord))
+            {
+                CellInfo info1 = new CellInfo(entry.getValue());
+                CellInfo info2 = new CellInfo(biggerChangeSet.get(coord));
+
+                if (!info1.equals(info2))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Merge the passed in cell change-set into this n-cube.  This will apply all of the cell changes
+     * in the passed in change-set to the cells of this n-cube, including adds and removes.
+     * @param cellChangeSet Map containing cell change-set.  The cell change-set contains cell coordinates
+     * mapped to the associated value to set (or remove) for the given coordinate.
+     */
+    public void mergeCellChangeSet(Map<Set<Long>, Object> cellChangeSet)
     {
         // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
-        for (Map.Entry<Set<Long>, T> entry : cellsToUpdate.entrySet())
+        for (Map.Entry<Set<Long>, Object> entry : cellChangeSet.entrySet())
         {
             Set<Column> cols = getColumnsAndCoordinateFromIds(entry.getKey(), null);
             if (cols.size() > 0)
             {
-                cells.put(cols, entry.getValue());
+                Object value = entry.getValue();
+                if (REMOVE_CELL.equals(value))
+                {   // Remove cell
+                    cells.remove(cols);
+                }
+                else
+                {   // Add/Update cell
+                    cells.put(cols, (T)value);
+                }
             }
         }
 

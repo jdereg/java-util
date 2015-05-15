@@ -1324,7 +1324,7 @@ public class NCubeManager
         try
         {
             String json = getResourceAsString(name);
-            NCube ncube = ncubeFromJson(json);
+            NCube ncube = NCube.fromSimpleJson(json);
             ncube.setApplicationID(id);
             ncube.sha1();
             addCube(id, ncube);
@@ -1386,45 +1386,6 @@ public class NCubeManager
             String s = "Failed to load cubes from resource: " + name + ", last successful cube: " + lastSuccessful;
             LOG.warn(s);
             throw new RuntimeException(s, e);
-        }
-    }
-
-    static NCube<?> ncubeFromJson(String json)
-    {
-        try
-        {
-            return NCube.fromSimpleJson(json);
-        }
-        catch (Exception e)
-        {
-            try
-            {
-                // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
-                NCube ncube = (NCube) JsonReader.jsonToJava(json);
-                List<Axis> axes = ncube.getAxes();
-                for (Axis axis : axes)
-                {
-                    axis.buildScaffolding();
-                }
-                //ncube.setMetaProperty("sha1", ncube.sha1());
-                return ncube;
-            }
-            catch (Exception e1)
-            {
-                LOG.warn("attempted to read cube json in serialized format, but was unreadable that way.", e1);
-                if (e.getCause() != null)
-                {
-                    if (e.getCause() instanceof RuntimeException)
-                    {
-                        throw (RuntimeException)e.getCause();
-                    }
-                    throw new RuntimeException(e.getCause());
-                }
-                else
-                {
-                    throw e;
-                }
-            }
         }
     }
 

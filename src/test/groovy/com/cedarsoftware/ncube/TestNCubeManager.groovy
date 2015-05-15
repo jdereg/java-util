@@ -5,16 +5,17 @@ import com.cedarsoftware.ncube.formatters.HtmlFormatter
 import com.cedarsoftware.ncube.formatters.NCubeTestReader
 import com.cedarsoftware.ncube.formatters.NCubeTestWriter
 import com.cedarsoftware.util.DeepEquals
-import com.cedarsoftware.util.StringUtilities
 import com.cedarsoftware.util.io.JsonWriter
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import java.nio.file.Files
-import java.nio.file.Paths
-
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCubeManager Tests
@@ -799,53 +800,6 @@ class TestNCubeManager
 
         //  validate item got added to cache.
         assertEquals(testCube, cache.get('sys.classpath'))
-    }
-
-    @Test
-    void testJsonToJavaBackup() throws Exception
-    {
-        //can remove when this support is gone
-        URL u = NCubeManager.class.getResource('/files/oldFormatSimpleJsonArrayTest.json')
-        byte[] encoded = Files.readAllBytes(Paths.get(u.toURI()))
-        String cubeString = StringUtilities.createString(encoded, 'UTF-8')
-
-        NCube ncube = NCubeManager.ncubeFromJson(cubeString)
-
-        def coord = [Code:'ints']
-        Object[] ints = (Object[]) ncube.getCell(coord)
-        assertEquals(ints[0], 0L)
-        assertEquals(ints[1], 1)
-        assertEquals(ints[2], 4L)
-
-        coord.Code = 'strings'
-        Object[] strings = (Object[]) ncube.getCell(coord)
-        assertEquals(strings[0], 'alpha')
-        assertEquals(strings[1], 'bravo')
-        assertEquals(strings[2], 'charlie')
-
-        coord.Code = 'arrays'
-        Object[] arrays = (Object[]) ncube.getCell(coord)
-
-        Object[] sub1 = (Object[]) arrays[0]
-        assertEquals(sub1[0], 0L)
-        assertEquals(sub1[1], 1L)
-        assertEquals(sub1[2], 6L)
-
-        Object[] sub2 = (Object[]) arrays[1]
-        assertEquals(sub2[0], 'a')
-        assertEquals(sub2[1], 'b')
-        assertEquals(sub2[2], 'c')
-
-        coord.clear()
-        coord.Code = 'crazy'
-        arrays = (Object[]) ncube.getCell(coord)
-
-        assertEquals('1.0', arrays[0])
-        List sub = (List) arrays[1]
-        assertEquals('1.a', sub.get(0))
-        sub = (List) arrays[2]
-        assertEquals('1.b', sub.get(0))
-        assertEquals('2.0', arrays[3])
     }
 
     @Test

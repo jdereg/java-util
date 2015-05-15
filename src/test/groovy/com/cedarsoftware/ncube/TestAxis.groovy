@@ -11,7 +11,12 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCube Axis Tests
@@ -1108,10 +1113,10 @@ class TestAxis
 
         // Make sure all columns are bound correctly
         def coord = new CaseInsensitiveMap()
-        Set<Column> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord)
-        for (Column column : boundCols)
+        Set<Long> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord)
+        for (Long colId : boundCols)
         {
-            assertTrue(column.id == t.id || column.id == v.id || column.id == b.id)
+            assertTrue(colId == t.id || colId == v.id || colId == b.id)
         }
 
         for (Map.Entry<String, CellInfo> entry : coord.entrySet())

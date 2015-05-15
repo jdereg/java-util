@@ -1334,6 +1334,24 @@ public class Axis
         return columns;
     }
 
+    public Map<Long, Long> renumberIds()
+    {
+        colIdBase = 0;
+        Map<Long, Long> oldToNew = new HashMap<>();
+
+        for (Column column : columns)
+        {
+            if (!column.isDefault())
+            {
+                long newId = getNextColId();
+                oldToNew.put(column.id, newId);
+                column.id = newId;
+            }
+        }
+        buildScaffolding();
+        return oldToNew;
+    }
+
     private static final class RangeToColumn implements Comparable<RangeToColumn>
     {
         private final Range range;

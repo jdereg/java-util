@@ -1910,12 +1910,13 @@ class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("2DSimpleJson.json")
         def coord = [:]
-        coord.put("businessDivisionCode", "ALT")
-        coord.put("attribute", "workflowAppCode")
-        assertTrue("AMWRKFLW".equals(ncube.getCell(coord)))
+        coord["businessDivisionCode"] = "ALT"
+        coord["attribute"] = "workflowAppCode"
+        String cellValue = ncube.getCell(coord)
+        assertTrue("AMWRKFLW".equals(cellValue))
 
-        coord.put("businessDivisionCode", "FIDCR")
-        coord.put("attribute", "longName")
+        coord["businessDivisionCode"] = "FIDCR"
+        coord["attribute"] = "longName"
         assertTrue("Fidelity/Crime Division".equals(ncube.getCell(coord)))
 
         assertTrue(countMatches(ncube.toHtml(), "<tr") == 7)
@@ -3795,12 +3796,12 @@ class TestNCube
     void testCoordinateGetter()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("arrays.json")
-        for (Set<Column> cols : (Iterable<Set<Column>>) ncube.cellMap.keySet())
+        for (Collection<Long> colIds : (Iterable<Collection<Long>>) ncube.cellMap.keySet())
         {
             // This code is not generalized and intentionally relies on arrays.json being 1-dimensional
-            Column col = cols.iterator().next()
+            Long col = colIds.iterator().next()
             Set<Long> coord = new HashSet<>()
-            coord.add(col.id)
+            coord.add(col)
             Map<String, CellInfo> coordinate = new CaseInsensitiveMap<>()
             ncube.getColumnsAndCoordinateFromIds(coord, coordinate)
             assertTrue(coordinate.containsKey("code"))
@@ -4779,7 +4780,7 @@ class TestNCube
         assertEquals(ncube, dupe)
         assertEquals(h1, h2)
 
-        // Verify that all Axis and Column IDs are different
+        // Verify that all Axis and Column IDs are the same
         for (Axis axis : ncube.axes)
         {
             Axis dupeAxis = dupe.getAxis(axis.name)

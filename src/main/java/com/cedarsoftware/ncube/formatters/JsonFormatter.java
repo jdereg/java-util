@@ -1,13 +1,27 @@
 package com.cedarsoftware.ncube.formatters;
 
-import com.cedarsoftware.ncube.*;
-import com.cedarsoftware.ncube.proximity.*;
-import com.cedarsoftware.util.*;
-import com.cedarsoftware.util.io.*;
+import com.cedarsoftware.ncube.Axis;
+import com.cedarsoftware.ncube.CellTypes;
+import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.Range;
+import com.cedarsoftware.ncube.RangeSet;
+import com.cedarsoftware.ncube.UrlCommandCell;
+import com.cedarsoftware.ncube.proximity.LatLon;
+import com.cedarsoftware.ncube.proximity.Point2D;
+import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.io.JsonWriter;
 
-import java.io.*;
-import java.math.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Format an NCube into an JSON document
@@ -30,6 +44,7 @@ import java.util.*;
  */
 public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 {
+    private static final String MAX_INT = Long.toString(Integer.MAX_VALUE);
     public JsonFormatter() { }
 
     /**
@@ -220,7 +235,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         writeObjectKeyValue("type", type, true);
     }
 
-    void writeCells(Map<Set<Column>, ?> cells) throws IOException
+    void writeCells(Map<Collection<Long>, ?> cells) throws IOException
     {
         builder.append("\"cells\":");
         if (cells == null || cells.isEmpty())
@@ -229,7 +244,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             return;
         }
         startArray();
-        for (Map.Entry<Set<Column>, ?> cell : cells.entrySet())
+        for (Map.Entry<Collection<Long>, ?> cell : cells.entrySet())
         {
             writeCell(cell);
             comma();
@@ -238,10 +253,10 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         endArray();
     }
 
-    private void writeCell(Map.Entry<Set<Column>, ?> cell) throws IOException
+    private void writeCell(Map.Entry<Collection<Long>, ?> cell) throws IOException
     {
         startObject();
-        writeIds(cell);
+        writeIds(cell.getKey());
         writeType(CellTypes.getType(cell.getValue(), "cell"));
 
         if ((cell.getValue() instanceof UrlCommandCell))
@@ -256,19 +271,20 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
     }
 
 
-    void writeIds(Map.Entry<Set<Column>, ?> item)
+    void writeIds(Collection<Long> colIds)
     {
         builder.append("\"id\":");
         startArray();
 
         boolean commaWritten = false;
 
-        for (Column c : item.getKey())
+        for (Long colId : colIds)
         {
-            if (!c.isDefault())
+            final String idAsString = Long.toString(colId);
+            if (!idAsString.endsWith(MAX_INT))
             {
                 commaWritten = true;
-                writeIdValue(c.getId(), true);
+                writeIdValue(colId, true);
             }
         }
 

@@ -2512,6 +2512,10 @@ public class NCube<T>
     }
 
     /**
+     * Test if another n-cube is 'compatible' with this n-cube.  This means that they have the same number of
+     * dimensions (axes) and each axis has the same number of columns.  This test will allow many operations to
+     * be performed on two cubes once it is known they are 'compatible' such as union, intersection, even matrix
+     * operations like multiply, etc.
      * @param other NCube to compare to this ncube.
      * @return boolean true if the passed in cube has the same number of axes, the axes have the same names,
      * and the columns are the same on each axis, otherwise return false.

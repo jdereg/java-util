@@ -1,0 +1,33 @@
+{
+  "ncube": "GroovyExpCompilerError",
+  "defaultCellValue": "ZZZ",
+  "axes": [
+    {
+      "name": "state",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "hasDefault": true,
+      "preferredOrder": 0,
+      "columns": [
+        {
+          "id": "OH"
+        },
+        {
+          "id": "TX"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": ["OH"],
+      "type": "exp",
+      "value": "return 'Hello, Ohio'"
+    },
+    {
+      "id": ["TX"],
+      "type": "exp",
+      "value": "'Hello, Texas'\nint x = Hi8"
+    }
+  ]
+}

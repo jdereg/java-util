@@ -47,16 +47,16 @@ public class LongHashSet extends HashSet<Long>
             // greatly slowed down as proper hashing is vital or cells will be really slow to access
             // when there are a lot of them in the ncube.
 
-            // Original hash function
+            // Original hash function  (John)
 //                h += (int)(x * 347 ^ (x >>> 32) * 7);
 
-            // Better
-
+            // Better (from Stack overflow)
 //            x = ((x >> 16) ^ x) * 0x45d9f3b;
 //            x = ((x >> 16) ^ x) * 0x45d9f3b;
 //            x = ((x >> 16) ^ x);
 //            h += (int) x;
 
+            // Even better (from Google)
             x ^= x >> 23;
             x *= 0x2127599bf4325c37L;
             x ^= x >> 47;
@@ -74,5 +74,4 @@ public class LongHashSet extends HashSet<Long>
 
         return h;
     }
-
 }

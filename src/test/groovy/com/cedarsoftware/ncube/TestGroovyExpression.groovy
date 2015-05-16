@@ -34,4 +34,25 @@ class TestGroovyExpression
         con.accessible = true
         Assert.assertNotNull con.newInstance()
     }
+
+    @Test
+    void testCompilerErrorOutput() throws Exception
+    {
+        NCube ncube = NCubeManager.getNCubeFromResource("GroovyExpCompileError.json")
+        Map coord = [state:'OH']
+        Object x = ncube.getCell(coord)
+        assert 'Hello, Ohio' == x
+        coord.state = 'TX'
+        try
+        {
+            ncube.getCell(coord)
+            fail();
+        }
+        catch (RuntimeException e)
+        {
+            String msg = e.getCause().getCause().message
+            assert msg.toLowerCase().contains('no such property')
+            assert msg.toLowerCase().contains('hi8')
+        }
+    }
 }

@@ -5,7 +5,7 @@ import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 import com.cedarsoftware.ncube.formatters.HtmlFormatter;
 import com.cedarsoftware.ncube.formatters.JsonFormatter;
-import com.cedarsoftware.ncube.util.FastHashMap;
+import com.cedarsoftware.ncube.util.LongHashSet;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
@@ -71,7 +71,7 @@ public class NCube<T>
     private String name;
     private String sha1;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
-    final Map<Collection<Long>, T> cells = new FastHashMap<>();
+    final Map<Set<Long>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
@@ -896,11 +896,11 @@ public class NCube<T>
      * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
      * cannot bind to any of the passed in IDs.
      */
-    Collection<Long> ensureFullCoordinate(final Collection<Long> coordinate)
+    Set<Long> ensureFullCoordinate(final Collection<Long> coordinate)
     {
         // Ensure that the specified coordinate matches a column on each axis
         final Set<String> allAxes = new CaseInsensitiveSet<>(axisList.keySet());
-        final Set<Long> point = new HashSet<>();
+        final Set<Long> point = new LongHashSet();
 
         for (Long colId : coordinate)
         {
@@ -1177,7 +1177,7 @@ public class NCube<T>
      */
     private Set<Long> getCoordinateKey(final Map<String, Object> coordinate)
     {
-        final Set<Long> key = new HashSet<>();
+        final Set<Long> key = new LongHashSet();
 
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
         {
@@ -1363,7 +1363,7 @@ public class NCube<T>
         long colId = column.id;
 
         // Remove all cells that reference the deleted column
-        final Iterator<Collection<Long>> i = cells.keySet().iterator();
+        final Iterator<Set<Long>> i = cells.keySet().iterator();
 
         while (i.hasNext())
         {
@@ -1414,7 +1414,7 @@ public class NCube<T>
 
         final Axis axisToUpdate = axisList.get(newCols.getName());
         final Set<Long> colsToDel = axisToUpdate.updateColumns(newCols);
-        Iterator<Collection<Long>> i = cells.keySet().iterator();
+        Iterator<Set<Long>> i = cells.keySet().iterator();
 
         while (i.hasNext())
         {
@@ -1465,7 +1465,7 @@ public class NCube<T>
     /**
      * @return read-only copy of the n-cube cells.
      */
-    public Map<Collection<Long>, T> getCellMap()
+    public Map<Set<Long>, T> getCellMap()
     {
         return Collections.unmodifiableMap(cells);
     }
@@ -1686,7 +1686,7 @@ public class NCube<T>
      * @return a Set of Strings, where each String is the name of a scope key (input.variable, where 'variable'
      * is a required scope) located within the n-cube cells, inside CommandCells.
      */
-    private static Set<String> getScopeKeysFromCommandCells(Map<Collection<Long>, ?> cubeCells)
+    private static Set<String> getScopeKeysFromCommandCells(Map<Set<Long>, ?> cubeCells)
     {
         Set<String> scopeKeys = new CaseInsensitiveSet<>();
 
@@ -2036,7 +2036,7 @@ public class NCube<T>
 
                     if (ids instanceof JsonObject)
                     {   // If specified as ID array, build coordinate that way
-                        Set<Long> colIds = new HashSet<>();
+                        Set<Long> colIds = new LongHashSet();
                         for (Object id : ((JsonObject)ids).getArray())
                         {
                             if (!userIdToUniqueId.containsKey(id))
@@ -2154,7 +2154,7 @@ public class NCube<T>
     public List<NCubeTest> generateNCubeTests()
     {
         List<NCubeTest> coordinates = new ArrayList<>();
-        Set<Long> colIds = new HashSet<>();
+        Set<Long> colIds = new LongHashSet();
         int i=1;
         for (Collection<Long> pt : cells.keySet())
         {
@@ -2232,7 +2232,7 @@ public class NCube<T>
     public List<Map<String, T>> getPopulatedCellCoordinates()
     {
         List<Map<String, T>> coords = new ArrayList<>();
-        for (Map.Entry<Collection<Long>, T> entry : cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
         {
             Collection<Long> colIds = entry.getKey();
             coords.add(getCoordinateFromColumnIds(colIds));
@@ -2315,7 +2315,7 @@ public class NCube<T>
             List<String> sha1s = new ArrayList<>();
             MessageDigest tempDigest = EncryptionUtilities.getSHA1Digest();
 
-            for (Map.Entry<Collection<Long>, T> entry : cells.entrySet())
+            for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
             {
                 String keySha1 = columnValuesToString(entry.getKey());
                 deepSha1(tempDigest, entry.getValue(), sep);
@@ -2477,16 +2477,16 @@ public class NCube<T>
         Map<Set<Long>, T> delta = new HashMap<>();
         Set<Set<Long>> copyCells =  new HashSet<>();
 
-        for (Map.Entry<Collection<Long>, T> entry : cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
         {
-            copyCells.add(new HashSet<>(entry.getKey()));
+            copyCells.add(new LongHashSet(entry.getKey()));
         }
 
         // At this point, the cubes are the same shape and size.
         // Now, compute cell deltas.
-        for (Map.Entry<Collection<Long>, T> otherEntry : other.cells.entrySet())
+        for (Map.Entry<Set<Long>, T> otherEntry : other.cells.entrySet())
         {
-            Set<Long> ids = new HashSet<>(otherEntry.getKey());
+            Set<Long> ids = new LongHashSet(otherEntry.getKey());
             T content = getCellByIdNoExecute(ids);
             T otherContent = otherEntry.getValue();
             copyCells.remove(ids);
@@ -2626,7 +2626,7 @@ public class NCube<T>
         // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
         for (Map.Entry<Set<Long>, T> entry : cellChangeSet.entrySet())
         {
-            Collection<Long> cols = ensureFullCoordinate(entry.getKey());
+            Set<Long> cols = ensureFullCoordinate(entry.getKey());
             if (cols.size() > 0)
             {
                 T value = entry.getValue();
@@ -2740,7 +2740,7 @@ public class NCube<T>
             return changes;
         }
 
-        for (Map.Entry<Collection<Long>, T> entry : cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
         {
             Collection<Long> newCellKey = entry.getKey();
             T newCellValue = entry.getValue();
@@ -2765,7 +2765,7 @@ public class NCube<T>
             }
         }
 
-        for (Map.Entry<Collection<Long>, T> entry : other.cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : other.cells.entrySet())
         {
             Collection<Long> oldCellKey = entry.getKey();
             T oldCellValue = entry.getValue();

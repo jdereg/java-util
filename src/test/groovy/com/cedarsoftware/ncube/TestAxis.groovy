@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.exception.AxisOverlapException
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import com.cedarsoftware.ncube.proximity.LatLon
 import com.cedarsoftware.ncube.proximity.Point3D
+import com.cedarsoftware.ncube.util.LongHashSet
 import com.cedarsoftware.util.CaseInsensitiveMap
 import com.cedarsoftware.util.Converter
 import com.cedarsoftware.util.io.JsonWriter
@@ -1106,7 +1107,7 @@ class TestAxis
         Axis bu = cube.getAxis("BU")
         Column b = bu.findColumn("SHS")
 
-        Set<Long> longCoord = new HashSet<>()
+        Set<Long> longCoord = new LongHashSet()
         longCoord.add(t.id)
         longCoord.add(v.id)
         longCoord.add(b.id)

@@ -1,10 +1,9 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.util.LongHashSet;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.StringUtilities;
 
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,6 +33,7 @@ public class Binding
     private final String cubeName;
     private final int depth;
     private final Map<String, Column> axes = new CaseInsensitiveMap<>();
+    private final Set<Long> axes2 = new LongHashSet();
     private Object value;
     private static final String newLine = "\n";
 
@@ -51,6 +51,7 @@ public class Binding
     public void bind(String axisName, Column column)
     {
         axes.put(axisName, column);
+        axes2.add(column.id);
     }
 
     public void setValue(Object value)
@@ -63,19 +64,9 @@ public class Binding
         return axes.size();
     }
 
-    public Set<Column> getBoundColsForAxis()
-    {
-        return new LinkedHashSet<>(axes.values());
-    }
-
     public Set<Long> getBoundColumnIdsForAxis()
     {
-        Set<Long> coord = new HashSet<>();
-        for (Column column : axes.values())
-        {
-            coord.add(column.id);
-        }
-        return coord;
+        return axes2;
     }
 
     public String toString()

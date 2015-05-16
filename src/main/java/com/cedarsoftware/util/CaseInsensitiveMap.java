@@ -79,7 +79,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         if (key instanceof String)
         {    // Must remove entry because the key case can change
-            CaseInsensitiveString newKey = new CaseInsensitiveString((String) key);
+            final CaseInsensitiveString newKey = new CaseInsensitiveString((String) key);
             if (map.containsKey(newKey))
             {
                 map.remove(newKey);
@@ -543,21 +543,29 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     /**
      * Entry implementation that will give back a String instead of a CaseInsensitiveString
      * when .getKey() is called.
+     *
+     * Also, when the setValue() API is called on the Entry, it will 'write thru' to the
+     * underlying Map's value.
      */
-    public static class CaseInsensitiveEntry<K, V> extends AbstractMap.SimpleEntry<K, V>
+    public class CaseInsensitiveEntry<KK, VV> extends AbstractMap.SimpleEntry<KK, VV>
     {
-        public CaseInsensitiveEntry(Entry<K, V> entry)
+        public CaseInsensitiveEntry(Entry<KK, VV> entry)
         {
             super(entry);
         }
 
-        public K getKey()
+        public KK getKey()
         {
             if (super.getKey() instanceof CaseInsensitiveString)
             {
-                return (K) super.getKey().toString();
+                return (KK) super.getKey().toString();
             }
             return super.getKey();
+        }
+
+        public VV setValue(VV value)
+        {
+            return (VV) map.put((K)super.getKey(), (V)value);
         }
     }
 

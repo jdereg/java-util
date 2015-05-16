@@ -1063,6 +1063,23 @@ public class TestCaseInsensitiveMap
         assertTrue(addedKeys.contains("BAR"));
     }
 
+    @Test
+    public void testSetValueApiOnEntrySet()
+    {
+        Map<String, String> map = new CaseInsensitiveMap();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+        map.put("Five", "Six");
+        for (Map.Entry<String, String> entry : map.entrySet())
+        {
+            if ("Three".equals(entry.getKey()))
+            {   // Make sure this 'writes thru' to the underlying map's value.
+                entry.setValue("~3");
+            }
+        }
+        assertEquals("~3", map.get("Three"));
+    }
+
     // Used only during development right now
 //    @Test
 //    public void testPerformance()

@@ -1,13 +1,13 @@
 java-util
 =========
-Rarely available and hard-to-write Java utilities, written correctly, and thoroughly tested
+Rarely available and hard-to-write Java utilities, written correctly, and thoroughly tested (> 98% code coverage via JUnit tests).
 
 To include in your project:
 ```
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.19.1</version>
+  <version>1.19.3</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg)
@@ -35,6 +35,10 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.19.3
+ * Bug fix: `CaseInsensitiveMap.entrySet()` - calling `entry.setValue(k, v)` while iterating the entry set, was not updating the underlying value.  This has been fixed and test case added.
+* 1.19.2
+ * The order in which system properties are read versus environment variables via the `SystemUtilities.getExternalVariable()` method has changed.  System properties are checked first, then environment variables.
 * 1.19.1
  * Fixed issue in `DeepEquals.deepEquals()` where a Container type (`Map` or `Collection`) was being compared to a non-container - the result of this comparison was inconsistent.   It is always false if a Container is compared to a non-container type (anywhere within the object graph), regardless of the comparison order A, B versus comparing B, A.
 * 1.19.0

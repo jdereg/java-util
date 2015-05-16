@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.StringUtilities;
 
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +66,16 @@ public class Binding
     public Set<Column> getBoundColsForAxis()
     {
         return new LinkedHashSet<>(axes.values());
+    }
+
+    public Set<Long> getBoundColumnIdsForAxis()
+    {
+        Set<Long> coord = new HashSet<>();
+        for (Column column : axes.values())
+        {
+            coord.add(column.id);
+        }
+        return coord;
     }
 
     public String toString()

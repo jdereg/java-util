@@ -5,6 +5,7 @@ import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 import com.cedarsoftware.ncube.formatters.HtmlFormatter;
 import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.ncube.util.FastHashMap;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
@@ -70,7 +71,7 @@ public class NCube<T>
     private String name;
     private String sha1;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
-    final Map<Collection<Long>, T> cells = new LinkedHashMap<>();
+    final Map<Collection<Long>, T> cells = new FastHashMap<>();
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
@@ -332,8 +333,7 @@ public class NCube<T>
     {
         clearScopeKeyCaches();
         clearSha1();
-        Set<Long> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.remove(cols);
+        return cells.remove(ensureFullCoordinate(coordinate));
     }
 
     /**
@@ -373,11 +373,12 @@ public class NCube<T>
      * @return true if and only if there is a cell stored at the location
      * specified by the Set<Long> coordinate.  If the IDs don't locate a coordinate,
      * no exception is thrown - simply false is returned.
+     * If no coordinate is supplied for an axis (or axes) that has a default column, then the default
+     * column will be bound to for that axis (or axes).
      */
     public boolean containsCellById(final Collection<Long> coordinate)
     {
-        Set<Long> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.containsKey(cols);
+        return cells.containsKey(ensureFullCoordinate(coordinate));
     }
 
     /**
@@ -411,8 +412,7 @@ public class NCube<T>
         }
         clearScopeKeyCaches();
         clearSha1();
-        Set<Long> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.put(cols, value);
+        return cells.put(ensureFullCoordinate(coordinate), value);
     }
 
     /**
@@ -435,8 +435,7 @@ public class NCube<T>
      */
     public T getCellByIdNoExecute(final Collection<Long> coordinate)
     {
-        Set<Long> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.get(cols);
+        return cells.get(ensureFullCoordinate(coordinate));
     }
 
     /**
@@ -579,12 +578,7 @@ public class NCube<T>
     {
         try
         {
-            final Set<Column> columns = binding.getBoundColsForAxis();
-            final Set<Long> colIds = new HashSet<>();
-            for (Column column : columns)
-            {
-                colIds.add(column.id);
-            }
+            final Set<Long> colIds = binding.getBoundColumnIdsForAxis();
             T statementValue = getCellById(colIds, input, output);
             binding.setValue(statementValue);
             return statementValue;
@@ -902,12 +896,67 @@ public class NCube<T>
      * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
      * cannot bind to any of the passed in IDs.
      */
-    Set<Long> getColumnsAndCoordinateFromIds(final Collection<Long> coordinate, Map<String, CellInfo> coord)
+    Collection<Long> ensureFullCoordinate(final Collection<Long> coordinate)
+    {
+        // Ensure that the specified coordinate matches a column on each axis
+        final Set<String> allAxes = new CaseInsensitiveSet<>(axisList.keySet());
+        final Set<Long> point = new HashSet<>();
+
+        for (Long colId : coordinate)
+        {
+            Axis axis = getAxisFromColumnId(colId);
+            if (axis != null)
+            {
+                allAxes.remove(axis.getName());
+                point.add(colId);
+            }
+        }
+
+        if (allAxes.isEmpty())
+        {   // All were specified, exit early.
+            return point;
+        }
+
+        final Set<String> axesWithDefault = new CaseInsensitiveSet<>();
+
+        // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
+        // but not more than one column ID per axis.  Also, too few can be supplied, if and
+        // only if, the axes that are not bound too have a Default column (which will be chosen).
+        for (final String axisName : allAxes)
+        {
+            Axis axis = axisList.get(axisName);
+            if (axis.hasDefaultColumn())
+            {
+                point.add(axis.getDefaultColId());
+                axesWithDefault.add(axisName);
+            }
+        }
+
+        // Remove the referenced axes from allAxes set.  This leaves axes to be resolved.
+        allAxes.removeAll(axesWithDefault);
+
+        if (!allAxes.isEmpty())
+        {
+            throw new IllegalArgumentException("Column IDs missing for the axes: " + allAxes + ", cube: " + name);
+        }
+
+        return point;
+    }
+
+    /**
+     * Flip Set<Long> (coordinate) to Set<Column>. The challenge is that the Set<Long> is allowed to leave
+     * out bindings for Axes that have default columns.  An optional Map<String, CellInfo> can be passed in,
+     * which is filled in with the required axes as keys -and- for each axis that is not a rule axis,
+     * a column value that would bind to that axis (specified as a CellInfo).
+     *
+     * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
+     * cannot bind to any of the passed in IDs.
+     */
+    void getColumnsAndCoordinateFromIds(final Collection<Long> coordinate, Map<String, CellInfo> coord)
     {
         // Ensure that the specified coordinate matches a column on each axis
         final Set<Axis> axisRef = new HashSet<>();
         final Set<Axis> allAxes = new HashSet<>(axisList.values());
-        final Set<Long> point = new HashSet<>();
 
         // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
         // but not more than one column ID per axis.  Also, too few can be supplied, if and
@@ -925,7 +974,6 @@ public class NCube<T>
                     }
 
                     axisRef.add(axis);
-                    point.add(column.id);
                     addCoordinateToColumnEntry(coord, column, axis);
                 }
             }
@@ -945,7 +993,6 @@ public class NCube<T>
             {
                 final Column defCol = axis.getDefaultColumn();
                 axisRef.remove(axis);
-                point.add(defCol.id);
                 addCoordinateToColumnEntry(coord, defCol, axis);
             }
         }
@@ -971,8 +1018,6 @@ public class NCube<T>
             }
             throw new IllegalArgumentException("Column IDs missing for the axes: " + s + ", cube: " + name);
         }
-
-        return point;
     }
 
     /**
@@ -1145,7 +1190,6 @@ public class NCube<T>
             }
             key.add(column.id);
         }
-
         return key;
     }
 
@@ -2582,7 +2626,7 @@ public class NCube<T>
         // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
         for (Map.Entry<Set<Long>, T> entry : cellChangeSet.entrySet())
         {
-            Set<Long> cols = getColumnsAndCoordinateFromIds(entry.getKey(), null);
+            Collection<Long> cols = ensureFullCoordinate(entry.getKey());
             if (cols.size() > 0)
             {
                 T value = entry.getValue();

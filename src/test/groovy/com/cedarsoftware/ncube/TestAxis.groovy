@@ -1113,7 +1113,7 @@ class TestAxis
 
         // Make sure all columns are bound correctly
         def coord = new CaseInsensitiveMap()
-        Set<Long> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord)
+        Set<Long> boundCols = cube.ensureFullCoordinate(longCoord)
         for (Long colId : boundCols)
         {
             assertTrue(colId == t.id || colId == v.id || colId == b.id)

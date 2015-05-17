@@ -3791,7 +3791,6 @@ class TestNCube
         }
     }
 
-
     @Test
     void testCoordinateGetter()
     {
@@ -3803,7 +3802,7 @@ class TestNCube
             Set<Long> coord = new HashSet<>()
             coord.add(col)
             Map<String, CellInfo> coordinate = new CaseInsensitiveMap<>()
-            ncube.getColumnsAndCoordinateFromIds(coord, coordinate)
+            coordinate = ncube.getTestInputCoordinateFromIds(coord)
             assertTrue(coordinate.containsKey("code"))
         }
     }
@@ -4762,10 +4761,12 @@ class TestNCube
         Map changeSet1 = cube2.getCellChangeSet(cube1)
         Map changeSet2 = cube2.getCellChangeSet(cube3)
         assertFalse NCube.areCellChangeSetsCompatible(changeSet1, changeSet2)
+        assertFalse NCube.areCellChangeSetsCompatible(changeSet2, changeSet1)
 
         changeSet1 = cube1.getCellChangeSet(cube2)
         changeSet2 = cube3.getCellChangeSet(cube2)
         assert NCube.areCellChangeSetsCompatible(changeSet1, changeSet2)
+        assert NCube.areCellChangeSetsCompatible(changeSet2, changeSet1)
     }
 
     // ---------------------------------------------------------------------------------

@@ -944,99 +944,6 @@ public class NCube<T>
     }
 
     /**
-     * Flip Set<Long> (coordinate) to Set<Column>. The challenge is that the Set<Long> is allowed to leave
-     * out bindings for Axes that have default columns.  An optional Map<String, CellInfo> can be passed in,
-     * which is filled in with the required axes as keys -and- for each axis that is not a rule axis,
-     * a column value that would bind to that axis (specified as a CellInfo).
-     *
-     * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
-     * cannot bind to any of the passed in IDs.
-     */
-    void getColumnsAndCoordinateFromIds(final Collection<Long> coordinate, Map<String, CellInfo> coord)
-    {
-        // Ensure that the specified coordinate matches a column on each axis
-        final Set<Axis> axisRef = new HashSet<>();
-        final Set<Axis> allAxes = new HashSet<>(axisList.values());
-
-        // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
-        // but not more than one column ID per axis.  Also, too few can be supplied, if and
-        // only if, the axes that are not bound too have a Default column (which will be chosen).
-        for (final Axis axis : allAxes)
-        {
-            for (final Long id : coordinate)
-            {
-                final Column column = axis.getColumnById(id);
-                if (column != null)
-                {
-                    if (axisRef.contains(axis))
-                    {
-                        throw new IllegalArgumentException("Cannot have more than one column ID per axis, axis '" + axis.getName() + "', cube: " + name);
-                    }
-
-                    axisRef.add(axis);
-                    addCoordinateToColumnEntry(coord, column, axis);
-                }
-            }
-        }
-
-        // Remove the referenced axes from allAxes set.  This leaves axes to be resolved.
-        allAxes.removeAll(axisRef);
-
-        // For the unbound axes, bind them to the Default Column (if the axis has one)
-        axisRef.clear();   // use Set again, this time to hold unbound axes
-        axisRef.addAll(allAxes);
-
-        // allAxes at this point, is the unbound axis (not referenced by an id in input coordinate)
-        for (final Axis axis : allAxes)
-        {
-            if (axis.hasDefaultColumn())
-            {
-                final Column defCol = axis.getDefaultColumn();
-                axisRef.remove(axis);
-                addCoordinateToColumnEntry(coord, defCol, axis);
-            }
-        }
-
-        // Add in all required scope keys to the [optional] passed in coord
-        if (coord != null)
-        {
-            for (String scopeKey : getRequiredScope())
-            {
-                if (!coord.containsKey(scopeKey))
-                {
-                    coord.put(scopeKey, null);
-                }
-            }
-        }
-
-        if (!axisRef.isEmpty())
-        {
-            final StringBuilder s = new StringBuilder();
-            for (Axis axis : axisRef)
-            {
-                s.append(axis.getName());
-            }
-            throw new IllegalArgumentException("Column IDs missing for the axes: " + s + ", cube: " + name);
-        }
-    }
-
-    /**
-     * Associate input variables (axis names) to CellInfo for the given column.
-     */
-    private static void addCoordinateToColumnEntry(Map<String, CellInfo> coord, Column column, Axis axis)
-    {
-        if (coord == null)
-        {
-            return;
-        }
-
-        if (axis.getType() != AxisType.RULE)
-        {
-            coord.put(axis.getName(), new CellInfo(column.getValueThatMatches()));
-        }
-    }
-
-    /**
      * Convert an Object to a Map.  This allows an object to then be passed into n-cube as a coordinate.  Of course
      * the returned map can have additional key/value pairs added to it after calling this method, but before calling
      * getCell().
@@ -2165,8 +2072,7 @@ public class NCube<T>
             {
                 colIds.add(colId);
             }
-            Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
-            getColumnsAndCoordinateFromIds(colIds, coord);
+            Map<String, CellInfo> coord = getTestInputCoordinateFromIds(colIds);
             String testName = String.format("test-%03d", i);
             CellInfo[] result = {new CellInfo("exp", "output.return", false, false)};
             coordinates.add(new NCubeTest(testName, convertCoordToList(coord), result));
@@ -2179,13 +2085,14 @@ public class NCube<T>
     private static StringValuePair<CellInfo>[] convertCoordToList(Map<String, CellInfo> coord)
     {
         int size = coord == null ? 0 : coord.size();
-        //List<StringValuePair<CellInfo>> list = new ArrayList<StringValuePair<CellInfo>>(size);
         StringValuePair<CellInfo>[] list = new StringValuePair[size];
-        if (size == 0) {
+        if (size == 0)
+        {
             return list;
         }
         int i=0;
-        for (Map.Entry<String, CellInfo> entry : coord.entrySet()) {
+        for (Map.Entry<String, CellInfo> entry : coord.entrySet())
+        {
             list[i++] = (new StringValuePair(entry.getKey(), entry.getValue()));
         }
         return list;
@@ -2504,7 +2411,7 @@ public class NCube<T>
 
         for (Set<Long> coord : copyCells)
         {
-            delta.put(coord, (T)REMOVE_CELL);
+            delta.put(coord, (T) REMOVE_CELL);
         }
 
         return delta;
@@ -2861,12 +2768,98 @@ public class NCube<T>
         return s;
     }
 
+    /**
+     * For the given passed in coordinate, create a test coordinate for input with the axis
+     * names and an associated value.
+     *
+     * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
+     * cannot bind to any of the passed in IDs.
+     */
+    Map<String, CellInfo> getTestInputCoordinateFromIds(final Collection<Long> coordinate)
+    {
+        // Ensure that the specified coordinate matches a column on each axis
+        final Set<Axis> axisRef = new HashSet<>();
+        final Set<Axis> allAxes = new HashSet<>(axisList.values());
+        final Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
+
+        // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
+        // but not more than one column ID per axis.  Also, too few can be supplied, if and
+        // only if, the axes that are not bound too have a Default column (which will be chosen).
+        for (final Axis axis : allAxes)
+        {
+            for (final Long id : coordinate)
+            {
+                final Column column = axis.getColumnById(id);
+                if (column != null)
+                {
+                    if (axisRef.contains(axis))
+                    {
+                        throw new IllegalArgumentException("Cannot have more than one column ID per axis, axis '" + axis.getName() + "', cube: " + name);
+                    }
+
+                    axisRef.add(axis);
+                    addCoordinateToColumnEntry(coord, column, axis);
+                }
+            }
+        }
+
+        // Remove the referenced axes from allAxes set.  This leaves axes to be resolved.
+        allAxes.removeAll(axisRef);
+
+        // For the unbound axes, bind them to the Default Column (if the axis has one)
+        axisRef.clear();   // use Set again, this time to hold unbound axes
+        axisRef.addAll(allAxes);
+
+        // allAxes at this point, is the unbound axis (not referenced by an id in input coordinate)
+        for (final Axis axis : allAxes)
+        {
+            if (axis.hasDefaultColumn())
+            {
+                final Column defCol = axis.getDefaultColumn();
+                axisRef.remove(axis);
+                addCoordinateToColumnEntry(coord, defCol, axis);
+            }
+        }
+
+        // Add in all required scope keys to the [optional] passed in coord
+        for (String scopeKey : getRequiredScope())
+        {
+            if (!coord.containsKey(scopeKey))
+            {
+                coord.put(scopeKey, null);
+            }
+        }
+
+        if (!axisRef.isEmpty())
+        {
+            final StringBuilder s = new StringBuilder();
+            for (Axis axis : axisRef)
+            {
+                s.append(axis.getName());
+            }
+            throw new IllegalArgumentException("Column IDs missing for the axes: " + s + ", cube: " + name);
+        }
+
+        return coord;
+    }
+
+    /**
+     * Associate input variables (axis names) to CellInfo for the given column.
+     */
+    private static void addCoordinateToColumnEntry(Map<String, CellInfo> coord, Column column, Axis axis)
+    {
+        if (axis.getType() != AxisType.RULE)
+        {
+            coord.put(axis.getName(), new CellInfo(column.getValueThatMatches()));
+        }
+    }
+
     private Map<String, T> getCoordinateFromColumnIds(Collection<Long> idCoord)
     {
         Map<String, T> properCoord = new CaseInsensitiveMap<>();
-        try
+        for (Long colId : idCoord)
         {
-            for (Long colId : idCoord)
+            try
             {
                 Axis axis = getAxisFromColumnId(colId);
                 Column column = axis.getColumnById(colId);
@@ -2880,21 +2873,20 @@ public class NCube<T>
                     String ruleName = (String) column.getMetaProperty("name");
                     if (StringUtilities.hasContent(ruleName))
                     {
-                        properCoord.put(axis.getName(), (T)("rule: '" + ruleName + "' condition: " + value));
+                        properCoord.put(axis.getName(), (T) ("rule: '" + ruleName + "' condition: " + value));
                     }
                     else
                     {
-                        properCoord.put(axis.getName(), (T)("condition: " + value));
+                        properCoord.put(axis.getName(), (T) ("condition: " + value));
                     }
                 }
                 else
                 {
-                    properCoord.put(axis.getName(), (T)value);
+                    properCoord.put(axis.getName(), (T) value);
                 }
             }
+            catch (Exception ignored) { }
         }
-        catch (Exception ignored)
-        { }
         return properCoord;
     }
 

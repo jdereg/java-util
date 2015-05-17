@@ -97,5 +97,4 @@ public class StringValuePair<V> implements Map.Entry<String,V> {
     protected static int hash(Object object) {
         return (object == null) ? 0xbabe : object.hashCode();
     }
-
 }

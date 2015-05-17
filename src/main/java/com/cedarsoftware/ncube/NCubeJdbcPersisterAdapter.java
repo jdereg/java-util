@@ -397,7 +397,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         {
             connectionProvider.releaseConnection(c);
         }
-
     }
 
     public Object[] updateBranch(ApplicationID appId, Collection<NCubeInfoDto> updates, String username)
@@ -411,7 +410,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         {
             connectionProvider.releaseConnection(c);
         }
-
     }
 
     public Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
@@ -425,7 +423,5 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         {
             connectionProvider.releaseConnection(c);
         }
-
     }
-
 }

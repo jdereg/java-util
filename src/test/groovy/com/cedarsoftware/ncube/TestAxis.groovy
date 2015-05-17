@@ -1130,7 +1130,7 @@ class TestAxis
         longCoord.add(t2.id)
         try
         {
-            cube.getColumnsAndCoordinateFromIds(longCoord, coord)
+            coord = cube.getTestInputCoordinateFromIds(longCoord)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -1143,7 +1143,7 @@ class TestAxis
         {
             longCoord.remove(t2.id)
             longCoord.remove(t.id)
-            cube.getColumnsAndCoordinateFromIds(longCoord, coord)
+            coord = cube.getTestInputCoordinateFromIds(longCoord)
             fail()
         }
         catch (IllegalArgumentException e)

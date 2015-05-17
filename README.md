@@ -302,5 +302,3 @@ Version History
  * Initial version
 
 By: John DeRegnaucourt
-
-![Alt text](https://raw.githubusercontent.com/jdereg/n-cube/master/donate.png "Your donation helps keep n-cube updated")

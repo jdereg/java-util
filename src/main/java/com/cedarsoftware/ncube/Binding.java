@@ -61,7 +61,7 @@ public class Binding
 
     public int getNumBoundAxes()
     {
-        return axes.size();
+        return axes2.size();
     }
 
     public Set<Long> getBoundColumnIdsForAxis()

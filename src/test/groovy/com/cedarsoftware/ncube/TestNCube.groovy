@@ -4138,7 +4138,7 @@ class TestNCube
     @Test
     void testValidateCubeNames()
     {
-        NCube.validateCubeName("This:is.legal_but-hard_to.read")
+        NCube.validateCubeName("This-is.legal_but-hard_to.read")
         try
         {
             NCube.validateCubeName("This:is.not/legal#and-hard_to|read")

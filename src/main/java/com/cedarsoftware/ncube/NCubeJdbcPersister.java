@@ -680,7 +680,8 @@ public class NCubeJdbcPersister
                 dto.sha1 = rs.getString("sha1");
                 dto.headSha1 = rs.getString("head_sha1");
 
-                if (!activeOnly || !dto.revision.startsWith("-")) {
+                if (!activeOnly || !dto.revision.startsWith("-"))
+                {
                     list.add(dto);
                 }
             }

@@ -332,6 +332,24 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             JsonWriter.writeJsonUtf8String(o.toString(), w);
             builder.append(w.toString());
         }
+        else if (o instanceof BigInteger)
+        {
+            BigInteger i = (BigInteger)o;
+            builder.append('"');
+            builder.append(i.toString());
+            builder.append('"');
+        }
+        else if (o instanceof BigDecimal)
+        {
+            BigDecimal d = (BigDecimal)o;
+            builder.append('"');
+            builder.append(d.stripTrailingZeros().toPlainString());
+            builder.append('"');
+        }
+        else if (o instanceof Number)
+        {
+            builder.append(o.toString());
+        }
         else if (o instanceof Date)
         {
             builder.append('"');
@@ -390,20 +408,6 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         else if (o.getClass().isArray())
         {
             throw new IllegalArgumentException("Cell cannot be an array (except byte[]). Use Groovy Expression to make cell an array, a List, or a Map, etc.");
-        }
-        else if (o instanceof BigInteger)
-        {
-            BigInteger i = (BigInteger)o;
-            builder.append('"');
-            builder.append(i.toString());
-            builder.append('"');
-        }
-        else if (o instanceof BigDecimal)
-        {
-            BigDecimal d = (BigDecimal)o;
-            builder.append('"');
-            builder.append(d.stripTrailingZeros().toPlainString());
-            builder.append('"');
         }
         else
         {

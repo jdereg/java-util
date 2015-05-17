@@ -32,7 +32,7 @@ public interface Regexes
     Pattern validTenantName = Pattern.compile("^[0-9A-Za-z-]+$");
     Pattern validBranch = Pattern.compile("^[0-9A-Za-z-_.]+$");
     Pattern validVersion = Pattern.compile("^\\d+\\.\\d+\\.\\d+$");
-    Pattern validCubeName = Pattern.compile("[" + NCube.validCubeNameChars + "]+");
+    Pattern validCubeName = Pattern.compile("^[" + NCube.validCubeNameChars + "]+$");
 
     Pattern valid2Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");
     Pattern valid3Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");

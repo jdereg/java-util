@@ -75,7 +75,7 @@ public class NCube<T>
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
-    public static final String validCubeNameChars = "0-9a-zA-Z:._-";
+    public static final String validCubeNameChars = "0-9a-zA-Z._-";
     public static final String RULE_EXEC_INFO = "_rule";
     static final String REMOVE_CELL = "~remove-cell~";
     private final Map<String, Advice> advices = new LinkedHashMap<>();
@@ -470,15 +470,14 @@ public class NCube<T>
         T lastStatementValue = null;
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
-        final Set<String> axisNameSet = axisList.keySet();
-        final String[] axisNames = axisNameSet.toArray(new String[axisNameSet.size()]);
-        final Collection<Axis> axes = axisList.values();
+        final int dimensions = getNumDimensions();
+        final String[] axisNames = axisList.keySet().toArray(new String[dimensions]);
 
         while (run)
         {
             run = false;
             final Map<String, List<Column>> columnToAxisBindings = bindCoordinateToAxisColumns(input);
-            final Map<String, Integer> counters = getCountersPerAxis(axisNameSet);
+            final Map<String, Integer> counters = getCountersPerAxis(axisNames);
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
 
@@ -489,7 +488,7 @@ public class NCube<T>
                 {
                     final Binding binding = new Binding(name, depth);
 
-                    for (final Axis axis: axes)
+                    for (final Axis axis: axisList.values())
                     {
                         final String axisName = axis.getName();
                         final Column boundColumn = columnToAxisBindings.get(axisName).get(counters.get(axisName) - 1);
@@ -545,7 +544,7 @@ public class NCube<T>
                     }
 
                     // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
-                    if (binding.getNumBoundAxes() == axisNames.length)
+                    if (binding.getNumBoundAxes() == dimensions)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
                         bindings.add(binding);
                         lastStatementValue = executeAssociatedStatement(input, output, ruleInfo, binding);
@@ -846,7 +845,7 @@ public class NCube<T>
      * of binding to an axis results in a List<Column>.
      * @param input The passed in input coordinate to bind (or multi-bind) to each axis.
      */
-    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map input)
+    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map<String, Object> input)
     {
         Map<String, List<Column>> bindings = new CaseInsensitiveMap<>();
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
@@ -875,7 +874,7 @@ public class NCube<T>
         return bindings;
     }
 
-    private static Map<String, Integer> getCountersPerAxis(final Set<String> axisNames)
+    private static Map<String, Integer> getCountersPerAxis(final String[] axisNames)
     {
         final Map<String, Integer> counters = new CaseInsensitiveMap<>();
 
@@ -2928,14 +2927,11 @@ public class NCube<T>
         }
 
         Matcher m = Regexes.validCubeName.matcher(cubeName);
-        if (m.find())
+        if (m.matches())
         {
-            if (cubeName.equals(m.group(0)))
-            {
-                return;
-            }
+            return;
         }
-        throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
+        throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, '.', '_', '-'");
     }
 
     public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)

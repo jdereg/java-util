@@ -36,13 +36,13 @@ class TestAdvice
     static final String USER_ID = "jdirt";
 
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
@@ -107,7 +107,7 @@ class TestAdvice
     }
 
     @Test
-    void testAdvice() throws Exception
+    void testAdvice()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 
@@ -188,7 +188,7 @@ class TestAdvice
     }
 
     @Test
-    void testAdviceSubsetMatching() throws Exception
+    void testAdviceSubsetMatching()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
 

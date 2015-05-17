@@ -51,7 +51,7 @@ abstract class TestWithPreloadedDatabase
     private TestingDatabaseManager manager;
 
     @Before
-    public void setup() throws Exception
+    public void setup()
     {
         manager = getTestingDatabaseManager();
         manager.setUp()
@@ -60,7 +60,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         manager.removeBranches(branches)
         manager.tearDown()
@@ -79,7 +79,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testToMakeSureOldStyleSysClasspathThrowsException() throws Exception {
+    void testToMakeSureOldStyleSysClasspathThrowsException() {
         preloadCubes(appId, "sys.classpath.old.style.json")
 
         // nothing in cache until we try and get the classloader or load a cube.
@@ -97,7 +97,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUrlClassLoader() throws Exception {
+    void testUrlClassLoader() {
         preloadCubes(appId, "sys.classpath.cp1.json")
 
         // nothing in cache until we try and get the classloader or load a cube.
@@ -125,7 +125,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCoordinateNotFoundExceptionThrown() throws Exception
+    void testCoordinateNotFoundExceptionThrown()
     {
         preloadCubes(appId, "test.coordinate.not.found.exception.json")
 
@@ -140,7 +140,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testGetBranches() throws Exception {
+    void testGetBranches() {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -165,7 +165,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testGetAppNames() throws Exception {
+    void testGetAppNames() {
         ApplicationID app1 = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID app2 = new ApplicationID('NONE', "foo", "1.29.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID app3 = new ApplicationID('NONE', "bar", "1.29.0", "SNAPSHOT", ApplicationID.HEAD)
@@ -193,7 +193,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchOnCubeCreatedInBranch() throws Exception {
+    void testCommitBranchOnCubeCreatedInBranch() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
         NCubeManager.createCube(branch1, cube, 'kenny')
@@ -213,7 +213,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testGetBranchChangesOnceBranchIsDeleted() throws Exception {
+    void testGetBranchChangesOnceBranchIsDeleted() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
         NCubeManager.createCube(branch1, cube, 'kenny')
@@ -229,7 +229,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUpdateBranchOnCubeCreatedInBranch() throws Exception {
+    void testUpdateBranchOnCubeCreatedInBranch() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
         NCubeManager.createCube(branch1, cube, 'kenny')
@@ -246,7 +246,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRollbackBranchWithPendingAdd() throws Exception {
+    void testRollbackBranchWithPendingAdd() {
         preloadCubes(head, "test.branch.1.json");
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
@@ -264,7 +264,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRollbackBranchWithDeletedCube() throws Exception {
+    void testRollbackBranchWithDeletedCube() {
         preloadCubes(head, "test.branch.1.json");
 
         NCubeManager.createBranch(branch1);
@@ -287,7 +287,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchOnCreateThenDeleted() throws Exception {
+    void testCommitBranchOnCreateThenDeleted() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
         NCubeManager.createCube(branch1, cube, 'kenny')
@@ -303,7 +303,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUpdateBranchOnCreateThenDeleted() throws Exception {
+    void testUpdateBranchOnCreateThenDeleted() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
         NCubeManager.createCube(branch1, cube, 'kenny')
@@ -320,7 +320,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUpdateBranchWhenCubeWasDeletedInDifferentBranchAndNotChangedInOurBranch() throws Exception {
+    void testUpdateBranchWhenCubeWasDeletedInDifferentBranchAndNotChangedInOurBranch() {
         preloadCubes(head, "test.branch.1.json")
 
         NCubeManager.createBranch(branch1)
@@ -336,7 +336,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUpdateBranchWhenCubeWasDeletedInDifferentBranchAndDeletedInOurBranch() throws Exception {
+    void testUpdateBranchWhenCubeWasDeletedInDifferentBranchAndDeletedInOurBranch() {
         preloadCubes(head, "test.branch.1.json")
 
         NCubeManager.createBranch(branch1)
@@ -353,7 +353,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCreateBranch() throws Exception
+    void testCreateBranch()
     {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
@@ -388,7 +388,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchWithItemCreatedInBranchOnly() throws Exception
+    void testCommitBranchWithItemCreatedInBranchOnly()
     {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json")
@@ -437,7 +437,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUpdateBranchWithUpdateOnBranch() throws Exception {
+    void testUpdateBranchWithUpdateOnBranch() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json")
 
@@ -507,7 +507,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchOnUpdate() throws Exception {
+    void testCommitBranchOnUpdate() {
 
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
@@ -600,7 +600,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchOnUpdateWithOldInvalidSha1() throws Exception {
+    void testCommitBranchOnUpdateWithOldInvalidSha1() {
         // load cube with same name, but different structure in TEST branch
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json")
 
@@ -645,7 +645,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchWithUpdateAndWrongRevisionNumber() throws Exception {
+    void testCommitBranchWithUpdateAndWrongRevisionNumber() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -680,7 +680,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testRollback() throws Exception
+    void testRollback()
     {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
@@ -760,7 +760,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCommitBranchOnDelete() throws Exception {
+    void testCommitBranchOnDelete() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -831,7 +831,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testSearch() throws Exception {
+    void testSearch() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
@@ -845,7 +845,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testSystemParamsCube() throws Exception {
+    void testSystemParamsCube() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
@@ -859,7 +859,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testUpdateBranchAfterDelete() throws Exception {
+    void testUpdateBranchAfterDelete() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -935,7 +935,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testCreateBranchThatAlreadyExists() throws Exception {
+    void testCreateBranchThatAlreadyExists() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -952,7 +952,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testReleaseCubes() throws Exception {
+    void testReleaseCubes() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -993,7 +993,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testDuplicateCubeChanges() throws Exception {
+    void testDuplicateCubeChanges() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1019,7 +1019,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testDuplicateCubeGoingToDifferentApp() throws Exception {
+    void testDuplicateCubeGoingToDifferentApp() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1046,7 +1046,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testDuplicateCubeOnDeletedCube() throws Exception {
+    void testDuplicateCubeOnDeletedCube() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json")
 
@@ -1066,7 +1066,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRenameCubeOnDeletedCube() throws Exception {
+    void testRenameCubeOnDeletedCube() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json")
 
@@ -1086,7 +1086,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testDuplicateWhenCubeWithNameAlreadyExists() throws Exception {
+    void testDuplicateWhenCubeWithNameAlreadyExists() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1111,7 +1111,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testRenameCubeWhenNewNameAlreadyExists() throws Exception {
+    void testRenameCubeWhenNewNameAlreadyExists() {
         ApplicationID head = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", ApplicationID.HEAD)
         ApplicationID branch = new ApplicationID('NONE', "test", "1.28.0", "SNAPSHOT", "FOO")
 
@@ -1138,7 +1138,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRenameCubeWithHeadHavingCubeAAndCubeBDeleted() throws Exception {
+    void testRenameCubeWithHeadHavingCubeAAndCubeBDeleted() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1204,7 +1204,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRenameCubeWithBothCubesCreatedOnBranch() throws Exception {
+    void testRenameCubeWithBothCubesCreatedOnBranch() {
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json");
         NCubeManager.createCube(branch1, cubes[0], USER_ID);
         NCubeManager.createCube(branch1, cubes[1], USER_ID);
@@ -1265,7 +1265,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testRenameCubeWhenNewNameAlreadyExistsButIsInactive() throws Exception {
+    void testRenameCubeWhenNewNameAlreadyExistsButIsInactive() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1293,7 +1293,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testDuplicateCubeWhenNewNameAlreadyExistsButIsInactive() throws Exception {
+    void testDuplicateCubeWhenNewNameAlreadyExistsButIsInactive() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1524,7 +1524,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testRenameCubeBasicCase() throws Exception {
+    void testRenameCubeBasicCase() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1559,7 +1559,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRenameCubeBasicCaseWithNoHead() throws Exception {
+    void testRenameCubeBasicCaseWithNoHead() {
         // load cube with same name, but different structure in TEST branch
         NCube cube1 = NCubeManager.getNCubeFromResource("test.branch.1.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
@@ -1593,7 +1593,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testRenameCubeFunctionality() throws Exception {
+    void testRenameCubeFunctionality() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -1711,7 +1711,7 @@ abstract class TestWithPreloadedDatabase
 
 
     @Test
-    void testDuplicateCubeFunctionality() throws Exception {
+    void testDuplicateCubeFunctionality() {
 
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
@@ -2539,7 +2539,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testGetBranchChanges() throws Exception {
+    void testGetBranchChanges() {
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
 
@@ -2629,7 +2629,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testBootstrapWithOverrides() throws Exception {
+    void testBootstrapWithOverrides() {
         ApplicationID id = ApplicationID.getBootVersion('none', 'example')
         assertEquals(new ApplicationID('NONE', 'EXAMPLE', '0.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.HEAD), id)
 
@@ -2654,7 +2654,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    public void testUserOverloadedClassPath() throws Exception {
+    public void testUserOverloadedClassPath() {
         preloadCubes(appId, "sys.classpath.user.overloaded.json", "sys.versions.json")
 
         // Check DEV
@@ -2710,7 +2710,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    public void testSystemParamsOverloads() throws Exception {
+    public void testSystemParamsOverloads() {
         preloadCubes(appId, "sys.classpath.system.params.user.overloaded.json", "sys.versions.2.json", "sys.resources.base.url.json")
 
 
@@ -2774,7 +2774,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    public void testClearCacheWithClassLoaderLoadedByCubeRequest() throws Exception {
+    public void testClearCacheWithClassLoaderLoadedByCubeRequest() {
 
         preloadCubes(appId, "sys.classpath.cp1.json", "GroovyMethodClassPath1.json")
 
@@ -2843,7 +2843,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testMultiCubeClassPath() throws Exception {
+    void testMultiCubeClassPath() {
 
         preloadCubes(appId, "sys.classpath.base.json", "sys.classpath.json", "sys.status.json", "sys.versions.json", "sys.version.json", "GroovyMethodClassPath1.json")
 
@@ -2898,7 +2898,7 @@ abstract class TestWithPreloadedDatabase
 
     // Ken: Can you lot at keeping this test, but doing it in terms of a non-sys.classpath cube?
     @Ignore
-    void testTwoClasspathsSameAppId() throws Exception
+    void testTwoClasspathsSameAppId()
     {
         preloadCubes(appId, "sys.classpath.2per.app.json", "GroovyExpCp1.json")
 
@@ -2939,7 +2939,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testMathControllerUsingExpressions() throws Exception
+    void testMathControllerUsingExpressions()
     {
         preloadCubes(appId, "sys.classpath.2per.app.json", "math.controller.json")
 
@@ -3013,7 +3013,7 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
-    void testBootstrapWihMismatchedTenantAndAppForcesWarning() throws Exception
+    void testBootstrapWihMismatchedTenantAndAppForcesWarning()
     {
         ApplicationID zero = new ApplicationID('FOO', 'TEST', '0.0.0', 'SNAPSHOT', 'HEAD')
 

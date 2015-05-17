@@ -41,13 +41,13 @@ import static org.junit.Assert.fail
 class TestAxis
 {
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
@@ -583,7 +583,7 @@ class TestAxis
     }
 
     @Test
-    void testDeleteColumnFromRangeSetAxis() throws Exception
+    void testDeleteColumnFromRangeSetAxis()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'testCube4.json'
         ncube.deleteColumn 'code', 'b'
@@ -597,7 +597,7 @@ class TestAxis
     }
 
     @Test
-    void testDupeIdsOnAxis() throws Exception
+    void testDupeIdsOnAxis()
     {
         try
         {
@@ -659,7 +659,7 @@ class TestAxis
     }
 
     @Test
-    void testConvertDiscreteColumnValue() throws Exception
+    void testConvertDiscreteColumnValue()
     {
         // Strings
         Axis states = NCubeBuilder.statesAxis
@@ -1873,7 +1873,7 @@ class TestAxis
     }
 
     @Test
-    void testLargeNumberOfColumns() throws Exception
+    void testLargeNumberOfColumns()
     {
         NCube ncube = new NCube("BigDaddy")
         Axis axis = new Axis("numbers", AxisType.SET, AxisValueType.LONG, true, Axis.DISPLAY)

@@ -52,12 +52,12 @@ class TestingDatabaseHelper
         return list.toArray(new NCube[list.size()]);
     }
 
-    public static NCubePersister getPersister() throws Exception
+    public static NCubePersister getPersister()
     {
         return new NCubeJdbcPersisterAdapter(createJdbcConnectionProvider())
     }
 
-    public static JdbcConnectionProvider createJdbcConnectionProvider() throws Exception
+    public static JdbcConnectionProvider createJdbcConnectionProvider()
     {
         if (test_db == HSQL)
         {
@@ -77,7 +77,7 @@ class TestingDatabaseHelper
         throw new IllegalArgumentException('Unknown Database:  ' + test_db)
     }
 
-    public static TestingDatabaseManager getTestingDatabaseManager() throws Exception
+    public static TestingDatabaseManager getTestingDatabaseManager()
     {
         if (test_db == HSQL)
         {
@@ -104,33 +104,33 @@ class TestingDatabaseHelper
         }
 
         @Override
-        void insertCubeWithNoSha1(ApplicationID appId, String username, NCube cube) throws Exception {
+        void insertCubeWithNoSha1(ApplicationID appId, String username, NCube cube) {
 
         }
 
-        public void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+        public void addCubes(ApplicationID appId, String username, NCube[] cubes)
         {
 
         }
 
-        public void removeBranches(ApplicationID[] appId) throws Exception
+        public void removeBranches(ApplicationID[] appId)
         {
         }
 
-        public void updateCube(ApplicationID appId, String username, NCube cube) throws Exception
+        public void updateCube(ApplicationID appId, String username, NCube cube)
         {
 
         }
     }
 
-    public static void setupDatabase() throws Exception
+    public static void setupDatabase()
     {
         testingDatabaseManager.setUp()
         NCubeManager.NCubePersister = persister
         setupTestClassPaths()
     }
 
-    public static void setupTestClassPaths() throws Exception
+    public static void setupTestClassPaths()
     {
         NCube cp = NCubeManager.getNCubeFromResource(TestNCubeManager.defaultSnapshotApp, 'sys.classpath.tests.json')
         NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, cp, TestNCubeManager.USER_ID)
@@ -138,7 +138,7 @@ class TestingDatabaseHelper
         NCubeManager.createCube(ApplicationID.testAppId, cp, TestNCubeManager.USER_ID)
     }
 
-    public static void tearDownDatabase() throws Exception
+    public static void tearDownDatabase()
     {
         try
         {

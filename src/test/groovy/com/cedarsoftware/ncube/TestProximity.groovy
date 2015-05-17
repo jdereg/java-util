@@ -45,7 +45,7 @@ class TestProximity
     }
 
     @Test
-    void testConstructorIsPrivate() throws Exception
+    void testConstructorIsPrivate()
     {
         Class c = Proximity.class;
         assertEquals Modifier.FINAL, c.modifiers & Modifier.FINAL

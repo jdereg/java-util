@@ -16,7 +16,7 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         provider = p;
     }
 
-    void insertCubeWithNoSha1(ApplicationID appId, String username, NCube cube) throws Exception
+    void insertCubeWithNoSha1(ApplicationID appId, String username, NCube cube)
     {
         Connection c = provider.connection;
         try
@@ -30,7 +30,7 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         }
     }
 
-    void addCubes(ApplicationID appId, String username, NCube[] cubes) throws Exception
+    void addCubes(ApplicationID appId, String username, NCube[] cubes)
     {
         Connection c = provider.connection;
         try
@@ -46,7 +46,7 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         }
     }
 
-    void removeBranches(ApplicationID[] appIds) throws Exception
+    void removeBranches(ApplicationID[] appIds)
     {
         Connection c = provider.connection;
         try
@@ -62,7 +62,7 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         }
     }
 
-    void updateCube(ApplicationID appId, String username, NCube ncube) throws Exception
+    void updateCube(ApplicationID appId, String username, NCube ncube)
     {
         Connection c = provider.connection;
         try

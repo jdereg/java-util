@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals
 class TestNCubeTestReader
 {
     @Test
-    void testReading() throws Exception
+    void testReading()
     {
         String s = getResourceAsString 'n-cube-tests/test.json'
         NCubeTestReader reader = new NCubeTestReader()
@@ -35,7 +35,7 @@ class TestNCubeTestReader
     }
 
     @Test
-    void testEmptyString() throws Exception
+    void testEmptyString()
     {
         NCubeTestReader reader = new NCubeTestReader()
         List<NCubeTest> list = reader.convert ''
@@ -43,7 +43,7 @@ class TestNCubeTestReader
     }
 
     @Test
-    void testNullString() throws Exception
+    void testNullString()
     {
         NCubeTestReader reader = new NCubeTestReader()
         List<NCubeTest> list = reader.convert null

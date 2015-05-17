@@ -44,13 +44,13 @@ class TestNCubeManager
     public static ApplicationID defaultReleaseApp = new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
 
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
@@ -65,7 +65,7 @@ class TestNCubeManager
         return [new NCubeTest('foo', pairs, cellInfos)] as NCubeTest[]
     }
 
-    private static NCube createCube() throws Exception
+    private static NCube createCube()
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
@@ -88,7 +88,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testLoadCubes() throws Exception
+    void testLoadCubes()
     {
         NCube ncube = NCubeBuilder.getTestNCube2D(true)
 
@@ -158,7 +158,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testUpdateSavesTestData() throws Exception
+    void testUpdateSavesTestData()
     {
         NCube cube = createCube()
         assertNotNull(cube)
@@ -212,7 +212,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testGetReferencedCubesThatLoadsTwoCubes() throws Exception
+    void testGetReferencedCubesThatLoadsTwoCubes()
     {
         try
         {
@@ -227,7 +227,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRenameWithMatchingNames() throws Exception
+    void testRenameWithMatchingNames()
     {
         try
         {
@@ -241,7 +241,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testBadCommandCellCommandWithJdbc() throws Exception
+    void testBadCommandCellCommandWithJdbc()
     {
         NCube<Object> continentCounty = new NCube<>('test.ContinentCountries')
         continentCounty.applicationID = defaultSnapshotApp
@@ -320,7 +320,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testGetReferencedCubeNames() throws Exception
+    void testGetReferencedCubeNames()
     {
         NCube n1 = NCubeManager.getNCubeFromResource('template1.json')
         NCube n2 = NCubeManager.getNCubeFromResource('template2.json')
@@ -355,7 +355,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testGetReferencedCubeNamesSimple() throws Exception
+    void testGetReferencedCubeNamesSimple()
     {
         NCube n1 = NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'aa.json')
         NCube n2 = NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'bb.json')
@@ -372,7 +372,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testReferencedCubeCoordinateNotFound() throws Exception
+    void testReferencedCubeCoordinateNotFound()
     {
         NCube n1 = NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'aa.json')
         NCubeManager.getNCubeFromResource(defaultSnapshotApp, 'bb.json')
@@ -391,7 +391,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testDuplicateNCube() throws Exception
+    void testDuplicateNCube()
     {
         NCube n1 = NCubeManager.getNCubeFromResource('stringIds.json')
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID)
@@ -406,7 +406,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testGetAppNames() throws Exception
+    void testGetAppNames()
     {
         NCube n1 = NCubeManager.getNCubeFromResource('stringIds.json')
         NCubeManager.createCube(defaultSnapshotApp, n1, USER_ID)
@@ -441,7 +441,7 @@ class TestNCubeManager
 
 
     @Test
-    void testChangeVersionValue() throws Exception
+    void testChangeVersionValue()
     {
         NCube n1 = NCubeManager.getNCubeFromResource('stringIds.json')
         ApplicationID newId = defaultSnapshotApp.createNewSnapshotId('1.1.20')
@@ -463,7 +463,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testUpdateOnDeletedCube() throws Exception
+    void testUpdateOnDeletedCube()
     {
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
 
@@ -487,7 +487,7 @@ class TestNCubeManager
 
 
     @Test
-    void testGetBranchChangesFromDatabaseWithInvalidAppIdOfHead() throws Exception
+    void testGetBranchChangesFromDatabaseWithInvalidAppIdOfHead()
     {
         try
         {
@@ -502,7 +502,7 @@ class TestNCubeManager
 
 
     @Test
-    void testUpdateTestDataOnDeletedCube() throws Exception
+    void testUpdateTestDataOnDeletedCube()
     {
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
 
@@ -531,7 +531,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testUpdateNotesOnDeletedCube() throws Exception
+    void testUpdateNotesOnDeletedCube()
     {
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCubeManager.createCube(defaultSnapshotApp, ncube1, USER_ID)
@@ -567,7 +567,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testGetNCubes() throws Exception
+    void testGetNCubes()
     {
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
@@ -624,13 +624,13 @@ class TestNCubeManager
     }
 
     @Test
-    void testNotAllowedToDeleteReleaseCubes() throws Exception
+    void testNotAllowedToDeleteReleaseCubes()
     {
         // TODO: Test that it fails when attempting to delete RELEASE cubes
     }
 
     @Test
-    void testRenameNCube() throws Exception
+    void testRenameNCube()
     {
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
@@ -671,7 +671,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testNCubeManagerGetCubes() throws Exception
+    void testNCubeManagerGetCubes()
     {
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
@@ -689,7 +689,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testUpdateCubeWithSysClassPath() throws Exception
+    void testUpdateCubeWithSysClassPath()
     {
         String name = 'Fire'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
@@ -723,7 +723,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRenameCubeWithSysClassPath() throws Exception
+    void testRenameCubeWithSysClassPath()
     {
         String name = 'Dude'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
@@ -763,7 +763,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testDuplicateCubeWithSysClassPath() throws Exception
+    void testDuplicateCubeWithSysClassPath()
     {
         String name = 'Dude'
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
@@ -803,7 +803,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testMissingBootstrapException() throws Exception
+    void testMissingBootstrapException()
     {
         try
         {
@@ -818,7 +818,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testNCubeManagerUpdateCubeExceptions() throws Exception
+    void testNCubeManagerUpdateCubeExceptions()
     {
         try
         {
@@ -845,7 +845,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testNCubeManagerCreateCubes() throws Exception
+    void testNCubeManagerCreateCubes()
     {
         ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         try
@@ -874,14 +874,14 @@ class TestNCubeManager
     }
 
     @Test
-    void testNCubeManagerDeleteNotExistingCube() throws Exception
+    void testNCubeManagerDeleteNotExistingCube()
     {
         ApplicationID id = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'DASHBOARD', '0.1.0', ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
         assertFalse(NCubeManager.deleteCube(id, 'DashboardRoles', true, USER_ID))
     }
 
     @Test
-    void testNotes() throws Exception
+    void testNotes()
     {
         try
         {
@@ -927,7 +927,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testNCubeManagerTestData() throws Exception
+    void testNCubeManagerTestData()
     {
         try
         {
@@ -974,7 +974,7 @@ class TestNCubeManager
 
 
     @Test
-    void testEmptyNCubeMetaProps() throws Exception
+    void testEmptyNCubeMetaProps()
     {
         NCube ncube = createCube()
         String json = ncube.toFormattedJson()
@@ -995,7 +995,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testLoadCubesWithNullApplicationID() throws Exception
+    void testLoadCubesWithNullApplicationID()
     {
         try
         {
@@ -1010,7 +1010,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testEnsureLoadedOnCubeThatDoesNotExist() throws Exception
+    void testEnsureLoadedOnCubeThatDoesNotExist()
     {
         try
         {
@@ -1036,13 +1036,13 @@ class TestNCubeManager
     }
 
     @Test(expected = RuntimeException.class)
-    void testGetNCubesFromResourceException() throws Exception
+    void testGetNCubesFromResourceException()
     {
         NCubeManager.getNCubesFromResource(null)
     }
 
     @Test
-    void testRestoreCubeWithEmptyArray() throws Exception
+    void testRestoreCubeWithEmptyArray()
     {
         try
         {
@@ -1057,7 +1057,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRollbackBranchWhenCubeDoesntExist() throws Exception
+    void testRollbackBranchWhenCubeDoesntExist()
     {
         try
         {
@@ -1077,7 +1077,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRestoreCubeWithNullArray() throws Exception
+    void testRestoreCubeWithNullArray()
     {
         try
         {
@@ -1092,7 +1092,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRestoreCubeWithNonStringArray() throws Exception
+    void testRestoreCubeWithNonStringArray()
     {
         try
         {
@@ -1107,7 +1107,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRestoreNonExistingCube() throws Exception
+    void testRestoreNonExistingCube()
     {
         try
         {
@@ -1123,7 +1123,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRestoreExistingCube() throws Exception
+    void testRestoreExistingCube()
     {
         NCube cube = createCube()
         try
@@ -1140,7 +1140,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRestoreDeletedCube() throws Exception
+    void testRestoreDeletedCube()
     {
         NCube cube = createCube()
         Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true)
@@ -1164,7 +1164,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRestoreCubeWithCubeThatDoesNotExist() throws Exception
+    void testRestoreCubeWithCubeThatDoesNotExist()
     {
         try
         {
@@ -1179,7 +1179,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testGetRevisionHistory() throws Exception
+    void testGetRevisionHistory()
     {
         try
         {
@@ -1194,7 +1194,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testDeleteWithRevisions() throws Exception
+    void testDeleteWithRevisions()
     {
         NCube cube = createCube()
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).length)
@@ -1239,7 +1239,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testRevisionHistory() throws Exception
+    void testRevisionHistory()
     {
         NCube cube = createCube()
         Object[] his = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
@@ -1266,7 +1266,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testNCubeInfoDto() throws Exception
+    void testNCubeInfoDto()
     {
         NCube cube = createCube()
         def history = NCubeManager.getCubeRecordsFromDatabase(cube.getApplicationID(), '%', true)
@@ -1285,7 +1285,7 @@ class TestNCubeManager
     }
 
     @Test
-    void testResolveClasspathWithInvalidUrl() throws Exception
+    void testResolveClasspathWithInvalidUrl()
     {
         NCubeManager.clearCache()
         NCube cube = NCubeManager.getNCubeFromResource('sys.classpath.invalid.url.json')

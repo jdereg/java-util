@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue
 class TestRange
 {
     @Test
-    void testRangeEquality() throws Exception
+    void testRangeEquality()
     {
         Range a = new Range(5, 10)
         Range b = new Range(5, 10)
@@ -39,7 +39,7 @@ class TestRange
     }
 
     @Test
-    void testRangeSetEquality() throws Exception
+    void testRangeSetEquality()
     {
         RangeSet a = new RangeSet(1)
         a.add(new Range(5, 10))

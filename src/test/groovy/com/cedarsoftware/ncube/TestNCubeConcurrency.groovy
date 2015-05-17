@@ -27,19 +27,19 @@ import java.util.concurrent.atomic.AtomicInteger
 class TestNCubeConcurrency
 {
     @Before
-    public void initialize() throws Exception
+    public void initialize()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
 
     @Test
-    void testConcurrencyWithDifferentFiles() throws Exception
+    void testConcurrencyWithDifferentFiles()
     {
         def test1 = { concurrencyTest('StringFromRemoteUrlBig') }
         def test2 = { concurrencyTest('StringFromLocalUrl') }

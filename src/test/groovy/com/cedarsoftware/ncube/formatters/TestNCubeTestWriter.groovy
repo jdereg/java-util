@@ -29,7 +29,7 @@ class TestNCubeTestWriter
     private NCubeTest verySimpleTest = new NCubeTest("foo", new StringValuePair[0], [] as CellInfo[])
 
     @Test
-    void testVerySimpleCase() throws Exception
+    void testVerySimpleCase()
     {
         NCubeTest[] tests = [verySimpleTest] as NCubeTest[]
         String s = new NCubeTestWriter().format tests
@@ -37,14 +37,14 @@ class TestNCubeTestWriter
     }
 
     @Test
-    void testNullCase() throws Exception
+    void testNullCase()
     {
         String s = new NCubeTestWriter().format null
         assertEquals '[]', s
     }
 
     @Test
-    void testEmptyCase() throws Exception
+    void testEmptyCase()
     {
         String s = new NCubeTestWriter().format new NCubeTest[0]
         assertEquals '[]', s

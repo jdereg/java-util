@@ -53,7 +53,7 @@ class TestCdnClassLoader
     }
 
     @Test
-    void testGetResources() throws Exception
+    void testGetResources()
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
         assert testLoader1.getResources("cdnRouter.json").hasMoreElements()
@@ -62,7 +62,7 @@ class TestCdnClassLoader
     }
 
     @Test(expected = NoSuchElementException.class)
-    void testGetResourcesWithLocalResource() throws Exception
+    void testGetResourcesWithLocalResource()
     {
         new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true).getResources("ncube/grv/method/NCubeGroovyController.class").nextElement()
     }

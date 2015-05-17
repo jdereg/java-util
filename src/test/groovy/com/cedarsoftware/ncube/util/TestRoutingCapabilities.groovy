@@ -23,7 +23,7 @@ import org.junit.Test
 class TestRoutingCapabilities
 {
     @Test
-    void testNormalCase() throws Exception
+    void testNormalCase()
     {
         String url = "http://www.cedarsoftware.com/tests/ncube/CS415P6.TXT"
 

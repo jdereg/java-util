@@ -5,6 +5,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
+import static junit.framework.TestCase.fail
 import static org.junit.Assert.assertEquals
 
 /**
@@ -34,7 +35,8 @@ class TestThreadedClearCache
     private TestingDatabaseManager manager;
 
     @Before
-    public void setup() throws Exception {
+    public void setup()
+    {
         manager = TestingDatabaseHelper.testingDatabaseManager
         manager.setUp()
 
@@ -42,7 +44,8 @@ class TestThreadedClearCache
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown()
+    {
         manager.tearDown()
         manager = null;
 
@@ -50,7 +53,8 @@ class TestThreadedClearCache
     }
 
     @Test
-    void testCubesWithThreadedClearCacheWithAppId() throws Exception {
+    void testCubesWithThreadedClearCacheWithAppId()
+    {
         NCube[] ncubes = TestingDatabaseHelper.getCubesFromDisk("sys.classpath.2per.app.json", "math.controller.json");
 
         // add cubes for this test.
@@ -67,37 +71,60 @@ class TestThreadedClearCache
         def run =
         {
             long start = System.currentTimeMillis()
-            while (System.currentTimeMillis() - start < 3000) {
-                for (int j = 0; j < 100; j++) {
-                    NCube cube = NCubeManager.getCube(usedId, "MathController")
+            while (System.currentTimeMillis() - start < 3000)
+            {
+                for (int j = 0; j < 100; j++)
+                {
+                    try
+                    {
+                        NCube cube = NCubeManager.getCube(usedId, "MathController")
 
-                    def input = [:]
-                    input.env = "a"
-                    input.x = 5
-                    input.method = 'square'
+                        def input = [:]
+                        input.env = "a"
+                        input.x = 5
+                        input.method = 'square'
 
-                    assertEquals(25, cube.getCell(input))
+                        assertEquals(25, cube.getCell(input))
 
-                    input.method = 'factorial'
-                    assertEquals(120, cube.getCell(input))
+                        input.method = 'factorial'
+                        assertEquals(120, cube.getCell(input))
 
-                    input.env = "b"
-                    input.x = 6
-                    input.method = 'square'
-                    assertEquals(6, cube.getCell(input))
-                    input.method = 'factorial'
-                    assertEquals(6, cube.getCell(input))
+                        input.env = "b"
+                        input.x = 6
+                        input.method = 'square'
+                        assertEquals(6, cube.getCell(input))
+                        input.method = 'factorial'
+                        assertEquals(6, cube.getCell(input))
+                    }
+                    catch (Exception e)
+                    {
+                        if (!getDeepestException(e).message.toLowerCase().contains("object is not an instance of declaring class"))
+                        {
+                            fail('unexpected exception: ' + e)
+                        }
+                    }
                 }
             }
         }
 
         def clearCache = {
             long start = System.currentTimeMillis()
-            while (System.currentTimeMillis() - start < 3000) {
-                NCubeManager.clearCache(usedId);
+            while (System.currentTimeMillis() - start < 3000)
+            {
+                try
+                {
+                    NCubeManager.clearCache(usedId);
+                    Thread.sleep(100);
+                }
+                catch (Exception e)
+                {
+                    if (!getDeepestException(e).message.toLowerCase().contains("object is not an instance of declaring class"))
+                    {
+                        fail('unexpected exception: ' + e)
+                    }
+                }
             }
         }
-
 
         Thread[] threads = new Thread[16]
 
@@ -130,4 +157,20 @@ class TestThreadedClearCache
         }
         clear.join();
     }
+
+    /**
+     * Get the deepest (original cause) of the exception chain.
+     * @param e Throwable exception that occurred.
+     * @return Throwable original (causal) exception
+     */
+    static Throwable getDeepestException(Throwable e)
+    {
+        while (e.cause != null)
+        {
+            e = e.cause
+        }
+
+        return e
+    }
+
 }

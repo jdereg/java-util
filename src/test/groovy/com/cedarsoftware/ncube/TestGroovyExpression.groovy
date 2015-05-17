@@ -26,7 +26,7 @@ import java.lang.reflect.Modifier
 class TestGroovyExpression
 {
     @Test
-    void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization()
     {
         Class c = GroovyExpression.class
         Constructor<GroovyExpression> con = c.getDeclaredConstructor()
@@ -36,7 +36,7 @@ class TestGroovyExpression
     }
 
     @Test
-    void testCompilerErrorOutput() throws Exception
+    void testCompilerErrorOutput()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("GroovyExpCompileError.json")
         Map coord = [state:'OH']

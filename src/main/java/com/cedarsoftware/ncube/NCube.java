@@ -1803,7 +1803,6 @@ public class NCube<T>
     {
         try
         {
-            Map<Object, Long> userIdToUniqueId = new HashMap<>();
             Map<String, Object> jsonNCube = JsonReader.jsonToMaps(json);
             String cubeName = getString(jsonNCube, "ncube");  // new cubes always have ncube as they key in JSON storage
             if (StringUtilities.isEmpty(cubeName))
@@ -1838,7 +1837,10 @@ public class NCube<T>
             {
                 throw new IllegalArgumentException("Must be at least one axis defined in the JSON format, cube: " + cubeName);
             }
+
+            Map<Object, Long> userIdToUniqueId = new CaseInsensitiveMap<>();
             long idBase = 1;
+
             // Read axes
             for (Object item : items)
             {

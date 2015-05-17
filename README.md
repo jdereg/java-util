@@ -10,6 +10,8 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg)
+
+Donations welcome
 ![Alt text](https://raw.githubusercontent.com/jdereg/n-cube/master/donate.png "Your donation helps keep n-cube updated")
 
 The image below is a Visual Summary of the main capabilities of n-cube.

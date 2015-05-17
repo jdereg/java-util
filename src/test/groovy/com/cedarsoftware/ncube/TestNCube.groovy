@@ -272,7 +272,7 @@ class TestNCube
     {
         NCube ncube = NCubeManager.getNCubeFromResource("big5D.json")
         long start = System.nanoTime()
-        List<Map<String, Object>> list = ncube.generateNCubeTests()
+        List list = ncube.generateNCubeTests()
         long end = System.nanoTime()
         assertTrue((end - start) / 1000000.0 < 1000)   // verify that it runs in under 1 second (actual 87ms)
         NCubeTest test = (NCubeTest)list.get(0)
@@ -339,7 +339,7 @@ class TestNCube
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
         ncube.defaultCellValue = 3.0        // Non-set cells will return this value
 
-        def coord = [Gender:'Male', Age:18]
+        Map coord = [Gender:'Male', Age:18]
         ncube.setCell(21.0, coord)
         Double x = ncube.getCell(coord)
         assertTrue(x == 21.0)
@@ -355,7 +355,7 @@ class TestNCube
         NCube<String> ncube = new NCube<String>("Long.test")
         ncube.addAxis(NCubeBuilder.getEvenAxis(false))
 
-        def coord = [Even:0 as byte]
+        Map coord = [Even:0 as byte]
         ncube.setCell("zero", coord)
         coord.Even = (short) 2
         ncube.setCell("two", coord)
@@ -363,7 +363,7 @@ class TestNCube
         ncube.setCell("four", coord)
         coord.Even = (long) 6
         ncube.setCell("six", coord)
-        coord.Even = "8"
+        coord['Even'] = "8"
         ncube.setCell("eight", coord)
         coord.Even = 10g
         ncube.setCell("ten", coord)
@@ -378,7 +378,7 @@ class TestNCube
         assertTrue("six".equals(ncube.getCell(coord)))
         coord.Even = 8g
         assertTrue("eight".equals(ncube.getCell(coord)))
-        coord.Even = "10"
+        coord['Even'] = "10"
         assertTrue("ten".equals(ncube.getCell(coord)))
 
         // Value not on axis
@@ -399,7 +399,7 @@ class TestNCube
         // Illegal value to find on LONG axis:
         try
         {
-            coord.Even = new File("foo")
+            coord['Even'] = new File("foo")
             ncube.getCell(coord)
             fail()
         }
@@ -465,7 +465,7 @@ class TestNCube
 
         subTestErrorCases(axis)
 
-        def coord = [bigD:(byte) -10]
+        Map coord = [bigD:(byte) -10]
         ncube.setCell("JSON", coord)
         coord.put("bigD", (short) 20)
         ncube.setCell("XML", coord)
@@ -1115,7 +1115,7 @@ class TestNCube
         age.addColumn(new Range(50, 80))
         ncube.addAxis(age)
 
-        def coord = [States:'IN']
+        Map coord = [States:'IN']
 
         coord.put("Age", "18")
         ncube.setCell(1.0, coord)
@@ -3921,12 +3921,12 @@ class TestNCube
     @Test
     void testGetBoolean()
     {
-        def map = [food:null]
+        Map map = [food:null]
         assertFalse(NCube.getBoolean(map, "food"))
 
         try
         {
-            map.food = 9
+            map['food'] = 9
             NCube.getBoolean(map, "food")
             fail("should not make it here")
         }

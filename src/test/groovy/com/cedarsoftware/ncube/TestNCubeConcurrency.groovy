@@ -77,7 +77,7 @@ class TestNCubeConcurrency
         Thread[] threads = new Thread[16]
         long[] iter = new long[16]
         NCube n1 = NCubeManager.getNCubeFromResource('urlContent.json')
-        def map = new ConcurrentHashMap()
+        Map map = new ConcurrentHashMap()
         AtomicInteger count = new AtomicInteger(0)
 
         for (int i = 0; i < 16; i++)

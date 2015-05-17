@@ -8,7 +8,15 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNotSame
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertSame
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -2087,13 +2095,13 @@ abstract class TestWithPreloadedDatabase
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
         NCubeManager.updateCube(branch2, cube, USER_ID)
-        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1);
+        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1());
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
         NCubeManager.commitBranch(branch2, dtos, USER_ID);
 
         cube = NCubeManager.getCube(head, "TestBranch");
-        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1);
+        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1());
 
         cube = NCubeManager.getCube(branch2, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -2103,7 +2111,7 @@ abstract class TestWithPreloadedDatabase
         NCubeManager.updateCube(branch1, cube, USER_ID)
 
         cube = NCubeManager.getCube(branch1, "TestBranch")
-        assertEquals("8B9DAED73CF76AF363161CB870FC98DE7E8F483C", cube.sha1);
+        assertEquals("8B9DAED73CF76AF363161CB870FC98DE7E8F483C", cube.sha1());
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -2139,13 +2147,13 @@ abstract class TestWithPreloadedDatabase
     void testConflictOverwriteHead() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
         NCubeManager.createCube(branch2, cube, USER_ID)
-        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1);
+        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1());
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
         NCubeManager.commitBranch(branch2, dtos, USER_ID);
 
         cube = NCubeManager.getCube(head, "TestBranch");
-        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1);
+        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1());
 
         cube = NCubeManager.getCube(branch2, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -2155,7 +2163,7 @@ abstract class TestWithPreloadedDatabase
         NCubeManager.createCube(branch1, cube, USER_ID)
 
         cube = NCubeManager.getCube(branch1, "TestBranch")
-        assertEquals("8B9DAED73CF76AF363161CB870FC98DE7E8F483C", cube.sha1);
+        assertEquals("8B9DAED73CF76AF363161CB870FC98DE7E8F483C", cube.sha1());
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 
@@ -2197,13 +2205,13 @@ abstract class TestWithPreloadedDatabase
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
         NCubeManager.updateCube(branch2, cube, USER_ID)
-        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1);
+        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1());
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
         NCubeManager.commitBranch(branch2, dtos, USER_ID);
 
         cube = NCubeManager.getCube(head, "TestBranch");
-        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1);
+        assertEquals("5E65C054AEA888123B8D0915DC13B0D10A777A10", cube.sha1());
 
         cube = NCubeManager.getCube(branch2, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -2213,7 +2221,7 @@ abstract class TestWithPreloadedDatabase
         NCubeManager.updateCube(branch1, cube, USER_ID)
 
         cube = NCubeManager.getCube(branch1, "TestBranch")
-        assertEquals("8B9DAED73CF76AF363161CB870FC98DE7E8F483C", cube.sha1);
+        assertEquals("8B9DAED73CF76AF363161CB870FC98DE7E8F483C", cube.sha1());
         assertEquals(3, cube.getCellMap().size())
         assertEquals("GHI", cube.getCell([Code : 10.0]))
 

@@ -90,7 +90,7 @@ class TestNCubeManager
     @Test
     void testLoadCubes() throws Exception
     {
-        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
+        NCube ncube = NCubeBuilder.getTestNCube2D(true)
 
         def coord = [gender:'male', age:47]
         ncube.setCell(1.0d, coord)
@@ -553,7 +553,7 @@ class TestNCubeManager
     @Test
     void testGetNullPersister()
     {
-        NCubeManager.nCubePersister = null
+        NCubeManager.setNCubePersister(null)
 
         try
         {
@@ -1242,7 +1242,8 @@ class TestNCubeManager
     void testRevisionHistory() throws Exception
     {
         NCube cube = createCube()
-        NCubeInfoDto[] history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        Object[] his = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        NCubeInfoDto[] history = (NCubeInfoDto[]) his;
         assertEquals(1, history.length)
         assert history[0].name == 'test.Age-Gender'
         assert history[0].revision == '0'
@@ -1254,7 +1255,8 @@ class TestNCubeManager
         cube.addAxis(oddAxis)
 
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
-        history = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        his = NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name)
+        history = (NCubeInfoDto[]) his;
         assertEquals(2, history.length)
         assert history[1].name == 'test.Age-Gender'
         assert history[0].revision == '1'
@@ -1306,7 +1308,7 @@ class TestNCubeManager
     {
         loadTestClassPathCubes()
 
-        def map = [env:'DEV']
+        Map map = [env:'DEV']
         NCube baseCube = NCubeManager.getCube(defaultSnapshotApp, 'sys.classpath.base')
 
         assertEquals('http://www.cedarsoftware.com/tests/ncube/cp1/', baseCube.getCell(map))

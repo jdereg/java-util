@@ -510,7 +510,7 @@ class TestAdvice
         // themselves, and those calls too go through the Advice.
         NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, ncube.name + "*()", advice2)
 
-        def output = [:]
+        Map output = [:]
         ncube.getCell([method:'foo', state:'OH'], output)
 
         assert output.advice1before == true

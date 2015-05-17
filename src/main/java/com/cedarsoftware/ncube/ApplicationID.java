@@ -255,7 +255,7 @@ public class ApplicationID
         }
 
         Matcher m = Regexes.validVersion.matcher(version);
-        if (m.find())
+        if (m.matches())
         {
             return;
         }
@@ -278,7 +278,7 @@ public class ApplicationID
             throw new IllegalArgumentException("n-cube branch cannot be null or empty");
         }
         Matcher m = Regexes.validBranch.matcher(branch);
-        if (m.find() && branch.length() <= 80)
+        if (m.matches() && branch.length() <= 80)
         {
             return;
         }

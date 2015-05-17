@@ -29,9 +29,20 @@ import java.util.Set;
  */
 public class RuleInfo extends CaseInsensitiveMap<String, Object>
 {
+    // Convert Enums to String constants for performance gain
+    private static final String RULES_EXECUTED = RuleMetaKeys.RULES_EXECUTED.name();
+    private static final String RULE_STOP = RuleMetaKeys.RULE_STOP.name();
+    private static final String SYSTEM_OUT = RuleMetaKeys.SYSTEM_OUT.name();
+    private static final String SYSTEM_ERR = RuleMetaKeys.SYSTEM_ERR.name();
+    private static final String ASSERTION_FAILURES = RuleMetaKeys.ASSERTION_FAILURES.name();
+    private static final String LAST_EXECUTED_STATEMENT = RuleMetaKeys.LAST_EXECUTED_STATEMENT.name();
+    private static final String AXIS_BINDINGS = RuleMetaKeys.AXIS_BINDINGS.name();
+
     public RuleInfo()
     {
-        put(RuleMetaKeys.RULES_EXECUTED.name(), new ArrayList<MapEntry>());
+        // For speed, we are using the String (no function call - this code gets executed frequently)
+        // Key = RuleMetaKeys.RULES_EXECUTED.name()
+        put(RULES_EXECUTED, new ArrayList<MapEntry>());
     }
 
     /**
@@ -44,7 +55,7 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
 
     void ruleStopThrown()
     {
-        put(RuleMetaKeys.RULE_STOP.name(), Boolean.TRUE);
+        put(RULE_STOP, Boolean.TRUE);
     }
 
     /**
@@ -52,77 +63,76 @@ public class RuleInfo extends CaseInsensitiveMap<String, Object>
      */
     public boolean wasRuleStopThrown()
     {
-        final String name = RuleMetaKeys.RULE_STOP.name();
-        return containsKey(name) && (Boolean.TRUE.equals(get(name)));
+        return containsKey(RULE_STOP) && (Boolean.TRUE.equals(get(RULE_STOP)));
     }
 
     public String getSystemOut()
     {
-        if (containsKey(RuleMetaKeys.SYSTEM_OUT.name()))
+        if (containsKey(SYSTEM_OUT))
         {
-            return (String) get(RuleMetaKeys.SYSTEM_OUT.name());
+            return (String) get(SYSTEM_OUT);
         }
         return "";
     }
 
     public void setSystemOut(String out)
     {
-        put(RuleMetaKeys.SYSTEM_OUT.name(), out);
+        put(SYSTEM_OUT, out);
     }
 
     public String getSystemErr()
     {
-        if (containsKey(RuleMetaKeys.SYSTEM_ERR.name()))
+        if (containsKey(SYSTEM_ERR))
         {
-            return (String) get(RuleMetaKeys.SYSTEM_ERR.name());
+            return (String) get(SYSTEM_ERR);
         }
         return "";
     }
 
     public void setSystemErr(String err)
     {
-        put(RuleMetaKeys.SYSTEM_ERR.name(), err);
+        put(SYSTEM_ERR, err);
     }
 
     public Set<String> getAssertionFailures()
     {
-        if (containsKey(RuleMetaKeys.ASSERTION_FAILURES.name()))
+        if (containsKey(ASSERTION_FAILURES))
         {
-            return (Set<String>) get(RuleMetaKeys.ASSERTION_FAILURES.name());
+            return (Set<String>) get(ASSERTION_FAILURES);
         }
         Set<String> failures = new CaseInsensitiveSet<>();
-        put(RuleMetaKeys.ASSERTION_FAILURES.name(), failures);
+        put(ASSERTION_FAILURES, failures);
         return failures;
 
     }
 
     public void setAssertionFailures(Set<String> failures)
     {
-        put(RuleMetaKeys.ASSERTION_FAILURES.name(), failures);
+        put(ASSERTION_FAILURES, failures);
     }
 
     public Object getLastExecutedStatementValue()
     {
-        if (containsKey(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name()))
+        if (containsKey(LAST_EXECUTED_STATEMENT))
         {
-            return get(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name());
+            return get(LAST_EXECUTED_STATEMENT);
         }
         return null;
     }
 
     void setLastExecutedStatementValue(Object value)
     {
-        put(RuleMetaKeys.LAST_EXECUTED_STATEMENT.name(), value);
+        put(LAST_EXECUTED_STATEMENT, value);
     }
 
     public List<Binding> getAxisBindings()
     {
-        if (containsKey(RuleMetaKeys.AXIS_BINDINGS.name()))
+        if (containsKey(AXIS_BINDINGS))
         {
-            return (List<Binding>)get(RuleMetaKeys.AXIS_BINDINGS.name());
+            return (List<Binding>)get(AXIS_BINDINGS);
         }
         List<Binding> bindings = new ArrayList<>();
-        put(RuleMetaKeys.AXIS_BINDINGS.name(), bindings);
+        put(AXIS_BINDINGS, bindings);
         return bindings;
     }
 }

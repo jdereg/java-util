@@ -1116,11 +1116,10 @@ public class NCubeManager
                 String message = "Cube was changed in HEAD";
                 NCube cube = checkForConflicts(appId, conflicts, message, info, head);
 
-                if (cube != null)
-                {
+                if (cube != null) {
                     getPersister().updateCube(headAppId, cube, username);
-                    head.sha1 = cube.sha1();
-                    updates.add(head);
+                    Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
+                    updates.add((NCubeInfoDto)updated[0]);
                 }
             }
         }

@@ -27,7 +27,7 @@ interface NCubeReadOnlyPersister
 {
     NCube loadCube(String id)
     NCube loadCube(ApplicationID appId, String name)
-    NCube loadCube(ApplicationID appId, String name, String sha1)
+    NCube loadCubeBySha1(ApplicationID appId, String name, String sha1)
 
     Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
     Object[] getChangedRecords(ApplicationID appId)

@@ -86,7 +86,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public NCube loadCube(ApplicationID appId, String name, String sha1)
+    public NCube loadCubeBySha1(ApplicationID appId, String name, String sha1)
     {
         Connection c = connectionProvider.getConnection();
         try

@@ -940,13 +940,20 @@ public class NCubeManager
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
-                        checkForConflicts(, errors, message, info, head);
+                        NCube mergedCube = checkForConflicts(appId, errors, message, info, head);
+                        if (mergedCube != null) {
+                            getPersister().updateCube(appId, mergedCube, username);
+                            info.sha1 = mergedCube.sha1();
+                            info.headSha1 = head.sha1;
+                            info.changeType = ChangeType.UPDATED.getCode();
+                            dtos.add(info);
+                        }
                     }
                 }
                 else if (head == null)
                 {
                     String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
-                    checkForConflicts(, errors, message, info, null);
+                    checkForConflicts(appId, errors, message, info, head);
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -974,7 +981,14 @@ public class NCubeManager
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
-                    checkForConflicts(, errors, message, info, head);
+                    NCube mergedCube = checkForConflicts(appId, errors, message, info, head);
+                    if (mergedCube != null) {
+                        getPersister().updateCube(appId, mergedCube, username);
+                        info.sha1 = mergedCube.sha1();
+                        info.headSha1 = head.sha1;
+                        info.changeType = ChangeType.UPDATED.getCode();
+                        dtos.add(info);
+                    }
                 }
             }
         }
@@ -991,7 +1005,7 @@ public class NCubeManager
         return values;
     }
 
-    private static boolean checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head)
+    private static NCube checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head)
     {
         Map map = new LinkedHashMap();
         map.put("message", message);
@@ -1002,24 +1016,24 @@ public class NCubeManager
         {
             if (head != null)
             {
+                NCube branchCube = getPersister().loadCube(info.id);
+                NCube headCube = getPersister().loadCube(head.id);
+
                 if (info.headSha1 != null)
                 {
-                    NCube branchCube = getPersister().loadCube(info.id);
-                    NCube headCube = getPersister().loadCube(head.id);
-                    NCube baseCube = getPersister().loadCube(appId, info.name, info.headSha1);
+                    NCube baseCube = getPersister().loadCubeBySha1(appId, info.name, info.headSha1);
 
-                    Map delta1 = baseCube.getCellDelta(branchCube);
-                    Map delta2 = baseCube.getCellDelta(headCube);
+                    Map delta1 = baseCube.getCellChangeSet(branchCube);
+                    Map delta2 = baseCube.getCellChangeSet(headCube);
 
-                    if (NCube.compareDeltas(delta1, delta2))
+                    if (NCube.areCellChangeSetsCompatible(delta1, delta2))
                     {
-                        //branchCube.(delta2);
-                        return false;
+                        branchCube.mergeCellChangeSet(delta2);
+                        return branchCube;
                     }
                 }
 
                 map.put("diff", branchCube.getDeltaDescription(headCube));
-
             }
             else
             {
@@ -1031,7 +1045,7 @@ public class NCubeManager
             map.put("diff", e.getMessage());
         }
         errors.put(info.name, map);
-        return true;
+        return null;
     }
 
     /**
@@ -1068,6 +1082,7 @@ public class NCubeManager
         }
 
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
+        List<NCube> autoMerge = new ArrayList<>(records.length);
 
         Map<String, Map> conflicts = new LinkedHashMap<>();
 
@@ -1102,11 +1117,14 @@ public class NCubeManager
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
                 String message = "Cube was changed in HEAD";
-                checkForConflicts(conflicts, info.name, message, info, head);
-            }
-            else
-            {
+                NCube cube = checkForConflicts(appId, conflicts, message, info, head);
 
+                if (cube != null)
+                {
+                    getPersister().updateCube(headAppId, cube, username);
+                    head.sha1 = cube.sha1();
+                    updates.add(head);
+                }
             }
         }
 

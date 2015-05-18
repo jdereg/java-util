@@ -8,7 +8,15 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNotSame
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertSame
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -2301,6 +2309,48 @@ abstract class TestWithPreloadedDatabase
             assertTrue(e.message.toLowerCase().contains("failed to overwrite"));
             assertTrue(e.message.toLowerCase().contains("does not exist"));
         }
+    }
+
+    @Test
+    void testCommitBranchWithExtendedMerge()
+    {
+        preloadCubes(head, "empty2D.json")
+
+        NCubeManager.createBranch(branch1);
+        NCubeManager.createBranch(branch2);
+
+        NCube cube1 = NCubeManager.getNCubeFromResource("merge1.json")
+        cube1.setName('empty');
+        NCubeManager.updateCube(branch1, cube1, USER_ID);
+
+        NCube cube2 = NCubeManager.getNCubeFromResource("merge2.json")
+        cube2.setName('empty');
+        NCubeManager.updateCube(branch2, cube2, USER_ID);
+
+        Object[] branch1Changes = NCubeManager.getBranchChangesFromDatabase(branch1);
+        NCubeManager.commitBranch(branch1, branch1Changes, USER_ID);
+
+        Object[] branch2Changes = NCubeManager.getBranchChangesFromDatabase(branch2);
+        NCubeManager.commitBranch(branch2, branch2Changes, USER_ID);
+
+        cube1 = NCubeManager.getCube(head, 'empty');
+
+        Map coord = [row:1, column:'A']
+        assert "1" == cube1.getCell(coord)
+
+        coord = [row:2, column:'B']
+        assert 2 == cube1.getCell(coord)
+
+        coord = [row:3, column:'C']
+        assert 3.14 == cube1.getCell(coord)
+
+        coord = [row:4, column:'D']
+        assert 6.28 == cube1.getCell(coord)
+
+        coord = [row:5, column:'E']
+        assert cube1.containsCell(coord)
+
+        assert cube1.getNumCells() == 5
     }
 
     @Test

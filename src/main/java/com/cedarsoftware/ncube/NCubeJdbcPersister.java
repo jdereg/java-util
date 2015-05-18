@@ -3,6 +3,9 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,8 +18,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -273,7 +274,9 @@ public class NCubeJdbcPersister
                         return;
                     }
 
-                    if (insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username) == null)
+                    NCubeInfoDto dto = insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username);
+
+                    if (dto == null)
                     {
                         throw new IllegalStateException("error updating n-cube: " + cube.getName() + "', app: " + appId + ", row was not updated");
                     }
@@ -504,7 +507,7 @@ public class NCubeJdbcPersister
     {
         String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
                 "FROM n_cube " +
-                "WHERE n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ? AND sha1 = ?";
+                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND sha1 = ?";
 
         PreparedStatement s = c.prepareStatement(sql);
         s.setString(1, cubeName);
@@ -514,6 +517,7 @@ public class NCubeJdbcPersister
         s.setString(5, appId.getTenant());
         s.setString(6, appId.getBranch());
         s.setString(7, sha1);
+        s.setMaxRows(1);
         return s;
     }
 

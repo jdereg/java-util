@@ -1,10 +1,13 @@
 package com.cedarsoftware.ncube.util;
 
-import groovy.lang.*;
+import groovy.lang.GroovyClassLoader;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  *  @author Ken Partlow (kpartlow@gmail.com)
@@ -27,6 +30,7 @@ public class CdnClassLoader extends GroovyClassLoader
 {
     private final boolean _preventRemoteBeanInfo;
     private final boolean _preventRemoteCustomizer;
+    private final ClassLoader parentClassLoader = super.getParent();
 
     /**
      * creates a GroovyClassLoader using the given ClassLoader as parent
@@ -46,7 +50,7 @@ public class CdnClassLoader extends GroovyClassLoader
 
     protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
-        return super.getParent().loadClass(name);
+        return parentClassLoader.loadClass(name);
     }
 
     private void addURLs(List<String> list)
@@ -57,7 +61,8 @@ public class CdnClassLoader extends GroovyClassLoader
         }
     }
 
-    public void addURL(String url) {
+    public void addURL(String url)
+    {
         if (url != null)
         {
             try
@@ -75,8 +80,6 @@ public class CdnClassLoader extends GroovyClassLoader
         }
 
     }
-
-
 
     /**
      * @param name Name of resource

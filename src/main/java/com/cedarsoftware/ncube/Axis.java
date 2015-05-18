@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.exception.AxisOverlapException;
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point3D;
+import com.cedarsoftware.ncube.util.LongHashSet;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.Converter;
 import com.cedarsoftware.util.MapUtilities;
@@ -17,7 +18,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -651,7 +651,7 @@ public class Axis
      */
     public Set<Long> updateColumns(final Axis newCols)
     {
-        Set<Long> colsToDelete = new HashSet<>();
+        Set<Long> colsToDelete = new LongHashSet();
         Map<Long, Column> newColumnMap = new LinkedHashMap<>();
 
         // Step 1. Map all columns coming in from "DTO" Axis by ID
@@ -1332,6 +1332,24 @@ public class Axis
             return columns.subList(0, columns.size() - 1);
         }
         return columns;
+    }
+
+    public Map<Long, Long> renumberIds()
+    {
+        colIdBase = 0;
+        Map<Long, Long> oldToNew = new HashMap<>();
+
+        for (Column column : columns)
+        {
+            if (!column.isDefault())
+            {
+                long newId = getNextColId();
+                oldToNew.put(column.id, newId);
+                column.id = newId;
+            }
+        }
+        buildScaffolding();
+        return oldToNew;
     }
 
     private static final class RangeToColumn implements Comparable<RangeToColumn>

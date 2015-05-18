@@ -30,7 +30,7 @@ import static org.junit.Assert.fail
 class TestBinaryUrlCmd
 {
     @Test
-    void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization()
     {
         Class c = BinaryUrlCmd.class
         Constructor<BinaryUrlCmd> con = c.getDeclaredConstructor()

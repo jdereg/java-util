@@ -1,6 +1,14 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.*
+import com.cedarsoftware.ncube.ApplicationID
+import com.cedarsoftware.ncube.CellInfo
+import com.cedarsoftware.ncube.GroovyExpression
+import com.cedarsoftware.ncube.NCube
+import com.cedarsoftware.ncube.NCubeManager
+import com.cedarsoftware.ncube.NCubeTest
+import com.cedarsoftware.ncube.RuleInfo
+import com.cedarsoftware.ncube.StringValuePair
+import com.cedarsoftware.ncube.TestingDatabaseHelper
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -25,13 +33,13 @@ import org.junit.Test
 class TestTestResultsFormatter
 {
     @Before
-    public void init() throws Exception
+    public void init()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
@@ -57,7 +65,7 @@ class TestTestResultsFormatter
     }
 
     @Test
-    void testResultsWithOutputAndError() throws Exception
+    void testResultsWithOutputAndError()
     {
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'idNoValue.json')
         def coord = [age:18, state:'OH']
@@ -86,7 +94,7 @@ class TestTestResultsFormatter
     }
 
     @Test
-    void testOutput() throws Exception
+    void testOutput()
     {
         StringValuePair<CellInfo>[] coord = new StringValuePair[0]
         CellInfo[] expected = new CellInfo[3]

@@ -27,19 +27,19 @@ import java.util.concurrent.atomic.AtomicInteger
 class TestNCubeConcurrency
 {
     @Before
-    public void initialize() throws Exception
+    public void initialize()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
 
     @Test
-    void testConcurrencyWithDifferentFiles() throws Exception
+    void testConcurrencyWithDifferentFiles()
     {
         def test1 = { concurrencyTest('StringFromRemoteUrlBig') }
         def test2 = { concurrencyTest('StringFromLocalUrl') }
@@ -77,7 +77,7 @@ class TestNCubeConcurrency
         Thread[] threads = new Thread[16]
         long[] iter = new long[16]
         NCube n1 = NCubeManager.getNCubeFromResource('urlContent.json')
-        def map = new ConcurrentHashMap()
+        Map map = new ConcurrentHashMap()
         AtomicInteger count = new AtomicInteger(0)
 
         for (int i = 0; i < 16; i++)

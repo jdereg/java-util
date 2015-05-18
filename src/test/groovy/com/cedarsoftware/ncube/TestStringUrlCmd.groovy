@@ -26,7 +26,7 @@ import java.lang.reflect.Modifier
 class TestStringUrlCmd
 {
     @Test
-    void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization()
     {
         Class c = StringUrlCmd.class;
         Constructor<StringUrlCmd> con = c.getDeclaredConstructor();

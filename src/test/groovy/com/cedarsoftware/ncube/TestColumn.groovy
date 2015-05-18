@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube
 
+import groovy.transform.CompileStatic
 import org.junit.Test
 
 import static org.junit.Assert.assertEquals
@@ -22,6 +23,7 @@ import static org.junit.Assert.assertNull
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@CompileStatic
 class TestColumn
 {
     @Test
@@ -59,5 +61,13 @@ class TestColumn
 
         assertEquals 'qux', c.removeMetaProperty('baz')
         assertEquals null, c.removeMetaProperty('baz')
+    }
+
+    @Test
+    void testHashCode()
+    {
+        Column c1 = new Column("alpha", 1)
+        Column c2 = new Column("beta", 2)
+        assert c1.hashCode() != c2.hashCode()
     }
 }

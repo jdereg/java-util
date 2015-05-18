@@ -1,6 +1,11 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.*
+import com.cedarsoftware.ncube.ApplicationID
+import com.cedarsoftware.ncube.NCube
+import com.cedarsoftware.ncube.NCubeManager
+import com.cedarsoftware.ncube.TestNCubeManager
+import com.cedarsoftware.ncube.TestingDatabaseHelper
+import com.cedarsoftware.ncube.TestingDatabaseManager
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -34,7 +39,7 @@ class TestJsonFormatter
     private TestingDatabaseManager manager;
 
     @Before
-    public void setup() throws Exception
+    public void setup()
     {
         manager = TestingDatabaseHelper.testingDatabaseManager
         manager.setUp()
@@ -42,7 +47,7 @@ class TestJsonFormatter
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         manager.tearDown()
         manager = null;
@@ -50,7 +55,7 @@ class TestJsonFormatter
     }
 
     @Test
-    void testJsonFormatter() throws Exception
+    void testJsonFormatter()
     {
         // when running a single test.
         //List<String> s = new ArrayList<String>()
@@ -60,7 +65,7 @@ class TestJsonFormatter
     }
 
     @Test
-    void testConvertArray() throws Exception
+    void testConvertArray()
     {
 
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk('sys.classpath.tests.json', 'arrays.json');

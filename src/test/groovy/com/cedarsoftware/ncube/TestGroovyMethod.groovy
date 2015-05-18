@@ -28,7 +28,7 @@ import static org.junit.Assert.assertEquals
 class TestGroovyMethod
 {
     @Test
-    void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization()
     {
         Class c = GroovyMethod.class;
         Constructor<GroovyMethod> con = c.getDeclaredConstructor()
@@ -76,7 +76,7 @@ class TestGroovyMethod
     }
 
     @Test
-    void testGroovyMethodClearCache() throws Exception
+    void testGroovyMethodClearCache()
     {
         TestingDatabaseHelper.setupDatabase()
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH)
@@ -117,7 +117,7 @@ class TestGroovyMethod
     }
 
     @Test
-    void testGroovyMethodClearCacheExplicitly() throws Exception
+    void testGroovyMethodClearCacheExplicitly()
     {
         TestingDatabaseHelper.setupDatabase()
         ApplicationID appId = new ApplicationID(ApplicationID.DEFAULT_TENANT, 'GroovyMethodCP', ApplicationID.DEFAULT_VERSION, ReleaseStatus.SNAPSHOT.name(), ApplicationID.TEST_BRANCH)

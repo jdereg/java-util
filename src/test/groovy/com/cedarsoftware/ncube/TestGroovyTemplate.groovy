@@ -28,7 +28,7 @@ import static org.junit.Assert.assertNotNull
 class TestGroovyTemplate
 {
     @Test
-    void testDefaultConstructorIsPrivateForSerialization() throws Exception
+    void testDefaultConstructorIsPrivateForSerialization()
     {
         Class c = GroovyTemplate.class
         Constructor<GroovyTemplate> con = c.getDeclaredConstructor()

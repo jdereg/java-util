@@ -26,13 +26,13 @@ import static org.junit.Assert.assertEquals
 class TestNCubeTest
 {
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }

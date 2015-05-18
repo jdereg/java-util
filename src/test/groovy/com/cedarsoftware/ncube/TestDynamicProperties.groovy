@@ -24,13 +24,13 @@ import org.junit.Test
 class TestDynamicProperties
 {
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }

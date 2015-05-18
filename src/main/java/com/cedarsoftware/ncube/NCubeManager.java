@@ -1321,9 +1321,17 @@ public class NCubeManager
         return new ApplicationID(tenant, app, version, status, branch);
     }
 
-    public static Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    /**
+     * Fetch an array of NCubeInfoDto's where the cube names match the cubeNamePattern (contains) and
+     * the content (in JSON format) 'contains' the passed in content String.
+     * @param appId ApplicationID on which we are working
+     * @param cubeNamePattern String pattern to match cube names
+     * @param content String value that is 'contained' within the cube's JSON
+     * @return Object[] of NCubeInfoDto instances.
+     */
+    public static Object[] search(ApplicationID appId, String cubeNamePattern, String content)
     {
-        return getPersister().search(appId, cubeNamePattern, searchValue);
+        return getPersister().search(appId, cubeNamePattern, content);
     }
 
     public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)
@@ -1362,7 +1370,7 @@ public class NCubeManager
         try
         {
             String json = getResourceAsString(name);
-            NCube ncube = ncubeFromJson(json);
+            NCube ncube = NCube.fromSimpleJson(json);
             ncube.setApplicationID(id);
             ncube.sha1();
             addCube(id, ncube);
@@ -1424,45 +1432,6 @@ public class NCubeManager
             String s = "Failed to load cubes from resource: " + name + ", last successful cube: " + lastSuccessful;
             LOG.warn(s);
             throw new RuntimeException(s, e);
-        }
-    }
-
-    static NCube<?> ncubeFromJson(String json)
-    {
-        try
-        {
-            return NCube.fromSimpleJson(json);
-        }
-        catch (Exception e)
-        {
-            try
-            {
-                // 2nd attempt in old format - when n-cubes where written by json-io (not the custom writer).
-                NCube ncube = (NCube) JsonReader.jsonToJava(json);
-                List<Axis> axes = ncube.getAxes();
-                for (Axis axis : axes)
-                {
-                    axis.buildScaffolding();
-                }
-                //ncube.setMetaProperty("sha1", ncube.sha1());
-                return ncube;
-            }
-            catch (Exception e1)
-            {
-                LOG.warn("attempted to read cube json in serialized format, but was unreadable that way.", e1);
-                if (e.getCause() != null)
-                {
-                    if (e.getCause() instanceof RuntimeException)
-                    {
-                        throw (RuntimeException)e.getCause();
-                    }
-                    throw new RuntimeException(e.getCause());
-                }
-                else
-                {
-                    throw e;
-                }
-            }
         }
     }
 

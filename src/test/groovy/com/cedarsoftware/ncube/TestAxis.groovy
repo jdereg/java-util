@@ -4,6 +4,7 @@ import com.cedarsoftware.ncube.exception.AxisOverlapException
 import com.cedarsoftware.ncube.exception.CoordinateNotFoundException
 import com.cedarsoftware.ncube.proximity.LatLon
 import com.cedarsoftware.ncube.proximity.Point3D
+import com.cedarsoftware.ncube.util.LongHashSet
 import com.cedarsoftware.util.CaseInsensitiveMap
 import com.cedarsoftware.util.Converter
 import com.cedarsoftware.util.io.JsonWriter
@@ -11,7 +12,12 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCube Axis Tests
@@ -35,13 +41,13 @@ import static org.junit.Assert.*
 class TestAxis
 {
     @Before
-    public void setUp() throws Exception
+    public void setUp()
     {
         TestingDatabaseHelper.setupDatabase()
     }
 
     @After
-    public void tearDown() throws Exception
+    public void tearDown()
     {
         TestingDatabaseHelper.tearDownDatabase()
     }
@@ -577,7 +583,7 @@ class TestAxis
     }
 
     @Test
-    void testDeleteColumnFromRangeSetAxis() throws Exception
+    void testDeleteColumnFromRangeSetAxis()
     {
         NCube ncube = NCubeManager.getNCubeFromResource 'testCube4.json'
         ncube.deleteColumn 'code', 'b'
@@ -591,7 +597,7 @@ class TestAxis
     }
 
     @Test
-    void testDupeIdsOnAxis() throws Exception
+    void testDupeIdsOnAxis()
     {
         try
         {
@@ -653,7 +659,7 @@ class TestAxis
     }
 
     @Test
-    void testConvertDiscreteColumnValue() throws Exception
+    void testConvertDiscreteColumnValue()
     {
         // Strings
         Axis states = NCubeBuilder.statesAxis
@@ -1101,17 +1107,17 @@ class TestAxis
         Axis bu = cube.getAxis("BU")
         Column b = bu.findColumn("SHS")
 
-        Set<Long> longCoord = new HashSet<>()
+        Set<Long> longCoord = new LongHashSet()
         longCoord.add(t.id)
         longCoord.add(v.id)
         longCoord.add(b.id)
 
         // Make sure all columns are bound correctly
         def coord = new CaseInsensitiveMap()
-        Set<Column> boundCols = cube.getColumnsAndCoordinateFromIds(longCoord, coord)
-        for (Column column : boundCols)
+        Set<Long> boundCols = cube.ensureFullCoordinate(longCoord)
+        for (Long colId : boundCols)
         {
-            assertTrue(column.id == t.id || column.id == v.id || column.id == b.id)
+            assertTrue(colId == t.id || colId == v.id || colId == b.id)
         }
 
         for (Map.Entry<String, CellInfo> entry : coord.entrySet())
@@ -1124,7 +1130,7 @@ class TestAxis
         longCoord.add(t2.id)
         try
         {
-            cube.getColumnsAndCoordinateFromIds(longCoord, coord)
+            coord = cube.getTestInputCoordinateFromIds(longCoord)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -1137,7 +1143,7 @@ class TestAxis
         {
             longCoord.remove(t2.id)
             longCoord.remove(t.id)
-            cube.getColumnsAndCoordinateFromIds(longCoord, coord)
+            coord = cube.getTestInputCoordinateFromIds(longCoord)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -1867,7 +1873,7 @@ class TestAxis
     }
 
     @Test
-    void testLargeNumberOfColumns() throws Exception
+    void testLargeNumberOfColumns()
     {
         NCube ncube = new NCube("BigDaddy")
         Axis axis = new Axis("numbers", AxisType.SET, AxisValueType.LONG, true, Axis.DISPLAY)

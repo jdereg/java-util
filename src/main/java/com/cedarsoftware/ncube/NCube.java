@@ -5,6 +5,7 @@ import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 import com.cedarsoftware.ncube.formatters.HtmlFormatter;
 import com.cedarsoftware.ncube.formatters.JsonFormatter;
+import com.cedarsoftware.ncube.util.LongHashSet;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.CaseInsensitiveSet;
@@ -70,11 +71,11 @@ public class NCube<T>
     private String name;
     private String sha1;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
-    final Map<Collection<Column>, T> cells = new LinkedHashMap<>();
+    final Map<Set<Long>, T> cells = new LinkedHashMap<>();
     private T defaultCellValue;
     private volatile Set<String> optionalScopeKeys = null;
     private volatile Set<String> declaredScopeKeys = null;
-    public static final String validCubeNameChars = "0-9a-zA-Z:._-";
+    public static final String validCubeNameChars = "0-9a-zA-Z._-";
     public static final String RULE_EXEC_INFO = "_rule";
     static final String REMOVE_CELL = "~remove-cell~";
     private final Map<String, Advice> advices = new LinkedHashMap<>();
@@ -332,8 +333,7 @@ public class NCube<T>
     {
         clearScopeKeyCaches();
         clearSha1();
-        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.remove(cols);
+        return cells.remove(ensureFullCoordinate(coordinate));
     }
 
     /**
@@ -344,7 +344,7 @@ public class NCube<T>
      */
     public boolean containsCell(final Map<String, Object> coordinate)
     {
-        Set<Column> cols = getCoordinateKey(validateCoordinate(coordinate, true));
+        Set<Long> cols = getCoordinateKey(validateCoordinate(coordinate, true));
         return cells.containsKey(cols);
     }
 
@@ -365,7 +365,7 @@ public class NCube<T>
                 return true;
             }
         }
-        Set<Column> cols = getCoordinateKey(validateCoordinate(coordinate, true));
+        Set<Long> cols = getCoordinateKey(validateCoordinate(coordinate, true));
         return cells.containsKey(cols);
     }
 
@@ -373,11 +373,12 @@ public class NCube<T>
      * @return true if and only if there is a cell stored at the location
      * specified by the Set<Long> coordinate.  If the IDs don't locate a coordinate,
      * no exception is thrown - simply false is returned.
+     * If no coordinate is supplied for an axis (or axes) that has a default column, then the default
+     * column will be bound to for that axis (or axes).
      */
     public boolean containsCellById(final Collection<Long> coordinate)
     {
-        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.containsKey(cols);
+        return cells.containsKey(ensureFullCoordinate(coordinate));
     }
 
     /**
@@ -411,8 +412,7 @@ public class NCube<T>
         }
         clearScopeKeyCaches();
         clearSha1();
-        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.put(cols, value);
+        return cells.put(ensureFullCoordinate(coordinate), value);
     }
 
     /**
@@ -435,8 +435,7 @@ public class NCube<T>
      */
     public T getCellByIdNoExecute(final Collection<Long> coordinate)
     {
-        Set<Column> cols = getColumnsAndCoordinateFromIds(coordinate, null);
-        return cells.get(cols);
+        return cells.get(ensureFullCoordinate(coordinate));
     }
 
     /**
@@ -471,15 +470,14 @@ public class NCube<T>
         T lastStatementValue = null;
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
-        final Set<String> axisNameSet = axisList.keySet();
-        final String[] axisNames = axisNameSet.toArray(new String[axisNameSet.size()]);
-        final Collection<Axis> axes = axisList.values();
+        final int dimensions = getNumDimensions();
+        final String[] axisNames = axisList.keySet().toArray(new String[dimensions]);
 
         while (run)
         {
             run = false;
             final Map<String, List<Column>> columnToAxisBindings = bindCoordinateToAxisColumns(input);
-            final Map<String, Integer> counters = getCountersPerAxis(axisNameSet);
+            final Map<String, Integer> counters = getCountersPerAxis(axisNames);
             final Map<Long, Object> cachedConditionValues = new HashMap<>();
             final Map<String, Integer> conditionsFiredCountPerAxis = new HashMap<>();
 
@@ -490,7 +488,7 @@ public class NCube<T>
                 {
                     final Binding binding = new Binding(name, depth);
 
-                    for (final Axis axis: axes)
+                    for (final Axis axis: axisList.values())
                     {
                         final String axisName = axis.getName();
                         final Column boundColumn = columnToAxisBindings.get(axisName).get(counters.get(axisName) - 1);
@@ -546,7 +544,7 @@ public class NCube<T>
                     }
 
                     // Step #2 Execute cell and store return value, associating it to the Axes and Columns it bound to
-                    if (binding.getNumBoundAxes() == axisNames.length)
+                    if (binding.getNumBoundAxes() == dimensions)
                     {   // Conditions on rule axes that do not evaluate to true, do not generate complete coordinates (intentionally skipped)
                         bindings.add(binding);
                         lastStatementValue = executeAssociatedStatement(input, output, ruleInfo, binding);
@@ -579,7 +577,8 @@ public class NCube<T>
     {
         try
         {
-            T statementValue = getCellById(binding.getBoundColsForAxis(), input, output);
+            final Set<Long> colIds = binding.getBoundColumnIdsForAxis();
+            T statementValue = getCellById(colIds, input, output);
             binding.setValue(statementValue);
             return statementValue;
         }
@@ -629,7 +628,7 @@ public class NCube<T>
     }
 
     /**
-     * The lowest level cell fetch.  This method uses the Set<Column> to fetch an
+     * The lowest level cell fetch.  This method uses the Set<Long> to fetch an
      * exact cell, while maintaining the original input coordinate that the location
      * was derived from (required because a given input coordinate could map to more
      * than one cell).  Once the cell is located, it is executed and the value from
@@ -641,7 +640,7 @@ public class NCube<T>
      * through validateCoordinate(), which duplicates the coordinate and ensures the
      * coordinate has at least an entry for each axis.
      */
-    T getCellById(final Set<Column> idCoord, final Map<String, Object> coordinate, final Map output)
+    T getCellById(final Set<Long> idCoord, final Map<String, Object> coordinate, final Map output)
     {
         // First, get a ThreadLocal copy of an NCube execution stack
         Deque<StackEntry> stackFrame = executionStack.get();
@@ -684,17 +683,15 @@ public class NCube<T>
      * resulting in recursion that will ultimately end when a non-command cell
      * is reached.
      */
-    private T executeCellById(final Set<Column> idCoord, final Map<String, Object> coord, final Map output)
+    private T executeCellById(final Set<Long> idCoord, final Map<String, Object> coord, final Map output)
     {
-        // Get internal representation of a coordinate (a Set of Column identifiers.)
-
         T cellValue = cells.containsKey(idCoord) ? cells.get(idCoord) : defaultCellValue;
-        Map<String, Object> ctx = prepareExecutionContext(coord, output);
 
         try
         {
             if (cellValue instanceof CommandCell)
             {
+                Map<String, Object> ctx = prepareExecutionContext(coord, output);
                 return (T) ((CommandCell) cellValue).execute(ctx);
             }
             else
@@ -846,7 +843,7 @@ public class NCube<T>
      * of binding to an axis results in a List<Column>.
      * @param input The passed in input coordinate to bind (or multi-bind) to each axis.
      */
-    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map input)
+    private Map<String, List<Column>> bindCoordinateToAxisColumns(Map<String, Object> input)
     {
         Map<String, List<Column>> bindings = new CaseInsensitiveMap<>();
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
@@ -857,7 +854,7 @@ public class NCube<T>
 
             if (axis.getType() == AxisType.RULE)
             {   // For RULE axis, all possible columns must be added (they are tested later during execution)
-                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) input.get(axis.getName())));
+                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) input.get(axisName)));
             }
             else
             {   // Find the single column that binds to the input coordinate on a regular axis.
@@ -875,7 +872,7 @@ public class NCube<T>
         return bindings;
     }
 
-    private static Map<String, Integer> getCountersPerAxis(final Set<String> axisNames)
+    private static Map<String, Integer> getCountersPerAxis(final String[] axisNames)
     {
         final Map<String, Integer> counters = new CaseInsensitiveMap<>();
 
@@ -896,93 +893,51 @@ public class NCube<T>
      * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
      * cannot bind to any of the passed in IDs.
      */
-    Set<Column> getColumnsAndCoordinateFromIds(final Collection<Long> coordinate, Map<String, CellInfo> coord)
+    Set<Long> ensureFullCoordinate(final Collection<Long> coordinate)
     {
         // Ensure that the specified coordinate matches a column on each axis
-        final Set<Axis> axisRef = new HashSet<>();
-        final Set<Axis> allAxes = new HashSet<>(axisList.values());
-        final Set<Column> point = new HashSet<>();
+        final Set<String> allAxes = new CaseInsensitiveSet<>(axisList.keySet());
+        final Set<Long> point = new LongHashSet();
+
+        for (Long colId : coordinate)
+        {
+            Axis axis = getAxisFromColumnId(colId);
+            if (axis != null)
+            {
+                allAxes.remove(axis.getName());
+                point.add(colId);
+            }
+        }
+
+        if (allAxes.isEmpty())
+        {   // All were specified, exit early.
+            return point;
+        }
+
+        final Set<String> axesWithDefault = new CaseInsensitiveSet<>();
 
         // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
         // but not more than one column ID per axis.  Also, too few can be supplied, if and
         // only if, the axes that are not bound too have a Default column (which will be chosen).
-        for (final Axis axis : allAxes)
+        for (final String axisName : allAxes)
         {
-            for (final Long id : coordinate)
+            Axis axis = axisList.get(axisName);
+            if (axis.hasDefaultColumn())
             {
-                final Column column = axis.getColumnById(id);
-                if (column != null)
-                {
-                    if (axisRef.contains(axis))
-                    {
-                        throw new IllegalArgumentException("Cannot have more than one column ID per axis, axis '" + axis.getName() + "', cube: " + name);
-                    }
-
-                    axisRef.add(axis);
-                    point.add(column);
-                    addCoordinateToColumnEntry(coord, column, axis);
-                }
+                point.add(axis.getDefaultColId());
+                axesWithDefault.add(axisName);
             }
         }
 
         // Remove the referenced axes from allAxes set.  This leaves axes to be resolved.
-        allAxes.removeAll(axisRef);
+        allAxes.removeAll(axesWithDefault);
 
-        // For the unbound axes, bind them to the Default Column (if the axis has one)
-        axisRef.clear();   // use Set again, this time to hold unbound axes
-        axisRef.addAll(allAxes);
-
-        // allAxes at this point, is the unbound axis (not referenced by an id in input coordinate)
-        for (final Axis axis : allAxes)
+        if (!allAxes.isEmpty())
         {
-            if (axis.hasDefaultColumn())
-            {
-                final Column defCol = axis.getDefaultColumn();
-                axisRef.remove(axis);
-                point.add(defCol);
-                addCoordinateToColumnEntry(coord, defCol, axis);
-            }
-        }
-
-        // Add in all required scope keys to the [optional] passed in coord
-        if (coord != null)
-        {
-            for (String scopeKey : getRequiredScope())
-            {
-                if (!coord.containsKey(scopeKey))
-                {
-                    coord.put(scopeKey, null);
-                }
-            }
-        }
-
-        if (!axisRef.isEmpty())
-        {
-            final StringBuilder s = new StringBuilder();
-            for (Axis axis : axisRef)
-            {
-                s.append(axis.getName());
-            }
-            throw new IllegalArgumentException("Column IDs missing for the axes: " + s + ", cube: " + name);
+            throw new IllegalArgumentException("Column IDs missing for the axes: " + allAxes + ", cube: " + name);
         }
 
         return point;
-    }
-
-    /**
-     * Associate input variables (axis names) to CellInfo for the given column.
-     */
-    private static void addCoordinateToColumnEntry(Map<String, CellInfo> coord, Column column, Axis axis)
-    {
-        if (coord == null)
-        {
-            return;
-        }
-
-        if (axis.getType() != AxisType.RULE)
-        {
-            coord.put(axis.getName(), new CellInfo(column.getValueThatMatches()));
-        }
     }
 
     /**
@@ -1124,9 +1079,9 @@ public class NCube<T>
      * stored within in NCube.  The returned Set is the 'key' of NCube's cells Map, which
      * maps a coordinate (Set of column pointers) to the cell value.
      */
-    private Set<Column> getCoordinateKey(final Map<String, Object> coordinate)
+    private Set<Long> getCoordinateKey(final Map<String, Object> coordinate)
     {
-        final Set<Column> key = new HashSet<>();
+        final Set<Long> key = new LongHashSet();
 
         for (final Map.Entry<String, Axis> entry : axisList.entrySet())
         {
@@ -1137,9 +1092,8 @@ public class NCube<T>
             {
                 throw new CoordinateNotFoundException("Value '" + value + "' not found on axis '" + axis.getName() + "', NCube '" + name + "'");
             }
-            key.add(column);
+            key.add(column.id);
         }
-
         return key;
     }
 
@@ -1310,15 +1264,16 @@ public class NCube<T>
         {
             return false;
         }
+        long colId = column.id;
 
         // Remove all cells that reference the deleted column
-        final Iterator<Collection<Column>> i = cells.keySet().iterator();
+        final Iterator<Set<Long>> i = cells.keySet().iterator();
 
         while (i.hasNext())
         {
-            final Collection<Column> key = i.next();
+            final Collection<Long> key = i.next();
             // Locate the uniquely identified column, regardless of axis order
-            if (key.contains(column))
+            if (key.contains(colId))
             {
                 i.remove();
             }
@@ -1363,17 +1318,15 @@ public class NCube<T>
 
         final Axis axisToUpdate = axisList.get(newCols.getName());
         final Set<Long> colsToDel = axisToUpdate.updateColumns(newCols);
-        Column testColumn = new Column(1, newCols.getNextColId());
-        Iterator<Collection<Column>> i = cells.keySet().iterator();
+        Iterator<Set<Long>> i = cells.keySet().iterator();
 
         while (i.hasNext())
         {
-            Collection<Column> cols = i.next();
+            Collection<Long> cols = i.next();
 
             for (Long id : colsToDel)
             {
-                testColumn.setId(id);
-                if (cols.contains(testColumn))
+                if (cols.contains(id))
                 {   // If cell referenced deleted column, drop the cell
                     i.remove();
                     break;
@@ -1416,7 +1369,7 @@ public class NCube<T>
     /**
      * @return read-only copy of the n-cube cells.
      */
-    public Map<Collection<Column>, T> getCellMap()
+    public Map<Set<Long>, T> getCellMap()
     {
         return Collections.unmodifiableMap(cells);
     }
@@ -1637,7 +1590,7 @@ public class NCube<T>
      * @return a Set of Strings, where each String is the name of a scope key (input.variable, where 'variable'
      * is a required scope) located within the n-cube cells, inside CommandCells.
      */
-    private static Set<String> getScopeKeysFromCommandCells(Map<Collection<Column>, ?> cubeCells)
+    private static Set<String> getScopeKeysFromCommandCells(Map<Set<Long>, ?> cubeCells)
     {
         Set<String> scopeKeys = new CaseInsensitiveSet<>();
 
@@ -1754,7 +1707,6 @@ public class NCube<T>
     {
         try
         {
-            Map<Object, Long> userIdToUniqueId = new CaseInsensitiveMap<>();
             Map<String, Object> jsonNCube = JsonReader.jsonToMaps(json);
             String cubeName = getString(jsonNCube, "ncube");  // new cubes always have ncube as they key in JSON storage
             if (StringUtilities.isEmpty(cubeName))
@@ -1789,7 +1741,10 @@ public class NCube<T>
             {
                 throw new IllegalArgumentException("Must be at least one axis defined in the JSON format, cube: " + cubeName);
             }
+
+            Map<Object, Long> userIdToUniqueId = new CaseInsensitiveMap<>();
             long idBase = 1;
+
             // Read axes
             for (Object item : items)
             {
@@ -1946,6 +1901,17 @@ public class NCube<T>
                         loadMetaProperties(colAdded.metaProps);
                     }
                 }
+
+                Map<Long, Long> oldToNew = axis.renumberIds();
+                for (Map.Entry<Object, Long> entry : userIdToUniqueId.entrySet())
+                {
+                    long oldId = entry.getValue();
+
+                    if (oldToNew.containsKey(oldId))
+                    {
+                        entry.setValue(oldToNew.get(oldId));
+                    }
+                }
             }
 
             // Read cells
@@ -1976,7 +1942,7 @@ public class NCube<T>
 
                     if (ids instanceof JsonObject)
                     {   // If specified as ID array, build coordinate that way
-                        Set<Long> colIds = new HashSet<>();
+                        Set<Long> colIds = new LongHashSet();
                         for (Object id : ((JsonObject)ids).getArray())
                         {
                             if (!userIdToUniqueId.containsKey(id))
@@ -2094,17 +2060,16 @@ public class NCube<T>
     public List<NCubeTest> generateNCubeTests()
     {
         List<NCubeTest> coordinates = new ArrayList<>();
-        Set<Long> colIds = new HashSet<>();
+        Set<Long> colIds = new LongHashSet();
         int i=1;
-        for (Collection<Column> pt : cells.keySet())
+        for (Collection<Long> pt : cells.keySet())
         {
             colIds.clear();
-            for (Column col : pt)
+            for (Long colId : pt)
             {
-                colIds.add(col.id);
+                colIds.add(colId);
             }
-            Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
-            getColumnsAndCoordinateFromIds(colIds, coord);
+            Map<String, CellInfo> coord = getTestInputCoordinateFromIds(colIds);
             String testName = String.format("test-%03d", i);
             CellInfo[] result = {new CellInfo("exp", "output.return", false, false)};
             coordinates.add(new NCubeTest(testName, convertCoordToList(coord), result));
@@ -2117,13 +2082,14 @@ public class NCube<T>
     private static StringValuePair<CellInfo>[] convertCoordToList(Map<String, CellInfo> coord)
     {
         int size = coord == null ? 0 : coord.size();
-        //List<StringValuePair<CellInfo>> list = new ArrayList<StringValuePair<CellInfo>>(size);
         StringValuePair<CellInfo>[] list = new StringValuePair[size];
-        if (size == 0) {
+        if (size == 0)
+        {
             return list;
         }
         int i=0;
-        for (Map.Entry<String, CellInfo> entry : coord.entrySet()) {
+        for (Map.Entry<String, CellInfo> entry : coord.entrySet())
+        {
             list[i++] = (new StringValuePair(entry.getKey(), entry.getValue()));
         }
         return list;
@@ -2134,50 +2100,10 @@ public class NCube<T>
      */
     public NCube duplicate(String newName)
     {
-        NCube copyCube = new NCube(newName);
-        copyCube.setDefaultCellValue(defaultCellValue);
-        Map<String, Object> metaProperties = getMetaProperties();
-        for (Map.Entry<String, Object> entry : metaProperties.entrySet())
-        {
-            copyCube.setMetaProperty(entry.getKey(), entry.getValue());
-        }
-
-        Map<Long, Column> origToNewColumn = new HashMap<>();
-
-        for (Axis axis : axisList.values())
-        {
-            Axis copyAxis = new Axis(axis.getName(), axis.getType(), axis.getValueType(), axis.hasDefaultColumn(), axis.getColumnOrder(), axis.id, axis.isFireAll());
-            metaProperties = axis.getMetaProperties();
-            for (Map.Entry<String, Object> entry : metaProperties.entrySet())
-            {
-                copyAxis.setMetaProperty(entry.getKey(), entry.getValue());
-            }
-            for (Column column : axis.getColumns())
-            {
-                Column copyCol = column.isDefault() ? copyAxis.getDefaultColumn() : copyAxis.addColumn(column.getValue());
-                metaProperties = column.getMetaProperties();
-                for (Map.Entry<String, Object> entry : metaProperties.entrySet())
-                {
-                    copyCol.setMetaProperty(entry.getKey(), entry.getValue());
-                }
-
-                copyCol.setId(column.id);
-                origToNewColumn.put(column.id, copyCol);
-            }
-            copyCube.addAxis(copyAxis);
-        }
-
-        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
-        {
-            Set<Column> copyKey = new HashSet<>();
-            for (Column column : entry.getKey())
-            {
-                copyKey.add(origToNewColumn.get(column.id));
-            }
-            copyCube.cells.put(copyKey, entry.getValue());
-        }
-
-        return copyCube;
+        String json = toFormattedJson();
+        NCube copy = fromSimpleJson(json);
+        copy.setName(newName);
+        return copy;
     }
 
     public boolean equals(Object other)
@@ -2206,16 +2132,16 @@ public class NCube<T>
     }
 
     /**
-     * @return List<Map<String, Object>> which is a List of coordinates, one for each populated cell within the
+     * @return List<Map<String, T>> which is a List of coordinates, one for each populated cell within the
      * n-cube.
      */
-    public List<Map<String, Object>> getPopulatedCellCoordinates()
+    public List<Map<String, T>> getPopulatedCellCoordinates()
     {
-        List<Map<String, Object>> coords = new ArrayList<>();
-        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+        List<Map<String, T>> coords = new ArrayList<>();
+        for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
         {
-            Collection<Column> columns = entry.getKey();
-            coords.add(getCoordinateFromColumnIds(columns));
+            Collection<Long> colIds = entry.getKey();
+            coords.add(getCoordinateFromColumnIds(colIds));
         }
 
         return coords;
@@ -2295,14 +2221,12 @@ public class NCube<T>
             List<String> sha1s = new ArrayList<>();
             MessageDigest tempDigest = EncryptionUtilities.getSHA1Digest();
 
-            for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+            for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
             {
                 String keySha1 = columnValuesToString(entry.getKey());
-
                 deepSha1(tempDigest, entry.getValue(), sep);
                 String valueSha1 = StringUtilities.encode(tempDigest.digest());
                 sha1s.add(EncryptionUtilities.calculateSHA1Hash((keySha1 + valueSha1).getBytes()));
-
                 tempDigest.reset();
             }
 
@@ -2317,24 +2241,13 @@ public class NCube<T>
         return sha1;
     }
 
-    private Map<String, Object> getCoordinateFromColumnIds(Collection<Column> columns)
-    {
-        Map<String, Object> coord = new CaseInsensitiveMap<>();
-
-        for (Column column : columns)
-        {
-            Axis axis = getAxisFromColumnId(column.id);
-            coord.put(axis.getName(), column.getValueThatMatches());
-        }
-
-        return coord;
-    }
-
-    private static String columnValuesToString(Collection<Column> columns)
+    private String columnValuesToString(Collection<Long> columns)
     {
         List<String> list = new ArrayList<>();
-        for (Column column : columns)
+        for (Long colId : columns)
         {
+            Axis axis = getAxisFromColumnId(colId);
+            Column column = axis.getColumnById(colId);
             Object value = column.getValue();
             list.add(value == null ? "null" : column.getValue().toString());
         }
@@ -2458,7 +2371,7 @@ public class NCube<T>
      * axis names, different columns, or cells exist in both cubes at the same location but not with the same
      * value), then null is returned.
      */
-    public Map<Set<Long>, Object> getCellChangeSet(NCube<T> other)
+    public Map<Set<Long>, T> getCellChangeSet(NCube<T> other)
     {
         if (!isComparableCube(other))
         {
@@ -2467,29 +2380,19 @@ public class NCube<T>
 
         // Store updates-to-be-made so that if cell equality tests pass, these can be 'played' at the end to
         // transactionally apply the merge.  We do not want a partial merge.
-        Map<Set<Long>, Object> delta = new HashMap<>();
+        Map<Set<Long>, T> delta = new HashMap<>();
         Set<Set<Long>> copyCells =  new HashSet<>();
 
-        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
         {
-            Set<Long> ids = new HashSet<>();
-            for (Column column : entry.getKey())
-            {
-                ids.add(column.id);
-            }
-            copyCells.add(ids);
+            copyCells.add(new LongHashSet(entry.getKey()));
         }
 
         // At this point, the cubes are the same shape and size.
         // Now, compute cell deltas.
-        for (Map.Entry<Collection<Column>, T> otherEntry : other.cells.entrySet())
+        for (Map.Entry<Set<Long>, T> otherEntry : other.cells.entrySet())
         {
-            Set<Long> ids = new HashSet<>();
-            for (Column otherColumn : otherEntry.getKey())
-            {
-                ids.add(otherColumn.id);
-            }
-
+            Set<Long> ids = new LongHashSet(otherEntry.getKey());
             T content = getCellByIdNoExecute(ids);
             T otherContent = otherEntry.getValue();
             copyCells.remove(ids);
@@ -2505,7 +2408,7 @@ public class NCube<T>
 
         for (Set<Long> coord : copyCells)
         {
-            delta.put(coord, REMOVE_CELL);
+            delta.put(coord, (T) REMOVE_CELL);
         }
 
         return delta;
@@ -2624,22 +2527,22 @@ public class NCube<T>
      * @param cellChangeSet Map containing cell change-set.  The cell change-set contains cell coordinates
      * mapped to the associated value to set (or remove) for the given coordinate.
      */
-    public void mergeCellChangeSet(Map<Set<Long>, Object> cellChangeSet)
+    public void mergeCellChangeSet(Map<Set<Long>, T> cellChangeSet)
     {
         // Passed all cell conflict tests, update 'this' cube with the new cells from the other cube (merge)
-        for (Map.Entry<Set<Long>, Object> entry : cellChangeSet.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : cellChangeSet.entrySet())
         {
-            Set<Column> cols = getColumnsAndCoordinateFromIds(entry.getKey(), null);
+            Set<Long> cols = ensureFullCoordinate(entry.getKey());
             if (cols.size() > 0)
             {
-                Object value = entry.getValue();
+                T value = entry.getValue();
                 if (REMOVE_CELL.equals(value))
                 {   // Remove cell
                     cells.remove(cols);
                 }
                 else
                 {   // Add/Update cell
-                    cells.put(cols, (T)value);
+                    cells.put(cols, value);
                 }
             }
         }
@@ -2743,9 +2646,9 @@ public class NCube<T>
             return changes;
         }
 
-        for (Map.Entry<Collection<Column>, T> entry : cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : cells.entrySet())
         {
-            Collection<Column> newCellKey = entry.getKey();
+            Collection<Long> newCellKey = entry.getKey();
             T newCellValue = entry.getValue();
 
             if (other.cells.containsKey(newCellKey))
@@ -2753,7 +2656,7 @@ public class NCube<T>
                 Object oldCellValue = other.cells.get(newCellKey);
                 if (!DeepEquals.deepEquals(newCellValue, oldCellValue))
                 {
-                    Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
+                    Map<String, T> properCoord = getCoordinateFromColumnIds(newCellKey);
                     String s = "Cell changed at location: " + properCoord + ", from: " +
                             (oldCellValue == null ? null : oldCellValue.toString()) + ", to: " +
                             (newCellValue == null ? null : newCellValue.toString());
@@ -2762,23 +2665,23 @@ public class NCube<T>
             }
             else
             {
-                Map<String, Object> properCoord = idCoordToProperCoord(newCellKey);
+                Map<String, T> properCoord = getCoordinateFromColumnIds(newCellKey);
                 String s = "Cell added at location: " + properCoord + ", value: " + (newCellValue == null ? null : newCellValue.toString());
                 changes.add(new Delta(Delta.Location.CELL, Delta.Type.ADD, s));
             }
         }
 
-        for (Map.Entry<Collection<Column>, T> entry : other.cells.entrySet())
+        for (Map.Entry<Set<Long>, T> entry : other.cells.entrySet())
         {
-            Collection<Column> oldCellKey = entry.getKey();
+            Collection<Long> oldCellKey = entry.getKey();
             T oldCellValue = entry.getValue();
 
             if (!cells.containsKey(oldCellKey))
             {
                 boolean allColsStillExist = true;
-                for (Column column : oldCellKey)
+                for (Long colId : oldCellKey)
                 {
-                    Axis axis = getAxisFromColumnId(column.id);
+                    Axis axis = getAxisFromColumnId(colId);
                     if (axis == null)
                     {
                         allColsStillExist = false;
@@ -2790,7 +2693,7 @@ public class NCube<T>
                 // dropped column would report a ton of removed cells.
                 if (allColsStillExist)
                 {
-                    Map<String, Object> properCoord = idCoordToProperCoord(oldCellKey);
+                    Map<String, T> properCoord = getCoordinateFromColumnIds(oldCellKey);
                     String s = "Cell removed at location: " + properCoord + ", value: " + (oldCellValue == null ? null : oldCellValue.toString());
                     changes.add(new Delta(Delta.Location.CELL, Delta.Type.DELETE, s));
                 }
@@ -2862,14 +2765,101 @@ public class NCube<T>
         return s;
     }
 
-    private Map<String, Object> idCoordToProperCoord(Collection<Column> idCoord)
+    /**
+     * For the given passed in coordinate, create a test coordinate for input with the axis
+     * names and an associated value.
+     *
+     * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
+     * cannot bind to any of the passed in IDs.
+     */
+    Map<String, CellInfo> getTestInputCoordinateFromIds(final Collection<Long> coordinate)
     {
-        Map<String, Object> properCoord = new CaseInsensitiveMap<>();
-        try
+        // Ensure that the specified coordinate matches a column on each axis
+        final Set<Axis> axisRef = new HashSet<>();
+        final Set<Axis> allAxes = new HashSet<>(axisList.values());
+        final Map<String, CellInfo> coord = new CaseInsensitiveMap<>();
+
+        // Bind all Longs to Columns on an axis.  Allow for additional columns to be specified,
+        // but not more than one column ID per axis.  Also, too few can be supplied, if and
+        // only if, the axes that are not bound too have a Default column (which will be chosen).
+        for (final Axis axis : allAxes)
         {
-            for (Column column : idCoord)
+            for (final Long id : coordinate)
             {
-                Axis axis = getAxisFromColumnId(column.id);
+                final Column column = axis.getColumnById(id);
+                if (column != null)
+                {
+                    if (axisRef.contains(axis))
+                    {
+                        throw new IllegalArgumentException("Cannot have more than one column ID per axis, axis '" + axis.getName() + "', cube: " + name);
+                    }
+
+                    axisRef.add(axis);
+                    addCoordinateToColumnEntry(coord, column, axis);
+                }
+            }
+        }
+
+        // Remove the referenced axes from allAxes set.  This leaves axes to be resolved.
+        allAxes.removeAll(axisRef);
+
+        // For the unbound axes, bind them to the Default Column (if the axis has one)
+        axisRef.clear();   // use Set again, this time to hold unbound axes
+        axisRef.addAll(allAxes);
+
+        // allAxes at this point, is the unbound axis (not referenced by an id in input coordinate)
+        for (final Axis axis : allAxes)
+        {
+            if (axis.hasDefaultColumn())
+            {
+                final Column defCol = axis.getDefaultColumn();
+                axisRef.remove(axis);
+                addCoordinateToColumnEntry(coord, defCol, axis);
+            }
+        }
+
+        // Add in all required scope keys to the [optional] passed in coord
+        for (String scopeKey : getRequiredScope())
+        {
+            if (!coord.containsKey(scopeKey))
+            {
+                coord.put(scopeKey, null);
+            }
+        }
+
+        if (!axisRef.isEmpty())
+        {
+            final StringBuilder s = new StringBuilder();
+            for (Axis axis : axisRef)
+            {
+                s.append(axis.getName());
+            }
+            throw new IllegalArgumentException("Column IDs missing for the axes: " + s + ", cube: " + name);
+        }
+
+        return coord;
+    }
+
+    /**
+     * Associate input variables (axis names) to CellInfo for the given column.
+     */
+    private static void addCoordinateToColumnEntry(Map<String, CellInfo> coord, Column column, Axis axis)
+    {
+        if (axis.getType() != AxisType.RULE)
+        {
+            coord.put(axis.getName(), new CellInfo(column.getValueThatMatches()));
+        }
+    }
+
+    private Map<String, T> getCoordinateFromColumnIds(Collection<Long> idCoord)
+    {
+        Map<String, T> properCoord = new CaseInsensitiveMap<>();
+        for (Long colId : idCoord)
+        {
+            try
+            {
+                Axis axis = getAxisFromColumnId(colId);
+                Column column = axis.getColumnById(colId);
                 Object value = column.getValueThatMatches();
                 if (value == null)
                 {
@@ -2880,21 +2870,20 @@ public class NCube<T>
                     String ruleName = (String) column.getMetaProperty("name");
                     if (StringUtilities.hasContent(ruleName))
                     {
-                        properCoord.put(axis.getName(), "rule: '" + ruleName + "' condition: " + value);
+                        properCoord.put(axis.getName(), (T) ("rule: '" + ruleName + "' condition: " + value));
                     }
                     else
                     {
-                        properCoord.put(axis.getName(), "condition: " + value);
+                        properCoord.put(axis.getName(), (T) ("condition: " + value));
                     }
                 }
                 else
                 {
-                    properCoord.put(axis.getName(), value);
+                    properCoord.put(axis.getName(), (T) value);
                 }
             }
+            catch (Exception ignored) { }
         }
-        catch (Exception ignored)
-        { }
         return properCoord;
     }
 
@@ -2936,20 +2925,17 @@ public class NCube<T>
         }
 
         Matcher m = Regexes.validCubeName.matcher(cubeName);
-        if (m.find())
+        if (m.matches())
         {
-            if (cubeName.equals(m.group(0)))
-            {
-                return;
-            }
+            return;
         }
-        throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, :, ., _, -, #, and |");
+        throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, '.', '_', '-'");
     }
 
     public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)
     {
         String json = StringUtilities.createUTF8String(IOUtilities.uncompressBytes(jsonBytes));
-        return NCubeManager.ncubeFromJson(json);
+        return NCube.fromSimpleJson(json);
     }
 
     public byte[] getCubeAsGzipJsonBytes()
@@ -2962,10 +2948,5 @@ public class NCube<T>
     {
         this.name = name;
         clearSha1();
-    }
-
-    public static boolean compareDeltas(Map delta1, Map delta2)
-    {
-        return false;
     }
 }

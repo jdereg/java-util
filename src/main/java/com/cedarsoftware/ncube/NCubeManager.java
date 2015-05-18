@@ -1283,9 +1283,17 @@ public class NCubeManager
         return new ApplicationID(tenant, app, version, status, branch);
     }
 
-    public static Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    /**
+     * Fetch an array of NCubeInfoDto's where the cube names match the cubeNamePattern (contains) and
+     * the content (in JSON format) 'contains' the passed in content String.
+     * @param appId ApplicationID on which we are working
+     * @param cubeNamePattern String pattern to match cube names
+     * @param content String value that is 'contained' within the cube's JSON
+     * @return Object[] of NCubeInfoDto instances.
+     */
+    public static Object[] search(ApplicationID appId, String cubeNamePattern, String content)
     {
-        return getPersister().search(appId, cubeNamePattern, searchValue);
+        return getPersister().search(appId, cubeNamePattern, content);
     }
 
     public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)

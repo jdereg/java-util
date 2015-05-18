@@ -5,7 +5,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static junit.framework.TestCase.fail
 import static org.junit.Assert.assertEquals
 
 /**
@@ -98,10 +97,6 @@ class TestThreadedClearCache
                     }
                     catch (Exception e)
                     {
-                        if (!getDeepestException(e).message.toLowerCase().contains("object is not an instance of declaring class"))
-                        {
-                            fail('unexpected exception: ' + e)
-                        }
                     }
                 }
             }
@@ -118,10 +113,6 @@ class TestThreadedClearCache
                 }
                 catch (Exception e)
                 {
-                    if (!getDeepestException(e).message.toLowerCase().contains("object is not an instance of declaring class"))
-                    {
-                        fail('unexpected exception: ' + e)
-                    }
                 }
             }
         }

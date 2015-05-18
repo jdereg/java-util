@@ -354,7 +354,19 @@ public class NCubeJdbcPersister
     Object[] search(Connection c, ApplicationID appId, String cubeNamePattern, String searchValue)
     {
         String nameCondition = "";
-        String pattern = convertPattern(cubeNamePattern);
+        String pattern = cubeNamePattern;
+        if (StringUtilities.hasContent(pattern))
+        {
+            if (pattern.startsWith("*") || pattern.startsWith("%"))
+            {
+                pattern = pattern.substring(1);
+            }
+            if (pattern.endsWith("*") || pattern.endsWith("%"))
+            {
+                pattern = pattern.substring(0, pattern.length() - 1);
+            }
+            pattern = convertPattern('*' + pattern + '*');
+        }
 
         if (StringUtilities.hasContent(pattern))
         {

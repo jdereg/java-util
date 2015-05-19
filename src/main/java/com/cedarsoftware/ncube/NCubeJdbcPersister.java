@@ -274,7 +274,9 @@ public class NCubeJdbcPersister
                         return;
                     }
 
-                    if (insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username) == null)
+                    NCubeInfoDto dto = insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username);
+
+                    if (dto == null)
                     {
                         throw new IllegalStateException("error updating n-cube: " + cube.getName() + "', app: " + appId + ", row was not updated");
                     }
@@ -498,6 +500,24 @@ public class NCubeJdbcPersister
         s.setString(10, appId.getStatus());
         s.setString(11, appId.getTenant());
         s.setString(12, appId.getBranch());
+        return s;
+    }
+
+    public PreparedStatement createSelectCubeWithMatchingSha1Statement(Connection c, ApplicationID appId, String cubeName, String sha1) throws SQLException
+    {
+        String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
+                "FROM n_cube " +
+                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND sha1 = ?";
+
+        PreparedStatement s = c.prepareStatement(sql);
+        s.setString(1, cubeName);
+        s.setString(2, appId.getApp());
+        s.setString(3, appId.getVersion());
+        s.setString(4, appId.getStatus());
+        s.setString(5, appId.getTenant());
+        s.setString(6, appId.getBranch());
+        s.setString(7, sha1);
+        s.setMaxRows(1);
         return s;
     }
 
@@ -734,6 +754,27 @@ public class NCubeJdbcPersister
     public NCube loadCube(Connection c, ApplicationID appId, String cubeName)
     {
         try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, true))
+        {
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    return buildCube(appId, rs);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
+            LOG.error(s, e);
+            throw new IllegalStateException(s, e);
+        }
+        return null;
+    }
+
+    public NCube loadCube(Connection c, ApplicationID appId, String cubeName, String sha1)
+    {
+        try (PreparedStatement stmt = createSelectCubeWithMatchingSha1Statement(c, appId, cubeName, sha1))
         {
             try (ResultSet rs = stmt.executeQuery())
             {

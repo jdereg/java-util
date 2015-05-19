@@ -10,13 +10,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertNotEquals
-import static org.junit.Assert.assertNotNull
-import static org.junit.Assert.assertNull
-import static org.junit.Assert.assertTrue
-import static org.junit.Assert.fail
+import static org.junit.Assert.*
 
 /**
  * NCube tests.
@@ -4736,6 +4730,8 @@ class TestNCube
         assert delta2.values().iterator().next() == 3.14
         assert cube1.sha1() == cube1Sha
         assert cube2.sha1() == cube2Sha
+        NCube cube3 = cube1.mergeCellChangeSet(delta1);
+        assert cube2.sha1() == cube3.sha1();
     }
 
     @Test
@@ -4748,6 +4744,20 @@ class TestNCube
         Map delta = cube1.getCellChangeSet(cube2);
         cube1.mergeCellChangeSet(delta)
         Object v = cube1.getCell(coord)
+        assert v == 3.14159
+    }
+
+    @Test
+    void testMergeNormalCaseEquivalency()
+    {
+        NCube cube1 = NCubeManager.getNCubeFromResource("merge2.json")
+        NCube cube2 = NCubeManager.getNCubeFromResource("merge2.json")
+        Map coord = [row:3, column:'C']
+        cube1.removeCell(coord);
+        Map delta = cube1.getCellChangeSet(cube2);
+        cube1.mergeCellChangeSet(delta)
+        Object v = cube1.getCell(coord)
+        assert cube1.sha1() == cube2.sha1();
         assert v == 3.14159
     }
 

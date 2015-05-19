@@ -941,13 +941,18 @@ public class NCubeManager
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
-                        errors.put(info.name, createConflictMap(message, info, head));
+                        NCube mergedCube = checkForConflicts(appId, errors, message, info, head);
+                        if (mergedCube != null) {
+                            getPersister().updateCube(appId, mergedCube, username);
+                            Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
+                            dtos.add((NCubeInfoDto)updated[0]);
+                        }
                     }
                 }
                 else if (head == null)
                 {
                     String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
-                    errors.put(info.name, createConflictMap(message, info, null));
+                    checkForConflicts(appId, errors, message, info, head);
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -975,7 +980,12 @@ public class NCubeManager
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
-                    errors.put(info.name, createConflictMap(message, info, head));
+                    NCube mergedCube = checkForConflicts(appId, errors, message, info, head);
+                    if (mergedCube != null) {
+                        getPersister().updateCube(appId, mergedCube, username);
+                        Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
+                        dtos.add((NCubeInfoDto)updated[0]);
+                    }
                 }
             }
         }
@@ -992,7 +1002,7 @@ public class NCubeManager
         return values;
     }
 
-    private static Map createConflictMap(String message, NCubeInfoDto info, NCubeInfoDto head)
+    private static NCube checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head)
     {
         Map map = new LinkedHashMap();
         map.put("message", message);
@@ -1005,6 +1015,21 @@ public class NCubeManager
             {
                 NCube branchCube = getPersister().loadCube(info.id);
                 NCube headCube = getPersister().loadCube(head.id);
+
+                if (info.headSha1 != null)
+                {
+                    NCube baseCube = getPersister().loadCubeBySha1(appId, info.name, info.headSha1);
+
+                    Map delta1 = baseCube.getCellChangeSet(branchCube);
+                    Map delta2 = baseCube.getCellChangeSet(headCube);
+
+                    if (NCube.areCellChangeSetsCompatible(delta1, delta2))
+                    {
+                        branchCube.mergeCellChangeSet(delta2);
+                        return branchCube;
+                    }
+                }
+
                 map.put("diff", branchCube.getDeltaDescription(headCube));
             }
             else
@@ -1016,7 +1041,8 @@ public class NCubeManager
         {
             map.put("diff", e.getMessage());
         }
-        return map;
+        errors.put(info.name, map);
+        return null;
     }
 
     /**
@@ -1053,6 +1079,7 @@ public class NCubeManager
         }
 
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
+        List<NCube> autoMerge = new ArrayList<>(records.length);
 
         Map<String, Map> conflicts = new LinkedHashMap<>();
 
@@ -1086,7 +1113,14 @@ public class NCubeManager
             }
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
-                conflicts.put(info.name, createConflictMap("Cube was changed in HEAD", info, head));
+                String message = "Cube was changed in HEAD";
+                NCube cube = checkForConflicts(appId, conflicts, message, info, head);
+
+                if (cube != null) {
+                    getPersister().updateCube(headAppId, cube, username);
+                    Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
+                    updates.add((NCubeInfoDto)updated[0]);
+                }
             }
         }
 

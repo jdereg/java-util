@@ -86,6 +86,19 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
+    public NCube loadCubeBySha1(ApplicationID appId, String name, String sha1)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.loadCube(c, appId, name, sha1);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Connection c = connectionProvider.getConnection();

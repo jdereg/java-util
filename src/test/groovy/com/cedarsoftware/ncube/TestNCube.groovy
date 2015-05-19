@@ -10,7 +10,13 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-import static org.junit.Assert.*
+import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNotEquals
+import static org.junit.Assert.assertNotNull
+import static org.junit.Assert.assertNull
+import static org.junit.Assert.assertTrue
+import static org.junit.Assert.fail
 
 /**
  * NCube tests.
@@ -4730,8 +4736,6 @@ class TestNCube
         assert delta2.values().iterator().next() == 3.14
         assert cube1.sha1() == cube1Sha
         assert cube2.sha1() == cube2Sha
-        NCube cube3 = cube1.mergeCellChangeSet(delta1);
-        assert cube2.sha1() == cube3.sha1();
     }
 
     @Test

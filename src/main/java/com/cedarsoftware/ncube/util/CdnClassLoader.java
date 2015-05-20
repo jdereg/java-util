@@ -28,6 +28,7 @@ public class CdnClassLoader extends GroovyClassLoader
 {
     private final boolean _preventRemoteBeanInfo;
     private final boolean _preventRemoteCustomizer;
+    private final ClassLoader parentClassLoader = super.getParent();
 
     /**
      * creates a GroovyClassLoader using the given ClassLoader as parent
@@ -41,7 +42,7 @@ public class CdnClassLoader extends GroovyClassLoader
 
     protected Class<?> findClass(final String name) throws ClassNotFoundException
     {
-        return super.getParent().loadClass(name);
+        return parentClassLoader.loadClass(name);
     }
 
     /**

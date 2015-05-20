@@ -100,9 +100,9 @@ public class ApplicationID
 
         ApplicationID that = (ApplicationID) o;
 
-        return tenant.equalsIgnoreCase(that.tenant) && 
-                app.equalsIgnoreCase(that.app) && 
-                status.equals(that.status) && 
+        return tenant.equalsIgnoreCase(that.tenant) &&
+                app.equalsIgnoreCase(that.app) &&
+                status.equals(that.status) &&
                 version.equals(that.version);
 
     }
@@ -156,7 +156,7 @@ public class ApplicationID
         if (StringUtilities.hasContent(tenant))
         {
             Matcher m = Regexes.validTenantName.matcher(tenant);
-            if (m.find() && tenant.length() <= 10)
+            if (m.matches() && tenant.length() <= 10)
             {
                 return;
             }
@@ -189,7 +189,7 @@ public class ApplicationID
         }
 
         Matcher m = Regexes.validVersion.matcher(version);
-        if (m.find())
+        if (m.matches())
         {
             return;
         }
@@ -199,5 +199,14 @@ public class ApplicationID
     public static ApplicationID getBootVersion(String tenant, String app)
     {
         return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name());
+    }
+
+    public ApplicationID asVersion(String ver)
+    {
+        if (version.equals(ver))
+        {
+            return this;
+        }
+        return new ApplicationID(tenant, app, ver, status);
     }
 }

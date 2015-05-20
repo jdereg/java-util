@@ -131,7 +131,8 @@ public class NCubeManager
 
         if (cubes.containsKey(lowerCubeName))
         {   // pull from cache
-            return ensureLoaded(cubes.get(lowerCubeName));
+            final Object cube = cubes.get(lowerCubeName);
+            return Boolean.FALSE == cube ? null : ensureLoaded(cube);
         }
 
         // Deep load the requested cube
@@ -141,7 +142,7 @@ public class NCubeManager
         {
             return ensureLoaded(cubes.get(lowerCubeName));
         }
-
+        cubes.put(lowerCubeName, Boolean.FALSE);
         return null;
     }
 
@@ -694,6 +695,7 @@ public class NCubeManager
         ApplicationID.validateVersion(newVersion);
         getPersister().changeVersionValue(appId, newVersion);
         clearCache(appId);
+        clearCache(appId.asVersion(newVersion));
         broadcast(appId);
     }
 

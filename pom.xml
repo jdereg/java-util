@@ -8,6 +8,17 @@
 	<version>3.1.7-SNAPSHOT</version>
 	<description>n-cube Engine</description>
     <url>https://github.com/jdereg/n-cube</url>
+    <profiles>
+        <profile>
+            <id>doclint-java8-disable</id>
+            <activation>
+                <jdk>[1.8,)</jdk>
+            </activation>
+            <properties>
+                <javadoc.opts>-Xdoclint:none</javadoc.opts>
+            </properties>
+        </profile>
+    </profiles>
 
     <licenses>
         <license>
@@ -21,7 +32,6 @@
         <url>https://github.com/jdereg/n-cube</url>
         <connection>scm:git:git://github.com/jdereg/n-cube.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/n-cube.git</developerConnection>
-        <tag>3.1.4.201502160052</tag>
     </scm>
 
     <developers>
@@ -33,11 +43,12 @@
     </developers>
 
     <properties>
+        <additionalparam>-Xdoclint:none</additionalparam>
         <version.json-io>2.9.3</version.json-io>
         <version.java-util>1.16.1</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.groovy>2.3.9</version.groovy>
+        <version.groovy>2.4.3</version.groovy>
         <version.jgit>3.6.1.201501031845-r</version.jgit>
         <version.powermock>1.6.1</version.powermock>
         <version.mockito>1.10.8</version.mockito>
@@ -48,8 +59,8 @@
         <version.hsqldb>2.3.1</version.hsqldb>
         <version.oracle>11.2.0.3</version.oracle>
         <version.plugin.compiler>3.2</version.plugin.compiler>
-        <version.plugin.groovy.eclipse.compiler>2.9.1-01</version.plugin.groovy.eclipse.compiler>
-        <version.plugin.groovy.eclipse.batch>2.3.7-01</version.plugin.groovy.eclipse.batch>
+        <version.plugin.groovy.eclipse.compiler>2.9.2-01</version.plugin.groovy.eclipse.compiler>
+        <version.plugin.groovy.eclipse.batch>2.4.3-01</version.plugin.groovy.eclipse.batch>
         <version.plugin.deploy>2.8.2</version.plugin.deploy>
         <version.plugin.source>2.4</version.plugin.source>
         <version.plugin.javadoc>2.10.1</version.plugin.javadoc>

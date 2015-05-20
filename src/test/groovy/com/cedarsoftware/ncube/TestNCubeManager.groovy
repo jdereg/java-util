@@ -691,7 +691,7 @@ public class TestNCubeManager
         //  from setup, assert initial classloader condition (www.cedarsoftware.com)
         ApplicationID customId = new ApplicationID('NONE', 'updateCubeSys', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         assertNotNull(NCubeManager.getUrlClassLoader(customId, [:]))
-        assertEquals(0, NCubeManager.getCacheForApp(customId).size())
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
 
@@ -726,7 +726,7 @@ public class TestNCubeManager
         ApplicationID customId = new ApplicationID('NONE', 'renameCubeSys', '1.0.0', ReleaseStatus.SNAPSHOT.name())
         final URLClassLoader urlClassLoader1 = NCubeManager.getUrlClassLoader(customId, [:])
         assertNotNull(urlClassLoader1)
-        assertEquals(0, NCubeManager.getCacheForApp(customId).size())
+        assertEquals(1, NCubeManager.getCacheForApp(customId).size())
 
         NCube testCube = NCubeManager.getNCubeFromResource(customId, 'sys.classpath.tests.json')
 

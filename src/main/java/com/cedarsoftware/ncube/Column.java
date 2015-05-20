@@ -133,12 +133,11 @@ public class Column implements Comparable<Comparable>
 
     public int hashCode()
     {
-        final long x = id;
-        // do not change the formula below.  It is been hand crafted and tested for performance.
-        // If this does not hash well, ncube breaks down in performance.  The BigCube tests are
-        // greatly slowed down as proper hashing is vital or cells will be really slow to access
-        // when there are a lot of them in the ncube.
-        return (int)(x * 347 ^ (x >>> 32) * 7);
+        long x = id;
+        x ^= x >> 23;
+        x *= 0x2127599bf4325c37L;
+        x ^= x >> 47;
+        return (int)(x);
     }
 
     public boolean equals(Object that)

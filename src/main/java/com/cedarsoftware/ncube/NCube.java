@@ -677,14 +677,13 @@ public class NCube<T>
     private T executeCellById(final Set<Column> idCoord, final Map<String, Object> coord, final Map output)
     {
         // Get internal representation of a coordinate (a Set of Column identifiers.)
-
         T cellValue = cells.containsKey(idCoord) ? cells.get(idCoord) : defaultCellValue;
-        Map<String, Object> ctx = prepareExecutionContext(coord, output);
 
         try
         {
             if (cellValue instanceof CommandCell)
             {
+                Map<String, Object> ctx = prepareExecutionContext(coord, output);
                 return (T) ((CommandCell) cellValue).execute(ctx);
             }
             else
@@ -847,7 +846,7 @@ public class NCube<T>
 
             if (axis.getType() == AxisType.RULE)
             {   // For RULE axis, all possible columns must be added (they are tested later during execution)
-                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) input.get(axis.getName())));
+                bindings.put(axisName, axis.getRuleColumnsStartingAt((String) input.get(axisName)));
             }
             else
             {   // Find the single column that binds to the input coordinate on a regular axis.

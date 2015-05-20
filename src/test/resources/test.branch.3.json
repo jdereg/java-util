@@ -4,28 +4,30 @@
   "axes":[
     {
       "name":"Code",
-      "type":"NEAREST",
-      "valueType":"DOUBLE",
+      "type":"DISCRETE",
+      "valueType":"LONG",
       "hasDefault":false,
       "preferredOrder":0,
       "columns":[
-        { "id": -10.0 },
-        { "id":   0.0 },
-        { "id":  10.0 }
+        { "id": -15 },
+        { "id": -10 },
+        { "id":   0 },
+        { "id":  10 },
+        { "id":  15 }
       ]
     }
   ],
   "cells":[
     {
-      "id":[-10.0],
+      "id":[-10],
       "value":"MON"
     },
     {
-      "id":[0.0],
+      "id":[0],
       "value":"TUE"
     },
     {
-      "id":[10.0],
+      "id":[10],
       "value":"WED"
     }
   ]

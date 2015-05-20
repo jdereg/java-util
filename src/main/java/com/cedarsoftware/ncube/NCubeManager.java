@@ -11,10 +11,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,6 +30,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -941,7 +940,7 @@ public class NCubeManager
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
-                        NCube mergedCube = checkForConflicts(appId, errors, message, info, head);
+                        NCube mergedCube = checkForConflicts(appId, errors, message, info, head, false);
                         if (mergedCube != null) {
                             getPersister().updateCube(appId, mergedCube, username);
                             Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
@@ -952,7 +951,7 @@ public class NCubeManager
                 else if (head == null)
                 {
                     String message = "Conflict merging " + info.name + ". The cube refers to a HEAD cube that does not exist.";
-                    checkForConflicts(appId, errors, message, info, head);
+                    checkForConflicts(appId, errors, message, info, head, false);
                 }
                 else if (info.headSha1.equals(head.sha1))
                 {
@@ -980,7 +979,7 @@ public class NCubeManager
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
-                    NCube mergedCube = checkForConflicts(appId, errors, message, info, head);
+                    NCube mergedCube = checkForConflicts(appId, errors, message, info, head, false);
                     if (mergedCube != null) {
                         getPersister().updateCube(appId, mergedCube, username);
                         Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
@@ -1002,7 +1001,7 @@ public class NCubeManager
         return values;
     }
 
-    private static NCube checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head)
+    private static NCube checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head, boolean reverse)
     {
         Map map = new LinkedHashMap();
         map.put("message", message);
@@ -1025,8 +1024,13 @@ public class NCubeManager
 
                     if (NCube.areCellChangeSetsCompatible(delta1, delta2))
                     {
-                        branchCube.mergeCellChangeSet(delta2);
-                        return branchCube;
+                        if (reverse) {
+                            headCube.mergeCellChangeSet(delta1);
+                            return headCube;
+                        } else {
+                            branchCube.mergeCellChangeSet(delta2);
+                            return branchCube;
+                        }
                     }
                 }
 
@@ -1079,7 +1083,6 @@ public class NCubeManager
         }
 
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
-        List<NCube> autoMerge = new ArrayList<>(records.length);
 
         Map<String, Map> conflicts = new LinkedHashMap<>();
 
@@ -1114,11 +1117,11 @@ public class NCubeManager
             else if (!StringUtilities.equalsIgnoreCase(info.headSha1, head.sha1))
             {
                 String message = "Cube was changed in HEAD";
-                NCube cube = checkForConflicts(appId, conflicts, message, info, head);
+                NCube cube = checkForConflicts(appId, conflicts, message, info, head, true);
 
                 if (cube != null) {
                     getPersister().updateCube(headAppId, cube, username);
-                    Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
+                    Object[] updated = getPersister().getCubeRecords(headAppId, info.name, false);
                     updates.add((NCubeInfoDto)updated[0]);
                 }
             }

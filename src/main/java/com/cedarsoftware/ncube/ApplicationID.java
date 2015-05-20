@@ -217,11 +217,6 @@ public class ApplicationID
         return new ApplicationID(tenant, app, version, status, HEAD);
     }
 
-    /**
-     * Creates a new ApplicationID with HEAD as the branch using all the same parameters of
-     * this ApplicationID.
-     * @return a new ApplicationId that is on the HEAD branch.
-     */
     public ApplicationID asVersion(String ver)
     {
         if (version.equals(ver))

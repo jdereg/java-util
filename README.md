@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.1.6</version>
+  <version>3.1.7</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg) 
@@ -83,26 +83,28 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 n-cube can be used free for personal use.
 
 Version History
-* 3.1.6
+* 3.2.0-SNAPSHOT
  * This release adds complete support for branching.  It is essentially the upcoming 3.2 release, created to allow testing before 3.2 is released.  All branch functionality is complete and unit tested, with > 98% code coverage.
- * The branch facility is implemented with the new branching APIs (createBranch, deleteBranch, updateBranch, merge, etc.) on NCubeManager.
- * Support for memoization (caching) of GroovyExpression results has been added.  If the 'cache' value for an 'exp' (GroovyExpression) cell is true, the cell is executed, and the return value is cached.  Very similar to Groovy's memoize.
+ * The branch facility is implemented with the new branching APIs on `NCubeManager` (`createBranch`, `deleteBranch`, `updateBranch`,`merge`, etc.)
+ * Support for memoization (caching) of `GroovyExpression` results has been added.  If the 'cache' value for an 'exp' (`GroovyExpression`) cell is true, the cell is executed, and the return value is cached.  Very similar to Groovy's memoize.
  * Many small performance improvements have been made. 
- * NCUBE_PARAMS is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the sys.bootstrap cube.
-* 3.1.5
+ * `NCUBE_PARAMS` is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the `sys.bootstrap` cube.
  * This release is for development only.  Do not use for production.  Consider 3.1.4 latest production release.
  * The branch concept has be thoroughly introduced in the code base.  All tests are working with it.  However, there is more API work to be done within the persister to fully support branching.
- * All APIs that take a matching pattern on NCubeManager expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
+ * All APIs that take a matching pattern on `NCubeManager` expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
+* 3.1.7
+ * Performance: `NCubeManager.getCube()` - caches failed fetches so that subsequent retries do not hit database again and again.
+ * Performance: `NCube.getCell()` - when accessing a non-`CommandCell`, not need to set up the context (`Map` containing `NCube`, `Input`, and `Output`) 
 * 3.1.4
- * Range and Set parsing for Axis values less picky and much more robust.  Useful when input for these columns are passed in from a GUI.
+ * Range and Set parsing for `Axis` values less picky and much more robust.  Useful when input for these columns are passed in from a GUI.
  * All unit tests are now completely written in Groovy.
- * Any .groovy file that is used internally for the implementation of the library now uses @CompileStatic for improved speed.
- * Further development on GitPersister (not complete, unaccessible).
+ * Any .groovy file that is used internally for the implementation of the library now uses `@CompileStatic` for improved speed.
+ * Further development on `GitPersister` (not complete, unaccessible).
 * 3.1.3
- * Bug fix: Fixed bug in rule engine where Boolean.equals() was being called instead of isTrue() - which uses proper Groovy Truth.  This bug was introduced in 3.1.1.
+ * Bug fix: Fixed bug in rule engine where `Boolean.equals()` was being called instead of `isTrue()` - which uses proper Groovy Truth.  This bug was introduced in 3.1.1.
 * 3.1.2
- * Bug fix: Tightened up regex pattern match that is used to expand relative references into getRelativeCubeCell() calls.  This prevents it from matching popular Java/Groovy annotations in the source code wtihin an expression cell.
- * Started work on GitPersister
+ * Bug fix: Tightened up regex pattern match that is used to expand relative references into `getRelativeCubeCell()` calls.  This prevents it from matching popular Java/Groovy annotations in the source code wtihin an expression cell.
+ * Started work on `GitPersister`
 * 3.1.1
  * Bindings to rule axis with a name is O(1) - directly starts evaluating the named condition.
  * Rule axis now has `fireAll` (versus fire once).  Fire all conditions is the default and what previously existed.  If the `fireAll` property of the `Axis` is set false on a Rule `Axis`, then the first condition that fires, will be the only condition that fires on that axis.
@@ -116,12 +118,12 @@ Version History
  * All JUnit test cases converted from Java to Groovy.
  * Improvement in classloader management.  Initially, a classloader per App (tenant, app, version) was maintained.  This has been further refined to support any additional scope that may have been added to the `sys.classpath` cube.  This allows a different URL set per AppID per additional scope like a business unit, for example.
 * 3.0.10
- * Attempting to re-use GroovyClassLoader after clearCache(appId). Discovered that the URLs do not clear.
+ * Attempting to re-use `GroovyClassLoader` after `clearCache(appId)`. Discovered that the URLs do not clear.
 * 3.0.9
- * Internal work on classpath management.  Fixing an issue where clearing the cache needed to reset the URLs within the GroovyClassLoader.
+ * Internal work on classpath management.  Fixing an issue where clearing the cache needed to reset the URLs within the `GroovyClassLoader`.
 * 3.0.8
- * Bug fix: Threading issue in NCubeManager during initialization.  GroovyClassLoaders could be accessed before the resource URLs were added to the GroovyClassLoader.
- * Bug fix: CdnClassLoader was allowing .class files to be loaded remotely, which 1) is too slow to allow (.class files are attempted to be loaded with HTTP GET which fails very slowly with a 404, and 2) is insecure.  Instead, a future version will allow a 'white-less' of acceptable classes that can be remotely loaded.
+ * Bug fix: Threading issue in `NCubeManager` during initialization.  `GroovyClassLoaders` could be accessed before the resource URLs were added to the `GroovyClassLoader`.
+ * Bug fix: `CdnClassLoader` was allowing .class files to be loaded remotely, which 1) is too slow to allow (.class files are attempted to be loaded with HTTP GET which fails very slowly with a 404, and 2) is insecure.  Instead, a future version will allow a 'white-less' of acceptable classes that can be remotely loaded.
 * 3.0.6 / 3.0.7
  * Changed `getDeltaDescription()` to return a list of `Delta` objects, which contain the textual difference as well as the location (NCube, Axis, Column, Cell) of the difference and the type of difference (ADD, DELETE, UPDATE).
 * 3.0.5

@@ -11,6 +11,10 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,9 +34,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -170,7 +171,8 @@ public class NCubeManager
 
         if (cubes.containsKey(lowerCubeName))
         {   // pull from cache
-            return ensureLoaded(cubes.get(lowerCubeName));
+            final Object cube = cubes.get(lowerCubeName);
+            return Boolean.FALSE == cube ? null : ensureLoaded(cube);
         }
 
         // now even items with metaProperties(cache = 'false') can be retrieved
@@ -178,7 +180,9 @@ public class NCubeManager
         // used to do getCubeInfoRecords() -> dto
         // and then dto -> loadCube(id)
         NCube ncube = getPersister().loadCube(appId, name);
-        if (ncube == null) {
+        if (ncube == null)
+        {
+            getCacheForApp(appId).put(lowerCubeName, Boolean.FALSE);
             return null;
         }
         return prepareCube(ncube);
@@ -854,6 +858,7 @@ public class NCubeManager
         appId.validateBranchIsNotHead();
         appId.validateStatusIsNotRelease();
         int rows = getPersister().createBranch(appId);
+        clearCache(appId);
         broadcast(appId);
         return rows;
     }
@@ -1166,6 +1171,7 @@ public class NCubeManager
         ApplicationID.validateVersion(newVersion);
         getPersister().changeVersionValue(appId, newVersion);
         clearCache(appId);
+        clearCache(appId.asVersion(newVersion));
         broadcast(appId);
     }
 

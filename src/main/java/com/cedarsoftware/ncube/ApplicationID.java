@@ -217,6 +217,15 @@ public class ApplicationID
         return new ApplicationID(tenant, app, version, status, HEAD);
     }
 
+    public ApplicationID asVersion(String ver)
+    {
+        if (version.equals(ver))
+        {
+            return this;
+        }
+        return new ApplicationID(tenant, app, ver, status, branch);
+    }
+
     public void validate()
     {
         validateTenant(tenant);

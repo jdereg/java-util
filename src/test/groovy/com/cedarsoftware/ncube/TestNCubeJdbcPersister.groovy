@@ -731,7 +731,7 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().commitCube(null, null, defaultSnapshotApp.asHead(), USER_ID)
+            new NCubeJdbcPersister().commitCube(null, null, defaultSnapshotApp, USER_ID)
             fail()
         }
         catch (IllegalArgumentException e)
@@ -746,7 +746,7 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID)
+            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp, USER_ID)
             fail()
         }
         catch (IllegalStateException e)
@@ -771,7 +771,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID)
+            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp, USER_ID)
             fail()
         }
         catch (IllegalStateException e)
@@ -794,7 +794,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID)
+            new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp, USER_ID)
             fail()
         }
         catch (IllegalStateException e)
@@ -817,7 +817,7 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(false)
         when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
 
-        assertNull(new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp.asHead(), USER_ID))
+        assertNull(new NCubeJdbcPersister().commitCube(c, 1L, defaultSnapshotApp, USER_ID))
     }
 
 

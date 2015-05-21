@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import java.sql.Connection;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -386,12 +387,38 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] commitBranch(ApplicationID appId, Collection<NCubeInfoDto> dtos, String username)
+    public List<NCubeInfoDto> commitBranch(ApplicationID appId, Collection<NCubeInfoDto> dtos, String username)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
             return persister.commitBranch(c, appId, dtos, username);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public NCubeInfoDto commitMergedCubeToHead(ApplicationID appId, NCube cube, String username)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.commitMergedCubeToHead(c, appId, cube, username);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
+    public NCubeInfoDto commitMergedCubeToBranch(ApplicationID appId, NCube cube, String headSha1, String username)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.commitMergedCubeToBranch(c, appId, cube, headSha1, username);
         }
         finally
         {
@@ -412,7 +439,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] updateBranch(ApplicationID appId, Collection<NCubeInfoDto> updates, String username)
+    public List<NCubeInfoDto> updateBranch(ApplicationID appId, Collection<NCubeInfoDto> updates, String username)
     {
         Connection c = connectionProvider.getConnection();
         try

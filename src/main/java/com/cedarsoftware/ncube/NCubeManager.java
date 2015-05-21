@@ -907,7 +907,9 @@ public class NCubeManager
             headMap.put(info.name, info);
         }
 
-        List<NCubeInfoDto> dtos = new ArrayList<>(infoDtos.length);
+        List<NCubeInfoDto> dtosToUpdate = new ArrayList<>(infoDtos.length);
+        List<NCubeInfoDto> dtosMerged = new ArrayList<>();
+
         Map<String, Map> errors = new LinkedHashMap<>();
 
         for (Object dto : infoDtos)
@@ -928,23 +930,22 @@ public class NCubeManager
                         if (infoRev >= 0)
                         {
                             info.changeType = ChangeType.CREATED.getCode();
-                            dtos.add(info);
+                            dtosToUpdate.add(info);
                         }
                     }
                     else if (info.sha1.equals(head.sha1))
                     {
                         // items changed, but shas match so identical
                         info.changeType = ChangeType.UPDATED.getCode();
-                        dtos.add(info);
+                        dtosToUpdate.add(info);
                     }
                     else
                     {
                         String message = "Conflict merging " + info.name + ". A cube with the same name was added to HEAD since your branch was created.";
                         NCube mergedCube = checkForConflicts(appId, errors, message, info, head, false);
                         if (mergedCube != null) {
-                            getPersister().updateCube(appId, mergedCube, username);
-                            Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
-                            dtos.add((NCubeInfoDto)updated[0]);
+                            NCubeInfoDto mergedDto = getPersister().commitMergedCubeToHead(appId, mergedCube, username);
+                            dtosMerged.add(mergedDto);
                         }
                     }
                 }
@@ -961,29 +962,28 @@ public class NCubeManager
                         if (infoRev < 0 != headRev < 0)
                         {
                             info.changeType = infoRev < 0 ? ChangeType.DELETED.getCode() : ChangeType.RESTORED.getCode();
-                            dtos.add(info);
+                            dtosToUpdate.add(info);
                         }
                     }
                     else
                     {
                         info.changeType = ChangeType.UPDATED.getCode();
-                        dtos.add(info);
+                        dtosToUpdate.add(info);
                     }
                 }
                 else if (info.sha1.equals(head.sha1))
                 {
                     // items changed, but shas match so identical
                     info.changeType = ChangeType.UPDATED.getCode();
-                    dtos.add(info);
+                    dtosToUpdate.add(info);
                 }
                 else
                 {
                     String message = "Conflict merging " + info.name + ". The cube has changed since your last update.";
                     NCube mergedCube = checkForConflicts(appId, errors, message, info, head, false);
                     if (mergedCube != null) {
-                        getPersister().updateCube(appId, mergedCube, username);
-                        Object[] updated = getPersister().getCubeRecords(appId, info.name, false);
-                        dtos.add((NCubeInfoDto)updated[0]);
+                        NCubeInfoDto mergedDto = getPersister().commitMergedCubeToHead(appId, mergedCube, username);
+                        dtosMerged.add(mergedDto);
                     }
                 }
             }
@@ -994,11 +994,12 @@ public class NCubeManager
             throw new BranchMergeException(errors.size() + " merge conflict(s) committing branch.  Update your branch and retry commit.", errors);
         }
 
-        Object[] values = getPersister().commitBranch(appId, dtos, username);
+        List values = getPersister().commitBranch(appId, dtosToUpdate, username);
+        values.addAll(dtosMerged);
         clearCache(appId);
         clearCache(headAppId);
         broadcast(appId);
-        return values;
+        return values.toArray();
     }
 
     private static NCube checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head, boolean reverse)
@@ -1083,6 +1084,7 @@ public class NCubeManager
         }
 
         List<NCubeInfoDto> updates = new ArrayList<>(records.length);
+        List<NCubeInfoDto> dtosMerged = new ArrayList<>();
 
         Map<String, Map> conflicts = new LinkedHashMap<>();
 
@@ -1119,10 +1121,10 @@ public class NCubeManager
                 String message = "Cube was changed in HEAD";
                 NCube cube = checkForConflicts(appId, conflicts, message, info, head, true);
 
-                if (cube != null) {
-                    getPersister().updateCube(headAppId, cube, username);
-                    Object[] updated = getPersister().getCubeRecords(headAppId, info.name, false);
-                    updates.add((NCubeInfoDto)updated[0]);
+                if (cube != null)
+                {
+                    NCubeInfoDto mergedDto = getPersister().commitMergedCubeToHead(appId, cube, username);
+                    dtosMerged.add(mergedDto);
                 }
             }
         }
@@ -1132,10 +1134,11 @@ public class NCubeManager
             throw new BranchMergeException("Conflict(s) updating branch", conflicts);
         }
 
-        Object[] ret = getPersister().updateBranch(appId, updates, username);
+        List ret = getPersister().updateBranch(appId, updates, username);
+        ret.addAll(dtosMerged);
 
         clearCache(appId);
-        return ret;
+        return ret.toArray();
     }
 
     /**

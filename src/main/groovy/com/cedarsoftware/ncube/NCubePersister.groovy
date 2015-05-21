@@ -38,14 +38,17 @@ interface NCubePersister extends NCubeReadOnlyPersister
     boolean mergeOverwriteHeadCube(ApplicationID appId, String cubeName, String headSha1, String username);
     boolean mergeOverwriteBranchCube(ApplicationID appId, String cubeName, String branchSha1, String username);
 
+    NCubeInfoDto commitMergedCubeToHead(ApplicationID appId, NCube cube, String username)
+    NCubeInfoDto commitMergedCubeToBranch(ApplicationID appId, NCube cube, String headSha1, String username)
+
     int changeVersionValue(ApplicationID appId, String newVersion);
     int releaseCubes(ApplicationID appId, String newSnapVer);
 
     boolean updateNotes(ApplicationID appId, String cubeName, String notes)
     boolean updateTestData(ApplicationID appId, String cubeName, String testData)
 
-    Object[] commitBranch(ApplicationID appId, Collection<NCubeInfoDto> commits, String username);
-    Object[] updateBranch(ApplicationID appId, Collection<NCubeInfoDto> updates, String username);
+    List<NCubeInfoDto> commitBranch(ApplicationID appId, Collection<NCubeInfoDto> commits, String username);
+    List<NCubeInfoDto> updateBranch(ApplicationID appId, Collection<NCubeInfoDto> updates, String username);
 
     int rollbackBranch(ApplicationID appId, Object[] infoDtos);
 

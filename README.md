@@ -85,13 +85,13 @@ n-cube can be used free for personal use.
 Version History
 * 3.2.0-SNAPSHOT
  * This release adds complete support for branching.  It is essentially the upcoming 3.2 release, created to allow testing before 3.2 is released.  All branch functionality is complete and unit tested, with > 98% code coverage.
- * The branch facility is implemented with the new branching APIs (createBranch, deleteBranch, updateBranch, merge, etc.) on NCubeManager.
- * Support for memoization (caching) of GroovyExpression results has been added.  If the 'cache' value for an 'exp' (GroovyExpression) cell is true, the cell is executed, and the return value is cached.  Very similar to Groovy's memoize.
+ * The branch facility is implemented with the new branching APIs on `NCubeManager` (`createBranch`, `deleteBranch`, `updateBranch`,`merge`, etc.)
+ * Support for memoization (caching) of `GroovyExpression` results has been added.  If the 'cache' value for an 'exp' (`GroovyExpression`) cell is true, the cell is executed, and the return value is cached.  Very similar to Groovy's memoize.
  * Many small performance improvements have been made. 
- * NCUBE_PARAMS is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the sys.bootstrap cube.
+ * `NCUBE_PARAMS` is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the `sys.bootstrap` cube.
  * This release is for development only.  Do not use for production.  Consider 3.1.4 latest production release.
  * The branch concept has be thoroughly introduced in the code base.  All tests are working with it.  However, there is more API work to be done within the persister to fully support branching.
- * All APIs that take a matching pattern on NCubeManager expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
+ * All APIs that take a matching pattern on `NCubeManager` expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
 * 3.1.7
  * Performance: `NCubeManager.getCube()` - caches failed fetches so that subsequent retries do not hit database again and again.
  * Performance: `NCube.getCell()` - when accessing a non-`CommandCell`, not need to set up the context (`Map` containing `NCube`, `Input`, and `Output`) 

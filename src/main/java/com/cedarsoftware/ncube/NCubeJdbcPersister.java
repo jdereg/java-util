@@ -97,7 +97,7 @@ public class NCubeJdbcPersister
                     String sha1 = cube.sha1();
 
                     revision = revision < 0 ? revision-1 : revision+1;
-                    return insertCube(c, appId, cube.getName(), revision, cubeData, testData, "Cube committed", false, sha1, headSha1, now, username);
+                    return insertCube(c, appId, cube.getName(), revision, cubeData, testData, "Cube committed", true, sha1, headSha1, now, username);
                 }
 
                 return null;

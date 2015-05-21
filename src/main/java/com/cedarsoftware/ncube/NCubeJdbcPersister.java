@@ -84,8 +84,6 @@ public class NCubeJdbcPersister
 
     NCubeInfoDto commitMergedCubeToBranch(Connection c, ApplicationID appId, NCube cube, String headSha1, String username)
     {
-        ApplicationID headAppId = appId.asHead();
-
         try (PreparedStatement stmt = createSelectRevisionAndTestDataStatement(c, appId, cube.getName()))
         {
             try (ResultSet rs = stmt.executeQuery())
@@ -98,7 +96,7 @@ public class NCubeJdbcPersister
                     byte[] cubeData = cube.getCubeAsGzipJsonBytes();
                     String sha1 = cube.sha1();
 
-                    revision = (revision == null) ? new Long(0) : revision > 0 ? revision++ : revision--;
+                    revision = revision < 0 ? revision-1 : revision+1;
                     return insertCube(c, appId, cube.getName(), revision, cubeData, testData, "Cube committed", false, sha1, headSha1, now, username);
                 }
 

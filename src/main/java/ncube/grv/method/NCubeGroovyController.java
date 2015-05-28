@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Base class for all GroovyExpression and GroovyMethod's within n-cube CommandCells.
@@ -36,7 +37,7 @@ public class NCubeGroovyController extends NCubeGroovyExpression
     private static final Logger LOG = LogManager.getLogger(NCubeGroovyController.class);
 
     // Cache reflective method look ups
-    private static final Map<ApplicationID, Map<String, Method>> methodCache = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Method>> methodCache = new ConcurrentHashMap<>();
 
     public static void clearCache(ApplicationID appId)
     {
@@ -50,18 +51,15 @@ public class NCubeGroovyController extends NCubeGroovyExpression
      */
     private static Map<String, Method> getMethodCache(ApplicationID appId)
     {
-        Map<String, Method> methodMap = methodCache.get(appId);
+        ConcurrentMap<String, Method> methodMap = methodCache.get(appId);
 
         if (methodMap == null)
         {
-            synchronized (methodCache)
+            methodMap = new ConcurrentHashMap<>();
+            ConcurrentMap ref = methodCache.putIfAbsent(appId, methodMap);
+            if (ref != null)
             {
-                methodMap = methodCache.get(appId);
-                if (methodMap == null)
-                {
-                    methodMap = new ConcurrentHashMap<>();
-                    methodCache.put(appId, methodMap);
-                }
+                methodMap = ref;
             }
         }
         return methodMap;

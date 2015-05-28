@@ -11,6 +11,10 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,9 +34,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -63,15 +65,15 @@ public class NCubeManager
 {
     private static final String SYS_BOOTSTRAP = "sys.bootstrap";
     private static final String CLASSPATH_CUBE = "sys.classpath";
-    private static final Map<ApplicationID, Map<String, Object>> ncubeCache = new ConcurrentHashMap<>();
-    private static final Map<ApplicationID, Map<String, Advice>> advices = new ConcurrentHashMap<>();
-    private static final Map<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Object>> ncubeCache = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Advice>> advices = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
     public static final String NCUBE_PARAMS = "NCUBE_PARAMS";
     private static NCubePersister nCubePersister;
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
 
     // not private in case we want to tweak things for testing.
-    private static volatile Map<String, Object> systemParams = null;
+    private static volatile ConcurrentMap<String, Object> systemParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)
@@ -92,7 +94,7 @@ public class NCubeManager
 
     public static Map<String, Object> getSystemParams()
     {
-        final Map<String, Object> params = systemParams;
+        final ConcurrentMap<String, Object> params = systemParams;
 
         if (params != null)
         {
@@ -104,7 +106,6 @@ public class NCubeManager
             if(systemParams == null)
             {
                 String jsonParams = SystemUtilities.getExternalVariable(NCUBE_PARAMS);
-
                 systemParams = new ConcurrentHashMap();
 
                 if (StringUtilities.hasContent(jsonParams))
@@ -259,20 +260,16 @@ public class NCubeManager
         throw new IllegalStateException("If the sys.classpath cube exists it must return a URLClassLoader.");
     }
 
-    static URLClassLoader getLocalClassloader(ApplicationID appId) {
+    static URLClassLoader getLocalClassloader(ApplicationID appId)
+    {
         GroovyClassLoader gcl = localClassLoaders.get(appId);
         if (gcl == null)
         {
-            synchronized (appId.cacheKey().intern())
+            gcl = new GroovyClassLoader();
+            GroovyClassLoader classLoaderRef = localClassLoaders.putIfAbsent(appId, gcl);
+            if (classLoaderRef != null)
             {
-                gcl = localClassLoaders.get(appId);
-                if (gcl != null)
-                {
-                    return gcl;
-                }
-                LOG.debug("No sys.classpath exists for this application: " + appId + ". No URL (external) resources will be loadable.");
-                gcl = new GroovyClassLoader();
-                localClassLoaders.put(appId, gcl);
+                gcl = classLoaderRef;
             }
         }
         return gcl;
@@ -304,18 +301,15 @@ public class NCubeManager
      */
     static Map<String, Object> getCacheForApp(ApplicationID appId)
     {
-        Map<String, Object> ncubes = ncubeCache.get(appId);
+        ConcurrentMap<String, Object> ncubes = ncubeCache.get(appId);
 
         if (ncubes == null)
-        {   // Avoid synchronization unless appId cache has not yet been created.
-            synchronized (ncubeCache)
+        {
+            ncubes = new ConcurrentHashMap<>();
+            ConcurrentMap<String, Object> mapRef = ncubeCache.putIfAbsent(appId, ncubes);
+            if (mapRef != null)
             {
-                ncubes = ncubeCache.get(appId);
-                if (ncubes == null)
-                {
-                    ncubes = new ConcurrentHashMap<>();
-                    ncubeCache.put(appId, ncubes);
-                }
+                ncubes = mapRef;
             }
         }
         return ncubes;
@@ -425,12 +419,14 @@ public class NCubeManager
     public static void addAdvice(ApplicationID appId, String wildcard, Advice advice)
     {
         validateAppId(appId);
-        Map<String, Advice> current = advices.get(appId);
-        if (current == null) {
-            synchronized (advices)
+        ConcurrentMap<String, Advice> current = advices.get(appId);
+        if (current == null)
+        {
+            current = new ConcurrentHashMap<>();
+            ConcurrentMap<String, Advice> mapRef = advices.putIfAbsent(appId, current);
+            if (mapRef != null)
             {
-                current = new ConcurrentHashMap<>();
-                advices.put(appId, current);
+                current = mapRef;
             }
         }
 

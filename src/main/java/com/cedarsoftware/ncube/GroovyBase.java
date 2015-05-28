@@ -1,15 +1,23 @@
 package com.cedarsoftware.ncube;
 
-import com.cedarsoftware.ncube.exception.*;
-import com.cedarsoftware.util.*;
-import groovy.lang.*;
-import ncube.grv.exp.*;
+import com.cedarsoftware.ncube.exception.CoordinateNotFoundException;
+import com.cedarsoftware.ncube.exception.RuleJump;
+import com.cedarsoftware.ncube.exception.RuleStop;
+import com.cedarsoftware.util.EncryptionUtilities;
+import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.UrlUtilities;
+import groovy.lang.GroovyClassLoader;
+import ncube.grv.exp.NCubeGroovyExpression;
 
-import java.lang.reflect.*;
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.regex.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
 
 /**
  * Base class for Groovy CommandCells.
@@ -34,9 +42,9 @@ public abstract class GroovyBase extends UrlCommandCell
 {
     protected transient String cmdHash;
     private volatile transient Class runnableCode = null;
-    static final Map<ApplicationID, Map<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
-    static final Map<ApplicationID, Map<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
-    static final Map<ApplicationID, Map<String, Method>> runMethodCache = new ConcurrentHashMap<>();
+    static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
+    static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Constructor>> constructorCache = new ConcurrentHashMap<>();
+    static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Method>> runMethodCache = new ConcurrentHashMap<>();
 
     //  Private constructor only for serialization.
     protected GroovyBase() {}
@@ -91,18 +99,16 @@ public abstract class GroovyBase extends UrlCommandCell
 
     private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)
     {
-        Map<String, Class> classesMap = compiledClasses.get(appId);
+        ConcurrentMap<String, Class> classesMap = compiledClasses.get(appId);
 
         if (classesMap == null)
         {
-            synchronized (compiledClasses)
+            classesMap = new ConcurrentHashMap<>();
+            ConcurrentMap mapRef = compiledClasses.putIfAbsent(appId, classesMap);
+
+            if (mapRef != null)
             {
-                classesMap = compiledClasses.get(appId);
-                if (classesMap == null)
-                {
-                    classesMap = new ConcurrentHashMap<>();
-                    compiledClasses.put(appId, classesMap);
-                }
+                classesMap = mapRef;
             }
         }
         return classesMap;
@@ -110,18 +116,15 @@ public abstract class GroovyBase extends UrlCommandCell
 
     private static Map<String, Constructor> getConstructorCache(ApplicationID appId)
     {
-        Map<String, Constructor> classesMap = constructorCache.get(appId);
+        ConcurrentMap<String, Constructor> classesMap = constructorCache.get(appId);
 
         if (classesMap == null)
         {
-            synchronized (constructorCache)
+            classesMap = new ConcurrentHashMap<>();
+            ConcurrentMap mapRef = constructorCache.putIfAbsent(appId, classesMap);
+            if (mapRef != null)
             {
-                classesMap = constructorCache.get(appId);
-                if (classesMap == null)
-                {
-                    classesMap = new ConcurrentHashMap<>();
-                    constructorCache.put(appId, classesMap);
-                }
+                classesMap = mapRef;
             }
         }
         return classesMap;
@@ -129,18 +132,15 @@ public abstract class GroovyBase extends UrlCommandCell
 
     private static Map<String, Method> getRunMethodCache(ApplicationID appId)
     {
-        Map<String, Method> runMethodMap = runMethodCache.get(appId);
+        ConcurrentMap<String, Method> runMethodMap = runMethodCache.get(appId);
 
         if (runMethodMap == null)
         {
-            synchronized (runMethodCache)
+            runMethodMap = new ConcurrentHashMap<>();
+            ConcurrentMap mapRef = runMethodCache.putIfAbsent(appId, runMethodMap);
+            if (mapRef != null)
             {
-                runMethodMap = runMethodCache.get(appId);
-                if (runMethodMap == null)
-                {
-                    runMethodMap = new ConcurrentHashMap<>();
-                    runMethodCache.put(appId, runMethodMap);
-                }
+                runMethodMap = mapRef;
             }
         }
         return runMethodMap;

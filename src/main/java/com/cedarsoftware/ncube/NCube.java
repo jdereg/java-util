@@ -1464,8 +1464,10 @@ public class NCube<T>
     /**
      * Get the optional scope keys. These are keys that if supplied, might change the returned value, but if not
      * supplied a value is still returned.  For example, an axis that has a Default column is an optional scope.
-     * If not value is supplied for that axis, the Default column is chosen.  However, supplying a value for it
-     * *may* change the column selected.
+     * If no value is supplied for that axis, the Default column is chosen.  However, supplying a value for it
+     * *may* change the column selected.  Similarly, a cube may reference another cube, and the 'sub-cube' may
+     * use different scope keys than the calling cube.  These additional keys are located and added as optional
+     * scope.
      *
      * @return Set of String scope key names that are optional.
      */

@@ -99,51 +99,30 @@ public abstract class GroovyBase extends UrlCommandCell
 
     private static Map<String, Class> getCompiledClassesCache(ApplicationID appId)
     {
-        ConcurrentMap<String, Class> classesMap = compiledClasses.get(appId);
-
-        if (classesMap == null)
-        {
-            classesMap = new ConcurrentHashMap<>();
-            ConcurrentMap mapRef = compiledClasses.putIfAbsent(appId, classesMap);
-
-            if (mapRef != null)
-            {
-                classesMap = mapRef;
-            }
-        }
-        return classesMap;
+        return getCache(appId, compiledClasses);
     }
 
     private static Map<String, Constructor> getConstructorCache(ApplicationID appId)
     {
-        ConcurrentMap<String, Constructor> classesMap = constructorCache.get(appId);
-
-        if (classesMap == null)
-        {
-            classesMap = new ConcurrentHashMap<>();
-            ConcurrentMap mapRef = constructorCache.putIfAbsent(appId, classesMap);
-            if (mapRef != null)
-            {
-                classesMap = mapRef;
-            }
-        }
-        return classesMap;
+        return getCache(appId, constructorCache);
     }
 
     private static Map<String, Method> getRunMethodCache(ApplicationID appId)
     {
-        ConcurrentMap<String, Method> runMethodMap = runMethodCache.get(appId);
+        return getCache(appId, runMethodCache);
+    }
 
-        if (runMethodMap == null)
-        {
-            runMethodMap = new ConcurrentHashMap<>();
-            ConcurrentMap mapRef = runMethodCache.putIfAbsent(appId, runMethodMap);
-            if (mapRef != null)
-            {
-                runMethodMap = mapRef;
+    private static <T> Map<String, T> getCache(ApplicationID appId, ConcurrentMap<ApplicationID, ConcurrentMap<String, T>> container) {
+        ConcurrentMap<String, T> map = container.get(appId);
+
+        if (map == null) {
+            map = new ConcurrentHashMap<>();
+            ConcurrentMap mapRef = container.putIfAbsent(appId, map);
+            if (mapRef != null) {
+                map = mapRef;
             }
         }
-        return runMethodMap;
+        return map;
     }
 
     protected Object executeInternal(Map ctx)

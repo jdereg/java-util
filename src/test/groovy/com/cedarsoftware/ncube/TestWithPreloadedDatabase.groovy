@@ -2834,12 +2834,14 @@ abstract class TestWithPreloadedDatabase
 
         preloadCubes(id, "sys.bootstrap.user.overloaded.json")
 
+        NCube cube = NCubeManager.getCube(id, 'sys.bootstrap')
+
         // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
         NCubeManager.systemParams = null;
 
-        NCube cube = NCubeManager.getCube(id, 'sys.bootstrap')
-        // ensure properties are cleared
+        // ensure properties are cleared (if empty, this would load the environment version of NCUBE_PARAMS)
         System.setProperty('NCUBE_PARAMS', '{"foo":"bar"}')
+
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'HEAD'), cube.getCell([env:'DEV']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'HEAD'), cube.getCell([env:'PROD']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'baz'), cube.getCell([env:'SAND']))

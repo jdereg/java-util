@@ -15,12 +15,15 @@ public class NCubeTestWriter extends BaseJsonFormatter
         startArray();
         if (tests != null && tests.length > 0)
         {
+            boolean firstPass = true;
             for (Object test : tests)
             {
+                if (!firstPass) {
+                    comma();
+                }
                 writeTest((NCubeTest) test);
-                comma();
+                firstPass = false;
             }
-            uncomma();
         }
         endArray();
 
@@ -42,15 +45,18 @@ public class NCubeTestWriter extends BaseJsonFormatter
         startArray();
         if (coord != null && coord.length > 0)
         {
+            boolean firstPass = true;
             for (StringValuePair<CellInfo> parameter : coord)
             {
+                if (!firstPass) {
+                    comma();
+                }
                 startObject();
                 writeObjectKey(parameter.getKey());
                 writeCellInfo(parameter.getValue());
                 endObject();
-                comma();
+                firstPass = false;
             }
-            uncomma();
         }
         endArray();
     }
@@ -59,12 +65,15 @@ public class NCubeTestWriter extends BaseJsonFormatter
         startArray();
         if (assertions != null && assertions.length > 0)
         {
+            boolean firstPass = true;
             for (CellInfo item : assertions)
             {
+                if (!firstPass) {
+                    comma();
+                }
                 writeCellInfo(item);
-                comma();
+                firstPass = false;
             }
-            uncomma();
         }
         endArray();
     }

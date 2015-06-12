@@ -3,6 +3,9 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,8 +18,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -514,6 +515,8 @@ public class NCubeJdbcPersister
                 while (rs.next())
                 {
                     // dont' hydrate the cube yet.
+                            rs.getBinaryStream("cube_value_bin");
+
                     byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
                     String cubeData = StringUtilities.createString(bytes, "UTF-8");
 
@@ -916,7 +919,7 @@ public class NCubeJdbcPersister
 
     private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException
     {
-        NCube ncube = NCube.createCubeFromGzipBytes(rs.getBytes(CUBE_VALUE_BIN));
+        NCube ncube = NCube.createCubeFromStream(rs.getBinaryStream(CUBE_VALUE_BIN));
         ncube.setSha1(rs.getString("sha1"));
         ncube.setApplicationID(appId);
         return ncube;
@@ -1173,12 +1176,13 @@ public class NCubeJdbcPersister
                                         "UPDATE n_cube set sha1 = ?, cube_value_bin = ? where n_cube_id = ?"))
                                 {
 
-                                    NCube cube = NCube.createCubeFromGzipBytes(jsonBytes);
+                                    NCube cube = NCube.createCubeFromStream(rs.getBinaryStream("cube_value_bin"));
+                                    //NCube cube = NCube.createCubeFromGzipBytes(jsonBytes);
                                     sha1 = cube.sha1();
                                     jsonBytes = cube.getCubeAsGzipJsonBytes();
 
                                     update.setString(1, sha1);
-                                    update.setBytes(2, jsonBytes);
+                                    update.setBinaryStream(2, );
                                     update.setLong(3, rs.getLong("n_cube_id"));
                                     update.executeUpdate();
                                 }
@@ -1673,7 +1677,7 @@ public class NCubeJdbcPersister
             // If names are different we need to recalculate the sha-1
             if (changed)
             {
-                NCube ncube = NCube.createCubeFromGzipBytes(jsonBytes);
+                NCube ncube = NCube.createCubeFromStream(jsonBytes);
                 ncube.setName(newName);
                 ncube.setApplicationID(newAppId);
                 jsonBytes = ncube.getCubeAsGzipJsonBytes();

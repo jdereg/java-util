@@ -11,10 +11,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,6 +31,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -73,7 +72,7 @@ public class NCubeManager
     private static final Logger LOG = LogManager.getLogger(NCubeManager.class);
 
     // not private in case we want to tweak things for testing.
-    private static volatile ConcurrentMap<String, Object> systemParams = null;
+    static volatile ConcurrentMap<String, Object> systemParams = null;
 
     /**
      * Store the Persister to be used with the NCubeManager API (Dependency Injection API)

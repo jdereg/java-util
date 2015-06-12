@@ -72,7 +72,7 @@
     {
       "id": [],
       "type": "exp",
-      "value": "import com.cedarsoftware.util.*; import com.cedarsoftware.util.io.*; Map map = null; if (StringUtilities.hasContent(SystemUtilities.getExternalVariable('NCUBE_PARAMS'))) { map = JsonReader.jsonToMaps(SystemUtilities.getExternalVariable('NCUBE_PARAMS')); }; String version = map?.containsKey('version') ? map.version : input.version; String urlBase = map?.containsKey('cpBase') ? map.cpBase : ('https://www.foo.com/' + version + '/'); new com.cedarsoftware.ncube.util.CdnClassLoader([urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/']);"
+      "value": "Map map = NCubeManager.getSystemParams(); String version = map?.containsKey('version') ? map.version : input.version; String urlBase = map?.containsKey('cpBase') ? map.cpBase : ('https://www.foo.com/' + version + '/'); new com.cedarsoftware.ncube.util.CdnClassLoader([urlBase + 'public/',urlBase + 'private/',urlBase + 'private/groovy/']);"
     }
   ]
 }

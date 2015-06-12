@@ -33,7 +33,7 @@
     {
       "id": [],
       "type": "exp",
-      "value": "import com.cedarsoftware.util.*; import com.cedarsoftware.util.io.*; Map map = null; if (StringUtilities.hasContent(SystemUtilities.getExternalVariable('NCUBE_PARAMS'))) { map = JsonReader.jsonToMaps(SystemUtilities.getExternalVariable('NCUBE_PARAMS')); }; String tenant = map?.containsKey('tenant') ? map.tenant : input.tenant; String app = map?.containsKey('app') ? map.app : input.app; String version = map?.containsKey('version') ? map.version : input.version; String status = map?.containsKey('status') ? map.status : input.status; String branch = map?.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
+      "value": "Map map = NCubeManager.getSystemParams(); String tenant = map?.containsKey('tenant') ? map.tenant : input.tenant; String app = map?.containsKey('app') ? map.app : input.app; String version = map?.containsKey('version') ? map.version : input.version; String status = map?.containsKey('status') ? map.status : input.status; String branch = map?.containsKey('branch') ? map.branch : input.branch; new ApplicationID(tenant, app, version, status, branch);"
     }
     ]
   }

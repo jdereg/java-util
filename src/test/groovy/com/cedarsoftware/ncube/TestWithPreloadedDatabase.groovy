@@ -2834,18 +2834,25 @@ abstract class TestWithPreloadedDatabase
 
         preloadCubes(id, "sys.bootstrap.user.overloaded.json")
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
+
         NCube cube = NCubeManager.getCube(id, 'sys.bootstrap')
         // ensure properties are cleared
-        System.setProperty('NCUBE_PARAMS', '')
+        System.setProperty('NCUBE_PARAMS', '{"foo":"bar"}')
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'HEAD'), cube.getCell([env:'DEV']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'HEAD'), cube.getCell([env:'PROD']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.29.0', 'SNAPSHOT', 'baz'), cube.getCell([env:'SAND']))
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
         System.setProperty("NCUBE_PARAMS", '{"status":"RELEASE", "app":"UD", "tenant":"foo", "branch":"bar"}')
         assertEquals(new ApplicationID('foo', 'UD', '1.28.0', 'RELEASE', 'bar'), cube.getCell([env:'DEV']))
         assertEquals(new ApplicationID('foo', 'UD', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']))
         assertEquals(new ApplicationID('foo', 'UD', '1.29.0', 'RELEASE', 'bar'), cube.getCell([env:'SAND']))
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
         System.setProperty("NCUBE_PARAMS", '{"branch":"bar"}')
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.28.0', 'SNAPSHOT', 'bar'), cube.getCell([env:'DEV']))
         assertEquals(new ApplicationID('NONE', 'UD.REF.APP', '1.25.0', 'RELEASE', 'bar'), cube.getCell([env:'PROD']))
@@ -2856,10 +2863,12 @@ abstract class TestWithPreloadedDatabase
     public void testUserOverloadedClassPath() {
         preloadCubes(appId, "sys.classpath.user.overloaded.json", "sys.versions.json")
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
         // Check DEV
         NCube cube = NCubeManager.getCube(appId, "sys.classpath")
         // ensure properties are cleared.
-        System.setProperty('NCUBE_PARAMS', '')
+        System.setProperty('NCUBE_PARAMS', '{"foo", "bar"}')
 
         CdnClassLoader devLoader = cube.getCell([env:"DEV"]);
         assertEquals('https://www.foo.com/tests/ncube/cp1/public/', devLoader.URLs[0].toString())
@@ -2872,6 +2881,8 @@ abstract class TestWithPreloadedDatabase
         assertEquals('https://www.foo.com/tests/ncube/cp2/private/', intLoader.URLs[1].toString())
         assertEquals('https://www.foo.com/tests/ncube/cp2/private/groovy/', intLoader.URLs[2].toString())
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
         // Check with overload
         System.setProperty("NCUBE_PARAMS", '{"cpBase":"file://C:/Development/"}')
 
@@ -2899,6 +2910,8 @@ abstract class TestWithPreloadedDatabase
         assertEquals('file://C:/Development/private/', devLoaderAgain.URLs[1].toString())
         assertEquals('file://C:/Development/private/groovy/', devLoaderAgain.URLs[2].toString())
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
         // Check version overload only
         System.setProperty("NCUBE_PARAMS", '{"version":"1.28.0"}')
         // SAND hasn't been loaded yet so it should give us updated values based on the system params.
@@ -2912,11 +2925,13 @@ abstract class TestWithPreloadedDatabase
     public void testSystemParamsOverloads() {
         preloadCubes(appId, "sys.classpath.system.params.user.overloaded.json", "sys.versions.2.json", "sys.resources.base.url.json")
 
+        // force reload of system params, you wouln't usually do this because it wouldn't be thread safe this way.
+        NCubeManager.systemParams = null;
 
         // Check DEV
         NCube cube = NCubeManager.getCube(appId, "sys.classpath")
         // ensure properties are cleared.
-        System.setProperty('NCUBE_PARAMS', '')
+        System.setProperty('NCUBE_PARAMS', '{"foo", "bar"}')
 
         CdnClassLoader devLoader = cube.getCell([env:"DEV"]);
         assertEquals('http://www.cedarsoftware.com/foo/1.31.0-SNAPSHOT/public/', devLoader.URLs[0].toString())

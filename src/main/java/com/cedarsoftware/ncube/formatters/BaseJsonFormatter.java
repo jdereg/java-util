@@ -27,76 +27,40 @@ public class BaseJsonFormatter
     }
 
     void startArray() {
-        try {
-            builder.append("[");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append("[");
     }
 
     void endArray() {
-        try {
-            builder.append("]");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append("]");
     }
 
     void startObject() {
-        try {
-            builder.append("{");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append("{");
     }
 
     void endObject() {
-        try {
-            builder.append("}");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append("}");
     }
 
     void comma() {
-        try {
-            builder.append(",");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append(",");
     }
 
     void append(Long id) {
-        try {
-            builder.append(Long.toString(id));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append(Long.toString(id));
     }
 
     void append(String id) {
         try {
-            builder.append(id);
+            builder.write(id);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-//    void uncomma()
-//    {
-//        builder.setLength(builder.length() - 1);
-//    }
-
     protected void writeObjectKey(String key)
     {
-        try {
-            builder.append('"');
-            builder.append(key);
-            builder.append('"');
-            builder.append(":");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        append("\"" + key + "\":");
     }
 
 
@@ -118,6 +82,12 @@ public class BaseJsonFormatter
             JsonWriter.writeJsonUtf8String((String) value, w);
             value = w.toString();
         }
-        builder.append(value == null ? "null" : value.toString());
+        append(value == null ? "null" : value.toString());
+    }
+
+    protected void closeStream() throws IOException
+    {
+        builder.flush();
+        builder.close();
     }
 }

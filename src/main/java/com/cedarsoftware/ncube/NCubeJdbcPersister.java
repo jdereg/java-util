@@ -1,9 +1,16 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,8 +22,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Class used to carry the NCube meta-information
@@ -64,8 +70,7 @@ public class NCubeJdbcPersister
     {
         try
         {
-            byte[] jsonBytes = ncube.getCubeAsGzipJsonBytes();
-            if (insertCube(c, appId, ncube.getName(), rev, jsonBytes, null, "Cube created", true, ncube.sha1(), null, System.currentTimeMillis(), username) == null)
+            if (insertCube(c, appId, ncube, rev, null, "Cube created", true, null, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId);
             }
@@ -93,11 +98,9 @@ public class NCubeJdbcPersister
                     Long revision = rs.getLong("revision_number");
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     long now = System.currentTimeMillis();
-                    byte[] cubeData = cube.getCubeAsGzipJsonBytes();
-                    String sha1 = cube.sha1();
 
                     revision = revision < 0 ? revision-1 : revision+1;
-                    return insertCube(c, appId, cube.getName(), revision, cubeData, testData, "Cube committed", true, sha1, headSha1, now, username);
+                    return insertCube(c, appId, cube, revision, testData, "Cube committed", true, headSha1, now, username);
                 }
 
                 return null;
@@ -146,6 +149,7 @@ public class NCubeJdbcPersister
 
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     long now = System.currentTimeMillis();
+                    // ok to use this here, because we're writing out these bytes twice (once to head and once to branch)
                     byte[] cubeData = cube.getCubeAsGzipJsonBytes();
                     String sha1 = cube.sha1();
 
@@ -353,7 +357,6 @@ public class NCubeJdbcPersister
                         throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update deleted cube.  Restore it first.");
                     }
 
-                    byte[] cubeData = cube.getCubeAsGzipJsonBytes();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     String headSha1 = rs.getString("head_sha1");
                     String oldSha1 = rs.getString("sha1");
@@ -361,11 +364,11 @@ public class NCubeJdbcPersister
 
                     if (StringUtilities.equals(oldSha1, cube.sha1()))
                     {
-                        //  shas are equals and both revision values are positive.  no need for new record.
+                        //  shas are equals and both revision values are positive.  no need for new revision of record.
                         return;
                     }
 
-                    NCubeInfoDto dto = insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username);
+                    NCubeInfoDto dto = insertCube(connection, appId, cube, revision + 1, testData, "Cube updated", true, headSha1, System.currentTimeMillis(), username);
 
                     if (dto == null)
                     {
@@ -1171,19 +1174,23 @@ public class NCubeJdbcPersister
                             if (sha1 == null)
                             {
 
-                                try (PreparedStatement update = c.prepareStatement(
-                                        "UPDATE n_cube set sha1 = ?, cube_value_bin = ? where n_cube_id = ?"))
-                                {
+                                Blob blob = c.createBlob();
+                                try (OutputStream out = blob.setBinaryStream(1L)) {
+                                    try (PreparedStatement update = c.prepareStatement(
+                                            "UPDATE n_cube set sha1 = ?, cube_value_bin = ? where n_cube_id = ?")) {
 
-                                    NCube cube = NCube.createCubeFromStream(rs.getBinaryStream("cube_value_bin"));
-                                    //NCube cube = NCube.createCubeFromGzipBytes(jsonBytes);
-                                    sha1 = cube.sha1();
-                                    jsonBytes = cube.getCubeAsGzipJsonBytes();
+                                        NCube cube = NCube.createCubeFromStream(rs.getBinaryStream("cube_value_bin"));
+                                        sha1 = cube.sha1();
 
-                                    update.setString(1, sha1);
-                                    update.setBytes(2, jsonBytes);
-                                    update.setLong(3, rs.getLong("n_cube_id"));
-                                    update.executeUpdate();
+                                        try (OutputStream stream = new GZIPOutputStream(out)) {
+                                            new JsonFormatter(stream).formatCube(cube);
+                                        }
+
+                                        update.setString(1, sha1);
+                                        update.setBlob(2, blob);
+                                        update.setLong(3, rs.getLong("n_cube_id"));
+                                        update.executeUpdate();
+                                    }
                                 }
                             }
 
@@ -1797,9 +1804,7 @@ public class NCubeJdbcPersister
             ncube.setName(newName);
 
             String notes = "Cube renamed:  " + oldName + " -> " + newName;
-            byte[] cubeData = ncube.getCubeAsGzipJsonBytes();
-
-            if (insertCube(c, appId, newName, newRevision == null ? 0 : Math.abs(newRevision) + 1, cubeData, oldTestData, notes, true, ncube.sha1(), newHeadSha1, System.currentTimeMillis(), username) == null)
+            if (insertCube(c, appId, ncube, newRevision == null ? 0 : Math.abs(newRevision) + 1, oldTestData, notes, true, newHeadSha1, System.currentTimeMillis(), username) == null)
             {
                 throw new IllegalStateException("Unable to rename cube: " + oldName + " -> " + newName + "', app: " + appId);
             }
@@ -1863,6 +1868,58 @@ public class NCubeJdbcPersister
             dto.name = name;
             dto.sha1 = sha1;
             dto.headSha1 = sha1;
+            dto.changed = changed;
+            dto.app = appId.getApp();
+            dto.branch = appId.getBranch();
+            dto.tenant = appId.getTenant();
+            dto.version = appId.getVersion();
+            dto.status = appId.getStatus();
+            dto.createDate = new Date(time);
+            dto.createHid = username;
+            dto.notes = note;
+            dto.revision = Long.toString(revision);
+
+            return s.executeUpdate() == 1 ? dto : null;
+        }
+    }
+
+    NCubeInfoDto insertCube(Connection c, ApplicationID appId, NCube cube, Long revision, byte[] testData, String notes, boolean changed, String headSha1, long time, String username) throws SQLException, IOException
+    {
+
+        try (PreparedStatement s = createInsertStatement(c))
+        {
+            final Blob blob = c.createBlob();
+            OutputStream out = blob.setBinaryStream(1L);
+
+            try (OutputStream stream = new GZIPOutputStream(out)) {
+                new JsonFormatter(stream).formatCube(cube);
+            }
+
+            long uniqueId = UniqueIdGenerator.getUniqueId();
+            s.setLong(1, uniqueId);
+            s.setString(2, appId.getTenant());
+            s.setString(3, appId.getApp());
+            s.setString(4, appId.getVersion());
+            s.setString(5, appId.getStatus());
+            s.setString(6, appId.getBranch());
+            s.setString(7, cube.getName());
+            s.setLong(8, revision);
+            s.setString(9, cube.sha1());
+            s.setString(10, headSha1);
+            Timestamp now = new Timestamp(time);
+            s.setTimestamp(11, now);
+            s.setString(12, username);
+            s.setBlob(13, blob);
+            s.setBytes(14, testData);
+            String note = createNote(username, now, notes);
+            s.setBytes(15, StringUtilities.getBytes(note, "UTF-8"));
+            s.setInt(16, changed ? 1 : 0);
+
+            NCubeInfoDto dto = new NCubeInfoDto();
+            dto.id = Long.toString(uniqueId);
+            dto.name = cube.getName();
+            dto.sha1 = cube.sha1();
+            dto.headSha1 = cube.sha1();
             dto.changed = changed;
             dto.app = appId.getApp();
             dto.branch = appId.getBranch();

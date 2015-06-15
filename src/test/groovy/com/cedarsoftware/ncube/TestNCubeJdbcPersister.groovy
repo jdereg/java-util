@@ -5,6 +5,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
+import java.sql.Blob
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -18,6 +19,7 @@ import static org.junit.Assert.assertNull
 import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyInt
+import static org.mockito.Matchers.anyLong
 import static org.mockito.Matchers.anyString
 import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.when
@@ -992,7 +994,11 @@ class TestNCubeJdbcPersister
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
 
+        OutputStream stream = mock(OutputStream.class);
+        Blob b = mock(Blob.class);
+        when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
+        when(c.createBlob()).thenReturn(b);
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
         when(c.prepareStatement(anyString())).thenReturn(ps)
@@ -1015,7 +1021,12 @@ class TestNCubeJdbcPersister
     void testDeleteCubeWithSQLException()
     {
 
+        OutputStream stream = mock(OutputStream.class);
+        Blob b = mock(Blob.class);
+        when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
+        when(c.createBlob()).thenReturn(b);
+
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
         when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
@@ -1250,7 +1261,11 @@ class TestNCubeJdbcPersister
     void testUpdateCubeWithWrongUpdateCount()
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
+        OutputStream stream = mock(OutputStream.class);
+        Blob b = mock(Blob.class);
+        when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
+        when(c.createBlob()).thenReturn(b);
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(rs.next()).thenReturn(true)
@@ -1275,7 +1290,11 @@ class TestNCubeJdbcPersister
     @Test
     void testRenameCubeThatDidntUpdateBecauseOfDatabaseError()
     {
+        OutputStream stream = mock(OutputStream.class);
+        Blob b = mock(Blob.class);
+        when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
+        when(c.createBlob()).thenReturn(b);
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(c.prepareStatement(anyString())).thenReturn(ps)
@@ -1304,7 +1323,11 @@ class TestNCubeJdbcPersister
     @Test
     void testRenameCubeThatDidntUpdateBecauseOfDatabaseError2()
     {
+        OutputStream stream = mock(OutputStream.class);
+        Blob b = mock(Blob.class);
+        when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
+        when(c.createBlob()).thenReturn(b);
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(c.prepareStatement(anyString())).thenReturn(ps)

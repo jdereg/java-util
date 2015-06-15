@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class NCubeGroovyController extends NCubeGroovyExpression
 {
-    private static final Logger LOG = LogManager.getLogger(NCubeGroovyController.class);
+    protected static final Logger LOG = LogManager.getLogger(NCubeGroovyController.class);
 
     // Cache reflective method look ups
     private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Method>> methodCache = new ConcurrentHashMap<>();

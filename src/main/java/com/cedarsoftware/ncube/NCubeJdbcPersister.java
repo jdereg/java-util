@@ -149,6 +149,7 @@ public class NCubeJdbcPersister
 
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     long now = System.currentTimeMillis();
+                    // ok to use this here, because we're writing out these bytes twice (once to head and once to branch)
                     byte[] cubeData = cube.getCubeAsGzipJsonBytes();
                     String sha1 = cube.sha1();
 
@@ -356,7 +357,6 @@ public class NCubeJdbcPersister
                         throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update deleted cube.  Restore it first.");
                     }
 
-                    byte[] cubeData = cube.getCubeAsGzipJsonBytes();
                     byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     String headSha1 = rs.getString("head_sha1");
                     String oldSha1 = rs.getString("sha1");
@@ -364,11 +364,11 @@ public class NCubeJdbcPersister
 
                     if (StringUtilities.equals(oldSha1, cube.sha1()))
                     {
-                        //  shas are equals and both revision values are positive.  no need for new record.
+                        //  shas are equals and both revision values are positive.  no need for new revision of record.
                         return;
                     }
 
-                    NCubeInfoDto dto = insertCube(connection, appId, cube.getName(), revision + 1, cubeData, testData, "Cube updated", true, cube.sha1(), headSha1, System.currentTimeMillis(), username);
+                    NCubeInfoDto dto = insertCube(connection, appId, cube, revision + 1, testData, "Cube updated", true, headSha1, System.currentTimeMillis(), username);
 
                     if (dto == null)
                     {

@@ -52,7 +52,7 @@ public class BaseJsonFormatter
 
     void append(String id) {
         try {
-            builder.append(id);
+            builder.write(id);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -83,5 +83,11 @@ public class BaseJsonFormatter
             value = w.toString();
         }
         append(value == null ? "null" : value.toString());
+    }
+
+    protected void closeStream() throws IOException
+    {
+        builder.flush();
+        builder.close();
     }
 }

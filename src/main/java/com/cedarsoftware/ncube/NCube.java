@@ -22,8 +22,10 @@ import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PushbackInputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -49,6 +51,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Implements an n-cube.  This is a hyper (n-dimensional) cube
@@ -3015,22 +3018,21 @@ public class NCube<T>
 
     public byte[] getCubeAsGzipJsonBytes()
     {
-        byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
-        return IOUtilities.compressBytes(jsonBytes);
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(8192))
+        {
+            try (OutputStream stream = new GZIPOutputStream(byteArrayOutputStream))
+            {
+                new JsonFormatter(stream).formatCube(this);
+                stream.flush();
+                stream.close();
+            }
 
-//        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(8192))
-//        {
-//            try (OutputStream stream = new GZIPOutputStream(byteArrayOutputStream))
-//            {
-//                new JsonFormatter(stream).formatCube(this);
-//            }
-//
-//            return byteArrayOutputStream.toByteArray();
-//        }
-//        catch (Exception e)
-//        {
-//           throw new RuntimeException("Error writing cube to stream", e);
-//        }
+            return byteArrayOutputStream.toByteArray();
+        }
+        catch (Exception e)
+        {
+           throw new RuntimeException("Error writing cube to stream", e);
+        }
     }
 
     public void setName(String name)

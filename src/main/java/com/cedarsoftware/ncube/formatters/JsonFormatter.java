@@ -90,6 +90,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
             endObject();
+            closeStream();
         }
         catch (Exception e)
         {
@@ -137,7 +138,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
     {
         if (axes.isEmpty())
         {   // Make sure the formatter writes valid JSON
-            builder.append("\"axes\":[],");
+            append("\"axes\":[],");
             return;
         }
 
@@ -177,7 +178,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
     void writeColumns(List<Column> columns) throws IOException
     {
-        builder.append("\"columns\":");
+        append("\"columns\":");
         startArray();
         boolean firstPass = true;
 
@@ -247,10 +248,10 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
     void writeCells(Map<Collection<Long>, ?> cells) throws IOException
     {
-        builder.append("\"cells\":");
+        append("\"cells\":");
         if (cells == null || cells.isEmpty())
         {
-            builder.append("[]");
+            append("[]");
             return;
         }
         startArray();

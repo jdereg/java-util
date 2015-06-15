@@ -20,11 +20,11 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PushbackInputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -2981,24 +2981,22 @@ public class NCube<T>
             throw new NullPointerException("Stream cannot be null to create cube.");
         }
 
-        PushbackInputStream pushbackStream = null;
         InputStream newStream = null;
         byte[] header = new byte[2];
 
         try
         {
-            pushbackStream = new PushbackInputStream(new BufferedInputStream(stream, 2048), 2);
+            newStream = new BufferedInputStream(stream);
+            newStream.mark(5);
 
-            int count = pushbackStream.read(header);
+            int count = newStream.read(header);
 
             if (count < 2) {
                 throw new IllegalStateException("Invalid Cube existing of 0 or 1 bytes");
             }
 
-            pushbackStream.unread(header);
-
-            newStream = ByteUtilities.isGzipped(header) ? new GZIPInputStream(pushbackStream) : pushbackStream;
-
+            newStream.reset();
+            newStream = ByteUtilities.isGzipped(header) ? new GZIPInputStream(newStream) : newStream;
             return NCube.fromSimpleJson(newStream, new HashMap<String, Object>());
         }
         catch (IOException e)
@@ -3007,7 +3005,6 @@ public class NCube<T>
         }
         finally
         {
-            IOUtilities.close(pushbackStream);
             IOUtilities.close(newStream);
         }
     }

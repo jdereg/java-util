@@ -63,7 +63,7 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, false, true, true, true, false);
+            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, (Boolean)false, (Boolean)true, (Boolean)true, (Boolean)true, (Boolean)false);
             fail();
         }
         catch (Exception e)

@@ -3020,7 +3020,7 @@ public class NCube<T>
     {
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(8192))
         {
-            try (OutputStream stream = new GZIPOutputStream(byteArrayOutputStream))
+            try (OutputStream stream = new GZIPOutputStream(byteArrayOutputStream, 8192))
             {
                 new JsonFormatter(stream).formatCube(this);
                 stream.flush();

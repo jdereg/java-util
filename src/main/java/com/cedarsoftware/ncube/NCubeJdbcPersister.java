@@ -1182,7 +1182,7 @@ public class NCubeJdbcPersister
                                         NCube cube = NCube.createCubeFromStream(rs.getBinaryStream("cube_value_bin"));
                                         sha1 = cube.sha1();
 
-                                        try (OutputStream stream = new GZIPOutputStream(out)) {
+                                        try (OutputStream stream = new GZIPOutputStream(out, 8192)) {
                                             new JsonFormatter(stream).formatCube(cube);
                                         }
 
@@ -1891,7 +1891,7 @@ public class NCubeJdbcPersister
             final Blob blob = c.createBlob();
             OutputStream out = blob.setBinaryStream(1L);
 
-            try (OutputStream stream = new GZIPOutputStream(out)) {
+            try (OutputStream stream = new GZIPOutputStream(out, 8192)) {
                 new JsonFormatter(stream).formatCube(cube);
             }
 

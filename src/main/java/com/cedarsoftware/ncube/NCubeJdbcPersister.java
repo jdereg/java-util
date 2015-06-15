@@ -3,9 +3,6 @@ package com.cedarsoftware.ncube;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,6 +15,8 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -569,7 +568,7 @@ public class NCubeJdbcPersister
         {
             revisionCondition = " AND n.revision_number >= 0";
         }
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
+        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt, cube_value_bin " +
                 "FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
@@ -1182,7 +1181,7 @@ public class NCubeJdbcPersister
                                     jsonBytes = cube.getCubeAsGzipJsonBytes();
 
                                     update.setString(1, sha1);
-                                    update.setBinaryStream(2, );
+                                    update.setBytes(2, jsonBytes);
                                     update.setLong(3, rs.getLong("n_cube_id"));
                                     update.executeUpdate();
                                 }
@@ -1677,7 +1676,7 @@ public class NCubeJdbcPersister
             // If names are different we need to recalculate the sha-1
             if (changed)
             {
-                NCube ncube = NCube.createCubeFromStream(jsonBytes);
+                NCube ncube = NCube.createCubeFromGzipBytes(jsonBytes);
                 ncube.setName(newName);
                 ncube.setApplicationID(newAppId);
                 jsonBytes = ncube.getCubeAsGzipJsonBytes();

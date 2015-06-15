@@ -20,7 +20,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
-
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -2970,11 +2969,11 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, '.', '_', '-'");
     }
 
-//    public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)
-//    {
-//        String json = StringUtilities.createUTF8String(IOUtilities.uncompressBytes(jsonBytes));
-//        return NCube.fromSimpleJson(json);
-//    }
+    public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)
+    {
+        String json = StringUtilities.createUTF8String(IOUtilities.uncompressBytes(jsonBytes));
+        return NCube.fromSimpleJson(json);
+    }
 
     public static NCube<?> createCubeFromStream(InputStream stream)
     {
@@ -3013,11 +3012,11 @@ public class NCube<T>
         }
     }
 
-//    public byte[] getCubeAsGzipJsonBytes()
-//    {
-//        byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
-//        return IOUtilities.compressBytes(jsonBytes);
-//    }
+    public byte[] getCubeAsGzipJsonBytes()
+    {
+        byte[] jsonBytes = StringUtilities.getBytes(toFormattedJson(), "UTF-8");
+        return IOUtilities.compressBytes(jsonBytes);
+    }
 
     public void writeCubeToStream(OutputStream s) {
         new JsonFormatter(s).formatCube(this);

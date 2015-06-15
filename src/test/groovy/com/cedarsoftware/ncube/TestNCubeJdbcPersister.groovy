@@ -1261,7 +1261,11 @@ class TestNCubeJdbcPersister
     void testUpdateCubeWithWrongUpdateCount()
     {
         NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
+        OutputStream stream = mock(OutputStream.class);
+        Blob b = mock(Blob.class);
+        when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
+        when(c.createBlob()).thenReturn(b);
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(rs.next()).thenReturn(true)

@@ -14,6 +14,7 @@ import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -46,12 +47,23 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 {
     private static final String MAX_INT = Long.toString(Integer.MAX_VALUE);
     public JsonFormatter() { }
+    public JsonFormatter(OutputStream stream) { super(stream); }
 
     /**
      * Use this API to generate JSON view of this NCube.
      */
     public String format(NCube ncube)
     {
+        if (!(builder instanceof StringWriter))
+        {
+            throw new IllegalStateException("Builder is not a StringWriter.  Use formatCube(ncube) to write to your stream.");
+        }
+
+        formatCube(ncube);
+        return builder.toString();
+    }
+
+    public void formatCube(NCube ncube) {
         if (ncube == null)
         {
             throw new IllegalArgumentException("Cube to format cannot be null");
@@ -60,7 +72,6 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         String name = ncube.getName();
         try
         {
-            builder.setLength(0);
             startObject();
             writeObjectKeyValue("ncube", name, true);
             Object defCellValue = ncube.getDefaultCellValue();
@@ -79,7 +90,6 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             writeAxes(ncube.getAxes());
             writeCells(ncube.getCellMap());
             endObject();
-            return builder.toString();
         }
         catch (Exception e)
         {
@@ -133,12 +143,15 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
         writeObjectKey("axes");
         startArray();
+        boolean firstPass = true;
         for (Axis item : axes)
         {
+            if (!firstPass) {
+                comma();
+            }
             writeAxis(item);
-            comma();
+            firstPass = false;
         }
-        uncomma();
         endArray();
         comma();
     }
@@ -166,21 +179,18 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
     {
         builder.append("\"columns\":");
         startArray();
-        boolean commaWritten = false;
+        boolean firstPass = true;
 
         for (Column item : columns)
         {
             if (!item.isDefault())
             {
-                commaWritten = true;
+                if (!firstPass) {
+                    comma();
+                }
                 writeColumn(item);
-                comma();
+                firstPass = false;
             }
-        }
-
-        if (commaWritten)
-        {
-            uncomma();
         }
 
         endArray();
@@ -244,12 +254,15 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             return;
         }
         startArray();
+        boolean firstPass = true;
         for (Map.Entry<Collection<Long>, ?> cell : cells.entrySet())
         {
+            if (!firstPass) {
+                comma();
+            }
             writeCell(cell);
-            comma();
+            firstPass = false;
         }
-        uncomma();
         endArray();
     }
 
@@ -273,25 +286,21 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
     void writeIds(Collection<Long> colIds)
     {
-        builder.append("\"id\":");
+        append("\"id\":");
         startArray();
 
-        boolean commaWritten = false;
+        boolean firstPass = true;
 
         for (Long colId : colIds)
         {
             final String idAsString = Long.toString(colId);
             if (!idAsString.endsWith(MAX_INT))
             {
-                commaWritten = true;
-                writeIdValue(colId, true);
+                writeIdValue(colId, !firstPass);
+                firstPass = false;
             }
         }
 
-        if (commaWritten)
-        {
-            uncomma();
-        }
         endArray();
         comma();
     }
@@ -303,12 +312,12 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
     void writeIdValue(Long longId, boolean addComma)
     {
-        builder.append(longId);
-
         if (addComma)
         {
             comma();
         }
+
+        append(longId);
     }
 
     public static String getColumnType(Object o)
@@ -391,12 +400,15 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
             RangeSet r = (RangeSet)o;
             Iterator i = r.iterator();
             startArray();
+            boolean firstPass = true;
             while (i.hasNext())
             {
+                if (!firstPass) {
+                    comma();
+                }
                 writeObjectValue(i.next());
-                comma();
+                firstPass = false;
             }
-            uncomma();
             endArray();
         }
         else if (o instanceof byte[])

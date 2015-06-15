@@ -4,7 +4,10 @@ import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.io.JsonWriter;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.StringWriter;
+import java.io.Writer;
 
 /**
  * Created by kpartlow on 9/25/2014.
@@ -12,40 +15,90 @@ import java.io.StringWriter;
 public class BaseJsonFormatter
 {
     public static final SafeSimpleDateFormat dateFormat = new SafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    protected final StringBuilder builder = new StringBuilder();
+    //protected final StringBuilder builder = new StringBuilder();
+    protected final Writer builder;
+
+    BaseJsonFormatter() {
+        builder = new StringWriter(8192);
+    }
+
+    BaseJsonFormatter(OutputStream stream) {
+        builder = new OutputStreamWriter(stream);
+    }
 
     void startArray() {
-        builder.append("[");
+        try {
+            builder.append("[");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     void endArray() {
-        builder.append("]");
+        try {
+            builder.append("]");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     void startObject() {
-        builder.append("{");
+        try {
+            builder.append("{");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     void endObject() {
-        builder.append("}");
+        try {
+            builder.append("}");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     void comma() {
-        builder.append(",");
+        try {
+            builder.append(",");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    void uncomma()
-    {
-        builder.setLength(builder.length() - 1);
+    void append(Long id) {
+        try {
+            builder.append(Long.toString(id));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
+
+    void append(String id) {
+        try {
+            builder.append(id);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+//    void uncomma()
+//    {
+//        builder.setLength(builder.length() - 1);
+//    }
 
     protected void writeObjectKey(String key)
     {
-        builder.append('"');
-        builder.append(key);
-        builder.append('"');
-        builder.append(":");
+        try {
+            builder.append('"');
+            builder.append(key);
+            builder.append('"');
+            builder.append(":");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
+
 
     protected void writeObjectKeyValue(String key, Object value, boolean includeComma) throws IOException
     {

@@ -514,6 +514,8 @@ public class NCubeJdbcPersister
                 while (rs.next())
                 {
                     // dont' hydrate the cube yet.
+                            rs.getBinaryStream("cube_value_bin");
+
                     byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
                     String cubeData = StringUtilities.createString(bytes, "UTF-8");
 
@@ -566,7 +568,7 @@ public class NCubeJdbcPersister
         {
             revisionCondition = " AND n.revision_number >= 0";
         }
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
+        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt, cube_value_bin " +
                 "FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
@@ -916,7 +918,7 @@ public class NCubeJdbcPersister
 
     private NCube buildCube(ApplicationID appId, ResultSet rs) throws SQLException, UnsupportedEncodingException
     {
-        NCube ncube = NCube.createCubeFromGzipBytes(rs.getBytes(CUBE_VALUE_BIN));
+        NCube ncube = NCube.createCubeFromStream(rs.getBinaryStream(CUBE_VALUE_BIN));
         ncube.setSha1(rs.getString("sha1"));
         ncube.setApplicationID(appId);
         return ncube;
@@ -1173,7 +1175,8 @@ public class NCubeJdbcPersister
                                         "UPDATE n_cube set sha1 = ?, cube_value_bin = ? where n_cube_id = ?"))
                                 {
 
-                                    NCube cube = NCube.createCubeFromGzipBytes(jsonBytes);
+                                    NCube cube = NCube.createCubeFromStream(rs.getBinaryStream("cube_value_bin"));
+                                    //NCube cube = NCube.createCubeFromGzipBytes(jsonBytes);
                                     sha1 = cube.sha1();
                                     jsonBytes = cube.getCubeAsGzipJsonBytes();
 

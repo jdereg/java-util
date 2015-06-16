@@ -82,7 +82,15 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 #### Licensing
 n-cube can be used free for personal use.
 
-Version History
+### Sponsors
+![Alt text](https://www.yourkit.com/images/yklogo.png "Yourkit")
+
+YourKit supports open source projects with its full-featured Java Profiler.
+YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/index.jsp">YourKit Java Profiler</a>
+and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
+innovative and intelligent tools for profiling Java and .NET applications.
+
+### Version History
 * 3.2.0-SNAPSHOT
  * This release adds complete support for branching.  It is essentially the upcoming 3.2 release, created to allow testing before 3.2 is released.  All branch functionality is complete and unit tested, with > 98% code coverage.
  * The branch facility is implemented with the new branching APIs on `NCubeManager` (`createBranch`, `deleteBranch`, `updateBranch`,`merge`, etc.)

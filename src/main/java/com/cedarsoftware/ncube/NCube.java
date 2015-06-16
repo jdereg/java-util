@@ -22,11 +22,11 @@ import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PushbackInputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -1746,9 +1746,9 @@ public class NCube<T>
             Map<String, Object> jsonNCube = JsonReader.jsonToMaps(stream, null);
             return hydrateCube(jsonNCube);
         }
-        catch (RuntimeException re)
+        catch (RuntimeException e)
         {
-            throw re;
+            throw e;
         }
         catch (Exception e)
         {
@@ -1756,7 +1756,8 @@ public class NCube<T>
         }
     }
 
-    private static NCube<?> hydrateCube(Map<String, Object> jsonNCube) {
+    private static NCube<?> hydrateCube(Map<String, Object> jsonNCube)
+    {
         String cubeName = getString(jsonNCube, "ncube");  // new cubes always have ncube as they key in JSON storage
         if (StringUtilities.isEmpty(cubeName))
         {
@@ -2140,8 +2141,7 @@ public class NCube<T>
      */
     public NCube duplicate(String newName)
     {
-        String json = toFormattedJson();
-        NCube copy = fromSimpleJson(json);
+        NCube copy = createCubeFromGzipBytes(getCubeAsGzipJsonBytes());
         copy.setName(newName);
         return copy;
     }
@@ -2972,19 +2972,18 @@ public class NCube<T>
         throw new IllegalArgumentException("Invalid n-cube name: '" + cubeName + "'. Name can only contain a-z, A-Z, 0-9, '.', '_', '-'");
     }
 
-    public static NCube<?> createCubeFromGzipBytes(byte[] jsonBytes)
+    public static NCube<?> createCubeFromGzipBytes(byte[] gzipJsonBytes)
     {
-        String json = StringUtilities.createUTF8String(IOUtilities.uncompressBytes(jsonBytes));
-        return NCube.fromSimpleJson(json);
+        return createCubeFromStream(new ByteArrayInputStream(gzipJsonBytes));
     }
 
     public static NCube<?> createCubeFromStream(InputStream stream)
     {
-        if (stream == null) {
+        if (stream == null)
+        {
             throw new NullPointerException("Stream cannot be null to create cube.");
         }
 
-        PushbackInputStream pushbackStream = null;
         InputStream newStream = null;
         byte[] header = new byte[2];
 
@@ -2992,15 +2991,12 @@ public class NCube<T>
         {
             newStream = new BufferedInputStream(stream);
             newStream.mark(5);
-            pushbackStream = new PushbackInputStream(new BufferedInputStream(stream), 2);
 
             int count = newStream.read(header);
-
-            if (count < 2) {
+            if (count < 2)
+            {
                 throw new IllegalStateException("Invalid Cube existing of 0 or 1 bytes");
             }
-
-            pushbackStream.unread(header);
 
             newStream.reset();
             newStream = ByteUtilities.isGzipped(header) ? new GZIPInputStream(newStream) : newStream;
@@ -3008,7 +3004,7 @@ public class NCube<T>
         }
         catch (IOException e)
         {
-            throw new RuntimeException("Error reading cube from stream.", e);
+            throw new IllegalStateException("Error reading cube from stream.", e);
         }
         finally
         {
@@ -3016,22 +3012,23 @@ public class NCube<T>
         }
     }
 
+    /**
+     * @return byte[] containing the bytes of this N-Cube when converted to JSON format and then gzipped.
+     */
     public byte[] getCubeAsGzipJsonBytes()
     {
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(8192))
+        try
         {
-            try (OutputStream stream = new GZIPOutputStream(byteArrayOutputStream, 8192))
-            {
-                new JsonFormatter(stream).formatCube(this);
-                stream.flush();
-                stream.close();
-            }
-
-            return byteArrayOutputStream.toByteArray();
+            ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+            OutputStream gzipOut = new GZIPOutputStream(byteOut, 8192);
+            new JsonFormatter(gzipOut).formatCube(this);
+            IOUtilities.flush(gzipOut);
+            IOUtilities.close(gzipOut);
+            return byteOut.toByteArray();
         }
         catch (Exception e)
         {
-           throw new RuntimeException("Error writing cube to stream", e);
+           throw new IllegalStateException("Error writing cube to stream", e);
         }
     }
 

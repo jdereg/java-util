@@ -90,6 +90,9 @@ YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/in
 and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
 innovative and intelligent tools for profiling Java and .NET applications.
 
+![Alt text](http://www.btrplace.org/img/logo_intellij_idea.gif "IntellijIDEA")
+The Most Intelligent Java IDE
+
 ### Version History
 * 3.2.0-SNAPSHOT
  * This release adds complete support for branching.  It is essentially the upcoming 3.2 release, created to allow testing before 3.2 is released.  All branch functionality is complete and unit tested, with > 98% code coverage.

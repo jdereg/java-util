@@ -3031,7 +3031,6 @@ public class NCube<T>
         }
         finally
         {
-            IOUtilities.flush(gzipOut);
             IOUtilities.close(gzipOut);
         }
         return byteOut.toByteArray();

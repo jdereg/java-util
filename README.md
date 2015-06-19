@@ -81,6 +81,7 @@ These are read in using the NCubeManager.getNCubeFromResource() API.  You can al
 
 #### Licensing
 Copyright 2012-2015 Cedar Software, LLC
+
 Licensed under the Apache License, Version 2.0
 
 ### Sponsors

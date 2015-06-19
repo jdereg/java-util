@@ -1945,13 +1945,6 @@ class TestNCube
     }
 
     @Test
-    void testApprovalLimits()
-    {
-        NCube approvalLimits = NCubeManager.getNCubeFromResource("approvalLimits.json")
-        assertTrue(countMatches(approvalLimits.toHtml(), "<tr") == 16)
-    }
-
-    @Test
     void testEmptyToHtml()
     {
         NCube ncube = new NCube("Empty")
@@ -3233,7 +3226,6 @@ class TestNCube
     void testDuplicateEqualsAndHashCode()
     {
         simpleJsonCompare("2DSimpleJson.json")
-        simpleJsonCompare("approvalLimits.json")
         simpleJsonCompare("big5D.json")
         simpleJsonCompare("expressionAxis.json")
         simpleJsonCompare("expressionAxis2.json")

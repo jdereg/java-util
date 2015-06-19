@@ -3017,19 +3017,24 @@ public class NCube<T>
      */
     public byte[] getCubeAsGzipJsonBytes()
     {
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        OutputStream gzipOut = null;
+
         try
         {
-            ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-            OutputStream gzipOut = new GZIPOutputStream(byteOut, 8192);
+            gzipOut = new GZIPOutputStream(byteOut, 8192);
             new JsonFormatter(gzipOut).formatCube(this);
-            IOUtilities.flush(gzipOut);
-            IOUtilities.close(gzipOut);
-            return byteOut.toByteArray();
         }
         catch (Exception e)
         {
            throw new IllegalStateException("Error writing cube to stream", e);
         }
+        finally
+        {
+            IOUtilities.flush(gzipOut);
+            IOUtilities.close(gzipOut);
+        }
+        return byteOut.toByteArray();
     }
 
     public void setName(String name)

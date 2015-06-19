@@ -80,7 +80,8 @@ Use either the Simple JSON format to create n-cubes, or the nCubeEditor to editi
 These are read in using the NCubeManager.getNCubeFromResource() API.  You can also call ncube.fromSimpleJson(String json).
 
 #### Licensing
-n-cube can be used free for personal use.
+Copyright 2012-2015 Cedar Software, LLC
+Licensed under the Apache License, Version 2.0
 
 ### Sponsors
 ![Alt text](https://www.yourkit.com/images/yklogo.png "Yourkit")

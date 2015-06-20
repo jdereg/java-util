@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.2.0</version>
+  <version>3.2.1</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg) 
@@ -95,6 +95,8 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 
 ### Version History
+* 3.2.1
+ * NCubeReadOnlyPersister.loadCube() API that took a long cube ID now takes an NCubeInfoDto instead, allowing the JDBCPersister to still use the n-cube ID, where as a test read only file persister may used fields from the NCubeInfoDto object instead.
 * 3.2.0
  * This release adds complete support for branching.  All branch functionality is complete and unit tested, with > 98% code coverage.
  * Merge happens at cell - level - two people can work on the same cube without merge conflict if they change different cells.

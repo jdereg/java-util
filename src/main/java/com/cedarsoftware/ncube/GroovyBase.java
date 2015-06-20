@@ -170,7 +170,7 @@ public abstract class GroovyBase extends UrlCommandCell
             NCubeGroovyExpression exp = (NCubeGroovyExpression) instance;
             exp.input = getInput(ctx);
             exp.output = getOutput(ctx);
-            exp.ncube = getNCube(ctx);
+            exp.ncube = cube;
         }
 
         // Step 3: Call the run() [for expressions] or run(Signature) [for controllers] method

@@ -517,10 +517,27 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    public void testLoadCubesWithNullValueForDto()
+    {
+        try
+        {
+            Connection c = mock(Connection.class);
+            new NCubeJdbcPersister().loadCube(c, null)
+            fail()
+        }
+        catch (IllegalArgumentException e)
+        {
+            assert e.message.toLowerCase().contains("cannot be null")
+        }
+
+    }
+
+    @Test
     void testLoadCubesWithSQLException()
     {
         Connection c = getConnectionThatThrowsSQLException()
         NCubeInfoDto dto = new NCubeInfoDto()
+        dto.id = "0";
         dto.tenant = ApplicationID.DEFAULT_TENANT
         dto.app = ApplicationID.DEFAULT_APP
         dto.version = ApplicationID.DEFAULT_VERSION
@@ -530,7 +547,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().loadCube(c, "0")
+            new NCubeJdbcPersister().loadCube(c, dto)
             fail()
         }
         catch (RuntimeException e)

@@ -197,7 +197,7 @@ public class NCubeManager
         if (value instanceof NCubeInfoDto)
         {   // Lazy load cube (make sure to apply any advices to it)
             NCubeInfoDto dto = (NCubeInfoDto) value;
-            return prepareCube(getPersister().loadCube(dto.id));
+            return prepareCube(getPersister().loadCube(dto));
         }
 
         throw new IllegalStateException("Failed to retrieve cube from cache, value: " + value);
@@ -1012,8 +1012,8 @@ public class NCubeManager
         {
             if (head != null)
             {
-                NCube branchCube = getPersister().loadCube(info.id);
-                NCube headCube = getPersister().loadCube(head.id);
+                NCube branchCube = getPersister().loadCube(info);
+                NCube headCube = getPersister().loadCube(head);
 
                 if (info.headSha1 != null)
                 {

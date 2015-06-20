@@ -4,9 +4,6 @@ import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -23,6 +20,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.GZIPOutputStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -847,9 +846,14 @@ public class NCubeJdbcPersister
         return list.toArray();
     }
 
-    public NCube loadCube(Connection c, String id)
+    public NCube loadCube(Connection c, NCubeInfoDto dto)
     {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, id))
+        if (dto == null)
+        {
+            throw new IllegalArgumentException("dto value cannot be null");
+        }
+
+        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, dto.id))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -869,12 +873,12 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load cube with id: " + id + " from database";
+            String s = "Unable to load cube with id: " + dto.id + " from database";
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }
 
-        throw new IllegalArgumentException("Unable to find cube with id: " + id + " from database");
+        throw new IllegalArgumentException("Unable to find cube with id: " + dto.id + " from database");
     }
 
     public NCube loadCube(Connection c, ApplicationID appId, String cubeName)

@@ -95,7 +95,7 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 
 ### Version History
-* 3.2.0-SNAPSHOT
+* 3.2.0
  * This release adds complete support for branching.  All branch functionality is complete and unit tested, with > 98% code coverage.
  * Merge happens at cell - level - two people can work on the same cube without merge conflict if they change different cells.
  * The branch facility is implemented with the new branching APIs on `NCubeManager` (`createBranch`, `deleteBranch`, `updateBranch`,`merge`, etc.)

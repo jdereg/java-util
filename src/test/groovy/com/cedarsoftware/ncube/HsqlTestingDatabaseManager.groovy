@@ -44,7 +44,7 @@ class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
                     "create_hid VARCHAR(20), " +
                     "version_no_cd VARCHAR(16) DEFAULT '0.1.0' NOT NULL, " +
                     "status_cd VARCHAR(16) DEFAULT 'SNAPSHOT' NOT NULL, " +
-                    "app_cd VARCHAR(20), " +
+                    "app_cd VARCHAR(20) NOT NULL, " +
                     "test_data_bin varbinary(999999), " +
                     "notes_bin varbinary(999999), " +
                     "revision_number bigint DEFAULT '0' NOT NULL, " +

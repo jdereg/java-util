@@ -44,15 +44,15 @@ class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 //                    "  n_cube_id bigint(20) NOT NULL,\n" +
 //                    "  n_cube_nm varchar(200) NOT NULL,\n" +
 //                    "  tenant_cd char(10) CHARACTER SET ascii NOT NULL DEFAULT 'NONE',\n" +
-//                    "  cube_value_bin longtext,\n" +
+//                    "  cube_value_bin longblob,\n" +
 //                    "  create_dt timestamp NOT NULL,\n" +
 //                    "  create_hid varchar(20) DEFAULT NULL,\n" +
 //                    "  version_no_cd varchar(16) NOT NULL,\n" +
 //                    "  status_cd varchar(16) NOT NULL DEFAULT 'SNAPSHOT',\n" +
-//                    "  app_cd varchar(20) DEFAULT NULL,\n" +
-//                    "  test_data_bin longtext,\n" +
-//                    "  notes_bin longtext,\n" +
-//                    "  revision_number bigint(20) DEFAULT '1',\n" +
+//                    "  app_cd varchar(20) NOT NULL,\n" +
+//                    "  test_data_bin longblob,\n" +
+//                    "  notes_bin longblob,\n" +
+//                    "  revision_number bigint(20) DEFAULT '0',\n" +
 //                    "  branch_id varchar(80) NOT NULL DEFAULT 'HEAD',\n" +
 //                    "  sha1 varchar(40) DEFAULT NULL,\n" +
 //                    "  head_sha1 varchar(40) DEFAULT NULL,\n" +

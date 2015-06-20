@@ -1,12 +1,12 @@
 n-cube
 ======
-n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN Proxy Router, and Enterprise Spreadsheet, built as a hyper-space.  The Domain Specific Language (**DSL**) for rules is [**Groovy**](http://groovy.codehaus.org/). To include in your project:
+n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN Proxy Router, and Enterprise Spreadsheet, built as a hyper-space.  The Domain Specific Language (**DSL**) for rules is [**Groovy**](http://www.groovy-lang.org/). To include in your project:
 
 ```
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.1.7</version>
+  <version>3.2.0</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg) 
@@ -80,18 +80,36 @@ Use either the Simple JSON format to create n-cubes, or the nCubeEditor to editi
 These are read in using the NCubeManager.getNCubeFromResource() API.  You can also call ncube.fromSimpleJson(String json).
 
 #### Licensing
-n-cube can be used free for personal use.
+Copyright 2012-2015 Cedar Software, LLC
 
-Version History
-* 3.2.0-SNAPSHOT
- * This release adds complete support for branching.  It is essentially the upcoming 3.2 release, created to allow testing before 3.2 is released.  All branch functionality is complete and unit tested, with > 98% code coverage.
+Licensed under the Apache License, Version 2.0
+
+### Sponsors
+![Alt text](https://www.yourkit.com/images/yklogo.png "Yourkit")
+
+YourKit supports open source projects with its full-featured Java Profiler.
+YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/index.jsp">YourKit Java Profiler</a>
+and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
+innovative and intelligent tools for profiling Java and .NET applications.
+
+![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
+
+### Version History
+* 3.2.0
+ * This release adds complete support for branching.  All branch functionality is complete and unit tested, with > 98% code coverage.
+ * Merge happens at cell - level - two people can work on the same cube without merge conflict if they change different cells.
  * The branch facility is implemented with the new branching APIs on `NCubeManager` (`createBranch`, `deleteBranch`, `updateBranch`,`merge`, etc.)
- * Support for memoization (caching) of `GroovyExpression` results has been added.  If the 'cache' value for an 'exp' (`GroovyExpression`) cell is true, the cell is executed, and the return value is cached.  Very similar to Groovy's memoize.
- * Many small performance improvements have been made. 
  * `NCUBE_PARAMS` is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the `sys.bootstrap` cube.
- * This release is for development only.  Do not use for production.  Consider 3.1.4 latest production release.
- * The branch concept has be thoroughly introduced in the code base.  All tests are working with it.  However, there is more API work to be done within the persister to fully support branching.
  * All APIs that take a matching pattern on `NCubeManager` expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
+ * Performance: Support for memoization (caching) of `GroovyExpression` results has been added.  If the 'cache' value for an 'exp' (`GroovyExpression`) cell is true, the cell is executed, and the return value is cached (NOTE: The values in the input Map are NOT used as a key for the cached value).
+ * Performance: Cubes are stored as compressed byte[] (gzip) of JSON when using the JDBC persister.
+ * Performance: Cubes are serialized from Streams from the database, reducing the working set memory required when loading a cube.
+ * Performance: Removed many instances of 'synchronized' (used for read only cache) and instead using ConcurrentMap's .putIfAbsent() API.
+ * Performance: Failed requests for an n-cube are cached - performance enhancement.
+ * Performance: Two database queries reduced to into one query on straight up getCube() call when the cube was not in the cache and needed to be loaded.
+ * Performance: Setting/Getting 133,000 cells reduced by a factor of 3 - takes about 1 second on Mac Book Pro 2.4Ghz.  Used to take 3.2 seconds.
+ * Internal Map containing all cells is now Map<Set<Long>, Object> where the key is a set of column identifiers on each axis.  Before it was actual Column instances - less flexible.
+ * New API: ncube.getPopulatedCellCoordinates().  This returns all cells that actually have values in them.  
 * 3.1.7
  * Performance: `NCubeManager.getCube()` - caches failed fetches so that subsequent retries do not hit database again and again.
  * Performance: `NCube.getCell()` - when accessing a non-`CommandCell`, not need to set up the context (`Map` containing `NCube`, `Input`, and `Output`) 

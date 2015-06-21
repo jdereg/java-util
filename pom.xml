@@ -44,7 +44,7 @@
     </developers>
 
     <properties>
-        <version.json-io>4.0.0</version.json-io>
+        <version.json-io>4.0.1</version.json-io>
         <version.java-util>1.19.3</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>

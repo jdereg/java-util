@@ -4,6 +4,9 @@ import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -19,9 +22,9 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -51,7 +54,6 @@ public class NCubeJdbcPersister
     public static final String TEST_DATA_BIN = "test_data_bin";
     public static final String NOTES_BIN = "notes_bin";
     public static final String HEAD_SHA_1 = "head_sha1";
-
 
     public void createCube(Connection c, ApplicationID appId, NCube cube, String username)
     {
@@ -448,9 +450,10 @@ public class NCubeJdbcPersister
 
     Object[] search(Connection c, ApplicationID appId, String cubeNamePattern, String searchValue)
     {
-        String nameCondition = "";
+        boolean hasSearchValue = StringUtilities.hasContent(searchValue);
+        boolean hasSearchPattern = StringUtilities.hasContent(cubeNamePattern);
         String pattern = cubeNamePattern;
-        if (StringUtilities.hasContent(pattern))
+        if (hasSearchPattern)
         {
             if (pattern.startsWith("*") || pattern.startsWith("%"))
             {
@@ -463,26 +466,28 @@ public class NCubeJdbcPersister
             pattern = convertPattern('*' + pattern + '*');
         }
 
-        if (StringUtilities.hasContent(pattern))
+        String nameCondition1 = "";
+        String nameCondition2 = "";
+        if (hasSearchPattern)
         {
-            nameCondition = " AND n_cube_nm like ?";
+            nameCondition1 = " AND n_cube_nm like ?";
+            nameCondition2 = " AND m.n_cube_nm like ?";
         }
 
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.changed, n.sha1, n.head_sha1, n.cube_value_bin" +
-                " FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                nameCondition +
-                " GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-        if (StringUtilities.hasContent(pattern))
+        String optionalCol = "";
+        if (hasSearchValue)
         {
-            sql += " AND m.n_cube_nm like ?";
+            optionalCol = ", n.cube_value_bin";
         }
+        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.changed, n.sha1, n.head_sha1" + optionalCol +
+               " FROM n_cube n, " +
+               "( " +
+               "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
+               "  FROM n_cube " +
+               "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" + nameCondition1 +
+               " GROUP BY n_cube_nm " +
+               ") m " +
+               "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" + nameCondition2;
 
         try (PreparedStatement s = c.prepareStatement(sql))
         {
@@ -495,7 +500,7 @@ public class NCubeJdbcPersister
             s.setString(5, appId.getBranch());
 
             int i=6;
-            if (StringUtilities.hasContent(pattern))
+            if (hasSearchPattern)
             {
                 s.setString(i++, pattern);
             }
@@ -506,22 +511,28 @@ public class NCubeJdbcPersister
             s.setString(i++, appId.getTenant());
             s.setString(i++, appId.getBranch());
 
-            if (StringUtilities.hasContent(pattern))
+            if (hasSearchPattern)
             {
                 s.setString(i++, pattern);
             }
 
+
             try (ResultSet rs = s.executeQuery())
             {
+                Pattern searchPattern = Pattern.compile(searchValue, Pattern.CASE_INSENSITIVE);
                 while (rs.next())
                 {
-                    // dont' hydrate the cube yet.
-                            rs.getBinaryStream("cube_value_bin");
+                    boolean contentMatched = false;
+                    if (hasSearchValue)
+                    {
+                        rs.getBinaryStream("cube_value_bin");
+                        byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
+                        String cubeData = StringUtilities.createUtf8String(bytes);
+                        Matcher matcher = searchPattern.matcher(cubeData);
+                        contentMatched = matcher.find();
+                    }
 
-                    byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
-                    String cubeData = StringUtilities.createString(bytes, "UTF-8");
-
-                    if (cubeData.matches("(?i:.*" + searchValue + ".*)"))
+                    if (!hasSearchValue || contentMatched)
                     {
                         NCubeInfoDto dto = new NCubeInfoDto();
                         dto.id = Long.toString(rs.getLong("n_cube_id"));

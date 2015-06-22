@@ -10,7 +10,7 @@ To include in your project:
   <version>1.19.3</version>
 </dependency>
 ```
-[Donations welcome](https://coinbase.com/jdereg)
+Like **java-util** and find it useful? Donate some **Bitcoin**: 1HkGvBXo3RhXonHs3hja6dKbKDwaN9eDFg
 
 Also, check out json-io at https://github.com/jdereg/json-io
 

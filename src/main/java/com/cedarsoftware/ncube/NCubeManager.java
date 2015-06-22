@@ -11,6 +11,10 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,9 +35,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -134,12 +135,11 @@ public class NCubeManager
      */
     public static Set<String> getCubeNames(ApplicationID appId)
     {
-        Object[] cubeInfos = getCubeRecordsFromDatabase(appId, "", true);
+        List<NCubeInfoDto> cubeInfos = getCubeRecordsFromDatabase(appId, "", true);
         Set<String> names = new TreeSet<>();
 
-        for (Object cubeInfo : cubeInfos)
+        for (NCubeInfoDto info : cubeInfos)
         {
-            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
             names.add(info.name);
         }
 
@@ -561,7 +561,7 @@ public class NCubeManager
      * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
-    public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
+    public static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {
         return getCubeRecordsFromDatabase(appId, pattern, true);
     }
@@ -575,45 +575,43 @@ public class NCubeManager
      * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
-    public static Object[] getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
+    public static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
         validateAppId(appId);
-        Object[] cubes = getPersister().getCubeRecords(appId, pattern, activeOnly);
+        List<NCubeInfoDto> cubes = getPersister().getCubeRecords(appId, pattern, activeOnly);
         cacheCubes(appId, cubes);
         return cubes;
     }
 
     /**
-     * Get Object[] of n-cube record DTOs for the given ApplicationID (branch only).  If using
+     * Get List<NCubeInfoDto> of n-cube record DTOs for the given ApplicationID (branch only).  If using
      * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
      * by an NCube if more than the name is required.
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      */
-    public static Object[] getBranchChangesFromDatabase(ApplicationID appId)
+    public static List<NCubeInfoDto> getBranchChangesFromDatabase(ApplicationID appId)
     {
         validateAppId(appId);
-        if (appId.getBranch().equals(ApplicationID.HEAD)) {
+        if (appId.getBranch().equals(ApplicationID.HEAD))
+        {
             throw new IllegalArgumentException("Cannot get branch changes from HEAD");
         }
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] branchList = getPersister().getChangedRecords(appId);
-        Object[] headList = getPersister().getCubeRecords(headAppId, null, false);
+        List<NCubeInfoDto> branchList = getPersister().getChangedRecords(appId);
+        List<NCubeInfoDto> headList = getPersister().getCubeRecords(headAppId, null, false);
         List<NCubeInfoDto> list = new ArrayList<>();
 
         //  build map of head objects for reference.
-        for (Object item : headList)
+        for (NCubeInfoDto info : headList)
         {
-            NCubeInfoDto info = (NCubeInfoDto) item;
             headMap.put(info.name, info);
         }
 
-        for (Object dto : branchList)
+        for (NCubeInfoDto info : branchList)
         {
-            NCubeInfoDto info = (NCubeInfoDto)dto;
-
             long revision = Long.parseLong(info.revision);
             NCubeInfoDto head = headMap.get(info.name);
 
@@ -673,18 +671,16 @@ public class NCubeManager
             }
         }
 
-        Object[] cubes = list.toArray();
-        cacheCubes(appId, cubes);
-        return cubes;
+        cacheCubes(appId, list);
+        return list;
     }
 
-    private static void cacheCubes(ApplicationID appId, Object[] cubes)
+    private static void cacheCubes(ApplicationID appId, List<NCubeInfoDto> cubes)
     {
         Map<String, Object> appCache = getCacheForApp(appId);
 
-        for (Object cube : cubes)
+        for (NCubeInfoDto cubeInfo : cubes)
         {
-            NCubeInfoDto cubeInfo = (NCubeInfoDto) cube;
             String key = cubeInfo.name.toLowerCase();
 
             if (!cubeInfo.revision.startsWith("-"))
@@ -704,10 +700,10 @@ public class NCubeManager
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
      * by an NCube if more than the name is required.
      */
-    public static Object[] getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
+    public static List<NCubeInfoDto> getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
     {
         validateAppId(appId);
-        Object[] cubes = getPersister().getDeletedCubeRecords(appId, pattern);
+        List<NCubeInfoDto> cubes = getPersister().getDeletedCubeRecords(appId, pattern);
         return cubes;
     }
 
@@ -740,18 +736,18 @@ public class NCubeManager
         }
     }
 
-    public static Object[] getRevisionHistory(ApplicationID appId, String cubeName)
+    public static List<NCubeInfoDto> getRevisionHistory(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
-        Object[] revisions = getPersister().getRevisions(appId, cubeName);
+        List<NCubeInfoDto> revisions = getPersister().getRevisions(appId, cubeName);
         return revisions;
     }
 
     /**
-     * Return an array [] of Strings containing all unique App names for the given tenant.
+     * Return a List of Strings containing all unique App names for the given tenant.
      */
-    public static Object[] getAppNames(String tenant, String status, String branch)
+    public static List<String> getAppNames(String tenant, String status, String branch)
     {
         return getPersister().getAppNames(tenant, status, branch);
     }
@@ -760,7 +756,7 @@ public class NCubeManager
      * Get all of the versions that exist for the given ApplicationID (tenant and app).
      * @return Object[] of String version numbers.
      */
-    public static Object[] getAppVersions(String tenant, String app, String status, String branch)
+    public static List<String> getAppVersions(String tenant, String app, String status, String branch)
     {
         ApplicationID.validateTenant(tenant);
         ApplicationID.validateApp(app);
@@ -897,12 +893,11 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        Object[] headInfo = getPersister().getCubeRecords(headAppId, null, false);
+        List<NCubeInfoDto> headInfo = getPersister().getCubeRecords(headAppId, null, false);
 
         //  build map of head objects for reference.
-        for (Object cubeInfo : headInfo)
+        for (NCubeInfoDto info : headInfo)
         {
-            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
             headMap.put(info.name, info);
         }
 
@@ -1070,26 +1065,24 @@ public class NCubeManager
         appId.validateStatusIsNotRelease();
 
         ApplicationID headAppId = appId.asHead();
-        Object[] records = getCubeRecordsFromDatabase(appId, null, false);
-        Object[] headRecords = getCubeRecordsFromDatabase(headAppId, null, false);
+        List<NCubeInfoDto> records = getCubeRecordsFromDatabase(appId, null, false);
+        List<NCubeInfoDto> headRecords = getCubeRecordsFromDatabase(headAppId, null, false);
 
         //  build map of head objects for reference.
         Map<String, NCubeInfoDto> recordMap = new LinkedHashMap<>();
 
-        for (Object cubeInfo : records)
+        for (NCubeInfoDto info : records)
         {
-            NCubeInfoDto info = (NCubeInfoDto) cubeInfo;
             recordMap.put(info.name, info);
         }
 
-        List<NCubeInfoDto> updates = new ArrayList<>(records.length);
+        List<NCubeInfoDto> updates = new ArrayList<>(records.size());
         List<NCubeInfoDto> dtosMerged = new ArrayList<>();
 
         Map<String, Map> conflicts = new LinkedHashMap<>();
 
-        for (Object dto : headRecords)
+        for (NCubeInfoDto head : headRecords)
         {
-            NCubeInfoDto head = (NCubeInfoDto) dto;
             NCubeInfoDto info = recordMap.get(head.name);
 
             if (info == null)
@@ -1329,9 +1322,9 @@ public class NCubeManager
      * @param appId ApplicationID on which we are working
      * @param cubeNamePattern String pattern to match cube names
      * @param content String value that is 'contained' within the cube's JSON
-     * @return Object[] of NCubeInfoDto instances.
+     * @return List<NCubeInfoDto>
      */
-    public static Object[] search(ApplicationID appId, String cubeNamePattern, String content)
+    public static List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String content)
     {
         return getPersister().search(appId, cubeNamePattern, content);
     }

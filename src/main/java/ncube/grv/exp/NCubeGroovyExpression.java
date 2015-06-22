@@ -4,10 +4,12 @@ import com.cedarsoftware.ncube.ApplicationID;
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.Column;
 import com.cedarsoftware.ncube.NCube;
+import com.cedarsoftware.ncube.NCubeInfoDto;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -74,7 +76,7 @@ public class NCubeGroovyExpression
      * Fetch cube records that match the given pattern.
      * @return Object[] of NCubeInfoDto instances.
      */
-    public Object[] getCubeRecords(String pattern)
+    public List<NCubeInfoDto> getCubeRecords(String pattern)
     {
         return NCubeManager.getCubeRecordsFromDatabase(ncube.getApplicationID(), pattern, true);
     }

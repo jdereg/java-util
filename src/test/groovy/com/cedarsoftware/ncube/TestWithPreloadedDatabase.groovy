@@ -208,7 +208,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(0, dtos.length);
 
         ApplicationID headId = branch1.asHead();
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, null, true).length)
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(headId, null, true).size())
 
     }
 
@@ -269,8 +269,8 @@ abstract class TestWithPreloadedDatabase
 
         NCubeManager.createBranch(branch1);
 
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(head, null, true).length);
-        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(branch1, null, true).length);
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(head, null, true).size());
+        assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(branch1, null, true).size());
 
         NCubeManager.deleteCube(branch1, "TestBranch", USER_ID)
 
@@ -299,7 +299,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
 
         ApplicationID headId = branch1.asHead()
-        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).length)
+        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).size())
     }
 
     @Test
@@ -316,7 +316,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(0, result.length)
 
         ApplicationID headId = branch1.asHead()
-        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).length)
+        assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).size())
     }
 
     @Test
@@ -402,15 +402,15 @@ abstract class TestWithPreloadedDatabase
         assertNull(NCubeManager.getCube(branch1, "TestAge"))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.createBranch(branch1))
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals("ABC", cube.getCell(["Code": -10]))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertNull(NCubeManager.getCube(branch1, "TestAge"))
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
@@ -419,9 +419,9 @@ abstract class TestWithPreloadedDatabase
         NCubeManager.createCube(branch1, cube, "jdirt")
 
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
         assertNull(NCubeManager.getCube(head, "TestAge"))
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
@@ -430,10 +430,10 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
     }
 
     @Test
@@ -441,7 +441,7 @@ abstract class TestWithPreloadedDatabase
         // load cube with same name, but different structure in TEST branch
         preloadCubes(head, "test.branch.1.json")
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
 
         // pre-branch, cubes don't exist
         assertNull(NCubeManager.getCube(head, "TestAge"));
@@ -454,9 +454,9 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.createBranch(branch1))
         assertEquals(1, NCubeManager.createBranch(branch2))
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch").size())
 
         NCube cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -476,9 +476,9 @@ abstract class TestWithPreloadedDatabase
         NCubeManager.createCube(branch1, cubes[0], USER_ID);
 
         // Only Branch "TestBranch" has been updated.
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length)
@@ -486,12 +486,12 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(2, NCubeManager.updateBranch(branch2, USER_ID).length)
 
-        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch2, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch2, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").size())
 
         cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(2, cube.getCellMap().size())
@@ -515,8 +515,8 @@ abstract class TestWithPreloadedDatabase
         // cubes were preloaded
         testValuesOnBranch(head)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
 
         // pre-branch, cubes don't exist
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -531,10 +531,10 @@ abstract class TestWithPreloadedDatabase
         //  test values on branch
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -555,10 +555,10 @@ abstract class TestWithPreloadedDatabase
         assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
 
         // Only Branch "TestBranch" has been updated.
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // commit the branch
         cube = NCubeManager.getCube(branch1, "TestBranch")
@@ -575,10 +575,10 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, dtos.length)
 
         assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
-        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // both should be updated now.
         cube = NCubeManager.getCube(branch1, "TestBranch")
@@ -612,8 +612,8 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.createBranch(branch1))
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
@@ -629,8 +629,8 @@ abstract class TestWithPreloadedDatabase
         assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
         assertEquals(2, dtos.length);
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
 
         // No changes have happened yet, even though sha1 is incorrect,
         // we just copy the sha1 when we create the branch so the headsha1 won't
@@ -688,8 +688,8 @@ abstract class TestWithPreloadedDatabase
         // cubes were preloaded
         testValuesOnBranch(head)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
 
         // pre-branch, cubes don't exist
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -704,10 +704,10 @@ abstract class TestWithPreloadedDatabase
         //  test values on branch
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -724,28 +724,28 @@ abstract class TestWithPreloadedDatabase
 
         // update the new edited cube.
         assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
 
         cube.setCell("FOO", [Code : 10.0])
         assertEquals(3, cube.getCellMap().size())
         assertEquals("FOO", cube.getCell([Code : 10.0]))
 
         assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
-        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
 
         cube.removeCell([Code : 10.0])
         assertEquals(2, cube.getCellMap().size())
         assertEquals("ZZZ", cube.getCell([Code : 10.0]))
 
         assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
-        assertEquals(4, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(4, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
 
         cube.setCell("FOO", [Code : 10.0])
         assertEquals(3, cube.getCellMap().size())
         assertEquals("FOO", cube.getCell([Code : 10.0]))
 
         assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
-        assertEquals(5, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(5, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
 
         //  loads in both TestAge and TestBranch through only TestBranch has changed.
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
@@ -753,7 +753,7 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.rollbackBranch(branch1, dtos))
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
 
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
@@ -767,8 +767,8 @@ abstract class TestWithPreloadedDatabase
         // cubes were preloaded
         testValuesOnBranch(head)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
 
         // pre-branch, cubes don't exist
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -783,10 +783,10 @@ abstract class TestWithPreloadedDatabase
         //  test values on branch
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -800,11 +800,11 @@ abstract class TestWithPreloadedDatabase
         assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
 
         // Only Branch "TestBranch" has been updated.
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // cube is deleted
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -820,10 +820,10 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
 
-        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // both should be updated now.
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -836,12 +836,12 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").length);
-        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
-        assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
-        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
-        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").length);
-        assertEquals(1, NCubeManager.search(head, null, "baby").length);
+        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").size())
+        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").size())
+        assertEquals(1, NCubeManager.search(head, "Test*", "baby").size())
+        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").size())
+        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").size())
+        assertEquals(1, NCubeManager.search(head, null, "baby").size())
     }
 
     @Test
@@ -850,12 +850,12 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").length);
-        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").length);
-        assertEquals(1, NCubeManager.search(head, "Test*", "baby").length);
-        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").length);
-        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").length);
-        assertEquals(1, NCubeManager.search(head, null, "baby").length);
+        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").size())
+        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").size())
+        assertEquals(1, NCubeManager.search(head, "Test*", "baby").size())
+        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").size())
+        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").size())
+        assertEquals(1, NCubeManager.search(head, null, "baby").size())
     }
 
     @Test
@@ -866,8 +866,8 @@ abstract class TestWithPreloadedDatabase
         // cubes were preloaded
         testValuesOnBranch(head)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
 
         // pre-branch, cubes don't exist
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -882,10 +882,10 @@ abstract class TestWithPreloadedDatabase
         //  test values on branch
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -899,11 +899,11 @@ abstract class TestWithPreloadedDatabase
         assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
 
         // Only Branch "TestBranch" has been updated.
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
 
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // cube is deleted
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
@@ -917,18 +917,18 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         Object[] result = NCubeManager.updateBranch(branch1, USER_ID)
         assertEquals(0, result.length);
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNotNull(NCubeManager.getCube(head, "TestBranch"))
@@ -1144,18 +1144,18 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, "*").size());
 
         assertEquals(2, NCubeManager.createBranch(branch1));
 
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size());
 
         assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size());
         assertTrue(NCubeManager.deleteCube(branch1, "TestAge", USER_ID))
-        assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size());
 
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
@@ -1171,16 +1171,16 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestAge").size())
-        assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
+        assertEquals(2, NCubeManager.getDeletedCubesFromDatabase(head, "*").size());
 
 
         NCubeManager.restoreCube(branch1, ["TestBranch"] as Object[], USER_ID);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size());
         assertNull(NCubeManager.getCube(branch1, "TestAge"));
         assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
 
         assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestAge", USER_ID));
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size());
         assertNull(NCubeManager.getCube(branch1, "TestBranch"))
         assertNotNull(NCubeManager.getCube(branch1, "TestAge"))
 
@@ -1193,7 +1193,7 @@ abstract class TestWithPreloadedDatabase
         assertNotNull(NCubeManager.getCube(head, "TestAge"))
 
         assertTrue(NCubeManager.renameCube(branch1, "TestAge", "TestBranch", USER_ID));
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size());
         assertNull(NCubeManager.getCube(branch1, "TestAge"));
         assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
 
@@ -1216,8 +1216,8 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
@@ -1240,7 +1240,7 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, "*").size());
 
         assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
 
@@ -1259,7 +1259,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch2").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, "*").length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, "*").size());
     }
 
 
@@ -1338,7 +1338,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
-        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).size())
 
         assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
@@ -1373,7 +1373,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
-        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).size())
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
         assertEquals(2, dtos.length);
@@ -1502,7 +1502,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
         assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, "*").size())
-        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).length)
+        assertEquals(2, NCubeManager.getBranchChangesFromDatabase(branch1).size())
 
         assertTrue(NCubeManager.renameCube(branch1, "TestBranch2", "TestBranch", USER_ID));
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size())
@@ -1604,11 +1604,11 @@ abstract class TestWithPreloadedDatabase
         testValuesOnBranch(head)
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1622,21 +1622,21 @@ abstract class TestWithPreloadedDatabase
         } catch (IllegalArgumentException e) {
         }
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
 
         assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
 
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size());
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1650,16 +1650,16 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(2, NCubeManager.rollbackBranch(branch1, dtos));
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
 
-        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).length);
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1676,15 +1676,15 @@ abstract class TestWithPreloadedDatabase
 
         assertTrue(NCubeManager.renameCube(branch1, "TestBranch", "TestBranch2", USER_ID));
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size());
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1697,16 +1697,16 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(2, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size());
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch2").size());
 
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
     }
 
 
@@ -1723,11 +1723,11 @@ abstract class TestWithPreloadedDatabase
         testValuesOnBranch(head)
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1741,25 +1741,25 @@ abstract class TestWithPreloadedDatabase
         } catch (IllegalArgumentException e) {
         }
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).size());
 
         NCubeManager.duplicate(branch1, branch2, "TestBranch", "TestBranch2", USER_ID);
         NCubeManager.duplicate(branch1, branch2, "TestAge", "TestAge", USER_ID);
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).size());
 
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1779,16 +1779,16 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.rollbackBranch(branch2, dtos));
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
 
-        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).length);
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1805,18 +1805,18 @@ abstract class TestWithPreloadedDatabase
 
         NCubeManager.duplicate(branch1, branch2, "TestBranch", "TestBranch2", USER_ID);
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").size());
 
         try {
             NCubeManager.getRevisionHistory(head, "TestBranch2");
@@ -1829,15 +1829,15 @@ abstract class TestWithPreloadedDatabase
 
         assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch2").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
 
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").length);
-        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").length);
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestAge").size());
+        assertEquals(1, NCubeManager.getRevisionHistory(branch2, "TestBranch2").size());
 
         try {
             NCubeManager.getRevisionHistory(branch2, "TestBranch");
@@ -1845,9 +1845,9 @@ abstract class TestWithPreloadedDatabase
         } catch (IllegalArgumentException e) {
         }
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).length);
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).length);
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(head, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch1, null).size());
+        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(branch2, null).size());
     }
 
 
@@ -1895,7 +1895,7 @@ abstract class TestWithPreloadedDatabase
         {
             NCubeManager.duplicate(head, branch1, "TestBranch", "TestBranch", USER_ID);
             assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
-            assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
+            assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
         } catch (IllegalArgumentException e)
         {
             assertTrue(e.message.contains("Unable to duplicate"));
@@ -1918,8 +1918,9 @@ abstract class TestWithPreloadedDatabase
         {
             NCubeManager.duplicate(head, branch1, "TestBranch", "TestBranch", USER_ID);
             assertNotNull(NCubeManager.getCube(branch1, "TestBranch"));
-            assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").length);
-        } catch (IllegalArgumentException e)
+            assertEquals(3, NCubeManager.getRevisionHistory(branch1, "TestBranch").size());
+        }
+        catch (IllegalArgumentException e)
         {
             assertTrue(e.message.contains("Unable to duplicate"));
             assertTrue(e.message.contains("already exists"));
@@ -2554,7 +2555,7 @@ abstract class TestWithPreloadedDatabase
 
         NCubeManager.mergeOverwriteBranchCube(branch1, "TestAge", sha1, USER_ID);
 
-        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).length);
+        assertEquals(0, NCubeManager.getBranchChangesFromDatabase(branch1).size());
 
     }
 
@@ -2761,10 +2762,10 @@ abstract class TestWithPreloadedDatabase
         //  test values on branch
         testValuesOnBranch(branch1)
 
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         cube = NCubeManager.getCube(head, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -2789,10 +2790,10 @@ abstract class TestWithPreloadedDatabase
 
 
         // Only Branch "TestBranch" has been updated.
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // commit the branch
         cube = NCubeManager.getCube(branch1, "TestBranch")
@@ -2810,10 +2811,10 @@ abstract class TestWithPreloadedDatabase
 
         Object[] values = NCubeManager.commitBranch(branch1, dtos, USER_ID)
 
-        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").length)
-        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").length)
-        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").length)
+        assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
+        assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
+        assertEquals(1, NCubeManager.getRevisionHistory(branch1, "TestAge").size())
 
         // both should be updated now.
         cube = NCubeManager.getCube(branch1, "TestBranch")

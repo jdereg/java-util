@@ -100,7 +100,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
+    public List<NCubeInfoDto> getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Connection c = connectionProvider.getConnection();
         try
@@ -113,7 +113,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getChangedRecords(ApplicationID appId)
+    public List<NCubeInfoDto> getChangedRecords(ApplicationID appId)
     {
         Connection c = connectionProvider.getConnection();
         try
@@ -126,7 +126,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)
+    public List<NCubeInfoDto> getDeletedCubeRecords(ApplicationID appId, String pattern)
     {
         Connection c = connectionProvider.getConnection();
         try
@@ -152,7 +152,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getRevisions(ApplicationID appId, String cubeName)
+    public List<NCubeInfoDto> getRevisions(ApplicationID appId, String cubeName)
     {
         Connection c = connectionProvider.getConnection();
         try
@@ -217,7 +217,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getAppNames(String tenant, String status, String branch)
+    public List<String> getAppNames(String tenant, String status, String branch)
     {
         Connection c = connectionProvider.getConnection();
         try
@@ -230,7 +230,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] getAppVersions(String tenant, String app, String status, String branch)
+    public List<String> getAppVersions(String tenant, String app, String status, String branch)
     {
         Connection c = connectionProvider.getConnection();
         try
@@ -452,7 +452,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    public List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String searchValue)
     {
         Connection c = connectionProvider.getConnection();
         try

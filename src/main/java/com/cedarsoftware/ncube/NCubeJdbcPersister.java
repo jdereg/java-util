@@ -448,7 +448,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    Object[] search(Connection c, ApplicationID appId, String cubeNamePattern, String searchValue)
+    List<NCubeInfoDto> search(Connection c, ApplicationID appId, String cubeNamePattern, String searchValue)
     {
         boolean hasSearchValue = StringUtilities.hasContent(searchValue);
         boolean hasSearchPattern = StringUtilities.hasContent(cubeNamePattern);
@@ -554,7 +554,7 @@ public class NCubeJdbcPersister
                     }
                 }
             }
-            return list.toArray();
+            return list;
         }
         catch (Exception e)
         {
@@ -747,7 +747,7 @@ public class NCubeJdbcPersister
         return stmt;
     }
 
-    public Object[] getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
+    public List<NCubeInfoDto> getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
     {
         try (PreparedStatement s = createSelectCubesStatement(c, appId, pattern, false, activeOnly, false, false, false))
         {
@@ -761,7 +761,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Object[] getChangedRecords(Connection c, ApplicationID appId)
+    public List<NCubeInfoDto> getChangedRecords(Connection c, ApplicationID appId)
     {
         try (PreparedStatement s = createSelectCubesStatement(c, appId, null, true, false, false, false, false))
         {
@@ -775,7 +775,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Object[] getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
+    public List<NCubeInfoDto> getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
         try (PreparedStatement s = createSelectCubesStatement(c, appId, pattern, false, false, true, false, false))
         {
@@ -789,7 +789,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Object[] getRevisions(Connection c, ApplicationID appId, String cubeName)
+    public List<NCubeInfoDto> getRevisions(Connection c, ApplicationID appId, String cubeName)
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, branch_id, cube_value_bin, sha1, head_sha1, changed " +
@@ -804,8 +804,8 @@ public class NCubeJdbcPersister
             stmt.setString(5, appId.getStatus());
             stmt.setString(6, appId.getBranch());
 
-            Object[] records = getCubeInfoRecords(appId, stmt, false);
-            if (records.length == 0)
+            List<NCubeInfoDto> records = getCubeInfoRecords(appId, stmt, false);
+            if (records.isEmpty())
             {
                 throw new IllegalArgumentException("Cannot fetch revision history for cube:  " + cubeName + " as it does not exist in app:  " + appId);
             }
@@ -823,7 +823,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    private Object[] getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, boolean activeOnly) throws Exception
+    private List<NCubeInfoDto> getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, boolean activeOnly) throws Exception
     {
         List<NCubeInfoDto> list = new ArrayList<>();
 
@@ -854,7 +854,7 @@ public class NCubeJdbcPersister
                 }
             }
         }
-        return list.toArray();
+        return list;
     }
 
     public NCube loadCube(Connection c, NCubeInfoDto dto)
@@ -2026,7 +2026,7 @@ public class NCubeJdbcPersister
     /**
      * Return an array [] of Strings containing all unique App names.
      */
-    public Object[] getAppNames(Connection connection, String tenant, String status, String branch)
+    public List<String> getAppNames(Connection connection, String tenant, String status, String branch)
     {
         String sql = "SELECT DISTINCT app_cd FROM n_cube WHERE tenant_cd = RPAD(?, 10, ' ') and status_cd = ? and branch_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
@@ -2044,7 +2044,7 @@ public class NCubeJdbcPersister
                     records.add(rs.getString(1));
                 }
             }
-            return records.toArray();
+            return records;
         }
         catch (Exception e)
         {
@@ -2054,7 +2054,7 @@ public class NCubeJdbcPersister
         }
     }
 
-    public Object[] getAppVersions(Connection connection, String tenant, String app, String status, String branch)
+    public List<String> getAppVersions(Connection connection, String tenant, String app, String status, String branch)
     {
         final String sql = "SELECT DISTINCT version_no_cd FROM n_cube WHERE app_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') and branch_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql))
@@ -2073,7 +2073,7 @@ public class NCubeJdbcPersister
                 }
             }
 
-            return records.toArray();
+            return records;
         }
         catch (Exception e)
         {

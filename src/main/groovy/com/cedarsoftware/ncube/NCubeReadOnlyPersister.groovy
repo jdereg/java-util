@@ -29,15 +29,15 @@ interface NCubeReadOnlyPersister
     NCube loadCube(ApplicationID appId, String name)
     NCube loadCubeBySha1(ApplicationID appId, String name, String sha1)
 
-    Object[] getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
-    Object[] getChangedRecords(ApplicationID appId)
-    Object[] getAppNames(String tenant, String status, String branch)
-    Object[] getAppVersions(String tenant, String app, String status, String branch)
+    List<NCubeInfoDto> getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
+    List<NCubeInfoDto> getChangedRecords(ApplicationID appId)
+    List<String> getAppNames(String tenant, String status, String branch)
+    List<String> getAppVersions(String tenant, String app, String status, String branch)
     boolean doesCubeExist(ApplicationID appId, String cubeName)
 
-    Object[] getDeletedCubeRecords(ApplicationID appId, String pattern)
-    Object[] getRevisions(ApplicationID appId, String cubeName)
-    Object[] search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    List<NCubeInfoDto> getDeletedCubeRecords(ApplicationID appId, String pattern)
+    List<NCubeInfoDto> getRevisions(ApplicationID appId, String cubeName)
+    List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String searchValue)
 
     Set<String> getBranches(String tenant)
 

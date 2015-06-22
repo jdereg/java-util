@@ -657,6 +657,24 @@ public class NCubeJdbcPersister
         return s;
     }
 
+    public PreparedStatement createSelectCubeWithMatchingRevisionStatement(Connection c, ApplicationID appId, String cubeName, long revision) throws SQLException
+    {
+        String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
+                "FROM n_cube " +
+                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
+
+        PreparedStatement s = c.prepareStatement(sql);
+        s.setString(1, cubeName);
+        s.setString(2, appId.getApp());
+        s.setString(3, appId.getVersion());
+        s.setString(4, appId.getStatus());
+        s.setString(5, appId.getTenant());
+        s.setString(6, appId.getBranch());
+        s.setLong(7, revision);
+        s.setMaxRows(1);
+        return s;
+    }
+
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean changedOnly, boolean activeOnly, boolean deletedOnly, boolean includeCube, boolean includeTests) throws SQLException
     {
         if (activeOnly && deletedOnly)
@@ -913,7 +931,7 @@ public class NCubeJdbcPersister
         return null;
     }
 
-    public NCube loadCube(Connection c, ApplicationID appId, String cubeName, String sha1)
+    public NCube loadCubeBySha1(Connection c, ApplicationID appId, String cubeName, String sha1)
     {
         try (PreparedStatement stmt = createSelectCubeWithMatchingSha1Statement(c, appId, cubeName, sha1))
         {
@@ -927,7 +945,28 @@ public class NCubeJdbcPersister
         }
         catch (Exception e)
         {
-            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database";
+            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database with sha1: " + sha1;
+            LOG.error(s, e);
+            throw new IllegalStateException(s, e);
+        }
+        return null;
+    }
+
+    public NCube loadCubeByRevision(Connection c, ApplicationID appId, String cubeName, long revision)
+    {
+        try (PreparedStatement stmt = createSelectCubeWithMatchingRevisionStatement(c, appId, cubeName, revision))
+        {
+            try (ResultSet rs = stmt.executeQuery())
+            {
+                if (rs.next())
+                {
+                    return buildCube(appId, rs);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            String s = "Unable to load cube: " + appId + ", " + cubeName + " from database with revision: " + revision;
             LOG.error(s, e);
             throw new IllegalStateException(s, e);
         }

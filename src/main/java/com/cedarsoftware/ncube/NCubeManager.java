@@ -187,6 +187,23 @@ public class NCubeManager
         return prepareCube(ncube);
     }
 
+    /**
+     * Fetch a specific revision n-cube by name from the given ApplicationID.
+     * The answer is not cached.
+     */
+    public static NCube getCubeRevision(ApplicationID appId, String name, long revision)
+    {
+        validateAppId(appId);
+        NCube.validateCubeName(name);
+
+        // now even items with metaProperties(cache = 'false') can be retrieved
+        // and normal app processing doesn't do two queries anymore.
+        // used to do getCubeInfoRecords() -> dto
+        // and then dto -> loadCube(id)
+        NCube ncube = getPersister().loadCubeByRevision(appId, name, revision);
+        return ncube;
+    }
+
     static NCube ensureLoaded(Object value)
     {
         if (value instanceof NCube)

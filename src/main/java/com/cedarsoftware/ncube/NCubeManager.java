@@ -553,7 +553,7 @@ public class NCubeManager
     }
 
     /**
-     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
+     * Get List<NCubeInfoDto> for the given ApplicationID, filtered by the pattern.  If using
      * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
      * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
@@ -567,7 +567,7 @@ public class NCubeManager
     }
 
     /**
-     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
+     * Get List<NCubeInfoDto> for the given ApplicationID, filtered by the pattern.  If using
      * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
      * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
@@ -694,7 +694,7 @@ public class NCubeManager
     }
 
     /**
-     * Get Object[] of n-cube record DTOs for the given ApplicationID, filtered by the pattern.  If using
+     * Get List<NCubeInfoDto> for the given ApplicationID, filtered by the pattern.  If using
      * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
      * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
      * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
@@ -707,6 +707,9 @@ public class NCubeManager
         return cubes;
     }
 
+    /**
+     * Restore a previously deleted n-cube.
+     */
     public static void restoreCube(ApplicationID appId, Object[] cubeNames, String username)
     {
         validateAppId(appId);
@@ -736,6 +739,9 @@ public class NCubeManager
         }
     }
 
+    /**
+     * Get a List<NCubeInfoDto> containing all history for the given cube.
+     */
     public static List<NCubeInfoDto> getRevisionHistory(ApplicationID appId, String cubeName)
     {
         validateAppId(appId);
@@ -754,7 +760,7 @@ public class NCubeManager
 
     /**
      * Get all of the versions that exist for the given ApplicationID (tenant and app).
-     * @return Object[] of String version numbers.
+     * @return List<String> version numbers.
      */
     public static List<String> getAppVersions(String tenant, String app, String status, String branch)
     {
@@ -885,7 +891,7 @@ public class NCubeManager
      * Commit the passed in changed cube records identified by NCubeInfoDtos.
      * @return array of NCubeInfoDtos that were committed.
      */
-    public static Object[] commitBranch(ApplicationID appId, Object[] infoDtos, String username)
+    public static List<NCubeInfoDto> commitBranch(ApplicationID appId, Object[] infoDtos, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -988,12 +994,12 @@ public class NCubeManager
             throw new BranchMergeException(errors.size() + " merge conflict(s) committing branch.  Update your branch and retry commit.", errors);
         }
 
-        List values = getPersister().commitBranch(appId, dtosToUpdate, username);
-        values.addAll(dtosMerged);
+        List<NCubeInfoDto> committedCubes = getPersister().commitBranch(appId, dtosToUpdate, username);
+        committedCubes.addAll(dtosMerged);
         clearCache(appId);
         clearCache(headAppId);
         broadcast(appId);
-        return values.toArray();
+        return committedCubes;
     }
 
     private static NCube checkForConflicts(ApplicationID appId, Map errors, String message, NCubeInfoDto info, NCubeInfoDto head, boolean reverse)
@@ -1058,7 +1064,12 @@ public class NCubeManager
         return ret;
     }
 
-    public static Object[] updateBranch(ApplicationID appId, String username)
+    /**
+     * Update a branch from the HEAD.  Changes from the HEAD are merged into the
+     * supplied branch.  If the merge cannot be done perfectly, an exception is
+     * thrown indicating the cubes that are in conflict.
+     */
+    public static List<NCubeInfoDto> updateBranch(ApplicationID appId, String username)
     {
         validateAppId(appId);
         appId.validateBranchIsNotHead();
@@ -1126,11 +1137,10 @@ public class NCubeManager
             throw new BranchMergeException("Conflict(s) updating branch", conflicts);
         }
 
-        List ret = getPersister().updateBranch(appId, updates, username);
+        List<NCubeInfoDto> ret = getPersister().updateBranch(appId, updates, username);
         ret.addAll(dtosMerged);
-
         clearCache(appId);
-        return ret.toArray();
+        return ret;
     }
 
     /**
@@ -1401,6 +1411,7 @@ public class NCubeManager
         }
     }
 
+    @Deprecated
     public static List<NCube> getNCubesFromResource(String name)
     {
         String lastSuccessful = "";

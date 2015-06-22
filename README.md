@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.2.1</version>
+  <version>3.3.0</version>
 </dependency>
 ```
 [Donations welcome](https://coinbase.com/jdereg) 
@@ -95,8 +95,13 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 
 ### Version History
+* 3.3.0
+ * Changed all `NCubeManager` APIs that returned `Object[]` containing `NCubeInfoDto`s to instead return `List<NCubeInfoDto>`.
+ * Changed all persister APIs that returned `Object[]` containing `NCubeInfoDto`s to instead return `List<NCubeInfoDto>`.
+ * Changed `NCubeManager.getAppNames()` and `NCubeManager.getAppVersions()` to return `List<String>` instead of `Object[]`.
+ * These changes were necessary to prevent conversion from `List` to `Object[]` from occurring inside the database transaction, holding it open longer than necessary.
 * 3.2.1
- * NCubeReadOnlyPersister.loadCube() API that took a long cube ID now takes an NCubeInfoDto instead, allowing the JDBCPersister to still use the n-cube ID, where as a test read only file persister may used fields from the NCubeInfoDto object instead.
+ * `NCubeReadOnlyPersister.loadCube()` API that took a long cube ID now takes an `NCubeInfoDto` instead, allowing the `NCubeJdbcPersister` to still use the n-cube ID, where as a test read only file persister may used fields from the `NCubeInfoDto` object instead.
 * 3.2.0
  * This release adds complete support for branching.  All branch functionality is complete and unit tested, with > 98% code coverage.
  * Merge happens at cell - level - two people can work on the same cube without merge conflict if they change different cells.
@@ -104,13 +109,13 @@ innovative and intelligent tools for profiling Java and .NET applications.
  * `NCUBE_PARAMS` is now read as either an environment variable or -D system property as a JSON map.  The keys in this map allow overriding the tenant, application, version, status, or branch.  Override support for other values may be added in the future.  This allows developer testing to switch Apps, verisons, etc., without having to change the `sys.bootstrap` cube.
  * All APIs that take a matching pattern on `NCubeManager` expect * or ? (match any, or match one).  These are converted internally within the respective persister to yield the expected behavior.
  * Performance: Support for memoization (caching) of `GroovyExpression` results has been added.  If the 'cache' value for an 'exp' (`GroovyExpression`) cell is true, the cell is executed, and the return value is cached (NOTE: The values in the input Map are NOT used as a key for the cached value).
- * Performance: Cubes are stored as compressed byte[] (gzip) of JSON when using the JDBC persister.
+ * Performance: Cubes are stored as compressed `byte[]` (gzip) of JSON when using the JDBC persister.
  * Performance: Cubes are serialized from Streams from the database, reducing the working set memory required when loading a cube.
- * Performance: Removed many instances of 'synchronized' (used for read only cache) and instead using ConcurrentMap's .putIfAbsent() API.
+ * Performance: Removed many instances of 'synchronized' (used for read only cache) and instead using `ConcurrentMap.putIfAbsent()` API.
  * Performance: Failed requests for an n-cube are cached - performance enhancement.
  * Performance: Two database queries reduced to into one query on straight up getCube() call when the cube was not in the cache and needed to be loaded.
  * Performance: Setting/Getting 133,000 cells reduced by a factor of 3 - takes about 1 second on Mac Book Pro 2.4Ghz.  Used to take 3.2 seconds.
- * Internal Map containing all cells is now Map<Set<Long>, Object> where the key is a set of column identifiers on each axis.  Before it was actual Column instances - less flexible.
+ * Internal `Map` containing all cells is now `Map<Set<Long>, Object>` where the key is a set of column identifiers on each axis.  Before it was actual `Column` instances - less flexible.
  * New API: ncube.getPopulatedCellCoordinates().  This returns all cells that actually have values in them.  
 * 3.1.7
  * Performance: `NCubeManager.getCube()` - caches failed fetches so that subsequent retries do not hit database again and again.

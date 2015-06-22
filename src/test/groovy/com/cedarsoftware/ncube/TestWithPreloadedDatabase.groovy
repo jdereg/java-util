@@ -201,7 +201,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
 
         // ensure that there are no more branch changes after create
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
@@ -260,7 +260,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
     }
 
     @Test
@@ -283,7 +283,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
     }
 
     @Test
@@ -296,7 +296,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
 
         ApplicationID headId = branch1.asHead()
         assertEquals(0, NCubeManager.getCubeRecordsFromDatabase(headId, null, false).size())
@@ -330,9 +330,9 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
 
         assertEquals(1, dtos.length);
-        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).length);
+        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).size());
 
-        assertEquals(1, NCubeManager.updateBranch(branch1, USER_ID).length);
+        assertEquals(1, NCubeManager.updateBranch(branch1, USER_ID).size());
     }
 
     @Test
@@ -347,9 +347,8 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
 
         assertEquals(1, dtos.length);
-        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).length);
-
-        assertEquals(0, NCubeManager.updateBranch(branch1, USER_ID).length);
+        assertEquals(1, NCubeManager.commitBranch(branch2, dtos, USER_ID).size());
+        assertEquals(0, NCubeManager.updateBranch(branch1, USER_ID).size());
     }
 
     @Test
@@ -428,7 +427,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length);
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size());
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
@@ -484,7 +483,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(2, dtos.length)
         NCubeManager.commitBranch(branch1, dtos, USER_ID);
 
-        assertEquals(2, NCubeManager.updateBranch(branch2, USER_ID).length)
+        assertEquals(2, NCubeManager.updateBranch(branch2, USER_ID).size())
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
@@ -574,7 +573,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())
         assertEquals(2, NCubeManager.getRevisionHistory(branch1, "TestBranch").size())
@@ -638,7 +637,7 @@ abstract class TestWithPreloadedDatabase
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
 
-        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(0, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
 
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(0, dtos.length)
@@ -674,7 +673,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, dtos.length)
         ((NCubeInfoDto)dtos[0]).revision = Long.toString(100)
 
-        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
     }
 
 
@@ -818,7 +817,7 @@ abstract class TestWithPreloadedDatabase
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
 
-        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).length)
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
 
         assertEquals(2, NCubeManager.getRevisionHistory(head, "TestBranch").size())
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestAge").size())

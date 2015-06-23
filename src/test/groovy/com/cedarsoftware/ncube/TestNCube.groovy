@@ -4779,6 +4779,28 @@ class TestNCube
         assert NCube.areCellChangeSetsCompatible(changeSet2, changeSet1)
     }
 
+    @Test
+    void testFromSimpleJsonNullHandling()
+    {
+        try
+        {
+            NCube.fromSimpleJson((InputStream)null)
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+        }
+
+        try
+        {
+            NCube.fromSimpleJson((String)null)
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------
 

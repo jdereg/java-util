@@ -96,7 +96,7 @@ innovative and intelligent tools for profiling Java and .NET applications.
 
 ### Version History
 * 3.3.2
- * Updated NCubeManager.search() API to be case-insensitive
+ * Updated `NCubeManager.search()` API to be case-insensitive
 * 3.3.1
  * Added API to allow retrieval of specific revision of an n-cube
 * 3.3.0

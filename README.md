@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.3.0</version>
+  <version>3.3.2</version>
 </dependency>
 ```
 Like **n-cube** and find it useful? Donate some **Bitcoin**: 1JWSwcE4YrFzxs1S9APiwK2j9S9sVeJVEW
@@ -95,6 +95,10 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 
 ### Version History
+* 3.3.2
+ * Updated NCubeManager.search() API to be case-insensitive
+* 3.3.1
+ * Added API to allow retrieval of specific revision of an n-cube
 * 3.3.0
  * Changed all `NCubeManager` APIs that returned `Object[]` containing `NCubeInfoDto`s to instead return `List<NCubeInfoDto>`.
  * Changed all persister APIs that returned `Object[]` containing `NCubeInfoDto`s to instead return `List<NCubeInfoDto>`.

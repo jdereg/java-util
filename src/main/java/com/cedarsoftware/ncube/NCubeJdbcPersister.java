@@ -463,15 +463,15 @@ public class NCubeJdbcPersister
             {
                 pattern = pattern.substring(0, pattern.length() - 1);
             }
-            pattern = convertPattern('*' + pattern + '*');
+            pattern = convertPattern('*' + pattern.toLowerCase() + '*');
         }
 
         String nameCondition1 = "";
         String nameCondition2 = "";
         if (hasSearchPattern)
         {
-            nameCondition1 = " AND n_cube_nm like ?";
-            nameCondition2 = " AND m.n_cube_nm like ?";
+            nameCondition1 = " AND LOWER(n_cube_nm) like ?";
+            nameCondition2 = " AND LOWER(m.n_cube_nm) like ?";
         }
 
         String optionalCol = "";

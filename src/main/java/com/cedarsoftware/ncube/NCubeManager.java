@@ -62,8 +62,16 @@ import org.apache.logging.log4j.Logger;
  */
 public class NCubeManager
 {
+    public static final String DELETED_RECORDS_ONLY = "deletedRecordsOnly";
+    public static final String INCLUDE_TEST_DATA = "includeTestData";
+    public static final String ACTIVE_RECORDS_ONLY = "activeRecordsOnly";
+    public static final String CHANGED_RECORDS_ONLY = "changedRecordsOnly";
+    public static final String INCLUDE_CUBE_DATA = "includeCubeData";
+    public static final String EXACT_MATCH_NAME = "exactMatchName";
+
     private static final String SYS_BOOTSTRAP = "sys.bootstrap";
     private static final String CLASSPATH_CUBE = "sys.classpath";
+
     private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final ConcurrentMap<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();

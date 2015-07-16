@@ -849,7 +849,10 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test", null)
+            Map options = [:];
+            options[NCubeManager.ACTIVE_RECORDS_ONLY] = true;
+            options[NCubeManager.INCLUDE_CUBE_DATA] = true;
+            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test", options)
             fail()
         }
         catch (RuntimeException e)

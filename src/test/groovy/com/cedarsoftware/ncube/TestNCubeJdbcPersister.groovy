@@ -61,20 +61,6 @@ class TestNCubeJdbcPersister
     }
 
     @Test
-    void testSelectCubesStatementWithActiveOnlyAndDeletedOnlyBothSetToTrue()
-    {
-        try
-        {
-            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, (Boolean)false, (Boolean)true, (Boolean)true, (Boolean)true, (Boolean)false);
-            fail();
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.message.contains("cannot both be true"));
-        }
-    }
-
-    @Test
     void testDbApis()
     {
         NCubePersister persister = TestingDatabaseHelper.persister
@@ -863,7 +849,7 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test")
+            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test", null)
             fail()
         }
         catch (RuntimeException e)

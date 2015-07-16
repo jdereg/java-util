@@ -632,21 +632,14 @@ public class NCubeJdbcPersister
         return stmt;
     }
 
+    /**
+     * @deprecated Use search options instead of this api.
+     */
     public List<NCubeInfoDto> getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
     {
         Map options = new HashMap();
         options.put(NCubeManager.ACTIVE_RECORDS_ONLY, activeOnly);
-
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, pattern, options))
-        {
-            return getCubeInfoRecords(appId, s, null);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch cubes matching '" + pattern + "' from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        return search(c, appId, pattern, null, options);
     }
 
     public List<NCubeInfoDto> getChangedRecords(Connection c, ApplicationID appId)

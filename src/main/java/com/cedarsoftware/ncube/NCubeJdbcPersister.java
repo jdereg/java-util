@@ -644,36 +644,16 @@ public class NCubeJdbcPersister
 
     public List<NCubeInfoDto> getChangedRecords(Connection c, ApplicationID appId)
     {
-
         Map options = new HashMap();
         options.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
-
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, null, options))
-        {
-            return getCubeInfoRecords(appId, s, null);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch changed cubes from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        return search(c, appId, null, null, options);
     }
 
     public List<NCubeInfoDto> getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
         Map options = new HashMap();
         options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, pattern, options))
-        {
-            return getCubeInfoRecords(appId, s, null);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch deleted cubes from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        return search(c, appId, pattern, null, options);
     }
 
     public List<NCubeInfoDto> getRevisions(Connection c, ApplicationID appId, String cubeName)

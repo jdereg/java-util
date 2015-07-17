@@ -291,6 +291,25 @@ class TestApplicationID
     }
 
     @Test
+    void testAsVersion()
+    {
+        ApplicationID versionId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.RELEASE.name(), ApplicationID.TEST_BRANCH)
+
+        ApplicationID newVersionId = versionId.asVersion('1.1.1')
+
+
+        assertNotSame(versionId, newVersionId)
+        assertEquals versionId.tenant, newVersionId.tenant
+        assertEquals versionId.app, newVersionId.app
+        assertNotEquals versionId.version, newVersionId.version
+        assertEquals versionId.status, newVersionId.status
+        assertEquals versionId.branch, newVersionId.branch
+
+        ApplicationID newerVersion = newVersionId.asVersion('1.1.1');
+        assertSame(newerVersion, newVersionId);
+    }
+
+    @Test
     void teatAsRelease()
     {
         ApplicationID snapshotId = new ApplicationID('Sears', 'Inventory', '1.0.0', ReleaseStatus.SNAPSHOT.name(), ApplicationID.TEST_BRANCH)

@@ -33,6 +33,8 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
     void addCubes(ApplicationID appId, String username, NCube[] cubes)
     {
         Connection c = provider.connection;
+
+
         try
         {
             for (NCube ncube : cubes)

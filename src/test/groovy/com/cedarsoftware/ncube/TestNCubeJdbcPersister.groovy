@@ -65,12 +65,16 @@ class TestNCubeJdbcPersister
     {
         try
         {
-            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, (Boolean)false, (Boolean)true, (Boolean)true, (Boolean)true, (Boolean)false);
+            HashMap options = new HashMap();
+            options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+            options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+
+            new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, options);
             fail();
         }
-        catch (Exception e)
+        catch (IllegalArgumentException e)
         {
-            assertTrue(e.message.contains("cannot both be true"));
+            assertTrue(e.message.contains("cannot both be 'true'"));
         }
     }
 
@@ -248,6 +252,86 @@ class TestNCubeJdbcPersister
             assertTrue(e.message.contains("rror"))
             assertTrue(e.message.contains("check"))
             assertTrue(e.message.contains("cube"))
+        }
+    }
+
+    @Test
+    void testCommitMergedCubeToBranchThatReturnsEmpty()
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false);
+
+        NCube<Double> cube = NCubeBuilder.getTestNCube2D(true)
+        assertNull(new NCubeJdbcPersister().commitMergedCubeToBranch(c, defaultSnapshotApp, cube, cube.sha1(), "name"));
+    }
+
+    @Test
+    void testCommitMergedCubeToBranchThatThrowsRuntimeException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            NCube<Double> cube = NCubeBuilder.getTestNCube2D(true)
+            new NCubeJdbcPersister().commitMergedCubeToBranch(c, defaultSnapshotApp, null, null, "name")
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+            assertNull(e.message)
+        }
+    }
+
+    @Test
+    void testCommitMergedCubeToBranchThatThrowsSQLException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            NCube<Double> cube = NCubeBuilder.getTestNCube2D(true)
+            new NCubeJdbcPersister().commitMergedCubeToBranch(c, defaultSnapshotApp, cube, cube.sha1(), "name")
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.toLowerCase().contains("unable to commit"))
+        }
+    }
+
+    @Test
+    void testCommitMergedCubeHeadThatThrowsRuntimeException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            NCube<Double> cube = NCubeBuilder.getTestNCube2D(true)
+            new NCubeJdbcPersister().commitMergedCubeToHead(c, defaultSnapshotApp, null, "name")
+            fail()
+        }
+        catch (NullPointerException e)
+        {
+            assertNull(e.message)
+        }
+    }
+
+    @Test
+    void testCommitMergedCubeToHeadThatThrowsSQLException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            NCube<Double> cube = NCubeBuilder.getTestNCube2D(true)
+            new NCubeJdbcPersister().commitMergedCubeToHead(c, defaultSnapshotApp, cube, "name")
+            fail()
+        }
+        catch (IllegalStateException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.toLowerCase().contains("unable to commit"))
         }
     }
 
@@ -863,7 +947,10 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test")
+            Map options = [:];
+            options[NCubeManager.ACTIVE_RECORDS_ONLY] = true;
+            options[NCubeManager.INCLUDE_CUBE_DATA] = true;
+            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test", options)
             fail()
         }
         catch (RuntimeException e)

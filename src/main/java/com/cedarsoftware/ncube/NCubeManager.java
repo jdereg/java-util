@@ -11,10 +11,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,6 +31,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -63,8 +62,16 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class NCubeManager
 {
+    public static final String DELETED_RECORDS_ONLY = "deletedRecordsOnly";
+    public static final String INCLUDE_TEST_DATA = "includeTestData";
+    public static final String ACTIVE_RECORDS_ONLY = "activeRecordsOnly";
+    public static final String CHANGED_RECORDS_ONLY = "changedRecordsOnly";
+    public static final String INCLUDE_CUBE_DATA = "includeCubeData";
+    public static final String EXACT_MATCH_NAME = "exactMatchName";
+
     private static final String SYS_BOOTSTRAP = "sys.bootstrap";
     private static final String CLASSPATH_CUBE = "sys.classpath";
+
     private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Object>> ncubeCache = new ConcurrentHashMap<>();
     private static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Advice>> advices = new ConcurrentHashMap<>();
     private static final ConcurrentMap<ApplicationID, GroovyClassLoader> localClassLoaders = new ConcurrentHashMap<>();
@@ -196,10 +203,6 @@ public class NCubeManager
         validateAppId(appId);
         NCube.validateCubeName(name);
 
-        // now even items with metaProperties(cache = 'false') can be retrieved
-        // and normal app processing doesn't do two queries anymore.
-        // used to do getCubeInfoRecords() -> dto
-        // and then dto -> loadCube(id)
         NCube ncube = getPersister().loadCubeByRevision(appId, name, revision);
         return ncube;
     }

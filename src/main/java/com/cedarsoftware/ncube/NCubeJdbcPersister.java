@@ -4,9 +4,6 @@ import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -19,12 +16,16 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Class used to carry the NCube meta-information
@@ -90,7 +91,11 @@ public class NCubeJdbcPersister
 
     NCubeInfoDto commitMergedCubeToBranch(Connection c, ApplicationID appId, NCube cube, String headSha1, String username)
     {
-        try (PreparedStatement stmt = createSelectRevisionAndTestDataStatement(c, appId, cube.getName()))
+        Map options = new HashMap();
+        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+        try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cube.getName(), options))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -121,9 +126,13 @@ public class NCubeJdbcPersister
 
     NCubeInfoDto commitMergedCubeToHead(Connection c, ApplicationID appId, NCube cube, String username)
     {
+        Map options = new HashMap();
+        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
         ApplicationID headAppId = appId.asHead();
 
-        try (PreparedStatement stmt = createSelectRevisionAndTestDataStatement(c, appId, cube.getName()))
+        try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cube.getName(), options))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -345,7 +354,12 @@ public class NCubeJdbcPersister
 
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(connection, appId, cube.getName(), false))
+        Map options = new HashMap();
+        options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+        try (PreparedStatement stmt = createSelectCubesStatement(connection, appId, cube.getName(), options))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -448,117 +462,27 @@ public class NCubeJdbcPersister
         }
     }
 
-    List<NCubeInfoDto> search(Connection c, ApplicationID appId, String cubeNamePattern, String searchValue)
+    List<NCubeInfoDto> search(Connection c, ApplicationID appId, String cubeNamePattern, String searchPattern, Map options)
     {
-        boolean hasSearchValue = StringUtilities.hasContent(searchValue);
-        boolean hasSearchPattern = StringUtilities.hasContent(cubeNamePattern);
-        String pattern = cubeNamePattern;
+        boolean hasSearchPattern = StringUtilities.hasContent(searchPattern);
+
+        if (options == null)
+        {
+            options = new HashMap();
+        }
+
         if (hasSearchPattern)
         {
-            if (pattern.startsWith("*") || pattern.startsWith("%"))
-            {
-                pattern = pattern.substring(1);
-            }
-            if (pattern.endsWith("*") || pattern.endsWith("%"))
-            {
-                pattern = pattern.substring(0, pattern.length() - 1);
-            }
-            pattern = convertPattern('*' + pattern.toLowerCase() + '*');
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
         }
 
-        String nameCondition1 = "";
-        String nameCondition2 = "";
-        if (hasSearchPattern)
+        try (PreparedStatement statement = createSelectCubesStatement(c, appId, cubeNamePattern, options))
         {
-            nameCondition1 = " AND LOWER(n_cube_nm) like ?";
-            nameCondition2 = " AND LOWER(m.n_cube_nm) like ?";
-        }
-
-        String optionalCol = "";
-        if (hasSearchValue)
-        {
-            optionalCol = ", n.cube_value_bin";
-        }
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.changed, n.sha1, n.head_sha1" + optionalCol +
-               " FROM n_cube n, " +
-               "( " +
-               "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-               "  FROM n_cube " +
-               "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" + nameCondition1 +
-               " GROUP BY n_cube_nm " +
-               ") m " +
-               "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" + nameCondition2;
-
-        try (PreparedStatement s = c.prepareStatement(sql))
-        {
-            List<NCubeInfoDto> list = new ArrayList<>();
-
-            s.setString(1, appId.getApp());
-            s.setString(2, appId.getVersion());
-            s.setString(3, appId.getStatus());
-            s.setString(4, appId.getTenant());
-            s.setString(5, appId.getBranch());
-
-            int i=6;
-            if (hasSearchPattern)
-            {
-                s.setString(i++, pattern);
-            }
-
-            s.setString(i++, appId.getApp());
-            s.setString(i++, appId.getVersion());
-            s.setString(i++, appId.getStatus());
-            s.setString(i++, appId.getTenant());
-            s.setString(i++, appId.getBranch());
-
-            if (hasSearchPattern)
-            {
-                s.setString(i++, pattern);
-            }
-
-
-            try (ResultSet rs = s.executeQuery())
-            {
-                Pattern searchPattern = Pattern.compile(searchValue, Pattern.CASE_INSENSITIVE);
-                while (rs.next())
-                {
-                    boolean contentMatched = false;
-                    if (hasSearchValue)
-                    {
-                        rs.getBinaryStream("cube_value_bin");
-                        byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
-                        String cubeData = StringUtilities.createUtf8String(bytes);
-                        Matcher matcher = searchPattern.matcher(cubeData);
-                        contentMatched = matcher.find();
-                    }
-
-                    if (!hasSearchValue || contentMatched)
-                    {
-                        NCubeInfoDto dto = new NCubeInfoDto();
-                        dto.id = Long.toString(rs.getLong("n_cube_id"));
-                        dto.name = rs.getString("n_cube_nm");
-                        dto.branch = appId.getBranch();
-                        dto.tenant = appId.getTenant();
-                        byte[] notes = rs.getBytes(NOTES_BIN);
-                        dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-                        dto.version = appId.getVersion();
-                        dto.status = rs.getString("status_cd");
-                        dto.app = appId.getApp();
-                        dto.createDate = new Date(rs.getTimestamp("create_dt").getTime());
-                        dto.createHid = rs.getString("create_hid");
-                        dto.revision = Long.toString(rs.getLong("revision_number"));
-                        dto.changed = rs.getBoolean("changed");
-                        dto.sha1 = rs.getString("sha1");
-                        dto.headSha1 = rs.getString("head_sha1");
-                        list.add(dto);
-                    }
-                }
-            }
-            return list;
+            return getCubeInfoRecords(appId, statement, searchPattern);
         }
         catch (Exception e)
         {
-            String s = "Unable to fetch cubes matching name '" + cubeNamePattern + "' from database with content '" + searchValue + "' for app: " + appId;
+            String s = "Unable to fetch cubes matching name '" + cubeNamePattern + "' from database with content '" + searchPattern + "' for app: " + appId;
             LOG.error(s, e);
             throw new RuntimeException(s, e);
         }
@@ -573,71 +497,6 @@ public class NCubeJdbcPersister
         s.setLong(1, intId);
         return s;
     }
-
-    public PreparedStatement createSelectSingleCubeStatement(Connection c, ApplicationID appId, String cubeName, boolean activeOnly) throws SQLException
-    {
-        String revisionCondition = "";
-        if (activeOnly)
-        {
-            revisionCondition = " AND n.revision_number >= 0";
-        }
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt, cube_value_bin " +
-                "FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number)" +
-                " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" +
-                revisionCondition;
-
-        PreparedStatement s = c.prepareStatement(sql);
-        s.setString(1, cubeName);
-        s.setString(2, appId.getApp());
-        s.setString(3, appId.getVersion());
-        s.setString(4, appId.getStatus());
-        s.setString(5, appId.getTenant());
-        s.setString(6, appId.getBranch());
-        s.setString(7, cubeName);
-        s.setString(8, appId.getApp());
-        s.setString(9, appId.getVersion());
-        s.setString(10, appId.getStatus());
-        s.setString(11, appId.getTenant());
-        s.setString(12, appId.getBranch());
-        return s;
-    }
-
-    public PreparedStatement createSelectRevisionAndTestDataStatement(Connection c, ApplicationID appId, String cubeName) throws SQLException
-    {
-        String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, version_no_cd, status_cd, n.revision_number, branch_id, test_data_bin, notes_bin, changed, sha1, head_sha1 " +
-                "FROM n_cube n, " +
-                "( " +
-                "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
-                "  FROM n_cube " +
-                "  WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                "  GROUP BY n_cube_nm " +
-                ") m " +
-                "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number)" +
-                " AND n.n_cube_nm = ? AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?";
-
-        PreparedStatement s = c.prepareStatement(sql);
-        s.setString(1, cubeName);
-        s.setString(2, appId.getApp());
-        s.setString(3, appId.getVersion());
-        s.setString(4, appId.getStatus());
-        s.setString(5, appId.getTenant());
-        s.setString(6, appId.getBranch());
-        s.setString(7, cubeName);
-        s.setString(8, appId.getApp());
-        s.setString(9, appId.getVersion());
-        s.setString(10, appId.getStatus());
-        s.setString(11, appId.getTenant());
-        s.setString(12, appId.getBranch());
-        return s;
-    }
-
 
     public PreparedStatement createSelectCubeWithMatchingSha1Statement(Connection c, ApplicationID appId, String cubeName, String sha1) throws SQLException
     {
@@ -675,68 +534,70 @@ public class NCubeJdbcPersister
         return s;
     }
 
-    PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String pattern, boolean changedOnly, boolean activeOnly, boolean deletedOnly, boolean includeCube, boolean includeTests) throws SQLException
+    boolean toBoolean(Object value, boolean def) {
+        return value == null ? def : ((Boolean)value).booleanValue();
+    }
+
+    /**
+     *
+     * @param c
+     * @param appId
+     * @param namePattern
+     * @param options map with possible keys:
+     *                changedRecordsOnly - default false
+     *                activeRecordsOnly - default false
+     *                deletedRecordsOnly - default false
+     *                includeCubeData - default false
+     *                includeTestData - default false
+     *                exactMatchName - default false
+     * @return
+     * @throws SQLException
+     */
+    PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String namePattern, Map options) throws SQLException
     {
-        if (activeOnly && deletedOnly)
+        if (options == null)
         {
-            throw new IllegalArgumentException("activeOnly and deletedOnly cannot both be true");
+            options = new HashMap();
         }
 
-        pattern = convertPattern(pattern);
-        String nameCondition = "";
-        if (StringUtilities.hasContent(pattern))
+        boolean changedRecordsOnly = toBoolean(options.get(NCubeManager.CHANGED_RECORDS_ONLY), false);
+        boolean activeRecordsOnly = toBoolean(options.get(NCubeManager.ACTIVE_RECORDS_ONLY), false);
+        boolean deletedRecordsOnly = toBoolean(options.get(NCubeManager.DELETED_RECORDS_ONLY), false);
+        boolean includeCubeData = toBoolean(options.get(NCubeManager.INCLUDE_CUBE_DATA), false);
+        boolean includeTestData = toBoolean(options.get(NCubeManager.INCLUDE_TEST_DATA), false);
+        boolean exactMatchName = toBoolean(options.get(NCubeManager.EXACT_MATCH_NAME), false);
+
+        if (activeRecordsOnly && deletedRecordsOnly)
         {
-            nameCondition = " AND n_cube_nm like ?";
+            throw new IllegalArgumentException("activeRecordsOnly and deletedRecordsOnly are mutually exclusive options and cannot both be 'true'.");
         }
 
-        String revisionCondition = "";
-        if (activeOnly)
-        {
-            revisionCondition = " AND n.revision_number >= 0";
-        }
 
-        if (deletedOnly)
-        {
-            revisionCondition = " AND n.revision_number < 0";
-        }
+        namePattern = convertPattern(namePattern);
+        boolean hasNamePattern = StringUtilities.hasContent(namePattern);
 
-        String changedCondition = "";
-        if (changedOnly)
-        {
-            changedCondition = " AND n.changed = 1";
-        }
-
-        String testData = "";
-        if (includeTests)
-        {
-            testData = ", n.test_data_bin";
-        }
-
-        String cubeData = "";
-        if (includeCube)
-        {
-            cubeData = ", n.cube_value_bin";
-        }
+        String nameCondition1 = hasNamePattern ? exactMatchName ? " AND n_cube_nm = ?" : " AND n_cube_nm like ?" : "";
+        String nameCondition2 = hasNamePattern ? exactMatchName ? " AND m.n_cube_nm = ?" : " AND m.n_cube_nm like ?" : "";
+        String revisionCondition = activeRecordsOnly ? " AND n.revision_number >= 0" : deletedRecordsOnly ? " AND n.revision_number < 0" : "";
+        String changedCondition = changedRecordsOnly ? " AND n.changed = 1" : "";
+        String testCondition = includeTestData ? ", n.test_data_bin" : "";
+        String cubeCondition = includeCubeData ? ", n.cube_value_bin" : "";
 
         String sql = "SELECT n_cube_id, n.n_cube_nm, app_cd, n.notes_bin, version_no_cd, status_cd, n.create_dt, n.create_hid, n.revision_number, n.branch_id, n.changed, n.sha1, n.head_sha1" +
-                testData +
-                cubeData +
+                testCondition +
+                cubeCondition +
                 " FROM n_cube n, " +
                 "( " +
                 "  SELECT n_cube_nm, max(abs(revision_number)) AS max_rev " +
                 "  FROM n_cube " +
                 "  WHERE app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
-                nameCondition +
+                nameCondition1 +
                 " GROUP BY n_cube_nm " +
                 ") m " +
                 "WHERE m.n_cube_nm = n.n_cube_nm AND m.max_rev = abs(n.revision_number) AND n.app_cd = ? AND n.version_no_cd = ? AND n.status_cd = ? AND n.tenant_cd = RPAD(?, 10, ' ') AND n.branch_id = ?" +
                 revisionCondition +
-                changedCondition;
-
-        if (StringUtilities.hasContent(pattern))
-        {
-            sql += " AND m.n_cube_nm like ?";
-        }
+                changedCondition +
+                nameCondition2;
 
         PreparedStatement stmt = c.prepareStatement(sql);
         stmt.setString(1, appId.getApp());
@@ -746,9 +607,9 @@ public class NCubeJdbcPersister
         stmt.setString(5, appId.getBranch());
 
         int i=6;
-        if (StringUtilities.hasContent(pattern))
+        if (hasNamePattern)
         {
-            stmt.setString(i++, pattern);
+            stmt.setString(i++, namePattern);
         }
 
         stmt.setString(i++, appId.getApp());
@@ -757,54 +618,36 @@ public class NCubeJdbcPersister
         stmt.setString(i++, appId.getTenant());
         stmt.setString(i++, appId.getBranch());
 
-        if (StringUtilities.hasContent(pattern))
+        if (hasNamePattern)
         {
-            stmt.setString(i++, pattern);
+            stmt.setString(i++, namePattern);
         }
 
         return stmt;
     }
 
+    /**
+     * @deprecated Use search options instead of this api.
+     */
     public List<NCubeInfoDto> getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
     {
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, pattern, false, activeOnly, false, false, false))
-        {
-            return getCubeInfoRecords(appId, s, activeOnly);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch cubes matching '" + pattern + "' from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        Map options = new HashMap();
+        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, activeOnly);
+        return search(c, appId, pattern, null, options);
     }
 
     public List<NCubeInfoDto> getChangedRecords(Connection c, ApplicationID appId)
     {
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, null, true, false, false, false, false))
-        {
-            return getCubeInfoRecords(appId, s, false);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch changed cubes from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        Map options = new HashMap();
+        options.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+        return search(c, appId, null, null, options);
     }
 
     public List<NCubeInfoDto> getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
-        try (PreparedStatement s = createSelectCubesStatement(c, appId, pattern, false, false, true, false, false))
-        {
-            return getCubeInfoRecords(appId, s, false);
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to fetch deleted cubes from database for app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        Map options = new HashMap();
+        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+        return search(c, appId, pattern, null, options);
     }
 
     public List<NCubeInfoDto> getRevisions(Connection c, ApplicationID appId, String cubeName)
@@ -822,7 +665,7 @@ public class NCubeJdbcPersister
             stmt.setString(5, appId.getStatus());
             stmt.setString(6, appId.getBranch());
 
-            List<NCubeInfoDto> records = getCubeInfoRecords(appId, stmt, false);
+            List<NCubeInfoDto> records = getCubeInfoRecords(appId, stmt, null);
             if (records.isEmpty())
             {
                 throw new IllegalArgumentException("Cannot fetch revision history for cube:  " + cubeName + " as it does not exist in app:  " + appId);
@@ -841,33 +684,50 @@ public class NCubeJdbcPersister
         }
     }
 
-    private List<NCubeInfoDto> getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, boolean activeOnly) throws Exception
+    private List<NCubeInfoDto> getCubeInfoRecords(ApplicationID appId, PreparedStatement stmt, String subSearchPattern) throws Exception
     {
         List<NCubeInfoDto> list = new ArrayList<>();
+
+        Pattern searchPattern = null;
+
+        if (StringUtilities.hasContent(subSearchPattern)) {
+            searchPattern = Pattern.compile(convertPattern(subSearchPattern), Pattern.CASE_INSENSITIVE);
+        }
 
         try (ResultSet rs = stmt.executeQuery())
         {
             while (rs.next())
             {
-                NCubeInfoDto dto = new NCubeInfoDto();
-                dto.id = Long.toString(rs.getLong("n_cube_id"));
-                dto.name = rs.getString("n_cube_nm");
-                dto.branch = appId.getBranch();
-                dto.tenant = appId.getTenant();
-                byte[] notes = rs.getBytes(NOTES_BIN);
-                dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
-                dto.version = appId.getVersion();
-                dto.status = rs.getString("status_cd");
-                dto.app = appId.getApp();
-                dto.createDate = new Date(rs.getTimestamp("create_dt").getTime());
-                dto.createHid = rs.getString("create_hid");
-                dto.revision = Long.toString(rs.getLong("revision_number"));
-                dto.changed = rs.getBoolean("changed");
-                dto.sha1 = rs.getString("sha1");
-                dto.headSha1 = rs.getString("head_sha1");
+                boolean contentMatched = false;
 
-                if (!activeOnly || !dto.revision.startsWith("-"))
+                if (searchPattern != null)
                 {
+                    rs.getBinaryStream("cube_value_bin");
+                    byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
+                    String cubeData = StringUtilities.createUtf8String(bytes);
+                    Matcher matcher = searchPattern.matcher(cubeData);
+                    contentMatched = matcher.find();
+                }
+
+                if (searchPattern == null || contentMatched)
+                {
+                    NCubeInfoDto dto = new NCubeInfoDto();
+                    dto.id = Long.toString(rs.getLong("n_cube_id"));
+                    dto.name = rs.getString("n_cube_nm");
+                    dto.branch = appId.getBranch();
+                    dto.tenant = appId.getTenant();
+                    byte[] notes = rs.getBytes(NOTES_BIN);
+                    dto.notes = new String(notes == null ? "".getBytes() : notes, "UTF-8");
+                    dto.version = appId.getVersion();
+                    dto.status = rs.getString("status_cd");
+                    dto.app = appId.getApp();
+                    dto.createDate = new Date(rs.getTimestamp("create_dt").getTime());
+                    dto.createHid = rs.getString("create_hid");
+                    dto.revision = Long.toString(rs.getLong("revision_number"));
+                    dto.changed = rs.getBoolean("changed");
+                    dto.sha1 = rs.getString("sha1");
+                    dto.headSha1 = rs.getString("head_sha1");
+
                     list.add(dto);
                 }
             }
@@ -912,7 +772,13 @@ public class NCubeJdbcPersister
 
     public NCube loadCube(Connection c, ApplicationID appId, String cubeName)
     {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, true))
+        Map options = new HashMap();
+        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+        options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+        try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -983,7 +849,12 @@ public class NCubeJdbcPersister
 
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
-        try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, false))
+        Map options = new HashMap();
+        options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+        try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -1096,7 +967,13 @@ public class NCubeJdbcPersister
         }
         else
         {
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, true))
+            Map options = new HashMap();
+            options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+            try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1114,8 +991,6 @@ public class NCubeJdbcPersister
                         }
                         return true;
                     }
-                    //  TODO:  In restoreCube() and updateCube() we throw an exception when there is nothing to update.
-                    //  TODO:  For consistency do we want to do the same thing here?
                     return false;
                 }
             }
@@ -1211,7 +1086,12 @@ public class NCubeJdbcPersister
         try
         {
             ApplicationID headId = appId.asHead();
-            try (PreparedStatement stmt = createSelectCubesStatement(c, headId, null, false, false, false, true, true))
+
+            Map options = new HashMap();
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+
+            try (PreparedStatement stmt = createSelectCubesStatement(c, headId, null, options))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1347,7 +1227,13 @@ public class NCubeJdbcPersister
         try
         {
             ApplicationID releaseId = appId.asRelease();
-            try (PreparedStatement stmt = createSelectCubesStatement(c, releaseId, null, false, true, false, true, true))
+
+            Map options = new HashMap();
+            options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+
+            try (PreparedStatement stmt = createSelectCubesStatement(c, releaseId, null, options))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1520,7 +1406,12 @@ public class NCubeJdbcPersister
             String branchSha1 = null;
             long id = 0;
 
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, false))
+            Map options = new HashMap();
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+            try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1545,7 +1436,7 @@ public class NCubeJdbcPersister
             Long newRevision = null;
             String oldHeadSha1 = null;
 
-            try (PreparedStatement ps = createSelectSingleCubeStatement(c, headId, cubeName, false))
+            try (PreparedStatement ps = createSelectCubesStatement(c, headId, cubeName, options))
             {
                 try (ResultSet rs = ps.executeQuery())
                 {
@@ -1611,7 +1502,12 @@ public class NCubeJdbcPersister
             byte[] headTestData = null;
             String headSha1 = null;
 
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, headId, cubeName, false))
+            Map options = new HashMap();
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+            try (PreparedStatement stmt = createSelectCubesStatement(c, headId, cubeName, options))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1634,7 +1530,7 @@ public class NCubeJdbcPersister
             Long newRevision = null;
             String oldBranchSha1 = null;
 
-            try (PreparedStatement ps = createSelectSingleCubeStatement(c, appId, cubeName, false))
+            try (PreparedStatement ps = createSelectCubesStatement(c, appId, cubeName, options))
             {
                 try (ResultSet rs = ps.executeQuery())
                 {
@@ -1688,9 +1584,14 @@ public class NCubeJdbcPersister
             byte[] oldTestData = null;
             String sha1 = null;
 
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, oldAppId, oldName, false))
+            Map options = new HashMap();
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+            try (PreparedStatement originalStatement = createSelectCubesStatement(c, oldAppId, oldName, options))
             {
-                try (ResultSet rs = stmt.executeQuery())
+                try (ResultSet rs = originalStatement.executeQuery())
                 {
                     if (rs.next())
                     {
@@ -1714,9 +1615,9 @@ public class NCubeJdbcPersister
             Long newRevision = null;
             String headSha1 = null;
 
-            try (PreparedStatement ps = createSelectSingleCubeStatement(c, newAppId, newName, false))
+            try (PreparedStatement newStatement = createSelectCubesStatement(c, newAppId, newName, options))
             {
-                try (ResultSet rs = ps.executeQuery())
+                try (ResultSet rs = newStatement.executeQuery())
                 {
                     if (rs.next())
                     {
@@ -1810,7 +1711,12 @@ public class NCubeJdbcPersister
             String oldHeadSha1 = null;
             byte[] oldTestData = null;
 
-            try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, oldName, false))
+            Map options = new HashMap();
+            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+
+            try (PreparedStatement stmt = createSelectCubesStatement(c, appId, oldName, options))
             {
                 try (ResultSet rs = stmt.executeQuery())
                 {
@@ -1837,7 +1743,7 @@ public class NCubeJdbcPersister
             Long newRevision = null;
             String newHeadSha1 = null;
 
-            try (PreparedStatement ps = createSelectSingleCubeStatement(c, appId, newName, false))
+            try (PreparedStatement ps = createSelectCubesStatement(c, appId, newName, options))
             {
                 try (ResultSet rs = ps.executeQuery())
                 {

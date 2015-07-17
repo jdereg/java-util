@@ -470,7 +470,7 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.search(c, appId, cubeNamePattern, searchValue);
+            return persister.search(c, appId, cubeNamePattern, searchValue, null);
         }
         finally
         {

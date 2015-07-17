@@ -534,12 +534,6 @@ public class NCubeJdbcPersister
         return s;
     }
 
-    public enum RecordState {
-        ALL,
-        ACTIVE_ONLY,
-        DELETED_ONLY
-    }
-
     boolean toBoolean(Object value, boolean def) {
         return value == null ? def : ((Boolean)value).booleanValue();
     }
@@ -785,7 +779,6 @@ public class NCubeJdbcPersister
         options.put(NCubeManager.EXACT_MATCH_NAME, true);
 
         try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
-        //try (PreparedStatement stmt = createSelectSingleCubeStatement(c, appId, cubeName, true))
         {
             try (ResultSet rs = stmt.executeQuery())
             {
@@ -998,8 +991,6 @@ public class NCubeJdbcPersister
                         }
                         return true;
                     }
-                    //  TODO:  In restoreCube() and updateCube() we throw an exception when there is nothing to update.
-                    //  TODO:  For consistency do we want to do the same thing here?
                     return false;
                 }
             }

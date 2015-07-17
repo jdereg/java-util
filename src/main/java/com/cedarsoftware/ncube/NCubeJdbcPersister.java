@@ -702,7 +702,6 @@ public class NCubeJdbcPersister
 
                 if (searchPattern != null)
                 {
-                    rs.getBinaryStream("cube_value_bin");
                     byte[] bytes = IOUtilities.uncompressBytes(rs.getBytes("cube_value_bin"));
                     String cubeData = StringUtilities.createUtf8String(bytes);
                     Matcher matcher = searchPattern.matcher(cubeData);

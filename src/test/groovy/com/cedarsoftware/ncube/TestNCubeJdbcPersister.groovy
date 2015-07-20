@@ -372,6 +372,66 @@ class TestNCubeJdbcPersister
     }
 
     @Test
+    void testLoadCubeBySha1ThatReturnsNoCube()
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false);
+
+        assertNull(new NCubeJdbcPersister().loadCubeBySha1(c, defaultSnapshotApp, "foo", "sha"));
+    }
+
+    @Test
+    void testLoadCubeBySha1ThatThrowsException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().loadCubeBySha1(c, defaultSnapshotApp, "foo", "sha")
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.toLowerCase().contains("unable"))
+            assertTrue(e.message.contains("load cube"))
+        }
+    }
+
+    @Test
+    void testLoadCubeByRevisionThatThrowsException()
+    {
+        Connection c = getConnectionThatThrowsSQLException()
+        try
+        {
+            new NCubeJdbcPersister().loadCubeByRevision(c, defaultSnapshotApp, "foo", 1)
+            fail()
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(SQLException.class, e.cause.class)
+            assertTrue(e.message.toLowerCase().contains("unable"))
+            assertTrue(e.message.contains("load cube"))
+        }
+    }
+
+    @Test
+    void testLoadCubeByRevisionThatReturnsNoCube()
+    {
+        Connection c = mock(Connection.class)
+        PreparedStatement ps = mock(PreparedStatement.class)
+        ResultSet rs = mock(ResultSet.class)
+        when(c.prepareStatement(anyString())).thenReturn(ps)
+        when(ps.executeQuery()).thenReturn(rs)
+        when(rs.next()).thenReturn(false);
+
+        assertNull(new NCubeJdbcPersister().loadCubeByRevision(c, defaultSnapshotApp, "foo", 1))
+    }
+
+    @Test
     void testUpdateBranchThatFailsToUpdate()
     {
         Connection c = mock(Connection.class)

@@ -2144,6 +2144,20 @@ abstract class TestWithPreloadedDatabase
     }
 
     @Test
+    void testConflicMergingWhereCubesWithSameNameMatchButBothWereAddedIndividually() {
+        preloadCubes(head, "test.branch.2.json");
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
+        NCubeManager.createCube(branch2, cube, USER_ID)
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
+        assertEquals(1, dtos.length)
+
+        assertEquals(1, NCubeManager.commitBranch(branch1, dtos, USER_ID).size())
+    }
+
+
+    @Test
     void testConflictOverwriteHead() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
         NCubeManager.createCube(branch2, cube, USER_ID)

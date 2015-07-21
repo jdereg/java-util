@@ -89,7 +89,7 @@ class TestNCubeJdbcPersister
         persister.createCube(defaultSnapshotApp, ncube1, USER_ID)
         persister.createCube(defaultSnapshotApp, ncube2, USER_ID)
 
-        Object[] cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%", true)
+        Object[] cubeList = persister.search(defaultSnapshotApp, "test.%", null, ['activeRecordsOnly' : true])
 
         assertTrue(cubeList != null)
         assertTrue(cubeList.length == 2)
@@ -136,7 +136,7 @@ class TestNCubeJdbcPersister
         assertTrue(persister.deleteCube(next, ncube2.name, false, USER_ID))
 
         // Ensure that all test ncubes are deleted
-        cubeList = persister.getCubeRecords(defaultSnapshotApp, "test.%", true)
+        cubeList = persister.search(defaultSnapshotApp, "test.%", null, ['activeRecordsOnly' : true])
         assertTrue(cubeList.length == 0)
     }
 

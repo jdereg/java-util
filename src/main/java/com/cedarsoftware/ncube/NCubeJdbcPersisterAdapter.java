@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -106,45 +107,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         try
         {
             return persister.loadCubeByRevision(c, appId, name, revision);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-    public List<NCubeInfoDto> getCubeRecords(ApplicationID appId, String pattern, boolean activeOnly)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.getCubeRecords(c, appId, pattern, activeOnly);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-    public List<NCubeInfoDto> getChangedRecords(ApplicationID appId)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.getChangedRecords(c, appId);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-    public List<NCubeInfoDto> getDeletedCubeRecords(ApplicationID appId, String pattern)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.getDeletedCubeRecords(c, appId, pattern);
         }
         finally
         {
@@ -465,12 +427,12 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         }
     }
 
-    public List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String searchValue)
+    public List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String searchValue, Map options)
     {
         Connection c = connectionProvider.getConnection();
         try
         {
-            return persister.search(c, appId, cubeNamePattern, searchValue, null);
+            return persister.search(c, appId, cubeNamePattern, searchValue, options);
         }
         finally
         {

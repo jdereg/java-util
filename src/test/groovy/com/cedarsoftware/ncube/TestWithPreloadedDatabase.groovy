@@ -835,12 +835,15 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").size())
-        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").size())
-        assertEquals(1, NCubeManager.search(head, "Test*", "baby").size())
-        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").size())
-        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").size())
-        assertEquals(1, NCubeManager.search(head, null, "baby").size())
+        Map map = new HashMap();
+        map.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+
+        assertEquals(2, NCubeManager.search(head, "Test*", "zzz", map).size())
+        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ", map).size())
+        assertEquals(1, NCubeManager.search(head, "Test*", "baby", map).size())
+        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby", map).size())
+        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY", map).size())
+        assertEquals(1, NCubeManager.search(head, null, "baby", map).size())
     }
 
     @Test
@@ -849,31 +852,18 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json", "basicJumpStart.json", "expressionAxis.json")
         testValuesOnBranch(head)
 
-        assertEquals(2, NCubeManager.search(head, "Test*", null).size())
-        assertEquals(1, NCubeManager.search(head, "TestBranch", "ZZZ").size())
-        assertEquals(1, NCubeManager.search(head, "*basic*", "input").size())
-        assertEquals(0, NCubeManager.search(head, "*Test*", "input").size())
-        assertEquals(1, NCubeManager.search(head, "*Branch", "ZZZ").size())
-        assertEquals(2, NCubeManager.search(head, null, "ZZZ").size())
-        assertEquals(2, NCubeManager.search(head, "", "ZZZ").size())
-        assertEquals(2, NCubeManager.search(head, "*", "output").size())
-        assertEquals(0, NCubeManager.search(head, "*axis", "input").size())
-    }
+        Map map = new HashMap();
+        map.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
 
-
-
-    @Test
-    void testSystemParamsCube() {
-        // load cube with same name, but different structure in TEST branch
-        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
-        testValuesOnBranch(head)
-
-        assertEquals(2, NCubeManager.search(head, "Test*", "zzz").size())
-        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ").size())
-        assertEquals(1, NCubeManager.search(head, "Test*", "baby").size())
-        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby").size())
-        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY").size())
-        assertEquals(1, NCubeManager.search(head, null, "baby").size())
+        assertEquals(2, NCubeManager.search(head, "Test*", null, map).size())
+        assertEquals(1, NCubeManager.search(head, "TestBranch", "ZZZ", map).size())
+        assertEquals(1, NCubeManager.search(head, "*basic*", "input", map).size())
+        assertEquals(0, NCubeManager.search(head, "*Test*", "input", map).size())
+        assertEquals(1, NCubeManager.search(head, "*Branch", "ZZZ", map).size())
+        assertEquals(2, NCubeManager.search(head, null, "ZZZ", map).size())
+        assertEquals(2, NCubeManager.search(head, "", "ZZZ", map).size())
+        assertEquals(2, NCubeManager.search(head, "*", "output", map).size())
+        assertEquals(0, NCubeManager.search(head, "*axis", "input", map).size())
     }
 
     @Test

@@ -68,6 +68,7 @@ public class NCubeManager
     public static final String CHANGED_RECORDS_ONLY = "changedRecordsOnly";
     public static final String INCLUDE_CUBE_DATA = "includeCubeData";
     public static final String EXACT_MATCH_NAME = "exactMatchName";
+    public static final String CACHE_RESULT = "cacheResult";
 
     private static final String SYS_BOOTSTRAP = "sys.bootstrap";
     private static final String CLASSPATH_CUBE = "sys.classpath";
@@ -580,8 +581,9 @@ public class NCubeManager
      * by an NCube if more than the name is required.
      * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
+     *
      */
-    public static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
+    private static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
     {
         return getCubeRecordsFromDatabase(appId, pattern, true);
     }
@@ -594,13 +596,24 @@ public class NCubeManager
      * by an NCube if more than the name is required.
      * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
+     *
      */
-    public static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
+    private static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
-        validateAppId(appId);
-        List<NCubeInfoDto> cubes = getPersister().getCubeRecords(appId, pattern, activeOnly);
-        cacheCubes(appId, cubes);
-        return cubes;
+        Map options = new HashMap();
+        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, activeOnly);
+        options.put(NCubeManager.CACHE_RESULT, true);
+
+        return search(appId, pattern, null, options);
+    }
+
+    private static List<NCubeInfoDto> getChangedRecords(ApplicationID appId)
+    {
+        Map options = new HashMap();
+        options.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+        // TODO:  probably could cache this result.  To match what was there
+        // TODO:  I am leaving it uncached.
+        return search(appId, null, null, options);
     }
 
     /**
@@ -620,8 +633,8 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        List<NCubeInfoDto> branchList = getPersister().getChangedRecords(appId);
-        List<NCubeInfoDto> headList = getPersister().getCubeRecords(headAppId, null, false);
+        List<NCubeInfoDto> branchList = getChangedRecords(appId);
+        List<NCubeInfoDto> headList = getCubeRecordsFromDatabase(headAppId, null, false);
         List<NCubeInfoDto> list = new ArrayList<>();
 
         //  build map of head objects for reference.
@@ -722,9 +735,10 @@ public class NCubeManager
      */
     public static List<NCubeInfoDto> getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
     {
-        validateAppId(appId);
-        List<NCubeInfoDto> cubes = getPersister().getDeletedCubeRecords(appId, pattern);
-        return cubes;
+        Map options = new HashMap();
+        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+
+        return getPersister().search(appId, pattern, null, options);
     }
 
     /**
@@ -919,7 +933,7 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        List<NCubeInfoDto> headInfo = getPersister().getCubeRecords(headAppId, null, false);
+        List<NCubeInfoDto> headInfo = getCubeRecordsFromDatabase(headAppId, null, false);
 
         //  build map of head objects for reference.
         for (NCubeInfoDto info : headInfo)
@@ -1347,16 +1361,32 @@ public class NCubeManager
     }
 
     /**
+     *
      * Fetch an array of NCubeInfoDto's where the cube names match the cubeNamePattern (contains) and
      * the content (in JSON format) 'contains' the passed in content String.
      * @param appId ApplicationID on which we are working
-     * @param cubeNamePattern String pattern to match cube names
+     * @param cubeNamePattern cubeNamePattern String pattern to match cube names
      * @param content String value that is 'contained' within the cube's JSON
+     * @param options map with possible keys:
+     *                changedRecordsOnly - default false ->  Only searches changed records if true.
+     *                activeRecordsOnly - default false -> Only searches non-deleted records if true.
+     *                deletedRecordsOnly - default false -> Only searches deleted records if true.
+     *                cacheResult - default false -> Cache the cubes that match this result..
      * @return List<NCubeInfoDto>
      */
-    public static List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String content)
+    public static List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String content, Map options)
     {
-        return getPersister().search(appId, cubeNamePattern, content);
+        validateAppId(appId);
+
+        List<NCubeInfoDto> cubes = getPersister().search(appId, cubeNamePattern, content, options);
+
+        Boolean result = (Boolean)options.get(CACHE_RESULT);
+
+        if (result != null && result.booleanValue()) {
+            cacheCubes(appId, cubes);
+        }
+
+        return cubes;
     }
 
     public static String resolveRelativeUrl(ApplicationID appId, String relativeUrl)

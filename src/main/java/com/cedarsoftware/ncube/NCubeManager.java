@@ -612,7 +612,7 @@ public class NCubeManager
         Map options = new HashMap();
         options.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
         // TODO:  probably could cache this result.  To match what was there
-        // TODO:  I am leaving it uncached.
+        // TODO:  I am leaving it uncached because that was the way it was implemented previously.
         return search(appId, null, null, options);
     }
 

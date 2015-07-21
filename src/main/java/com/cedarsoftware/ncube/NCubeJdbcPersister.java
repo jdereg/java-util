@@ -572,12 +572,16 @@ public class NCubeJdbcPersister
             throw new IllegalArgumentException("activeRecordsOnly and deletedRecordsOnly are mutually exclusive options and cannot both be 'true'.");
         }
 
-
+        //  convert pattern will return null even if full pattern = '*', saying we don't need to do the like statement.
+        //  That is why it is before the hasContentCheck.
         namePattern = convertPattern(namePattern);
         boolean hasNamePattern = StringUtilities.hasContent(namePattern);
+        if (hasNamePattern) {
+            namePattern = namePattern.toLowerCase();
+        }
 
-        String nameCondition1 = hasNamePattern ? exactMatchName ? " AND n_cube_nm = ?" : " AND n_cube_nm like ?" : "";
-        String nameCondition2 = hasNamePattern ? exactMatchName ? " AND m.n_cube_nm = ?" : " AND m.n_cube_nm like ?" : "";
+        String nameCondition1 = hasNamePattern ? exactMatchName ? " AND LOWER(n_cube_nm) = ?" : " AND LOWER(n_cube_nm) like ?" : "";
+        String nameCondition2 = hasNamePattern ? exactMatchName ? " AND LOWER(m.n_cube_nm) = ?" : " AND LOWER(m.n_cube_nm) like ?" : "";
         String revisionCondition = activeRecordsOnly ? " AND n.revision_number >= 0" : deletedRecordsOnly ? " AND n.revision_number < 0" : "";
         String changedCondition = changedRecordsOnly ? " AND n.changed = 1" : "";
         String testCondition = includeTestData ? ", n.test_data_bin" : "";

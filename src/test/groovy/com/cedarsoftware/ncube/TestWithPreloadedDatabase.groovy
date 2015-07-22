@@ -196,7 +196,7 @@ abstract class TestWithPreloadedDatabase
     void testCommitBranchOnCubeCreatedInBranch() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch1, cube, 'kenny')
+        NCubeManager.updateCube(branch1, cube, 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
@@ -216,7 +216,7 @@ abstract class TestWithPreloadedDatabase
     void testGetBranchChangesOnceBranchIsDeleted() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch1, cube, 'kenny')
+        NCubeManager.updateCube(branch1, cube, 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
@@ -232,7 +232,7 @@ abstract class TestWithPreloadedDatabase
     void testUpdateBranchOnCubeCreatedInBranch() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch1, cube, 'kenny')
+        NCubeManager.updateCube(branch1, cube, 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
@@ -250,7 +250,7 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.1.json");
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch1, cube, 'kenny')
+        NCubeManager.updateCube(branch1, cube, 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
@@ -290,7 +290,7 @@ abstract class TestWithPreloadedDatabase
     void testCommitBranchOnCreateThenDeleted() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch1, cube, 'kenny')
+        NCubeManager.updateCube(branch1, cube, 'kenny')
         NCubeManager.deleteCube(branch1, "TestAge", 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
@@ -306,7 +306,7 @@ abstract class TestWithPreloadedDatabase
     void testUpdateBranchOnCreateThenDeleted() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch1, cube, 'kenny')
+        NCubeManager.updateCube(branch1, cube, 'kenny')
         NCubeManager.deleteCube(branch1, "TestAge", 'kenny')
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
@@ -415,7 +415,7 @@ abstract class TestWithPreloadedDatabase
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
         assertNotNull(cube)
-        NCubeManager.createCube(branch1, cube, "jdirt")
+        NCubeManager.updateCube(branch1, cube, "jdirt")
 
 
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
@@ -472,7 +472,7 @@ abstract class TestWithPreloadedDatabase
         assertTrue(NCubeManager.updateCube(branch1, cube, USER_ID))
 
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.age.1.json")
-        NCubeManager.createCube(branch1, cubes[0], USER_ID);
+        NCubeManager.updateCube(branch1, cubes[0], USER_ID);
 
         // Only Branch "TestBranch" has been updated.
         assertEquals(1, NCubeManager.getRevisionHistory(head, "TestBranch").size())
@@ -1214,8 +1214,8 @@ abstract class TestWithPreloadedDatabase
     @Test
     void testRenameCubeWithBothCubesCreatedOnBranch() {
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json");
-        NCubeManager.createCube(branch1, cubes[0], USER_ID);
-        NCubeManager.createCube(branch1, cubes[1], USER_ID);
+        NCubeManager.updateCube(branch1, cubes[0], USER_ID);
+        NCubeManager.updateCube(branch1, cubes[1], USER_ID);
 
         assertNull(NCubeManager.getCube(head, "TestBranch"));
         assertNull(NCubeManager.getCube(head, "TestAge"));
@@ -1497,8 +1497,8 @@ abstract class TestWithPreloadedDatabase
         // load cube with same name, but different structure in TEST branch
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json", "test.branch.age.1.json");
 
-        NCubeManager.createCube(branch1, cubes[0], USER_ID)
-        NCubeManager.createCube(branch1, cubes[1], USER_ID)
+        NCubeManager.updateCube(branch1, cubes[0], USER_ID)
+        NCubeManager.updateCube(branch1, cubes[1], USER_ID)
 
         testValuesOnBranch(branch1)
 
@@ -1572,8 +1572,8 @@ abstract class TestWithPreloadedDatabase
         NCube cube1 = NCubeManager.getNCubeFromResource("test.branch.1.json")
         NCube cube2 = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
 
-        NCubeManager.createCube(branch1, cube1, USER_ID);
-        NCubeManager.createCube(branch1, cube2, USER_ID);
+        NCubeManager.updateCube(branch1, cube1, USER_ID);
+        NCubeManager.updateCube(branch1, cube2, USER_ID);
         testValuesOnBranch(branch1)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
@@ -1940,7 +1940,7 @@ abstract class TestWithPreloadedDatabase
     {
         NCube[] cubes = TestingDatabaseHelper.getCubesFromDisk("test.branch.1.json");
 
-        NCubeManager.createCube(branch1, cubes[0], USER_ID);
+        NCubeManager.updateCube(branch1, cubes[0], USER_ID);
         assertNotNull(NCubeManager.getCube(branch1, "TestBranch"))
 
         assertTrue(NCubeManager.deleteCube(branch1, "TestBranch", USER_ID))
@@ -1969,7 +1969,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.createBranch(branch2))
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
         assertEquals(1, dtos.length)
@@ -1977,7 +1977,7 @@ abstract class TestWithPreloadedDatabase
 
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch1, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
 
 
@@ -2045,7 +2045,7 @@ abstract class TestWithPreloadedDatabase
     @Test
     void testConflictOverwriteBranch() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
         assertEquals("BE7891140C2404A14A6C093C26B1740C749E815B", cube.sha1);
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
@@ -2059,7 +2059,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals("BAZ", cube.getCell([Code : 10.0]))
 
         cube = NCubeManager.getNCubeFromResource("test.branch.1.json")
-        NCubeManager.createCube(branch1, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
         cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals("B4020BFB1B47942D8661640E560881E34993B608", cube.sha1);
@@ -2157,7 +2157,7 @@ abstract class TestWithPreloadedDatabase
         preloadCubes(head, "test.branch.2.json");
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
         assertEquals(1, dtos.length)
@@ -2169,7 +2169,7 @@ abstract class TestWithPreloadedDatabase
     @Test
     void testConflictOverwriteHead() {
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2);
         NCubeManager.commitBranch(branch2, dtos, USER_ID);
@@ -2181,7 +2181,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals("BAZ", cube.getCell([Code : 10.0]))
 
         cube = NCubeManager.getNCubeFromResource("test.branch.1.json")
-        NCubeManager.createCube(branch1, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
         cube = NCubeManager.getCube(branch1, "TestBranch")
         assertEquals(3, cube.getCellMap().size())
@@ -2454,7 +2454,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.createBranch(branch2))
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
         assertEquals(1, dtos.length)
@@ -2462,7 +2462,7 @@ abstract class TestWithPreloadedDatabase
 
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch1, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
         dtos = NCubeManager.getBranchChangesFromDatabase(branch1)
         assertEquals(1, dtos.length)
@@ -2505,7 +2505,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.createBranch(branch2))
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
         assertEquals(1, dtos.length)
@@ -2513,7 +2513,7 @@ abstract class TestWithPreloadedDatabase
 
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch1, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
 
 
@@ -2544,7 +2544,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.createBranch(branch2))
 
         NCube cube = NCubeManager.getNCubeFromResource("test.branch.age.2.json")
-        NCubeManager.createCube(branch2, cube, USER_ID)
+        NCubeManager.updateCube(branch2, cube, USER_ID)
 
         Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch2)
         assertEquals(1, dtos.length)
@@ -2552,7 +2552,7 @@ abstract class TestWithPreloadedDatabase
 
 
         cube = NCubeManager.getNCubeFromResource("test.branch.age.1.json")
-        NCubeManager.createCube(branch1, cube, USER_ID)
+        NCubeManager.updateCube(branch1, cube, USER_ID)
 
 
 

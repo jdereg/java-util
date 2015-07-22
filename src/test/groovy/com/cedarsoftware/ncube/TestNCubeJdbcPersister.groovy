@@ -86,10 +86,10 @@ class TestNCubeJdbcPersister
         NCube ncube1 = NCubeBuilder.testNCube3D_Boolean
         NCube ncube2 = NCubeBuilder.getTestNCube2D(true)
 
-        persister.createCube(defaultSnapshotApp, ncube1, USER_ID)
-        persister.createCube(defaultSnapshotApp, ncube2, USER_ID)
+        persister.updateCube(defaultSnapshotApp, ncube1, USER_ID)
+        persister.updateCube(defaultSnapshotApp, ncube2, USER_ID)
 
-        Object[] cubeList = persister.search(defaultSnapshotApp, "test.%", null, ['activeRecordsOnly' : true])
+        Object[] cubeList = persister.search(defaultSnapshotApp, "test.%", null, [(NCubeManager.ACTIVE_RECORDS_ONLY) : true])
 
         assertTrue(cubeList != null)
         assertTrue(cubeList.length == 2)
@@ -138,21 +138,6 @@ class TestNCubeJdbcPersister
         // Ensure that all test ncubes are deleted
         cubeList = persister.search(defaultSnapshotApp, "test.%", null, ['activeRecordsOnly' : true])
         assertTrue(cubeList.length == 0)
-    }
-
-    @Test
-    void testDoesCubeExistWithException()
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().doesCubeExist(c, defaultSnapshotApp, "name")
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-        }
     }
 
     @Test
@@ -234,24 +219,6 @@ class TestNCubeJdbcPersister
         catch (RuntimeException e)
         {
             assertEquals(SQLException.class, e.cause.class)
-        }
-    }
-
-    @Test
-    void testDoesCubeExistWithSQLException()
-    {
-        Connection c = getConnectionThatThrowsSQLException()
-        try
-        {
-            new NCubeJdbcPersister().doesCubeExist(c, defaultSnapshotApp, "name")
-            fail()
-        }
-        catch (RuntimeException e)
-        {
-            assertEquals(SQLException.class, e.cause.class)
-            assertTrue(e.message.contains("rror"))
-            assertTrue(e.message.contains("check"))
-            assertTrue(e.message.contains("cube"))
         }
     }
 
@@ -1125,31 +1092,13 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(false)
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID)
+            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID)
             fail()
         }
         catch (RuntimeException e)
         {
             assertEquals(SQLException.class, e.cause.class)
             assertTrue(e.message.startsWith("Unable to insert"))
-        }
-    }
-
-    @Test
-    void testCreateCubeWhenOneAlreadyExists()
-    {
-        NCube<Double> ncube = NCubeBuilder.getTestNCube2D(true)
-        Connection c = getConnectionThatThrowsExceptionAfterExistenceCheck(true)
-
-        try
-        {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID)
-            fail()
-        }
-        catch(IllegalStateException e)
-        {
-            assertTrue(e.message.toLowerCase().contains("cube"))
-            assertTrue(e.message.toLowerCase().contains("already exists"))
         }
     }
 
@@ -1172,7 +1121,7 @@ class TestNCubeJdbcPersister
 
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID)
+            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID)
             fail()
         }
         catch (IllegalStateException e)
@@ -1398,7 +1347,7 @@ class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0)
         try
         {
-            new NCubeJdbcPersister().createCube(c, defaultSnapshotApp, ncube, USER_ID)
+            new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID)
             fail()
         }
         catch (RuntimeException e)

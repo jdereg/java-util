@@ -52,8 +52,8 @@ class TestAdvice
     {
         NCube ncube2 = NCubeManager.getNCubeFromResource("urlPieces.json")
         final NCube ncube = NCubeManager.getNCubeFromResource("urlWithNcubeRefs.json")
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube2, USER_ID)
+        NCubeManager.updateCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
+        NCubeManager.updateCube(TestNCubeManager.defaultSnapshotApp, ncube2, USER_ID)
 
         // These methods are called more than you think.  Internally, these cube call
         // themselves, and those calls too go through the Advice.
@@ -460,7 +460,7 @@ class TestAdvice
     void testMultiAdvice()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
+        NCubeManager.updateCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
 
         Advice advice1 = new Advice() {
             String getName()
@@ -578,7 +578,7 @@ class TestAdvice
         NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*()", advice2)
 
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
+        NCubeManager.updateCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
 
         def output = [:]
         ncube.getCell([method:'foo', state:'OH'], output)
@@ -650,7 +650,7 @@ class TestAdvice
         NCubeManager.addAdvice(TestNCubeManager.defaultSnapshotApp, "*()", advice2)
 
         NCube ncube = NCubeManager.getNCubeFromResource("testGroovyMethods.json")
-        NCubeManager.createCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
+        NCubeManager.updateCube(TestNCubeManager.defaultSnapshotApp, ncube, USER_ID)
 
         def output = [:]
         try

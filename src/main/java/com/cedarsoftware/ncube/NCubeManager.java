@@ -306,8 +306,8 @@ public class NCubeManager
 
         String cubeName = ncube.getName().toLowerCase();
 
-        if (!cubeName.startsWith("tx."))
-        {
+        if (!ncube.getMetaProperties().containsKey("cache") || Boolean.TRUE.equals(ncube.getMetaProperty("cache")))
+        {   // Allow cubes to not be cached by specified 'cache':false as a cube meta-property.
             getCacheForApp(appId).put(cubeName, ncube);
         }
 
@@ -529,18 +529,6 @@ public class NCubeManager
                 }
             }
         }
-    }
-
-    /**
-     * See if the given n-cube exists for the given ApplicationID.  This
-     * checks the persistent storage.
-     * @return true if the n-cube exists, false otherwise.
-     */
-    public static boolean doesCubeExist(ApplicationID appId, String name)
-    {
-        validateAppId(appId);
-        NCube.validateCubeName(name);
-        return getPersister().doesCubeExist(appId, name);
     }
 
     /**
@@ -829,17 +817,14 @@ public class NCubeManager
 
         final String cubeName = ncube.getName();
         getPersister().updateCube(appId, ncube, username);
+        ncube.setApplicationID(appId);
 
         if (CLASSPATH_CUBE.equalsIgnoreCase(cubeName))
         {   // If the sys.classpath cube is changed, then the entire class loader must be dropped.  It will be lazily rebuilt.
             clearCache(appId);
         }
-        else
-        {
-            Map<String, Object> appCache = getCacheForApp(appId);
-            appCache.remove(cubeName.toLowerCase());
-        }
 
+        addCube(appId, ncube);
         broadcast(appId);
         return true;
     }
@@ -1272,16 +1257,6 @@ public class NCubeManager
         validateAppId(appId);
         NCube.validateCubeName(cubeName);
         return getPersister().getNotes(appId, cubeName);
-    }
-
-    public static void createCube(ApplicationID appId, NCube ncube, String username) {
-        validateCube(ncube);
-        validateAppId(appId);
-        appId.validateBranchIsNotHead();
-        getPersister().createCube(appId, ncube, username);
-        ncube.setApplicationID(appId);
-        addCube(appId, ncube);
-        broadcast(appId);
     }
 
     public static Set<String> getBranches(String tenant)

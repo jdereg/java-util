@@ -32,7 +32,6 @@ interface NCubeReadOnlyPersister
 
     List<String> getAppNames(String tenant, String status, String branch)
     List<String> getAppVersions(String tenant, String app, String status, String branch)
-    boolean doesCubeExist(ApplicationID appId, String cubeName)
 
     List<NCubeInfoDto> getRevisions(ApplicationID appId, String cubeName)
     List<NCubeInfoDto> search(ApplicationID appId, String cubeNamePattern, String searchValue, Map options)

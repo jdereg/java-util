@@ -27,6 +27,8 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import static java.lang.StrictMath.abs;
+
 /**
  * Class used to carry the NCube meta-information
  * to the client.
@@ -55,39 +57,6 @@ public class NCubeJdbcPersister
     public static final String TEST_DATA_BIN = "test_data_bin";
     public static final String NOTES_BIN = "notes_bin";
     public static final String HEAD_SHA_1 = "head_sha1";
-
-    public void createCube(Connection c, ApplicationID appId, NCube cube, String username)
-    {
-        Long revision = getMaxRevision(c, appId, cube.getName());
-
-        if (revision != null && revision >= 0)
-        {
-            throw new IllegalStateException("Cannot create cube: " + cube.getName() + ".  It already exists (or existed) in app: " + appId + ".  If it was deleted, restore it.");
-        }
-
-        createCube(c, appId, cube, username, revision == null ? 0 : Math.abs(revision) + 1);
-    }
-
-    void createCube(Connection c, ApplicationID appId, NCube ncube, String username, long rev)
-    {
-        try
-        {
-            if (insertCube(c, appId, ncube, rev, null, "Cube created", true, null, System.currentTimeMillis(), username) == null)
-            {
-                throw new IllegalStateException("error inserting new n-cube: " + ncube.getName() + "', app: " + appId);
-            }
-        }
-        catch (RuntimeException e)
-        {
-            throw e;
-        }
-        catch (Exception e)
-        {
-            String s = "Unable to insert cube: " + ncube.getName() + ", app: " + appId + " into database";
-            LOG.error(s, e);
-            throw new IllegalStateException(s, e);
-        }
-    }
 
     NCubeInfoDto commitMergedCubeToBranch(Connection c, ApplicationID appId, NCube cube, String headSha1, String username)
     {
@@ -367,23 +336,24 @@ public class NCubeJdbcPersister
                 {
                     Long revision = rs.getLong("revision_number");
 
+                    byte[] testData = rs.getBytes(TEST_DATA_BIN);
+
                     if (revision < 0)
                     {
-                        throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update deleted cube.  Restore it first.");
+                        testData = null;
                     }
 
-                    byte[] testData = rs.getBytes(TEST_DATA_BIN);
                     String headSha1 = rs.getString("head_sha1");
                     String oldSha1 = rs.getString("sha1");
 
 
-                    if (StringUtilities.equals(oldSha1, cube.sha1()))
+                    if (StringUtilities.equals(oldSha1, cube.sha1()) && revision >= 0)
                     {
                         //  shas are equals and both revision values are positive.  no need for new revision of record.
                         return;
                     }
 
-                    NCubeInfoDto dto = insertCube(connection, appId, cube, revision + 1, testData, "Cube updated", true, headSha1, System.currentTimeMillis(), username);
+                    NCubeInfoDto dto = insertCube(connection, appId, cube, abs(revision) + 1, testData, "Cube updated", true, headSha1, System.currentTimeMillis(), username);
 
                     if (dto == null)
                     {
@@ -392,8 +362,10 @@ public class NCubeJdbcPersister
 
                     return;
                 }
-
-                throw new IllegalArgumentException("Error updating cube: " + cube.getName() + ", app: " + appId + ", attempting to update non-existing cube.");
+                else if (insertCube(connection, appId, cube, 0L, null, "Cube created", true, null, System.currentTimeMillis(), username) == null)
+                {
+                    throw new IllegalStateException("error inserting new n-cube: " + cube.getName() + "', app: " + appId);
+                }
             }
         }
         catch (RuntimeException e)
@@ -1944,31 +1916,6 @@ public class NCubeJdbcPersister
     public boolean doReleaseCubesExist(Connection c, ApplicationID appId)
     {
         return doCubesExist(c, appId.asRelease(), false);
-    }
-
-    public boolean doesCubeExist(Connection c, ApplicationID appId, String name)
-    {
-        String statement = "SELECT n_cube_id FROM n_cube WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
-
-        try (PreparedStatement stmt = c.prepareStatement(statement))
-        {
-            stmt.setString(1, name);
-            stmt.setString(2, appId.getApp());
-            stmt.setString(3, appId.getVersion());
-            stmt.setString(4, appId.getTenant());
-            stmt.setString(5, appId.getBranch());
-
-            try (ResultSet rs = stmt.executeQuery())
-            {
-                return rs.next();
-            }
-        }
-        catch (Exception e)
-        {
-            String s = "Error checking for cube:  " + name + ", app: " + appId;
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
     }
 
     /**

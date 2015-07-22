@@ -583,21 +583,6 @@ public class NCubeManager
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      *
      */
-    private static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern)
-    {
-        return getCubeRecordsFromDatabase(appId, pattern, true);
-    }
-
-    /**
-     * Get List<NCubeInfoDto> for the given ApplicationID, filtered by the pattern.  If using
-     * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
-     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
-     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
-     * by an NCube if more than the name is required.
-     * @param pattern A cube name pattern, using '*' for matches 0 or more characters and '?' for matches any
-     * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
-     *
-     */
     private static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Map options = new HashMap();
@@ -605,15 +590,6 @@ public class NCubeManager
         options.put(NCubeManager.CACHE_RESULT, true);
 
         return search(appId, pattern, null, options);
-    }
-
-    private static List<NCubeInfoDto> getChangedRecords(ApplicationID appId)
-    {
-        Map options = new HashMap();
-        options.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
-        // TODO:  probably could cache this result.  To match what was there
-        // TODO:  I am leaving it uncached because that was the way it was implemented previously.
-        return search(appId, null, null, options);
     }
 
     /**
@@ -633,7 +609,11 @@ public class NCubeManager
 
         ApplicationID headAppId = appId.asHead();
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
-        List<NCubeInfoDto> branchList = getChangedRecords(appId);
+
+        Map searchChangedRecordOptions = new HashMap();
+        searchChangedRecordOptions.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+
+        List<NCubeInfoDto> branchList = search(appId, null, null, searchChangedRecordOptions);
         List<NCubeInfoDto> headList = getCubeRecordsFromDatabase(headAppId, null, false);
         List<NCubeInfoDto> list = new ArrayList<>();
 
@@ -724,21 +704,6 @@ public class NCubeManager
                 }
             }
         }
-    }
-
-    /**
-     * Get List<NCubeInfoDto> for the given ApplicationID, filtered by the pattern.  If using
-     * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
-     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
-     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
-     * by an NCube if more than the name is required.
-     */
-    public static List<NCubeInfoDto> getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
-    {
-        Map options = new HashMap();
-        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
-
-        return getPersister().search(appId, pattern, null, options);
     }
 
     /**
@@ -1461,7 +1426,6 @@ public class NCubeManager
         }
     }
 
-    @Deprecated
     public static List<NCube> getNCubesFromResource(String name)
     {
         String lastSuccessful = "";

@@ -140,9 +140,9 @@ class TestNCubeManager
         assertFalse(NCubeManager.doesCubeExist(appId, name1))
         assertFalse(NCubeManager.doesCubeExist(appId, name2))
 
-        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1)
+        Object[] cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name1, true)
         assertEquals(0, cubeInfo.length)
-        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2)
+        cubeInfo = NCubeManager.getCubeRecordsFromDatabase(appId, name2, true)
         assertEquals(0, cubeInfo.length)
     }
 
@@ -1146,11 +1146,11 @@ class TestNCubeManager
         Object[] records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true)
         assertEquals(2, records.length)
 
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(0, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
 
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(1, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
 
         records = NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true)
         assertEquals(1, records.length)
@@ -1198,7 +1198,7 @@ class TestNCubeManager
     {
         NCube cube = createCube()
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, null).size())
+        assertEquals(0, getDeletedCubesFromDatabase(defaultSnapshotApp, null).size())
         assertEquals(1, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).size())
 
         Axis oddAxis = NCubeBuilder.getOddAxis(true)
@@ -1207,7 +1207,7 @@ class TestNCubeManager
         NCubeManager.updateCube(defaultSnapshotApp, cube, USER_ID)
         assertEquals(2, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).size())
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(0, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
 
         Axis conAxis = NCubeBuilder.continentAxis
         cube.addAxis(conAxis)
@@ -1216,25 +1216,25 @@ class TestNCubeManager
 
         assertEquals(3, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).size())
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(0, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
 
         assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(1, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
         assertEquals(4, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).size())
         assertTrue(NCubeManager.doesCubeExist(defaultSnapshotApp, cube.name))
 
         NCubeManager.restoreCube(defaultSnapshotApp, [cube.name] as Object[], USER_ID)
 
         assertEquals(2, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).size())
-        assertEquals(0, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(0, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
         assertEquals(5, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).size())
 
         NCubeManager.deleteCube(defaultSnapshotApp, cube.name, USER_ID)
 
         assertEquals(1, NCubeManager.getCubeRecordsFromDatabase(defaultSnapshotApp, '', true).size())
-        assertEquals(1, NCubeManager.getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
+        assertEquals(1, getDeletedCubesFromDatabase(defaultSnapshotApp, '').size())
         assertEquals(6, NCubeManager.getRevisionHistory(defaultSnapshotApp, cube.name).size())
     }
 
@@ -1325,10 +1325,6 @@ class TestNCubeManager
         URLClassLoader loader = (URLClassLoader) classPathCube.getCell(map)
         assertEquals(1, loader.URLs.length);
         assertEquals('http://www.cedarsoftware.com/tests/ncube/cp2/', loader.URLs[0].toString());
-//          write out UrlClassLoader?
-//        JsonFormatter formatter = new JsonFormatter();
-//        String s = formatter.format(classPathCube);
-//        assertTrue(s.contains("sys.classpath"));
     }
 
     @Test
@@ -1564,7 +1560,7 @@ class TestNCubeManager
         assertNull(NCubeManager.getSystemParams().tenant);
 
         // ensure doesn't reparse second time.
-        System.setProperty('NCUBE_PARAMS', '')
+        System.setProperty('NCUBE_PARAMS', '{}')
         assertEquals('foo', NCubeManager.getSystemParams().branch);
         assertNull(NCubeManager.getSystemParams().status);
         assertNull(NCubeManager.getSystemParams().app);
@@ -1579,7 +1575,7 @@ class TestNCubeManager
         assertEquals('foo', NCubeManager.getSystemParams().tenant);
 
         // ensure doesn't reparse second time.
-        System.setProperty('NCUBE_PARAMS', '')
+        System.setProperty('NCUBE_PARAMS', '{}')
         assertEquals('bar', NCubeManager.getSystemParams().branch);
         assertEquals('RELEASE', NCubeManager.getSystemParams().status);
         assertEquals('UD', NCubeManager.getSystemParams().app);
@@ -1617,4 +1613,21 @@ class TestNCubeManager
         cube = NCubeManager.getNCubeFromResource('sys.status.json')
         NCubeManager.createCube(appId, cube, USER_ID)
     }
+
+    /**
+     * Get List<NCubeInfoDto> for the given ApplicationID, filtered by the pattern.  If using
+     * JDBC, it will be used with a LIKE clause.  For Mongo...TBD.
+     * For any cube record loaded, for which there is no entry in the app's cube cache, an entry
+     * is added mapping the cube name to the cube record (NCubeInfoDto).  This will be replaced
+     * by an NCube if more than the name is required.
+     */
+    private static List<NCubeInfoDto> getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
+    {
+        Map options = new HashMap();
+        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+
+        return NCubeManager.search(appId, pattern, null, options);
+    }
+
+
 }

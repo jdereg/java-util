@@ -571,7 +571,7 @@ public class NCubeManager
      * one (1) character.  This is universal whether using a SQL perister or Mongo persister.
      *
      */
-    private static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
+    static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Map options = new HashMap();
         options.put(NCubeManager.ACTIVE_RECORDS_ONLY, activeOnly);

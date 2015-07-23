@@ -1,7 +1,7 @@
 package com.cedarsoftware.ncube;
 
 import com.cedarsoftware.util.StringUtilities;
-
+import java.util.Map;
 import java.util.regex.Matcher;
 
 /**
@@ -310,10 +310,11 @@ public class ApplicationID
         }
     }
 
-    //TODO: We need to allow DEFAULT_BRANCH (HEAD) to be overridden below with an environment variable (or -Dsystem.property)
     public static ApplicationID getBootVersion(String tenant, String app)
     {
-        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), HEAD);
+        Map systemParams = NCubeManager.getSystemParams();
+        String branch = (String)systemParams.get("branch");
+        return new ApplicationID(tenant, app, "0.0.0", ReleaseStatus.SNAPSHOT.name(), StringUtilities.isEmpty(branch) ? HEAD : branch);
     }
 
     boolean equalsNotIncludingBranch(ApplicationID that)

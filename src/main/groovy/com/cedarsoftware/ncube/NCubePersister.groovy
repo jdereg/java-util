@@ -25,7 +25,6 @@ import groovy.transform.CompileStatic
 @CompileStatic
 interface NCubePersister extends NCubeReadOnlyPersister
 {
-    void createCube(ApplicationID appId, NCube cube, String username);
     void updateCube(ApplicationID appId, NCube cube, String username);
     boolean deleteBranch(ApplicationID appId);
     boolean deleteCube(ApplicationID appId, String cubeName, boolean allowDelete, String username);

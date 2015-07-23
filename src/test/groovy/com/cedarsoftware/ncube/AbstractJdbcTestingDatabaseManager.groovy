@@ -39,7 +39,7 @@ abstract class AbstractJdbcTestingDatabaseManager implements TestingDatabaseMana
         {
             for (NCube ncube : cubes)
             {
-                persister.createCube(c, appId, ncube, username);
+                persister.updateCube(c, appId, ncube, username);
             }
         }
         finally

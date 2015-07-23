@@ -78,14 +78,20 @@ public class NCubeGroovyExpression
      */
     public List<NCubeInfoDto> getCubeRecords(String pattern)
     {
-        //TODO:  This should probably be deprecated in favor of using
-        //TODO:  the search apis so that you have more power from your
-        //TODO:  cubes to do retrieve cubes
         Map options = new HashMap();
         options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
         options.put(NCubeManager.CACHE_RESULT, true);
 
-        return NCubeManager.search(ncube.getApplicationID(), pattern, null, options);
+        return search(pattern, null, options);
+    }
+
+    /**
+     * Fetch cube records that match the given pattern.
+     * @return Object[] of NCubeInfoDto instances.
+     */
+    public List<NCubeInfoDto> search(String namePattern, String textPattern, Map options)
+    {
+        return NCubeManager.search(ncube.getApplicationID(), namePattern, textPattern, options);
     }
 
     /**

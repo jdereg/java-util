@@ -568,11 +568,25 @@ class TestApplicationID
     @Test
     void testGetBootstrapVersion()
     {
-        ApplicationID id = ApplicationID.getBootVersion 'foo', 'bar'
+        System.setProperty("NCUBE_PARAMS", '{}')
+        NCubeManager.systemParams = null;
+
+        ApplicationID id = ApplicationID.getBootVersion('foo', 'bar')
         assertEquals 'foo', id.tenant
         assertEquals 'bar', id.app
         assertEquals '0.0.0', id.version
         assertEquals 'SNAPSHOT', id.status
+        assertEquals 'HEAD', id.branch
+
+        System.setProperty("NCUBE_PARAMS", '{"branch":"qux"}')
+        NCubeManager.systemParams = null;
+
+        id = ApplicationID.getBootVersion('foo', 'bar')
+        assertEquals 'foo', id.tenant
+        assertEquals 'bar', id.app
+        assertEquals '0.0.0', id.version
+        assertEquals 'SNAPSHOT', id.status
+        assertEquals 'qux', id.branch
     }
 
     @Test

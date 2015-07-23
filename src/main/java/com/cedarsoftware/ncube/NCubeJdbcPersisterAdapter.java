@@ -36,19 +36,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         connectionProvider = provider;
     }
 
-    public void createCube(ApplicationID appId, NCube cube, String username)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            persister.createCube(c, appId, cube, username);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
     public void updateCube(ApplicationID appId, NCube cube, String username)
     {
         Connection c = connectionProvider.getConnection();
@@ -172,19 +159,6 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         try
         {
             return persister.deleteCube(c, appId, name, allowDelete, username);
-        }
-        finally
-        {
-            connectionProvider.releaseConnection(c);
-        }
-    }
-
-    public boolean doesCubeExist(ApplicationID appId, String name)
-    {
-        Connection c = connectionProvider.getConnection();
-        try
-        {
-            return persister.doesCubeExist(c, appId, name);
         }
         finally
         {

@@ -40,6 +40,7 @@ public interface CommandCell extends Comparable<CommandCell>
     String getUrl();
 
     Object execute(Map<String, Object> ctx);
+    boolean isCacheable();
 
     void getCubeNamesFromCommandText(Set<String> cubeNames);
     void getScopeKeys(Set<String> scopeKeys);

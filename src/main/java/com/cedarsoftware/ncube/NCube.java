@@ -77,6 +77,10 @@ import java.util.zip.GZIPOutputStream;
  */
 public class NCube<T>
 {
+    public static final String DEFAULT_CELL_VALUE_TYPE = "defaultCellValueType";
+    public static final String DEFAULT_CELL_VALUE = "defaultCellValue";
+    public static final String DEFAULT_CELL_VALUE_URL = "defaultCellValueUrl";
+    public static final String DEFAULT_CELL_VALUE_CACHE = "defaultCellValueCache";
     private String name;
     private String sha1;
     private final Map<String, Axis> axisList = new CaseInsensitiveMap<>();
@@ -1767,8 +1771,10 @@ public class NCube<T>
         ncube.metaProps = new CaseInsensitiveMap();
         ncube.metaProps.putAll(jsonNCube);
         ncube.metaProps.remove("ncube");
-        ncube.metaProps.remove("defaultCellValue");
-        ncube.metaProps.remove("defaultCellValueType");
+        ncube.metaProps.remove(DEFAULT_CELL_VALUE);
+        ncube.metaProps.remove(DEFAULT_CELL_VALUE_TYPE);
+        ncube.metaProps.remove(DEFAULT_CELL_VALUE_URL);
+        ncube.metaProps.remove(DEFAULT_CELL_VALUE_CACHE);
         ncube.metaProps.remove("ruleMode");
         ncube.metaProps.remove("axes");
         ncube.metaProps.remove("cells");
@@ -1776,8 +1782,10 @@ public class NCube<T>
         ncube.metaProps.remove("sha1");
         loadMetaProperties(ncube.metaProps);
 
-        String defType = (String) jsonNCube.get("defaultCellValueType");
-        ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get("defaultCellValue"), null, defType, false);
+        String defType = jsonNCube.containsKey(DEFAULT_CELL_VALUE_TYPE) ? getString(jsonNCube, DEFAULT_CELL_VALUE_TYPE) : null;
+        String defUrl = jsonNCube.containsKey(DEFAULT_CELL_VALUE_URL) ? getString(jsonNCube, DEFAULT_CELL_VALUE_URL) : null;
+        boolean defCache = getBoolean(jsonNCube, DEFAULT_CELL_VALUE_CACHE);
+        ncube.defaultCellValue = CellInfo.parseJsonValue(jsonNCube.get(DEFAULT_CELL_VALUE), defUrl, defType, defCache);
 
         if (!(jsonNCube.get("axes") instanceof JsonObject))
         {
@@ -2376,11 +2384,8 @@ public class NCube<T>
                         md.update(cmdCell.getCmd().getBytes());
                         md.update(sep);
                     }
-                    if (value instanceof UrlCommandCell)
-                    {
-                        md.update(((UrlCommandCell)cmdCell).isCacheable() ? (byte) 't' : (byte) 'f');
-                        md.update(sep);
-                    }
+                    md.update(cmdCell.isCacheable() ? (byte) 't' : (byte) 'f');
+                    md.update(sep);
                 }
                 else
                 {

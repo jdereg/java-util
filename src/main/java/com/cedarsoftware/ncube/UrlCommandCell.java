@@ -2,6 +2,7 @@ package com.cedarsoftware.ncube;
 
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyShell;
+
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
@@ -72,7 +73,8 @@ public abstract class UrlCommandCell implements CommandCell
         return cacheable;
     }
 
-    public void clearClassLoaderCache() {
+    public void clearClassLoaderCache()
+    {
         if (!hasBeenCached.get())
         {
             return;
@@ -273,7 +275,7 @@ public abstract class UrlCommandCell implements CommandCell
     {
         failOnErrors();
 
-        if (!cacheable)
+        if (!isCacheable())
         {
             return fetchResult(ctx);
         }

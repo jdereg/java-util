@@ -1,7 +1,6 @@
 {
   "ncube": "StateCodes",
   "defaultCellValueType": "exp",
-  "defaultCellValueCache": true,
   "defaultCellValue": "return input.age * 2",
   "axes": [
     {

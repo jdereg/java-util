@@ -58,6 +58,8 @@ public class NCubeJdbcPersister
     public static final String NOTES_BIN = "notes_bin";
     public static final String HEAD_SHA_1 = "head_sha1";
 
+    private volatile Boolean oracle;
+
     NCubeInfoDto commitMergedCubeToBranch(Connection c, ApplicationID appId, NCube cube, String headSha1, String username)
     {
         Map options = new HashMap();
@@ -245,7 +247,7 @@ public class NCubeJdbcPersister
     {
         PreparedStatement update = c.prepareStatement("UPDATE n_cube set head_sha1 = ?, changed = ?, create_dt = ? WHERE n_cube_id = ?");
         update.setString(1, sha1);
-        update.setLong(2, 0);
+        update.setInt(2, 0);
         update.setTimestamp(3, new Timestamp(now));
         update.setLong(4, cubeId);
         return update;
@@ -384,7 +386,7 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT revision_number FROM n_cube " +
-                        "WHERE n_cube_nm = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
+                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
                         "ORDER BY abs(revision_number) DESC"))
         {
             stmt.setString(1, name);
@@ -411,7 +413,7 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT revision_number FROM n_cube " +
-                        "WHERE n_cube_nm = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
+                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
                         "ORDER BY abs(revision_number) ASC"))
         {
             stmt.setString(1, cubeName);
@@ -437,11 +439,6 @@ public class NCubeJdbcPersister
     List<NCubeInfoDto> search(Connection c, ApplicationID appId, String cubeNamePattern, String searchPattern, Map options)
     {
         boolean hasSearchPattern = StringUtilities.hasContent(searchPattern);
-
-        if (options == null)
-        {
-            options = new HashMap();
-        }
 
         if (hasSearchPattern)
         {
@@ -474,7 +471,7 @@ public class NCubeJdbcPersister
     {
         String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
                 "FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND sha1 = ?";
+                "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND sha1 = ?";
 
         PreparedStatement s = c.prepareStatement(sql);
         s.setString(1, cubeName);
@@ -492,7 +489,7 @@ public class NCubeJdbcPersister
     {
         String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
                 "FROM n_cube " +
-                "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
+                "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
 
         PreparedStatement s = c.prepareStatement(sql);
         s.setString(1, cubeName);
@@ -527,11 +524,6 @@ public class NCubeJdbcPersister
      */
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String namePattern, Map options) throws SQLException
     {
-        if (options == null)
-        {
-            options = new HashMap();
-        }
-
         boolean changedRecordsOnly = toBoolean(options.get(NCubeManager.CHANGED_RECORDS_ONLY), false);
         boolean activeRecordsOnly = toBoolean(options.get(NCubeManager.ACTIVE_RECORDS_ONLY), false);
         boolean deletedRecordsOnly = toBoolean(options.get(NCubeManager.DELETED_RECORDS_ONLY), false);
@@ -557,15 +549,9 @@ public class NCubeJdbcPersister
             nameCondition1 = " AND " + buildName(c, "n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
             nameCondition2 = " AND " + buildName(c, "m.n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
         }
-//        if (hasNamePattern)
-//        {
-//            namePattern = namePattern.toLowerCase();
-//        }
 
-//        String nameCondition1 = hasNamePattern ? exactMatchName ? " AND LOWER(n_cube_nm) = ?" : " AND LOWER(n_cube_nm) like ?" : "";
-//        String nameCondition2 = hasNamePattern ? exactMatchName ? " AND LOWER(m.n_cube_nm) = ?" : " AND LOWER(m.n_cube_nm) like ?" : "";
         String revisionCondition = activeRecordsOnly ? " AND n.revision_number >= 0" : deletedRecordsOnly ? " AND n.revision_number < 0" : "";
-        String changedCondition = changedRecordsOnly ? " AND n.changed = 1" : "";
+        String changedCondition = changedRecordsOnly ? " AND n.changed = ?" : "";
         String testCondition = includeTestData ? ", n.test_data_bin" : "";
         String cubeCondition = includeCubeData ? ", n.cube_value_bin" : "";
 
@@ -604,6 +590,11 @@ public class NCubeJdbcPersister
         stmt.setString(i++, appId.getTenant());
         stmt.setString(i++, appId.getBranch());
 
+        if (changedRecordsOnly)
+        {
+            stmt.setBoolean(i++, changedRecordsOnly);
+        }
+
         if (hasNamePattern)
         {
             stmt.setString(i++, namePattern);
@@ -641,7 +632,7 @@ public class NCubeJdbcPersister
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, branch_id, cube_value_bin, sha1, head_sha1, changed " +
                         "FROM n_cube " +
-                        "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ?" +
+                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ?" +
                         "ORDER BY abs(revision_number) DESC"))
         {
             stmt.setString(1, cubeName);
@@ -906,7 +897,7 @@ public class NCubeJdbcPersister
             throw new IllegalArgumentException("Could not rollback cube.  Cube was not found.  App:  " + appId + ", cube: " + cubeName);
         }
 
-        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ? AND n_cube_nm = ? AND revision_number <> ?";
+        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ? AND " + buildName(c, "n_cube_nm") + " = ? AND revision_number <> ?";
 
         try (PreparedStatement s = c.prepareStatement(sql))
         {
@@ -932,7 +923,7 @@ public class NCubeJdbcPersister
     {
         if (allowDelete)
         {
-            String sql = "DELETE FROM n_cube WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
+            String sql = "DELETE FROM n_cube WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
 
             try (PreparedStatement ps = c.prepareStatement(sql))
             {
@@ -1004,7 +995,7 @@ public class NCubeJdbcPersister
             throw new IllegalArgumentException("Cannot update notes, cube: " + cubeName + " is deleted in app: " + appId);
         }
 
-        String statement = "UPDATE n_cube SET notes_bin = ? WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
+        String statement = "UPDATE n_cube SET notes_bin = ? WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
 
         try (PreparedStatement stmt = c.prepareStatement(statement))
         {
@@ -1029,7 +1020,7 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT notes_bin FROM n_cube " +
-                        "WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
                         "ORDER BY abs(revision_number) DESC"
         ))
         {
@@ -1126,7 +1117,7 @@ public class NCubeJdbcPersister
                             insert.setString(11, appId.getTenant());
                             insert.setString(12, appId.getBranch());
                             insert.setLong(13, (rs.getLong("revision_number") >= 0) ? 0 : -1);
-                            insert.setInt(14, 0);
+                            insert.setBoolean(14, false);
                             insert.setString(15, sha1);
                             insert.setString(16, sha1);
                             insert.addBatch();
@@ -1314,7 +1305,7 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT test_data_bin FROM n_cube " +
-                        "WHERE n_cube_nm = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
                         "ORDER BY abs(revision_number) DESC"
         ))
         {
@@ -1361,7 +1352,7 @@ public class NCubeJdbcPersister
 
         try (PreparedStatement stmt = c.prepareStatement(
                 "UPDATE n_cube SET test_data_bin=? " +
-                        "WHERE app_cd = ? AND n_cube_nm = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?"))
+                        "WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?"))
         {
             stmt.setBytes(1, testData == null ? null : testData.getBytes("UTF-8"));
             stmt.setString(2, appId.getApp());
@@ -1858,7 +1849,7 @@ public class NCubeJdbcPersister
             s.setBytes(14, testData);
             String note = createNote(username, now, notes);
             s.setBytes(15, StringUtilities.getBytes(note, "UTF-8"));
-            s.setInt(16, changed ? 1 : 0);
+            s.setBoolean(16, changed);
 
             NCubeInfoDto dto = new NCubeInfoDto();
             dto.id = Long.toString(uniqueId);
@@ -2085,12 +2076,22 @@ public class NCubeJdbcPersister
 
     public boolean isOracle(Connection c)
     {
-        try
-        {
-            return Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        Boolean tmp = oracle;
+        if (tmp == null) {
+            synchronized(this) {
+                tmp = oracle;
+                if (tmp == null) {
+                    try
+                    {
+                        tmp = Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
+                        oracle = tmp;
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
         }
+        return tmp;
     }
 
 }

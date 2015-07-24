@@ -832,18 +832,76 @@ abstract class TestWithPreloadedDatabase
     @Test
     void testSearch() {
         // load cube with same name, but different structure in TEST branch
-        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json")
+        preloadCubes(head, "test.branch.1.json", "test.branch.age.1.json", "TestCubeLevelDefault.json", "basicJumpStart.json")
         testValuesOnBranch(head)
 
+        //  delete and readd these cubes.
+        assertEquals(4, NCubeManager.createBranch(branch1))
+        NCubeManager.deleteCube(branch1, "TestBranch", USER_ID);
+        NCubeManager.deleteCube(branch1, "TestAge", USER_ID);
+
+        Object[] dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(2, dtos.length);
+        NCubeManager.commitBranch(branch1, dtos, USER_ID);
+
+        NCube cube = NCubeManager.getNCubeFromResource("test.branch.2.json")
+        NCubeManager.updateCube(branch1, cube, USER_ID);
+        dtos = NCubeManager.getBranchChangesFromDatabase(branch1);
+        assertEquals(1, dtos.length);
+        NCubeManager.commitBranch(branch1, dtos, USER_ID);
+
+        // test with default options
+        assertEquals(4, NCubeManager.search(head, null, null, null).size())
+        assertEquals(4, NCubeManager.search(head, "", "", null).size())
+        assertEquals(2, NCubeManager.search(head, "Test*", null, null).size())
+        assertEquals(1, NCubeManager.search(head, "Test*", "zzz", null).size())
+        assertEquals(0, NCubeManager.search(head, "*Codes*", "ZZZ", null).size())
+        assertEquals(1, NCubeManager.search(head, "*Codes*", "OH", null).size())
+        assertEquals(1, NCubeManager.search(head, null, "ZZZ", null).size())
+
         Map map = new HashMap();
+
+        // test with default options and valid map
+        assertEquals(4, NCubeManager.search(head, null, null, map).size())
+        assertEquals(4, NCubeManager.search(head, "", "", map).size())
+        assertEquals(2, NCubeManager.search(head, "Test*", null, map).size())
+        assertEquals(1, NCubeManager.search(head, "Test*", "zzz", map).size())
+        assertEquals(0, NCubeManager.search(head, "*Codes*", "ZZZ", map).size())
+        assertEquals(1, NCubeManager.search(head, "*Codes*", "OH", map).size())
+        assertEquals(1, NCubeManager.search(head, null, "ZZZ", map).size())
+
+        map = new HashMap();
         map.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
 
-        assertEquals(2, NCubeManager.search(head, "Test*", "zzz", map).size())
-        assertEquals(1, NCubeManager.search(head, "*TestBranch*", "ZZZ", map).size())
-        assertEquals(1, NCubeManager.search(head, "Test*", "baby", map).size())
-        assertEquals(0, NCubeManager.search(head, "TestBranch*", "baby", map).size())
-        assertEquals(1, NCubeManager.search(head, "TestAge", "BABY", map).size())
-        assertEquals(1, NCubeManager.search(head, null, "baby", map).size())
+        assertEquals(3, NCubeManager.search(head, null, null, map).size())
+        assertEquals(3, NCubeManager.search(head, "", "", map).size())
+        assertEquals(1, NCubeManager.search(head, "Test*", null, map).size())
+        assertEquals(0, NCubeManager.search(head, "Test*", "zzz", map).size())
+        assertEquals(0, NCubeManager.search(head, "*Codes*", "ZZZ", map).size())
+        assertEquals(1, NCubeManager.search(head, "*Codes*", "OH", map).size())
+        assertEquals(0, NCubeManager.search(head, null, "ZZZ", map).size())
+
+        map.put(NCubeManager.ACTIVE_RECORDS_ONLY, false);
+        map.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+
+        assertEquals(1, NCubeManager.search(head, null, null, map).size())
+        assertEquals(1, NCubeManager.search(head, "", "", map).size())
+        assertEquals(1, NCubeManager.search(head, "Test*", null, map).size())
+        assertEquals(1, NCubeManager.search(head, "Test*", "zzz", map).size())
+        assertEquals(0, NCubeManager.search(head, "*Codes*", "ZZZ", map).size())
+        assertEquals(0, NCubeManager.search(head, "*Codes*", "OH", map).size())
+        assertEquals(1, NCubeManager.search(head, null, "ZZZ", map).size())
+
+        map.put(NCubeManager.DELETED_RECORDS_ONLY, false);
+        map.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+
+//        assertEquals(2, NCubeManager.search(head, null, null, map).size())
+//        assertEquals(2, NCubeManager.search(head, "", "", map).size())
+//        assertEquals(2, NCubeManager.search(head, "Test*", null, map).size())
+//        assertEquals(2, NCubeManager.search(head, "Test*", "zzz", map).size())
+//        assertEquals(2, NCubeManager.search(head, "*Codes*", "ZZZ", map).size())
+//        assertEquals(2, NCubeManager.search(head, "*Codes*", "OH", map).size())
+//        assertEquals(2, NCubeManager.search(head, null, "ZZZ", map).size())
     }
 
     @Test

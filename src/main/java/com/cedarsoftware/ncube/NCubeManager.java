@@ -1318,6 +1318,10 @@ public class NCubeManager
     {
         validateAppId(appId);
 
+        if (options == null) {
+            options = new HashMap();
+        }
+
         List<NCubeInfoDto> cubes = getPersister().search(appId, cubeNamePattern, content, options);
 
         Boolean result = (Boolean)options.get(CACHE_RESULT);

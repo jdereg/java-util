@@ -12,6 +12,7 @@ import org.junit.Before
 import org.junit.Test
 
 import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
 import static org.mockito.Matchers.anyInt
 import static org.mockito.Matchers.anyObject
@@ -181,6 +182,19 @@ class TestJsonFormatter
         catch (IllegalArgumentException e)
         {
             assert e.message.contains('cannot be null')
+        }
+    }
+
+    @Test
+    void testTryingToUseFormatToWriteToStream() {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        JsonFormatter formatter = new JsonFormatter(stream);
+        try {
+            formatter.format(null);
+        } catch (IllegalStateException e) {
+            String msg = e.getMessage().toLowerCase();
+            assertTrue(msg.contains("builder is not a stringwriter"))
+            assertTrue(msg.contains("use formatcube"))
         }
     }
 

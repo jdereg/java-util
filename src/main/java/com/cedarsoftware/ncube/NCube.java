@@ -20,7 +20,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
-
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -3005,7 +3004,7 @@ public class NCube<T>
 
             newStream.reset();
             newStream = ByteUtilities.isGzipped(header) ? new GZIPInputStream(newStream) : newStream;
-            return NCube.fromSimpleJson(newStream);
+            return fromSimpleJson(newStream);
         }
         catch (IOException e)
         {

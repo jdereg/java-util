@@ -88,7 +88,10 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                 {
                     CommandCell cmd = (CommandCell) defCellValue;
 
-                    writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_CACHE, (cmd).isCacheable(), true);
+                    if (cmd.isCacheable())
+                    {   // Only write 'cache' when the cache value is true.  Leave false be default.
+                        writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_CACHE, true, true);
+                    }
                     if (cmd.getUrl() != null)
                     {
                         writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_URL, cmd.getUrl(), true);

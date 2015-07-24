@@ -44,11 +44,11 @@
     </developers>
 
     <properties>
-        <version.json-io>4.0.1</version.json-io>
+        <version.json-io>4.1.4</version.json-io>
         <version.java-util>1.19.3</version.java-util>
         <version.log4j>2.1</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.groovy>2.4.3</version.groovy>
+        <version.groovy>2.4.4</version.groovy>
         <version.jgit>3.6.1.201501031845-r</version.jgit>
         <version.mockito>1.10.19</version.mockito>
         <version.powermock>1.6.2</version.powermock>

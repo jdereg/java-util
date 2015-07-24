@@ -3,10 +3,10 @@ package com.cedarsoftware.ncube.formatters;
 import com.cedarsoftware.ncube.Axis;
 import com.cedarsoftware.ncube.CellTypes;
 import com.cedarsoftware.ncube.Column;
+import com.cedarsoftware.ncube.CommandCell;
 import com.cedarsoftware.ncube.NCube;
 import com.cedarsoftware.ncube.Range;
 import com.cedarsoftware.ncube.RangeSet;
-import com.cedarsoftware.ncube.UrlCommandCell;
 import com.cedarsoftware.ncube.proximity.LatLon;
 import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
@@ -63,7 +63,8 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         return builder.toString();
     }
 
-    public void formatCube(NCube ncube) {
+    public void formatCube(NCube ncube)
+    {
         if (ncube == null)
         {
             throw new IllegalArgumentException("Cube to format cannot be null");
@@ -81,9 +82,26 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                 String valType = CellTypes.getType(defCellValue, "defaultCell");
                 if (valType != null)
                 {
-                    writeObjectKeyValue("defaultCellValueType", valType, true);
+                    writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_TYPE, valType, true);
                 }
-                writeObjectKeyValue("defaultCellValue", ncube.getDefaultCellValue(), true);
+                if (defCellValue instanceof CommandCell)
+                {
+                    CommandCell cmd = (CommandCell) defCellValue;
+
+                    writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_CACHE, (cmd).isCacheable(), true);
+                    if (cmd.getUrl() != null)
+                    {
+                        writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_URL, cmd.getUrl(), true);
+                    }
+                    else
+                    {
+                        writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE, cmd.getCmd(), true);
+                    }
+                }
+                else
+                {
+                    writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE, defCellValue, true);
+                }
             }
 
             writeMetaProperties(ncube.getMetaProperties());
@@ -119,9 +137,9 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                 startObject();
                 writeType(CellTypes.getType(value, "meta property"));
 
-                if ((value instanceof UrlCommandCell))
+                if ((value instanceof CommandCell))
                 {
-                    writeCommandCell((UrlCommandCell)value);
+                    writeCommandCell((CommandCell)value);
                 }
                 else
                 {
@@ -206,9 +224,9 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         writeId(column.getId(), true);
         writeType(columnType);
         writeMetaProperties(column.getMetaProperties());
-        if (column.getValue() instanceof UrlCommandCell)
+        if (column.getValue() instanceof CommandCell)
         {
-            writeCommandCell((UrlCommandCell)column.getValue());
+            writeCommandCell((CommandCell)column.getValue());
         }
         else
         {
@@ -218,7 +236,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         endObject();
     }
 
-    void writeCommandCell(UrlCommandCell cmd) throws IOException
+    void writeCommandCell(CommandCell cmd) throws IOException
     {
         writeObjectKeyValue("cache", cmd.isCacheable(), true);
         if (cmd.getUrl() != null)
@@ -273,9 +291,9 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         writeIds(cell.getKey());
         writeType(CellTypes.getType(cell.getValue(), "cell"));
 
-        if ((cell.getValue() instanceof UrlCommandCell))
+        if ((cell.getValue() instanceof CommandCell))
         {
-            writeCommandCell((UrlCommandCell)cell.getValue());
+            writeCommandCell((CommandCell)cell.getValue());
         }
         else
         {

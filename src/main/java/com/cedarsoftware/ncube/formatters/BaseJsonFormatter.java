@@ -2,7 +2,6 @@ package com.cedarsoftware.ncube.formatters;
 
 import com.cedarsoftware.util.SafeSimpleDateFormat;
 import com.cedarsoftware.util.io.JsonWriter;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -52,7 +51,7 @@ public class BaseJsonFormatter
 
     void append(String id) {
         try {
-            builder.write(id);
+            builder.write(id, 0, id.length());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

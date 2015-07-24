@@ -6,12 +6,17 @@ import com.cedarsoftware.ncube.NCubeManager
 import com.cedarsoftware.ncube.TestNCubeManager
 import com.cedarsoftware.ncube.TestingDatabaseHelper
 import com.cedarsoftware.ncube.TestingDatabaseManager
+import com.cedarsoftware.util.IOUtilities
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
 import static org.junit.Assert.assertEquals
 import static org.junit.Assert.fail
+import static org.mockito.Matchers.anyInt
+import static org.mockito.Matchers.anyObject
+import static org.mockito.Mockito.mock
+import static org.mockito.Mockito.when
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -140,6 +145,29 @@ class TestJsonFormatter
         JsonFormatter formatter = new JsonFormatter()
         String json = formatter.format(ncube)
         assertEquals('{"ncube":null,"axes":[],"cells":[]}', json)
+    }
+
+    @Test
+    void testNullValueGoingToAppend() {
+        OutputStream stream = mock(OutputStream.class);
+        when(stream.write(anyObject(), anyInt(), anyInt())).thenThrow(new IOException("foo error"));
+
+        BufferedInputStream input = null;
+
+        try
+        {
+            JsonFormatter formatter = new JsonFormatter(stream)
+            formatter.append((String)null);
+            fail();
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(NullPointerException.class, e.getCause().getClass());
+        }
+        finally
+        {
+            IOUtilities.close((Closeable)input);
+        }
     }
 
     @Test

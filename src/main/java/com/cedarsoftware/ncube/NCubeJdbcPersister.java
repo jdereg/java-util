@@ -548,12 +548,22 @@ public class NCubeJdbcPersister
         //  That is why it is before the hasContentCheck.
         namePattern = convertPattern(namePattern);
         boolean hasNamePattern = StringUtilities.hasContent(namePattern);
-        if (hasNamePattern) {
-            namePattern = namePattern.toLowerCase();
-        }
 
-        String nameCondition1 = hasNamePattern ? exactMatchName ? " AND LOWER(n_cube_nm) = ?" : " AND LOWER(n_cube_nm) like ?" : "";
-        String nameCondition2 = hasNamePattern ? exactMatchName ? " AND LOWER(m.n_cube_nm) = ?" : " AND LOWER(m.n_cube_nm) like ?" : "";
+        String nameCondition1 = "";
+        String nameCondition2 = "";
+
+        if (hasNamePattern)
+        {
+            nameCondition1 = " AND " + buildName(c, "n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
+            nameCondition2 = " AND " + buildName(c, "m.n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
+        }
+//        if (hasNamePattern)
+//        {
+//            namePattern = namePattern.toLowerCase();
+//        }
+
+//        String nameCondition1 = hasNamePattern ? exactMatchName ? " AND LOWER(n_cube_nm) = ?" : " AND LOWER(n_cube_nm) like ?" : "";
+//        String nameCondition2 = hasNamePattern ? exactMatchName ? " AND LOWER(m.n_cube_nm) = ?" : " AND LOWER(m.n_cube_nm) like ?" : "";
         String revisionCondition = activeRecordsOnly ? " AND n.revision_number >= 0" : deletedRecordsOnly ? " AND n.revision_number < 0" : "";
         String changedCondition = changedRecordsOnly ? " AND n.changed = 1" : "";
         String testCondition = includeTestData ? ", n.test_data_bin" : "";
@@ -2063,4 +2073,24 @@ public class NCubeJdbcPersister
 
         return changes;
     }
+
+    public String buildName(Connection c, String name)
+    {
+        if (isOracle(c)) {
+            return ("LOWER(" + name + ")");
+        }
+
+        return name;
+    }
+
+    public boolean isOracle(Connection c)
+    {
+        try
+        {
+            return Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

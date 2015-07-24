@@ -12,6 +12,7 @@ import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringWriter;
@@ -88,8 +89,8 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
                     CommandCell cmd = (CommandCell) defCellValue;
 
                     if (cmd.isCacheable())
-                    {
-                        writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_CACHE, cmd.isCacheable(), true);
+                    {   // Only write 'cache' when the cache value is true.  Leave false be default.
+                        writeObjectKeyValue(NCube.DEFAULT_CELL_VALUE_CACHE, true, true);
                     }
                     if (cmd.getUrl() != null)
                     {

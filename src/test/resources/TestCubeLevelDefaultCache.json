@@ -1,0 +1,56 @@
+{
+  "ncube": "StateCodes",
+  "defaultCellValueType": "exp",
+  "defaultCellValueCache": true,
+  "defaultCellValue": "return input.age * 2",
+  "axes": [
+    {
+      "name": "State",
+      "type": "DISCRETE",
+      "valueType": "STRING",
+      "preferredOrder": 1,
+      "hasDefault": true,
+      "fireAll": true,
+      "columns": [
+        {
+          "id": 1000000000002,
+          "type": "string",
+          "value": "OH"
+        },
+        {
+          "id": 1000000000001,
+          "type": "string",
+          "value": "NJ"
+        },
+        {
+          "id": 1000000000003,
+          "type": "string",
+          "value": "TX"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "id": [
+        1000000000002
+      ],
+      "type": "int",
+      "value": 1
+    },
+    {
+      "id": [
+        1000000000001
+      ],
+      "type": "int",
+      "value": 2
+    },
+    {
+      "id": [
+        1000000000003
+      ],
+      "type": "int",
+      "value": 3
+    }
+  ]
+}

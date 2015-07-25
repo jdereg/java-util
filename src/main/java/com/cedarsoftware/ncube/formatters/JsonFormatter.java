@@ -229,7 +229,7 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
         writeMetaProperties(column.getMetaProperties());
         if (column.getValue() instanceof CommandCell)
         {
-            writeCommandCell((CommandCell)column.getValue());
+            writeCommandCell((CommandCell) column.getValue());
         }
         else
         {
@@ -241,7 +241,10 @@ public class JsonFormatter extends BaseJsonFormatter implements NCubeFormatter
 
     void writeCommandCell(CommandCell cmd) throws IOException
     {
-        writeObjectKeyValue("cache", cmd.isCacheable(), true);
+        if (cmd.isCacheable())
+        {
+            writeObjectKeyValue("cache", cmd.isCacheable(), true);
+        }
         if (cmd.getUrl() != null)
         {
             writeObjectKeyValue("url", cmd.getUrl(), false);

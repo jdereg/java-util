@@ -7,6 +7,7 @@ import org.junit.Test
 
 import java.sql.Blob
 import java.sql.Connection
+import java.sql.DatabaseMetaData
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -232,6 +233,10 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(false);
 
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
+
         NCube<Double> cube = NCubeBuilder.getTestNCube2D(true)
         assertNull(new NCubeJdbcPersister().commitMergedCubeToBranch(c, defaultSnapshotApp, cube, cube.sha1(), "name"));
     }
@@ -348,6 +353,10 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(false);
 
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
+
         assertNull(new NCubeJdbcPersister().loadCubeBySha1(c, defaultSnapshotApp, "foo", "sha"));
     }
 
@@ -395,6 +404,10 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(false);
 
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
+
         assertNull(new NCubeJdbcPersister().loadCubeByRevision(c, defaultSnapshotApp, "foo", 1))
     }
 
@@ -410,6 +423,10 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(true).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
         when(rs.getTimestamp(anyString())).thenReturn(new Timestamp(System.currentTimeMillis()))
+
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
 
         try
         {
@@ -448,6 +465,9 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
 
         try
         {
@@ -702,6 +722,7 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(2)
         when(ps.executeQuery()).thenReturn(rs)
+        mockDatabaseMetaData(c);
 
         try
         {
@@ -725,6 +746,10 @@ class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0)
         when(ps.executeQuery()).thenReturn(rs)
 
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
+
         try
         {
             new NCubeJdbcPersister().updateNotes(c, new ApplicationID(ApplicationID.DEFAULT_TENANT, APP_ID, ApplicationID.DEFAULT_VERSION, ApplicationID.DEFAULT_STATUS, ApplicationID.TEST_BRANCH), "foo", "notes")
@@ -747,6 +772,9 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
 
         try
         {
@@ -805,6 +833,10 @@ class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(anyInt())).thenReturn(5L);
+
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
 
         try
         {
@@ -898,6 +930,9 @@ class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(0)
         when(rs.next()).thenReturn(true)
         when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
 
         try
         {
@@ -921,6 +956,10 @@ class TestNCubeJdbcPersister
         when(ps.executeUpdate()).thenReturn(1).thenReturn(0);
         when(rs.next()).thenReturn(true)
         when(rs.getBytes("cube_value_bin")).thenReturn("".getBytes("UTF-8"))
+
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
 
         try
         {
@@ -1071,6 +1110,9 @@ class TestNCubeJdbcPersister
     private static getConnectionThatThrowsSQLException = { ->
         Connection c = mock(Connection.class)
         when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
         return c;
     }
 
@@ -1080,6 +1122,9 @@ class TestNCubeJdbcPersister
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
         when(c.prepareStatement(anyString())).thenReturn(ps).thenThrow(exceptionClass)
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("HSQL");
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(exists)
         return c;
@@ -1119,6 +1164,10 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(false)
         when(ps.executeUpdate()).thenReturn(0)
 
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
+
         try
         {
             new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID)
@@ -1147,6 +1196,8 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(true)
         when(rs.getLong(1)).thenReturn(5L)
 
+        mockDatabaseMetaData(c)
+
         try
         {
             new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", true, USER_ID)
@@ -1156,6 +1207,12 @@ class TestNCubeJdbcPersister
         {
             assertEquals(SQLException.class, e.cause.class)
         }
+    }
+
+    private void mockDatabaseMetaData(Connection c) {
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
     }
 
 
@@ -1199,6 +1256,7 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeQuery()).thenThrow(SQLException.class)
 
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().getRevisions(c, defaultSnapshotApp, "foo")
@@ -1216,8 +1274,11 @@ class TestNCubeJdbcPersister
         Connection c = mock(Connection.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         ResultSet rs = mock(ResultSet.class)
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
 
         when(c.prepareStatement(anyString())).thenThrow(SQLException.class)
+        when(c.metaData).thenReturn(metaData);
+        when(metaData.getDriverName()).thenReturn("Oracle");
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(true)
         when(rs.getLong(anyString())).thenReturn(new Long(-9))
@@ -1259,6 +1320,7 @@ class TestNCubeJdbcPersister
         when(rs.getBytes(anyInt())).thenReturn(null)
         when(ps.executeUpdate()).thenReturn(0)
 
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().restoreCube(c, defaultSnapshotApp, "foo", USER_ID)
@@ -1291,6 +1353,7 @@ class TestNCubeJdbcPersister
         when(rs.getString("n_cube_nm")).thenReturn("foo")
         when(rs.getString("branch_id")).thenReturn(ApplicationID.HEAD)
 
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", false, USER_ID)
@@ -1321,6 +1384,7 @@ class TestNCubeJdbcPersister
         IOUtilities.transfer(new File(url.file), out)
         when(ps.executeUpdate()).thenReturn(0)
 
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().deleteCube(c, defaultSnapshotApp, "foo", false, USER_ID)
@@ -1345,6 +1409,8 @@ class TestNCubeJdbcPersister
         when(rs.next()).thenReturn(false)
         when(rs.getLong(anyInt())).thenReturn(new Long(-9))
         when(ps.executeUpdate()).thenReturn(0)
+
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().updateCube(c, defaultSnapshotApp, ncube, USER_ID)
@@ -1379,6 +1445,7 @@ class TestNCubeJdbcPersister
         when(b.setBinaryStream(anyLong())).thenReturn(stream);
         Connection c = mock(Connection.class)
         when(c.createBlob()).thenReturn(b);
+        mockDatabaseMetaData(c);
         ResultSet rs = mock(ResultSet.class)
         PreparedStatement ps = mock(PreparedStatement.class)
         when(rs.next()).thenReturn(true)
@@ -1421,6 +1488,7 @@ class TestNCubeJdbcPersister
         IOUtilities.transfer(new File(url.file), out)
         when(rs.getBytes("cube_value_bin")).thenReturn(out.toByteArray())
 
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, "foo", "bar", USER_ID)
@@ -1454,6 +1522,7 @@ class TestNCubeJdbcPersister
         IOUtilities.transfer(new File(url.file), out)
         when(rs.getBytes("cube_value_bin")).thenReturn(out.toByteArray())
 
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().renameCube(c, defaultSnapshotApp, "foo", "bar", USER_ID)
@@ -1479,6 +1548,8 @@ class TestNCubeJdbcPersister
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.getLong("revision_number")).thenReturn(0L);
         when(rs.next()).thenReturn(true).thenReturn(false);
+
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().duplicateCube(c, head, defaultSnapshotApp, "name", "name", USER_ID)
@@ -1517,7 +1588,7 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps)
         when(ps.executeUpdate()).thenReturn(2)
         when(ps.executeQuery()).thenReturn(rs)
-
+        mockDatabaseMetaData(c);
         try
         {
             new NCubeJdbcPersister().updateTestData(c, defaultSnapshotApp, "foo", "foo")

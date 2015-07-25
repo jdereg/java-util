@@ -26,26 +26,33 @@ class TestCubeLevelDefault
     {
         NCube ncube = NCubeManager.getNCubeFromResource('TestCubeLevelDefault.json')
         assert 1 == ncube.getCell([age:10, 'state':'OH'])
+        assert 2 == ncube.getCell([age:10, 'state':'NJ'])
+        assert 3 == ncube.getCell([age:10, 'state':'TX'])
         assert 20 == ncube.getCell([age:10, 'state':'AK'])
-        assert 40 == ncube.getCell([age:20, 'state':'KS'])
-
-        String json = NCubeManager.getResourceAsString('TestCubeLevelDefault.json')
-
-        NCube x = NCube.fromSimpleJson(json)
-        String json2 = x.toFormattedJson()
-        NCube y = NCube.fromSimpleJson(json2)
-        assert x.sha1() == y.sha1()
+        assert 40 == ncube.getCell([age:20, 'state':'ME'])
     }
 
     @Test
-    void testDefaultExpressionWithCacheTrue()
+    void testDefaultExpressionWithCaching()
     {
-        NCube ncube = NCubeManager.getNCubeFromResource('TestCubeLevelDefaultTrue.json')
+        NCube ncube = NCubeManager.getNCubeFromResource('TestCubeLevelDefaultCache.json')
         assert 1 == ncube.getCell([age:10, 'state':'OH'])
+        assert 2 == ncube.getCell([age:10, 'state':'NJ'])
+        assert 3 == ncube.getCell([age:10, 'state':'TX'])
         assert 20 == ncube.getCell([age:10, 'state':'AK'])
-        assert 20 == ncube.getCell([age:20, 'state':'KS'])
+        assert 20 == ncube.getCell([age:20, 'state':'ME'])
+    }
 
-        String json = NCubeManager.getResourceAsString('TestCubeLevelDefaultTrue.json')
+    @Test
+    public void testDefaultExpressionSha1()
+    {
+        assertSha1Calculation('TestCubeLevelDefaultCache.json')
+        assertSha1Calculation('TestCubeLevelDefault.json')
+    }
+
+    private void assertSha1Calculation(String jsonFile)
+    {
+        String json = NCubeManager.getResourceAsString(jsonFile)
 
         NCube x = NCube.fromSimpleJson(json)
         String json2 = x.toFormattedJson()

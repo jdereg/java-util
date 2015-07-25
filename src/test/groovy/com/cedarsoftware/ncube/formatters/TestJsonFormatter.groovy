@@ -6,12 +6,18 @@ import com.cedarsoftware.ncube.NCubeManager
 import com.cedarsoftware.ncube.TestNCubeManager
 import com.cedarsoftware.ncube.TestingDatabaseHelper
 import com.cedarsoftware.ncube.TestingDatabaseManager
+import com.cedarsoftware.util.IOUtilities
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
 import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertTrue
 import static org.junit.Assert.fail
+import static org.mockito.Matchers.anyInt
+import static org.mockito.Matchers.anyObject
+import static org.mockito.Mockito.mock
+import static org.mockito.Mockito.when
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -143,6 +149,29 @@ class TestJsonFormatter
     }
 
     @Test
+    void testNullValueGoingToAppend() {
+        OutputStream stream = mock(OutputStream.class);
+        when(stream.write(anyObject(), anyInt(), anyInt())).thenThrow(new IOException("foo error"));
+
+        BufferedInputStream input = null;
+
+        try
+        {
+            JsonFormatter formatter = new JsonFormatter(stream)
+            formatter.append((String)null);
+            fail();
+        }
+        catch (RuntimeException e)
+        {
+            assertEquals(NullPointerException.class, e.getCause().getClass());
+        }
+        finally
+        {
+            IOUtilities.close((Closeable)input);
+        }
+    }
+
+    @Test
     void testNullCube()
     {
         try
@@ -153,6 +182,19 @@ class TestJsonFormatter
         catch (IllegalArgumentException e)
         {
             assert e.message.contains('cannot be null')
+        }
+    }
+
+    @Test
+    void testTryingToUseFormatToWriteToStream() {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        JsonFormatter formatter = new JsonFormatter(stream);
+        try {
+            formatter.format(null);
+        } catch (IllegalStateException e) {
+            String msg = e.getMessage().toLowerCase();
+            assertTrue(msg.contains("builder is not a stringwriter"))
+            assertTrue(msg.contains("use formatcube"))
         }
     }
 

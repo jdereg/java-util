@@ -67,8 +67,8 @@ class TestNCubeJdbcPersister
         try
         {
             HashMap options = new HashMap();
-            options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
-            options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+            options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
+            options.put(NCubeManager.SEARCH_DELETED_RECORDS_ONLY, true);
 
             new NCubeJdbcPersister().createSelectCubesStatement(null, null, null, options);
             fail();
@@ -90,7 +90,7 @@ class TestNCubeJdbcPersister
         persister.updateCube(defaultSnapshotApp, ncube1, USER_ID)
         persister.updateCube(defaultSnapshotApp, ncube2, USER_ID)
 
-        Object[] cubeList = persister.search(defaultSnapshotApp, "test.%", null, [(NCubeManager.ACTIVE_RECORDS_ONLY) : true])
+        Object[] cubeList = persister.search(defaultSnapshotApp, "test.%", null, [(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY) : true])
 
         assertTrue(cubeList != null)
         assertTrue(cubeList.length == 2)
@@ -1014,8 +1014,8 @@ class TestNCubeJdbcPersister
         try
         {
             Map options = [:];
-            options[NCubeManager.ACTIVE_RECORDS_ONLY] = true;
-            options[NCubeManager.INCLUDE_CUBE_DATA] = true;
+            options[NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY] = true;
+            options[NCubeManager.SEARCH_INCLUDE_CUBE_DATA] = true;
             new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, "test", options)
             fail()
         }

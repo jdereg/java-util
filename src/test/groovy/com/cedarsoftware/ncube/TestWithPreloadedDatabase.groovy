@@ -871,7 +871,7 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.search(head, null, "ZZZ", map).size())
 
         map = new HashMap();
-        map.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+        map.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
 
         assertEquals(3, NCubeManager.search(head, null, null, map).size())
         assertEquals(3, NCubeManager.search(head, "", "", map).size())
@@ -881,8 +881,8 @@ abstract class TestWithPreloadedDatabase
         assertEquals(1, NCubeManager.search(head, "*Codes*", "OH", map).size())
         assertEquals(0, NCubeManager.search(head, null, "ZZZ", map).size())
 
-        map.put(NCubeManager.ACTIVE_RECORDS_ONLY, false);
-        map.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+        map.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, false);
+        map.put(NCubeManager.SEARCH_DELETED_RECORDS_ONLY, true);
 
         assertEquals(1, NCubeManager.search(head, null, null, map).size())
         assertEquals(1, NCubeManager.search(head, "", "", map).size())
@@ -892,8 +892,8 @@ abstract class TestWithPreloadedDatabase
         assertEquals(0, NCubeManager.search(head, "*Codes*", "OH", map).size())
         assertEquals(1, NCubeManager.search(head, null, "ZZZ", map).size())
 
-        map.put(NCubeManager.DELETED_RECORDS_ONLY, false);
-        map.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+        map.put(NCubeManager.SEARCH_DELETED_RECORDS_ONLY, false);
+        map.put(NCubeManager.SEARCH_CHANGED_RECORDS_ONLY, true);
 
 //        assertEquals(2, NCubeManager.search(head, null, null, map).size())
 //        assertEquals(2, NCubeManager.search(head, "", "", map).size())
@@ -911,7 +911,7 @@ abstract class TestWithPreloadedDatabase
         testValuesOnBranch(head)
 
         Map map = new HashMap();
-        map.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
+        map.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
 
         assertEquals(2, NCubeManager.search(head, "Test*", null, map).size())
         assertEquals(1, NCubeManager.search(head, "TestBranch", "ZZZ", map).size())
@@ -3337,7 +3337,7 @@ abstract class TestWithPreloadedDatabase
     public static List<NCubeInfoDto> getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+        options.put(NCubeManager.SEARCH_DELETED_RECORDS_ONLY, true);
 
         return NCubeManager.search(appId, pattern, null, options);
     }

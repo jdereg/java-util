@@ -11,6 +11,10 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,9 +35,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -62,13 +63,13 @@ import org.apache.logging.log4j.Logger;
  */
 public class NCubeManager
 {
-    public static final String DELETED_RECORDS_ONLY = "deletedRecordsOnly";
-    public static final String INCLUDE_TEST_DATA = "includeTestData";
-    public static final String ACTIVE_RECORDS_ONLY = "activeRecordsOnly";
-    public static final String CHANGED_RECORDS_ONLY = "changedRecordsOnly";
-    public static final String INCLUDE_CUBE_DATA = "includeCubeData";
-    public static final String EXACT_MATCH_NAME = "exactMatchName";
-    public static final String CACHE_RESULT = "cacheResult";
+    public static final String SEARCH_DELETED_RECORDS_ONLY = "deletedRecordsOnly";
+    public static final String SEARCH_INCLUDE_TEST_DATA = "includeTestData";
+    public static final String SEARCH_ACTIVE_RECORDS_ONLY = "activeRecordsOnly";
+    public static final String SEARCH_CHANGED_RECORDS_ONLY = "changedRecordsOnly";
+    public static final String SEARCH_INCLUDE_CUBE_DATA = "includeCubeData";
+    public static final String SEARCH_EXACT_MATCH_NAME = "exactMatchName";
+    public static final String SEARCH_CACHE_RESULT = "cacheResult";
 
     private static final String SYS_BOOTSTRAP = "sys.bootstrap";
     private static final String CLASSPATH_CUBE = "sys.classpath";
@@ -574,8 +575,8 @@ public class NCubeManager
     static List<NCubeInfoDto> getCubeRecordsFromDatabase(ApplicationID appId, String pattern, boolean activeOnly)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, activeOnly);
-        options.put(NCubeManager.CACHE_RESULT, true);
+        options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, activeOnly);
+        options.put(NCubeManager.SEARCH_CACHE_RESULT, true);
 
         return search(appId, pattern, null, options);
     }
@@ -599,7 +600,7 @@ public class NCubeManager
         Map<String, NCubeInfoDto> headMap = new TreeMap<>();
 
         Map searchChangedRecordOptions = new HashMap();
-        searchChangedRecordOptions.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+        searchChangedRecordOptions.put(NCubeManager.SEARCH_CHANGED_RECORDS_ONLY, true);
 
         List<NCubeInfoDto> branchList = search(appId, null, null, searchChangedRecordOptions);
         List<NCubeInfoDto> headList = getCubeRecordsFromDatabase(headAppId, null, false);
@@ -1324,7 +1325,7 @@ public class NCubeManager
 
         List<NCubeInfoDto> cubes = getPersister().search(appId, cubeNamePattern, content, options);
 
-        Boolean result = (Boolean)options.get(CACHE_RESULT);
+        Boolean result = (Boolean)options.get(SEARCH_CACHE_RESULT);
 
         if (result != null && result.booleanValue()) {
             cacheCubes(appId, cubes);

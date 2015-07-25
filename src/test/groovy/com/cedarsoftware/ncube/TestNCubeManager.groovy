@@ -112,7 +112,7 @@ class TestNCubeManager
         NCubeManager.updateTestData(appId, ncube.name, JsonWriter.objectToJson(coord))
         NCubeManager.updateNotes(appId, ncube.name, 'notes follow')
 
-        NCubeManager.search(appId, name1, null, [(NCubeManager.EXACT_MATCH_NAME) : true]);
+        NCubeManager.search(appId, name1, null, [(NCubeManager.SEARCH_EXACT_MATCH_NAME) : true]);
 
         ncube = NCubeBuilder.testNCube3D_Boolean
         String name2 = ncube.name
@@ -136,7 +136,7 @@ class TestNCubeManager
         NCubeManager.deleteCube(appId, name1, true, USER_ID)
         NCubeManager.deleteCube(appId, name2, true, USER_ID)
 
-        Map options = [(NCubeManager.ACTIVE_RECORDS_ONLY) : true, (NCubeManager.EXACT_MATCH_NAME) : true];
+        Map options = [(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY) : true, (NCubeManager.SEARCH_EXACT_MATCH_NAME) : true];
         Object[] cubeInfo = NCubeManager.search(appId, name1, null, options)
         assertEquals(0, cubeInfo.length)
         cubeInfo = NCubeManager.search(appId, name2, null, options)
@@ -1564,7 +1564,7 @@ class TestNCubeManager
     private static List<NCubeInfoDto> getDeletedCubesFromDatabase(ApplicationID appId, String pattern)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+        options.put(NCubeManager.SEARCH_DELETED_RECORDS_ONLY, true);
 
         return NCubeManager.search(appId, pattern, null, options);
     }

@@ -4,6 +4,9 @@ import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -24,8 +27,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import static java.lang.StrictMath.abs;
 
@@ -63,8 +64,8 @@ public class NCubeJdbcPersister
     NCubeInfoDto commitMergedCubeToBranch(Connection c, ApplicationID appId, NCube cube, String headSha1, String username)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
         try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cube.getName(), options))
         {
@@ -98,8 +99,8 @@ public class NCubeJdbcPersister
     NCubeInfoDto commitMergedCubeToHead(Connection c, ApplicationID appId, NCube cube, String username)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
         ApplicationID headAppId = appId.asHead();
 
@@ -326,9 +327,9 @@ public class NCubeJdbcPersister
     public void updateCube(Connection connection, ApplicationID appId, NCube cube, String username)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
         try (PreparedStatement stmt = createSelectCubesStatement(connection, appId, cube.getName(), options))
         {
@@ -442,7 +443,7 @@ public class NCubeJdbcPersister
 
         if (hasSearchPattern)
         {
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
         }
 
         try (PreparedStatement statement = createSelectCubesStatement(c, appId, cubeNamePattern, options))
@@ -524,12 +525,12 @@ public class NCubeJdbcPersister
      */
     PreparedStatement createSelectCubesStatement(Connection c, ApplicationID appId, String namePattern, Map options) throws SQLException
     {
-        boolean changedRecordsOnly = toBoolean(options.get(NCubeManager.CHANGED_RECORDS_ONLY), false);
-        boolean activeRecordsOnly = toBoolean(options.get(NCubeManager.ACTIVE_RECORDS_ONLY), false);
-        boolean deletedRecordsOnly = toBoolean(options.get(NCubeManager.DELETED_RECORDS_ONLY), false);
-        boolean includeCubeData = toBoolean(options.get(NCubeManager.INCLUDE_CUBE_DATA), false);
-        boolean includeTestData = toBoolean(options.get(NCubeManager.INCLUDE_TEST_DATA), false);
-        boolean exactMatchName = toBoolean(options.get(NCubeManager.EXACT_MATCH_NAME), false);
+        boolean changedRecordsOnly = toBoolean(options.get(NCubeManager.SEARCH_CHANGED_RECORDS_ONLY), false);
+        boolean activeRecordsOnly = toBoolean(options.get(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY), false);
+        boolean deletedRecordsOnly = toBoolean(options.get(NCubeManager.SEARCH_DELETED_RECORDS_ONLY), false);
+        boolean includeCubeData = toBoolean(options.get(NCubeManager.SEARCH_INCLUDE_CUBE_DATA), false);
+        boolean includeTestData = toBoolean(options.get(NCubeManager.SEARCH_INCLUDE_TEST_DATA), false);
+        boolean exactMatchName = toBoolean(options.get(NCubeManager.SEARCH_EXACT_MATCH_NAME), false);
 
         if (activeRecordsOnly && deletedRecordsOnly)
         {
@@ -609,21 +610,21 @@ public class NCubeJdbcPersister
     public List<NCubeInfoDto> getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, activeOnly);
+        options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, activeOnly);
         return search(c, appId, pattern, null, options);
     }
 
     public List<NCubeInfoDto> getChangedRecords(Connection c, ApplicationID appId)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.CHANGED_RECORDS_ONLY, true);
+        options.put(NCubeManager.SEARCH_CHANGED_RECORDS_ONLY, true);
         return search(c, appId, null, null, options);
     }
 
     public List<NCubeInfoDto> getDeletedCubeRecords(Connection c, ApplicationID appId, String pattern)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.DELETED_RECORDS_ONLY, true);
+        options.put(NCubeManager.SEARCH_DELETED_RECORDS_ONLY, true);
         return search(c, appId, pattern, null, options);
     }
 
@@ -749,10 +750,10 @@ public class NCubeJdbcPersister
     public NCube loadCube(Connection c, ApplicationID appId, String cubeName)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
-        options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+        options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
         try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
         {
@@ -826,9 +827,9 @@ public class NCubeJdbcPersister
     public void restoreCube(Connection c, ApplicationID appId, String cubeName, String username)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-        options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-        options.put(NCubeManager.EXACT_MATCH_NAME, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+        options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+        options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
         try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
         {
@@ -944,10 +945,10 @@ public class NCubeJdbcPersister
         else
         {
             Map options = new HashMap();
-            options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+            options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
             try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
             {
@@ -1064,8 +1065,8 @@ public class NCubeJdbcPersister
             ApplicationID headId = appId.asHead();
 
             Map options = new HashMap();
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
 
             try (PreparedStatement stmt = createSelectCubesStatement(c, headId, null, options))
             {
@@ -1205,9 +1206,9 @@ public class NCubeJdbcPersister
             ApplicationID releaseId = appId.asRelease();
 
             Map options = new HashMap();
-            options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
 
             try (PreparedStatement stmt = createSelectCubesStatement(c, releaseId, null, options))
             {
@@ -1383,9 +1384,9 @@ public class NCubeJdbcPersister
             long id = 0;
 
             Map options = new HashMap();
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
             try (PreparedStatement stmt = createSelectCubesStatement(c, appId, cubeName, options))
             {
@@ -1479,9 +1480,9 @@ public class NCubeJdbcPersister
             String headSha1 = null;
 
             Map options = new HashMap();
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
             try (PreparedStatement stmt = createSelectCubesStatement(c, headId, cubeName, options))
             {
@@ -1561,9 +1562,9 @@ public class NCubeJdbcPersister
             String sha1 = null;
 
             Map options = new HashMap();
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
             try (PreparedStatement originalStatement = createSelectCubesStatement(c, oldAppId, oldName, options))
             {
@@ -1688,9 +1689,9 @@ public class NCubeJdbcPersister
             byte[] oldTestData = null;
 
             Map options = new HashMap();
-            options.put(NCubeManager.INCLUDE_CUBE_DATA, true);
-            options.put(NCubeManager.INCLUDE_TEST_DATA, true);
-            options.put(NCubeManager.EXACT_MATCH_NAME, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_CUBE_DATA, true);
+            options.put(NCubeManager.SEARCH_INCLUDE_TEST_DATA, true);
+            options.put(NCubeManager.SEARCH_EXACT_MATCH_NAME, true);
 
             try (PreparedStatement stmt = createSelectCubesStatement(c, appId, oldName, options))
             {

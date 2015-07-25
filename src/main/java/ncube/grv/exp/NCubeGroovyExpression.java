@@ -8,6 +8,7 @@ import com.cedarsoftware.ncube.NCubeInfoDto;
 import com.cedarsoftware.ncube.NCubeManager;
 import com.cedarsoftware.ncube.exception.RuleJump;
 import com.cedarsoftware.ncube.exception.RuleStop;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,8 +80,8 @@ public class NCubeGroovyExpression
     public List<NCubeInfoDto> getCubeRecords(String pattern)
     {
         Map options = new HashMap();
-        options.put(NCubeManager.ACTIVE_RECORDS_ONLY, true);
-        options.put(NCubeManager.CACHE_RESULT, true);
+        options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
+        options.put(NCubeManager.SEARCH_CACHE_RESULT, true);
 
         return search(pattern, null, options);
     }

@@ -81,8 +81,6 @@ public class NCubeGroovyExpression
     {
         Map options = new HashMap();
         options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, true);
-        options.put(NCubeManager.SEARCH_CACHE_RESULT, true);
-
         return search(pattern, null, options);
     }
 

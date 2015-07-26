@@ -576,8 +576,6 @@ public class NCubeManager
     {
         Map options = new HashMap();
         options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, activeOnly);
-        options.put(NCubeManager.SEARCH_CACHE_RESULT, true);
-
         return search(appId, pattern, null, options);
     }
 
@@ -687,9 +685,18 @@ public class NCubeManager
 
             if (!cubeInfo.revision.startsWith("-"))
             {
-                if (!appCache.containsKey(key))
-                {
+                Object cachedItem = appCache.get(key);
+                if (cachedItem == null || cachedItem instanceof NCubeInfoDto)
+                {   // If cube not in cache or already in cache as infoDto, overwrite it
                     appCache.put(key, cubeInfo);
+                }
+                else if (cachedItem instanceof NCube)
+                {   // If cube is already cached, make sure the SHA1's match - if not, then cache the new cubeInfo
+                    NCube ncube = (NCube) cachedItem;
+                    if (!ncube.sha1().equals(cubeInfo.sha1))
+                    {
+                        appCache.put(key, cubeInfo);
+                    }
                 }
             }
         }
@@ -1327,7 +1334,8 @@ public class NCubeManager
 
         Boolean result = (Boolean)options.get(SEARCH_CACHE_RESULT);
 
-        if (result != null && result.booleanValue()) {
+        if (result == null || result)
+        {
             cacheCubes(appId, cubes);
         }
 

@@ -37,7 +37,7 @@ class HsqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
             s = c.createStatement()
             s.execute("CREATE TABLE n_cube ( " +
                     "n_cube_id bigint NOT NULL, " +
-                    "n_cube_nm VARCHAR(100) NOT NULL, " +
+                    "n_cube_nm VARCHAR(250) NOT NULL, " +
                     "tenant_cd CHAR(10) DEFAULT 'NONE', " +
                     "cube_value_bin varbinary(999999), " +
                     "create_dt TIMESTAMP NOT NULL, " +

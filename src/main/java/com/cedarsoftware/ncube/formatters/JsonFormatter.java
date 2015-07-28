@@ -12,7 +12,6 @@ import com.cedarsoftware.ncube.proximity.Point2D;
 import com.cedarsoftware.ncube.proximity.Point3D;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.io.JsonWriter;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringWriter;

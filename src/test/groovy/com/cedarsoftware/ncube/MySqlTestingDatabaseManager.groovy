@@ -42,7 +42,7 @@ class MySqlTestingDatabaseManager extends AbstractJdbcTestingDatabaseManager
 //            s.execute("drop table if exists ncube.n_cube");
 //            s.execute("CREATE TABLE if not exists n_cube (\n" +
 //                    "  n_cube_id bigint(20) NOT NULL,\n" +
-//                    "  n_cube_nm varchar(200) NOT NULL,\n" +
+//                    "  n_cube_nm varchar(250) NOT NULL,\n" +
 //                    "  tenant_cd char(10) CHARACTER SET ascii NOT NULL DEFAULT 'NONE',\n" +
 //                    "  cube_value_bin longblob,\n" +
 //                    "  create_dt timestamp NOT NULL,\n" +

@@ -11,10 +11,6 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.lang.GroovyClassLoader;
-import ncube.grv.method.NCubeGroovyController;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,6 +31,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import ncube.grv.method.NCubeGroovyController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * This class manages a list of NCubes.  This class is referenced
@@ -686,17 +685,9 @@ public class NCubeManager
             if (!cubeInfo.revision.startsWith("-"))
             {
                 Object cachedItem = appCache.get(key);
-                // cube not in cache already.
-                if (cachedItem == null)
-                {
+                if (cachedItem == null || cachedItem instanceof NCubeInfoDto)
+                {   // If cube not in cache or already in cache as infoDto, overwrite it
                     appCache.put(key, cubeInfo);
-                }
-                else if (cachedItem instanceof NCubeInfoDto)
-                {   // If cube is already cached, make sure the SHA1's match - if not, then cache the new cubeInfo
-                    NCubeInfoDto info = (NCubeInfoDto)cachedItem;
-                    if (!info.sha1.equals(cubeInfo.sha1)) {
-                        appCache.put(key, cubeInfo);
-                    }
                 }
                 else if (cachedItem instanceof NCube)
                 {   // If cube is already cached, make sure the SHA1's match - if not, then cache the new cubeInfo

@@ -686,9 +686,17 @@ public class NCubeManager
             if (!cubeInfo.revision.startsWith("-"))
             {
                 Object cachedItem = appCache.get(key);
-                if (cachedItem == null || cachedItem instanceof NCubeInfoDto)
-                {   // If cube not in cache or already in cache as infoDto, overwrite it
+                // cube not in cache already.
+                if (cachedItem == null)
+                {
                     appCache.put(key, cubeInfo);
+                }
+                else if (cachedItem instanceof NCubeInfoDto)
+                {   // If cube is already cached, make sure the SHA1's match - if not, then cache the new cubeInfo
+                    NCubeInfoDto info = (NCubeInfoDto)cachedItem;
+                    if (!info.sha1.equals(cubeInfo.sha1)) {
+                        appCache.put(key, cubeInfo);
+                    }
                 }
                 else if (cachedItem instanceof NCube)
                 {   // If cube is already cached, make sure the SHA1's match - if not, then cache the new cubeInfo

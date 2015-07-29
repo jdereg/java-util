@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.3.3</version>
+  <version>3.3.4</version>
 </dependency>
 ```
 Like **n-cube** and find it useful? Donate some **Bitcoin**: 1JWSwcE4YrFzxs1S9APiwK2j9S9sVeJVEW
@@ -95,6 +95,8 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 ___
 ### Version History
+* 3.3.4
+ * Fixed Oracle bug where name wasn't getting lowered correctly inside NCubeJdbcPersister
 * 3.3.3
  * Default n-cube (table) level value - the default value can be a Groovy lookup expression, specified by URL or value, cache / not cached, etc.  The same value types as a cell are supported. 
  * Consolidated persister APIs to use search.

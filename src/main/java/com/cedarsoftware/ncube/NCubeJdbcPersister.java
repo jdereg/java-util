@@ -4,9 +4,6 @@ import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -27,6 +24,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static java.lang.StrictMath.abs;
 
@@ -387,10 +386,10 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT revision_number FROM n_cube " +
-                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
+                        "WHERE " + buildNameCondition(c, "n_cube_nm") + " = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
                         "ORDER BY abs(revision_number) DESC"))
         {
-            stmt.setString(1, name);
+            stmt.setString(1, buildName(c, name));
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getStatus());
             stmt.setString(4, appId.getVersion());
@@ -414,10 +413,10 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT revision_number FROM n_cube " +
-                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
+                        "WHERE " + buildNameCondition(c, "n_cube_nm") + " = ? AND app_cd = ? AND status_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? " +
                         "ORDER BY abs(revision_number) ASC"))
         {
-            stmt.setString(1, cubeName);
+            stmt.setString(1, buildName(c, cubeName));
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getStatus());
             stmt.setString(4, appId.getVersion());
@@ -472,10 +471,10 @@ public class NCubeJdbcPersister
     {
         String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
                 "FROM n_cube " +
-                "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND sha1 = ?";
+                "WHERE " + buildNameCondition(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND sha1 = ?";
 
         PreparedStatement s = c.prepareStatement(sql);
-        s.setString(1, cubeName);
+        s.setString(1, buildName(c, cubeName));
         s.setString(2, appId.getApp());
         s.setString(3, appId.getVersion());
         s.setString(4, appId.getStatus());
@@ -490,10 +489,10 @@ public class NCubeJdbcPersister
     {
         String sql = "SELECT n_cube_id, n_cube_nm, app_cd, version_no_cd, status_cd, revision_number, branch_id, cube_value_bin, test_data_bin, notes_bin, changed, sha1, head_sha1, create_dt " +
                 "FROM n_cube " +
-                "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
+                "WHERE " + buildNameCondition(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
 
         PreparedStatement s = c.prepareStatement(sql);
-        s.setString(1, cubeName);
+        s.setString(1, buildName(c, cubeName));
         s.setString(2, appId.getApp());
         s.setString(3, appId.getVersion());
         s.setString(4, appId.getStatus());
@@ -539,7 +538,8 @@ public class NCubeJdbcPersister
 
         //  convert pattern will return null even if full pattern = '*', saying we don't need to do the like statement.
         //  That is why it is before the hasContentCheck.
-        namePattern = convertPattern(namePattern);
+
+        namePattern = convertPattern(buildName(c, namePattern));
         boolean hasNamePattern = StringUtilities.hasContent(namePattern);
 
         String nameCondition1 = "";
@@ -547,8 +547,8 @@ public class NCubeJdbcPersister
 
         if (hasNamePattern)
         {
-            nameCondition1 = " AND " + buildName(c, "n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
-            nameCondition2 = " AND " + buildName(c, "m.n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
+            nameCondition1 = " AND " + buildNameCondition(c, "n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
+            nameCondition2 = " AND " + buildNameCondition(c, "m.n_cube_nm") + (exactMatchName ? " = ?" : " LIKE ?");
         }
 
         String revisionCondition = activeRecordsOnly ? " AND n.revision_number >= 0" : deletedRecordsOnly ? " AND n.revision_number < 0" : "";
@@ -604,16 +604,6 @@ public class NCubeJdbcPersister
         return stmt;
     }
 
-    /**
-     * @deprecated Use search options instead of this api.
-     */
-    public List<NCubeInfoDto> getCubeRecords(Connection c, ApplicationID appId, String pattern, boolean activeOnly)
-    {
-        Map options = new HashMap();
-        options.put(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY, activeOnly);
-        return search(c, appId, pattern, null, options);
-    }
-
     public List<NCubeInfoDto> getChangedRecords(Connection c, ApplicationID appId)
     {
         Map options = new HashMap();
@@ -633,10 +623,10 @@ public class NCubeJdbcPersister
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT n_cube_id, n_cube_nm, notes_bin, version_no_cd, status_cd, app_cd, create_dt, create_hid, revision_number, branch_id, cube_value_bin, sha1, head_sha1, changed " +
                         "FROM n_cube " +
-                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ?" +
+                        "WHERE " + buildNameCondition(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ?" +
                         "ORDER BY abs(revision_number) DESC"))
         {
-            stmt.setString(1, cubeName);
+            stmt.setString(1, buildName(c, cubeName));
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
@@ -898,7 +888,7 @@ public class NCubeJdbcPersister
             throw new IllegalArgumentException("Could not rollback cube.  Cube was not found.  App:  " + appId + ", cube: " + cubeName);
         }
 
-        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ? AND " + buildName(c, "n_cube_nm") + " = ? AND revision_number <> ?";
+        String sql = "DELETE FROM n_cube WHERE app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND status_cd = ? AND branch_id = ? AND " + buildNameCondition(c, "n_cube_nm") + " = ? AND revision_number <> ?";
 
         try (PreparedStatement s = c.prepareStatement(sql))
         {
@@ -907,7 +897,7 @@ public class NCubeJdbcPersister
             s.setString(3, appId.getTenant());
             s.setString(4, appId.getStatus());
             s.setString(5, appId.getBranch());
-            s.setString(6, cubeName);
+            s.setString(6, buildName(c, cubeName));
             s.setLong(7, revision);
             return s.executeUpdate() > 0;
         }
@@ -924,12 +914,12 @@ public class NCubeJdbcPersister
     {
         if (allowDelete)
         {
-            String sql = "DELETE FROM n_cube WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
+            String sql = "DELETE FROM n_cube WHERE app_cd = ? AND " + buildNameCondition(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?";
 
             try (PreparedStatement ps = c.prepareStatement(sql))
             {
                 ps.setString(1, appId.getApp());
-                ps.setString(2, cubeName);
+                ps.setString(2, buildName(c, cubeName));
                 ps.setString(3, appId.getVersion());
                 ps.setString(4, appId.getTenant());
                 ps.setString(5, appId.getBranch());
@@ -996,13 +986,13 @@ public class NCubeJdbcPersister
             throw new IllegalArgumentException("Cannot update notes, cube: " + cubeName + " is deleted in app: " + appId);
         }
 
-        String statement = "UPDATE n_cube SET notes_bin = ? WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
+        String statement = "UPDATE n_cube SET notes_bin = ? WHERE app_cd = ? AND " + buildNameCondition(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?";
 
         try (PreparedStatement stmt = c.prepareStatement(statement))
         {
             stmt.setBytes(1, notes == null ? null : notes.getBytes("UTF-8"));
             stmt.setString(2, appId.getApp());
-            stmt.setString(3, cubeName);
+            stmt.setString(3, buildName(c, cubeName));
             stmt.setString(4, appId.getVersion());
             stmt.setString(5, appId.getTenant());
             stmt.setString(6, appId.getBranch());
@@ -1021,12 +1011,12 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT notes_bin FROM n_cube " +
-                        "WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "WHERE app_cd = ? AND " + buildNameCondition(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
                         "ORDER BY abs(revision_number) DESC"
         ))
         {
             stmt.setString(1, appId.getApp());
-            stmt.setString(2, cubeName);
+            stmt.setString(2, buildName(c, cubeName));
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
             stmt.setString(5, appId.getBranch());
@@ -1306,11 +1296,11 @@ public class NCubeJdbcPersister
     {
         try (PreparedStatement stmt = c.prepareStatement(
                 "SELECT test_data_bin FROM n_cube " +
-                        "WHERE " + buildName(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
+                        "WHERE " + buildNameCondition(c, "n_cube_nm") + " = ? AND app_cd = ? AND version_no_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ?" +
                         "ORDER BY abs(revision_number) DESC"
         ))
         {
-            stmt.setString(1, cubeName);
+            stmt.setString(1, buildName(c, cubeName));
             stmt.setString(2, appId.getApp());
             stmt.setString(3, appId.getVersion());
             stmt.setString(4, appId.getTenant());
@@ -1353,11 +1343,11 @@ public class NCubeJdbcPersister
 
         try (PreparedStatement stmt = c.prepareStatement(
                 "UPDATE n_cube SET test_data_bin=? " +
-                        "WHERE app_cd = ? AND " + buildName(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?"))
+                        "WHERE app_cd = ? AND " + buildNameCondition(c, "n_cube_nm") + " = ? AND version_no_cd = ? AND status_cd = ? AND tenant_cd = RPAD(?, 10, ' ') AND branch_id = ? AND revision_number = ?"))
         {
             stmt.setBytes(1, testData == null ? null : testData.getBytes("UTF-8"));
             stmt.setString(2, appId.getApp());
-            stmt.setString(3, cubeName);
+            stmt.setString(3, buildName(c, cubeName));
             stmt.setString(4, appId.getVersion());
             stmt.setString(5, ReleaseStatus.SNAPSHOT.name());
             stmt.setString(6, appId.getTenant());
@@ -2066,10 +2056,19 @@ public class NCubeJdbcPersister
         return changes;
     }
 
-    public String buildName(Connection c, String name)
+    public String buildNameCondition(Connection c, String name)
     {
         if (isOracle(c)) {
             return ("LOWER(" + name + ")");
+        }
+
+        return name;
+    }
+
+    public String buildName(Connection c, String name)
+    {
+        if (isOracle(c)) {
+            return name == null ? null : name.toLowerCase();
         }
 
         return name;

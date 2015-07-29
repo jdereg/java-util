@@ -564,6 +564,7 @@ class TestNCubeJdbcPersister
         when(c.prepareStatement(anyString())).thenReturn(ps).thenReturn(ps).thenReturn(ps).thenThrow(SQLException.class)
         when(ps.executeQuery()).thenReturn(rs)
         when(rs.next()).thenReturn(false)
+        mockDatabaseMetaData(c);
 
         try
         {
@@ -611,8 +612,10 @@ class TestNCubeJdbcPersister
         when(rs.getString("branch_id")).thenReturn("HEAD")
         when(rs.getTimestamp("create_dt")).thenReturn(new Timestamp(System.currentTimeMillis()));
         when(rs.getBytes("cube_value_bin")).thenReturn("[                                                     ".getBytes("UTF-8"))
+        mockDatabaseMetaData(c);
 
-        Object[] nCubes = new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, "", true)
+        Map options = [(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY): true]
+        Object[] nCubes = new NCubeJdbcPersister().search(c, defaultSnapshotApp, "", null, options)
         assertNotNull(nCubes)
         assertEquals(1, nCubes.length)     // Won't know it fails until getCube() is called.
     }
@@ -997,7 +1000,8 @@ class TestNCubeJdbcPersister
         Connection c = getConnectionThatThrowsSQLException()
         try
         {
-            new NCubeJdbcPersister().getCubeRecords(c, defaultSnapshotApp, null, true)
+            Map options = [(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY) : true]
+            new NCubeJdbcPersister().search(c, defaultSnapshotApp, null, null, options)
             fail()
         }
         catch (RuntimeException e)

@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
 	<artifactId>n-cube</artifactId>
     <packaging>jar</packaging>
-	<version>3.3.4-SNAPSHOT</version>
+	<version>3.3.4</version>
 	<description>n-cube Engine</description>
     <url>https://github.com/jdereg/n-cube</url>
     <profiles>
@@ -32,7 +32,7 @@
         <url>https://github.com/jdereg/n-cube</url>
         <connection>scm:git:git://github.com/jdereg/n-cube.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/n-cube.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>3.3.4.201507291519</tag>
     </scm>
 
     <developers>

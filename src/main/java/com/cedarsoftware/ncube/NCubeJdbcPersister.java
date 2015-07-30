@@ -4,6 +4,9 @@ import com.cedarsoftware.ncube.formatters.JsonFormatter;
 import com.cedarsoftware.util.IOUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UniqueIdGenerator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -24,8 +27,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import static java.lang.StrictMath.abs;
 
@@ -2076,22 +2077,23 @@ public class NCubeJdbcPersister
 
     public boolean isOracle(Connection c)
     {
-        Boolean tmp = oracle;
-        if (tmp == null) {
-            synchronized(this) {
-                tmp = oracle;
-                if (tmp == null) {
-                    try
-                    {
-                        tmp = Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
-                        oracle = tmp;
-                    } catch (SQLException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        }
-        return tmp;
+        return false;
+//        Boolean tmp = oracle;
+//        if (tmp == null) {
+//            synchronized(this) {
+//                tmp = oracle;
+//                if (tmp == null) {
+//                    try
+//                    {
+//                        tmp = Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
+//                        oracle = tmp;
+//                    } catch (SQLException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
+//            }
+//        }
+//        return tmp;
     }
 
 }

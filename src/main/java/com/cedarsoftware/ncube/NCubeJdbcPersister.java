@@ -59,8 +59,6 @@ public class NCubeJdbcPersister
     public static final String NOTES_BIN = "notes_bin";
     public static final String HEAD_SHA_1 = "head_sha1";
 
-    private volatile Boolean oracle;
-
     NCubeInfoDto commitMergedCubeToBranch(Connection c, ApplicationID appId, NCube cube, String headSha1, String username)
     {
         Map options = new HashMap();
@@ -2077,23 +2075,15 @@ public class NCubeJdbcPersister
 
     public boolean isOracle(Connection c)
     {
-        return false;
-//        Boolean tmp = oracle;
-//        if (tmp == null) {
-//            synchronized(this) {
-//                tmp = oracle;
-//                if (tmp == null) {
-//                    try
-//                    {
-//                        tmp = Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
-//                        oracle = tmp;
-//                    } catch (SQLException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                }
-//            }
-//        }
-//        return tmp;
+        try
+        {
+            return Regexes.isOraclePattern.matcher(c.getMetaData().getDriverName()).matches();
+        }
+        catch (SQLException e)
+        {
+            LOG.warn("Unable to fetch JDBC connection metadata", e);
+            return false;
+        }
     }
 
 }

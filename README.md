@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.3.5</version>
+  <version>3.3.6</version>
 </dependency>
 ```
 Like **n-cube** and find it useful? Donate some **Bitcoin**: 1JWSwcE4YrFzxs1S9APiwK2j9S9sVeJVEW
@@ -95,6 +95,8 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 ___
 ### Version History
+* 3.3.6
+ * Restored Oracle specific code to allow for case-insensivity when comparing n-cube names.
 * 3.3.5
  * Restore Oracle to it's default (case-sensitive) state.  This is temporary until the session-based case-insensitivity is introduced.
 * 3.3.4

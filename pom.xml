@@ -60,6 +60,7 @@
         <version.hsqldb>2.3.1</version.hsqldb>
         <version.oracle>11.2.0.3</version.oracle>
         <version.encog.core>3.3.0</version.encog.core>
+        <version.concurrent.linked.hashmap.lru>1.4.2</version.concurrent.linked.hashmap.lru>
         <version.plugin.compiler>3.2</version.plugin.compiler>
         <version.plugin.groovy.eclipse.compiler>2.9.2-01</version.plugin.groovy.eclipse.compiler>
         <version.plugin.groovy.eclipse.batch>2.4.3-01</version.plugin.groovy.eclipse.batch>
@@ -260,6 +261,12 @@
             <!--<version>${version.mysql.connector.java}</version>-->
             <!--<scope>test</scope>-->
         <!--</dependency>-->
+
+        <dependency>
+            <groupId>com.googlecode.concurrentlinkedhashmap</groupId>
+            <artifactId>concurrentlinkedhashmap-lru</artifactId>
+            <version>${version.concurrent.linked.hashmap.lru}</version>
+        </dependency>
 
 		<dependency>
 			<groupId>junit</groupId>

@@ -20,6 +20,7 @@ import com.cedarsoftware.util.io.JsonObject;
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import groovy.util.MapEntry;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -1519,6 +1520,8 @@ public class NCube<T>
                         optionalScopeKeys.add(axis.getName());
                     }
                 }
+
+                //TODO: Get any input.variable references from a DefaultCellValue that is a Command Cell
 
                 // Snag all input.variable references from CommandCells ('variable' is a potential required scope)
                 for (String key : getScopeKeysFromCommandCells(cube.cells))

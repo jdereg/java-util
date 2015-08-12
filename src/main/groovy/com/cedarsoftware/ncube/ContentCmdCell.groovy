@@ -120,6 +120,7 @@ abstract class ContentCmdCell extends UrlCommandCell
         try
         {
             actualUrl = getActualUrl(ctx)
+            HttpURLConnection.setFollowRedirects(true)
             URLConnection connection = actualUrl.openConnection()
             if (!(connection instanceof HttpURLConnection))
             {   // Handle a "file://" URL
@@ -137,7 +138,7 @@ abstract class ContentCmdCell extends UrlCommandCell
 
             setupRequestHeaders(conn, request)
             conn.connect()
-            transferToServer(conn, request)
+//            transferToServer(conn, request)
 
             int resCode = conn.responseCode
 
@@ -238,7 +239,10 @@ abstract class ContentCmdCell extends UrlCommandCell
             {
                 for (String s : entry.value)
                 {
-                    response.addHeader(entry.key, s)
+                    if (!"X-Frame-Options".equalsIgnoreCase(s))
+                    {
+                        response.addHeader(entry.key, s)
+                    }
                 }
             }
         }

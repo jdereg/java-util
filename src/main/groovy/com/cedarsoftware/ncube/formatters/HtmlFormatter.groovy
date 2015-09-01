@@ -1,6 +1,12 @@
 package com.cedarsoftware.ncube.formatters
 
-import com.cedarsoftware.ncube.*
+import com.cedarsoftware.ncube.Axis
+import com.cedarsoftware.ncube.AxisType
+import com.cedarsoftware.ncube.CellInfo
+import com.cedarsoftware.ncube.Column
+import com.cedarsoftware.ncube.CommandCell
+import com.cedarsoftware.ncube.GroovyBase
+import com.cedarsoftware.ncube.NCube
 import com.cedarsoftware.ncube.proximity.LatLon
 import com.cedarsoftware.ncube.proximity.Point2D
 import com.cedarsoftware.ncube.proximity.Point3D
@@ -264,7 +270,7 @@ public class HtmlFormatter implements NCubeFormatter
                     final String axisName = axis.name
                     long count = rowspanCounter[axisName]
 
-                    if (count == 0)
+                    if (count == 0L)
                     {
                         long colIdx = columnCounter[axisName]
                         final Column column = columns[axisName][(int)colIdx]
@@ -306,7 +312,7 @@ public class HtmlFormatter implements NCubeFormatter
                     // Keep replacing the column ID for the top row portion of the coordinate (Set of IDs)
                     colIds[topAxisName] = topColumns[i].id
                     // Other coordinate values are set above this for-loop
-                    buildCell(ncube, s, colIds.values(), h % 2 == 0)
+                    buildCell(ncube, s, colIds.values(), h % 2 == 0L)
                 }
 
                 s.append("</tr>\n")
@@ -323,23 +329,14 @@ public class HtmlFormatter implements NCubeFormatter
     {
         final boolean isCmd = column.value instanceof CommandCell
         final boolean isUrlCmd = isCmd && StringUtilities.hasContent(((CommandCell) column.value).url)
-        final boolean isInlineCmd = isCmd && !isUrlCmd
 
-        if (isInlineCmd)
+        if (isUrlCmd)
         {
-            s.append('<pre class="ncube-pre">')
-        }
-        else if (isUrlCmd)
-        {
-            s.append('<a class="cmd-url" href="#">')
+            s.append('<a href="#">')
         }
         addColumnPrefixText(s, column)
         s.append(column.default ? "Default" : column.toString())
-        if (isInlineCmd)
-        {
-            s.append("</pre>")
-        }
-        else if (isUrlCmd)
+        if (isUrlCmd)
         {
             s.append("</a>")
         }
@@ -362,6 +359,7 @@ font-family: "arial","helvetica", sans-serif;
 font-size: small;
 padding: 2px;
 }
+
 .td-ncube .th-ncube .th-ncube-top
 {
 border:1px solid lightgray;
@@ -369,82 +367,114 @@ font-family: "arial","helvetica", sans-serif;
 font-size: small;
 padding: 2px;
 }
+
 .td-ncube
 {
 color: black;
 background: white;
 text-align: center;
 }
+
 .th-ncube
 {
 color: white;
 font-weight: normal;
 }
+
 .th-ncube-top
 {
 color: white;
 text-align: center;
 font-weight: normal;
 }
+
 .td-ncube:hover { background: #E0F0FF }
 .th-ncube:hover { background: #A2A2A2 }
 .th-ncube-top:hover { background: #A2A2A2 }
+
 .ncube-num
 {
 text-align: right;
 }
+
 .ncube-dead
 {
 background: #6495ED;
 }
+
 .ncube-head
 {
 background: #4D4D4D;
 }
+
 .column
 {
 background: #929292;
+padding: 2px;
+margin: 2px;
+white-space: pre;
 }
+
 .column-code
 {
+text-align: left;
 vertical-align: top;
+font-family:menlo,"Lucida Console",monaco,monospace,courier;
 }
+
 .column-url
 {
-color: blue;
 text-align: left;
 vertical-align: top;
 }
+
+.hr-rule
+{
+margin:1px;
+border-style:dashed;
+border-color:darkgray;
+}
+
 .cell
 {
 color: black;
 background: white;
 text-align: center;
-vertical-align: middle
-}
-.cell-url
-{
-color: mediumblue;
-background: cornsilk;
-text-align: left;
-vertical-align: middle
-}
-.cell-code
-{
-background: white;
-text-align: left;
-vertical-align: top
-}
-.ncube-pre
-{
+vertical-align: middle;
+white-space: pre;
 padding: 2px;
 margin: 2px;
 word-break: normal;
 word-wrap: normal;
-border: 0;
-background: white;
 }
-.ncube-pre:hover { background: #E0F0FF }
+
+.cell-def
+{
+color:#ccc;
+}
+
+.cell-url
+{
+color: red;
+text-align: left;
+vertical-align: middle;
+}
+
+.cell-code
+{
+text-align: left;
+vertical-align: top;
+font-family:menlo,"Lucida Console",monaco,monospace,courier;
+}
+
+.cell-code-def
+{
+color:#ccc;
+text-align: left;
+vertical-align: top;
+font-family:menlo,"Lucida Console",monaco,monospace,courier;
+}
+
 .odd-row {
     background-color: #e0e0e0 !important;
 }
@@ -454,11 +484,11 @@ background: white;
 }
 
 .cell-selected {
-    background-color: lightblue !important;
+    background-color: #D0E0FF !important;
 }
 
 .cell-selected:hover {
-    background-color: lightskyblue !important;
+    background-color: #E0F0FF !important;
 }
 
 th.ncube-dead:hover {
@@ -466,7 +496,7 @@ th.ncube-dead:hover {
 }
 
 .th-ncube a, .th-ncube-top a {
-    color: lightskyblue;
+    color: #d0ffff;
 }
 
 .th-ncube > a:hover, .th-ncube-top > a:hover {
@@ -501,9 +531,9 @@ th.ncube-dead:hover {
             String name = (String)column.getMetaProperty("name")
             if (StringUtilities.hasContent(name))
             {
-                s.append("name: ")
+                s.append('name: ')
                 s.append(name)
-                s.append('<hr style="margin:1px"/>')
+                s.append('<hr class="hr-rule"/>')
             }
         }
     }
@@ -538,19 +568,13 @@ th.ncube-dead:hover {
                 final CommandCell cmd = (CommandCell) cell;
                 if (StringUtilities.hasContent(cmd.url))
                 {
-                    s.append('cell cell-url"><a class="cmd-url" href="#">')
+                    s.append('cell cell-url"><a href="#">')
                     s.append(cmd.url)
                     s.append("</a>")
                 }
-                else if (cmd instanceof GroovyBase)
-                {
-                    s.append('cell cell-code"><pre class="' + oddRow + 'ncube-pre">')
-                    s.append(getCellValueAsString(cell))
-                    s.append("</pre>")
-                }
                 else
                 {
-                    s.append('cell">')
+                    s.append('cell cell-code">')
                     s.append(getCellValueAsString(cell))
                 }
             }
@@ -562,7 +586,31 @@ th.ncube-dead:hover {
         }
         else
         {
-            s.append('cell">')
+            Object defVal = ncube.getDefaultCellValue()
+            if (defVal instanceof CommandCell)
+            {
+                final CommandCell cmd = (CommandCell) defVal;
+                if (StringUtilities.hasContent(cmd.url))
+                {
+                    s.append('cell cell-url"><a href="#">')
+                    s.append(cmd.url)
+                    s.append("</a>")
+                }
+                else
+                {
+                    s.append('cell cell-code-def">')
+                    s.append(getCellValueAsString(defVal))
+                }
+            }
+            else if (defVal)
+            {   // not null
+                s.append('cell cell-def">')
+                s.append(getCellValueAsString(defVal))
+            }
+            else
+            {
+                s.append('cell">')
+            }
         }
         s.append('</td>\n')
     }

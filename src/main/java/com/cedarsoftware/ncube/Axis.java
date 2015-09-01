@@ -508,7 +508,7 @@ public class Axis
         {   // Rule columns are added in 'occurrence' order
             if (column != defaultCol && hasDefaultColumn())
             {   // Insert right before default column at the end
-                columns.add(columns.size() - 1, column);
+                columns.add(Math.max(columns.size() - 1, 0), column);
             }
             else
             {

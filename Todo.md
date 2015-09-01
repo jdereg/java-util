@@ -33,9 +33,10 @@ n-cube 'ToDo' list
 
 
 ### n-cube editor (NCE)
-// TODO: Where does cell menu go? (for cut/copy/paste)
-// TODO: Implement optional keys (with minus sign support)
-// TODO: test all regex's related to finding referenced cubes
-// TODO: test CellInfo (in preparation for list, array, set, map)
-// TODO: create visualization of n-cube in NCE
-// TODO: Change to snap-in design (nearly complete)
+* TODO: Where does cell menu go? (for cut/copy/paste)
+* TODO: Implement optional keys (with minus sign support)
+* TODO: test all regex's related to finding referenced cubes
+* TODO: test CellInfo (in preparation for list, array, set, map)
+* TODO: create visualization of n-cube in NCE
+* TODO: Change to snap-in design (nearly complete)
+* TODO: Show table-level default cell is light-gray in HTML view so that viewer's can tell the cell will be returning the n-cube cell default.

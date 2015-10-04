@@ -37,13 +37,28 @@ Column getColumn(Comparable value, String axisName, String cubeName = ncube.name
     return getAxis(axisName, cubeName).findColumn(value)
 }
 
+def getRelativeCell(Map coord)
+{
+    return getCell(coord)
+}
+
+def getRelativeCubeCell(String cubeName, Map coord)
+{
+    return getCell(coord, cubeName)
+}
+
 def getCell(Map coord, String cubeName = ncube.name)
 {
     input.putAll(coord)
     return getCube(cubeName).getCell(input, output)
 }
 
-def getFixedCell(Map coord, String cubeName = ncube.name)
+def getFixedCell(Map coord)
+{
+    return getCube().getCell(coord, output)
+}
+
+def getFixedCubeCell(String cubeName, Map coord)
 {
     return getCube(cubeName).getCell(coord, output)
 }

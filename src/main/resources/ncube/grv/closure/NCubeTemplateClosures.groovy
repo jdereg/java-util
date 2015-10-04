@@ -8,106 +8,53 @@ import ncube.grv.method.*
 import com.cedarsoftware.util.*
 import com.cedarsoftware.util.io.*
 
-def getCube = { name -> return NCubeManager.getCube(ncube.applicationID, name) }
+NCube getCube(cubeName = ncube.name)
+{
+    if (cubeName == ncube.name)
+    {
+        return ncube
+    }
+    NCube cube = NCubeManager.getCube(ncube.applicationID, cubeName)
+    if (cube == null)
+    {
+        throw new IllegalArgumentException('n-cube: ' + cubeName + ', does not exist in application: ' + ncube.applicationID)
+    }
+    return cube
+}
 
-def getApplicationID = { return ncube.applicationID }
+Axis getAxis(String axisName, String cubeName = ncube.name)
+{
+    Axis axis = getCube(cubeName).getAxis(axisName)
+    if (axis == null)
+    {
+        throw new IllegalArgumentException('Axis: ' + axisName + ', does not exist on n-cube: ' + cubeName + ', appId: ' + ncube.applicationID)
+    }
+    return axis
+}
 
-def getCubeNames = { return NCubeManager.getCubeNames(ncube.applicationID) }
+Column getColumn(Comparable value, String axisName, String cubeName = ncube.name)
+{
+    return getAxis(axisName, cubeName).findColumn(value)
+}
 
-def getCubeRecords = { pattern -> return NCubeManager.search(ncube.applicationID, pattern, null, [(NCubeManager.SEARCH_ACTIVE_RECORDS_ONLY): true]) }
+def getCell(Map coord, String cubeName = ncube.name)
+{
+    input.putAll(coord)
+    return getCube(cubeName).getCell(input, output)
+}
 
-def search =
-        {  String namePattern, String textPattern, Map options ->
-            return NCubeManager.search(ncube.applicationID, namePattern, textPattern, options)
-        }
+def getFixedCell(Map coord, String cubeName = ncube.name)
+{
+    return getCube(cubeName).getCell(coord, output)
+}
 
-def getColumn =
-        { String axisName, Comparable value ->
-            Axis axis = ncube.getAxis(axisName)
-            if (axis == null)
-            {
-                throw new IllegalArgumentException('Axis: ' + axisName + ', does not exist on n-cube: ' + ncube.name + ', appId: ' + ncube.applicationID)
-            }
-            return axis.findColumn(value)
-        }
+def ruleStop()
+{
+    throw new RuleStop()
+}
 
-def getColumnExt =
-        { String cubeName, String axisName, Comparable value ->
-            NCube cube = NCubeManager.getCube(ncube.applicationID, cubeName)
-            if (cube == null)
-            {
-                throw new IllegalArgumentException('n-cube: ' + cubeName + ' does not exist in application: ' + ncube.applicationID)
-            }
-            Axis axis = cube.getAxis(axisName)
-            if (axis == null)
-            {
-                throw new IllegalArgumentException('Axis: ' + axisName + ', does not exist on n-cube: ' + cubeName + ', appId: ' + ncube.applicationID)
-            }
-            return axis.findColumn(value)
-        }
-
-def getAxis =
-        { String axisName ->
-            Axis axis = ncube.getAxis(axisName)
-            if (axis == null)
-            {
-                throw new IllegalArgumentException('Axis: ' + axisName + ' does not exist on n-cube: ' + ncube.name + ', appId: ' + ncube.applicationID)
-            }
-            return axis
-        }
-
-def getAxisExt =
-        { String cubeName, String axisName ->
-            NCube cube = NCubeManager.getCube(ncube.applicationID, cubeName)
-            if (cube == null)
-            {
-                throw new IllegalArgumentException('n-cube: ' + cubeName + ' does not exist in application: ' + ncube.applicationID)
-            }
-            Axis axis = cube.getAxis(axisName)
-            if (axis == null)
-            {
-                throw new IllegalArgumentException('Axis: ' + axisName + ' does not exist on n-cube: ' + cubeName + ', appId: ' + ncube.applicationID);
-            }
-            return axis;
-        }
-
-def runRuleCube = getRelativeCubeCell =
-        { cubeName, coord ->
-            input.putAll(coord)
-            def cube = NCubeManager.getCube(ncube.applicationID, cubeName)
-            if (cube == null)
-            {
-                throw new IllegalArgumentException('n-cube: ' + cubeName + ' does not exist in application: ' + ncube.applicationID + ', attempting relative reference(@) to cell: ' + coord.toString())
-            };
-            return cube.getCell(input, output)
-        }
-
-def getRelativeCell =
-        { coord ->
-            input.putAll(coord)
-            return ncube.getCell(input, output)
-        }
-
-def getFixedCubeCell =
-        { name, coord ->
-            def cube = NCubeManager.getCube(ncube.applicationID, name)
-            if (cube == null)
-            {
-                throw new IllegalArgumentException('n-cube: ' + name + ' does not exist in application: ' + ncube.applicationID + ', attempting fixed ($) reference to cell: ' + coord.toString())
-            };
-            return cube.getCell(coord, output)
-        }
-
-def getFixedCell = { coord -> return ncube.getCell(coord, output) }
-
-def ruleStop = { throw new RuleStop() }
-
-def jump =
-        { coord ->
-            input.putAll(coord)
-            throw new RuleJump(input)
-        }
-
-def now = { return System.nanoTime() }
-
-def elapsedMillis = { long begin, long end -> return (end - begin) / 1000000.0 }
+def jump(Map coord)
+{
+    input.putAll(coord);
+    throw new RuleJump(input)
+}

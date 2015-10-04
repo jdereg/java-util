@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube;
 
+import com.cedarsoftware.ncube.exception.TemplateException;
 import com.cedarsoftware.util.IOUtilities;
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
@@ -129,7 +130,7 @@ public class GroovyTemplate extends ContentCmdCell
             NCube ncube = getNCube(ctx);
             String errorMsg = "Error setting up Groovy template, NCube '" + ncube.getName() + "'";
             setErrorMessage(errorMsg + ", " + e.getMessage());
-            throw new RuntimeException(errorMsg, e);
+            throw new TemplateException(errorMsg, e);
         }
     }
 

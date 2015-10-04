@@ -69,26 +69,13 @@ public class GroovyExpression extends GroovyBase
         StringBuilder groovyCodeWithoutImportStatements = new StringBuilder();
         Set<String> imports = getImports(theirGroovy, groovyCodeWithoutImportStatements);
         StringBuilder groovy = new StringBuilder("package ncube.grv.exp\n");
-        groovy.append("import com.cedarsoftware.ncube.ApplicationID\n");
-        groovy.append("import com.cedarsoftware.ncube.Axis\n");
-        groovy.append("import com.cedarsoftware.ncube.AxisType\n");
-        groovy.append("import com.cedarsoftware.ncube.AxisValueType\n");
-        groovy.append("import com.cedarsoftware.ncube.CellInfo\n");
-        groovy.append("import com.cedarsoftware.ncube.CellTypes\n");
-        groovy.append("import com.cedarsoftware.ncube.Column\n");
-        groovy.append("import com.cedarsoftware.ncube.CommandCell\n");
-        groovy.append("import com.cedarsoftware.ncube.Delta\n");
-        groovy.append("import com.cedarsoftware.ncube.NCube\n");
-        groovy.append("import com.cedarsoftware.ncube.NCubeInfoDto\n");
-        groovy.append("import com.cedarsoftware.ncube.NCubeManager\n");
-        groovy.append("import com.cedarsoftware.ncube.Range\n");
-        groovy.append("import com.cedarsoftware.ncube.RangeSet\n");
-        groovy.append("import com.cedarsoftware.ncube.RuleMetaKeys\n");
-        groovy.append("import com.cedarsoftware.ncube.RuleInfo\n");
-        groovy.append("import com.cedarsoftware.ncube.UrlCommandCell\n");
+        groovy.append("import com.cedarsoftware.ncube.*\n");
         groovy.append("import com.cedarsoftware.ncube.exception.*\n");
+        groovy.append("import com.cedarsoftware.ncube.formatters.*\n");
         groovy.append("import com.cedarsoftware.ncube.proximity.*\n");
+        groovy.append("import com.cedarsoftware.ncube.util.*\n");
         groovy.append("import com.cedarsoftware.util.*\n");
+        groovy.append("import com.cedarsoftware.util.io.*\n");
 
         for (String importLine : imports)
         {

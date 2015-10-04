@@ -37,13 +37,13 @@ public interface Regexes
     Pattern valid2Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");
     Pattern valid3Doubles = Pattern.compile("^\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*,\\s*(\\-?\\d+(?:\\.\\d+)?)\\s*$");
 
-    static String invalidNames = "(?!\\b(?:Author|Autowired|Basic|Column|Configuration|Controller|ControllerClass|" +
+    String invalidNames = "(?!\\b(?:Author|Autowired|Basic|Column|Configuration|Controller|ControllerClass|" +
             "ControllerMethod|DiscriminatorValue|Documented|Entity|Enumerated|IdClass|InitBinder|Interface|" +
             "JoinColumns|JoinColumn|Overrride|ModelAttribute|PackageScope|PreAuthorize|RequestMapping|" +
             "RequestParam|Resource|Retention|SessionAttributes|SmartCacheCmd|SuppressFBWarnings|SuppressWarnings|" +
             "Table|Target|Temporal|XmlAnyElement|XStreamAlias)\\b.*)";
-    static String bracketMatch = "\\s*\\[.*?:.*?\\]\\s*";
-    static String varMatch = "[^)=]+";
+    String bracketMatch = "\\s*\\[.*?:.*?\\]";
+    String varMatch = "[^)=]+";
     Pattern groovyAbsRefCubeCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)[$]\\s*([" + NCube.validCubeNameChars + "]+)\\s*[(](" + bracketMatch + '|' + varMatch + ")[)]");
     Pattern groovyAbsRefCubeCellPatternA = Pattern.compile("([^a-zA-Z0-9_]|^)[$]\\s*([" + NCube.validCubeNameChars + "]+)\\s*(" + bracketMatch + ")");
     Pattern groovyAbsRefCellPattern =  Pattern.compile("([^a-zA-Z0-9_]|^)[$]\\s*[(](" + bracketMatch + '|' + varMatch + ")[)]");

@@ -55,4 +55,126 @@ class TestGroovyExpression
             assert msg.toLowerCase().contains('hi8')
         }
     }
+
+    @Test
+    void testSubstitutions()
+    {
+        NCube ncube = new NCube('test')
+        NCubeManager.addCube(ApplicationID.testAppId, ncube)
+        Axis axis = new Axis('day', AxisType.DISCRETE, AxisValueType.STRING, false)
+        axis.addColumn('mon')
+        axis.addColumn('tue')
+        axis.addColumn('wed')
+        axis.addColumn('thu')
+        axis.addColumn('fri')
+        axis.addColumn('sat')
+        axis.addColumn('sun')
+
+        ncube.addAxis(axis)
+        ncube.setApplicationID(ApplicationID.testAppId)
+
+        ncube.setCell(1, [day:'mon'])
+        ncube.setCell(2, [day:'tue'])
+        ncube.setCell(3, [day:'wed'])
+        ncube.setCell(4, [day:'thu'])
+        ncube.setCell(5, [day:'fri'])
+        ncube.setCell(6, [day:'sat'])
+        ncube.setCell(7, [day:'sun'])
+
+        parse(ncube,'''
+int ret = @[day:'mon']
+return ret
+''', 1)
+
+        parse(ncube,'''
+int ret = @[day:'mon'];
+return ret
+''', 1)
+
+        parse(ncube,'''
+int ret = $[day:'tue']
+return ret
+''', 2)
+
+        parse(ncube,'''
+int ret = $[day:'tue'];
+return ret
+''', 2)
+
+        parse(ncube,'''
+int ret = @test[day:'wed']
+return ret
+''', 3)
+
+        parse(ncube,'''
+int ret = @test[day:'wed'];
+return ret
+''', 3)
+
+        parse(ncube,'''
+int ret = $test[day:'thu']
+return ret
+''', 4)
+
+        parse(ncube,'''
+int ret = $test[day:'thu'];
+return ret
+''', 4)
+
+        // Map variable passed in as coordinate
+        parse(ncube,'''
+Map inp = [day:'mon']
+int ret = @(inp)
+return ret
+''', 1)
+
+        parse(ncube,'''
+Map inp = [day:'mon']
+int ret = @(inp);
+return ret
+''', 1)
+
+        parse(ncube,'''
+Map inp = [day:'tue']
+int ret = $(inp)
+return ret
+''', 2)
+
+        parse(ncube,'''
+Map inp = [day:'tue']
+int ret = $(inp);
+return ret
+''', 2)
+
+        parse(ncube,'''
+Map inp = [day:'wed']
+int ret = @test(inp)
+return ret
+''', 3)
+
+        parse(ncube,'''
+Map inp = [day:'wed']
+int ret = @test(inp);
+return ret
+''', 3)
+
+        parse(ncube,'''
+Map inp = [day:'thu']
+int ret = $test(inp)
+return ret
+''', 4)
+
+        parse(ncube,'''
+Map inp = [day:'thu']
+int ret = $test(inp);
+return ret
+''', 4)
+    }
+
+    private void parse(NCube ncube, String cmd, int val)
+    {
+        GroovyExpression exp = new GroovyExpression(cmd, null, false)
+        Map ctx = [input: [:], output: [:], ncube: ncube]
+        assert exp.execute(ctx) == val
+    }
 }

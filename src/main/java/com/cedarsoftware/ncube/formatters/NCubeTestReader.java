@@ -44,6 +44,10 @@ public class NCubeTestReader
     public static List<StringValuePair<CellInfo>> createCoord(JsonObject<String, Object> o)
     {
         List<StringValuePair<CellInfo>> list = new ArrayList<>();
+        if (o == null || o.getArray() == null)
+        {
+            return list;
+        }
 
         for (Object item : (o.getArray()))
         {
@@ -66,6 +70,10 @@ public class NCubeTestReader
 
     public static List<CellInfo> createAssertions(JsonObject o) {
         List<CellInfo> list = new ArrayList<>();
+        if (o == null || o.getArray() == null)
+        {
+            return list;
+        }
         for (Object item : o.getArray()) {
             list.add(createCellInfo((JsonObject)item));
         }

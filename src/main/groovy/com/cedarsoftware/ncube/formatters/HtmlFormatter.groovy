@@ -377,6 +377,8 @@ text-align: center;
 
 .th-ncube
 {
+padding-left: 4px !important;
+padding-right: 4px !important;
 color: white;
 font-weight: normal;
 }

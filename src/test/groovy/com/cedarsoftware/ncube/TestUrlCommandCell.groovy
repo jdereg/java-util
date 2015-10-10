@@ -180,7 +180,7 @@ class TestUrlCommandCell
         }
     }
 
-    @Ignore
+    @Test
     void testProxyFetchSocketTimeout()
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
@@ -201,7 +201,7 @@ class TestUrlCommandCell
         verify(response, times(1)).sendError(HttpServletResponse.SC_NOT_FOUND, 'File not found: http://www.cedarsoftware.com')
     }
 
-    @Ignore
+    @Test
     void testProxyFetchSocketTimeoutWithResponseSendErrorIssue()
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)

@@ -1,6 +1,7 @@
 package com.cedarsoftware.ncube.util
 
 import com.cedarsoftware.util.IOUtilities
+import org.junit.Ignore
 import org.junit.Test
 
 /**
@@ -22,7 +23,7 @@ import org.junit.Test
  */
 class TestRoutingCapabilities
 {
-    @Test
+    @Ignore
     void testNormalCase()
     {
         String url = "http://www.cedarsoftware.com/tests/ncube/CS415P6.TXT"

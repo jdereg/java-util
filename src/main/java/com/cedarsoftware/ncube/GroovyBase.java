@@ -7,6 +7,7 @@ import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyClassLoader;
+import groovy.lang.GroovySystem;
 import ncube.grv.exp.NCubeGroovyExpression;
 
 import java.lang.reflect.Constructor;
@@ -78,7 +79,18 @@ public abstract class GroovyBase extends UrlCommandCell
         }
 
         prepare(data, ctx);
-        return executeInternal(ctx);
+        Object result = executeInternal(ctx);
+        if (isCacheable())
+        {
+            // Remove the compiled class from Groovy's internal cache after executing it.
+            // This is because the cell is marked as cacheable, so there is no need to
+            // hold a reference to the compiled class.  Also remove our reference
+            // (runnableCode = null). Internally, the class, constructor, and run() method
+            // are not cached when the cell is marked cache:true.
+            GroovySystem.getMetaClassRegistry().removeMetaClass(getRunnableCode());
+            setRunnableCode(null);
+        }
+        return result;
     }
 
     protected abstract String buildGroovy(String theirGroovy);
@@ -160,7 +172,12 @@ public abstract class GroovyBase extends UrlCommandCell
         if (c == null)
         {
             c = getRunnableCode().getConstructor();
-            constructorMap.put(cmdHash, c);
+            if (!isCacheable())
+            {
+                // Do NOT cache the constructor when the entire cell value is cache:true, because
+                // the class is going to be dropped and the return value cached.
+                constructorMap.put(cmdHash, c);
+            }
         }
 
         // Step 2: Assign the input, output, and ncube pointers to the groovy cell instance.
@@ -179,7 +196,12 @@ public abstract class GroovyBase extends UrlCommandCell
         if (runMethod == null)
         {
             runMethod = getRunMethod();
-            runMethodMap.put(cmdHash, runMethod);
+            if (!isCacheable())
+            {
+                // Do NOT cache the run() method when the entire cell value is cache:true, because
+                // the class is going to be dropped and the return value cached.
+                runMethodMap.put(cmdHash, runMethod);
+            }
         }
 
         return invokeRunMethod(runMethod, instance, ctx);
@@ -196,7 +218,7 @@ public abstract class GroovyBase extends UrlCommandCell
     public void prepare(Object data, Map ctx)
     {
         if (getRunnableCode() != null)
-        {
+        {   // If the code for the cell has already been compiled, return the compiled class.
             return;
         }
 
@@ -205,7 +227,7 @@ public abstract class GroovyBase extends UrlCommandCell
         Map<String, Class> compiledMap = getCompiledClassesCache(cube.getApplicationID());
 
         if (compiledMap.containsKey(cmdHash))
-        {   // Already been compiled, re-use class
+        {   // Already been compiled, re-use class (different cell, but has identical source or URL as other expression).
             setRunnableCode(compiledMap.get(cmdHash));
             return;
         }
@@ -214,7 +236,10 @@ public abstract class GroovyBase extends UrlCommandCell
         {
             Class groovyCode = compile(ctx);
             setRunnableCode(groovyCode);
-            compiledMap.put(cmdHash, getRunnableCode());
+            if (!isCacheable())
+            {
+                compiledMap.put(cmdHash, getRunnableCode());
+            }
         }
         catch (Exception e)
         {
@@ -262,7 +287,8 @@ s    */
         {
             // If a class exists already with the same name as the groovy file (substituting slashes for dots),
             // then attempt to find and return that class without going through the resource location and parsing
-            // code.
+            // code. This can be useful, for example, if a build process pre-builds and load coverage enhanced
+            // versions of the classes.
             try
             {
                 String className = url.substring(0, url.indexOf(".groovy"));

@@ -3,6 +3,7 @@ package com.cedarsoftware.ncube
 import com.cedarsoftware.ncube.util.CdnRouter
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 
 import javax.servlet.http.HttpServletRequest
@@ -179,7 +180,7 @@ class TestUrlCommandCell
         }
     }
 
-    @Test
+    @Ignore
     void testProxyFetchSocketTimeout()
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)
@@ -200,7 +201,7 @@ class TestUrlCommandCell
         verify(response, times(1)).sendError(HttpServletResponse.SC_NOT_FOUND, 'File not found: http://www.cedarsoftware.com')
     }
 
-    @Test
+    @Ignore
     void testProxyFetchSocketTimeoutWithResponseSendErrorIssue()
     {
         UrlCommandCell cell = new StringUrlCmd('http://www.cedarsoftware.com', false)

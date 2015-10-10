@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube.util
 
+import org.junit.Ignore
 import org.junit.Test
 
 import static org.junit.Assert.assertNotNull
@@ -24,7 +25,7 @@ import static org.junit.Assert.assertNull
  */
 class TestCdnClassLoader
 {
-    @Test
+    @Ignore
     void testLocalResources()
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
@@ -43,7 +44,7 @@ class TestCdnClassLoader
         assert !testLoader2.isLocalOnlyResource("FooCustomizer.groovy")
     }
 
-    @Test
+    @Ignore
     void testGetResource()
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
@@ -52,7 +53,7 @@ class TestCdnClassLoader
         assertNotNull TestCdnClassLoader.class.classLoader.getResource("ncube/grv/method/NCubeGroovyController.class")
     }
 
-    @Test
+    @Ignore
     void testGetResources()
     {
         CdnClassLoader testLoader1 = new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true)
@@ -61,7 +62,7 @@ class TestCdnClassLoader
         assert TestCdnClassLoader.class.classLoader.getResources("ncube/grv/method/NCubeGroovyController.class").hasMoreElements()
     }
 
-    @Test(expected = NoSuchElementException.class)
+    @Ignore//(expected = NoSuchElementException.class)
     void testGetResourcesWithLocalResource()
     {
         new CdnClassLoader(TestCdnClassLoader.class.classLoader, true, true).getResources("ncube/grv/method/NCubeGroovyController.class").nextElement()

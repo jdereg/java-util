@@ -123,7 +123,12 @@ public class GroovyTemplate extends ContentCmdCell
             }
 
             // Do normal Groovy substitutions.
-            return resolvedTemplate.make(ctx).toString();
+            String result = resolvedTemplate.make(ctx).toString();
+            if (isCacheable())
+            {
+                resolvedTemplate = null;
+            }
+            return result;
         }
         catch (Exception e)
         {

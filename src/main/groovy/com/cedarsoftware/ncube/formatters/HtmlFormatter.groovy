@@ -335,7 +335,7 @@ public class HtmlFormatter implements NCubeFormatter
             s.append('<a href="#">')
         }
         addColumnPrefixText(s, column)
-        s.append(column.default ? "Default" : column.toString())
+        s.append(column.default ? "Default" : escapeHTML(column.toString()))
         if (isUrlCmd)
         {
             s.append("</a>")
@@ -577,13 +577,13 @@ th.ncube-dead:hover {
                 else
                 {
                     s.append('cell cell-code">')
-                    s.append(getCellValueAsString(cell))
+                    s.append(escapeHTML(getCellValueAsString(cell)))
                 }
             }
             else
             {
                 s.append('cell">')
-                s.append(getCellValueAsString(cell))
+                s.append(escapeHTML(getCellValueAsString(cell)))
             }
         }
         else
@@ -601,13 +601,13 @@ th.ncube-dead:hover {
                 else
                 {
                     s.append('cell cell-code-def">')
-                    s.append(getCellValueAsString(defVal))
+                    s.append(escapeHTML(getCellValueAsString(defVal)))
                 }
             }
             else if (defVal)
             {   // not null
                 s.append('cell cell-def">')
-                s.append(getCellValueAsString(defVal))
+                s.append(escapeHTML(getCellValueAsString(defVal)))
             }
             else
             {
@@ -675,7 +675,7 @@ th.ncube-dead:hover {
             for (int i = 0; i < len; i++)
             {
                 Object elem = Array.get(cellValue, i)
-                str.append(getCellValueAsString(elem))
+                str.append(escapeHTML(getCellValueAsString(elem)))
                 if (i < len1)
                 {
                     str.append(", ")
@@ -695,6 +695,28 @@ th.ncube-dead:hover {
                 throw new IllegalStateException("Error with simple JSON format", e)
             }
         }
+    }
+
+    static String escapeHTML(String s)
+    {
+        int len = s.length()
+        StringBuilder out = new StringBuilder(len)
+
+        for (int i = 0; i < len; i++)
+        {
+            char c = s.charAt(i)
+            if (c > 127 || c == ('"' as char) || c == ('<' as char) || c == ('>' as char) || c == ('&' as char))
+            {
+                out.append("&#")
+                out.append(c as int)
+                out.append(';')
+            }
+            else
+            {
+                out.append(c)
+            }
+        }
+        return out.toString()
     }
 
     private static String makeCellId(Collection<Long> colIds)

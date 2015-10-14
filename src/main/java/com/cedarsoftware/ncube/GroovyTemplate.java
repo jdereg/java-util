@@ -125,7 +125,8 @@ public class GroovyTemplate extends ContentCmdCell
             // Do normal Groovy substitutions.
             String result = resolvedTemplate.make(ctx).toString();
             if (isCacheable())
-            {
+            {   // No need to hold onto the template since cache:true on the cell, meaning that the substitution
+                // is only being done once.
                 resolvedTemplate = null;
             }
             return result;

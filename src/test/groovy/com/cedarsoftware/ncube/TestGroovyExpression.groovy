@@ -6,6 +6,8 @@ import org.junit.Test
 import java.lang.reflect.Constructor
 import java.lang.reflect.Modifier
 
+import static org.junit.Assert.fail
+
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br/>
@@ -39,7 +41,7 @@ class TestGroovyExpression
     void testCompilerErrorOutput()
     {
         NCube ncube = NCubeManager.getNCubeFromResource("GroovyExpCompileError.json")
-        Map coord = [state:'OH']
+        Map coord = [state: 'OH']
         Object x = ncube.getCell(coord)
         assert 'Hello, Ohio' == x
         coord.state = 'TX'
@@ -57,7 +59,7 @@ class TestGroovyExpression
     }
 
     @Test
-    void testSubstitutions()
+    void testRegexSubstitutions()
     {
         NCube ncube = new NCube('test')
         NCubeManager.addCube(ApplicationID.testAppId, ncube)
@@ -73,98 +75,98 @@ class TestGroovyExpression
         ncube.addAxis(axis)
         ncube.setApplicationID(ApplicationID.testAppId)
 
-        ncube.setCell(1, [day:'mon'])
-        ncube.setCell(2, [day:'tue'])
-        ncube.setCell(3, [day:'wed'])
-        ncube.setCell(4, [day:'thu'])
-        ncube.setCell(5, [day:'fri'])
-        ncube.setCell(6, [day:'sat'])
-        ncube.setCell(7, [day:'sun'])
+        ncube.setCell(1, [day: 'mon'])
+        ncube.setCell(2, [day: 'tue'])
+        ncube.setCell(3, [day: 'wed'])
+        ncube.setCell(4, [day: 'thu'])
+        ncube.setCell(5, [day: 'fri'])
+        ncube.setCell(6, [day: 'sat'])
+        ncube.setCell(7, [day: 'sun'])
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = @[day:'mon']
 return ret
 ''', 1)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = @[day:'mon'];
 return ret
 ''', 1)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = $[day:'tue']
 return ret
 ''', 2)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = $[day:'tue'];
 return ret
 ''', 2)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = @test[day:'wed']
 return ret
 ''', 3)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = @test[day:'wed'];
 return ret
 ''', 3)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = $test[day:'thu']
 return ret
 ''', 4)
 
-        parse(ncube,'''
+        parse(ncube, '''
 int ret = $test[day:'thu'];
 return ret
 ''', 4)
 
         // Map variable passed in as coordinate
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'mon']
 int ret = @(inp)
 return ret
 ''', 1)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'mon']
 int ret = @(inp);
 return ret
 ''', 1)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'tue']
 int ret = $(inp)
 return ret
 ''', 2)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'tue']
 int ret = $(inp);
 return ret
 ''', 2)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'wed']
 int ret = @test(inp)
 return ret
 ''', 3)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'wed']
 int ret = @test(inp);
 return ret
 ''', 3)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'thu']
 int ret = $test(inp)
 return ret
 ''', 4)
 
-        parse(ncube,'''
+        parse(ncube, '''
 Map inp = [day:'thu']
 int ret = $test(inp);
 return ret

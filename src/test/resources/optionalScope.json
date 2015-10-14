@@ -1,0 +1,22 @@
+{
+    "ncube":"optionalScope",
+    "defaultCellValue":"return 'I am from ' + input.state",
+    "defaultCellValueType":"exp",
+    "axes":[
+        {
+            "name":"test",
+            "type":"DISCRETE",
+            "valueType":"STRING",
+            "hasDefault":true,
+            "preferredOrder":0,
+            "columns":[
+            ]
+}
+    ],
+    "cells":[
+        { "id":[], "type":"string", "value":"" }
+    ]
+}
+
+
+

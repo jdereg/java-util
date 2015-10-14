@@ -357,8 +357,7 @@ public class NCube<T>
      */
     public boolean containsCell(final Map<String, Object> coordinate)
     {
-        Set<Long> cols = getCoordinateKey(validateCoordinate(coordinate, true));
-        return cells.containsKey(cols);
+        return containsCell(coordinate, false);
     }
 
     /**
@@ -898,10 +897,9 @@ public class NCube<T>
     }
 
     /**
-     * Flip Set<Long> (coordinate) to Set<Column>. The challenge is that the Set<Long> is allowed to leave
-     * out bindings for Axes that have default columns.  An optional Map<String, CellInfo> can be passed in,
-     * which is filled in with the required axes as keys -and- for each axis that is not a rule axis,
-     * a column value that would bind to that axis (specified as a CellInfo).
+     * Make sure the returned Set<Long> contains a column ID for each axis, even if the input set does
+     * not have a coordinate for an axis, but the axis has a default column (the default column's ID will
+     * be added to the returned Set).
      *
      * @throws IllegalArgumentException if not enough IDs are passed in, or an axis
      * cannot bind to any of the passed in IDs.
@@ -1085,14 +1083,17 @@ public class NCube<T>
     /**
      * @param coordinate Map containing Axis names as keys, and Comparable's as
      * values.  The coordinate key matches an axis name, and then the column on the
-     * axis is found that best matches the input coordinate value.
+     * axis is found that best matches the input coordinate value.  Use this when
+     * the input is expected to only match one value on an axis.  For example, for a
+     * RULE axis, the key name is the RULE axis name, and the value is the rule name
+     * to match.
      * @return a Set key in the form of Column1,Column2,...Column-n where the Columns
      * are the Columns along the axis that match the value associated to the key (axis
      * name) of the passed in input coordinate. The ordering is the order the axes are
      * stored within in NCube.  The returned Set is the 'key' of NCube's cells Map, which
      * maps a coordinate (Set of column pointers) to the cell value.
      */
-    private Set<Long> getCoordinateKey(final Map<String, Object> coordinate)
+    public Set<Long> getCoordinateKey(final Map<String, Object> coordinate)
     {
         final Set<Long> key = new LongHashSet();
 
@@ -1521,7 +1522,11 @@ public class NCube<T>
                     }
                 }
 
-                //TODO: Get any input.variable references from a DefaultCellValue that is a Command Cell
+                if (defaultCellValue instanceof CommandCell)
+                {
+                    CommandCell cmd = (CommandCell) defaultCellValue;
+                    cmd.getScopeKeys(optionalScopeKeys);
+                }
 
                 // Snag all input.variable references from CommandCells ('variable' is a potential required scope)
                 for (String key : getScopeKeysFromCommandCells(cube.cells))
@@ -1640,11 +1645,7 @@ public class NCube<T>
                 for (Column column : axis.getColumnsWithoutDefault())
                 {
                     CommandCell cmd = (CommandCell) column.getValue();
-                    Matcher m = Regexes.inputVar.matcher(cmd.getCmd());
-                    while (m.find())
-                    {
-                        scopeKeys.add(m.group(2));
-                    }
+                    cmd.getScopeKeys(scopeKeys);
                 }
             }
         }
@@ -1679,6 +1680,13 @@ public class NCube<T>
                     cmd.getCubeNamesFromCommandText(cubeNames);
                 }
             }
+        }
+
+        // If the DefaultCellValue references another n-cube, add it into the dependency list.
+        if (defaultCellValue instanceof CommandCell)
+        {
+            CommandCell cmd = (CommandCell) defaultCellValue;
+            cmd.getCubeNamesFromCommandText(cubeNames);
         }
         return cubeNames;
     }

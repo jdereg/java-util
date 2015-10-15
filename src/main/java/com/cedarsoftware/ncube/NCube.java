@@ -478,8 +478,17 @@ public class NCube<T>
     {
         final RuleInfo ruleInfo = getRuleInfo(output);
         Map<String, Object> input = validateCoordinate(coordinate, false);
-        boolean run = true;
         T lastStatementValue = null;
+
+        if (!hasRuleAxis())
+        {   // Perform fast bind and execute.
+            lastStatementValue = getCellById(getCoordinateKey(input), input, output);
+            ruleInfo.setLastExecutedStatementValue(lastStatementValue);
+            output.put("return", lastStatementValue);
+            return lastStatementValue;
+        }
+
+        boolean run = true;
         final List<Binding> bindings = ruleInfo.getAxisBindings();
         final int depth = executionStack.get().size();
         final int dimensions = getNumDimensions();
@@ -616,6 +625,21 @@ public class NCube<T>
             binding.setValue("[" + msg + "]");
             throw e;
         }
+    }
+
+    /**
+     * @return boolean true if there is at least one rule axis, false if there are no rule axes.
+     */
+    public boolean hasRuleAxis()
+    {
+        for (Axis axis : axisList.values())
+        {
+            if (axis.getType() == AxisType.RULE)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1114,10 +1138,6 @@ public class NCube<T>
     /**
      * Ensure that the Map coordinate dimensionality satisfies this nCube.
      * This method verifies that all axes are listed by name in the input coordinate.
-     * It should be noted that if the input coordinate contains the axis names with
-     * exact case match, this method performs much faster.  It must make a second
-     * pass through the axis list when the input coordinate axis names do not match
-     * the case of the axis.
      * @param coordinate Map input coordinate
      * @param ignoreDeclaredRequiredScope If this is true, then the requiredScopeKeys ncube
      *                                    metaProperty is ignored

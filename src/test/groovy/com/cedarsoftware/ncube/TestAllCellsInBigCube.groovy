@@ -76,7 +76,7 @@ class TestAllCellsInBigCube
                     }
                 }
             }
-
+            Map output = [:]
             for (int a = 1; a <= 11; a++)
             {
                 coord.axis0 = a - 1
@@ -92,7 +92,7 @@ class TestAllCellsInBigCube
                             for (long e = 1; e <= 11; e++)
                             {
                                 coord.axis4 = e - 1
-                                long v = ncube.getCell(coord)
+                                long v = ncube.getCell(coord, output)
                                 assertTrue(v == a * b * c * d * e)
                             }
                         }

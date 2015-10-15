@@ -195,6 +195,11 @@ public class NCubeManager
         return prepareCube(ncube);
     }
 
+    public static void deleteCubes(String appName)
+    {
+        getPersister().deleteCubes(appName);
+    }
+
     /**
      * Fetch a specific revision n-cube by name from the given ApplicationID.
      * The answer is not cached.

@@ -36,6 +36,19 @@ public class NCubeJdbcPersisterAdapter implements NCubePersister
         connectionProvider = provider;
     }
 
+    public boolean deleteCubes(String appName)
+    {
+        Connection c = connectionProvider.getConnection();
+        try
+        {
+            return persister.deleteCubes(c, appName);
+        }
+        finally
+        {
+            connectionProvider.releaseConnection(c);
+        }
+    }
+
     public void updateCube(ApplicationID appId, NCube cube, String username)
     {
         Connection c = connectionProvider.getConnection();

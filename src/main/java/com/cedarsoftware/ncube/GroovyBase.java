@@ -9,6 +9,8 @@ import com.cedarsoftware.util.UrlUtilities;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovySystem;
 import ncube.grv.exp.NCubeGroovyExpression;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -41,6 +43,7 @@ import java.util.regex.Matcher;
  */
 public abstract class GroovyBase extends UrlCommandCell
 {
+    private static final Logger LOG = LogManager.getLogger(GroovyBase.class);
     protected transient String cmdHash;
     private volatile transient Class runnableCode = null;
     static final ConcurrentMap<ApplicationID, ConcurrentMap<String, Class>>  compiledClasses = new ConcurrentHashMap<>();
@@ -87,9 +90,18 @@ public abstract class GroovyBase extends UrlCommandCell
             // hold a reference to the compiled class.  Also remove our reference
             // (runnableCode = null). Internally, the class, constructor, and run() method
             // are not cached when the cell is marked cache:true.
-            GroovyClassLoader gcl = (GroovyClassLoader) getRunnableCode().getClassLoader();
+            GroovyClassLoader gcl = (GroovyClassLoader) getRunnableCode().getClassLoader().getParent();
             GroovySystem.getMetaClassRegistry().removeMetaClass(getRunnableCode());
-            gcl.clearCache();   // remove cached reference to compiled class (necessary)
+            try
+            {
+                Method remove = gcl.getClass().getDeclaredMethod("removeClassCacheEntry", String.class);
+                remove.setAccessible(true);
+                remove.invoke(gcl, getRunnableCode().getName());
+            }
+            catch (Exception e)
+            {
+                LOG.warn("Unabled to remove cached GroovyExpression from GroovyClassLoader", e);
+            }
             setRunnableCode(null);
         }
         return result;

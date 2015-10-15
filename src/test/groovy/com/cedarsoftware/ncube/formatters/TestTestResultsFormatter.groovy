@@ -50,18 +50,11 @@ class TestTestResultsFormatter
         NCube<String> ncube = NCubeManager.getNCubeFromResource(ApplicationID.testAppId, 'idNoValue.json')
         def coord = [age:18, state:'OH']
         def output = [:]
-        ncube.getCell coord, output
+        ncube.getCell(coord, output)
         String s = new TestResultsFormatter(output).format()
-        assert s.contains('idNoValue')
-        assert s.contains('Age: 18')
-        assert s.contains('State: OH')
-        assert s.contains('value = 18 OH')
-        assert s.contains('Assertions')
+        assert s.contains('18 OH')
         assert s.contains('No assertion failures')
-        assert s.contains('Output Map')
         assert s.contains('No output')
-        assert s.contains('System.out')
-        assert s.contains('System.err')
     }
 
     @Test
@@ -79,18 +72,11 @@ class TestTestResultsFormatter
         ruleInfo.setAssertionFailures(assertionFailures)
 
         String s = new TestResultsFormatter(output).format()
-        assert s.contains('idNoValue')
-        assert s.contains('Age: 18')
-        assert s.contains('State: OH')
-        assert s.contains('value = 18 OH')
-        assert s.contains('Assertions')
+        assert s.contains('18 OH')
         assert s.contains('[some assertion happened]')
-        assert s.contains('Output Map')
         assert s.contains('foo.name = John')
         assert s.contains('foo.age = 56')
         assert s.contains('return = 18 OH')
-        assert s.contains('System.out')
-        assert s.contains('System.err')
     }
 
     @Test

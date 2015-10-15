@@ -1,5 +1,6 @@
 package com.cedarsoftware.ncube
 
+import ncube.grv.exp.NCubeGroovyExpression
 import org.junit.Assert
 import org.junit.Test
 
@@ -178,5 +179,37 @@ return ret
         GroovyExpression exp = new GroovyExpression(cmd, null, false)
         Map ctx = [input: [:], output: [:], ncube: ncube]
         assert exp.execute(ctx) == val
+    }
+
+    @Test
+    void testCachedExpressionClassIsGarbageCollected()
+    {
+        NCube ncube = new NCube('test')
+        NCubeManager.addCube(ApplicationID.testAppId, ncube)
+        Axis axis = new Axis('day', AxisType.DISCRETE, AxisValueType.STRING, false)
+        axis.addColumn('mon')
+        axis.addColumn('tue')
+
+        ncube.addAxis(axis)
+        ncube.setApplicationID(ApplicationID.testAppId)
+
+        ncube.setCell(new GroovyExpression("return 'hello'", null, false), [day:'mon'])
+        assert 'hello' == ncube.getCell([day:'mon'])
+        ncube.setCell(new GroovyExpression("return 'world'", null, true), [day:'tue'])
+        assert 'world' == ncube.getCell([day:'tue'])
+
+        assert 'hello' == ncube.getCell([day:'mon'])
+        assert 'world' == ncube.getCell([day:'tue'])
+
+        GroovyExpression exp = ncube.getCellByIdNoExecute(ncube.getCoordinateKey([day:'mon']))
+        assert exp.cmd == "return 'hello'"
+        assert exp.cacheable == false
+        assert exp.getRunnableCode() != null
+        assert NCubeGroovyExpression.class.isAssignableFrom(exp.getRunnableCode())
+
+        exp = ncube.getCellByIdNoExecute(ncube.getCoordinateKey([day:'tue']))
+        assert exp.cmd == "return 'world'"
+        assert exp.cacheable == true
+        assert exp.getRunnableCode() == null
     }
 }

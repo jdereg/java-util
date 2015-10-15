@@ -6,7 +6,7 @@ n-cube is a Rules Engine, Decision Table, Decision Tree, Templating Engine, CDN 
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>n-cube</artifactId>
-  <version>3.3.6</version>
+  <version>3.3.8</version>
 </dependency>
 ```
 Like **n-cube** and find it useful? Donate some **Bitcoin**: 1MJFgxTVFZZ3EkmdPabsQ5UremUg2HHPe7
@@ -95,6 +95,12 @@ innovative and intelligent tools for profiling Java and .NET applications.
 ![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")
 ___
 ### Version History
+* 3.3.7
+ * GroovyExpression clears compiled class when cache=true (as it will only be used once).  Useful for cells containing expressions that returns Lists or Maps of data.
+ * Added a small amount of padding to left and right side of column headers in the generated HTML.
+ * Template API - increased APIs available to code running in Groovy Template replacement sections, e.g. ${ code } and <% code %>.  APIs for getCube(), getAxis(), getColumn() as well as all Cedar Software APIs are imported so they do not need to be imported or qualified in your code. 
+ * Bug fix: When an expression ended with '@foo[:]' and had another line of code below it, the preprocessor code dropped the newline causing this code not to compile.  The only work around was to add a semi-colon for the line.  This has been fixed.
+ * Bug fix: ContentCommandCell now sets followRedirects flag (honors HTTP 301 / HTTP 302 redirect requests).
 * 3.3.6
  * Restored Oracle specific code to allow for case-insensivity when comparing n-cube names.
 * 3.3.5

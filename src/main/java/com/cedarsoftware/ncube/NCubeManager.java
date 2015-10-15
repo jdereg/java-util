@@ -195,7 +195,7 @@ public class NCubeManager
         return prepareCube(ncube);
     }
 
-    public static void deleteCubes(String appName)
+    static void deleteCubes(String appName)
     {
         getPersister().deleteCubes(appName);
     }

@@ -10,7 +10,7 @@ To include in your project:
   <version>1.19.3</version>
 </dependency>
 ```
-Like **java-util** and find it useful? Donate some **Bitcoin**: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
+Like **java-util** and find it useful? **Tip** bitcoin: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
 
 Also, check out json-io at https://github.com/jdereg/json-io
 

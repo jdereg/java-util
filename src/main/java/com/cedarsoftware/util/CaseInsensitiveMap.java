@@ -1,14 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -80,10 +72,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         if (key instanceof String)
         {    // Must remove entry because the key case can change
             final CaseInsensitiveString newKey = new CaseInsensitiveString((String) key);
-            if (map.containsKey(newKey))
-            {
-                map.remove(newKey);
-            }
+            map.remove(newKey);
             return map.put((K) newKey, value);
         }
         return map.put(key, value);

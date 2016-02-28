@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ReflectionUtils
 {
-    private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<Class, Collection<Field>>();
+    private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<>();
 
     private ReflectionUtils()
     {
@@ -47,8 +47,8 @@ public final class ReflectionUtils
      */
     public static Annotation getClassAnnotation(final Class classToCheck, final Class annoClass)
     {
-        final Set<Class> visited = new HashSet<Class>();
-        final LinkedList<Class> stack = new LinkedList<Class>();
+        final Set<Class> visited = new HashSet<>();
+        final LinkedList<Class> stack = new LinkedList<>();
         stack.add(classToCheck);
 
         while (!stack.isEmpty())
@@ -80,8 +80,8 @@ public final class ReflectionUtils
 
     public static Annotation getMethodAnnotation(final Method method, final Class annoClass)
     {
-        final Set<Class> visited = new HashSet<Class>();
-        final LinkedList<Class> stack = new LinkedList<Class>();
+        final Set<Class> visited = new HashSet<>();
+        final LinkedList<Class> stack = new LinkedList<>();
         stack.add(method.getDeclaringClass());
 
         while (!stack.isEmpty())

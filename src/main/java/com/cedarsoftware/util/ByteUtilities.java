@@ -86,7 +86,7 @@ public final class ByteUtilities
 	 */
 	private static char convertDigit(final int value)
 	{
-		return _hex[(value & 0x0f)];
+		return _hex[value & 0x0f];
 	}
 
 	/**

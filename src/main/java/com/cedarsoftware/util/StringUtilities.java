@@ -164,7 +164,7 @@ public final class StringUtilities
      */
     private static char convertDigit(int value)
     {
-        return _hex[(value & 0x0f)];
+        return _hex[value & 0x0f];
     }
 
     public static int count(String s, char c)

@@ -3,11 +3,13 @@ package com.cedarsoftware.util;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -154,8 +156,8 @@ public class EncryptionUtilities
 
     public static byte[] createCipherBytes(String key, int bitsNeeded)
     {
-        String word = calculateMD5Hash(key.getBytes());
-        return word.substring(0, bitsNeeded / 8).getBytes();
+        String word = calculateMD5Hash(key.getBytes(StandardCharsets.UTF_8));
+        return word.substring(0, bitsNeeded / 8).getBytes(StandardCharsets.UTF_8);
     }
 
     public static Cipher createAesEncryptionCipher(String key) throws Exception
@@ -200,7 +202,7 @@ public class EncryptionUtilities
     {
         try
         {
-            return ByteUtilities.encode(createAesEncryptionCipher(key).doFinal(content.getBytes()));
+            return ByteUtilities.encode(createAesEncryptionCipher(key).doFinal(content.getBytes(StandardCharsets.UTF_8)));
         }
         catch (Exception e)
         {

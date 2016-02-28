@@ -99,17 +99,11 @@ public final class IOUtilities
     }
 
     public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception
-    {
-        OutputStream out = null;
-        try
-        {
-            out = new BufferedOutputStream(new FileOutputStream(f));
+    {        
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(f)))
+        {            
             transfer(s, out, cb);
-        }
-        finally
-        {
-            close(out);
-        }
+        }        
     }
 
     /**
@@ -171,17 +165,14 @@ public final class IOUtilities
     }
 
     public static void transfer(File file, OutputStream out) throws IOException
-    {
-        InputStream in = null;
-        try
-        {
-            in = new BufferedInputStream(new FileInputStream(file), TRANSFER_BUFFER);
+    {        
+        try (InputStream in = new BufferedInputStream(new FileInputStream(file), TRANSFER_BUFFER))
+        {            
             transfer(in, out);
         }
         finally
         {
             flush(out);
-            close(in);
         }
     }
 
@@ -271,13 +262,9 @@ public final class IOUtilities
      * @param bytes the bytes to send
      * @throws IOException
      */
-    public static void transfer(URLConnection c, byte[] bytes) throws IOException {
-        OutputStream out = null;
-        try {
-            out = new BufferedOutputStream(c.getOutputStream());
+    public static void transfer(URLConnection c, byte[] bytes) throws IOException {        
+        try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {            
             out.write(bytes);
-        } finally {
-            close(out);
         }
     }
 

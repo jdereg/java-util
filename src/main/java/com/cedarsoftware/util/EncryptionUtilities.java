@@ -46,21 +46,15 @@ public class EncryptionUtilities
      * @return String MD5 value.
      */
     public static String fastMD5(File file)
-    {
-        FileInputStream in = null;
-        try
-        {
-            in = new FileInputStream(file);
+    {        
+        try (FileInputStream in = new FileInputStream(file))
+        {            
             return calculateMD5Hash(in.getChannel());
         }
         catch (IOException e)
         {
             return null;
-        }
-        finally
-        {
-            IOUtilities.close(in);
-        }
+        }        
     }
 
     public static String calculateMD5Hash(FileChannel ch) throws IOException

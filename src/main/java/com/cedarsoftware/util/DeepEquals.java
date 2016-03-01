@@ -184,16 +184,14 @@ public class DeepEquals
                 return false;
             }
 
-            if (dualKey._key1 instanceof Double)
+            if (dualKey._key1 instanceof Double && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
             {
-            	if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
-            		continue;
+                continue;
             }
 
-            if (dualKey._key1 instanceof Float)
+            if (dualKey._key1 instanceof Float && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))
             {
-                if (compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))
-                    continue;
+                continue;
             }
 
             // Handle all [] types.  In order to be equal, the arrays must be the same

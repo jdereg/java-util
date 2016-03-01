@@ -66,8 +66,8 @@ import java.util.regex.Pattern;
  */
 public final class UrlUtilities
 {
-    public static String globalUserAgent = null;
-    public static String globalReferrer = null;
+    private static String globalUserAgent = null;
+    private static String globalReferrer = null;
     public static final ThreadLocal<String> userAgent = new ThreadLocal<>();
     public static final ThreadLocal<String> referrer = new ThreadLocal<>();
     public static final String SET_COOKIE = "Set-Cookie";
@@ -108,7 +108,7 @@ public final class UrlUtilities
         }
     };
 
-    public static SSLSocketFactory naiveSSLSocketFactory;
+    protected static SSLSocketFactory naiveSSLSocketFactory;
 
     static
     {

@@ -57,7 +57,7 @@ import java.net.HttpURLConnection;
  */
 public class UrlInvocationHandler implements InvocationHandler
 {
-    public static int SLEEP_TIME = 5000;
+    public static final int SLEEP_TIME = 5000;
     private final Logger LOG = LogManager.getLogger(UrlInvocationHandler.class);
     private final UrlInvocationHandlerStrategy _strategy;
 

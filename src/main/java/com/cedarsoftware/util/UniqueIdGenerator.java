@@ -31,6 +31,8 @@ import java.util.Map;
  */
 public class UniqueIdGenerator
 {
+    private UniqueIdGenerator () {}
+    
     private static int count = 0;
     private static final int lastIp;
     private static final Map<Long, Long> lastId = new LinkedHashMap<Long, Long>()

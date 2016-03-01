@@ -50,6 +50,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DeepEquals
 {
+    private DeepEquals () {}
+    
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<>();
     private static final double doubleEplison = 1e-15;

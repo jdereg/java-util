@@ -31,22 +31,22 @@ public class CaseInsensitiveSet<E> implements Set<E>
 {
     private final CaseInsensitiveMap<E, Object> map;
 
-    public CaseInsensitiveSet() { map = new CaseInsensitiveMap<E, Object>(); }
+    public CaseInsensitiveSet() { map = new CaseInsensitiveMap<>(); }
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        map = new CaseInsensitiveMap<E, Object>(collection.size());
+        map = new CaseInsensitiveMap<>(collection.size());
         addAll(collection);
     }
 
     public CaseInsensitiveSet(int initialCapacity)
     {
-        map = new CaseInsensitiveMap<E, Object>(initialCapacity);
+        map = new CaseInsensitiveMap<>(initialCapacity);
     }
 
     public CaseInsensitiveSet(int initialCapacity, float loadFactor)
     {
-        map = new CaseInsensitiveMap<E, Object>(initialCapacity, loadFactor);
+        map = new CaseInsensitiveMap<>(initialCapacity, loadFactor);
     }
 
     public int hashCode()

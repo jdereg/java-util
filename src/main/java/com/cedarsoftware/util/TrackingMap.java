@@ -5,31 +5,59 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class UsageTrackingMap<K, V> implements Map<K, V> {
+/**
+ * TrackingMap
+ *
+ * @author Sean Kellner
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
+ */
+public class TrackingMap<K, V> implements Map<K, V> {
     private final Map<K, V> internalMap;
-    private Set<Object> readKeys;
+    private final Set<K> readKeys;
 
-    public UsageTrackingMap(Map<K, V> map) {
-        internalMap = map; //TODO What to do when input map is null?
+    public TrackingMap(Map<K, V> map) {
+        if (map == null)
+        {
+            throw new IllegalArgumentException("Cannot construct a TrackingMap() with null");
+        }
+        internalMap = map;
         readKeys = new HashSet<>();
     }
 
     public V get(Object key) {
         V value = internalMap.get(key);
         if (value != null) {
-            readKeys.add(key);
+            readKeys.add((K)key);
         }
         return value;
     }
 
-    public V put(K key, V value) {
+    public V put(K key, V value)
+    {
+        if (internalMap.containsKey(key))
+        {   // Overwrite case - if value is overwritten at same key, count that as a direct map key access.
+            readKeys.add(key);
+        }
         return internalMap.put(key, value);
     }
 
     public boolean containsKey(Object key) {
         boolean containsKey = internalMap.containsKey(key);
         if (containsKey) {
-            readKeys.add(key);
+            readKeys.add((K)key);
         }
         return containsKey;
     }
@@ -52,14 +80,11 @@ public class UsageTrackingMap<K, V> implements Map<K, V> {
     }
 
     public boolean equals(Object other) {
-        return other instanceof UsageTrackingMap && internalMap.equals(((UsageTrackingMap) other).internalMap);
+        return other instanceof Map && internalMap.equals(other);
     }
 
-    @Override
     public int hashCode() {
-        int result = internalMap != null ? internalMap.hashCode() : 0;
-        result = 31 * result + (readKeys != null ? readKeys.hashCode() : 0);
-        return result;
+        return internalMap.hashCode();
     }
 
     public String toString() {
@@ -91,11 +116,13 @@ public class UsageTrackingMap<K, V> implements Map<K, V> {
         internalMap.keySet().retainAll(readKeys);
     }
 
-    public void informAdditionalUsage(Set<?> additional) {
+    public void informAdditionalUsage(Set<K> additional) {
         readKeys.addAll(additional);
     }
 
-    public void informAdditionalUsage(UsageTrackingMap<K, V> additional) {
+    public void informAdditionalUsage(TrackingMap<K, V> additional) {
         readKeys.addAll(additional.readKeys);
     }
+
+    public Set<K> keysUsed() { return readKeys; }
 }

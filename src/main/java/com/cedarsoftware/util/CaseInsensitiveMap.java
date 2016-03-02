@@ -1,7 +1,14 @@
 package com.cedarsoftware.util;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Useful Map that does not care about the case-sensitivity of keys
@@ -566,7 +573,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     private static final class CaseInsensitiveString
     {
         private final String caseInsensitiveString;
-        private AtomicInteger hash = null;
+        private Integer hash = null;
 
         private CaseInsensitiveString(String string)
         {
@@ -582,9 +589,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             if (hash == null)
             {
-                hash = new AtomicInteger(caseInsensitiveString.toLowerCase().hashCode());
+                hash = caseInsensitiveString.toLowerCase().hashCode();
             }
-            return hash.get();
+            return hash;
         }
 
         public boolean equals(Object obj)

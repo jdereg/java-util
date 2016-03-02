@@ -301,8 +301,8 @@ public final class Converter
                         return new BigDecimal(((String) fromInstance).trim());
                     }
                     else if (fromInstance instanceof Number)
-                    {                        
-                        return BigDecimal.valueOf(((Number) fromInstance).doubleValue());
+                    {
+                        return new BigDecimal(((Number) fromInstance).doubleValue());
                     }
                     else if (fromInstance instanceof Boolean)
                     {

@@ -116,7 +116,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         internalMap.keySet().retainAll(readKeys);
     }
 
-    public void informAdditionalUsage(Set<K> additional) {
+    public void informAdditionalUsage(Collection<K> additional) {
         readKeys.addAll(additional);
     }
 

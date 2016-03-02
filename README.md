@@ -39,7 +39,7 @@ Including in java-util:
 * **SafeSimpleDateFormat** - Instances of this class can be stored as member variables and reused without any worry about thread safety.  Fixing the problems with the JDK's SimpleDateFormat and thread safety (no reentrancy support).
 * **StringUtilities** - Helpful methods that make simple work of common String related tasks.
 * **SystemUtilities** - A Helpful utility methods for working with external entities like the OS, environment variables, and system properties.
-* **TrackingMap** - Map class that tracks when the keys are accessed via .get(), .containsKey(), or a call to .put() that overwrites an already associated value. Provided by @seankellner
+* **TrackingMap** - Map class that tracks when the keys are accessed via .get(), .containsKey(), or a call to .put() (when put overwrites an already associated value). Provided by @seankellner
 * **Traverser** - Pass any Java object to this Utility class, it will call your passed in anonymous method for each object it encounters while traversing the complete graph.  It handles cycles within the graph. Permits you to perform generalized actions on all objects within an object graph.
 * **UniqueIdGenerator** - Generates a Java long unique id, that is unique across server in a cluster, never hands out the same value, has massive entropy, and runs very quickly.
 * **UrlUtitilies** - Fetch cookies from headers, getUrlConnections(), HTTP Response error handler, and more.
@@ -47,7 +47,7 @@ Including in java-util:
 
 Version History
 * 1.20.0
- * `TrackingMap` added.  Create this map around any type of Map, and it will track which keys are accessed via .get(), .containsKey(), or .put() when it overwrites a value already associated to the key.  Provided by @seankellner.
+ * `TrackingMap` added.  Create this map around any type of Map, and it will track which keys are accessed via .get(), .containsKey(), or .put() (when put overwrites a value already associated to the key).  Provided by @seankellner.
 * 1.19.3
  * Bug fix: `CaseInsensitiveMap.entrySet()` - calling `entry.setValue(k, v)` while iterating the entry set, was not updating the underlying value.  This has been fixed and test case added.
 * 1.19.2

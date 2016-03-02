@@ -596,6 +596,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean equals(Object obj)
         {
+            if (obj == this)
+            {
+                return true;
+            }
             if (obj instanceof String)
             {
                 return caseInsensitiveString.equalsIgnoreCase((String)obj);

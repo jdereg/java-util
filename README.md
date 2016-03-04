@@ -47,7 +47,7 @@ Including in java-util:
 
 Version History
 * 1.20.2
- * TrackingMap changed so that .get(key) that returns null, but key was inside Map, still counts as access.
+ * TrackingMap changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
  * TrackingMap.getWrappedMap() added so that you can fetch the wrapped Map.
 * 1.20.1
  * TrackingMap changed so that .put() does not mark the key as accessed.

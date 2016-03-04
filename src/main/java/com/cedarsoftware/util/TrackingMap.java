@@ -47,10 +47,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     public V put(K key, V value)
     {
-        if (internalMap.containsKey(key))
-        {   // Overwrite case - if value is overwritten at same key, count that as a direct map key access.
-            readKeys.add(key);
-        }
         return internalMap.put(key, value);
     }
 

@@ -3,19 +3,24 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.verify;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
-@PrepareForTest({TrackingMap.class, Map.class})
 @RunWith(PowerMockRunner.class)
 public class TestTrackingMap
 {
@@ -326,7 +331,7 @@ public class TestTrackingMap
     }
 
     @Test
-    public void testPutCountsAsAccess()
+    public void testPuDoesNotCountAsAccess()
     {
         TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
         trackMap.put("k", "kite");
@@ -335,7 +340,53 @@ public class TestTrackingMap
         assert trackMap.keysUsed().size() == 0;
 
         trackMap.put("K", "kilo");
-        assert trackMap.keysUsed().size() == 1;
+        assert trackMap.keysUsed().size() == 0;
         assert trackMap.size() == 2;
+    }
+
+    @Test
+    public void testContainsKeyNotCoundOnNonExistentKey()
+    {
+        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        trackMap.put("y", "yankee");
+        trackMap.put("z", "zulu");
+
+        trackMap.containsKey("f");
+
+        assert trackMap.keysUsed().size() == 0;
+    }
+
+    @Test
+    public void testGetNotCoundOnNonExistentKey()
+    {
+        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        trackMap.put("y", "yankee");
+        trackMap.put("z", "zulu");
+
+        trackMap.get("f");
+
+        assert trackMap.keysUsed().size() == 0;
+    }
+
+    @Test
+    public void testGetOfNullValueCountsAsAccess()
+    {
+        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+
+        trackMap.put("y", null);
+        trackMap.put("z", "zulu");
+
+        trackMap.get("y");
+
+        assert trackMap.keysUsed().size() == 1;
+    }
+
+    @Test
+    public void testFetchInternalMap()
+    {
+        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        assert trackMap.getWrappedMap() instanceof CaseInsensitiveMap;
+        trackMap = new TrackingMap(new HashMap());
+        assert trackMap.getWrappedMap() instanceof HashMap;
     }
 }

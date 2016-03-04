@@ -39,8 +39,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     public V get(Object key) {
         V value = internalMap.get(key);
-        if (value != null) {
-            readKeys.add((K)key);
+        if (value == null)
+        {
+            if (containsKey(key))
+            {
+                readKeys.add((K)key);
+            }
+        }
+        else
+        {
+            readKeys.add((K) key);
         }
         return value;
     }
@@ -121,4 +129,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     public Set<K> keysUsed() { return readKeys; }
+
+    public Map getWrappedMap() { return internalMap; }
 }

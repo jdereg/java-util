@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.20.2</version>
+  <version>1.20.3</version>
 </dependency>
 ```
 Like **java-util** and find it useful? **Tip** bitcoin: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
@@ -46,6 +46,8 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.20.3
+ * TrackingMap changed so that get(anyKey) always marks it as keyRead.  Same for containsKey(anyKey).
 * 1.20.2
  * TrackingMap changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
  * TrackingMap.getWrappedMap() added so that you can fetch the wrapped Map.

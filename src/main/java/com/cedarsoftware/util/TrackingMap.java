@@ -28,6 +28,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
     private final Map<K, V> internalMap;
     private final Set<K> readKeys;
 
+    /**
+     * Wrap the passed in Map with a TrackingMap.
+     * @param map Map to wrap
+     */
     public TrackingMap(Map<K, V> map) {
         if (map == null)
         {
@@ -39,17 +43,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     public V get(Object key) {
         V value = internalMap.get(key);
-        if (value == null)
-        {
-            if (containsKey(key))
-            {
-                readKeys.add((K)key);
-            }
-        }
-        else
-        {
-            readKeys.add((K) key);
-        }
+        readKeys.add((K) key);
         return value;
     }
 
@@ -60,9 +54,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     public boolean containsKey(Object key) {
         boolean containsKey = internalMap.containsKey(key);
-        if (containsKey) {
-            readKeys.add((K)key);
-        }
+        readKeys.add((K)key);
         return containsKey;
     }
 
@@ -116,19 +108,41 @@ public class TrackingMap<K, V> implements Map<K, V> {
         return internalMap.entrySet();
     }
 
+    /**
+     * Remove the entries from the Map that have not been accessed by .get() or .containsKey().
+     */
     public void expungeUnused() {
         internalMap.keySet().retainAll(readKeys);
     }
 
+    /**
+     * Add the Collection of keys to the internal list of keys accessed.  If there are keys
+     * in the passed in Map that are not included in the contained Map, the readKeys will
+     * exceed the keySet() of the wrapped Map.
+     * @param additional Collection of keys to add to the list of keys read.
+     */
     public void informAdditionalUsage(Collection<K> additional) {
         readKeys.addAll(additional);
     }
 
+    /**
+     * Add the used keys from the passed in TrackingMap to this TrackingMap's keysUsed.  This can
+     * cause the readKeys to include entries that are not in wrapped Maps keys.
+     * @param additional TrackingMap whose used keys are to be added to this maps used keys.
+     */
     public void informAdditionalUsage(TrackingMap<K, V> additional) {
         readKeys.addAll(additional.readKeys);
     }
 
+    /**
+     * Fetch the Set of keys that have been accessed via .get() or .containsKey() of the contained Map.
+     * @return Set of the accessed (read) keys.
+     */
     public Set<K> keysUsed() { return readKeys; }
 
+    /**
+     * Fetch the Map that this TrackingMap wraps.
+     * @return Map the wrapped Map
+     */
     public Map getWrappedMap() { return internalMap; }
 }

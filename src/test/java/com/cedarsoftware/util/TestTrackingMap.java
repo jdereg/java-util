@@ -161,28 +161,28 @@ public class TestTrackingMap
 
     @Test
     public void testGet() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(mockedBackingMap);
+        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
         map.get("key");
         verify(mockedBackingMap).get("key");
     }
 
     @Test
     public void testPut() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(mockedBackingMap);
+        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
         map.put("key", "value");
         verify(mockedBackingMap).put("key", "value");
     }
 
     @Test
     public void testContainsKey() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(mockedBackingMap);
+        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
         map.containsKey("key");
         verify(mockedBackingMap).containsKey("key");
     }
 
     @Test
     public void testPutAll() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(mockedBackingMap);
+        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
         Map additionalEntries = new HashMap();
         additionalEntries.put("animal", "aardvaark");
         additionalEntries.put("ballast", "bubbles");
@@ -232,7 +232,7 @@ public class TestTrackingMap
 
     @Test
     public void testClear() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
+        Map<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
         map.put("first", "firstValue");
         map.put("second", "secondValue");
         map.put("third", "thirdValue");
@@ -245,7 +245,7 @@ public class TestTrackingMap
 
     @Test
     public void testValues() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
+        Map<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
         map.put("first", "firstValue");
         map.put("second", "secondValue");
         map.put("third", "thirdValue");
@@ -259,7 +259,7 @@ public class TestTrackingMap
 
     @Test
     public void testKeySet() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
+        Map<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
         map.put("first", "firstValue");
         map.put("second", "secondValue");
         map.put("third", "thirdValue");
@@ -274,7 +274,7 @@ public class TestTrackingMap
     @Test
     public void testEntrySet() throws Exception {
         CaseInsensitiveMap<String, Object> backingMap = new CaseInsensitiveMap<>();
-        TrackingMap<String, Object> map = new TrackingMap<>(backingMap);
+        Map<String, Object> map = new TrackingMap<>(backingMap);
         map.put("first", "firstValue");
         map.put("second", "secondValue");
         map.put("third", "thirdValue");
@@ -290,7 +290,7 @@ public class TestTrackingMap
         map.put("first", "firstValue");
         map.put("second", "secondValue");
         map.put("third", "thirdValue");
-        Set<String> additionalUsage = new HashSet<>();
+        Collection<String> additionalUsage = new HashSet<>();
         additionalUsage.add("FiRsT");
         additionalUsage.add("ThirD");
         map.informAdditionalUsage(additionalUsage);
@@ -337,10 +337,10 @@ public class TestTrackingMap
         trackMap.put("k", "kite");
         trackMap.put("u", "uniform");
 
-        assert trackMap.keysUsed().size() == 0;
+        assert trackMap.keysUsed().isEmpty();
 
         trackMap.put("K", "kilo");
-        assert trackMap.keysUsed().size() == 0;
+        assert trackMap.keysUsed().isEmpty();
         assert trackMap.size() == 2;
     }
 
@@ -353,7 +353,7 @@ public class TestTrackingMap
 
         trackMap.containsKey("f");
 
-        assert trackMap.keysUsed().size() == 0;
+        assert trackMap.keysUsed().isEmpty();
     }
 
     @Test
@@ -365,7 +365,7 @@ public class TestTrackingMap
 
         trackMap.get("f");
 
-        assert trackMap.keysUsed().size() == 0;
+        assert trackMap.keysUsed().isEmpty();
     }
 
     @Test

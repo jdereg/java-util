@@ -4,11 +4,18 @@ import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * Useful Map that does not care about the case-sensitivity of keys
@@ -16,12 +23,18 @@ import java.util.Set;
  * String keys will be treated case insensitively, yet key case will
  * be retained.  Non-string keys will work as they normally would.
  * <p>
- * The internal CaseInsentitiveString is never exposed externally
+ * The internal CaseInsensitiveString is never exposed externally
  * from this class. When requesting the keys or entries of this map,
  * or calling containsKey() or get() for example, use a String as you
  * normally would.  The returned Set of keys for the keySet() and
  * entrySet() APIs return the original Strings, not the internally
  * wrapped CaseInsensitiveString.
+ *
+ * As an added benefit, .keySet() returns a case-insenstive
+ * Set, however, again, the contents of the entries are actual Strings.
+ * Similarly, .entrySet() returns a case-insensitive entry set, such that
+ * .getKey() on the entry is case insensitive when compared, but the
+ * returned key is a String.
  *
  * @author John DeRegnaucourt (john@cedarsoftware.com)
  *         <br>
@@ -41,7 +54,8 @@ import java.util.Set;
  */
 public class CaseInsensitiveMap<K, V> implements Map<K, V>
 {
-    private Map<K, V> map;
+    private static final Map unmodifiableMap = Collections.unmodifiableMap(new HashMap());
+    private final Map<K, V> map;
 
     public CaseInsensitiveMap()
     {
@@ -53,10 +67,61 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         map = new LinkedHashMap<>(initialCapacity);
     }
 
-    public CaseInsensitiveMap(Map<? extends K, ? extends V> map)
+    /**
+     * Wrap the passed in Map with a CaseInsensitiveMap, allowing other Map types like
+     * TreeMap, ConcurrentHashMap, etc. to be case insensitive.
+     * @param m Map to wrap.
+     */
+    public CaseInsensitiveMap(Map<K, V> m)
     {
-        this(map.size());
-        putAll(map);
+        if (unmodifiableMap.getClass().isAssignableFrom(m.getClass()))
+        {
+            Map temp = copy(m, new LinkedHashMap(m.size()));
+            map = Collections.unmodifiableMap(temp);
+        }
+        else if (m instanceof TreeMap)
+        {
+            map = copy(m, new TreeMap());
+        }
+        else if (m instanceof HashMap)
+        {
+            map = copy(m, new HashMap(m.size()));
+        }
+        else if (m instanceof ConcurrentSkipListMap)
+        {
+            map = copy(m, new ConcurrentSkipListMap());
+        }
+        else if (m instanceof ConcurrentHashMap)
+        {
+            map = copy(m, new ConcurrentHashMap(m.size()));
+        }
+        else if (m instanceof WeakHashMap)
+        {
+            map = copy(m, new WeakHashMap(m.size()));
+        }
+        else
+        {
+            map = copy(m, new LinkedHashMap(m.size()));
+        }
+    }
+
+    protected Map<K, V> copy(Map<K, V> source, Map dest)
+    {
+        for (Entry<K, V> entry : source.entrySet())
+        {
+            K key = entry.getKey();
+            K altKey;
+            if (key instanceof String)
+            {
+                altKey = (K) new CaseInsensitiveString((String)key);
+            }
+            else
+            {
+                altKey = key;
+            }
+            dest.put(altKey, entry.getValue());
+        }
+        return dest;
     }
 
     public CaseInsensitiveMap(int initialCapacity, float loadFactor)
@@ -79,7 +144,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         if (key instanceof String)
         {    // Must remove entry because the key case can change
             final CaseInsensitiveString newKey = new CaseInsensitiveString((String) key);
-            map.remove(newKey);
             return map.put((K) newKey, value);
         }
         return map.put(key, value);
@@ -172,8 +236,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         for (Entry<K, V> entry : map.entrySet())
         {
             Object key = entry.getKey();
+            int hKey;
+            if (key instanceof String)
+            {
+                hKey = ((String)key).toLowerCase().hashCode();
+            }
+            else
+            {
+                hKey = key == null ? 0 : key.hashCode();
+            }
             Object value = entry.getValue();
-            int hKey = key == null ? 0 : key.hashCode();
             int hValue = value == null ? 0 : value.hashCode();
             h += hKey ^ hValue;
         }
@@ -216,6 +288,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     public Set<K> keySet()
     {
         return new LocalSet();
+    }
+
+    public Map<K, V> getWrappedMap()
+    {
+        return map;
     }
 
     private class LocalSet extends AbstractSet<K>
@@ -382,9 +459,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         final Map<K, V> localMap = CaseInsensitiveMap.this;
         Iterator<Entry<K, V>> iter;
 
-        public EntrySet()
-        {
-        }
+        public EntrySet() { }
 
         public int size()
         {
@@ -570,12 +645,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * case of Strings when they are compared.  Based on known usage,
      * null checks, proper instance, etc. are dropped.
      */
-    private static final class CaseInsensitiveString
+    protected static final class CaseInsensitiveString implements Comparable
     {
         private final String caseInsensitiveString;
         private Integer hash = null;
 
-        private CaseInsensitiveString(String string)
+        protected CaseInsensitiveString(String string)
         {
             caseInsensitiveString = string;
         }
@@ -596,20 +671,25 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean equals(Object obj)
         {
-            if (obj == this)
+            return obj == this || compareTo(obj) == 0;
+        }
+
+        public int compareTo(Object o)
+        {
+            if (o instanceof String)
             {
-                return true;
+                String other = (String)o;
+                return caseInsensitiveString.compareToIgnoreCase(other);
             }
-            if (obj instanceof String)
+            else if (o instanceof CaseInsensitiveString)
             {
-                return caseInsensitiveString.equalsIgnoreCase((String)obj);
+                CaseInsensitiveString other = (CaseInsensitiveString) o;
+                return caseInsensitiveString.compareToIgnoreCase(other.caseInsensitiveString);
             }
-            if (obj instanceof CaseInsensitiveString)
-            {
-                CaseInsensitiveString other = (CaseInsensitiveString) obj;
-                return caseInsensitiveString.equalsIgnoreCase(other.caseInsensitiveString);
+            else
+            {   // Strings are less than non-Strings (come before)
+                return -1;
             }
-            return false;
         }
     }
 }

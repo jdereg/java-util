@@ -1,9 +1,19 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * Implements a java.util.Set that will not utilize 'case' when comparing Strings
@@ -35,7 +45,27 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        map = new CaseInsensitiveMap<>(collection.size());
+        if (collection instanceof LinkedHashSet)
+        {
+            map = new CaseInsensitiveMap<>(collection.size());
+        }
+        else if (collection instanceof HashSet)
+        {
+            map = new CaseInsensitiveMap<>(new HashMap(collection.size()));
+        }
+        else if (collection instanceof ConcurrentSkipListSet)
+        {
+            map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
+        }
+        else if (collection instanceof SortedSet)
+        {
+            map = new CaseInsensitiveMap<>(new TreeMap());
+        }
+        else
+        {
+            map = new CaseInsensitiveMap<>(collection.size());
+        }
+
         addAll(collection);
     }
 
@@ -111,7 +141,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
     public boolean add(E e)
     {
         boolean exists = map.containsKey(e);
-        map.put(e, null);
+        map.put(e, e);
         return !exists;
     }
 
@@ -139,7 +169,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
         int size = size();
         for (E elem : c)
         {
-            map.put(elem, null);
+            map.put(elem, elem);
         }
         return map.size() != size;
     }

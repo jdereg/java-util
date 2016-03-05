@@ -3,11 +3,14 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -370,6 +373,82 @@ public class TestCaseInsensitiveSet
         addedKeys.removeAll(sameKeys);
         assertEquals(1, addedKeys.size());
         assertTrue(addedKeys.contains("BAR"));
+    }
+
+    @Test
+    public void testTreeSet()
+    {
+        Collection set = new CaseInsensitiveSet(new TreeSet());
+        set.add("zuLU");
+        set.add("KIlo");
+        set.add("charLIE");
+        assert set.size() == 3;
+        assert set.contains("charlie");
+        assert set.contains("kilo");
+        assert set.contains("zulu");
+        Object[] array = set.toArray();
+        assert array[0].equals("charLIE");
+        assert array[1].equals("KIlo");
+        assert array[2].equals("zuLU");
+    }
+
+    @Test
+    public void testTreeSetNoNull()
+    {
+        try
+        {
+            Collection set = new CaseInsensitiveSet(new TreeSet());
+            set.add(null);
+        }
+        catch (NullPointerException ignored)
+        { }
+    }
+
+    @Test
+    public void testConcurrentSet()
+    {
+        Collection set = new CaseInsensitiveSet(new ConcurrentSkipListSet());
+        set.add("zuLU");
+        set.add("KIlo");
+        set.add("charLIE");
+        assert set.size() == 3;
+        assert set.contains("charlie");
+        assert set.contains("kilo");
+        assert set.contains("zulu");
+    }
+
+    @Test
+    public void testConcurrentSetNoNull()
+    {
+        try
+        {
+            Collection set = new CaseInsensitiveSet(new ConcurrentSkipListSet());
+            set.add(null);
+        }
+        catch (NullPointerException ignored)
+        { }
+    }
+
+    @Test
+    public void testHashSet()
+    {
+        Collection set = new CaseInsensitiveSet(new HashSet());
+        set.add("zuLU");
+        set.add("KIlo");
+        set.add("charLIE");
+        assert set.size() == 3;
+        assert set.contains("charlie");
+        assert set.contains("kilo");
+        assert set.contains("zulu");
+    }
+
+    @Test
+    public void testHashSetNoNull()
+    {
+        Collection set = new CaseInsensitiveSet(new HashSet());
+        set.add(null);
+        set.add("alpha");
+        assert set.size() == 2;
     }
 
     private static Set get123()

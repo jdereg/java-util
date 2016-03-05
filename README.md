@@ -48,6 +48,7 @@ Including in java-util:
 Version History
 * 1.20.3
  * TrackingMap changed so that get(anyKey) always marks it as keyRead.  Same for containsKey(anyKey).
+ * CaseInsensitiveMap constructor that takes a Map, now wraps the Map if possible, allowing for case-insensitive ConcurrentHashMap, unmodifiable CaseInsensitiveMap, sorted CaseInsensitiveMap, etc.
 * 1.20.2
  * TrackingMap changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
  * TrackingMap.getWrappedMap() added so that you can fetch the wrapped Map.

@@ -7,10 +7,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -91,7 +95,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetWithOverwrite()
+    public void testKeySetWithOverwriteAttempt()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -109,7 +113,7 @@ public class TestCaseInsensitiveMap
             {
                 foundOne = true;
             }
-            if (key.equals("thREe"))
+            if (key.equals("Three"))
             {
                 foundThree = true;
             }
@@ -124,7 +128,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetWithOverwrite()
+    public void testEntrySetWithOverwriteAttempt()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -132,7 +136,6 @@ public class TestCaseInsensitiveMap
 
         Set<Map.Entry<String, Object>> entrySet = stringMap.entrySet();
         assertNotNull(entrySet);
-        assertTrue(!entrySet.isEmpty());
         assertTrue(entrySet.size() == 3);
 
         boolean foundOne = false, foundThree = false, foundFive = false;
@@ -144,7 +147,7 @@ public class TestCaseInsensitiveMap
             {
                 foundOne = true;
             }
-            if (key.equals("thREe") && value.equals("four"))
+            if (key.equals("Three") && value.equals("four"))
             {
                 foundThree = true;
             }
@@ -1078,6 +1081,102 @@ public class TestCaseInsensitiveMap
             }
         }
         assertEquals("~3", map.get("Three"));
+    }
+
+    @Test
+    public void testWrappedTreeMap()
+    {
+        Map map = new CaseInsensitiveMap(new TreeMap());
+        map.put("z", "zulu");
+        map.put("J", "juliet");
+        map.put("a", "alpha");
+        assert map.size() == 3;
+        Iterator i = map.keySet().iterator();
+        assert "a" == i.next();
+        assert "J" == i.next();
+        assert "z" == i.next();
+        assert map.containsKey("A");
+        assert map.containsKey("j");
+        assert map.containsKey("Z");
+
+        assert ((CaseInsensitiveMap)map).getWrappedMap() instanceof TreeMap;
+    }
+
+    @Test
+    public void testWrappedTreeMapNotAllowsNull()
+    {
+        try
+        {
+            Map map = new CaseInsensitiveMap(new TreeMap());
+            map.put(null, "not allowed");
+            fail();
+        }
+        catch (NullPointerException ignored)
+        { }
+    }
+
+    @Test
+    public void testWrappedConcurrentHashMap()
+    {
+        Map map = new CaseInsensitiveMap(new ConcurrentHashMap());
+        map.put("z", "zulu");
+        map.put("J", "juliet");
+        map.put("a", "alpha");
+        assert map.size() == 3;
+        assert map.containsKey("A");
+        assert map.containsKey("j");
+        assert map.containsKey("Z");
+
+        assert ((CaseInsensitiveMap)map).getWrappedMap() instanceof ConcurrentHashMap;
+    }
+
+    @Test
+    public void testWrappedConcurrentMapNotAllowsNull()
+    {
+        try
+        {
+            Map map = new CaseInsensitiveMap(new ConcurrentHashMap());
+            map.put(null, "not allowed");
+            fail();
+        }
+        catch (NullPointerException ignored)
+        { }
+    }
+
+    @Test
+    public void testUnmodifiableMap()
+    {
+        Map junkMap = new ConcurrentHashMap();
+        junkMap.put("z", "zulu");
+        junkMap.put("J", "juliet");
+        junkMap.put("a", "alpha");
+        Map map = new CaseInsensitiveMap(Collections.unmodifiableMap(junkMap));
+        assert map.size() == 3;
+        assert map.containsKey("A");
+        assert map.containsKey("j");
+        assert map.containsKey("Z");
+        try
+        {
+            map.put("h", "hotel");
+        }
+        catch (UnsupportedOperationException ignored)
+        { }
+    }
+
+    @Test
+    public void testWeakHashMap()
+    {
+        Map map = new CaseInsensitiveMap(new WeakHashMap());
+        map.put("z", "zulu");
+        map.put("J", "juliet");
+        map.put("a", "alpha");
+        assert map.size() == 3;
+        System.out.println("map = " + map);
+        assert map.containsKey("A");
+        assert map.containsKey("j");
+        assert map.containsKey("Z");
+
+        assert ((CaseInsensitiveMap)map).getWrappedMap() instanceof WeakHashMap;
     }
 
     // Used only during development right now

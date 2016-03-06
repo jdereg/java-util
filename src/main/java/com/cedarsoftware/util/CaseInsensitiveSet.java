@@ -46,39 +46,27 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        if (unmodifiableCollection.getClass().isAssignableFrom(collection.getClass()))
+        if (collection instanceof LinkedHashSet)
         {
-            Map copy = new CaseInsensitiveMap();
-            for (Object item : collection)
-            {
-                copy.put(item, item);
-            }
-            map = new CaseInsensitiveMap<>(Collections.unmodifiableMap(copy));
+            map = new CaseInsensitiveMap<>(collection.size());
+        }
+        else if (collection instanceof HashSet)
+        {
+            map = new CaseInsensitiveMap<>(new HashMap(collection.size()));
+        }
+        else if (collection instanceof ConcurrentSkipListSet)
+        {
+            map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
+        }
+        else if (collection instanceof SortedSet)
+        {
+            map = new CaseInsensitiveMap<>(new TreeMap());
         }
         else
         {
-            if (collection instanceof LinkedHashSet)
-            {
-                map = new CaseInsensitiveMap<>(collection.size());
-            }
-            else if (collection instanceof HashSet)
-            {
-                map = new CaseInsensitiveMap<>(new HashMap(collection.size()));
-            }
-            else if (collection instanceof ConcurrentSkipListSet)
-            {
-                map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
-            }
-            else if (collection instanceof SortedSet)
-            {
-                map = new CaseInsensitiveMap<>(new TreeMap());
-            }
-            else
-            {
-                map = new CaseInsensitiveMap<>(collection.size());
-            }
-            addAll(collection);
+            map = new CaseInsensitiveMap<>(collection.size());
         }
+        addAll(collection);
     }
 
     public CaseInsensitiveSet(int initialCapacity)

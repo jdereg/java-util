@@ -74,12 +74,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      */
     public CaseInsensitiveMap(Map<K, V> m)
     {
-        if (unmodifiableMap.getClass().isAssignableFrom(m.getClass()))
-        {
-            Map temp = copy(m, new LinkedHashMap(m.size()));
-            map = Collections.unmodifiableMap(temp);
-        }
-        else if (m instanceof TreeMap)
+        if (m instanceof TreeMap)
         {
             map = copy(m, new TreeMap());
         }

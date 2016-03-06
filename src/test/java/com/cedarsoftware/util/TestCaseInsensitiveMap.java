@@ -1058,12 +1058,7 @@ public class TestCaseInsensitiveMap
 
         Set<String> oldKeys = new CaseInsensitiveSet<>(oldMeta.keySet());
         Set<String> sameKeys = new CaseInsensitiveSet<>(newMeta.keySet());
-        try
-        {
-            sameKeys.retainAll(oldKeys);
-        }
-        catch (UnsupportedOperationException ignored)
-        { }
+        sameKeys.retainAll(oldKeys);
     }
 
     @Test
@@ -1155,12 +1150,7 @@ public class TestCaseInsensitiveMap
         assert map.containsKey("A");
         assert map.containsKey("j");
         assert map.containsKey("Z");
-        try
-        {
-            map.put("h", "hotel");
-        }
-        catch (UnsupportedOperationException ignored)
-        { }
+        map.put("h", "hotel");      // modifiable allowed on the CaseInsensitiveMap
     }
 
     @Test

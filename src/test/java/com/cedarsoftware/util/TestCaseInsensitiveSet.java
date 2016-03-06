@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com)
@@ -369,12 +370,7 @@ public class TestCaseInsensitiveSet
         newKeys = Collections.unmodifiableSet(newKeys);
 
         Set<String> sameKeys = new CaseInsensitiveSet<>(newKeys);
-        try
-        {
-            sameKeys.retainAll(oldKeys);
-        }
-        catch (UnsupportedOperationException ignored)
-        { }
+        sameKeys.retainAll(oldKeys);        // allow modifiability
     }
 
     @Test
@@ -465,12 +461,7 @@ public class TestCaseInsensitiveSet
         assert set.contains("A");
         assert set.contains("j");
         assert set.contains("Z");
-        try
-        {
-            set.add("h");
-        }
-        catch (UnsupportedOperationException ignored)
-        { }
+        set.add("h");
     }
 
     private static Set get123()

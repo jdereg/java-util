@@ -8,8 +8,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import static org.junit.Assert.assertEquals;
@@ -367,12 +369,12 @@ public class TestCaseInsensitiveSet
         newKeys = Collections.unmodifiableSet(newKeys);
 
         Set<String> sameKeys = new CaseInsensitiveSet<>(newKeys);
-        sameKeys.retainAll(oldKeys);
-
-        Set<String> addedKeys  = new CaseInsensitiveSet<>(newKeys);
-        addedKeys.removeAll(sameKeys);
-        assertEquals(1, addedKeys.size());
-        assertTrue(addedKeys.contains("BAR"));
+        try
+        {
+            sameKeys.retainAll(oldKeys);
+        }
+        catch (UnsupportedOperationException ignored)
+        { }
     }
 
     @Test
@@ -449,6 +451,26 @@ public class TestCaseInsensitiveSet
         set.add(null);
         set.add("alpha");
         assert set.size() == 2;
+    }
+
+    @Test
+    public void testUnmodifiableSet()
+    {
+        Set junkSet = new HashSet();
+        junkSet.add("z");
+        junkSet.add("J");
+        junkSet.add("a");
+        Set set = new CaseInsensitiveSet(Collections.unmodifiableSet(junkSet));
+        assert set.size() == 3;
+        assert set.contains("A");
+        assert set.contains("j");
+        assert set.contains("Z");
+        try
+        {
+            set.add("h");
+        }
+        catch (UnsupportedOperationException ignored)
+        { }
     }
 
     private static Set get123()

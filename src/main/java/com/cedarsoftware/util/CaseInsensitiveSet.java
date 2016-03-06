@@ -1,17 +1,17 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.NavigableMap;
-import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -39,34 +39,46 @@ import java.util.concurrent.ConcurrentSkipListSet;
  */
 public class CaseInsensitiveSet<E> implements Set<E>
 {
-    private final CaseInsensitiveMap<E, Object> map;
+    private static final Collection unmodifiableCollection = Collections.unmodifiableCollection(new ArrayList<>());
+    private final Map<E, Object> map;
 
     public CaseInsensitiveSet() { map = new CaseInsensitiveMap<>(); }
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        if (collection instanceof LinkedHashSet)
+        if (unmodifiableCollection.getClass().isAssignableFrom(collection.getClass()))
         {
-            map = new CaseInsensitiveMap<>(collection.size());
-        }
-        else if (collection instanceof HashSet)
-        {
-            map = new CaseInsensitiveMap<>(new HashMap(collection.size()));
-        }
-        else if (collection instanceof ConcurrentSkipListSet)
-        {
-            map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
-        }
-        else if (collection instanceof SortedSet)
-        {
-            map = new CaseInsensitiveMap<>(new TreeMap());
+            Map copy = new CaseInsensitiveMap();
+            for (Object item : collection)
+            {
+                copy.put(item, item);
+            }
+            map = new CaseInsensitiveMap<>(Collections.unmodifiableMap(copy));
         }
         else
         {
-            map = new CaseInsensitiveMap<>(collection.size());
+            if (collection instanceof LinkedHashSet)
+            {
+                map = new CaseInsensitiveMap<>(collection.size());
+            }
+            else if (collection instanceof HashSet)
+            {
+                map = new CaseInsensitiveMap<>(new HashMap(collection.size()));
+            }
+            else if (collection instanceof ConcurrentSkipListSet)
+            {
+                map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
+            }
+            else if (collection instanceof SortedSet)
+            {
+                map = new CaseInsensitiveMap<>(new TreeMap());
+            }
+            else
+            {
+                map = new CaseInsensitiveMap<>(collection.size());
+            }
+            addAll(collection);
         }
-
-        addAll(collection);
     }
 
     public CaseInsensitiveSet(int initialCapacity)

@@ -44,7 +44,7 @@
         <version.plugin.gpg>1.6</version.plugin.gpg>
         <version.plugin.javadoc>2.10.3</version.plugin.javadoc>
         <version.plugin.nexus>1.6.6</version.plugin.nexus>
-        <version.plugin.release>2.5.1</version.plugin.release>
+        <version.plugin.release>2.5.3</version.plugin.release>
         <version.plugin.source>3.0.0</version.plugin.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>

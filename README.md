@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.20.4</version>
+  <version>1.20.5</version>
 </dependency>
 ```
 Like **java-util** and find it useful? **Tip** bitcoin: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
@@ -46,9 +46,11 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
-* 1.20.4
+* 1.20.5
  * CaseInsensitiveMap intentionally does not retain 'not modifiability'.
  * CaseInsensitiveSet intentionally does not retain 'not modifiability'. 
+* 1.20.4
+ * Failed release.  Do not use.
 * 1.20.3
  * TrackingMap changed so that get(anyKey) always marks it as keyRead.  Same for containsKey(anyKey).
  * CaseInsensitiveMap constructor that takes a Map, now wraps the Map if possible, allowing for case-insensitive ConcurrentHashMap, unmodifiable CaseInsensitiveMap, sorted CaseInsensitiveMap, etc.

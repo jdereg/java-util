@@ -39,22 +39,13 @@ import java.util.concurrent.ConcurrentSkipListSet;
  */
 public class CaseInsensitiveSet<E> implements Set<E>
 {
-    private static final Collection unmodifiableCollection = Collections.unmodifiableCollection(new ArrayList<>());
     private final Map<E, Object> map;
 
     public CaseInsensitiveSet() { map = new CaseInsensitiveMap<>(); }
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        if (collection instanceof LinkedHashSet)
-        {
-            map = new CaseInsensitiveMap<>(collection.size());
-        }
-        else if (collection instanceof HashSet)
-        {
-            map = new CaseInsensitiveMap<>(new HashMap(collection.size()));
-        }
-        else if (collection instanceof ConcurrentSkipListSet)
+        if (collection instanceof ConcurrentSkipListSet)
         {
             map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
         }

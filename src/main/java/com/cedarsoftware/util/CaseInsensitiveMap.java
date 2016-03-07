@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
@@ -54,7 +55,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
  */
 public class CaseInsensitiveMap<K, V> implements Map<K, V>
 {
-    private static final Map unmodifiableMap = Collections.unmodifiableMap(new HashMap());
     private final Map<K, V> map;
 
     public CaseInsensitiveMap()
@@ -86,7 +86,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             map = copy(m, new ConcurrentSkipListMap());
         }
-        else if (m instanceof ConcurrentHashMap)
+        else if (m instanceof ConcurrentMap)
         {
             map = copy(m, new ConcurrentHashMap(m.size()));
         }

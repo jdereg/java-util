@@ -48,7 +48,7 @@ Including in java-util:
 
 Version History
 * 1.21.0
- * Added `Executor` which is used to execute Operating System commands.  For example, `Executor exector = Executor.exec("ls -l"); executor.exec("echo This is handy");  assertEquals("This is handy", executor.getOut().trim());`
+ * Added `Executor` which is used to execute Operating System commands.  For example, `Executor exector = new Executor(); executor.exec("echo This is handy");  assertEquals("This is handy", executor.getOut().trim());`
  * bug fix: `CaseInsensitiveMap`, when passed a `LinkedHashMap`, was inadvertently using a HashMap instead.
 * 1.20.5
  * `CaseInsensitiveMap` intentionally does not retain 'not modifiability'.

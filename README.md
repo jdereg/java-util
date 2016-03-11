@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.20.5</version>
+  <version>1.21.0</version>
 </dependency>
 ```
 Like **java-util** and find it useful? **Tip** bitcoin: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
@@ -33,6 +33,7 @@ Including in java-util:
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, y/m/d and m/d/y ordering as well.
 * **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an equals() method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.
 * **EncryptionUtilities** - Makes it easy to compute MD5 checksums for Strings, byte[], as well as making it easy to AES-128 encrypt Strings and byte[]'s.
+* **Executor** - One line call to execute operating system commands.  Executor executor = new Executor(); executor.exec('ls -l');  Call executor.getOut() to fetch the output, executor.getError() retrieve error output.  If a -1 is returned, there was an error.
 * **IOUtilities** - Handy methods for simplifying I/O including such niceties as properly setting up the input stream for HttpUrlConnections based on their specified encoding.  Single line .close() method that handles exceptions for you.
 * **MathUtilities** - Handy mathematical algorithms to make your code smaller.  For example, minimum of array of values.
 * **ReflectionUtils** - Simple one-liners for many common reflection tasks.
@@ -46,18 +47,21 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.21.0
+ * Added `Executor` which is used to execute Operating System commands.  For example, `Executor exector = Executor.exec("ls -l"); executor.exec("echo This is handy");  assertEquals("This is handy", executor.getOut().trim());`
+ * bug fix: `CaseInsensitiveMap`, when passed a `LinkedHashMap`, was inadvertently using a HashMap instead.
 * 1.20.5
- * CaseInsensitiveMap intentionally does not retain 'not modifiability'.
- * CaseInsensitiveSet intentionally does not retain 'not modifiability'. 
+ * `CaseInsensitiveMap` intentionally does not retain 'not modifiability'.
+ * `CaseInsensitiveSet` intentionally does not retain 'not modifiability'. 
 * 1.20.4
  * Failed release.  Do not use.
 * 1.20.3
- * TrackingMap changed so that get(anyKey) always marks it as keyRead.  Same for containsKey(anyKey).
- * CaseInsensitiveMap constructor that takes a Map, now wraps the Map if possible, allowing for case-insensitive ConcurrentHashMap, unmodifiable CaseInsensitiveMap, sorted CaseInsensitiveMap, etc.
- * CaseInsensitiveSet, when using the constructor that takes a Collection, now takes on the nature of the Collection.  For example, if a TreeSet is passed in, the CaseInsensitiveSet will be sorted.  If not modifiable collection passed in, then the CaseInsensitive 
+ * `TrackingMap` changed so that `get(anyKey)` always marks it as keyRead.  Same for `containsKey(anyKey)`.
+ * `CaseInsensitiveMap` constructor that takes a Map, now wraps the Map if possible, allowing for case-insensitive `ConcurrentHashMap`, sorted `CaseInsensitiveMap`, etc.
+ * `CaseInsensitiveSet`, when using the constructor that takes a `Collection`, now takes on the nature of the `Collection`.  For example, if a `TreeSet` is passed in, the `CaseInsensitiveSet` will be sorted.  If not modifiable collection passed in, then the `CaseInsensitive` 
 * 1.20.2
- * TrackingMap changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
- * TrackingMap.getWrappedMap() added so that you can fetch the wrapped Map.
+ * `TrackingMap` changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
+ * `TrackingMap.getWrappedMap()` added so that you can fetch the wrapped Map.
 * 1.20.1
  * TrackingMap changed so that .put() does not mark the key as accessed.
 * 1.20.0

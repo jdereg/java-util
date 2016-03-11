@@ -78,9 +78,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             map = copy(m, new TreeMap());
         }
-        else if (m instanceof HashMap)
+        else if (m instanceof LinkedHashMap)
         {
-            map = copy(m, new HashMap(m.size()));
+            map = copy(m, new LinkedHashMap(m.size()));
         }
         else if (m instanceof ConcurrentSkipListMap)
         {
@@ -96,7 +96,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         }
         else
         {
-            map = copy(m, new LinkedHashMap(m.size()));
+            map = copy(m, new HashMap(m.size()));
         }
     }
 

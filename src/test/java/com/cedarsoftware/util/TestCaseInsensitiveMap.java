@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,6 +11,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -1166,6 +1168,32 @@ public class TestCaseInsensitiveMap
         assert map.containsKey("Z");
 
         assert ((CaseInsensitiveMap)map).getWrappedMap() instanceof WeakHashMap;
+    }
+
+    @Test
+    public void testWrasppedMap()
+    {
+        Map linked = new LinkedHashMap();
+        linked.put("key1", 1);
+        linked.put("key2", 2);
+        linked.put("key3", 3);
+        CaseInsensitiveMap caseInsensitive = new CaseInsensitiveMap(linked);
+        Set<String> newKeys = new LinkedHashSet();
+        newKeys.add("key4");
+        newKeys.add("key5");
+        int newValue = 4;
+
+        for (String key : newKeys)
+        {
+            caseInsensitive.put(key, newValue++);
+        }
+
+        Iterator i = caseInsensitive.keySet().iterator();
+        assertEquals(i.next(), "key1");
+        assertEquals(i.next(), "key2");
+        assertEquals(i.next(), "key3");
+        assertEquals(i.next(), "key4");
+        assertEquals(i.next(), "key5");
     }
 
     // Used only during development right now

@@ -7,10 +7,11 @@ import java.io.File;
 
 /**
  * This class is used in conjunction with the Executor class.  Example
- * usage:
+ * usage:<pre>
  * Executor exec = new Executor()
- * String[] cmd =
- * exec.execute(
+ * exec.execute("ls -l")
+ * String result = exec.getOut()
+ * </pre>
  *
  * @author John DeRegnaucourt (john@cedarsoftware.com)
  *         <br>

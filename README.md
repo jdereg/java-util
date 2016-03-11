@@ -57,8 +57,8 @@ Version History
  * Failed release.  Do not use.
 * 1.20.3
  * `TrackingMap` changed so that `get(anyKey)` always marks it as keyRead.  Same for `containsKey(anyKey)`.
- * `CaseInsensitiveMap` constructor that takes a Map, now wraps the Map if possible, allowing for case-insensitive `ConcurrentHashMap`, sorted `CaseInsensitiveMap`, etc.
- * `CaseInsensitiveSet`, when using the constructor that takes a `Collection`, now takes on the nature of the `Collection`.  For example, if a `TreeSet` is passed in, the `CaseInsensitiveSet` will be sorted.  If not modifiable collection passed in, then the `CaseInsensitive` 
+ * `CaseInsensitiveMap` has a constructor that takes a `Map`, which allows it to take on the nature of the `Map`, allowing for case-insensitive `ConcurrentHashMap`, sorted `CaseInsensitiveMap`, etc.  The 'Unmodifiable' `Map` nature is intentionally not taken on.  The passed in `Map` is not mutated.
+ * `CaseInsensitiveSet` has a constructor that takes a `Collection`, nwhich allows it to take on the nature of the `Collection`, allowing for sorted `CaseInsensitiveSets`.  The 'unmodifiable' `Collection` nature is intentionally not taken on.  The passed in `Set` is not mutated.  
 * 1.20.2
  * `TrackingMap` changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
  * `TrackingMap.getWrappedMap()` added so that you can fetch the wrapped Map.

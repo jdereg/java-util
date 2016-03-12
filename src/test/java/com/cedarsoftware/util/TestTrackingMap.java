@@ -353,7 +353,8 @@ public class TestTrackingMap
 
         trackMap.containsKey("f");
 
-        assert trackMap.keysUsed().isEmpty();
+        assert trackMap.keysUsed().size() == 1;
+        assert trackMap.keysUsed().contains("f");
     }
 
     @Test
@@ -365,7 +366,8 @@ public class TestTrackingMap
 
         trackMap.get("f");
 
-        assert trackMap.keysUsed().isEmpty();
+        assert trackMap.keysUsed().size() == 1;
+        assert trackMap.keysUsed().contains("f");
     }
 
     @Test

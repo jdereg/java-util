@@ -2,12 +2,12 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
 /**
@@ -73,7 +73,7 @@ public class Traverser
      */
     public void walk(Object root, Class[] skip, Visitor visitor)
     {
-        Deque stack = new ArrayDeque<>();
+        Deque stack = new LinkedList();
         stack.add(root);
 
         while (!stack.isEmpty())

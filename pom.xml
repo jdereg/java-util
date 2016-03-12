@@ -8,6 +8,17 @@
     <version>1.21.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
+    <profiles>
+        <profile>
+            <id>doclint-java8-disable</id>
+            <activation>
+                <jdk>[1.8,)</jdk>
+            </activation>
+            <properties>
+                <javadoc.opts>-Xdoclint:none</javadoc.opts>
+            </properties>
+        </profile>
+    </profiles>
 
     <licenses>
         <license>
@@ -35,7 +46,8 @@
     <properties>
         <version.log4j>2.5</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.guava>19.0</version.guava>         <!-- testing only -->
+        <version.guava>19.0</version.guava>                 <!-- testing only -->
+        <version.json.io>4.4.0</version.json.io>            <!-- testing only -->
         <version.powermock>1.6.4</version.powermock>
         <version.mockito>1.10.19</version.mockito>
         <version.java>1.7</version.java>
@@ -106,7 +118,7 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>${version.plugin.javadoc}</version>
                 <configuration>
-                    <!--<additionalparam>${javadoc.opts}</additionalparam>-->
+                    <additionalparam>${javadoc.opts}</additionalparam>
                 </configuration>
                 <executions>
                     <execution>
@@ -194,6 +206,13 @@
             <groupId>org.powermock</groupId>
             <artifactId>powermock-api-mockito</artifactId>
             <version>${version.powermock}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.cedarsoftware</groupId>
+            <artifactId>json-io</artifactId>
+            <version>${version.json.io}</version>
             <scope>test</scope>
         </dependency>
 

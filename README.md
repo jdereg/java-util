@@ -29,7 +29,7 @@ Including in java-util:
 * **ByteUtilities** - Useful routines for converting byte[] to HEX character [] and visa-versa.
 * **CaseInsensitiveMap** - When Strings are used as keys, they are compared without case. Can be used as regular Map with any Java object as keys, just specially handles Strings.
 * **CaseInsensitiveSet** - Set implementation that ignores String case for contains() calls, yet can have any object added to it (does not limit you to adding only Strings to it).
-* **Converter** - Convert from once instance to another.  For example, convert("45.3", BigDecimal.class) will convert the String to a BigDecimal.  Works for all primitives, primitive wrappers, Date, java.sql.Date, String, BigDecimal, and BigInteger.  The method is very generous on what it allows to be converted.  For example, a Calendar instance can be input for a Date or Long.  Examine source to see all possibilities.
+* **Converter** - Convert from once instance to another.  For example, convert("45.3", BigDecimal.class) will convert the String to a BigDecimal.  Works for all primitives, primitive wrappers, Date, java.sql.Date, String, BigDecimal, BigInteger, AtomicBoolean, AtomicLong, etc.  The method is very generous on what it allows to be converted.  For example, a Calendar instance can be input for a Date or Long.  Examine source to see all possibilities.
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, y/m/d and m/d/y ordering as well.
 * **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an equals() method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.
 * **EncryptionUtilities** - Makes it easy to compute MD5 checksums for Strings, byte[], as well as making it easy to AES-128 encrypt Strings and byte[]'s.
@@ -40,9 +40,9 @@ Including in java-util:
 * **SafeSimpleDateFormat** - Instances of this class can be stored as member variables and reused without any worry about thread safety.  Fixing the problems with the JDK's SimpleDateFormat and thread safety (no reentrancy support).
 * **StringUtilities** - Helpful methods that make simple work of common String related tasks.
 * **SystemUtilities** - A Helpful utility methods for working with external entities like the OS, environment variables, and system properties.
-* **TrackingMap** - Map class that tracks when the keys are accessed via .get(), .containsKey(), or a call to .put() (when put overwrites an already associated value). Provided by @seankellner
+* **TrackingMap** - Map class that tracks when the keys are accessed via .get() or .containsKey(). Provided by @seankellner
 * **Traverser** - Pass any Java object to this Utility class, it will call your passed in anonymous method for each object it encounters while traversing the complete graph.  It handles cycles within the graph. Permits you to perform generalized actions on all objects within an object graph.
-* **UniqueIdGenerator** - Generates a Java long unique id, that is unique across server in a cluster, never hands out the same value, has massive entropy, and runs very quickly.
+* **UniqueIdGenerator** - Generates a Java long unique id, that is unique across up to 100 servers in a cluster, never hands out the same value, has massive entropy, and runs very quickly.
 * **UrlUtitilies** - Fetch cookies from headers, getUrlConnections(), HTTP Response error handler, and more.
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 

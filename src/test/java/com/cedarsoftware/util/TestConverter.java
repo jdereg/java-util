@@ -459,6 +459,7 @@ public class TestConverter
         Date coerced = (Date) Converter.convert(utilNow, Date.class);
         assertEquals(utilNow, coerced);
         assertFalse(coerced instanceof java.sql.Date);
+        assert coerced != utilNow;
 
         // Date to java.sql.Date
         java.sql.Date sqlCoerced = (java.sql.Date) Converter.convert(utilNow, java.sql.Date.class);
@@ -759,6 +760,11 @@ public class TestConverter
         assert ((AtomicBoolean)Converter.convert(Boolean.TRUE, AtomicBoolean.class)).get();
         assert !((AtomicBoolean)Converter.convert(false, AtomicBoolean.class)).get();
         assert !((AtomicBoolean)Converter.convert(Boolean.FALSE, AtomicBoolean.class)).get();
+
+        AtomicBoolean b1 = new AtomicBoolean(true);
+        AtomicBoolean b2 = (AtomicBoolean) Converter.convert(b1, AtomicBoolean.class);
+        assert b1 != b2; // ensure that it returns a different but equivalent instance
+        assert b1.get() == b2.get();
 
         try
         {

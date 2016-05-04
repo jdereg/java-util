@@ -7,7 +7,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.22.0</version>
+  <version>1.23.0</version>
 </dependency>
 ```
 Like **java-util** and find it useful? **Tip** bitcoin: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
@@ -48,6 +48,8 @@ Including in java-util:
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 Version History
+* 1.23.0
+ * Converter.convert() API update: When a mutable type (Date, AtomicInteger, AtomicLong, AtomicBoolean) is passed in, and the destination type is the same, rather than return the instance passed in, a copy of the instance is returned.
 * 1.22.0
  * Added `GraphComparator` which is used to compute the difference (delta) between two object graphs.  The generated `List` of Delta objects can be 'played' against the source to bring it up to match the target.  Very useful in transaction processing systems.
 * 1.21.0

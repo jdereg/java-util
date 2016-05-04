@@ -394,8 +394,8 @@ public final class Converter
                         return new Date(timestamp.getTime());
                     }
                     else if (fromInstance instanceof Date)
-                    {
-                        return fromInstance;
+                    {   // Return a clone, not the same instance because Dates are not immutable
+                        return new Date(((Date)fromInstance).getTime());
                     }
                     else if (fromInstance instanceof String)
                     {
@@ -428,8 +428,8 @@ public final class Converter
                         return null;
                     }
                     else if (fromInstance instanceof java.sql.Date)
-                    {
-                        return fromInstance;
+                    {   // Return a clone of the current date time because java.sql.Date is mutable.
+                        return new java.sql.Date(((java.sql.Date)fromInstance).getTime());
                     }
                     else if (fromInstance instanceof Timestamp)
                     {
@@ -477,8 +477,8 @@ public final class Converter
                         return new Timestamp(((java.sql.Date)fromInstance).getTime());
                     }
                     else if (fromInstance instanceof Timestamp)
-                    {
-                        return fromInstance;
+                    {   // return a clone of the Timestamp because it is mutable
+                        return new Timestamp(((Timestamp)fromInstance).getTime());
                     }
                     else if (fromInstance instanceof Date)
                     {
@@ -602,8 +602,8 @@ public final class Converter
                         return null;
                     }
                     else if (fromInstance instanceof AtomicInteger)
-                    {
-                        return fromInstance;
+                    {   // return a new instance because AtomicInteger is mutable
+                        return new AtomicInteger(((AtomicInteger)fromInstance).get());
                     }
                     else if (fromInstance instanceof String)
                     {
@@ -640,8 +640,8 @@ public final class Converter
                         return null;
                     }
                     else if (fromInstance instanceof AtomicLong)
-                    {
-                        return fromInstance;
+                    {   // return a clone of the AtomicLong because it is mutable
+                        return new AtomicLong(((AtomicLong)fromInstance).get());
                     }
                     else if (fromInstance instanceof Number)
                     {
@@ -718,8 +718,8 @@ public final class Converter
                     return null;
                 }
                 else if (fromInstance instanceof AtomicBoolean)
-                {
-                    return fromInstance;
+                {   // return a clone of the AtomicBoolean because it is mutable
+                    return new AtomicBoolean(((AtomicBoolean)fromInstance).get());
                 }
                 else if (fromInstance instanceof String)
                 {

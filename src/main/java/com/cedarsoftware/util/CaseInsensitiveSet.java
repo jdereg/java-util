@@ -1,13 +1,7 @@
 package com.cedarsoftware.util;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -131,16 +125,16 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean add(E e)
     {
-        boolean exists = map.containsKey(e);
+        int size = map.size();
         map.put(e, e);
-        return !exists;
+        return map.size() != size;
     }
 
     public boolean remove(Object o)
     {
-        boolean exists = map.containsKey(o);
+        int size = map.size();
         map.remove(o);
-        return exists;
+        return map.size() != size;
     }
 
     public boolean containsAll(Collection<?> c)
@@ -157,7 +151,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean addAll(Collection<? extends E> c)
     {
-        int size = size();
+        int size = map.size();
         for (E elem : c)
         {
             map.put(elem, elem);
@@ -174,7 +168,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
         }
 
         Iterator i = map.keySet().iterator();
-        int size = size();
+        int size = map.size();
         while (i.hasNext())
         {
             Object elem = i.next();
@@ -188,7 +182,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public boolean removeAll(Collection<?> c)
     {
-        int size = size();
+        int size = map.size();
         for (Object elem : c)
         {
             map.remove(elem);

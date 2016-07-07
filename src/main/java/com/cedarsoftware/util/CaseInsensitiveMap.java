@@ -4,9 +4,7 @@ import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -305,14 +303,14 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean remove(Object o)
         {
-            boolean exists = localMap.containsKey(o);
+            final int size = map.size();
             localMap.remove(o);
-            return exists;
+            return map.size() != size;
         }
 
         public boolean removeAll(Collection c)
         {
-            int size = size();
+            int size = map.size();
 
             for (Object o : c)
             {
@@ -321,7 +319,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                     remove(o);
                 }
             }
-            return size() != size;
+            return map.size() != size;
         }
 
         public boolean retainAll(Collection c)
@@ -332,7 +330,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 other.put(o, null);
             }
 
-            int origSize = size();
+            final int size = map.size();
             Iterator<Entry<K, V>> i = map.entrySet().iterator();
             while (i.hasNext())
             {
@@ -343,7 +341,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 }
             }
 
-            return size() != origSize;
+            return map.size() != size;
         }
 
         public boolean add(K o)
@@ -493,14 +491,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean remove(Object o)
         {
-            boolean exists = contains(o);
-            if (!exists)
-            {
-                return false;
-            }
+            final int size = map.size();
             Entry that = (Entry) o;
             localMap.remove(that.getKey());
-            return true;
+            return map.size() != size;
         }
 
         /**
@@ -510,7 +504,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
          */
         public boolean removeAll(Collection c)
         {
-            int size = size();
+            final int size = map.size();
 
             for (Object o : c)
             {
@@ -519,7 +513,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                     remove(o);
                 }
             }
-            return size() != size;
+            return map.size() != size;
         }
 
         public boolean retainAll(Collection c)
@@ -664,9 +658,26 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             return hash;
         }
 
-        public boolean equals(Object obj)
+        public boolean equals(Object other)
         {
-            return obj == this || compareTo(obj) == 0;
+            if (other == this)
+            {
+                return true;
+            }
+            if (other == null)
+            {
+                return false;
+            }
+            if (other instanceof String)
+            {
+                return caseInsensitiveString.equalsIgnoreCase((String)other);
+            }
+            else if (other instanceof CaseInsensitiveString)
+            {
+                return hashCode() == other.hashCode() &&
+                        caseInsensitiveString.equalsIgnoreCase(((CaseInsensitiveString)other).caseInsensitiveString);
+            }
+            return false;
         }
 
         public int compareTo(Object o)

@@ -72,6 +72,7 @@ public class TestConverter
         x = (Byte) Converter.convert(new BigInteger("120"), Byte.class);
         assertTrue(120 == x);
 
+        Object value = Converter.convert(true, Byte.class);
         assertEquals((byte)1, Converter.convert(true, Byte.class));
         assertEquals((byte)0, Converter.convert(false, byte.class));
 

@@ -30,6 +30,19 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class Converter
 {
+    private static final Byte BYTE_ZERO = (byte)0;
+    private static final Byte BYTE_ONE = (byte)1;
+    private static final Short SHORT_ZERO = (short)0;
+    private static final Short SHORT_ONE = (short)1;
+    private static final Integer INTEGER_ZERO = 0;
+    private static final Integer INTEGER_ONE = 1;
+    private static final Long LONG_ZERO = 0L;
+    private static final Long LONG_ONE = 1L;
+    private static final Float FLOAT_ZERO = 0.0f;
+    private static final Float FLOAT_ONE = 1.0f;
+    private static final Double DOUBLE_ZERO = 0.0d;
+    private static final Double DOUBLE_ONE = 1.0d;
+
     /**
      * Static utility class.
      */
@@ -64,683 +77,693 @@ public final class Converter
         {
             throw new IllegalArgumentException("Type cannot be null in Converter.convert(value, type)");
         }
-        switch(toType.getName())
+
+        if (toType == String.class)
         {
-            case "byte":
-                if (fromInstance == null)
+            if (fromInstance == null || fromInstance instanceof String)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                return ((BigDecimal) fromInstance).stripTrailingZeros().toPlainString();
+            }
+            else if (fromInstance instanceof Number || fromInstance instanceof Boolean || fromInstance instanceof AtomicBoolean)
+            {
+                return fromInstance.toString();
+            }
+            else if (fromInstance instanceof Date)
+            {
+                return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance);
+            }
+            else if (fromInstance instanceof Calendar)
+            {
+                return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(((Calendar)fromInstance).getTime());
+            }
+            else if (fromInstance instanceof Character)
+            {
+                return "" + fromInstance;
+            }
+            nope(fromInstance, "String");
+        }
+        else if (toType == long.class)
+        {
+            return fromInstance == null ? 0L : convertLong(fromInstance);
+        }
+        else if (toType == Long.class)
+        {
+            return fromInstance == null ? null : convertLong(fromInstance);
+        }
+        else if (toType == int.class)
+        {
+            return fromInstance == null ? 0 : convertInteger(fromInstance);
+        }
+        else if (toType == Integer.class)
+        {
+            return fromInstance == null ? null : convertInteger(fromInstance);
+        }
+        else if (toType == Date.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            try
+            {
+                if (fromInstance instanceof String)
                 {
-                    return (byte)0;
+                    return DateUtilities.parseDate(((String) fromInstance).trim());
                 }
-            case "java.lang.Byte":
-                try
+                else if (fromInstance instanceof java.sql.Date)
+                {   // convert from java.sql.Date to java.util.Date
+                    return new Date(((java.sql.Date)fromInstance).getTime());
+                }
+                else if (fromInstance instanceof Timestamp)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof Byte)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return ((Number)fromInstance).byteValue();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return (byte)0;
-                        }
-                        return Byte.valueOf(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? (byte) 1 : (byte) 0;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean)fromInstance).get() ? (byte) 1 : (byte) 0;
-                    }
+                    Timestamp timestamp = (Timestamp) fromInstance;
+                    return new Date(timestamp.getTime());
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof Date)
+                {   // Return a clone, not the same instance because Dates are not immutable
+                    return new Date(((Date)fromInstance).getTime());
+                }
+                else if (fromInstance instanceof Calendar)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Byte'", e);
+                    return ((Calendar) fromInstance).getTime();
                 }
-                nope(fromInstance, "Byte");
+                else if (fromInstance instanceof Long)
+                {
+                    return new Date((Long) fromInstance);
+                }
+                else if (fromInstance instanceof AtomicLong)
+                {
+                    return new Date(((AtomicLong) fromInstance).get());
+                }
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Date'", e);
+            }
+            nope(fromInstance, "Date");
+        }
+        else if (toType == BigDecimal.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
 
-            case "short":
-                if (fromInstance == null)
+            try
+            {
+                if (fromInstance instanceof String)
                 {
-                    return (short)0;
+                    if (StringUtilities.isEmpty((String)fromInstance))
+                    {
+                        return BigDecimal.ZERO;
+                    }
+                    return new BigDecimal(((String) fromInstance).trim());
                 }
-            case "java.lang.Short":
-                try
+                else if (fromInstance instanceof BigDecimal)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof Short)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return ((Number)fromInstance).shortValue();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return (short)0;
-                        }
-                        return Short.valueOf(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? (short) 1 : (short) 0;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? (short) 1 : (short) 0;
-                    }
+                    return fromInstance;
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof BigInteger)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Short'", e);
+                    return new BigDecimal((BigInteger) fromInstance);
                 }
-                nope(fromInstance, "Short");
-
-            case "int":
-                if (fromInstance == null)
+                else if (fromInstance instanceof Number)
                 {
-                    return 0;
+                    return new BigDecimal(((Number) fromInstance).doubleValue());
                 }
-            case "java.lang.Integer":
-                try
+                else if (fromInstance instanceof Boolean)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof Integer)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return ((Number)fromInstance).intValue();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return 0;
-                        }
-                        return Integer.valueOf(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? 1 : 0;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? 1 : 0;
-                    }
+                    return (Boolean) fromInstance ? BigDecimal.ONE : BigDecimal.ZERO;
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof AtomicBoolean)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'Integer'", e);
+                    return ((AtomicBoolean) fromInstance).get() ? BigDecimal.ONE : BigDecimal.ZERO;
                 }
-                nope(fromInstance, "Integer");
-
-            case "long":
-                if (fromInstance == null)
+                else if (fromInstance instanceof Date)
                 {
-                    return 0L;
+                    return new BigDecimal(((Date)fromInstance).getTime());
                 }
-            case "java.lang.Long":
-                try
+                else if (fromInstance instanceof Calendar)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof Long)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return ((Number)fromInstance).longValue();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return 0L;
-                        }
-                        return Long.valueOf(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Date)
-                    {
-                        return ((Date)fromInstance).getTime();
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? 1L : 0L;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? 1L : 0L;
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return ((Calendar)fromInstance).getTime().getTime();
-                    }
+                    return new BigDecimal(((Calendar)fromInstance).getTime().getTime());
                 }
-                catch(Exception e)
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigDecimal'", e);
+            }
+            nope(fromInstance, "BigDecimal");
+        }
+        else if (toType == BigInteger.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            try
+            {
+                if (fromInstance instanceof String)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Long'", e);
+                    if (StringUtilities.isEmpty((String)fromInstance))
+                    {
+                        return BigInteger.ZERO;
+                    }
+                    return new BigInteger(((String) fromInstance).trim());
                 }
-                nope(fromInstance, "Long");
-
-            case "java.lang.String":
-                if (fromInstance == null)
-                {
-                    return null;
-                }
-                else if (fromInstance instanceof String)
+                else if (fromInstance instanceof BigInteger)
                 {
                     return fromInstance;
                 }
                 else if (fromInstance instanceof BigDecimal)
                 {
-                    return ((BigDecimal) fromInstance).stripTrailingZeros().toPlainString();
+                    return ((BigDecimal) fromInstance).toBigInteger();
                 }
-                else if (fromInstance instanceof Number || fromInstance instanceof Boolean || fromInstance instanceof AtomicBoolean)
+                else if (fromInstance instanceof Number)
                 {
-                    return fromInstance.toString();
+                    return new BigInteger(Long.toString(((Number) fromInstance).longValue()));
+                }
+                else if (fromInstance instanceof Boolean)
+                {
+                    return (Boolean) fromInstance ? BigInteger.ONE : BigInteger.ZERO;
+                }
+                else if (fromInstance instanceof AtomicBoolean)
+                {
+                    return ((AtomicBoolean) fromInstance).get() ? BigInteger.ONE : BigInteger.ZERO;
                 }
                 else if (fromInstance instanceof Date)
                 {
-                    return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance);
+                    return new BigInteger(Long.toString(((Date) fromInstance).getTime()));
                 }
                 else if (fromInstance instanceof Calendar)
                 {
-                    return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(((Calendar)fromInstance).getTime());
+                    return new BigInteger(Long.toString(((Calendar) fromInstance).getTime().getTime()));
                 }
-                else if (fromInstance instanceof Character)
-                {
-                    return "" + fromInstance;
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigInteger'", e);
+            }
+            nope(fromInstance, "BigInteger");
+        }
+        else if (toType == java.sql.Date.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            try
+            {
+                if (fromInstance instanceof java.sql.Date)
+                {   // Return a clone of the current date time because java.sql.Date is mutable.
+                    return new java.sql.Date(((java.sql.Date)fromInstance).getTime());
                 }
-                nope(fromInstance, "String");
-
-            case "java.math.BigDecimal":
-                try
+                else if (fromInstance instanceof Timestamp)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof BigDecimal)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof BigInteger)
-                    {
-                        return new BigDecimal((BigInteger) fromInstance);
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return BigDecimal.ZERO;
-                        }
-                        return new BigDecimal(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return new BigDecimal(((Number) fromInstance).doubleValue());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? BigDecimal.ONE : BigDecimal.ZERO;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? BigDecimal.ONE : BigDecimal.ZERO;
-                    }
-                    else if (fromInstance instanceof Date)
-                    {
-                        return new BigDecimal(((Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return new BigDecimal(((Calendar)fromInstance).getTime().getTime());
-                    }
+                    Timestamp timestamp = (Timestamp) fromInstance;
+                    return new java.sql.Date(timestamp.getTime());
                 }
-                catch(Exception e)
-                {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigDecimal'", e);
+                else if (fromInstance instanceof Date)
+                {   // convert from java.util.Date to java.sql.Date
+                    return new java.sql.Date(((Date)fromInstance).getTime());
                 }
-                nope(fromInstance, "BigDecimal");
-
-            case "java.math.BigInteger":
-                try
+                else if (fromInstance instanceof String)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof BigInteger)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof BigDecimal)
-                    {
-                        return ((BigDecimal) fromInstance).toBigInteger();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return BigInteger.ZERO;
-                        }
-                        return new BigInteger(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return new BigInteger(Long.toString(((Number) fromInstance).longValue()));
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? BigInteger.ONE : BigInteger.ZERO;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? BigInteger.ONE : BigInteger.ZERO;
-                    }
-                    else if (fromInstance instanceof Date)
-                    {
-                        return new BigInteger(Long.toString(((Date) fromInstance).getTime()));
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return new BigInteger(Long.toString(((Calendar) fromInstance).getTime().getTime()));
-                    }
+                    Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                    return new java.sql.Date(date.getTime());
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof Calendar)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigInteger'", e);
+                    return new java.sql.Date(((Calendar) fromInstance).getTime().getTime());
                 }
-                nope(fromInstance, "BigInteger");
-
-            case "java.util.Date":
-                try
+                else if (fromInstance instanceof Long)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof java.sql.Date)
-                    {   // convert from java.sql.Date to java.util.Date
-                        return new Date(((java.sql.Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof Timestamp)
-                    {
-                        Timestamp timestamp = (Timestamp) fromInstance;
-                        return new Date(timestamp.getTime());
-                    }
-                    else if (fromInstance instanceof Date)
-                    {   // Return a clone, not the same instance because Dates are not immutable
-                        return new Date(((Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        return DateUtilities.parseDate(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return ((Calendar) fromInstance).getTime();
-                    }
-                    else if (fromInstance instanceof Long)
-                    {
-                        return new Date((Long) fromInstance);
-                    }
-                    else if (fromInstance instanceof AtomicLong)
-                    {
-                        return new Date(((AtomicLong) fromInstance).get());
-                    }
+                    return new java.sql.Date((Long) fromInstance);
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof AtomicLong)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Date'", e);
+                    return new java.sql.Date(((AtomicLong) fromInstance).get());
                 }
-                nope(fromInstance, "Date");
-
-            case "java.sql.Date":
-                try
-                {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof java.sql.Date)
-                    {   // Return a clone of the current date time because java.sql.Date is mutable.
-                        return new java.sql.Date(((java.sql.Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof Timestamp)
-                    {
-                        Timestamp timestamp = (Timestamp) fromInstance;
-                        return new java.sql.Date(timestamp.getTime());
-                    }
-                    else if (fromInstance instanceof Date)
-                    {   // convert from java.util.Date to java.sql.Date
-                        return new java.sql.Date(((Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                        return new java.sql.Date(date.getTime());
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return new java.sql.Date(((Calendar) fromInstance).getTime().getTime());
-                    }
-                    else if (fromInstance instanceof Long)
-                    {
-                        return new java.sql.Date((Long) fromInstance);
-                    }
-                    else if (fromInstance instanceof AtomicLong)
-                    {
-                        return new java.sql.Date(((AtomicLong) fromInstance).get());
-                    }
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'java.sql.Date'", e);
+            }
+            nope(fromInstance, "java.sql.Date");
+        }
+        else if (toType == Timestamp.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            try
+            {
+                if (fromInstance instanceof java.sql.Date)
+                {   // convert from java.sql.Date to java.util.Date
+                    return new Timestamp(((java.sql.Date)fromInstance).getTime());
                 }
-                catch(Exception e)
-                {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'java.sql.Date'", e);
+                else if (fromInstance instanceof Timestamp)
+                {   // return a clone of the Timestamp because it is mutable
+                    return new Timestamp(((Timestamp)fromInstance).getTime());
                 }
-                nope(fromInstance, "java.sql.Date");
-
-
-            case "java.sql.Timestamp":
-                try
+                else if (fromInstance instanceof Date)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof java.sql.Date)
-                    {   // convert from java.sql.Date to java.util.Date
-                        return new Timestamp(((java.sql.Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof Timestamp)
-                    {   // return a clone of the Timestamp because it is mutable
-                        return new Timestamp(((Timestamp)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof Date)
-                    {
-                        return new Timestamp(((Date) fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                        return new Timestamp(date.getTime());
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return new Timestamp(((Calendar) fromInstance).getTime().getTime());
-                    }
-                    else if (fromInstance instanceof Long)
-                    {
-                        return new Timestamp((Long) fromInstance);
-                    }
-                    else if (fromInstance instanceof AtomicLong)
-                    {
-                        return new Timestamp(((AtomicLong) fromInstance).get());
-                    }
+                    return new Timestamp(((Date) fromInstance).getTime());
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof String)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Timestamp'", e);
+                    Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                    return new Timestamp(date.getTime());
                 }
-                nope(fromInstance, "Timestamp");
-
-            case "float":
-                if (fromInstance == null)
+                else if (fromInstance instanceof Calendar)
                 {
-                    return 0.0f;
+                    return new Timestamp(((Calendar) fromInstance).getTime().getTime());
                 }
-            case "java.lang.Float":
-                try
+                else if (fromInstance instanceof Long)
                 {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof Float)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return ((Number)fromInstance).floatValue();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return 0.0f;
-                        }
-                        return Float.valueOf(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? 1.0f : 0.0f;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? 1.0f : 0.0f;
-                    }
+                    return new Timestamp((Long) fromInstance);
                 }
-                catch(Exception e)
+                else if (fromInstance instanceof AtomicLong)
                 {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Float'", e);
+                    return new Timestamp(((AtomicLong) fromInstance).get());
                 }
-                nope(fromInstance, "Float");
-
-            case "double":
-                if (fromInstance == null)
-                {
-                    return 0.0d;
-                }
-            case "java.lang.Double":
-                try
-                {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof Double)
-                    {
-                        return fromInstance;
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return ((Number)fromInstance).doubleValue();
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return 0.0d;
-                        }
-                        return Double.valueOf(((String) fromInstance).trim());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? 1.0d : 0.0d;
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? 1.0d : 0.0d;
-                    }
-                }
-                catch(Exception e)
-                {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Double'", e);
-                }
-                nope(fromInstance, "Double");
-
-            case "java.util.concurrent.atomic.AtomicInteger":
-                try
-                {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof AtomicInteger)
-                    {   // return a new instance because AtomicInteger is mutable
-                        return new AtomicInteger(((AtomicInteger)fromInstance).get());
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return new AtomicInteger(0);
-                        }
-                        return new AtomicInteger(Integer.valueOf(((String) fromInstance).trim()));
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return new AtomicInteger(((Number)fromInstance).intValue());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? new AtomicInteger(1) : new AtomicInteger(0);
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? new AtomicInteger(1) : new AtomicInteger(0);
-                    }
-                }
-                catch(Exception e)
-                {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicInteger'", e);
-                }
-                nope(fromInstance, "AtomicInteger");
-
-            case "java.util.concurrent.atomic.AtomicLong":
-                try
-                {
-                    if (fromInstance == null)
-                    {
-                        return null;
-                    }
-                    else if (fromInstance instanceof AtomicLong)
-                    {   // return a clone of the AtomicLong because it is mutable
-                        return new AtomicLong(((AtomicLong)fromInstance).get());
-                    }
-                    else if (fromInstance instanceof Number)
-                    {
-                        return new AtomicLong(((Number)fromInstance).longValue());
-                    }
-                    else if (fromInstance instanceof String)
-                    {
-                        if (StringUtilities.isEmpty((String)fromInstance))
-                        {
-                            return new AtomicLong(0);
-                        }
-                        return new AtomicLong(Long.valueOf(((String) fromInstance).trim()));
-                    }
-                    else if (fromInstance instanceof Date)
-                    {
-                        return new AtomicLong(((Date)fromInstance).getTime());
-                    }
-                    else if (fromInstance instanceof Boolean)
-                    {
-                        return (Boolean) fromInstance ? new AtomicLong(1L) : new AtomicLong(0L);
-                    }
-                    else if (fromInstance instanceof AtomicBoolean)
-                    {
-                        return ((AtomicBoolean) fromInstance).get() ? new AtomicLong(1L) : new AtomicLong(0L);
-                    }
-                    else if (fromInstance instanceof Calendar)
-                    {
-                        return new AtomicLong(((Calendar)fromInstance).getTime().getTime());
-                    }
-                }
-                catch(Exception e)
-                {
-                    throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicLong'", e);
-                }
-                nope(fromInstance, "AtomicLong");
-
-            case "boolean":
-                if (fromInstance == null)
-                {
-                    return Boolean.FALSE;
-                }
-            case "java.lang.Boolean":
-                if (fromInstance == null)
-                {
-                    return null;
-                }
-                else if (fromInstance instanceof Boolean)
-                {
-                    return fromInstance;
-                }
-                else if (fromInstance instanceof Number)
-                {
-                    return ((Number)fromInstance).longValue() != 0;
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Timestamp'", e);
+            }
+            nope(fromInstance, "Timestamp");
+        }
+        else if (toType == AtomicInteger.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            try
+            {
+                if (fromInstance instanceof AtomicInteger)
+                {   // return a new instance because AtomicInteger is mutable
+                    return new AtomicInteger(((AtomicInteger)fromInstance).get());
                 }
                 else if (fromInstance instanceof String)
                 {
                     if (StringUtilities.isEmpty((String)fromInstance))
                     {
-                        return Boolean.FALSE;
+                        return new AtomicInteger(0);
                     }
-                    String value = (String)  fromInstance;
-                    return "true".equalsIgnoreCase(value) ? Boolean.TRUE : Boolean.FALSE;
-                }
-                else if (fromInstance instanceof AtomicBoolean)
-                {
-                    return ((AtomicBoolean) fromInstance).get();
-                }
-                nope(fromInstance, "Boolean");
-
-
-            case "java.util.concurrent.atomic.AtomicBoolean":
-                if (fromInstance == null)
-                {
-                    return null;
-                }
-                else if (fromInstance instanceof AtomicBoolean)
-                {   // return a clone of the AtomicBoolean because it is mutable
-                    return new AtomicBoolean(((AtomicBoolean)fromInstance).get());
-                }
-                else if (fromInstance instanceof String)
-                {
-                    if (StringUtilities.isEmpty((String)fromInstance))
-                    {
-                        return new AtomicBoolean(false);
-                    }
-                    String value = (String)  fromInstance;
-                    return new AtomicBoolean("true".equalsIgnoreCase(value));
+                    return new AtomicInteger(Integer.valueOf(((String) fromInstance).trim()));
                 }
                 else if (fromInstance instanceof Number)
                 {
-                    return new AtomicBoolean(((Number)fromInstance).longValue() != 0);
+                    return new AtomicInteger(((Number)fromInstance).intValue());
                 }
                 else if (fromInstance instanceof Boolean)
                 {
-                    return new AtomicBoolean((Boolean) fromInstance);
+                    return (Boolean) fromInstance ? new AtomicInteger(1) : new AtomicInteger(0);
                 }
-                nope(fromInstance, "AtomicBoolean");
+                else if (fromInstance instanceof AtomicBoolean)
+                {
+                    return ((AtomicBoolean) fromInstance).get() ? new AtomicInteger(1) : new AtomicInteger(0);
+                }
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicInteger'", e);
+            }
+            nope(fromInstance, "AtomicInteger");
+        }
+        else if (toType == AtomicLong.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            try
+            {
+                if (fromInstance instanceof String)
+                {
+                    if (StringUtilities.isEmpty((String)fromInstance))
+                    {
+                        return new AtomicLong(0);
+                    }
+                    return new AtomicLong(Long.valueOf(((String) fromInstance).trim()));
+                }
+                else if (fromInstance instanceof AtomicLong)
+                {   // return a clone of the AtomicLong because it is mutable
+                    return new AtomicLong(((AtomicLong)fromInstance).get());
+                }
+                else if (fromInstance instanceof Number)
+                {
+                    return new AtomicLong(((Number)fromInstance).longValue());
+                }
+                else if (fromInstance instanceof Date)
+                {
+                    return new AtomicLong(((Date)fromInstance).getTime());
+                }
+                else if (fromInstance instanceof Boolean)
+                {
+                    return (Boolean) fromInstance ? new AtomicLong(1L) : new AtomicLong(0L);
+                }
+                else if (fromInstance instanceof AtomicBoolean)
+                {
+                    return ((AtomicBoolean) fromInstance).get() ? new AtomicLong(1L) : new AtomicLong(0L);
+                }
+                else if (fromInstance instanceof Calendar)
+                {
+                    return new AtomicLong(((Calendar)fromInstance).getTime().getTime());
+                }
+            }
+            catch(Exception e)
+            {
+                throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicLong'", e);
+            }
+            nope(fromInstance, "AtomicLong");
+        }
+        else if (toType == AtomicBoolean.class)
+        {
+            if (fromInstance == null)
+            {
+                return null;
+            }
+            else if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return new AtomicBoolean(false);
+                }
+                String value = (String)  fromInstance;
+                return new AtomicBoolean("true".equalsIgnoreCase(value));
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {   // return a clone of the AtomicBoolean because it is mutable
+                return new AtomicBoolean(((AtomicBoolean)fromInstance).get());
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return new AtomicBoolean((Boolean) fromInstance);
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return new AtomicBoolean(((Number)fromInstance).longValue() != 0);
+            }
+            nope(fromInstance, "AtomicBoolean");
+        }
+        else if (toType == boolean.class)
+        {
+            return fromInstance == null ? Boolean.FALSE : convertBoolean(fromInstance);
+        }
+        else if (toType == Boolean.class)
+        {
+            return fromInstance == null ? null : convertBoolean(fromInstance);
+        }
+        else if (toType == double.class)
+        {
+            return fromInstance == null ? DOUBLE_ZERO : convertDouble(fromInstance);
+        }
+        else if (toType == Double.class)
+        {
+            return fromInstance == null ? null : convertDouble(fromInstance);
+        }
+        else if (toType == byte.class)
+        {
+            return fromInstance == null ? BYTE_ZERO : convertByte(fromInstance);
+        }
+        else if (toType == Byte.class)
+        {
+            return fromInstance == null ? null : convertByte(fromInstance);
+        }
+        else if (toType == float.class)
+        {
+            return fromInstance == null ? FLOAT_ZERO : convertFloat(fromInstance);
+        }
+        else if (toType == Float.class)
+        {
+            return fromInstance == null ? null : convertFloat(fromInstance);
+        }
+        else if (toType == short.class)
+        {
+            return fromInstance == null ? SHORT_ZERO : convertShort(fromInstance);
+        }
+        else if (toType == Short.class)
+        {
+            return fromInstance == null ? null : convertShort(fromInstance);
         }
         throw new IllegalArgumentException("Unsupported type '" + toType.getName() + "' for conversion");
+    }
+
+    private static Object convertByte(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return BYTE_ZERO;
+                }
+                return Byte.valueOf(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Byte)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return ((Number)fromInstance).byteValue();
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (Boolean) fromInstance ? BYTE_ONE : BYTE_ZERO;
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean)fromInstance).get() ? BYTE_ONE : BYTE_ZERO;
+            }
+        }
+        catch(Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Byte'", e);
+        }
+        return nope(fromInstance, "Byte");
+    }
+
+    private static Object convertShort(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return SHORT_ZERO;
+                }
+                return Short.valueOf(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Short)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return ((Number)fromInstance).shortValue();
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (Boolean) fromInstance ? SHORT_ONE : SHORT_ZERO;
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean) fromInstance).get() ? SHORT_ONE : SHORT_ZERO;
+            }
+        }
+        catch(Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Short'", e);
+        }
+        return nope(fromInstance, "Short");
+    }
+
+    private static Object convertInteger(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof Integer)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return ((Number)fromInstance).intValue();
+            }
+            else if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return INTEGER_ZERO;
+                }
+                return Integer.valueOf(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (Boolean) fromInstance ? INTEGER_ONE : INTEGER_ZERO;
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean) fromInstance).get() ? INTEGER_ONE : INTEGER_ZERO;
+            }
+        }
+        catch(Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'Integer'", e);
+        }
+        return nope(fromInstance, "Integer");
+    }
+
+    private static Object convertLong(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof Long)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return ((Number)fromInstance).longValue();
+            }
+            else if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return LONG_ZERO;
+                }
+                return Long.valueOf(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Date)
+            {
+                return ((Date)fromInstance).getTime();
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (Boolean) fromInstance ? LONG_ONE : LONG_ZERO;
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean) fromInstance).get() ? LONG_ONE : LONG_ZERO;
+            }
+            else if (fromInstance instanceof Calendar)
+            {
+                return ((Calendar)fromInstance).getTime().getTime();
+            }
+        }
+        catch(Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Long'", e);
+        }
+        return nope(fromInstance, "Long");
+    }
+
+    private static Object convertFloat(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return FLOAT_ZERO;
+                }
+                return Float.valueOf(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Float)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return ((Number)fromInstance).floatValue();
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (Boolean) fromInstance ? FLOAT_ONE : FLOAT_ZERO;
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean) fromInstance).get() ? FLOAT_ONE : FLOAT_ZERO;
+            }
+        }
+        catch(Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Float'", e);
+        }
+        return nope(fromInstance, "Float");
+    }
+
+    private static Object convertDouble(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                if (StringUtilities.isEmpty((String)fromInstance))
+                {
+                    return DOUBLE_ZERO;
+                }
+                return Double.valueOf(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Double)
+            {
+                return fromInstance;
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return ((Number)fromInstance).doubleValue();
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (Boolean) fromInstance ? DOUBLE_ONE : DOUBLE_ZERO;
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean) fromInstance).get() ? DOUBLE_ONE : DOUBLE_ZERO;
+            }
+        }
+        catch(Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Double'", e);
+        }
+        return nope(fromInstance, "Double");
+    }
+
+    private static Object convertBoolean(Object fromInstance)
+    {
+        if (fromInstance instanceof Boolean)
+        {
+            return fromInstance;
+        }
+        else if (fromInstance instanceof Number)
+        {
+            return ((Number)fromInstance).longValue() != 0;
+        }
+        else if (fromInstance instanceof String)
+        {
+            if (StringUtilities.isEmpty((String)fromInstance))
+            {
+                return Boolean.FALSE;
+            }
+            String value = (String)  fromInstance;
+            return "true".equalsIgnoreCase(value) ? Boolean.TRUE : Boolean.FALSE;
+        }
+        else if (fromInstance instanceof AtomicBoolean)
+        {
+            return ((AtomicBoolean) fromInstance).get();
+        }
+        return nope(fromInstance, "Boolean");
     }
 
     private static String nope(Object fromInstance, String targetType)

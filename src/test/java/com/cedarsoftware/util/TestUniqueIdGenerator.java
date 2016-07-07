@@ -26,16 +26,22 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestUniqueIdGenerator
 {
-
     @Test
     public void testUniqueIdGeneration() throws Exception
     {
-        Set ids = new HashSet();
+        int testSize = 1000000;
+        long[] keep = new long[testSize];
 
-        for (int i=0; i < 1000000; i++)
+        for (int i=0; i < testSize; i++)
         {
-            ids.add(UniqueIdGenerator.getUniqueId());
+            keep[i] = UniqueIdGenerator.getUniqueId();
         }
-        assertTrue(ids.size() == 1000000);
+
+        Set<Long> unique = new HashSet<>(testSize);
+        for (int i=0; i < testSize; i++)
+        {
+            unique.add(keep[i]);
+        }
+        assertTrue(unique.size() == testSize);
     }
 }

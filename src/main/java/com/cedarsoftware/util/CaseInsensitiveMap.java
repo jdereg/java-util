@@ -664,33 +664,29 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             {
                 return true;
             }
-            if (other == null)
-            {
-                return false;
-            }
-            if (other instanceof String)
-            {
-                return caseInsensitiveString.equalsIgnoreCase((String)other);
-            }
             else if (other instanceof CaseInsensitiveString)
             {
                 return hashCode() == other.hashCode() &&
                         caseInsensitiveString.equalsIgnoreCase(((CaseInsensitiveString)other).caseInsensitiveString);
+            }
+            else if (other instanceof String)
+            {
+                return caseInsensitiveString.equalsIgnoreCase((String)other);
             }
             return false;
         }
 
         public int compareTo(Object o)
         {
-            if (o instanceof String)
-            {
-                String other = (String)o;
-                return caseInsensitiveString.compareToIgnoreCase(other);
-            }
-            else if (o instanceof CaseInsensitiveString)
+            if (o instanceof CaseInsensitiveString)
             {
                 CaseInsensitiveString other = (CaseInsensitiveString) o;
                 return caseInsensitiveString.compareToIgnoreCase(other.caseInsensitiveString);
+            }
+            else if (o instanceof String)
+            {
+                String other = (String)o;
+                return caseInsensitiveString.compareToIgnoreCase(other);
             }
             else
             {   // Strings are less than non-Strings (come before)

@@ -8,6 +8,7 @@
     <version>1.25.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
+
     <profiles>
         <profile>
             <id>doclint-java8-disable</id>
@@ -79,7 +80,7 @@
         <version.log4j>2.5</version.log4j>
         <version.junit>4.12</version.junit>
         <version.guava>19.0</version.guava>                 <!-- testing only -->
-        <version.json.io>4.4.0</version.json.io>            <!-- testing only -->
+        <version.json.io>4.5.0</version.json.io>            <!-- testing only -->
         <version.powermock>1.6.4</version.powermock>
         <version.mockito>1.10.19</version.mockito>
         <version.java>1.7</version.java>
@@ -89,7 +90,10 @@
         <version.plugin.javadoc>2.10.3</version.plugin.javadoc>
         <version.plugin.nexus>1.6.6</version.plugin.nexus>
         <version.plugin.release>2.5.3</version.plugin.release>
+        <version.plugin.surefire>2.19.1</version.plugin.surefire>
         <version.plugin.source>3.0.0</version.plugin.source>
+        <version.plugin.felix.scr>1.7.4</version.plugin.felix.scr>
+        <version.plugin.felix.bundle>2.5.3</version.plugin.felix.bundle>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -121,6 +125,35 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+                <version>${version.plugin.felix.scr}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>${version.plugin.felix.bundle}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Export-Package>com.cedarsoftware.util</Export-Package>
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                    </instructions>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>bundle-manifest</id>
+                        <goals>
+                            <goal>
+                                manifest
+                            </goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -171,6 +204,15 @@
                     <serverId>ossrh</serverId>
                     <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                     <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${version.plugin.surefire}</version>
+                <configuration>
+                    <forkCount>1</forkCount>
                 </configuration>
             </plugin>
 

@@ -37,37 +37,37 @@ public class TestUrlInvocationHandlerWithPlainReader
 
     @Test
     public void testWithBadUrl() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://cedarsoftware.com/invalid/url", "F012982348484444")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://files.cedarsoftware.com/invalid/url", "F012982348484444")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testHappyPath() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("[\"test-passed\"]", item.foo());
     }
 
     @Test
     public void testWithSessionAwareInvocationHandler() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("[\"test-passed\"]", item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetException("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithInvocationExceptionAndNoCause() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsInvocationTargetExceptionWithNoCause("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
         Assert.assertNull(item.foo());
     }
 
     @Test
     public void testUrlInvocationHandlerWithNonInvocationException() {
-        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsNullPointerException("http://www.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
+        TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerStrategyThatThrowsNullPointerException("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json")));
         Assert.assertNull(item.foo());
     }
 

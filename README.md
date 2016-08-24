@@ -10,9 +10,6 @@ To include in your project:
   <version>1.24.0</version>
 </dependency>
 ```
-Like **java-util** and find it useful? **Tip** bitcoin: 1MeozsfDpUALpnu3DntHWXxoPJXvSAXmQA
-
-Also, check out json-io at https://github.com/jdereg/json-io
 
 ### Sponsors
 [![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)
@@ -22,7 +19,8 @@ YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/in
 and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
 innovative and intelligent tools for profiling Java and .NET applications.
 
-[![Alt text](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS-ZOCfy4ezfTmbGat9NYuyfe-aMwbo3Czx3-kUfKreRKche2f8fg "IntellijIDEA")](https://www.jetbrains.com/idea/)
+<a href="https://www.jetbrains.com/idea/"><img alt="Intellij IDEA from JetBrains" src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" data-canonical-src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" width="100" height="100" /></a>
+**Intellij IDEA**<hr>
 
 Including in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays [ ]

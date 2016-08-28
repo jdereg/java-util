@@ -1,0 +1,29 @@
+sudo: false
+
+language: java
+
+jdk:
+  - oraclejdk8
+  - oraclejdk7
+  - oraclejdk6
+  - openjdk8
+  - openjdk7
+  - openjdk6
+
+install: mvn -B install -U -DskipTests=true
+
+script: mvn -B verify -U -Dmaven.javadoc.skip=true
+
+after_success:
+
+cache:
+  directories:
+  - $HOME/.m2
+
+env:
+  global:
+
+branches:
+  only:
+    - master
+    - /^release.*$/

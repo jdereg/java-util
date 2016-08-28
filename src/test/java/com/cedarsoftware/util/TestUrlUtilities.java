@@ -53,16 +53,8 @@ public class TestUrlUtilities
 {
     private static final String httpsUrl = "https://gotofail.com/";
     private static final String domain  = "ssllabs";
-    private static final String httpUrl = "http://tests.codetested.com/java-util/url-test.html";
-
-    private static final String _expected = "<html>\n" +
-            "<head>\n" +
-            "\t<title>URL Utilities Rocks!</title>\n" +
-            "</head>\n" +
-            "<body>\n" +
-            "<h1>Hello, John!</h1>\n" +
-            "</body>\n" +
-            "</html>";
+    private static final String httpUrl = "http://files.cedarsoftware.com/tests/ncube/some.txt";
+    private static final String _expected = "CAFEBABE";
 
     @Test
     public void testConstructorIsPrivate() throws Exception
@@ -228,12 +220,12 @@ public class TestUrlUtilities
     @Test
     public void testCookies() throws Exception
     {
-        HashMap cookies = new HashMap();
+        Map cookies = new HashMap();
 
         byte[] bytes1 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
 
         assertEquals(1, cookies.size());
-        assertTrue(cookies.containsKey("codetested.com"));
+        assertTrue(cookies.containsKey("cedarsoftware.com"));
         assertEquals(_expected, new String(bytes1));
     }
 

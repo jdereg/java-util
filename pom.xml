@@ -80,7 +80,7 @@
         <version.log4j>2.5</version.log4j>
         <version.junit>4.12</version.junit>
         <version.guava>19.0</version.guava>                 <!-- testing only -->
-        <version.json.io>4.5.0</version.json.io>            <!-- testing only -->
+        <version.json.io>4.8.0</version.json.io>            <!-- testing only -->
         <version.powermock>1.6.4</version.powermock>
         <version.mockito>1.10.19</version.mockito>
         <version.java>1.7</version.java>

@@ -131,5 +131,3 @@
  * Fixed: `CaseInsensitiveMap's equals()` method, it required case to match on keys.
 * 1.4.0
  * Initial version
-
-By: John DeRegnaucourt and Ken Partlow

@@ -100,7 +100,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     protected Map<K, V> copy(Map<K, V> source, Map dest)
     {
-        for (Entry<K, V> entry : source.entrySet())
+        for (Map.Entry<K, V> entry : source.entrySet())
         {
             K key = entry.getKey();
             K altKey;
@@ -159,7 +159,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             return;
         }
 
-        for (Entry entry : m.entrySet())
+        for (Map.Entry entry : m.entrySet())
         {
             put((K) entry.getKey(), (V) entry.getValue());
         }
@@ -197,7 +197,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             return false;
         }
 
-        for (Entry entry : that.entrySet())
+        for (Map.Entry entry : that.entrySet())
         {
             final Object thatKey = entry.getKey();
             if (!containsKey(thatKey))
@@ -226,7 +226,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     public int hashCode()
     {
         int h = 0;
-        for (Entry<K, V> entry : map.entrySet())
+        for (Map.Entry<K, V> entry : map.entrySet())
         {
             Object key = entry.getKey();
             int hKey;
@@ -331,10 +331,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             }
 
             final int size = map.size();
-            Iterator<Entry<K, V>> i = map.entrySet().iterator();
+            Iterator<Map.Entry<K, V>> i = map.entrySet().iterator();
             while (i.hasNext())
             {
-                Entry<K, V> entry = i.next();
+                Map.Entry<K, V> entry = i.next();
                 if (!other.containsKey(entry.getKey()))
                 {
                     i.remove();
@@ -442,7 +442,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         }
     }
 
-    public Set<Entry<K, V>> entrySet()
+    public Set<Map.Entry<K, V>> entrySet()
     {
         return new EntrySet();
     }
@@ -450,9 +450,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     private class EntrySet<E> extends LinkedHashSet<E>
     {
         final Map<K, V> localMap = CaseInsensitiveMap.this;
-        Iterator<Entry<K, V>> iter;
+        Iterator<Map.Entry<K, V>> iter;
 
-        public EntrySet() { }
+        EntrySet() { }
 
         public int size()
         {
@@ -471,12 +471,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public boolean contains(Object o)
         {
-            if (!(o instanceof Entry))
+            if (!(o instanceof Map.Entry))
             {
                 return false;
             }
 
-            Entry that = (Entry) o;
+            Map.Entry that = (Map.Entry) o;
             if (localMap.containsKey(that.getKey()))
             {
                 Object value = localMap.get(that.getKey());
@@ -492,7 +492,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         public boolean remove(Object o)
         {
             final int size = map.size();
-            Entry that = (Entry) o;
+            Map.Entry that = (Map.Entry) o;
             localMap.remove(that.getKey());
             return map.size() != size;
         }
@@ -522,19 +522,19 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             Map other = new CaseInsensitiveMap();
             for (Object o : c)
             {
-                if (o instanceof Entry)
+                if (o instanceof Map.Entry)
                 {
-                    other.put(((Entry)o).getKey(), ((Entry) o).getValue());
+                    other.put(((Map.Entry)o).getKey(), ((Map.Entry) o).getValue());
                 }
             }
 
             int origSize = size();
 
             // Drop all items that are not in the passed in Collection
-            Iterator<Entry<K,V>> i = map.entrySet().iterator();
+            Iterator<Map.Entry<K,V>> i = map.entrySet().iterator();
             while (i.hasNext())
             {
-                Entry<K, V> entry = i.next();
+                Map.Entry<K, V> entry = i.next();
                 Object key = entry.getKey();
                 Object value = entry.getValue();
                 if (!other.containsKey(key))
@@ -579,7 +579,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             iter = map.entrySet().iterator();
             return new Iterator()
             {
-                Entry lastReturned = null;
+                Map.Entry lastReturned = null;
 
                 public boolean hasNext()
                 {
@@ -609,7 +609,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      */
     public class CaseInsensitiveEntry<KK, VV> extends AbstractMap.SimpleEntry<KK, VV>
     {
-        public CaseInsensitiveEntry(Entry<KK, VV> entry)
+        public CaseInsensitiveEntry(Map.Entry<KK, VV> entry)
         {
             super(entry);
         }

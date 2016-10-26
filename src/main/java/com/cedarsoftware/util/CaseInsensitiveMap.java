@@ -444,7 +444,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public Set<Map.Entry<K, V>> entrySet()
     {
-        return new EntrySet();
+        return new EntrySet<>();
     }
 
     private class EntrySet<E> extends LinkedHashSet<E>
@@ -574,10 +574,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             throw new UnsupportedOperationException("Cannot addAll() to a 'view' of a Map.  See JavaDoc for Map.entrySet()");
         }
 
-        public Iterator iterator()
+        public Iterator<E> iterator()
         {
             iter = map.entrySet().iterator();
-            return new Iterator()
+            return new Iterator<E>()
             {
                 Map.Entry lastReturned = null;
 
@@ -586,10 +586,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                     return iter.hasNext();
                 }
 
-                public Object next()
+                public E next()
                 {
                     lastReturned = iter.next();
-                    return new CaseInsensitiveEntry<>(lastReturned);
+                    return (E) new CaseInsensitiveEntry<>(lastReturned);
                 }
 
                 public void remove()
@@ -637,11 +637,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     protected static final class CaseInsensitiveString implements Comparable
     {
         private final String caseInsensitiveString;
-        private Integer hash = null;
+        private final int hash;
 
         protected CaseInsensitiveString(String string)
         {
             caseInsensitiveString = string;
+            hash = caseInsensitiveString.toLowerCase().hashCode();
         }
 
         public String toString()
@@ -651,10 +652,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public int hashCode()
         {
-            if (hash == null)
-            {
-                hash = caseInsensitiveString.toLowerCase().hashCode();
-            }
             return hash;
         }
 
@@ -666,7 +663,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             }
             else if (other instanceof CaseInsensitiveString)
             {
-                return hashCode() == other.hashCode() &&
+                return hash == ((CaseInsensitiveString)other).hash &&
                         caseInsensitiveString.equalsIgnoreCase(((CaseInsensitiveString)other).caseInsensitiveString);
             }
             else if (other instanceof String)
@@ -681,6 +678,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             if (o instanceof CaseInsensitiveString)
             {
                 CaseInsensitiveString other = (CaseInsensitiveString) o;
+                if (hash == other.hash)
+                {
+                    return 0;
+                }
                 return caseInsensitiveString.compareToIgnoreCase(other.caseInsensitiveString);
             }
             else if (o instanceof String)

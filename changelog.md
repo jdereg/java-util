@@ -1,7 +1,11 @@
 ### Revision History
+* 1.25.0
+ * Performance improvement: `CaseInsensitiveMap/Set` internally adds Strings to Map without using .toLowerCase() which eliminates creating a temporary copy on the heap of the String being added, just to get its lowerCaseValue.
+ * Performance improvement: `CaseInsensitiveMap/Set` uses less memory internally by caching the hash code as an int, instead of an Integer.
+ * `StringUtilities.caseInsensitiveHashCode()` API added.  This allows computing a case-insensitive hashcode from a String without any object creation (heap usage).
 * 1.24.0
-  * `Converter.convert()` - performance improved using class instance comparison versus class String name comparison.
-  * `CaseInsensitiveSet/Map` - performance improved.  `CaseInsensitiveString` (internal) short-circuits on equality check if hashCode() [cheap runtime cost] is not the same.  Also, all method returning true/false to detect if `Set` or `Map` changed rely on size() instead of contains.
+ * `Converter.convert()` - performance improved using class instance comparison versus class String name comparison.
+ * `CaseInsensitiveMap/Set` - performance improved.  `CaseInsensitiveString` (internal) short-circuits on equality check if hashCode() [cheap runtime cost] is not the same.  Also, all method returning true/false to detect if `Set` or `Map` changed rely on size() instead of contains.
 * 1.23.0
  * `Converter.convert()` API update: When a mutable type (`Date`, `AtomicInteger`, `AtomicLong`, `AtomicBoolean`) is passed in, and the destination type is the same, rather than return the instance passed in, a copy of the instance is returned.
 * 1.22.0

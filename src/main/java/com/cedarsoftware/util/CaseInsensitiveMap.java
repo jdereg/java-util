@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
+
 /**
  * Useful Map that does not care about the case-sensitivity of keys
  * when the key value is a String.  Other key types can be used.
@@ -229,15 +231,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         for (Map.Entry<K, V> entry : map.entrySet())
         {
             Object key = entry.getKey();
-            int hKey;
-            if (key instanceof String)
-            {
-                hKey = ((String)key).toLowerCase().hashCode();
-            }
-            else
-            {
-                hKey = key == null ? 0 : key.hashCode();
-            }
+            int hKey = key == null ? 0 : key.hashCode();
             Object value = entry.getValue();
             int hValue = value == null ? 0 : value.hashCode();
             h += hKey ^ hValue;
@@ -616,11 +610,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         public KK getKey()
         {
-            if (super.getKey() instanceof CaseInsensitiveString)
+            KK superKey = super.getKey();
+            if (superKey instanceof CaseInsensitiveString)
             {
-                return (KK) super.getKey().toString();
+                return (KK) superKey.toString();
             }
-            return super.getKey();
+            return superKey;
         }
 
         public VV setValue(VV value)
@@ -642,7 +637,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         protected CaseInsensitiveString(String string)
         {
             caseInsensitiveString = string;
-            hash = caseInsensitiveString.toLowerCase().hashCode();
+            hash = hashCodeIgnoreCase(string);  // no new String created unlike .toLowerCase()
         }
 
         public String toString()

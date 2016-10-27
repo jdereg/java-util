@@ -9,6 +9,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
+
 /**
  * Implements a java.util.Set that will not utilize 'case' when comparing Strings
  * contained within the Set.  The set can be homogeneous or heterogeneous.
@@ -73,7 +75,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
             {
                 if (item instanceof String)
                 {
-                    hash += ((String)item).toLowerCase().hashCode();
+                    hash += hashCodeIgnoreCase((String)item);
                 }
                 else
                 {

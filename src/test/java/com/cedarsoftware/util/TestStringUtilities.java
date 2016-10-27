@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -340,5 +341,19 @@ public class TestStringUtilities
     public void testCreateUtf8StringWithEmptyArray()
     {
         assertEquals("", StringUtilities.createUtf8String(new byte[]{}));
+    }
+
+    @Test
+    public void testHashCodeIgnoreCase()
+    {
+        String s = "Hello";
+        String t = "HELLO";
+        assert hashCodeIgnoreCase(s) == hashCodeIgnoreCase(t);
+
+        s = "Hell0";
+        assert hashCodeIgnoreCase(s) != hashCodeIgnoreCase(t);
+
+        assert hashCodeIgnoreCase(null) == 0;
+        assert hashCodeIgnoreCase("") == 0;
     }
 }

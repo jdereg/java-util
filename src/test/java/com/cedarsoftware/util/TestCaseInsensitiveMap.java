@@ -306,7 +306,7 @@ public class TestCaseInsensitiveMap
         b.put("One", "Two");
         b.put("THREE", "FOUR");
         b.put("Five", "Six");
-        assertFalse(a.hashCode() == b.hashCode());
+        assertFalse(a.hashCode() == b.hashCode());  // value FOUR is different than Four
     }
 
     @Test

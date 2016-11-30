@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
@@ -56,8 +57,9 @@ public class GraphComparator
         Object getId(Object objectToId);
     }
 
-    public static class Delta
+    public static class Delta implements Serializable
     {
+        private static final long serialVersionUID = -4388236892818050806L;
         private String srcPtr;
         private Object id;
         private String fieldName;
@@ -221,6 +223,7 @@ public class GraphComparator
 
     public static class DeltaError extends Delta
     {
+        private static final long serialVersionUID = 6248596026486571238L;
         public String error;
 
         public DeltaError(String error, Delta delta)

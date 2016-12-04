@@ -1,4 +1,6 @@
 ### Revision History
+* 1.25.1
+ * Enhancement: The Delta object returned by GraphComparator implements Serializable for those using ObjectInputStream / ObjectOutputStream.  Provided by @metlaivan (Ivan Metla) 
 * 1.25.0
  * Performance improvement: `CaseInsensitiveMap/Set` internally adds Strings to Map without using .toLowerCase() which eliminates creating a temporary copy on the heap of the String being added, just to get its lowerCaseValue.
  * Performance improvement: `CaseInsensitiveMap/Set` uses less memory internally by caching the hash code as an int, instead of an Integer.

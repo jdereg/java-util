@@ -1,4 +1,6 @@
 ### Revision History
+* 1.26.0
+ * Enhancement: added getClassNameFromByteCode() API to ReflectionUtils.
 * 1.25.1
  * Enhancement: The Delta object returned by GraphComparator implements Serializable for those using ObjectInputStream / ObjectOutputStream.  Provided by @metlaivan (Ivan Metla) 
 * 1.25.0

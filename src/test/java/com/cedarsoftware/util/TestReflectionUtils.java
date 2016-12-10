@@ -249,7 +249,7 @@ public class TestReflectionUtils
     @Test
     public void testGetClassName() throws Exception
     {
-        assertEquals("null", ReflectionUtils.getClassName(null));
+        assertEquals("null", ReflectionUtils.getClassName((Object)null));
         assertEquals("java.lang.String", ReflectionUtils.getClassName("item"));
     }
 

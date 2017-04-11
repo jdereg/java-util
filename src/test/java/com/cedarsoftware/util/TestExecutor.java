@@ -33,7 +33,7 @@ public class TestExecutor
         if (s.toLowerCase().contains("windows")) {
             executor.exec(new String[] {"cmd.exe", "/c", "echo This is handy"});
         } else {
-            executor.exec(new String[] {"echo This is handy"});
+            executor.exec("echo This is handy");
         }
         assertEquals("This is handy", executor.getOut().trim());
     }

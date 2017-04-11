@@ -23,6 +23,10 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestExecutor
 {
+
+    private static final String THIS_IS_HANDY = "This is handy";
+    private static final String ECHO_THIS_IS_HANDY = "echo " + THIS_IS_HANDY;
+
     @Test
     public void testExecutor()
     {
@@ -31,10 +35,10 @@ public class TestExecutor
         String s = System.getProperty("os.name");
 
         if (s.toLowerCase().contains("windows")) {
-            executor.exec(new String[] {"cmd.exe", "/c", "echo This is handy"});
+            executor.exec(new String[] {"cmd.exe", "/c", ECHO_THIS_IS_HANDY});
         } else {
-            executor.exec("echo This is handy");
+            executor.exec(ECHO_THIS_IS_HANDY);
         }
-        assertEquals("This is handy", executor.getOut().trim());
+        assertEquals(THIS_IS_HANDY, executor.getOut().trim());
     }
 }

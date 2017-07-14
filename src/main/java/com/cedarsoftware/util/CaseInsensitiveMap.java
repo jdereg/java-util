@@ -411,8 +411,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             iter = map.keySet().iterator();
             return new Iterator<K>()
             {
-                Object lastReturned = null;
-
                 public boolean hasNext()
                 {
                     return iter.hasNext();
@@ -420,12 +418,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
                 public K next()
                 {
-                    lastReturned = iter.next();
-                    if (lastReturned instanceof CaseInsensitiveString)
+                    Object next = iter.next();
+                    if (next instanceof CaseInsensitiveString)
                     {
-                        lastReturned = lastReturned.toString();
+                        next = next.toString();
                     }
-                    return (K) lastReturned;
+                    return (K) next;
                 }
 
                 public void remove()
@@ -573,8 +571,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             iter = map.entrySet().iterator();
             return new Iterator<E>()
             {
-                Map.Entry lastReturned = null;
-
                 public boolean hasNext()
                 {
                     return iter.hasNext();
@@ -582,8 +578,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
                 public E next()
                 {
-                    lastReturned = iter.next();
-                    return (E) new CaseInsensitiveEntry<>(lastReturned);
+                    return (E) new CaseInsensitiveEntry<>(iter.next());
                 }
 
                 public void remove()

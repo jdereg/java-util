@@ -1,17 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -620,11 +609,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     }
 
     /**
-     * Internal class used to wrap String keys.  This class ignores the
+     * Class used to wrap String keys.  This class ignores the
      * case of Strings when they are compared.  Based on known usage,
      * null checks, proper instance, etc. are dropped.
      */
-    protected static final class CaseInsensitiveString implements Comparable
+    static final class CaseInsensitiveString implements Comparable
     {
         private final String caseInsensitiveString;
         private final int hash;
@@ -668,10 +657,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             if (o instanceof CaseInsensitiveString)
             {
                 CaseInsensitiveString other = (CaseInsensitiveString) o;
-                if (hash == other.hash)
-                {
-                    return 0;
-                }
                 return caseInsensitiveString.compareToIgnoreCase(other.caseInsensitiveString);
             }
             else if (o instanceof String)

@@ -1,4 +1,6 @@
 ### Revision History
+* 1.26.1
+  * Bug fix: The internal class CaseInsensitiveString did not implement Comparable interface correctly.
 * 1.26.0
   * Enhancement: added getClassNameFromByteCode() API to ReflectionUtils.
 * 1.25.1

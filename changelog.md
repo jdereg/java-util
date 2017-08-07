@@ -1,4 +1,6 @@
 ### Revision History
+* 1.27.0
+  * Enhancement: Converter.convert() now supports enum to String
 * 1.26.1
   * Bug fix: The internal class CaseInsensitiveString did not implement Comparable interface correctly.
 * 1.26.0

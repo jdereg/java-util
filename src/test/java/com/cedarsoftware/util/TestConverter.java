@@ -14,13 +14,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static com.cedarsoftware.util.TestConverter.fubar.bar;
+import static com.cedarsoftware.util.TestConverter.fubar.foo;
+import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com) & Ken Partlow
@@ -41,6 +37,11 @@ import static org.junit.Assert.fail;
  */
 public class TestConverter
 {
+    enum fubar
+    {
+        foo, bar, baz, quz
+    }
+
     @Test
     public void testConstructorIsPrivateAndClassIsFinal() throws Exception {
         Class c = Converter.class;
@@ -848,5 +849,12 @@ public class TestConverter
         assertEquals(new AtomicBoolean(false).get(), ((AtomicBoolean)Converter.convert("", AtomicBoolean.class)).get());
         assertEquals(new AtomicInteger(0).get(), ((AtomicInteger)Converter.convert("", AtomicInteger.class)).get());
         assertEquals(new AtomicLong(0L).get(), ((AtomicLong)Converter.convert("", AtomicLong.class)).get());
+    }
+
+    @Test
+    public void testEnumSupport()
+    {
+        assertEquals("foo", Converter.convert(foo, String.class));
+        assertEquals("bar", Converter.convert(bar, String.class));
     }
 }

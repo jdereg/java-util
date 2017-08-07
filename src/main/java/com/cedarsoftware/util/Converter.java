@@ -104,6 +104,10 @@ public final class Converter
             {
                 return "" + fromInstance;
             }
+            else if (fromInstance instanceof Enum)
+            {
+                return ((Enum)fromInstance).name();
+            }
             nope(fromInstance, "String");
         }
         else if (toType == long.class)

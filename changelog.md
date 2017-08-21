@@ -1,12 +1,12 @@
 ### Revision History
 * 1.27.0
-  * Enhancement: Converter.convert() now supports enum to String
+  * Enhancement: `Converter.convert()` now supports `enum` to `String`
 * 1.26.1
-  * Bug fix: The internal class CaseInsensitiveString did not implement Comparable interface correctly.
+  * Bug fix: The internal class `CaseInsensitiveString` did not implement `Comparable` interface correctly.
 * 1.26.0
-  * Enhancement: added getClassNameFromByteCode() API to ReflectionUtils.
+  * Enhancement: added `getClassNameFromByteCode()` API to `ReflectionUtils`.
 * 1.25.1
-  * Enhancement: The Delta object returned by GraphComparator implements Serializable for those using ObjectInputStream / ObjectOutputStream.  Provided by @metlaivan (Ivan Metla) 
+  * Enhancement: The Delta object returned by `GraphComparator` implements `Serializable` for those using `ObjectInputStream` / `ObjectOutputStream`.  Provided by @metlaivan (Ivan Metla) 
 * 1.25.0
   * Performance improvement: `CaseInsensitiveMap/Set` internally adds Strings to Map without using .toLowerCase() which eliminates creating a temporary copy on the heap of the String being added, just to get its lowerCaseValue.
   * Performance improvement: `CaseInsensitiveMap/Set` uses less memory internally by caching the hash code as an int, instead of an Integer.

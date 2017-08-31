@@ -71,7 +71,7 @@ public class FastByteArrayOutputStream extends OutputStream
      * than 'size' (whats been written to it).  Therefore, use this byte[] along with 0 to size() to
      * fetch the contents of this buffer without creating a new byte[].
      */
-    byte[] getBuffer()
+    public byte[] getBuffer()
     {
         return buffer;
     }

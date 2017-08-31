@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import static org.junit.Assert.fail;
@@ -35,7 +36,7 @@ public class TestFastByteArrayBuffer
 
         byte[] content = fbaos.getBuffer();
 
-        String content2 = new String(content, 0, fbaos.size);
+        String content2 = new String(content, 0, fbaos.size());
         assert content2.equals(hello);
         assert content == fbaos.buffer; // same address as internal buffer
         assert content == originalBuffer;
@@ -52,7 +53,7 @@ public class TestFastByteArrayBuffer
 
         byte[] content = fbaos.getBuffer();
 
-        String content2 = new String(content, 0, fbaos.size);
+        String content2 = new String(content, 0, fbaos.size());
         assert content2.equals(hello);
         assert content == fbaos.buffer; // same address as internal buffer
         assert content != originalBuffer;
@@ -69,11 +70,56 @@ public class TestFastByteArrayBuffer
 
         byte[] content = fbaos.getBuffer();
 
-        String content2 = new String(content, 0, fbaos.size);
+        String content2 = new String(content, 0, fbaos.size());
         assert content2.equals(hello);
         assert content == fbaos.buffer; // same address as internal buffer
         assert content != originalBuffer;
         assert content.length == 20;    // started at 1, +2 until finished.
+    }
+
+    @Test
+    public void testWriteToOutputStream() throws IOException
+    {
+        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+        FastByteArrayOutputStream fa = new FastByteArrayOutputStream();
+        String hw = "Hello, world.";
+        fa.write(hw.getBytes());
+        fa.writeTo(ba);
+        assert new String(ba.toByteArray()).equals(hw);
+    }
+
+    @Test
+    public void testWriteToByteArray() throws Exception
+    {
+        FastByteArrayOutputStream fa = new FastByteArrayOutputStream();
+        String hw = "Hello, world.";
+        byte[] bytes = new byte[hw.getBytes("UTF-8").length];
+        fa.write(hw.getBytes());
+        fa.writeTo(bytes);
+        assert new String(bytes).equals(hw);
+    }
+
+    @Test
+    public void testSize() throws Exception
+    {
+        FastByteArrayOutputStream fa = new FastByteArrayOutputStream();
+        byte[] save = fa.getBuffer();
+        String hw = "Hello, world.";
+        fa.write(hw.getBytes());
+        assert fa.size() == hw.length();
+        assert fa.toString().equals(hw);
+        fa.clear();
+        assert fa.size() == 0;
+        assert fa.getBuffer() == save;
+    }
+
+    @Test
+    public void testWriteByte() throws Exception
+    {
+        FastByteArrayOutputStream fa = new FastByteArrayOutputStream();
+        fa.write('H');
+        fa.write('i');
+        assert fa.toString().equals("Hi");
     }
 
     @Test

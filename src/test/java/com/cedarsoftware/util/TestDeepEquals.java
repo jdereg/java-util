@@ -1,25 +1,8 @@
 package com.cedarsoftware.util;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import static java.lang.Math.E;
@@ -112,21 +95,21 @@ public class TestDeepEquals
 	@Test
 	public void testOrderedCollection()
     {
-		List<String> a = Lists.newArrayList("one", "two", "three", "four", "five");
-		List<String> b = Lists.newLinkedList(a);
+        List<String> a = Arrays.asList("one", "two", "three", "four", "five");
+		List<String> b = new LinkedList<>(a);
 
 		assertTrue(DeepEquals.deepEquals(a, b));
 
-		List<Integer> c = Lists.newArrayList(1, 2, 3, 4, 5);
+		List<Integer> c = Arrays.asList(1, 2, 3, 4, 5);
 
 		assertFalse(DeepEquals.deepEquals(a, c));
 
-		List<Integer> d = Lists.newArrayList(4, 6);
+		List<Integer> d = Arrays.asList(4, 6);
 
 		assertFalse(DeepEquals.deepEquals(c, d));
 
-		List<Class1> x1 = Lists.newArrayList(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1));
-		List<Class1> x2 = Lists.newArrayList(new Class1(true, 2, 6), new Class1(true, 1, 1));
+		List<Class1> x1 = Arrays.asList(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1));
+		List<Class1> x2 = Arrays.asList(new Class1(true, 2, 6), new Class1(true, 1, 1));
 		assertTrue(DeepEquals.deepEquals(x1, x2));
 
 	}
@@ -134,18 +117,18 @@ public class TestDeepEquals
 	@Test
 	public void testUnorderedCollection()
     {
-		Set<String> a = Sets.newHashSet("one", "two", "three", "four", "five");
-		Set<String> b = Sets.newHashSet("three", "five", "one", "four", "two");
+        Set<String> a = new HashSet<>(Arrays.asList("one", "two", "three", "four", "five"));
+		Set<String> b = new HashSet<>(Arrays.asList("three", "five", "one", "four", "two"));
 		assertTrue(DeepEquals.deepEquals(a, b));
 
-		Set<Integer> c = Sets.newHashSet(1, 2, 3, 4, 5);
+		Set<Integer> c = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5));
 		assertFalse(DeepEquals.deepEquals(a, c));
 
-		Set<Integer> d = Sets.newHashSet(4, 2, 6);
+		Set<Integer> d = new HashSet<>(Arrays.asList(4, 2, 6));
 		assertFalse(DeepEquals.deepEquals(c, d));
 
-		Set<Class1> x1 = Sets.newHashSet(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1));
-		Set<Class1> x2 = Sets.newHashSet(new Class1(true, 1, 1), new Class1(true, 2, 6));
+		Set<Class1> x1 = new HashSet<>(Arrays.asList(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1)));
+		Set<Class1> x2 = new HashSet<>(Arrays.asList(new Class1(true, 1, 1), new Class1(true, 2, 6)));
 		assertTrue(DeepEquals.deepEquals(x1, x2));
 	}
 

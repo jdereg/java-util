@@ -286,11 +286,16 @@ public final class IOUtilities
 
     public static byte[] compressBytes(byte[] bytes)
     {
-        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(bytes.length))
+        return compressBytes(bytes, 0, bytes.length);
+    }
+
+    public static byte[] compressBytes(byte[] bytes, int offset, int len)
+    {
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream())
         {
             try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream))
             {
-                gzipStream.write(bytes);
+                gzipStream.write(bytes, offset, len);
                 gzipStream.flush();
             }
             return byteStream.toByteArray();
@@ -303,9 +308,14 @@ public final class IOUtilities
 
     public static byte[] uncompressBytes(byte[] bytes)
     {
+        return uncompressBytes(bytes, 0, bytes.length);
+    }
+
+    public static byte[] uncompressBytes(byte[] bytes, int offset, int len)
+    {
         if (ByteUtilities.isGzipped(bytes))
         {
-            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes))
+            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len))
             {
                 try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 8192))
                 {

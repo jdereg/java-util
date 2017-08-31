@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
+import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
 /**
@@ -128,7 +130,7 @@ public class FastByteArrayOutputStream extends OutputStream
      * @param offset the start offset in the data.
      * @param len the number of bytes to write.
      */
-    public void write(byte bytes[], int offset, int len)
+    public void write(byte[] bytes, int offset, int len)
     {
         if (bytes == null)
         {
@@ -141,6 +143,45 @@ public class FastByteArrayOutputStream extends OutputStream
         ensureCapacity(size + len);
         System.arraycopy(bytes, offset, buffer, size, len);
         size += len;
+    }
+
+    /**
+     * Convenience method to copy the contained byte[] to the passed in OutputStream.
+     * You could also code out.write(fastBa.getBuffer(), 0, fastBa.size())
+     * @param out OutputStream target
+     */
+    public void writeTo(OutputStream out) throws IOException
+    {
+        out.write(buffer, 0, size);
+    }
+
+    /**
+     * Copy the internal byte[] to the passed in byte[].  No new space is allocated.
+     * @param dest byte[] target
+     */
+    public void writeTo(byte[] dest)
+    {
+        if (dest.length < size)
+        {
+            throw new IllegalArgumentException("Passed in byte[] is not large enough");
+        }
+
+        System.arraycopy(buffer, 0, dest, 0, size);
+    }
+
+    /**
+     * @return String (UTF-8) from the byte[] in this object.
+     */
+    public String toString()
+    {
+        try
+        {
+            return new String(buffer, 0, size, "UTF-8");
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            throw new IllegalStateException("Unable to convert byte[] into UTF-8 string.");
+        }
     }
 
     /**

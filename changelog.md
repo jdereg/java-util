@@ -1,4 +1,8 @@
 ### Revision History
+* 1.29.0
+  * Removed test dependencies on Guava
+  * Rounded out APIs on `FastByteArrayOutputStream`
+  * Added APIs to `IOUtilities`.
 * 1.28.2
   * Enhancement: `IOUtilities.compressBytes(FastByteArrayOutputStream, FastByteArrayOutputStream)` added.
 * 1.28.1

@@ -84,7 +84,7 @@ public class UniqueIdGenerator
 
     private static long getUniqueIdAttempt()
     {
-        // shift time by 4 digits (so that IP and count can be last 4 digits)
+        // shift time by 4 digits (so that IP and size can be last 4 digits)
         count++;
         if (count >= 1000)
         {

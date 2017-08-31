@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.27.0</version>
+    <version>1.28.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -79,8 +79,8 @@
     <properties>
         <version.log4j>2.5</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.guava>19.0</version.guava>                 <!-- testing only -->
-        <version.json.io>4.9.0</version.json.io>            <!-- testing only -->
+        <version.guava>23.0</version.guava>                 <!-- testing only -->
+        <version.json.io>4.10.0</version.json.io>            <!-- testing only -->
         <version.powermock>1.6.4</version.powermock>
         <version.mockito>1.10.19</version.mockito>
         <version.java>1.7</version.java>

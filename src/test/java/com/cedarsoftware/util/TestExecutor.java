@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestExecutor
 {
-
     private static final String THIS_IS_HANDY = "This is handy";
     private static final String ECHO_THIS_IS_HANDY = "echo " + THIS_IS_HANDY;
 

@@ -1,4 +1,6 @@
 ### Revision History
+* 1.28.0
+  * Enhancement: `FastByteArrayOutputStream` added.  Similar to JDK class, but without `synchronized` and access to inner `byte[]` allowed without duplicating the `byte[]`.
 * 1.27.0
   * Enhancement: `Converter.convert()` now supports `enum` to `String`
 * 1.26.1

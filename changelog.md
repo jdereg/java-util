@@ -1,4 +1,6 @@
 ### Revision History
+* 1.28.2
+  * Enhancement: `IOUtilities.compressBytes(FastByteArrayOutputStream, FastByteArrayOutputStream)` added.
 * 1.28.1
   * Enhancement: `FastByteArrayOutputStream.getBuffer()` API made public.
 * 1.28.0

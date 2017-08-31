@@ -276,6 +276,14 @@ public final class IOUtilities
         gzipStream.close();
     }
 
+    public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
+    {
+        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed, 32768);
+        gzipStream.write(original.buffer, 0, original.size);
+        gzipStream.flush();
+        gzipStream.close();
+    }
+
     public static byte[] compressBytes(byte[] bytes)
     {
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(bytes.length))

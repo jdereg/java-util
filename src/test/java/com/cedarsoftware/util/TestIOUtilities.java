@@ -154,7 +154,6 @@ public class TestIOUtilities
         IOUtilities.compressBytes(start, result);
 
         assertArrayEquals(expectedResult.toByteArray(), result.toByteArray());
-
     }
 
     @Test
@@ -167,11 +166,43 @@ public class TestIOUtilities
         byte[] result = IOUtilities.compressBytes(start.toByteArray());
 
         assertArrayEquals(expectedResult.toByteArray(), result);
-
     }
 
     @Test
-    public void testCompressBytesWithException() throws Exception {
+    public void testFastCompressBytes() throws Exception
+    {
+        // load start
+        FastByteArrayOutputStream start = getFastUncompressedByteArray();
+        FastByteArrayOutputStream expectedResult = getFastCompressedByteArray();
+        FastByteArrayOutputStream result = new FastByteArrayOutputStream(8192);
+        IOUtilities.compressBytes(start, result);
+
+        byte[] a = new byte[expectedResult.size];
+        byte[] b = new byte[result.size];
+        System.arraycopy(expectedResult.buffer, 0, a, 0, a.length);
+        System.arraycopy(result.buffer, 0, b, 0, b.length);
+        assertArrayEquals(a, b);
+    }
+
+    @Test
+    public void testFastCompressBytes2() throws Exception
+    {
+        // load start
+        FastByteArrayOutputStream start = getFastUncompressedByteArray();
+        FastByteArrayOutputStream expectedResult = getFastCompressedByteArray();
+
+        byte[] bytes = new byte[start.size];
+        System.arraycopy(start.buffer, 0, bytes, 0, bytes.length);
+        byte[] result = IOUtilities.compressBytes(bytes);
+
+        byte[] expBytes = new byte[expectedResult.size];
+        System.arraycopy(expectedResult.buffer, 0, expBytes, 0, expBytes.length);
+        assertArrayEquals(expBytes, result);
+    }
+
+    @Test
+    public void testCompressBytesWithException() throws Exception
+    {
         try
         {
             IOUtilities.compressBytes(null);
@@ -183,7 +214,6 @@ public class TestIOUtilities
             assertTrue(e.getMessage().toLowerCase().contains("error"));
             assertTrue(e.getMessage().toLowerCase().contains("compressing"));
         }
-
     }
 
     @Test
@@ -220,6 +250,16 @@ public class TestIOUtilities
         return start;
     }
 
+    private FastByteArrayOutputStream getFastUncompressedByteArray() throws IOException
+    {
+        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        FastByteArrayOutputStream start = new FastByteArrayOutputStream(8192);
+        FileInputStream in = new FileInputStream(inUrl.getFile());
+        IOUtilities.transfer(in, start);
+        IOUtilities.close(in);
+        return start;
+    }
+
     @Test
     public void testUncompressBytes() throws Exception
     {
@@ -247,6 +287,16 @@ public class TestIOUtilities
         return expectedResult;
     }
 
+    private FastByteArrayOutputStream getFastCompressedByteArray() throws IOException
+    {
+        // load expected result
+        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
+        FastByteArrayOutputStream expectedResult = new FastByteArrayOutputStream(8192);
+        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
+        IOUtilities.transfer(expected, expectedResult);
+        IOUtilities.close(expected);
+        return expectedResult;
+    }
 
     @Test
     public void testTransferInputStreamToFile() throws Exception

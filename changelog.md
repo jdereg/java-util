@@ -1,4 +1,6 @@
 ### Revision History
+* 1.30.0
+  * 
 * 1.29.0
   * Removed test dependencies on Guava
   * Rounded out APIs on `FastByteArrayOutputStream`

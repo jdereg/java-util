@@ -16,10 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLConnection;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -250,9 +247,9 @@ public final class IOUtilities
     {
         try
         {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384);
             transfer(in, out);
-            return out.toByteArray();
+            return Arrays.copyOf(out.buffer, out.size);
         }
         catch (Exception e)
         {
@@ -266,15 +263,17 @@ public final class IOUtilities
      * @param bytes the bytes to send
      * @throws IOException
      */
-    public static void transfer(URLConnection c, byte[] bytes) throws IOException {        
-        try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {            
+    public static void transfer(URLConnection c, byte[] bytes) throws IOException
+    {
+        try (OutputStream out = new BufferedOutputStream(c.getOutputStream()))
+        {
             out.write(bytes);
         }
     }
 
     public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
     {
-        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed, 32768);
+        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed);
         original.writeTo(gzipStream);
         gzipStream.flush();
         gzipStream.close();
@@ -282,7 +281,7 @@ public final class IOUtilities
 
     public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
     {
-        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed, 32768);
+        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed);
         gzipStream.write(original.buffer, 0, original.size);
         gzipStream.flush();
         gzipStream.close();
@@ -295,14 +294,14 @@ public final class IOUtilities
 
     public static byte[] compressBytes(byte[] bytes, int offset, int len)
     {
-        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream())
+        try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream())
         {
             try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream))
             {
                 gzipStream.write(bytes, offset, len);
                 gzipStream.flush();
             }
-            return byteStream.toByteArray();
+            return Arrays.copyOf(byteStream.buffer, byteStream.size);
         }
         catch (Exception e)
         {
@@ -321,7 +320,7 @@ public final class IOUtilities
         {
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len))
             {
-                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 8192))
+                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 16384))
                 {
                     return inputStreamToBytes(gzipStream);
                 }
@@ -339,25 +338,5 @@ public final class IOUtilities
         void bytesTransferred(byte[] bytes, int count);
 
         boolean isCancelled();
-    }
-
-    public static long copy(InputStream input, OutputStream output) throws IOException
-    {
-        try (
-                ReadableByteChannel inputChannel = Channels.newChannel(input);
-                WritableByteChannel outputChannel = Channels.newChannel(output); )
-        {
-            ByteBuffer buffer = ByteBuffer.allocateDirect(10240);
-            long size = 0;
-
-            while (inputChannel.read(buffer) != -1)
-            {
-                buffer.flip();
-                size += outputChannel.write(buffer);
-                buffer.clear();
-            }
-
-            return size;
-        }
     }
 }

@@ -269,7 +269,7 @@ public final class IOUtilities
 
     public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
     {
-        DeflaterOutputStream gzipStream = new AdjustableFastGZIPOutputStream(compressed, Deflater.BEST_SPEED);
+        DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
         original.writeTo(gzipStream);
         gzipStream.flush();
         gzipStream.close();
@@ -277,7 +277,7 @@ public final class IOUtilities
 
     public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
     {
-        DeflaterOutputStream gzipStream = new AdjustableFastGZIPOutputStream(compressed, Deflater.BEST_SPEED);
+        DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
         gzipStream.write(original.buffer, 0, original.size);
         gzipStream.flush();
         gzipStream.close();
@@ -292,7 +292,7 @@ public final class IOUtilities
     {
         try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream())
         {
-            try (DeflaterOutputStream gzipStream = new AdjustableFastGZIPOutputStream(byteStream, Deflater.BEST_SPEED))
+            try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(byteStream, Deflater.BEST_SPEED))
             {
                 gzipStream.write(bytes, offset, len);
                 gzipStream.flush();

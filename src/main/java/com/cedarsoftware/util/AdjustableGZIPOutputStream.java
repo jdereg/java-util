@@ -21,15 +21,15 @@ import java.util.zip.GZIPOutputStream;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class AdjustableFastGZIPOutputStream extends GZIPOutputStream
+public class AdjustableGZIPOutputStream extends GZIPOutputStream
 {
-    public AdjustableFastGZIPOutputStream(OutputStream out, int level) throws IOException
+    public AdjustableGZIPOutputStream(OutputStream out, int level) throws IOException
     {
         super(out);
         def.setLevel(level);
     }
 
-    public AdjustableFastGZIPOutputStream(OutputStream out, int size, int level) throws IOException
+    public AdjustableGZIPOutputStream(OutputStream out, int size, int level) throws IOException
     {
         super(out, size);
         def.setLevel(level);

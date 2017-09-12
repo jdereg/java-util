@@ -1,6 +1,8 @@
 ### Revision History
+* 1.31.1
+  * Renamed `AdjustableFastGZIPOutputStream` to `AdjustableGZIPOutputStream`.
 * 1.31.0
-  * Add `AdjustableGZIPOutputStream` so that compression level can be adjusted.
+  * Add `AdjustableFastGZIPOutputStream` so that compression level can be adjusted.
 * 1.30.0
   * `ByteArrayOutputStreams` converted to `FastByteArrayOutputStreams` internally.
 * 1.29.0

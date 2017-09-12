@@ -149,23 +149,10 @@ public class TestIOUtilities
     {
         // load start
         ByteArrayOutputStream start = getUncompressedByteArray();
-        ByteArrayOutputStream expectedResult = getCompressedByteArray();
-        ByteArrayOutputStream result = new ByteArrayOutputStream(8192);
-        IOUtilities.compressBytes(start, result);
-
-        assertArrayEquals(expectedResult.toByteArray(), result.toByteArray());
-    }
-
-    @Test
-    public void testCompressBytes2() throws Exception
-    {
-        // load start
-        ByteArrayOutputStream start = getUncompressedByteArray();
-        ByteArrayOutputStream expectedResult = getCompressedByteArray();
-
-        byte[] result = IOUtilities.compressBytes(start.toByteArray());
-
-        assertArrayEquals(expectedResult.toByteArray(), result);
+        byte[] small = IOUtilities.compressBytes(start.toByteArray());
+        byte[] restored = IOUtilities.uncompressBytes(small);
+        assert small.length < restored.length;
+        DeepEquals.deepEquals(start.toByteArray(), restored);
     }
 
     @Test
@@ -173,31 +160,15 @@ public class TestIOUtilities
     {
         // load start
         FastByteArrayOutputStream start = getFastUncompressedByteArray();
-        FastByteArrayOutputStream expectedResult = getFastCompressedByteArray();
-        FastByteArrayOutputStream result = new FastByteArrayOutputStream(8192);
-        IOUtilities.compressBytes(start, result);
+        FastByteArrayOutputStream small = new FastByteArrayOutputStream(8192);
+        IOUtilities.compressBytes(start, small);
+        byte[] restored = IOUtilities.uncompressBytes(small.getBuffer(), 0, small.size());
 
-        byte[] a = new byte[expectedResult.size];
-        byte[] b = new byte[result.size];
-        System.arraycopy(expectedResult.buffer, 0, a, 0, a.length);
-        System.arraycopy(result.buffer, 0, b, 0, b.length);
-        assertArrayEquals(a, b);
-    }
+        assert small.size() < start.size();
 
-    @Test
-    public void testFastCompressBytes2() throws Exception
-    {
-        // load start
-        FastByteArrayOutputStream start = getFastUncompressedByteArray();
-        FastByteArrayOutputStream expectedResult = getFastCompressedByteArray();
-
-        byte[] bytes = new byte[start.size];
-        System.arraycopy(start.buffer, 0, bytes, 0, bytes.length);
-        byte[] result = IOUtilities.compressBytes(bytes);
-
-        byte[] expBytes = new byte[expectedResult.size];
-        System.arraycopy(expectedResult.buffer, 0, expBytes, 0, expBytes.length);
-        assertArrayEquals(expBytes, result);
+        String restoredString = new String(restored);
+        String origString = new String(start.getBuffer(), 0, start.size());
+        assert origString.equals(restoredString);
     }
 
     @Test
@@ -262,7 +233,6 @@ public class TestIOUtilities
     {
         ByteArrayOutputStream expectedResult = getCompressedByteArray();
 
-
         // load start
         ByteArrayOutputStream start = getUncompressedByteArray();
 
@@ -270,7 +240,6 @@ public class TestIOUtilities
         byte[] uncompressedBytes = IOUtilities.uncompressBytes(expectedResult.toByteArray());
 
         assertArrayEquals(start.toByteArray(), uncompressedBytes);
-
     }
 
     private ByteArrayOutputStream getCompressedByteArray() throws IOException
@@ -278,17 +247,6 @@ public class TestIOUtilities
         // load expected result
         URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
         ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
-        FileInputStream expected = new FileInputStream(expectedUrl.getFile());
-        IOUtilities.transfer(expected, expectedResult);
-        IOUtilities.close(expected);
-        return expectedResult;
-    }
-
-    private FastByteArrayOutputStream getFastCompressedByteArray() throws IOException
-    {
-        // load expected result
-        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
-        FastByteArrayOutputStream expectedResult = new FastByteArrayOutputStream(8192);
         FileInputStream expected = new FileInputStream(expectedUrl.getFile());
         IOUtilities.transfer(expected, expectedResult);
         IOUtilities.close(expected);

@@ -1,6 +1,8 @@
 ### Revision History
+* 1.31.0
+  * Add `AdjustableGZIPOutputStream` so that compression level can be adjusted.
 * 1.30.0
-  * 
+  * `ByteArrayOutputStreams` converted to `FastByteArrayOutputStreams` internally.
 * 1.29.0
   * Removed test dependencies on Guava
   * Rounded out APIs on `FastByteArrayOutputStream`

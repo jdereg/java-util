@@ -17,11 +17,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLConnection;
 import java.util.Arrays;
-import java.util.zip.DeflaterOutputStream;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-import java.util.zip.Inflater;
-import java.util.zip.InflaterInputStream;
+import java.util.zip.*;
 
 /**
  * Useful IOUtilities that simplify common io tasks
@@ -273,7 +269,7 @@ public final class IOUtilities
 
     public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
     {
-        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed);
+        DeflaterOutputStream gzipStream = new AdjustableFastGZIPOutputStream(compressed, Deflater.BEST_SPEED);
         original.writeTo(gzipStream);
         gzipStream.flush();
         gzipStream.close();
@@ -281,7 +277,7 @@ public final class IOUtilities
 
     public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
     {
-        DeflaterOutputStream gzipStream = new GZIPOutputStream(compressed);
+        DeflaterOutputStream gzipStream = new AdjustableFastGZIPOutputStream(compressed, Deflater.BEST_SPEED);
         gzipStream.write(original.buffer, 0, original.size);
         gzipStream.flush();
         gzipStream.close();
@@ -296,7 +292,7 @@ public final class IOUtilities
     {
         try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream())
         {
-            try (GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream))
+            try (DeflaterOutputStream gzipStream = new AdjustableFastGZIPOutputStream(byteStream, Deflater.BEST_SPEED))
             {
                 gzipStream.write(bytes, offset, len);
                 gzipStream.flush();

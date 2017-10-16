@@ -2,6 +2,8 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 
 /**
  * Handy utilities for working with Java arrays.
@@ -145,5 +147,24 @@ public final class ArrayUtilities
     public static <T> T[] getArraySubset(T[] array, int start, int end)
     {
         return Arrays.copyOfRange(array, start, end);
+    }
+
+    /**
+     * Convert Collection to a Java (typed) array [].
+     * @param classToCastTo array type (Object[], Person[], etc.)
+     * @param c Collection containing items to be placed into the array.
+     * @param <T> Type of the array
+     * @return Array of the type (T) containing the items from collection 'c'.
+     */
+    public static <T> T[] toArray(Class<T> classToCastTo, Collection c)
+    {
+        T[] array = (T[]) c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
+        Iterator i = c.iterator();
+        int idx = 0;
+        while (i.hasNext())
+        {
+            Array.set(array, idx++, i.next());
+        }
+        return array;
     }
 }

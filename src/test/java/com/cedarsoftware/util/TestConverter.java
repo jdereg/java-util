@@ -7,7 +7,9 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -317,6 +319,10 @@ public class TestConverter
         assertEquals("25", Converter.convert(new AtomicInteger(25), String.class));
         assertEquals("100", Converter.convert(new AtomicLong(100L), String.class));
         assertEquals("true", Converter.convert(new AtomicBoolean(true), String.class));
+
+        assertEquals("1.23456789", Converter.convert(1.23456789d, String.class));
+        // TODO: Add following test once we have preferred method of removing exponential notation, yet retain decimal separator
+//        assertEquals("123456789.12345", Converter.convert(123456789.12345, String.class));
 
         try
         {

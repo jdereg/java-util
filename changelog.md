@@ -1,4 +1,6 @@
 ### Revision History
+* 1.32.0
+  * `Converter` updated to expose `convertTo*()` APIs that allow converting to a known type.
 * 1.31.1
   * Renamed `AdjustableFastGZIPOutputStream` to `AdjustableGZIPOutputStream`.
 * 1.31.0

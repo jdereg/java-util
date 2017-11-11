@@ -130,7 +130,26 @@ public class TestDeepEquals
 		Set<Class1> x1 = new HashSet<>(Arrays.asList(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1)));
 		Set<Class1> x2 = new HashSet<>(Arrays.asList(new Class1(true, 1, 1), new Class1(true, 2, 6)));
 		assertTrue(DeepEquals.deepEquals(x1, x2));
-	}
+
+		// Proves that objects are being compared against the correct objects in each collection (all objects have same
+        // hash code, so the unordered compare must handle checking item by item for hash-collided items)
+		Set<DumbHash> d1 = new LinkedHashSet<>();
+		Set<DumbHash> d2 = new LinkedHashSet<>();
+		d1.add(new DumbHash("alpha"));
+		d1.add(new DumbHash("bravo"));
+		d1.add(new DumbHash("charlie"));
+		
+		d2.add(new DumbHash("bravo"));
+		d2.add(new DumbHash("alpha"));
+		d2.add(new DumbHash("charlie"));
+		assert DeepEquals.deepEquals(d1, d2);
+
+        d2.clear();
+        d2.add(new DumbHash("bravo"));
+        d2.add(new DumbHash("alpha"));
+        d2.add(new DumbHash("delta"));
+        assert !DeepEquals.deepEquals(d2, d1);
+    }
 
     @Test
     public void testEquivalentMaps()
@@ -149,6 +168,72 @@ public class TestDeepEquals
         fillMap(map2);
         assertTrue(DeepEquals.deepEquals(map1, map2));
         assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
+    }
+
+    @Test
+    public void testUnorderedMapsWithKeyHashCodeCollisions()
+    {
+        Map<DumbHash, String> map1 = new LinkedHashMap<>();
+        map1.put(new DumbHash("alpha"), "alpha");
+        map1.put(new DumbHash("bravo"), "bravo");
+        map1.put(new DumbHash("charlie"), "charlie");
+
+        Map<DumbHash, String> map2 = new LinkedHashMap<>();
+        map2.put(new DumbHash("bravo"), "bravo");
+        map2.put(new DumbHash("alpha"), "alpha");
+        map2.put(new DumbHash("charlie"), "charlie");
+
+        assert DeepEquals.deepEquals(map1, map2);
+
+        map2.clear();
+        map2.put(new DumbHash("bravo"), "bravo");
+        map2.put(new DumbHash("alpha"), "alpha");
+        map2.put(new DumbHash("delta"), "delta");
+        assert !DeepEquals.deepEquals(map1, map2);
+    }
+
+    @Test
+    public void testUnorderedMapsWithValueHashCodeCollisions()
+    {
+        Map<String, DumbHash> map1 = new LinkedHashMap<>();
+        map1.put("alpha", new DumbHash("alpha"));
+        map1.put("bravo", new DumbHash("bravo"));
+        map1.put("charlie", new DumbHash("charlie"));
+
+        Map<String, DumbHash> map2 = new LinkedHashMap<>();
+        map2.put("bravo", new DumbHash("bravo"));
+        map2.put("alpha", new DumbHash("alpha"));
+        map2.put("charlie", new DumbHash("charlie"));
+
+        assert DeepEquals.deepEquals(map1, map2);
+
+        map2.clear();
+        map2.put("bravo", new DumbHash("bravo"));
+        map2.put("alpha", new DumbHash("alpha"));
+        map2.put("delta", new DumbHash("delta"));
+        assert !DeepEquals.deepEquals(map1, map2);
+    }
+
+    @Test
+    public void testUnorderedMapsWithKeyValueHashCodeCollisions()
+    {
+        Map<DumbHash, DumbHash> map1 = new LinkedHashMap<>();
+        map1.put(new DumbHash("alpha"), new DumbHash("alpha"));
+        map1.put(new DumbHash("bravo"), new DumbHash("bravo"));
+        map1.put(new DumbHash("charlie"), new DumbHash("charlie"));
+
+        Map<DumbHash, DumbHash> map2 = new LinkedHashMap<>();
+        map2.put(new DumbHash("bravo"), new DumbHash("bravo"));
+        map2.put(new DumbHash("alpha"), new DumbHash("alpha"));
+        map2.put(new DumbHash("charlie"), new DumbHash("charlie"));
+
+        assert DeepEquals.deepEquals(map1, map2);
+
+        map2.clear();
+        map2.put(new DumbHash("bravo"), new DumbHash("bravo"));
+        map2.put(new DumbHash("alpha"), new DumbHash("alpha"));
+        map2.put(new DumbHash("delta"), new DumbHash("delta"));
+        assert !DeepEquals.deepEquals(map1, map2);
     }
 
     @Test
@@ -265,6 +350,29 @@ public class TestDeepEquals
         boolean one = DeepEquals.deepEquals(new ArrayList<String>(), new EmptyClass());
         boolean two = DeepEquals.deepEquals(new EmptyClass(), new ArrayList<String>());
         assert one == two;
+    }
+
+    static class DumbHash
+    {
+        String s;
+
+        DumbHash(String str)
+        {
+            s = str;
+        }
+
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            DumbHash dumbHash = (DumbHash) o;
+            return s != null ? s.equals(dumbHash.s) : dumbHash.s == null;
+        }
+
+        public int hashCode()
+        {
+            return 1;   // dumb, but valid
+        }
     }
 
 	static class EmptyClass

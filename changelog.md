@@ -1,4 +1,6 @@
 ### Revision History
+* 1.33.0
+  * Bug fix: `DeepEquals.deepEquals(a, b)` could report equivalent unordered `Collections` / `Maps` as not equal if the items in the `Collection` / `Map` had the same hash code.
 * 1.32.0
   * `Converter` updated to expose `convertTo*()` APIs that allow converting to a known type.
 * 1.31.1

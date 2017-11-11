@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
@@ -179,8 +180,7 @@ public class DeepEquals
             {
                 return false;
             }
-
-
+            
             if (!isContainerType(dualKey._key1) && !isContainerType(dualKey._key2) && !dualKey._key1.getClass().equals(dualKey._key2.getClass()))
             {   // Must be same class
                 return false;
@@ -385,24 +385,42 @@ public class DeepEquals
             return false;
         }
 
-        Map<Integer, Object> fastLookup = new HashMap<>();
+        Map<Integer, Collection> fastLookup = new HashMap<>();
         for (Object o : col2)
         {
-            fastLookup.put(deepHashCode(o), o);
+            int hash = deepHashCode(o);
+            Collection items = fastLookup.get(hash);
+            if (items == null)
+            {
+                items = new ArrayList();
+                fastLookup.put(hash, items);
+            }
+            items.add(o);
         }
 
         for (Object o : col1)
         {
-            Object other = fastLookup.get(deepHashCode(o));
-            if (other == null)
-            {   // Item not even found in other Collection, no need to continue.
+            Collection other = fastLookup.get(deepHashCode(o));
+            if (other == null || other.isEmpty())
+            {   // fail fast: item not even found in other Collection, no need to continue.
                 return false;
             }
 
-            DualKey dk = new DualKey(o, other);
-            if (!visited.contains(dk))
-            {   // Place items on 'stack' for future equality comparison.
-                stack.addFirst(dk);
+            if (other.size() == 1)
+            {   // no hash collision, items must be equivalent or deepEquals is false
+                DualKey dk = new DualKey(o, other.iterator().next());
+                if (!visited.contains(dk))
+                {   // Place items on 'stack' for future equality comparison.
+                    stack.addFirst(dk);
+                }
+            }
+            else
+            {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
+                // from collision list, making further comparisons faster)
+                if (!isContained(o, other))
+                {
+                    return false;
+                }
             }
         }
         return true;
@@ -470,35 +488,75 @@ public class DeepEquals
             return false;
         }
 
-        Map<Integer, Object> fastLookup = new HashMap<>();
+        Map<Integer, Collection<Map.Entry>> fastLookup = new HashMap<>();
 
         for (Map.Entry entry : (Set<Map.Entry>)map2.entrySet())
         {
-            fastLookup.put(deepHashCode(entry.getKey()), entry);
+            int hash = deepHashCode(entry.getKey());
+            Collection items = fastLookup.get(hash);
+            if (items == null)
+            {
+                items = new ArrayList();
+                fastLookup.put(hash, items);
+            }
+            items.add(entry);
         }
 
         for (Map.Entry entry : (Set<Map.Entry>)map1.entrySet())
         {
-            Map.Entry other = (Map.Entry)fastLookup.get(deepHashCode(entry.getKey()));
-            if (other == null)
+            Collection<Map.Entry> other = fastLookup.get(deepHashCode(entry.getKey()));
+            if (other == null || other.isEmpty())
             {
                 return false;
             }
 
-            DualKey dk = new DualKey(entry.getKey(), other.getKey());
-            if (!visited.contains(dk))
-            {   // Push keys for further comparison
-                stack.addFirst(dk);
-            }
+            if (other.size() == 1)
+            {
+                Map.Entry entry2 = other.iterator().next();
+                DualKey dk = new DualKey(entry.getKey(), entry2.getKey());
+                if (!visited.contains(dk))
+                {   // Push keys for further comparison
+                    stack.addFirst(dk);
+                }
 
-            dk = new DualKey(entry.getValue(), other.getValue());
-            if (!visited.contains(dk))
-            {   // Push values for further comparison
-                stack.addFirst(dk);
+                dk = new DualKey(entry.getValue(), entry2.getValue());
+                if (!visited.contains(dk))
+                {   // Push values for further comparison
+                    stack.addFirst(dk);
+                }
+            }
+            else
+            {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
+                // from collision list, making further comparisons faster)
+                if (!isContained(entry, other))
+                {
+                    return false;
+                }
             }
         }
 
         return true;
+    }
+
+    /**
+     * @return true of the passed in o is within the passed in Collection, using a deepEquals comparison
+     * element by element.  Used only for hash collisions.
+     */
+    private static boolean isContained(Object o, Collection other)
+    {
+        boolean found = false;
+        Iterator i = other.iterator();
+        while (i.hasNext())
+        {
+            Object x = i.next();
+            if (DeepEquals.deepEquals(o, x))
+            {
+                found = true;
+                i.remove(); // can only be used successfully once - remove from list
+                break;
+            }
+        }
+        return found;
     }
 
     /**

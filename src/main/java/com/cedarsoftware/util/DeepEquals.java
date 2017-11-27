@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,11 +53,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DeepEquals
 {
     private DeepEquals () {}
-    
+
+    public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<>();
     private static final double doubleEplison = 1e-15;
     private static final double floatEplison = 1e-6;
+    private static final Set<Class> prims = new HashSet<>();
+
+    static
+    {
+        prims.add(Byte.class);
+        prims.add(Integer.class);
+        prims.add(Long.class);
+        prims.add(Double.class);
+        prims.add(Character.class);
+        prims.add(Float.class);
+        prims.add(Boolean.class);
+        prims.add(Short.class);
+    }
 
     private final static class DualKey
     {
@@ -114,8 +129,46 @@ public class DeepEquals
      */
     public static boolean deepEquals(Object a, Object b)
     {
+        return deepEquals(a, b, new HashMap());
+    }
+
+    /**
+     * Compare two objects with a 'deep' comparison.  This will traverse the
+     * Object graph and perform either a field-by-field comparison on each
+     * object (if not .equals() method has been overridden from Object), or it
+     * will call the customized .equals() method if it exists.  This method will
+     * allow object graphs loaded at different times (with different object ids)
+     * to be reliably compared.  Object.equals() / Object.hashCode() rely on the
+     * object's identity, which would not consider to equivalent objects necessarily
+     * equals.  This allows graphs containing instances of Classes that did no
+     * overide .equals() / .hashCode() to be compared.  For example, testing for
+     * existence in a cache.  Relying on an objects identity will not locate an
+     * object in cache, yet relying on it being equivalent will.<br><br>
+     *
+     * This method will handle cycles correctly, for example A-&gt;B-&gt;C-&gt;A.  Suppose a and
+     * a' are two separate instances of the A with the same values for all fields on
+     * A, B, and C.  Then a.deepEquals(a') will return true.  It uses cycle detection
+     * storing visited objects in a Set to prevent endless loops.
+     * @param a Object one to compare
+     * @param b Object two to compare
+     * @param options Map options for compare. With no option, if a custom equals()
+     *                method is present, it will be used.  If IGNORE_CUSTOM_EQUALS is
+     *                present, it will be expected to be a Set of classes to ignore.
+     *                It is a black-list of classes that will not be compared
+     *                using .equals() even if the classes have a custom .equals() method
+     *                present.  If it is and empty set, then no custom .equals() methods
+     *                will be called.
+     *
+     * @return true if a is equivalent to b, false otherwise.  Equivalent means that
+     * all field values of both subgraphs are the same, either at the field level
+     * or via the respectively encountered overridden .equals() methods during
+     * traversal.
+     */
+    public static boolean deepEquals(Object a, Object b, Map options)
+    {
         Set<DualKey> visited = new HashSet<>();
         Deque<DualKey> stack = new LinkedList<>();
+        Set<String> ignoreCustomEquals = (Set<String>) options.get(IGNORE_CUSTOM_EQUALS);
         stack.addFirst(new DualKey(a, b));
 
         while (!stack.isEmpty())
@@ -133,6 +186,27 @@ public class DeepEquals
                 return false;
             }
 
+            if (dualKey._key1 instanceof Double && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
+            {
+                continue;
+            }
+
+            if (dualKey._key1 instanceof Float && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))
+            {
+                continue;
+            }
+
+            Class key1Class = dualKey._key1.getClass();
+
+            if (key1Class.isPrimitive() || prims.contains(key1Class) || dualKey._key1 instanceof String || dualKey._key1 instanceof Date || dualKey._key1 instanceof Class)
+            {
+                if (!dualKey._key1.equals(dualKey._key2))
+                {
+                    return false;
+                }
+                continue;   // Nothing further to push on the stack
+            }
+            
             if (dualKey._key1 instanceof Collection)
             {   // If Collections, they both must be Collection
                 if (!(dualKey._key2 instanceof Collection))
@@ -180,26 +254,16 @@ public class DeepEquals
             {
                 return false;
             }
-            
-            if (!isContainerType(dualKey._key1) && !isContainerType(dualKey._key2) && !dualKey._key1.getClass().equals(dualKey._key2.getClass()))
+
+            if (!isContainerType(dualKey._key1) && !isContainerType(dualKey._key2) && !key1Class.equals(dualKey._key2.getClass()))
             {   // Must be same class
                 return false;
-            }
-
-            if (dualKey._key1 instanceof Double && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
-            {
-                continue;
-            }
-
-            if (dualKey._key1 instanceof Float && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))
-            {
-                continue;
             }
 
             // Handle all [] types.  In order to be equal, the arrays must be the same
             // length, be of the same type, be in the same order, and all elements within
             // the array must be deeply equivalent.
-            if (dualKey._key1.getClass().isArray())
+            if (key1Class.isArray())
             {
                 if (!compareArrays(dualKey._key1, dualKey._key2, stack, visited))
                 {
@@ -264,16 +328,23 @@ public class DeepEquals
                 continue;
             }
 
-            if (hasCustomEquals(dualKey._key1.getClass()))
-            {   // String, Number, Date, etc. all have custom equals
-                if (!dualKey._key1.equals(dualKey._key2))
+            // If there is a custom equals ... AND
+            // the caller has not specified any classes to skip ... OR
+            // the caller has specified come classes to ignore and this one is not in the list ... THEN
+            // compare using the custom equals.
+            if (hasCustomEquals(key1Class))
+            {
+                if (ignoreCustomEquals == null || (ignoreCustomEquals.size() > 0 && !ignoreCustomEquals.contains(key1Class)))
                 {
-                    return false;
+                    if (!dualKey._key1.equals(dualKey._key2))
+                    {
+                        return false;
+                    }
+                    continue;
                 }
-                continue;
             }
 
-            Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(dualKey._key1.getClass());
+            Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(key1Class);
 
             for (Field field : fields)
             {
@@ -689,10 +760,10 @@ public class DeepEquals
 
             if (obj instanceof Double || obj instanceof Float)
             {
-            	// just take the integral value for hashcode
-            	// equality tests things more comprehensively
-            	stack.add(Math.round(((Number) obj).doubleValue()));
-            	continue;
+                // just take the integral value for hashcode
+                // equality tests things more comprehensively
+                stack.add(Math.round(((Number) obj).doubleValue()));
+                continue;
             }
 
             if (hasCustomHashCode(obj.getClass()))

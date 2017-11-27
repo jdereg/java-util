@@ -2,8 +2,12 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.lang.Math.E;
 import static java.lang.Math.PI;
@@ -51,6 +55,57 @@ public class TestDeepEquals
 		assertFalse(DeepEquals.deepEquals(null, date1));
 		assertFalse(DeepEquals.deepEquals(date1, null));
 	}
+
+	@Test
+    public void testDeepEqualsWithOptions()
+    {
+        Person p1 = new Person("Jim Bob", 27);
+        Person p2 = new Person("Jim Bob", 34);
+        assert p1.equals(p2);
+        assert DeepEquals.deepEquals(p1, p2);
+
+        Map<String, Object> options = new HashMap<>();
+        Set<Class> skip = new HashSet<>();
+        skip.add(Person.class);
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, skip);
+        assert !DeepEquals.deepEquals(p1, p2, options);       // told to skip Person's .equals() - so it will compare all fields
+
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, new HashSet());
+        assert !DeepEquals.deepEquals(p1, p2, options);       // told to skip all custom .equals() - so it will compare all fields
+
+        skip.clear();
+        skip.add(Point.class);
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, skip);
+        assert DeepEquals.deepEquals(p1, p2, options);        // Not told to skip Person's .equals() - so it will compare on name only
+    }
+
+    @Test
+    public void testAtomicStuff()
+    {
+        AtomicWrapper atomic1 = new AtomicWrapper(35);
+        AtomicWrapper atomic2 = new AtomicWrapper(35);
+        AtomicWrapper atomic3 = new AtomicWrapper(42);
+
+        assert DeepEquals.deepEquals(atomic1, atomic2);
+        assert !DeepEquals.deepEquals(atomic1, atomic3);
+
+        Map<String, Object> options = new HashMap<>();
+        Set<Class> skip = new HashSet<>();
+        skip.add(AtomicWrapper.class);
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, skip);
+        assert DeepEquals.deepEquals(atomic1, atomic2, options);
+        assert !DeepEquals.deepEquals(atomic1, atomic3, options);
+
+        AtomicBoolean b1 = new AtomicBoolean(true);
+        AtomicBoolean b2 = new AtomicBoolean(false);
+        AtomicBoolean b3 = new AtomicBoolean(true);
+
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, new HashSet());
+        assert !DeepEquals.deepEquals(b1, b2);
+        assert DeepEquals.deepEquals(b1, b3);
+        assert !DeepEquals.deepEquals(b1, b2, options);
+        assert DeepEquals.deepEquals(b1, b3, options);
+    }
 
 	@Test
 	public void testDifferentClasses()
@@ -111,7 +166,6 @@ public class TestDeepEquals
 		List<Class1> x1 = Arrays.asList(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1));
 		List<Class1> x2 = Arrays.asList(new Class1(true, 2, 6), new Class1(true, 1, 1));
 		assertTrue(DeepEquals.deepEquals(x1, x2));
-
 	}
 
 	@Test
@@ -427,6 +481,49 @@ public class TestDeepEquals
 
 		public Class2() { }
 	}
+
+	private static class Person
+    {
+        private String name;
+        private int age;
+
+        Person(String name, int age)
+        {
+            this.name = name;
+            this.age = age;
+        }
+
+        public boolean equals(Object obj)
+        {
+            if (!(obj instanceof Person))
+            {
+                return false;
+            }
+
+            Person other = (Person) obj;
+            return name.equals(other.name);
+        }
+
+        public int hashCode()
+        {
+            return name == null ? 0 : name.hashCode();
+        }
+    }
+
+    private static class AtomicWrapper
+    {
+        private AtomicLong n;
+
+        AtomicWrapper(long n)
+        {
+            this.n = new AtomicLong(n);
+        }
+
+        long getValue()
+        {
+            return n.longValue();
+        }
+    }
 
     private void fillMap(Map map)
     {

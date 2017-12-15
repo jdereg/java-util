@@ -55,6 +55,7 @@ public class DeepEquals
     private DeepEquals () {}
 
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
+    public static final String REASON = "REASON";
     private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<>();
     private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<>();
     private static final double doubleEplison = 1e-15;
@@ -168,8 +169,10 @@ public class DeepEquals
     {
         Set<DualKey> visited = new HashSet<>();
         Deque<DualKey> stack = new LinkedList<>();
+        Deque<String> history = new LinkedList<>();
         Set<String> ignoreCustomEquals = (Set<String>) options.get(IGNORE_CUSTOM_EQUALS);
         stack.addFirst(new DualKey(a, b));
+        history.add(getHistoryKey("root", a));
 
         while (!stack.isEmpty())
         {
@@ -369,6 +372,25 @@ public class DeepEquals
         return o instanceof Collection || o instanceof Map;
     }
 
+    private static String getHistoryKey(String field, Object value)
+    {
+        if (value == null)
+        {
+            return field + ": null";
+        }
+        
+        Class clazz = value.getClass();
+
+        if (clazz.isPrimitive() || prims.contains(clazz))
+        {
+            return field + ": [" + clazz.getName() + "] " + value;
+        }
+        else
+        {
+            return field + ": [" + clazz.getName() + "]";
+        }
+    }
+    
     /**
      * Deeply compare to Arrays []. Both arrays must be of the same type, same length, and all
      * elements within the arrays must be deeply equal in order to return true.

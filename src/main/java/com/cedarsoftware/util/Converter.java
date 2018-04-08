@@ -71,7 +71,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToLong(fromInstance);
+                return convertToLong(fromInstance);
             }
         });
 
@@ -87,7 +87,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToInteger(fromInstance);
+                return convertToInteger(fromInstance);
             }
         });
 
@@ -167,7 +167,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToBoolean(fromInstance);
+                return convertToBoolean(fromInstance);
             }
         });
 
@@ -183,7 +183,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToDouble(fromInstance);
+                return convertToDouble(fromInstance);
             }
         });
 
@@ -199,7 +199,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToByte(fromInstance);
+                return convertToByte(fromInstance);
             }
         });
 
@@ -215,7 +215,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToFloat(fromInstance);
+                return convertToFloat(fromInstance);
             }
         });
 
@@ -231,7 +231,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? null : convertToShort(fromInstance);
+                return convertToShort(fromInstance);
             }
         });
 
@@ -618,6 +618,10 @@ public final class Converter
 
     public static Byte convertToByte(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         try
         {
             if (fromInstance instanceof String)
@@ -655,6 +659,10 @@ public final class Converter
 
     public static Short convertToShort(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         try
         {
             if (fromInstance instanceof String)
@@ -692,6 +700,10 @@ public final class Converter
 
     public static Integer convertToInteger(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         try
         {
             if (fromInstance instanceof Integer)
@@ -729,6 +741,10 @@ public final class Converter
 
     public static Long convertToLong(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         try
         {
             if (fromInstance instanceof Long)
@@ -737,11 +753,12 @@ public final class Converter
             }
             else if (fromInstance instanceof String)
             {
-                if ("".equals(fromInstance))
+                String trimmed = ((String) fromInstance).trim();
+                if ("".equals(trimmed))
                 {
                     return LONG_ZERO;
                 }
-                return Long.valueOf(((String) fromInstance).trim());
+                return Long.valueOf(trimmed);
             }
             else if (fromInstance instanceof Number)
             {
@@ -774,6 +791,10 @@ public final class Converter
 
     public static Float convertToFloat(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         try
         {
             if (fromInstance instanceof String)
@@ -811,6 +832,10 @@ public final class Converter
 
     public static Double convertToDouble(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         try
         {
             if (fromInstance instanceof String)
@@ -848,6 +873,10 @@ public final class Converter
 
     public static Boolean convertToBoolean(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         if (fromInstance instanceof Boolean)
         {
             return (Boolean)fromInstance;

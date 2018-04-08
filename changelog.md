@@ -1,4 +1,7 @@
 ### Revision History
+* 1.34.1
+  * Enhancement: Added support for `null` arguments in `Converter` shortcut methods (e.g.`Converter.convertToLong()`).
+  * Enhancement: Updated `Converter.convertToLong()` to return `0L` for any `String` that `.trims()` to an empty `String`.
 * 1.34.0
   * Enhancement: `DeepEquals.deepEquals(a, b options)` added.  The new options map supports a key `DeepEquals.IGNORE_CUSTOM_EQUALS` which can be set to a Set of String class names.  If any of the encountered classes in the comparison are listed in the Set, and the class has a custom `.equals()` method, it will not be called and instead a `deepEquals()` will be performed.  If the value associated to the `IGNORE_CUSTOM_EQUALS` key is an empty Set, then no custom `.equals()` methods will be called, except those on primitives, primitive wrappers, `Date`, `Class`, and `String`. 
 * 1.33.0

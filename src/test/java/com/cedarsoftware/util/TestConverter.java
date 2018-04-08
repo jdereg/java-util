@@ -223,6 +223,8 @@ public class TestConverter
         assertEquals(100L, Converter.convert(new AtomicLong(100L), Long.class));
         assertEquals(1L, Converter.convert(new AtomicBoolean(true), Long.class));
 
+        assertEquals(0L, Converter.convert(" ", Long.class));
+
         try
         {
             Converter.convert(TimeZone.getDefault(), long.class);
@@ -824,6 +826,13 @@ public class TestConverter
         assertNull(Converter.convert(null, AtomicBoolean.class));
         assertNull(Converter.convert(null, AtomicInteger.class));
         assertNull(Converter.convert(null, AtomicLong.class));
+        assertNull(Converter.convertToLong(null));
+        assertNull(Converter.convertToInteger(null));
+        assertNull(Converter.convertToBoolean(null));
+        assertNull(Converter.convertToDouble(null));
+        assertNull(Converter.convertToByte(null));
+        assertNull(Converter.convertToFloat(null));
+        assertNull(Converter.convertToShort(null));
     }
 
     @Test

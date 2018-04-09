@@ -63,7 +63,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? 0L : convertToLong(fromInstance);
+                return convertToLong(fromInstance);
             }
         });
 
@@ -71,7 +71,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToLong(fromInstance);
+                return fromInstance == null ? null : convertToLong(fromInstance);
             }
         });
 
@@ -79,7 +79,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? 0 : convertToInteger(fromInstance);
+                return convertToInteger(fromInstance);
             }
         });
 
@@ -87,7 +87,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToInteger(fromInstance);
+                return fromInstance == null ? null : convertToInteger(fromInstance);
             }
         });
 
@@ -159,7 +159,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? Boolean.FALSE : convertToBoolean(fromInstance);
+                return convertToBoolean(fromInstance);
             }
         });
 
@@ -167,7 +167,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToBoolean(fromInstance);
+                return fromInstance == null ? null : convertToBoolean(fromInstance);
             }
         });
 
@@ -175,7 +175,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? DOUBLE_ZERO : convertToDouble(fromInstance);
+                return convertToDouble(fromInstance);
             }
         });
 
@@ -183,7 +183,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToDouble(fromInstance);
+                return fromInstance == null ? null : convertToDouble(fromInstance);
             }
         });
 
@@ -191,7 +191,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? BYTE_ZERO : convertToByte(fromInstance);
+                return convertToByte(fromInstance);
             }
         });
 
@@ -199,7 +199,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToByte(fromInstance);
+                return fromInstance == null ? null : convertToByte(fromInstance);
             }
         });
 
@@ -207,7 +207,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? FLOAT_ZERO : convertToFloat(fromInstance);
+                return convertToFloat(fromInstance);
             }
         });
 
@@ -215,7 +215,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToFloat(fromInstance);
+                return fromInstance == null ? null : convertToFloat(fromInstance);
             }
         });
 
@@ -223,7 +223,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return fromInstance == null ? SHORT_ZERO : convertToShort(fromInstance);
+                return convertToShort(fromInstance);
             }
         });
 
@@ -231,7 +231,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToShort(fromInstance);
+                return fromInstance == null ? null : convertToShort(fromInstance);
             }
         });
 
@@ -616,11 +616,11 @@ public final class Converter
         return null;
     }
 
-    public static Byte convertToByte(Object fromInstance)
+    public static byte convertToByte(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return BYTE_ZERO;
         }
         try
         {
@@ -654,14 +654,14 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Byte'", e);
         }
         nope(fromInstance, "Byte");
-        return null;
+        return BYTE_ZERO;
     }
 
-    public static Short convertToShort(Object fromInstance)
+    public static short convertToShort(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return SHORT_ZERO;
         }
         try
         {
@@ -695,14 +695,14 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Short'", e);
         }
         nope(fromInstance, "Short");
-        return null;
+        return SHORT_ZERO;
     }
 
-    public static Integer convertToInteger(Object fromInstance)
+    public static int convertToInteger(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return INTEGER_ZERO;
         }
         try
         {
@@ -736,14 +736,14 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'Integer'", e);
         }
         nope(fromInstance, "Integer");
-        return null;
+        return INTEGER_ZERO;
     }
 
-    public static Long convertToLong(Object fromInstance)
+    public static long convertToLong(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return LONG_ZERO;
         }
         try
         {
@@ -753,12 +753,11 @@ public final class Converter
             }
             else if (fromInstance instanceof String)
             {
-                String trimmed = ((String) fromInstance).trim();
-                if ("".equals(trimmed))
+                if (StringUtilities.isEmpty((String)fromInstance))
                 {
                     return LONG_ZERO;
                 }
-                return Long.valueOf(trimmed);
+                return Long.valueOf(((String) fromInstance).trim());
             }
             else if (fromInstance instanceof Number)
             {
@@ -786,14 +785,14 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Long'", e);
         }
         nope(fromInstance, "Long");
-        return null;
+        return LONG_ZERO;
     }
 
-    public static Float convertToFloat(Object fromInstance)
+    public static float convertToFloat(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return FLOAT_ZERO;
         }
         try
         {
@@ -827,14 +826,14 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Float'", e);
         }
         nope(fromInstance, "Float");
-        return null;
+        return FLOAT_ZERO;
     }
 
-    public static Double convertToDouble(Object fromInstance)
+    public static double convertToDouble(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return DOUBLE_ZERO;
         }
         try
         {
@@ -868,14 +867,14 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Double'", e);
         }
         nope(fromInstance, "Double");
-        return null;
+        return DOUBLE_ZERO;
     }
 
-    public static Boolean convertToBoolean(Object fromInstance)
+    public static boolean convertToBoolean(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            return null;
+            return Boolean.FALSE;
         }
         if (fromInstance instanceof Boolean)
         {
@@ -904,7 +903,7 @@ public final class Converter
             return ((AtomicBoolean) fromInstance).get();
         }
         nope(fromInstance, "Boolean");
-        return null;
+        return Boolean.FALSE;
     }
 
     public static AtomicInteger convertToAtomicInteger(Object fromInstance)

@@ -826,13 +826,13 @@ public class TestConverter
         assertNull(Converter.convert(null, AtomicBoolean.class));
         assertNull(Converter.convert(null, AtomicInteger.class));
         assertNull(Converter.convert(null, AtomicLong.class));
-        assertNull(Converter.convertToLong(null));
-        assertNull(Converter.convertToInteger(null));
-        assertNull(Converter.convertToBoolean(null));
-        assertNull(Converter.convertToDouble(null));
-        assertNull(Converter.convertToByte(null));
-        assertNull(Converter.convertToFloat(null));
-        assertNull(Converter.convertToShort(null));
+        assert 0L == Converter.convertToLong(null);
+        assert 0 == Converter.convertToInteger(null);
+        assert !Converter.convertToBoolean(null);
+        assert 0.0d == Converter.convertToDouble(null);
+        assert (byte)0 == Converter.convertToByte(null);
+        assert 0.0f == Converter.convertToFloat(null);
+        assert (short)0 == Converter.convertToShort(null);
     }
 
     @Test

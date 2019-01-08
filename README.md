@@ -2,7 +2,7 @@ java-util
 =========
 [![Build Status](https://travis-ci.org/jdereg/java-util.svg?branch=master)](https://travis-ci.org/jdereg/java-util)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util)
-[![Javadoc](https://javadoc-emblem.rhcloud.com/doc/com.cedarsoftware/java-util/badge.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
+[![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
 Rarely available and hard-to-write Java utilities, written correctly, and thoroughly tested (> 98% code coverage via JUnit tests).
 

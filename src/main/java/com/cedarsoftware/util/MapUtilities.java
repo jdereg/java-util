@@ -50,6 +50,33 @@ public class MapUtilities
     }
 
     /**
+     * Retrieves a value from a map by key, if value is not found by the given key throws a {@link Throwable}
+     * @param map Map to retrieve item from
+     * @param key the key whose associated value is to be returned
+     * @param throwable
+     * @param <I>
+     * @param <O>
+     * @param <E>
+     * @return
+     * @throws E if no values was found
+     */
+    public static <I, O, E extends Throwable> I getOrThrow(Map<?, ?> map, I key, E throwable) throws E {
+        if(map == null) {
+            throw new NullPointerException("Map parameter cannot be null");
+        }
+
+        if(throwable == null) {
+            throw new NullPointerException("Throwable object cannot be null");
+        }
+
+        I result = (I) map.get(key);
+        if(result == null) {
+            throw throwable;
+        }
+        return result;
+    }
+
+    /**
      * Returns null safe isEmpty check for Map
      *
      * @param map Map to check, can be null

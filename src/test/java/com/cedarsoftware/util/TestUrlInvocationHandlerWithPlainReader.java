@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -35,19 +36,22 @@ public class TestUrlInvocationHandlerWithPlainReader
 {
     private static final Logger LOG = LogManager.getLogger(TestUrlInvocationHandlerWithPlainReader.class);
 
-    @Test
+    // TODO: Test data is no longer hosted
+    @Ignore
     public void testWithBadUrl() {
         TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://files.cedarsoftware.com/invalid/url", "F012982348484444")));
         Assert.assertNull(item.foo());
     }
 
-    @Test
+    // TODO: Test data is no longer hosted
+    @Ignore
     public void testHappyPath() {
         TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("[\"test-passed\"]", item.foo());
     }
 
-    @Test
+    // TODO: Test data is no longer hosted.
+    @Ignore
     public void testWithSessionAwareInvocationHandler() {
         TestUrlInvocationInterface item = ProxyFactory.create(TestUrlInvocationInterface.class, new UrlInvocationHandler(new UrlInvocationHandlerJsonStrategy("http://files.cedarsoftware.com/tests/java-util/url-invocation-handler-test.json", "F012982348484444")));
         Assert.assertEquals("[\"test-passed\"]", item.foo());

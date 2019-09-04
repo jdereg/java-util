@@ -93,7 +93,19 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         for (Map.Entry<K, V> entry : source.entrySet())
         {
-            K key = entry.getKey();
+            // Get get from Entry, leaving it in it's original state (in case the key is a CaseInsensitiveString)
+            Object key;
+            if (entry instanceof CaseInsensitiveEntry)
+            {
+                key = ((CaseInsensitiveEntry)entry).getOriginalKey();
+            }
+            else
+            {
+                key = entry.getKey();
+            }
+
+            // Wrap any String keys with a CaseInsensitiveString.  Keys that were already CaseInsensitiveStrings will
+            // remain as such.
             K altKey;
             if (key instanceof String)
             {
@@ -101,8 +113,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             }
             else
             {
-                altKey = key;
+                altKey = (K)key;
             }
+
             dest.put(altKey, entry.getValue());
         }
         return dest;
@@ -600,6 +613,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return (KK) superKey.toString();
             }
             return superKey;
+        }
+
+        public KK getOriginalKey()
+        {
+            return super.getKey();
         }
 
         public VV setValue(VV value)

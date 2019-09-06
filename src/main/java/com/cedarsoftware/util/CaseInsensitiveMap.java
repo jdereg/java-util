@@ -85,7 +85,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         }
         else
         {
-            map = copy(m, new HashMap(m.size()));
+            map = copy(m, new LinkedHashMap(m.size()));
         }
     }
 
@@ -165,7 +165,15 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         for (Map.Entry entry : m.entrySet())
         {
-            put((K) entry.getKey(), (V) entry.getValue());
+            if (entry instanceof CaseInsensitiveEntry)
+            {
+                CaseInsensitiveEntry ciEntry = (CaseInsensitiveEntry) entry;
+                put((K) ciEntry.getOriginalKey(), (V) entry.getValue());
+            }
+            else
+            {
+                put((K) entry.getKey(), (V) entry.getValue());
+            }
         }
     }
 

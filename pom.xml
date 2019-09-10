@@ -89,8 +89,8 @@
         <version.plugin.release>2.5.3</version.plugin.release>
         <version.plugin.surefire>2.22.2</version.plugin.surefire>
         <version.plugin.source>3.1.0</version.plugin.source>
-        <version.plugin.felix.scr>1.7.4</version.plugin.felix.scr>
-        <version.plugin.felix.bundle>2.5.3</version.plugin.felix.bundle>
+        <version.plugin.felix.scr>1.26.2</version.plugin.felix.scr>
+        <version.plugin.felix.bundle>4.2.1</version.plugin.felix.bundle>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

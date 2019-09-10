@@ -1,9 +1,6 @@
 package com.cedarsoftware.util;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,19 +15,10 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.verify;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
-@RunWith(PowerMockRunner.class)
 public class TestTrackingMap
 {
-    @Mock
-    public Map<String, Object> mockedBackingMap;
-
-    @Mock
-    public Map<String, Object> anotherMockedBackingMap;
-
-
     @Test
     public void getFree() {
         TrackingMap<String, Object> map = new TrackingMap<>(new CaseInsensitiveMap<String, Object>());
@@ -160,35 +148,44 @@ public class TestTrackingMap
     }
 
     @Test
-    public void testGet() throws Exception {
-        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
-        map.get("key");
-        verify(mockedBackingMap).get("key");
+    public void testGet() {
+        Map<String, Object> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("foo", "bar");
+        Map<String, Object> map = new TrackingMap<>(ciMap);
+        assert map.get("Foo").equals("bar");
     }
 
     @Test
-    public void testPut() throws Exception {
-        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
-        map.put("key", "value");
-        verify(mockedBackingMap).put("key", "value");
+    public void testPut() {
+        Map<String, Object> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("foo", "bar");
+        Map<String, Object> map = new TrackingMap<>(ciMap);
+        map.put("Foo", "baz");
+        assert map.get("foo").equals("baz");
+        assert ciMap.get("foo").equals("baz");
+        assert map.size() == 1;
     }
 
     @Test
-    public void testContainsKey() throws Exception {
-        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
-        map.containsKey("key");
-        verify(mockedBackingMap).containsKey("key");
+    public void testContainsKey() {
+        Map<String, Object> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("foo", "bar");
+        Map<String, Object> map = new TrackingMap<>(ciMap);
+        map.containsKey("FOO");
     }
 
     @Test
-    public void testPutAll() throws Exception {
-        Map<String, Object> map = new TrackingMap<>(mockedBackingMap);
+    public void testPutAll() {
+        Map<String, Object> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("foo", "bar");
+        Map<String, Object> map = new TrackingMap<>(ciMap);
         Map additionalEntries = new HashMap();
         additionalEntries.put("animal", "aardvaark");
         additionalEntries.put("ballast", "bubbles");
         additionalEntries.put("tricky", additionalEntries);
         map.putAll(additionalEntries);
-        verify(mockedBackingMap).putAll(additionalEntries);
+        assert ciMap.get("ballast").equals("bubbles");
+        assert ciMap.size() == 4;
     }
 
     @Test
@@ -225,8 +222,10 @@ public class TestTrackingMap
     }
 
     @Test
-    public void testToString() throws Exception {
-        TrackingMap<String, Object> map = new TrackingMap<>(mockedBackingMap);
+    public void testToString() {
+        Map<String, Object> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("foo", "bar");
+        TrackingMap<String, Object> map = new TrackingMap<>(ciMap);
         assertNotNull(map.toString());
     }
 

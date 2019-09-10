@@ -1251,35 +1251,35 @@ public class TestCaseInsensitiveMap
     }
 
     // Used only during development right now
-    @Test
-    public void testPerformance()
-    {
-        Map<String, String> map = new CaseInsensitiveMap<>();
-        Random random = new Random();
-
-        long start = System.nanoTime();
-
-        for (int i=0; i < 10000; i++)
-        {
-            String key = StringUtilities.getRandomString(random, 1, 10);
-            String value = StringUtilities.getRandomString(random, 1, 10);
-            map.put(key, value);
-        }
-
-        long stop = System.nanoTime();
-        System.out.println((stop - start) / 1000000);
-
-        start = System.nanoTime();
-        
-        for (int i=0; i < 10000; i++)
-        {
-            Map copy = new CaseInsensitiveMap<>(map);
-        }
-
-        stop = System.nanoTime();
-
-        System.out.println((stop - start) / 1000000);
-    }
+//    @Test
+//    public void testPerformance()
+//    {
+//        Map<String, String> map = new CaseInsensitiveMap<>();
+//        Random random = new Random();
+//
+//        long start = System.nanoTime();
+//
+//        for (int i=0; i < 10000; i++)
+//        {
+//            String key = StringUtilities.getRandomString(random, 1, 10);
+//            String value = StringUtilities.getRandomString(random, 1, 10);
+//            map.put(key, value);
+//        }
+//
+//        long stop = System.nanoTime();
+//        System.out.println((stop - start) / 1000000);
+//
+//        start = System.nanoTime();
+//
+//        for (int i=0; i < 10000; i++)
+//        {
+//            Map copy = new CaseInsensitiveMap<>(map);
+//        }
+//
+//        stop = System.nanoTime();
+//
+//        System.out.println((stop - start) / 1000000);
+//    }
 
     // ---------------------------------------------------
 

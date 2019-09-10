@@ -122,34 +122,34 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-scr-plugin</artifactId>
-                <version>${version.plugin.felix.scr}</version>
-            </plugin>
+            <!--<plugin>-->
+                <!--<groupId>org.apache.felix</groupId>-->
+                <!--<artifactId>maven-scr-plugin</artifactId>-->
+                <!--<version>${version.plugin.felix.scr}</version>-->
+            <!--</plugin>-->
 
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <version>${version.plugin.felix.bundle}</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <instructions>
-                        <Export-Package>com.cedarsoftware.util</Export-Package>
-                        <DynamicImport-Package>*</DynamicImport-Package>
-                    </instructions>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>bundle-manifest</id>
-                        <goals>
-                            <goal>
-                                manifest
-                            </goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--<plugin>-->
+                <!--<groupId>org.apache.felix</groupId>-->
+                <!--<artifactId>maven-bundle-plugin</artifactId>-->
+                <!--<version>${version.plugin.felix.bundle}</version>-->
+                <!--<extensions>true</extensions>-->
+                <!--<configuration>-->
+                    <!--<instructions>-->
+                        <!--<Export-Package>com.cedarsoftware.util</Export-Package>-->
+                        <!--<DynamicImport-Package>*</DynamicImport-Package>-->
+                    <!--</instructions>-->
+                <!--</configuration>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<id>bundle-manifest</id>-->
+                        <!--<goals>-->
+                            <!--<goal>-->
+                                <!--manifest-->
+                            <!--</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

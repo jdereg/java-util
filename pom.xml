@@ -80,6 +80,7 @@
         <version.junit>4.12</version.junit>
         <version.json.io>4.10.0</version.json.io>            <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>
+        <version.agrona>1.0.7</version.agrona>
         <version.java>11</version.java>
         <version.plugin.compiler>3.8.1</version.plugin.compiler>
         <version.plugin.gpg>1.6</version.plugin.gpg>
@@ -242,11 +243,18 @@
             <version>${version.mockito}</version>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>com.cedarsoftware</groupId>
             <artifactId>json-io</artifactId>
             <version>${version.json.io}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.agrona</groupId>
+            <artifactId>agrona</artifactId>
+            <version>${version.agrona}</version>
             <scope>test</scope>
         </dependency>
 

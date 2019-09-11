@@ -65,7 +65,7 @@
         <url>https://github.com/jdereg/java-util</url>
         <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
-  </scm>
+    </scm>
 
     <developers>
         <developer>
@@ -80,7 +80,7 @@
         <version.junit>4.12</version.junit>
         <version.json.io>4.10.0</version.json.io>            <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>
-        <version.java>11</version.java>
+        <version.java>1.7</version.java>
         <version.plugin.compiler>3.8.1</version.plugin.compiler>
         <version.plugin.gpg>1.6</version.plugin.gpg>
         <version.plugin.javadoc>2.10.3</version.plugin.javadoc>
@@ -121,34 +121,34 @@
 
     <build>
         <plugins>
-            <!--<plugin>-->
-                <!--<groupId>org.apache.felix</groupId>-->
-                <!--<artifactId>maven-scr-plugin</artifactId>-->
-                <!--<version>${version.plugin.felix.scr}</version>-->
-            <!--</plugin>-->
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+                <version>${version.plugin.felix.scr}</version>
+            </plugin>
 
-            <!--<plugin>-->
-                <!--<groupId>org.apache.felix</groupId>-->
-                <!--<artifactId>maven-bundle-plugin</artifactId>-->
-                <!--<version>${version.plugin.felix.bundle}</version>-->
-                <!--<extensions>true</extensions>-->
-                <!--<configuration>-->
-                    <!--<instructions>-->
-                        <!--<Export-Package>com.cedarsoftware.util</Export-Package>-->
-                        <!--<DynamicImport-Package>*</DynamicImport-Package>-->
-                    <!--</instructions>-->
-                <!--</configuration>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<id>bundle-manifest</id>-->
-                        <!--<goals>-->
-                            <!--<goal>-->
-                                <!--manifest-->
-                            <!--</goal>-->
-                        <!--</goals>-->
-                    <!--</execution>-->
-                <!--</executions>-->
-            <!--</plugin>-->
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>${version.plugin.felix.bundle}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Export-Package>com.cedarsoftware.util</Export-Package>
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                    </instructions>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>bundle-manifest</id>
+                        <goals>
+                            <goal>
+                                manifest
+                            </goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

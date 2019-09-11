@@ -3,7 +3,7 @@ sudo: false
 language: java
 
 jdk:
-  - oraclejdk9
+  - openjdk7
 
 install: mvn -B install -U -DskipTests=true
 

@@ -169,44 +169,6 @@ public class TestUrlUtilities
     }
 
     @Test
-    public void testGetContentFromUrl() throws Exception
-    {
-        SSLSocketFactory f = UrlUtilities.naiveSSLSocketFactory;
-        HostnameVerifier v = UrlUtilities.NAIVE_VERIFIER;
-
-        String content1 = new String(UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY));
-        String content2 = new String(UrlUtilities.getContentFromUrl(new URL(httpsUrl), null, null, true));
-        String content3 = new String(UrlUtilities.getContentFromUrl(httpsUrl, Proxy.NO_PROXY, f, v));
-        String content4 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, 0, null, null, true));
-        String content5 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, true));
-        String content6 = new String(UrlUtilities.getContentFromUrl(httpsUrl, null, null, Proxy.NO_PROXY, f, v));
-        String content7 = new String(UrlUtilities.getContentFromUrl(new URL(httpsUrl), true));
-
-        //  Allow for small difference between pages between requests to handle time and hash value changes.
-        assertEquals(content1, content2);
-        assertEquals(content2, content3);
-        assertEquals(content3, content4);
-        assertEquals(content4, content5);
-        assertEquals(content5, content6);
-        assertEquals(content6, content7);
-
-        String content10 = new String(UrlUtilities.getContentFromUrl(httpUrl, Proxy.NO_PROXY, null, null));
-        String content11 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null));
-        String content12 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, 0, null, null, false));
-        String content13 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, false));
-        String content14 = new String(UrlUtilities.getContentFromUrl(httpUrl, null, null, Proxy.NO_PROXY, null, null));
-
-        assertEquals(content10, content11);
-        assertEquals(content11, content12);
-        assertEquals(content12, content13);
-        assertEquals(content13, content14);
-
-        // TODO: Test data is no longer hosted.
-        // 404
-//        assertNull(UrlUtilities.getContentFromUrl(httpUrl + "/google-bucks.html", null, null, Proxy.NO_PROXY, null, null));
-    }
-
-    @Test
     public void testSSLTrust() throws Exception
     {
         String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
@@ -217,20 +179,6 @@ public class TestUrlUtilities
 
         assertTrue(StringUtilities.levenshteinDistance(content1, content2) < 10);
 
-    }
-
-    @Test
-    public void testCookies() throws Exception
-    {
-        Map cookies = new HashMap();
-
-        byte[] bytes1 = UrlUtilities.getContentFromUrl(httpUrl, null, 0, cookies, cookies, false);
-
-        assertEquals(1, cookies.size());
-        assertTrue(cookies.containsKey("cedarsoftware.com"));
-
-        // TODO: File is no longer hosted.
-        // assertEquals(_expected, new String(bytes1));
     }
 
     @Test

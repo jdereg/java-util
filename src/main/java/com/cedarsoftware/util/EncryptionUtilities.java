@@ -111,6 +111,8 @@ public class EncryptionUtilities
 
     /**
      * Calculate an MD5 Hash String from the passed in byte[].
+     * @param bytes byte[] of bytes for which to compute the SHA1
+     * @return the SHA-1 as a String of HEX digits
      */
     public static String calculateSHA1Hash(byte[] bytes)
     {
@@ -124,6 +126,8 @@ public class EncryptionUtilities
 
     /**
      * Calculate an SHA-256 Hash String from the passed in byte[].
+     * @param bytes byte[] for which to compute the SHA-2 (SHA-256)
+     * @return the SHA-2 as a String of HEX digits
      */
     public static String calculateSHA256Hash(byte[] bytes)
     {
@@ -137,6 +141,8 @@ public class EncryptionUtilities
 
     /**
      * Calculate an SHA-512 Hash String from the passed in byte[].
+     * @param bytes byte[] for which to compute the SHA-3 (SHA-512)
+     * @return the SHA-3 as a String of HEX digits
      */
     public static String calculateSHA512Hash(byte[] bytes)
     {
@@ -175,6 +181,7 @@ public class EncryptionUtilities
      * @param key  SecretKeySpec
      * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
      * @return Cipher instance created with the passed in key and mode.
+     * @throws java.lang.Exception if the requested Cipher instance does not exist.
      */
     public static Cipher createAesCipher(Key key, int mode) throws Exception
     {
@@ -191,6 +198,9 @@ public class EncryptionUtilities
 
     /**
      * Get hex String of content String encrypted.
+     * @param key String value of the encryption key (passphrase)
+     * @param content String value of the content to be encrypted using the passed in encryption key
+     * @return String of the encrypted content (HEX characters), using AES-128
      */
     public static String encrypt(String key, String content)
     {
@@ -218,6 +228,9 @@ public class EncryptionUtilities
 
     /**
      * Get unencrypted String from encrypted hex String
+     * @param key String encryption key that was used to encryption the passed in hexStr of characters.
+     * @param hexStr String encrypted bytes (as a HEX string)
+     * @return String of original content, decrypted using the passed in encryption/decryption key against the passed in hex String.
      */
     public static String decrypt(String key, String hexStr)
     {
@@ -234,6 +247,9 @@ public class EncryptionUtilities
 
     /**
      * Get unencrypted byte[] from encrypted hex String
+     * @param key String encryption/decryption key
+     * @param hexStr String of HEX bytes that were encrypted with an encryption key
+     * @return byte[] of original bytes (if the same key to encrypt the bytes was passed to decrypt the bytes).
      */
     public static byte[] decryptBytes(String key, String hexStr)
     {
@@ -248,7 +264,10 @@ public class EncryptionUtilities
     }
 
     /**
-     * Calculate an SHA-256 Hash String from the passed in byte[].
+     * Calculate a hash String from the passed in byte[].
+     * @param d MessageDigest to update with the passed in bytes
+     * @param bytes byte[] of bytes to hash
+     * @return String hash of the passed in MessageDigest, after being updated with the passed in bytes, as a HEX string.
      */
     public static String calculateHash(MessageDigest d, byte[] bytes)
     {

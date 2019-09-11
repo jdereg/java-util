@@ -163,14 +163,11 @@ public final class ReflectionUtils
 
             for (Field field : local)
             {
-                if (!field.isAccessible())
+                try
                 {
-                    try
-                    {
-                        field.setAccessible(true);
-                    }
-                    catch (Exception ignored) { }
+                    field.setAccessible(true);
                 }
+                catch (Exception ignored) { }
 
                 int modifiers = field.getModifiers();
                 if (!Modifier.isStatic(modifiers) &&

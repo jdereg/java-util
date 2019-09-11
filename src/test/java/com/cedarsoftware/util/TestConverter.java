@@ -598,6 +598,34 @@ public class TestConverter
     }
 
     @Test
+    public void testDateErrorHandlingBadInput()
+    {
+        assertNull(Converter.convert(" ", java.util.Date.class));
+        assertNull(Converter.convert("", java.util.Date.class));
+        assertNull(Converter.convert(null, java.util.Date.class));
+
+        assertNull(Converter.convertToDate(" "));
+        assertNull(Converter.convertToDate(""));
+        assertNull(Converter.convertToDate(null));
+
+        assertNull(Converter.convert(" ", java.sql.Date.class));
+        assertNull(Converter.convert("", java.sql.Date.class));
+        assertNull(Converter.convert(null, java.sql.Date.class));
+
+        assertNull(Converter.convertToSqlDate(" "));
+        assertNull(Converter.convertToSqlDate(""));
+        assertNull(Converter.convertToSqlDate(null));
+
+        assertNull(Converter.convert(" ", java.sql.Timestamp.class));
+        assertNull(Converter.convert("", java.sql.Timestamp.class));
+        assertNull(Converter.convert(null, java.sql.Timestamp.class));
+
+        assertNull(Converter.convertToTimestamp(" "));
+        assertNull(Converter.convertToTimestamp(""));
+        assertNull(Converter.convertToTimestamp(null));
+    }
+
+    @Test
     public void testTimestamp()
     {
         Timestamp now = new Timestamp(System.currentTimeMillis());

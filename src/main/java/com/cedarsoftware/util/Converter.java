@@ -501,6 +501,10 @@ public final class Converter
             else if (fromInstance instanceof String)
             {
                 Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                if (date == null)
+                {
+                    return null;
+                }
                 return new java.sql.Date(date.getTime());
             }
             else if (fromInstance instanceof Calendar)
@@ -547,6 +551,10 @@ public final class Converter
             else if (fromInstance instanceof String)
             {
                 Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                if (date == null)
+                {
+                    return null;
+                }
                 return new Timestamp(date.getTime());
             }
             else if (fromInstance instanceof Calendar)
@@ -1006,6 +1014,13 @@ public final class Converter
 
     private static String name(Object fromInstance)
     {
-        return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
+        if (fromInstance == null)
+        {
+            return "(null)";
+        }
+        else
+        {
+            return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
+        }
     }
 }

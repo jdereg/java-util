@@ -12,7 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Handy conversion utilities
+ * Handy conversion utilities.  Convert from primitive to other primitives, plus support for Date, TimeStamp SQL Date,
+ * and the Atomic's.
  *
  * @author John DeRegnaucourt (john@cedarsoftware.com)
  *         <br>
@@ -331,9 +332,10 @@ public final class Converter
      * not (most likely will not) be the same data type as the targetType
      * @param toType Class which indicates the targeted (final) data type.
      * Please note that in addition to the 8 Java primitives, the targeted class
-     * can also be Date.class, String.class, BigInteger.class, and BigDecimal.class.
-     * The primitive class can be either primitive class or primitive wrapper class,
-     * however, the returned value will always [obviously] be a primitive wrapper.
+     * can also be Date.class, String.class, BigInteger.class, BigDecimal.class, and
+     * the Atomic classes.  The primitive class can be either primitive class or primitive
+     * wrapper class, however, the returned value will always [obviously] be a primitive
+     * wrapper.
      * @return An instanceof targetType class, based upon the value passed in.
      */
     public static <T> T convert(Object fromInstance, Class<T> toType)

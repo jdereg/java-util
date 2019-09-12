@@ -572,7 +572,7 @@ public class DeepEquals
                 fastLookup.put(hash, items);
             }
 
-            // Use only key and value, not possible specific Map.Entry type for equality check.
+            // Use only key and value, not specific Map.Entry type for equality check.
             // This ensures that Maps that might use different Map.Entry types still compare correctly.
             items.add(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()));
         }

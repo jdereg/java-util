@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -570,7 +571,10 @@ public class DeepEquals
                 items = new ArrayList();
                 fastLookup.put(hash, items);
             }
-            items.add(entry);
+
+            // Use only key and value, not possible specific Map.Entry type for equality check.
+            // This ensures that Maps that might use different Map.Entry types still compare correctly.
+            items.add(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()));
         }
 
         for (Map.Entry entry : (Set<Map.Entry>)map1.entrySet())
@@ -599,7 +603,7 @@ public class DeepEquals
             else
             {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
                 // from collision list, making further comparisons faster)
-                if (!isContained(entry, other))
+                if (!isContained(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()), other))
                 {
                     return false;
                 }
@@ -615,19 +619,17 @@ public class DeepEquals
      */
     private static boolean isContained(Object o, Collection other)
     {
-        boolean found = false;
         Iterator i = other.iterator();
         while (i.hasNext())
         {
             Object x = i.next();
             if (DeepEquals.deepEquals(o, x))
             {
-                found = true;
                 i.remove(); // can only be used successfully once - remove from list
-                break;
+                return true;
             }
         }
-        return found;
+        return false;
     }
 
     /**

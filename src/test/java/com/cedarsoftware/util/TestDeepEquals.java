@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.agrona.collections.Object2ObjectHashMap;
 import org.junit.Test;
 
 import java.awt.*;
@@ -219,6 +220,14 @@ public class TestDeepEquals
         fillMap(map1);
         map2 = new TreeMap();
         map2 = Collections.synchronizedSortedMap((SortedMap) map2);
+        fillMap(map2);
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+        assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
+
+        // Uses flyweight entries
+        map1 = new Object2ObjectHashMap();
+        fillMap(map1);
+        map2 = new Object2ObjectHashMap();
         fillMap(map2);
         assertTrue(DeepEquals.deepEquals(map1, map2));
         assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));

@@ -1,4 +1,8 @@
 ### Revision History
+* 1.35.0
+  * `DeepEquals.deepEquals()`, when comparing `Maps`, the `Map.Entry` type holding the `Map's` entries is not considered in equality testing. @AndreyNudko
+  * `Converter.convert()` now uses parameterized types so that the return type is matches the passed in `Class` parameter.  This eliminates the need to cast the return value of `Converter.convert()`.
+  * `MapUtilities.getOrThrow()` added which throws the passed in `Throwable` when the passed in key is not within the `Map`. @ptjuanramos
 * 1.34.2
   * Performance Improvement: `CaseInsensitiveMap`, when created from another `CaseInsensitiveMap`, re-uses the internal `CaseInsensitiveString` keys, which are immutable.
   * Bug fix: `Converter.convertToDate(), Converter.convertToSqlDate(), and Converter.convertToTimestamp()` all throw a `NullPointerException` if the passed in content was an empty String (of 0 or more spaces).

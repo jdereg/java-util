@@ -48,7 +48,7 @@ public final class ReflectionUtils
      * This is a exhaustive check throughout the complete inheritance hierarchy.
      * @return the Annotation if found, null otherwise.
      */
-    public static Annotation getClassAnnotation(final Class classToCheck, final Class annoClass)
+    public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass)
     {
         final Set<Class> visited = new HashSet<>();
         final LinkedList<Class> stack = new LinkedList<>();
@@ -62,7 +62,7 @@ public final class ReflectionUtils
                 continue;
             }
             visited.add(classToChk);
-            Annotation a = classToChk.getAnnotation(annoClass);
+            T a = (T) classToChk.getAnnotation(annoClass);
             if (a != null)
             {
                 return a;
@@ -73,7 +73,7 @@ public final class ReflectionUtils
         return null;
     }
 
-    private static void addInterfaces(final Class classToCheck, final LinkedList<Class> stack)
+    private static void addInterfaces(final Class<?> classToCheck, final LinkedList<Class> stack)
     {
         for (Class interFace : classToCheck.getInterfaces())
         {
@@ -81,7 +81,7 @@ public final class ReflectionUtils
         }
     }
 
-    public static Annotation getMethodAnnotation(final Method method, final Class annoClass)
+    public static <T extends Annotation> T getMethodAnnotation(final Method method, final Class<T> annoClass)
     {
         final Set<Class> visited = new HashSet<>();
         final LinkedList<Class> stack = new LinkedList<>();
@@ -100,7 +100,7 @@ public final class ReflectionUtils
             {
                 continue;
             }
-            Annotation a = m.getAnnotation(annoClass);
+            T a = m.getAnnotation(annoClass);
             if (a != null)
             {
                 return a;
@@ -111,10 +111,13 @@ public final class ReflectionUtils
         return null;
     }
 
-    public static Method getMethod(Class c, String method, Class...types)  {
-        try {
+    public static Method getMethod(Class<?> c, String method, Class<?>...types)  {
+        try
+        {
             return c.getMethod(method, types);
-        } catch (Exception nse) {
+        }
+        catch (Exception nse)
+        {
             return null;
         }
     }
@@ -129,7 +132,7 @@ public final class ReflectionUtils
      * makes field traversal on a class faster as it does not need to
      * continually process known fields like primitives.
      */
-    public static Collection<Field> getDeepDeclaredFields(Class c)
+    public static Collection<Field> getDeepDeclaredFields(Class<?> c)
     {
         if (_reflectedFields.containsKey(c))
         {
@@ -156,7 +159,7 @@ public final class ReflectionUtils
      * makes field traversal on a class faster as it does not need to
      * continually process known fields like primitives.
      */
-    public static void getDeclaredFields(Class c, Collection<Field> fields) {
+    public static void getDeclaredFields(Class<?> c, Collection<Field> fields) {
         try
         {
             Field[] local = c.getDeclaredFields();
@@ -192,7 +195,7 @@ public final class ReflectionUtils
      * @return Map of all fields on the Class, keyed by String field
      * name to java.lang.reflect.Field.
      */
-    public static Map<String, Field> getDeepDeclaredFieldMap(Class c)
+    public static Map<String, Field> getDeepDeclaredFieldMap(Class<?> c)
     {
         Map<String, Field> fieldMap = new HashMap<>();
         Collection<Field> fields = getDeepDeclaredFields(c);

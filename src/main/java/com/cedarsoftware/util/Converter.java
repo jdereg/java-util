@@ -95,6 +95,14 @@ public final class Converter
             }
         });
 
+        conversion.put(Calendar.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToCalendar(fromInstance);
+            }
+        });
+        
         conversion.put(Date.class, new Work()
         {
             public Object convert(Object fromInstance)
@@ -366,7 +374,7 @@ public final class Converter
             return (String) work.convert(fromInstance);
         }
         else if (fromInstance instanceof Calendar)
-        {
+        {   // Done this way (as opposed to putting a closure in conversionToString) because Calendar.class is not == to GregorianCalendar.class
             return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(((Calendar)fromInstance).getTime());
         }
         else if (fromInstance instanceof Enum)
@@ -521,6 +529,14 @@ public final class Converter
             {
                 return new java.sql.Date((Long) fromInstance);
             }
+            else if (fromInstance instanceof BigInteger)
+            {
+                return new java.sql.Date(((BigInteger)fromInstance).longValue());
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                return new java.sql.Date(((BigDecimal)fromInstance).longValue());
+            }
             else if (fromInstance instanceof AtomicLong)
             {
                 return new java.sql.Date(((AtomicLong) fromInstance).get());
@@ -571,6 +587,14 @@ public final class Converter
             {
                 return new Timestamp((Long) fromInstance);
             }
+            else if (fromInstance instanceof BigInteger)
+            {
+                return new Timestamp(((BigInteger) fromInstance).longValue());
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                return new Timestamp(((BigDecimal) fromInstance).longValue());
+            }
             else if (fromInstance instanceof AtomicLong)
             {
                 return new Timestamp(((AtomicLong) fromInstance).get());
@@ -617,6 +641,14 @@ public final class Converter
             {
                 return new Date((Long) fromInstance);
             }
+            else if (fromInstance instanceof BigInteger)
+            {
+                return new Date(((BigInteger)fromInstance).longValue());
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                return new Date(((BigDecimal)fromInstance).longValue());
+            }
             else if (fromInstance instanceof AtomicLong)
             {
                 return new Date(((AtomicLong) fromInstance).get());
@@ -630,6 +662,13 @@ public final class Converter
         return null;
     }
 
+    public static Calendar convertToCalendar(Object fromInstance)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(convertToDate(fromInstance));
+        return calendar;
+    }
+    
     public static Byte convertToByte(Object fromInstance)
     {
         if (fromInstance == null)

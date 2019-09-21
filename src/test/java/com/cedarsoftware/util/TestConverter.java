@@ -557,6 +557,26 @@ public class TestConverter
         assert sqlConverted != null;
         assertEquals(dateNow, sqlConverted);
 
+        // BigInteger to java.sql.Date
+        BigInteger bigInt = new BigInteger("" + now);
+        sqlDate = Converter.convert(bigInt, java.sql.Date.class);
+        assert sqlDate.getTime() == now;
+
+        // BigDecimal to java.sql.Date
+        BigDecimal bigDec = new BigDecimal(now);
+        sqlDate = Converter.convert(bigDec, java.sql.Date.class);
+        assert sqlDate.getTime() == now;
+
+        // BigInteger to Timestamp
+        bigInt = new BigInteger("" + now);
+        tstamp = Converter.convert(bigInt, Timestamp.class);
+        assert tstamp.getTime() == now;
+
+        // BigDecimal to TimeStamp
+        bigDec = new BigDecimal(now);
+        tstamp = Converter.convert(bigDec, Timestamp.class);
+        assert tstamp.getTime() == now;
+
         // Invalid source type for Date
         try
         {
@@ -596,6 +616,86 @@ public class TestConverter
         {
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
         }
+    }
+
+    @Test
+    public void testCalendar()
+    {
+        // Date to Calendar
+        Date now = new Date();
+        Calendar calendar = Converter.convert(new Date(), Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // SqlDate to Calendar
+        java.sql.Date sqlDate = Converter.convert(now, java.sql.Date.class);
+        calendar = Converter.convert(sqlDate, Calendar.class);
+        assertEquals(calendar.getTime(), sqlDate);
+
+        // Timestamp to Calendar
+        Timestamp timestamp = Converter.convert(now, Timestamp.class);
+        calendar = Converter.convert(timestamp, Calendar.class);
+        assertEquals(calendar.getTime(), timestamp);
+
+        // Long to Calendar
+        calendar = Converter.convert(now.getTime(), Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // AtomicLong to Calendar
+        AtomicLong atomicLong = new AtomicLong(now.getTime());
+        calendar = Converter.convert(atomicLong, Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // String to Calendar
+        String strDate = Converter.convert(now, String.class);
+        calendar = Converter.convert(strDate, Calendar.class);
+        String strDate2 = Converter.convert(calendar, String.class);
+        assertEquals(strDate, strDate2);
+
+        // BigInteger to Calendar
+        BigInteger bigInt = new BigInteger("" + now.getTime());
+        calendar = Converter.convert(bigInt, Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // BigDecimal to Calendar
+        BigDecimal bigDec = new BigDecimal(now.getTime());
+        calendar = Converter.convert(bigDec, Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // Other direction --> Calendar to other date types
+
+        // Calendar to Date
+        calendar = Converter.convert(now, Calendar.class);
+        Date date = Converter.convert(calendar, Date.class);
+        assertEquals(calendar.getTime(), date);
+
+        // Calendar to SqlDate
+        sqlDate = Converter.convert(calendar, java.sql.Date.class);
+        assertEquals(calendar.getTime().getTime(), sqlDate.getTime());
+
+        // Calendar to Timestamp
+        timestamp = Converter.convert(calendar, Timestamp.class);
+        assertEquals(calendar.getTime().getTime(), timestamp.getTime());
+
+        // Calendar to Long
+        long tnow = Converter.convert(calendar, long.class);
+        assertEquals(calendar.getTime().getTime(), tnow);
+
+        // Calendar to AtomicLong
+        atomicLong = Converter.convert(calendar, AtomicLong.class);
+        assertEquals(calendar.getTime().getTime(), atomicLong.get());
+
+        // Calendar to String
+        strDate = Converter.convert(calendar, String.class);
+        strDate2 = Converter.convert(now, String.class);
+        assertEquals(strDate, strDate2);
+
+        // Calendar to BigInteger
+        bigInt = Converter.convert(calendar, BigInteger.class);
+        assertEquals(now.getTime(), bigInt.longValue());
+
+        // Calendar to BigDecimal
+        bigDec = Converter.convert(calendar, BigDecimal.class);
+        assertEquals(now.getTime(), bigDec.longValue());
     }
 
     @Test
@@ -758,7 +858,9 @@ public class TestConverter
         assertEquals(true, Converter.convert(new AtomicBoolean(true), Boolean.class));
 
         assertEquals(true, Converter.convert("TRue", Boolean.class));
+        assertEquals(true, Converter.convert("true", Boolean.class));
         assertEquals(false, Converter.convert("fALse", Boolean.class));
+        assertEquals(false, Converter.convert("false", Boolean.class));
         assertEquals(false, Converter.convert("john", Boolean.class));
 
         assertEquals(true, Converter.convert(true, Boolean.class));

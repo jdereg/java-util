@@ -1,11 +1,11 @@
 ### Revision History
 * 1.35.0
-  * `DeepEquals.deepEquals()`, when comparing `Maps`, the `Map.Entry` type holding the `Map's` entries is not considered in equality testing. @AndreyNudko
-  * `Converter.convert()` now uses parameterized types so that the return type is matches the passed in `Class` parameter.  This eliminates the need to cast the return value of `Converter.convert()`.
+  * `DeepEquals.deepEquals()`, when comparing `Maps`, the `Map.Entry` type holding the `Map's` entries is no longer considered in equality testing. In the past, a custom Map.Entry instance holding the key and value could cause inquality, which should be ignored.  @AndreyNudko
+  * `Converter.convert()` now uses parameterized types so that the return type matches the passed in `Class` parameter.  This eliminates the need to cast the return value of `Converter.convert()`.
   * `MapUtilities.getOrThrow()` added which throws the passed in `Throwable` when the passed in key is not within the `Map`. @ptjuanramos
 * 1.34.2
   * Performance Improvement: `CaseInsensitiveMap`, when created from another `CaseInsensitiveMap`, re-uses the internal `CaseInsensitiveString` keys, which are immutable.
-  * Bug fix: `Converter.convertToDate(), Converter.convertToSqlDate(), and Converter.convertToTimestamp()` all throw a `NullPointerException` if the passed in content was an empty String (of 0 or more spaces).
+  * Bug fix: `Converter.convertToDate(), Converter.convertToSqlDate(), and Converter.convertToTimestamp()` all threw a `NullPointerException` if the passed in content was an empty String (of 0 or more spaces). When passed in NULL to these APIs, you get back null.  If you passed in empty strings or bad date formats, an IllegalArgumentException is thrown with a message clearly indicating what input failed and why.
 * 1.34.0
   * Enhancement: `DeepEquals.deepEquals(a, b options)` added.  The new options map supports a key `DeepEquals.IGNORE_CUSTOM_EQUALS` which can be set to a Set of String class names.  If any of the encountered classes in the comparison are listed in the Set, and the class has a custom `.equals()` method, it will not be called and instead a `deepEquals()` will be performed.  If the value associated to the `IGNORE_CUSTOM_EQUALS` key is an empty Set, then no custom `.equals()` methods will be called, except those on primitives, primitive wrappers, `Date`, `Class`, and `String`. 
 * 1.33.0
@@ -92,16 +92,16 @@
   * `IOUtilities.flush()` now supports `XMLStreamWriter`
 * 1.17.0
   * `UIUtilities.close()` now supports `XMLStreamReader` and `XMLStreamWriter` in addition to `Closeable`.
-  * `Converter.convert(value, type)` - a value of null is supported, and returns null.  A null type, however, throws an `IllegalArgumentException`.
+  * `Converter.convert(value, type)` - a value of null is supported for the numeric types, boolean, and the atomics - in which case it returns their "zero" value and false for boolean.  For date and String return values, a null input will return null.  The `type` parameter must not be null.
 * 1.16.1
   * In `Converter.convert(value, type)`, the value is trimmed of leading / trailing white-space if it is a String and the type is a `Number`.
 * 1.16.0
-  * Added `Converter.convert()` API.  Allows converting instances of one type to another.  Handles all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`, and `BigInteger`.  Additionally, input (from) argument accepts `Calendar`.
+  * Added `Converter.convert()` API.  Allows converting instances of one type to another.  Handles all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`,  `BigInteger`, `AtomicInteger`, `AtomicLong`, and `AtomicBoolean`.  Additionally, input (from) argument accepts `Calendar`.
   * Added static `getDateFormat()` to `SafeSimpleDateFormat` for quick access to thread local formatter (per format `String`).
 * 1.15.0
   * Switched to use Log4J2 () for logging.
 * 1.14.1
-  * bug fix: `CaseInsensitiveMa.keySet()` was only initializing the iterator once.  If `keySet()` was called a 2nd time, it would no longer work.
+  * bug fix: `CaseInsensitiveMap.keySet()` was only initializing the iterator once.  If `keySet()` was called a 2nd time, it would no longer work.
 * 1.14.0
   * bug fix: `CaseInsensitiveSet()`, the return value for `addAll()`, `returnAll()`, and `retainAll()` was wrong in some cases.
 * 1.13.3
@@ -141,7 +141,7 @@
 * 1.9.0
   * `MathUtilities` added.  Currently, variable length `minimum(arg0, arg1, ... argn)` and `maximum()` functions added.  Available for `long`, `double`, `BigInteger`, and `BigDecimal`.   These cover the smaller types.
   * `CaseInsensitiveMap` and `CaseInsensitiveSet` `keySet()` and `entrySet()` are faster as they do not make a copy of the entries.  Internally, `CaseInsensitiveString` caches it's hash, speeding up repeated access.
-  * `StringUtilities levenshtein()` and `damerauLevenshtein()` added to compute edit length.  See Wikipedia for understand of the difference.  Currently recommend using `levenshtein()` as it uses less memory.
+  * `StringUtilities levenshtein()` and `damerauLevenshtein()` added to compute edit length.  See Wikipedia to understand of the difference between these two algorithms.  Currently recommend using `levenshtein()` as it uses less memory.
   * The Set returned from the `CaseInsensitiveMap.entrySet()` now contains mutable entry's (value-side). It had been using an immutable entry, which disallowed modification of the value-side during entry walk.
 * 1.8.4
   * `UrlUtilities`, fixed issue where the default settings for the connection were changed, not the settings on the actual connection.

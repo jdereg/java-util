@@ -1,7 +1,9 @@
 package com.cedarsoftware.util;
 
+import java.security.SecureRandom;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Generate a unique ID that fits within a long value quickly, will never create a duplicate value,
@@ -33,55 +35,37 @@ public class UniqueIdGenerator
 {
     private UniqueIdGenerator () {}
     
-    private static int count = 0;
-    private static final int lastIp;
-    private static final Map<Long, Long> lastId = new LinkedHashMap<Long, Long>()
+    private static int count = -1;
+    private static final int clusterId;
+    private static final Map<Long, Long> lastIds = new LinkedHashMap<Long, Long>()
     {
         protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
         {
-            return size() > 1000;
+            return size() > 10000;
         }
     };
-
-    /**
-     * Static initializer
-     */
+    
     static
     {
-        String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
-        if (StringUtilities.isEmpty(id))
-        {
-            lastIp = 99;
-        }
-        else
-        {
-            try
-            {
-                lastIp = Integer.parseInt(id) % 100;
-            }
-            catch (NumberFormatException e)
-            {
-                throw new IllegalArgumentException("Environment / System variable JAVA_UTIL_CLUSTERID must be 0-99");
-            }
-        }
+        SecureRandom random = new SecureRandom();
+        clusterId = Math.abs(random.nextInt()) % 100;
     }
-
+    
     public static long getUniqueId()
     {
         synchronized (UniqueIdGenerator.class)
-        { // Synchronized is cluster-safe here because IP is part of ID [all IPs in
-            // cluster must differ in last IP quartet]
+        {
             long newId = getUniqueIdAttempt();
 
-            while (lastId.containsKey(newId))
+            while (lastIds.containsKey(newId))
             {
                 newId = getUniqueIdAttempt();
             }
-            lastId.put(newId, null);
+            lastIds.put(newId, null);
             return newId;
         }
     }
-
+    
     private static long getUniqueIdAttempt()
     {
         // shift time by 4 digits (so that IP and size can be last 4 digits)
@@ -90,6 +74,6 @@ public class UniqueIdGenerator
         {
             count = 0;
         }
-        return System.currentTimeMillis() * 100000 + count * 100 + lastIp;
+        return Long.parseLong(String.format("%013d%03d%02d", System.currentTimeMillis(), count, clusterId));
     }
 }

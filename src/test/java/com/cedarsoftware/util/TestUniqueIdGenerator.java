@@ -33,7 +33,17 @@ public class TestUniqueIdGenerator
 {
     private static int bucketSize = 200000;
     private static int maxIdGen = 1000000;
-    
+
+    @Test
+    public void testIdLengths()
+    {
+        long id18 = UniqueIdGenerator.getUniqueId();
+        long id19 = UniqueIdGenerator.getUniqueId19();
+
+        assert String.valueOf(id18).length() == 18;
+        assert String.valueOf(id19).length() == 19;
+    }
+
     @Test
     public void testUniqueIdGeneration()
     {

@@ -254,7 +254,7 @@ public class GraphComparator
 
         class Helper
         {
-            private static Object getFieldValueAs(Object source, Field field, Class type, Delta delta)
+            private static Object getFieldValueAs(Object source, Field field, Class<?> type, Delta delta)
             {
                 Object fieldValue;
                 try
@@ -507,7 +507,7 @@ public class GraphComparator
             }
         });
 
-        List forReturn = new ArrayList(deltas);
+        List<Delta> forReturn = new ArrayList<>(deltas);
         // Generate DeltaCommands for orphaned objects
         for (Object id : potentialOrphans)
         {
@@ -523,7 +523,7 @@ public class GraphComparator
      * @return boolean true if the passed in object is a 'Logical' primitive.  Logical primitive is defined
      * as all primitives plus primitive wrappers, String, Date, Calendar, Number, or Character
      */
-    private static boolean isLogicalPrimitive(Class c)
+    private static boolean isLogicalPrimitive(Class<?> c)
     {
         return c.isPrimitive() ||
                 String.class == c ||
@@ -567,7 +567,7 @@ public class GraphComparator
      * elements within the arrays must be deeply equal in order to return true.  The appropriate
      * 'resize' or 'setElement' commands will be generated.
      */
-    private static void compareArrays(Delta delta, Collection deltas, LinkedList stack, ID idFetcher)
+    private static void compareArrays(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
         int srcLen = Array.getLength(delta.srcValue);
         int targetLen = Array.getLength(delta.targetValue);
@@ -652,7 +652,7 @@ public class GraphComparator
         }
     }
 
-    private static void copyArrayElement(Delta delta, Collection deltas, String srcPtr, Object srcValue, Object targetValue, int index)
+    private static void copyArrayElement(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, int index)
     {
         Delta copyDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, index);
         copyDelta.setCmd(ARRAY_SET_ELEMENT);
@@ -663,7 +663,7 @@ public class GraphComparator
      * Deeply compare two Sets and generate the appropriate 'add' or 'remove' commands
      * to rectify their differences.
      */
-    private static void compareSets(Delta delta, Collection deltas, LinkedList stack, ID idFetcher)
+    private static void compareSets(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
         Set srcSet = (Set) delta.srcValue;
         Set targetSet = (Set) delta.targetValue;
@@ -672,7 +672,7 @@ public class GraphComparator
         Map targetIdToValue = new HashMap();
         for (Object targetValue : targetSet)
         {
-            if (targetValue != null && isIdObject(targetValue, idFetcher))
+            if (isIdObject(targetValue, idFetcher))
             {   // Only map non-null target array elements
                 targetIdToValue.put(idFetcher.getId(targetValue), targetValue);
             }
@@ -742,7 +742,7 @@ public class GraphComparator
      * Deeply compare two Maps and generate the appropriate 'put' or 'remove' commands
      * to rectify their differences.
      */
-    private static void compareMaps(Delta delta, Collection deltas, LinkedList stack, ID idFetcher)
+    private static void compareMaps(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
         Map<Object, Object> srcMap = (Map<Object, Object>) delta.srcValue;
         Map<Object, Object> targetMap = (Map<Object, Object>) delta.targetValue;
@@ -806,7 +806,7 @@ public class GraphComparator
         // TODO: If LinkedHashMap, may need to issue commands to reorder...
     }
 
-    private static void addMapPutDelta(Delta delta, Collection deltas, String srcPtr, Object targetValue, Object key)
+    private static void addMapPutDelta(Delta delta, Collection<Delta> deltas, String srcPtr, Object targetValue, Object key)
     {
         Delta putDelta = new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, key);
         putDelta.setCmd(MAP_PUT);
@@ -817,7 +817,7 @@ public class GraphComparator
      * Deeply compare two Lists and generate the appropriate 'resize' or 'set' commands
      * to rectify their differences.
      */
-    private static void compareLists(Delta delta, Collection deltas, LinkedList stack, ID idFetcher)
+    private static void compareLists(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
         List srcList = (List) delta.srcValue;
         List targetList = (List) delta.targetValue;
@@ -875,7 +875,7 @@ public class GraphComparator
         }
     }
 
-    private static void copyListElement(Delta delta, Collection deltas, String srcPtr, Object srcValue, Object targetValue, int index)
+    private static void copyListElement(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, int index)
     {
         Delta copyDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, index);
         copyDelta.setCmd(LIST_SET_ELEMENT);
@@ -1125,7 +1125,7 @@ public class GraphComparator
 
         public void processListResize(Object source, Field field, Delta delta)
         {
-            List list = (List) Helper.getFieldValueAs(source, field, List.class, delta);
+            List<?> list = (List<?>) Helper.getFieldValueAs(source, field, List.class, delta);
             int newSize = Helper.getResizeValue(delta);
             int deltaLen = newSize - list.size();
 

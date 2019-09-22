@@ -58,7 +58,7 @@ public class Traverser
      * @param visitor Visitor is called for every object encountered during
      * the Java object graph traversal.
      */
-    public static void traverse(Object o, Class[] skip, Visitor visitor)
+    public static void traverse(Object o, Class<?>[] skip, Visitor visitor)
     {
         Traverser traverse = new Traverser();
         traverse.walk(o, skip, visitor);
@@ -71,7 +71,7 @@ public class Traverser
      * @param root Any Java object.
      * @param skip Set of classes to skip (ignore).  Allowed to be null.
      */
-    public void walk(Object root, Class[] skip, Visitor visitor)
+    public void walk(Object root, Class<?>[] skip, Visitor visitor)
     {
         Deque stack = new LinkedList();
         stack.add(root);
@@ -134,7 +134,7 @@ public class Traverser
         }
     }
 
-    private void walkFields(Deque stack, Object current, Class[] skip)
+    private void walkFields(Deque stack, Object current, Class<?>[] skip)
     {
         ClassInfo classInfo = getClassInfo(current.getClass(), skip);
 
@@ -153,7 +153,7 @@ public class Traverser
         }
     }
 
-    private static void walkCollection(Deque stack, Collection col)
+    private static void walkCollection(Deque stack, Collection<?> col)
     {
         for (Object o : col)
         {
@@ -164,9 +164,9 @@ public class Traverser
         }
     }
 
-    private static void walkMap(Deque stack, Map map)
+    private static void walkMap(Deque stack, Map<?, ?> map)
     {
-        for (Map.Entry entry : (Iterable<Map.Entry>) map.entrySet())
+        for (Map.Entry entry : map.entrySet())
         {
             Object o = entry.getKey();
 
@@ -178,7 +178,7 @@ public class Traverser
         }
     }
 
-    private ClassInfo getClassInfo(Class current, Class[] skip)
+    private ClassInfo getClassInfo(Class<?> current, Class<?>[] skip)
     {
         ClassInfo classCache = _classCache.get(current);
         if (classCache != null)
@@ -200,11 +200,11 @@ public class Traverser
         private boolean _skip = false;
         private final Collection<Field> _refFields = new ArrayList<>();
 
-        public ClassInfo(Class c, Class[] skip)
+        public ClassInfo(Class<?> c, Class<?>[] skip)
         {
             if (skip != null)
             {
-                for (Class klass : skip)
+                for (Class<?> klass : skip)
                 {
                     if (klass.isAssignableFrom(c))
                     {
@@ -217,7 +217,7 @@ public class Traverser
             Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(c);
             for (Field field : fields)
             {
-                Class fc = field.getType();
+                Class<?> fc = field.getType();
 
                 if (!fc.isPrimitive())
                 {

@@ -6,6 +6,9 @@ import org.junit.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.Date;
+
+import static org.junit.Assert.fail;
 
 /**
  * @author Ken Partlow
@@ -49,5 +52,21 @@ public class TestExceptionUtilities
     @Test
     public void testIgnoredExceptions() {
         ExceptionUtilities.safelyIgnoreException(new IllegalArgumentException());
+    }
+
+    @Test
+    public void testGetDeepestException()
+    {
+        try
+        {
+            Converter.convert("foo", Date.class);
+            fail();
+        }
+        catch (Exception e)
+        {
+            Throwable t = ExceptionUtilities.getDeepestException(e);
+            assert t != e;
+            assert t.getMessage().equals("Unable to parse: foo");
+        }
     }
 }

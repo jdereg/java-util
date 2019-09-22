@@ -1,6 +1,11 @@
 ### Revision History
 * 1.36.0
   * `Converter.convert()` now bi-directionally supports `Calendar.class`, e.g. Calendar to Date, SqlDate, Timestamp, String, long, BigDecimal, BigInteger, AtomicLong, and vice-versa.  
+  * `UniqueIdGenerator.getUniqueId19()` is a new API for getting 19 digit IDs (a full `long` value)  These are generated at a faster rate (10,000 per millisecond vs. 1,000 per millisecond) than the original (18-digit) API.
+  * Hardcore test added for ensuring concurrency correctness with `UniqueIdGenerator`.
+  * Javadoc beefed up for `UniqueIdGenerator`.
+  * Updated public APIs to have proper support for generic arguments.  For example Class<T>, Map<?, ?>, and so on.  This eliminates type casting on the caller's side.
+  * `ExceptionUtilities.getDeepestException()` added.  This API locates the source (deepest) exception.  
 * 1.35.0
   * `DeepEquals.deepEquals()`, when comparing `Maps`, the `Map.Entry` type holding the `Map's` entries is no longer considered in equality testing. In the past, a custom Map.Entry instance holding the key and value could cause inquality, which should be ignored.  @AndreyNudko
   * `Converter.convert()` now uses parameterized types so that the return type matches the passed in `Class` parameter.  This eliminates the need to cast the return value of `Converter.convert()`.

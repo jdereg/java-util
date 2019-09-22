@@ -41,6 +41,19 @@ public final class ExceptionUtilities
         {
             throw (OutOfMemoryError) t;
         }
-
     }
+
+    /**
+     * @return Throwable representing the actual cause (most nested exception).
+     */
+    public static Throwable getDeepestException(Throwable e)
+    {
+        while (e.getCause() != null)
+        {
+            e = e.getCause();
+        }
+
+        return e;
+    }
+
 }

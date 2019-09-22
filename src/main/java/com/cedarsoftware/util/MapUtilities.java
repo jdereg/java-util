@@ -40,10 +40,10 @@ public class MapUtilities
      * If the item is null then the def value is sent back.
      * If the item is not the expected type, an exception is thrown.
      */
-    public static <T> T get(Map map, String key, T def)
+    public static <T> T get(Map<?, T> map, Object key, T def)
     {
-        Object val = map.get(key);
-        return val == null ? def : (T)val;
+        T val = map.get(key);
+        return val == null ? def : val;
     }
 
     /**

@@ -165,7 +165,7 @@ public class DeepEquals
      * or via the respectively encountered overridden .equals() methods during
      * traversal.
      */
-    public static boolean deepEquals(Object a, Object b, Map options)
+    public static boolean deepEquals(Object a, Object b, Map<?, ?> options)
     {
         Set<DualKey> visited = new HashSet<>();
         Deque<DualKey> stack = new LinkedList<>();
@@ -681,7 +681,7 @@ public class DeepEquals
      * @return true, if the passed in Class has a .equals() method somewhere between
      * itself and just below Object in it's inheritance.
      */
-    public static boolean hasCustomEquals(Class c)
+    public static boolean hasCustomEquals(Class<?> c)
     {
         Class origClass = c;
         if (_customEquals.containsKey(c))
@@ -795,7 +795,7 @@ public class DeepEquals
      * @return true, if the passed in Class has a .hashCode() method somewhere between
      * itself and just below Object in it's inheritance.
      */
-    public static boolean hasCustomHashCode(Class c)
+    public static boolean hasCustomHashCode(Class<?> c)
     {
         Class origClass = c;
         if (_customHash.containsKey(c))

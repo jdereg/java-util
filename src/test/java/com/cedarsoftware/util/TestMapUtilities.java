@@ -44,7 +44,7 @@ public class TestMapUtilities
     public void testGetWithWrongType() {
         Map map = new TreeMap();
         map.put("foo", Boolean.TRUE);
-        String s = MapUtilities.get(map, "foo", null);
+        String s = (String) MapUtilities.get(map, "foo", null);
     }
 
     @Test

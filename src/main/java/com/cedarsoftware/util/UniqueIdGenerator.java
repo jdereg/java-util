@@ -74,6 +74,24 @@ public class UniqueIdGenerator
         }
     }
 
+    /**
+     * ID format will be 1234567890123.999.99 (no dots - only there for clarity - the number is a long).  There are
+     * 13 digits for time - good until 2286, and then it will be 14 digits (good until 5138) for time - milliseconds
+     * since Jan 1, 1970.  This is followed by a count that is 000 through 999.  This is followed by a random 2 digit
+     * number. This number is chosen when the JVM is started and then stays fixed until next restart.  This is to
+     * ensure cluster uniqueness.<br>
+     * <br>
+     * There is the possibility two machines could choose the same random number at start. Even still, collisions would
+     * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond
+     * <b>with</b> the count at the same position.<br>
+     * <br>
+     * This API is slower than the 19 digit API.  Grabbing a bunch of IDs in a tight loop for example, could causes
+     * delays while it waits for the millisecond to tick over.  This API can return 1,000 unique IDs per millisecond
+     * max.<br>
+     * <br>
+     * The IDs returned are <b>not</b> guaranteed to be increasing.
+     * @return long unique ID
+     */
     public static long getUniqueId()
     {
         synchronized (lock)
@@ -88,22 +106,6 @@ public class UniqueIdGenerator
         }
     }
 
-    /**
-     * ID format will be 1234567890123.999.99 (no dots - only there for clarity - the number is a long).  There are
-     * 13 digits for time - until 2286, and then it will be 14 digits for time - milliseconds since Jan 1, 1970.
-     * This is followed by a count that is 000 through 999.  This is followed by a random 2 digit number. This number
-     * is chosen when the JVM is started and then stays fixed until next restart.  This is to ensure cluster uniqueness.
-     *
-     * There is the possibility two machines could choose the same random number at start. Even still, collisions would
-     * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond,
-     * with the count at the same position.
-     *
-     * The returned ID will be 18 digits through 2286, and then it will be 19 digits through 5138.
-     * 
-     * This API is slower than the 19 digit API.  Grabbing a bunch of IDs super quick causes delays while it waits
-     * for the millisecond to tick over.  This API can return 1,000 unique IDs per millisecond max.
-     * @return long unique ID
-     */
     private static long getUniqueIdAttempt()
     {
         count++;
@@ -119,16 +121,18 @@ public class UniqueIdGenerator
      * ID format will be 1234567890123.9999.99 (no dots - only there for clarity - the number is a long).  There are
      * 13 digits for time - milliseconds since Jan 1, 1970. This is followed by a count that is 0000 through 9999.
      * This is followed by a random 2 digit number. This number is chosen when the JVM is started and then stays fixed
-     * until next restart.  This is to ensure cluster uniqueness.
-     *
+     * until next restart.  This is to ensure cluster uniqueness.<br>
+     * <br>
      * There is the possibility two machines could choose the same random number at start. Even still, collisions would
-     * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond,
-     * with the count at the same position.
-     *
+     * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond
+     * <b>with</b> the count at the same position.<br>
+     * <br>
      * The returned ID will be 19 digits and this API will work through 2286.  After then, it would likely return
-     * negative numbers (still unique).
-     *
-     * This API is faster than the 18 digit API.  This API can return 10,000 unique IDs per millisecond max.
+     * negative numbers (still unique).<br>
+     * <br>
+     * This API is faster than the 18 digit API.  This API can return 10,000 unique IDs per millisecond max.<br>
+     * <br>
+     * The IDs returned are <b>not</b> guaranteed to be increasing.
      * @return long unique ID
      */
     public static long getUniqueId19()

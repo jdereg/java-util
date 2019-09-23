@@ -1,18 +1,19 @@
 package com.cedarsoftware.util;
 
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
- * Generate a unique ID that fits within a long value quickly, will never create a duplicate value,
- * even if called insanely fast, and it incorporates part of the IP address so that machines in
- * a cluster will not create duplicates.  It guarantees no duplicates because it keeps
- * the last 100 generated, and compares those against the value generated, if it matches, it
- * will continue generating until it does not match.  It will generate 100 per millisecond without
- * matching.  Once the requests for more than 100 unique IDs per millisecond is exceeded, the
- * caller will be slowed down, because it will be retrying.  Keep in mind, 100 per millisecond is
- * 10 microseconds continuously without interruption.
- *
+ * Generate a unique ID that fits within a long value.  The ID will be unique for the given JVM, and it makes a
+ * solid attempt to ensure uniqueness in a clustered environment.  An environment variable <b>JAVA_UTIL_CLUSTERID</b>
+ * can be set to a value 0-99 to mark this JVM uniquely in the cluster.  If this environment variable is not set,
+ * then a SecureRandom value from 0-99 is chosen for the machine cluster id.<br>
+ * <br>
+ * There is an API to get a unique ID that will work through the year 5138.  This API will generate unique IDs at a rate
+ * of up to 1 million per second.  There is another ID that will work through the year 2286, however this API will
+ * generate unique IDs at a rate up to 10 million per second.
+ * <br>
  * @author John DeRegnaucourt (john@cedarsoftware.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC

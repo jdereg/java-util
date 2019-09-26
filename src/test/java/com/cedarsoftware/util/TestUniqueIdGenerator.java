@@ -101,32 +101,44 @@ public class TestUniqueIdGenerator
         final Set<Long> bucketC = new HashSet<>();
         final Set<Long> bucketD = new HashSet<>();
 
-        Runnable test1 = () -> {
-            await(startLatch);
-            fillBucket(bucket1);
-            fillBucket19(bucketA);
-            finishedLatch.countDown();
+        Runnable test1 = new Runnable() {
+            public void run()
+            {
+                await(startLatch);
+                fillBucket(bucket1);
+                fillBucket19(bucketA);
+                finishedLatch.countDown();
+            }
         };
 
-        Runnable test2 = () -> {
-            await(startLatch);
-            fillBucket(bucket2);
-            fillBucket19(bucketB);
-            finishedLatch.countDown();
+        Runnable test2 = new Runnable() {
+            public void run()
+            {
+                await(startLatch);
+                fillBucket(bucket2);
+                fillBucket19(bucketB);
+                finishedLatch.countDown();
+            }
         };
 
-        Runnable test3 = () -> {
-            await(startLatch);
-            fillBucket(bucket3);
-            fillBucket19(bucketC);
-            finishedLatch.countDown();
+        Runnable test3 = new Runnable() {
+            public void run()
+            {
+                await(startLatch);
+                fillBucket(bucket3);
+                fillBucket19(bucketC);
+                finishedLatch.countDown();
+            }
         };
 
-        Runnable test4 = () -> {
-            await(startLatch);
-            fillBucket(bucket4);
-            fillBucket19(bucketD);
-            finishedLatch.countDown();
+        Runnable test4 = new Runnable() {
+            public void run()
+            {
+                await(startLatch);
+                fillBucket(bucket4);
+                fillBucket19(bucketD);
+                finishedLatch.countDown();
+            }
         };
 
         ExecutorService executor = Executors.newFixedThreadPool(numTests);

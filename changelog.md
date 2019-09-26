@@ -1,4 +1,7 @@
 ### Revision History
+* 1.37.0
+  * `TestUtil.assertContainsIgnoreCase()` and `TestUtil.checkContainsIgnoreCase()` APIs added.  These are generally used in unit tests to check error messages for key words, in order (as opposed to doing `.contains()` on a string which allows the terms to appear in any order.)
+  * Build targets classes in Java 1.7 format, for maximum usability.  The version supported will slowly move up, but only based on necessity allowing for widest use of java-util in as many projects as possible.
 * 1.36.0
   * `Converter.convert()` now bi-directionally supports `Calendar.class`, e.g. Calendar to Date, SqlDate, Timestamp, String, long, BigDecimal, BigInteger, AtomicLong, and vice-versa.  
   * `UniqueIdGenerator.getUniqueId19()` is a new API for getting 19 digit unique IDs (a full `long` value)  These are generated at a faster rate (10,000 per millisecond vs. 1,000 per millisecond) than the original (18-digit) API.

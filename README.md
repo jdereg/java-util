@@ -38,6 +38,8 @@ Long value = convertToLong(date);
 // etc.
 ```
 
+The java-util jar is about 77K in size.
+
 Included in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays `[]`
 * **ByteUtilities** - Useful routines for converting `byte[]` to HEX character `[]` and visa-versa.

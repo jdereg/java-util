@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.security.SecureRandom;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -10,11 +11,15 @@ import java.util.Map;
  * can be set to a value 0-99 to mark this JVM uniquely in the cluster.  If this environment variable is not set,
  * then a SecureRandom value from 0-99 is chosen for the machine cluster id.<br>
  * <br>
- * There is an API to get a unique ID that will work through the year 5138.  This API will generate unique IDs at a rate
- * of up to 1 million per second.  There is another ID that will work through the year 2286, however this API will
- * generate unique IDs at a rate up to 10 million per second.
+ * There is an API [getUniqueId()] to get a unique ID that will work through the year 5138.  This API will generate
+ * unique IDs at a rate of up to 1 million per second.  There is another API [getUniqueId19()] that will work through
+ * the year 2286, however this API will generate unique IDs at a rate up to 10 million per second.  The trade-off is
+ * the faster API will generate positive IDs only good for about 286 years [after 2000].<br>
  * <br>
+ * The IDs are guaranteed to be monotonically increasing.
+ * 
  * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *         Roger Judd (@HonorKnight on GitHub) for adding code to ensure increasing order.
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -38,6 +43,8 @@ public class UniqueIdGenerator
     private static final Object lock19 = new Object();
     private static int count = 0;
     private static int count2 = 0;
+    private static long previousTimeMilliseconds = 0;
+    private static long previousTimeMilliseconds2 = 0;
     private static final int clusterId;
     private static final Map<Long, Long> lastIds = new LinkedHashMap<Long, Long>()
     {
@@ -90,7 +97,7 @@ public class UniqueIdGenerator
      * delays while it waits for the millisecond to tick over.  This API can return 1,000 unique IDs per millisecond
      * max.<br>
      * <br>
-     * The IDs returned are <b>not</b> guaranteed to be increasing.
+     * The IDs returned are guaranteed to be monotonically increasing.
      * @return long unique ID
      */
     public static long getUniqueId()
@@ -115,7 +122,15 @@ public class UniqueIdGenerator
             count = 0;
         }
 
-        return System.currentTimeMillis() * 100000 + count * 100 + clusterId;
+        long currentTimeMilliseconds = System.currentTimeMillis();
+
+        if (currentTimeMilliseconds > previousTimeMilliseconds)
+        {
+            count = 0;
+            previousTimeMilliseconds = currentTimeMilliseconds;
+        }
+
+        return currentTimeMilliseconds * 100000 + count * 100 + clusterId;
     }
 
     /**
@@ -133,7 +148,7 @@ public class UniqueIdGenerator
      * <br>
      * This API is faster than the 18 digit API.  This API can return 10,000 unique IDs per millisecond max.<br>
      * <br>
-     * The IDs returned are <b>not</b> guaranteed to be increasing.
+     * The IDs returned are guaranteed to be monotonically increasing.
      * @return long unique ID
      */
     public static long getUniqueId19()
@@ -159,6 +174,36 @@ public class UniqueIdGenerator
             count2 = 0;
         }
 
-        return System.currentTimeMillis() * 1000000 + count2 * 100 + clusterId;
+        long currentTimeMilliseconds = System.currentTimeMillis();
+
+        if (currentTimeMilliseconds > previousTimeMilliseconds2)
+        {
+            count2 = 0;
+            previousTimeMilliseconds2 = currentTimeMilliseconds;
+        }
+
+        return currentTimeMilliseconds * 1000000 + count2 * 100 + clusterId;
+    }
+
+    /**
+     * Find out when the ID was generated.
+     * @param uniqueId long unique ID that was generated from the the .getUniqueId() API
+     * @return Date when the ID was generated, with the time portion accurate to the millisecond. The time
+     * is measured in milliseconds, between the time the id was generated and midnight, January 1, 1970 UTC.
+     */
+    public static Date getDate(long uniqueId)
+    {
+        return new Date(uniqueId / 100000);
+    }
+
+    /**
+     * Find out when the ID was generated. "19" version.
+     * @param uniqueId long unique ID that was generated from the the .getUniqueId19() API
+     * @return Date when the ID was generated, with the time portion accurate to the millisecond. The time
+     * is measured in milliseconds, between the time the id was generated and midnight, January 1, 1970 UTC.
+     */
+    public static Date getDate19(long uniqueId)
+    {
+        return new Date(uniqueId / 1000000);
     }
 }

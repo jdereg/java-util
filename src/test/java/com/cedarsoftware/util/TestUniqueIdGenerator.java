@@ -4,13 +4,16 @@ import org.junit.Test;
 
 import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.junit.Assert.assertTrue;
+import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId;
+import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId19;
+import static java.lang.System.out;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com)
@@ -32,54 +35,77 @@ import static org.junit.Assert.assertTrue;
 public class TestUniqueIdGenerator
 {
     private static int bucketSize = 200000;
-    private static int maxIdGen = 1000000;
+    private static int maxIdGen = 100000;
 
     @Test
     public void testIdLengths()
     {
-        long id18 = UniqueIdGenerator.getUniqueId();
-        long id19 = UniqueIdGenerator.getUniqueId19();
+        long id18 = getUniqueId();
+        long id19 = getUniqueId19();
 
         assert String.valueOf(id18).length() == 18;
         assert String.valueOf(id19).length() == 19;
     }
 
     @Test
-    public void testUniqueIdGeneration()
+    public void testIDtoDate()
     {
-        int testSize = maxIdGen;
-        long[] keep = new long[testSize];
+        long id = getUniqueId();
+        Date date = UniqueIdGenerator.getDate(id);
+        assert Math.abs(date.getTime() - System.currentTimeMillis()) < 2;
 
-        for (int i=0; i < testSize; i++)
-        {
-            keep[i] = UniqueIdGenerator.getUniqueId();
-        }
-
-        Set<Long> unique = new HashSet<>(testSize);
-        for (int i=0; i < testSize; i++)
-        {
-            unique.add(keep[i]);
-        }
-        assertTrue(unique.size() == testSize);
+        id = getUniqueId19();
+        date = UniqueIdGenerator.getDate19(id);
+        assert Math.abs(date.getTime() - System.currentTimeMillis()) < 2;
     }
 
     @Test
-    public void testUniqueIdGenerationFull()
+    public void testUniqueIdGeneration()
     {
         int testSize = maxIdGen;
-        long[] keep = new long[testSize];
+        Long[] keep = new Long[testSize];
+        Long[] keep19 = new Long[testSize];
 
         for (int i=0; i < testSize; i++)
         {
-            keep[i] = UniqueIdGenerator.getUniqueId19();
+            keep[i] = getUniqueId();
+            keep19[i] = getUniqueId19();
         }
 
         Set<Long> unique = new HashSet<>(testSize);
+        Set<Long> unique19 = new HashSet<>(testSize);
         for (int i=0; i < testSize; i++)
         {
             unique.add(keep[i]);
+            unique19.add(keep19[i]);
         }
-        assertTrue(unique.size() == testSize);
+        assertEquals(unique.size(), testSize);
+        assertEquals(unique19.size(), testSize);
+        
+        assertMonotonicallyIncreasing(keep);
+        assertMonotonicallyIncreasing(keep19);
+    }
+
+    private void assertMonotonicallyIncreasing(Long[] ids)
+    {
+        long prevId = -1;
+        long len = ids.length;
+        for (int i=0; i < len; i++)
+        {
+            long id = ids[i];
+            if (prevId != -1)
+            {
+                if (prevId >= id)
+                {
+                    out.println("index = " + i);
+                    out.println(prevId);
+                    out.println(id);
+                    out.flush();
+                    assert false : "ids are not monotonically increasing";
+                }
+            }
+            prevId = id;
+        }
     }
 
     @Test
@@ -90,16 +116,16 @@ public class TestUniqueIdGenerator
         final CountDownLatch finishedLatch = new CountDownLatch(numTests);
 
         // 18 digit ID buckets
-        final Set<Long> bucket1 = new HashSet<>();
-        final Set<Long> bucket2 = new HashSet<>();
-        final Set<Long> bucket3 = new HashSet<>();
-        final Set<Long> bucket4 = new HashSet<>();
+        final Set<Long> bucket1 = new LinkedHashSet<>();
+        final Set<Long> bucket2 = new LinkedHashSet<>();
+        final Set<Long> bucket3 = new LinkedHashSet<>();
+        final Set<Long> bucket4 = new LinkedHashSet<>();
 
         // 19 digit ID buckets
-        final Set<Long> bucketA = new HashSet<>();
-        final Set<Long> bucketB = new HashSet<>();
-        final Set<Long> bucketC = new HashSet<>();
-        final Set<Long> bucketD = new HashSet<>();
+        final Set<Long> bucketA = new LinkedHashSet<>();
+        final Set<Long> bucketB = new LinkedHashSet<>();
+        final Set<Long> bucketC = new LinkedHashSet<>();
+        final Set<Long> bucketD = new LinkedHashSet<>();
 
         Runnable test1 = new Runnable() {
             public void run()
@@ -141,6 +167,7 @@ public class TestUniqueIdGenerator
             }
         };
 
+        long start = System.nanoTime();
         ExecutorService executor = Executors.newFixedThreadPool(numTests);
         executor.execute(test1);
         executor.execute(test2);
@@ -149,6 +176,19 @@ public class TestUniqueIdGenerator
 
         startLatch.countDown();  // trigger all threads to begin
         await(finishedLatch);   // wait for all threads to finish
+        
+        long end = System.nanoTime();
+        out.println("(end - start) / 1000000.0 = " + (end - start) / 1000000.0);
+
+        assertMonotonicallyIncreasing(bucket1.toArray(new Long[]{}));
+        assertMonotonicallyIncreasing(bucket2.toArray(new Long[]{}));
+        assertMonotonicallyIncreasing(bucket3.toArray(new Long[]{}));
+        assertMonotonicallyIncreasing(bucket4.toArray(new Long[]{}));
+
+        assertMonotonicallyIncreasing(bucketA.toArray(new Long[]{}));
+        assertMonotonicallyIncreasing(bucketB.toArray(new Long[]{}));
+        assertMonotonicallyIncreasing(bucketC.toArray(new Long[]{}));
+        assertMonotonicallyIncreasing(bucketD.toArray(new Long[]{}));
 
         // Assert that there are no duplicates between any buckets
         // Compare:
@@ -191,7 +231,6 @@ public class TestUniqueIdGenerator
         assert bucket3.isEmpty();
         bucket3.addAll(copy);
 
-
         // Assert that there are no duplicates between bucketA and any of the other buckets (19 digit buckets).
         copy = new HashSet<>(bucketA);
         assert bucketA.size() == bucketSize;
@@ -227,7 +266,6 @@ public class TestUniqueIdGenerator
         bucketC.retainAll(bucketD);
         assert bucketC.isEmpty();
         bucketC.addAll(copy);
-
         
         executor.shutdown();
     }
@@ -248,7 +286,7 @@ public class TestUniqueIdGenerator
     {
         for (int i=0; i < bucketSize; i++)
         {
-            bucket.add(UniqueIdGenerator.getUniqueId());
+            bucket.add(getUniqueId());
         }
     }
 
@@ -256,7 +294,7 @@ public class TestUniqueIdGenerator
     {
         for (int i=0; i < bucketSize; i++)
         {
-            bucket.add(UniqueIdGenerator.getUniqueId19());
+            bucket.add(getUniqueId19());
         }
     }
 }

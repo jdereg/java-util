@@ -11,7 +11,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.37.0</version>
+  <version>1.38.0</version>
 </dependency>
 ```
 
@@ -46,7 +46,7 @@ Including in java-util:
 * **SystemUtilities** - A Helpful utility methods for working with external entities like the OS, environment variables, and system properties.
 * **TrackingMap** - Map class that tracks when the keys are accessed via .get() or .containsKey(). Provided by @seankellner
 * **Traverser** - Pass any Java object to this Utility class, it will call your passed in anonymous method for each object it encounters while traversing the complete graph.  It handles cycles within the graph. Permits you to perform generalized actions on all objects within an object graph.
-* **UniqueIdGenerator** - Generates a Java long unique id, that is unique across up to 100 servers in a cluster, never hands out the same value, has massive entropy, and runs very quickly.
+* **UniqueIdGenerator** - Generates unique Java long value, that can be deterministically unique across up to 100 servers in a cluster (if configured with an environment variable), the ids are monotonically increasing, and can generate the ids at a rate of about 10 million per second.  Because the current time to the millisecond is embedded in the id, one can back-calculate when the id was generated.
 * **UrlUtitilies** - Fetch cookies from headers, getUrlConnections(), HTTP Response error handler, and more.
 * **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 

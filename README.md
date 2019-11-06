@@ -29,11 +29,13 @@ innovative and intelligent tools for profiling Java and .NET applications.
 Since Java 1.5, you can statically import classes.  Using that technique with many of the classes below, it makes there methods directly accessible in your source code (keeps your source code smaller).  For example:
 
 ```
-import static com.cedarsoftware.util.Converter.*
+import static com.cedarsoftware.util.Converter.*;
 ```
-will all you to write:
+will permit you to write:
 ```
-convertToDate(someString)
+Date date = convertToDate(someString);
+Long value = convertToLong(date);
+// etc.
 ```
 
 Including in java-util:

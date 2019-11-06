@@ -5,6 +5,11 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.cedarsoftware.util.StringUtilities.isEmpty;
+import static java.lang.Integer.parseInt;
+import static java.lang.Math.abs;
+import static java.lang.System.currentTimeMillis;
+
 /**
  * Generate a unique ID that fits within a long value.  The ID will be unique for the given JVM, and it makes a
  * solid attempt to ensure uniqueness in a clustered environment.  An environment variable <b>JAVA_UTIL_CLUSTERID</b>
@@ -64,16 +69,16 @@ public class UniqueIdGenerator
     static
     {
         String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
-        if (StringUtilities.isEmpty(id))
+        if (isEmpty(id))
         {
             SecureRandom random = new SecureRandom();
-            clusterId = Math.abs(random.nextInt()) % 100;
+            clusterId = abs(random.nextInt()) % 100;
         }
         else
         {
             try
             {
-                clusterId = Math.abs(Integer.parseInt(id)) % 100;
+                clusterId = abs(parseInt(id)) % 100;
             }
             catch (NumberFormatException e)
             {
@@ -122,7 +127,7 @@ public class UniqueIdGenerator
             count = 0;
         }
 
-        long currentTimeMilliseconds = System.currentTimeMillis();
+        long currentTimeMilliseconds = currentTimeMillis();
 
         if (currentTimeMilliseconds > previousTimeMilliseconds)
         {
@@ -174,7 +179,7 @@ public class UniqueIdGenerator
             count2 = 0;
         }
 
-        long currentTimeMilliseconds = System.currentTimeMillis();
+        long currentTimeMilliseconds = currentTimeMillis();
 
         if (currentTimeMilliseconds > previousTimeMilliseconds2)
         {

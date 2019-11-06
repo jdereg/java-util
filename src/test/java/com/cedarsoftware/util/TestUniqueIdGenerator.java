@@ -10,8 +10,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId;
-import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId19;
+import static com.cedarsoftware.util.UniqueIdGenerator.*;
+import static java.lang.Math.abs;
+import static java.lang.System.currentTimeMillis;
 import static java.lang.System.out;
 import static org.junit.Assert.assertEquals;
 
@@ -51,12 +52,12 @@ public class TestUniqueIdGenerator
     public void testIDtoDate()
     {
         long id = getUniqueId();
-        Date date = UniqueIdGenerator.getDate(id);
-        assert Math.abs(date.getTime() - System.currentTimeMillis()) < 2;
+        Date date = getDate(id);
+        assert abs(date.getTime() - currentTimeMillis()) < 2;
 
         id = getUniqueId19();
-        date = UniqueIdGenerator.getDate19(id);
-        assert Math.abs(date.getTime() - System.currentTimeMillis()) < 2;
+        date = getDate19(id);
+        assert abs(date.getTime() - currentTimeMillis()) < 2;
     }
 
     @Test

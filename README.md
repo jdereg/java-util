@@ -15,6 +15,8 @@ To include in your project:
 </dependency>
 ```
 
+The java-util jar is about 77K in size.
+
 ### Sponsors
 [![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)
 
@@ -37,8 +39,6 @@ Date date = convertToDate(someString);
 Long value = convertToLong(date);
 // etc.
 ```
-
-The java-util jar is about 77K in size.
 
 Included in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays `[]`

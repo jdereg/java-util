@@ -36,8 +36,11 @@ import static com.cedarsoftware.util.Converter.*;
 will permit you to write:
 ```
 ...
-Date date = convertToDate(someString);
-Long value = convertToLong(date);
+Calendar cal = convertToCalendar("2019/11/17");
+Date date = convertToDate("November 17th, 2019 4:45pm");
+TimeStamp stamp = convertToTimeStamp(cal);
+AtomicLong atomicLong = convertToAtomicLong("123128300")
+String s = convertToString(atomicLong)
 ...
 ```
 

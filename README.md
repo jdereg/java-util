@@ -38,7 +38,7 @@ Long value = convertToLong(date);
 // etc.
 ```
 
-Including in java-util:
+Included in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays `[]`
 * **ByteUtilities** - Useful routines for converting `byte[]` to HEX character `[]` and visa-versa.
 * **CaseInsensitiveMap** - When `Strings` are used as keys, they are compared without case. Can be used as regular `Map` with any Java object as keys, just specially handles `Strings`.

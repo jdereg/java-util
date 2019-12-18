@@ -44,7 +44,7 @@ public class FastByteArrayOutputStream extends OutputStream
     /**
      * Construct a new FastByteArrayOutputStream with the passed in capacity, and a
      * default delta (1024).  The delta increment is x2.
-     * @param capacity
+     * @param capacity int size of internal buffer
      */
     public FastByteArrayOutputStream(int capacity)
     {
@@ -54,7 +54,7 @@ public class FastByteArrayOutputStream extends OutputStream
     /**
      * Construct a new FastByteArrayOutputStream with a logical size of 0,
      * but an initial capacity of 'capacity'.
-     * @param capacity int capacity (internal buffer size), must be > 0
+     * @param capacity int capacity (internal buffer size), must be &gt; 0
      * @param delta int delta, size to increase the internal buffer by when limit reached.  If the value
      * is negative, then the internal buffer is doubled in size when additional capacity is needed.
      */
@@ -149,6 +149,7 @@ public class FastByteArrayOutputStream extends OutputStream
      * Convenience method to copy the contained byte[] to the passed in OutputStream.
      * You could also code out.write(fastBa.getBuffer(), 0, fastBa.size())
      * @param out OutputStream target
+     * @throws IOException if one occurs
      */
     public void writeTo(OutputStream out) throws IOException
     {
@@ -196,6 +197,7 @@ public class FastByteArrayOutputStream extends OutputStream
     /**
      * The logical size of the byte[] this stream represents, not
      * its physical size, which could be larger.
+     * @return int the number of bytes written to this stream
      */
     public int size()
     {

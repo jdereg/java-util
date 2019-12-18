@@ -28,7 +28,7 @@ public final class ExceptionUtilities
     /**
      * Safely Ignore a Throwable or rethrow if it is a Throwable that should
      * not be ignored.
-     * @param t
+     * @param t Throwable to possibly ignore (ThreadDeath and OutOfMemory are not ignored).
      */
     public static void safelyIgnoreException(Throwable t)
     {
@@ -41,6 +41,19 @@ public final class ExceptionUtilities
         {
             throw (OutOfMemoryError) t;
         }
-
     }
+
+    /**
+     * @return Throwable representing the actual cause (most nested exception).
+     */
+    public static Throwable getDeepestException(Throwable e)
+    {
+        while (e.getCause() != null)
+        {
+            e = e.getCause();
+        }
+
+        return e;
+    }
+
 }

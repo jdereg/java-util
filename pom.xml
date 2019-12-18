@@ -5,20 +5,11 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.34.0</version>
+    <version>1.39.0-SNAPSHOT</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
     <profiles>
-        <profile>
-            <id>doclint-java8-disable</id>
-            <activation>
-                <jdk>[1.8,)</jdk>
-            </activation>
-            <properties>
-                <javadoc.opts>-Xdoclint:none</javadoc.opts>
-            </properties>
-        </profile>
 
         <profile>
             <id>release-sign-artifacts</id>
@@ -65,8 +56,7 @@
         <url>https://github.com/jdereg/java-util</url>
         <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+    </scm>
 
     <developers>
         <developer>
@@ -79,20 +69,17 @@
     <properties>
         <version.log4j>2.5</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.json.io>4.10.0</version.json.io>            <!-- testing only -->
-        <version.powermock>1.6.4</version.powermock>
+        <version.json.io>4.11.1</version.json.io>            <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>
-        <version.java>1.7</version.java>
-        <version.plugin.compiler>3.5.1</version.plugin.compiler>
-        <version.plugin.deploy>2.8.2</version.plugin.deploy>
+        <version.plugin.compiler>3.8.1</version.plugin.compiler>
         <version.plugin.gpg>1.6</version.plugin.gpg>
-        <version.plugin.javadoc>2.10.3</version.plugin.javadoc>
-        <version.plugin.nexus>1.6.6</version.plugin.nexus>
-        <version.plugin.release>2.5.3</version.plugin.release>
-        <version.plugin.surefire>2.19.1</version.plugin.surefire>
-        <version.plugin.source>3.0.0</version.plugin.source>
-        <version.plugin.felix.scr>1.7.4</version.plugin.felix.scr>
-        <version.plugin.felix.bundle>2.5.3</version.plugin.felix.bundle>
+        <version.plugin.javadoc>3.1.1</version.plugin.javadoc>
+        <version.plugin.nexus>1.6.8</version.plugin.nexus>
+        <version.plugin.surefire>2.22.2</version.plugin.surefire>
+        <version.plugin.source>3.1.0</version.plugin.source>
+        <version.plugin.felix.scr>1.26.2</version.plugin.felix.scr>
+        <version.plugin.felix.bundle>4.2.1</version.plugin.felix.bundle>
+        <version.agrona>1.0.7</version.agrona>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -158,8 +145,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${version.plugin.compiler}</version>
                 <configuration>
-                    <source>${version.java}</source>
-                    <target>${version.java}</target>
+                    <release>7</release>
                 </configuration>
             </plugin>
 
@@ -182,7 +168,8 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>${version.plugin.javadoc}</version>
                 <configuration>
-                    <additionalparam>${javadoc.opts}</additionalparam>
+                    <additionalOptions>-Xdoclint:none</additionalOptions>
+                    <additionalJOption>-Xdoclint:none</additionalJOption>
                 </configuration>
                 <executions>
                     <execution>
@@ -211,7 +198,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${version.plugin.surefire}</version>
                 <configuration>
-                    <forkCount>1</forkCount>
+                    <forkCount>0</forkCount>
                 </configuration>
             </plugin>
 
@@ -245,25 +232,18 @@
             <version>${version.mockito}</version>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-module-junit4</artifactId>
-            <version>${version.powermock}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito</artifactId>
-            <version>${version.powermock}</version>
-            <scope>test</scope>
-        </dependency>
-
+        
         <dependency>
             <groupId>com.cedarsoftware</groupId>
             <artifactId>json-io</artifactId>
             <version>${version.json.io}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.agrona</groupId>
+            <artifactId>agrona</artifactId>
+            <version>${version.agrona}</version>
             <scope>test</scope>
         </dependency>
 

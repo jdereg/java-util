@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
@@ -1171,7 +1172,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrasppedMap()
+    public void testWrappedMap()
     {
         Map linked = new LinkedHashMap();
         linked.put("key1", 1);
@@ -1196,22 +1197,73 @@ public class TestCaseInsensitiveMap
         assertEquals(i.next(), "key5");
     }
 
+    @Test
+    public void testNotRecreatingCaseInsensitiveStrings()
+    {
+        Map map = new CaseInsensitiveMap();
+        map.put("dog", "eddie");
+
+        // copy 1st map
+        Map newMap = new CaseInsensitiveMap(map);
+
+        CaseInsensitiveMap.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap.CaseInsensitiveEntry) map.entrySet().iterator().next();
+        CaseInsensitiveMap.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
+
+        assertTrue(entry1.getOriginalKey() == entry2.getOriginalKey());
+    }
+
+    @Test
+    public void testPutAllOfNonCaseInsensitiveMap()
+    {
+        Map nonCi = new HashMap();
+        nonCi.put("Foo", "bar");
+        nonCi.put("baz", "qux");
+
+        Map ci = new CaseInsensitiveMap();
+        ci.putAll(nonCi);
+
+        assertTrue(ci.containsKey("foo"));
+        assertTrue(ci.containsKey("Baz"));
+    }
+
+    @Test
+    public void testNotRecreatingCaseInsensitiveStringsUsingTrackingMap()
+    {
+        Map map = new CaseInsensitiveMap();
+        map.put("dog", "eddie");
+        map = new TrackingMap(map);
+
+        // copy 1st map
+        Map newMap = new CaseInsensitiveMap(map);
+
+        CaseInsensitiveMap.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap.CaseInsensitiveEntry) map.entrySet().iterator().next();
+        CaseInsensitiveMap.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
+
+        assertTrue(entry1.getOriginalKey() == entry2.getOriginalKey());
+    }
+
+    @Test
+    public void testEntrySetIsEmpty()
+    {
+        Map map = createSimpleMap();
+        Set entries = map.entrySet();
+        assert !entries.isEmpty();
+    }
+
     // Used only during development right now
 //    @Test
 //    public void testPerformance()
 //    {
-//        Map<String, String> map = new CaseInsensitiveMap();
-//        Map<String, String> copy = new LinkedHashMap();
+//        Map<String, String> map = new CaseInsensitiveMap<>();
 //        Random random = new Random();
 //
 //        long start = System.nanoTime();
 //
-//        for (int i=0; i < 1000000; i++)
+//        for (int i=0; i < 10000; i++)
 //        {
 //            String key = StringUtilities.getRandomString(random, 1, 10);
 //            String value = StringUtilities.getRandomString(random, 1, 10);
 //            map.put(key, value);
-//            copy.put(key.toLowerCase(), value);
 //        }
 //
 //        long stop = System.nanoTime();
@@ -1219,19 +1271,9 @@ public class TestCaseInsensitiveMap
 //
 //        start = System.nanoTime();
 //
-////        for (Map.Entry<String, String> entry : map.entrySet())
-////        {
-////
-////        }
-////
-////        for (Object key : copy.keySet())
-////        {
-////
-////        }
-//
-//        for (Map.Entry<String, String> entry : map.entrySet())
+//        for (int i=0; i < 100000; i++)
 //        {
-//            String value = map.get(entry.getKey());
+//            Map copy = new CaseInsensitiveMap<>(map);
 //        }
 //
 //        stop = System.nanoTime();

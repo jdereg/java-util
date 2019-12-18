@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
+import static org.junit.Assert.fail;
+
 /**
  * @author Kenneth Partlow
  *         <br>
@@ -42,10 +44,8 @@ public class TestMapUtilities
     public void testGetWithWrongType() {
         Map map = new TreeMap();
         map.put("foo", Boolean.TRUE);
-        String s = MapUtilities.get(map, "foo", null);
+        String s = (String) MapUtilities.get(map, "foo", null);
     }
-
-
 
     @Test
     public void testGet() {
@@ -69,9 +69,9 @@ public class TestMapUtilities
 
     }
 
-
     @Test
-    public void testIsEmpty() {
+    public void testIsEmpty()
+    {
         Assert.assertTrue(MapUtilities.isEmpty(null));
 
         Map map = new HashMap();
@@ -79,5 +79,28 @@ public class TestMapUtilities
 
         map.put("foo", "bar");
         Assert.assertFalse(MapUtilities.isEmpty(map));
+    }
+
+    @Test
+    public void testGetOrThrow()
+    {
+        Map map = new TreeMap();
+        map.put("foo", Boolean.TRUE);
+        map.put("bar", null);
+        Object value = MapUtilities.getOrThrow(map, "foo", new RuntimeException("garply"));
+        assert (boolean)value;
+
+        value = MapUtilities.getOrThrow(map, "bar", new RuntimeException("garply"));
+        assert null == value;
+
+        try
+        {
+            MapUtilities.getOrThrow(map, "baz", new RuntimeException("garply"));
+            fail("Should not make it here");
+        }
+        catch (RuntimeException e)
+        {
+            assert e.getMessage().equals("garply");
+        }
     }
 }

@@ -1,6 +1,16 @@
 package com.cedarsoftware.util;
 
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -85,7 +95,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         }
         else
         {
-            map = copy(m, new HashMap(m.size()));
+            map = copy(m, new LinkedHashMap(m.size()));
         }
     }
 
@@ -93,7 +103,19 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         for (Map.Entry<K, V> entry : source.entrySet())
         {
-            K key = entry.getKey();
+            // Get get from Entry, leaving it in it's original state (in case the key is a CaseInsensitiveString)
+            Object key;
+            if (entry instanceof CaseInsensitiveEntry)
+            {
+                key = ((CaseInsensitiveEntry)entry).getOriginalKey();
+            }
+            else
+            {
+                key = entry.getKey();
+            }
+
+            // Wrap any String keys with a CaseInsensitiveString.  Keys that were already CaseInsensitiveStrings will
+            // remain as such.
             K altKey;
             if (key instanceof String)
             {
@@ -101,8 +123,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             }
             else
             {
-                altKey = key;
+                altKey = (K)key;
             }
+
             dest.put(altKey, entry.getValue());
         }
         return dest;
@@ -152,7 +175,15 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         for (Map.Entry entry : m.entrySet())
         {
-            put((K) entry.getKey(), (V) entry.getValue());
+            if (entry instanceof CaseInsensitiveEntry)
+            {
+                CaseInsensitiveEntry ciEntry = (CaseInsensitiveEntry) entry;
+                put((K) ciEntry.getOriginalKey(), (V) entry.getValue());
+            }
+            else
+            {
+                put((K) entry.getKey(), (V) entry.getValue());
+            }
         }
     }
 
@@ -249,16 +280,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     }
 
     /**
-     * Returns a {@link Set} view of the keys contained in this map.
+     * Returns a Set view of the keys contained in this map.
      * The set is backed by the map, so changes to the map are
      * reflected in the set, and vice-versa.  If the map is modified
      * while an iteration over the set is in progress (except through
-     * the iterator's own <tt>remove</tt> operation), the results of
+     * the iterator's own <b>remove</b> operation), the results of
      * the iteration are undefined.  The set supports element removal,
      * which removes the corresponding mapping from the map, via the
-     * <tt>Iterator.remove</tt>, <tt>Set.remove</tt>,
-     * <tt>removeAll</tt>, <tt>retainAll</tt>, and <tt>clear</tt>
-     * operations.  It does not support the <tt>add</tt> or <tt>addAll</tt>
+     * <b>Iterator.remove</b>, <b>Set.remove</b>,
+     * <b>removeAll</b>, <b>retainAll</b>, and <b>clear</b>
+     * operations.  It does not support the <b>add</b> or <b>addAll</b>
      * operations.
      */
     public Set<K> keySet()
@@ -457,7 +488,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return false;
             }
 
-            Map.Entry that = (Map.Entry) o;
+            Map.Entry<K, V> that = (Map.Entry) o;
             if (localMap.containsKey(that.getKey()))
             {
                 Object value = localMap.get(that.getKey());
@@ -600,6 +631,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return (KK) superKey.toString();
             }
             return superKey;
+        }
+
+        public KK getOriginalKey()
+        {
+            return super.getKey();
         }
 
         public VV setValue(VV value)

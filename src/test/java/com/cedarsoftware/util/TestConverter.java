@@ -7,9 +7,7 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,7 +16,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.TestConverter.fubar.bar;
 import static com.cedarsoftware.util.TestConverter.fubar.foo;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com) & Ken Partlow
@@ -60,28 +64,29 @@ public class TestConverter
     @Test
     public void testByte()
     {
-        Byte x = (Byte) Converter.convert("-25", byte.class);
-        assertTrue(-25 == x);
-        x = (Byte) Converter.convert("24", Byte.class);
-        assertTrue(24 == x);
+        Byte x = Converter.convert("-25", byte.class);
+        assert -25 == x;
+        x = Converter.convert("24", Byte.class);
+        assert 24 == x;
 
-        x = (Byte) Converter.convert((byte) 100, byte.class);
-        assertTrue(100 == x);
-        x = (Byte) Converter.convert((byte) 120, Byte.class);
-        assertTrue(120 == x);
+        x = Converter.convert((byte) 100, byte.class);
+        assert 100 == x;
+        x = Converter.convert((byte) 120, Byte.class);
+        assert 120 == x;
 
-        x = (Byte) Converter.convert(new BigDecimal("100"), byte.class);
-        assertTrue(100 == x);
-        x = (Byte) Converter.convert(new BigInteger("120"), Byte.class);
-        assertTrue(120 == x);
+        x = Converter.convert(new BigDecimal("100"), byte.class);
+        assert 100 == x;
+        x = Converter.convert(new BigInteger("120"), Byte.class);
+        assert 120 == x;
 
-        Object value = Converter.convert(true, Byte.class);
-        assertEquals((byte)1, Converter.convert(true, Byte.class));
-        assertEquals((byte)0, Converter.convert(false, byte.class));
+        Byte value = Converter.convert(true, Byte.class);
+        assert value == 1;
+        assert (byte)1 == Converter.convert(true, Byte.class);
+        assert (byte)0 == Converter.convert(false, byte.class);
 
-        assertEquals((byte)25, Converter.convert(new AtomicInteger(25), byte.class));
-        assertEquals((byte)100, Converter.convert(new AtomicLong(100L), byte.class));
-        assertEquals((byte)1, Converter.convert(new AtomicBoolean(true), byte.class));
+        assert (byte)25 == Converter.convert(new AtomicInteger(25), byte.class);
+        assert (byte)100 == Converter.convert(new AtomicLong(100L), byte.class);
+        assert (byte)1 == Converter.convert(new AtomicBoolean(true), byte.class);
 
         try
         {
@@ -101,31 +106,31 @@ public class TestConverter
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
         }
     }
-
+    
     @Test
     public void testShort()
     {
-        Short x = (Short) Converter.convert("-25000", short.class);
-        assertTrue(-25000 == x);
-        x = (Short) Converter.convert("24000", Short.class);
-        assertTrue(24000 == x);
+        Short x = Converter.convert("-25000", short.class);
+        assert -25000 == x;
+        x = Converter.convert("24000", Short.class);
+        assert 24000 == x;
 
-        x = (Short) Converter.convert((short) 10000, short.class);
-        assertTrue(10000 == x);
-        x = (Short) Converter.convert((short) 20000, Short.class);
-        assertTrue(20000 == x);
+        x = Converter.convert((short) 10000, short.class);
+        assert 10000 == x;
+        x = Converter.convert((short) 20000, Short.class);
+        assert 20000 == x;
 
-        x = (Short) Converter.convert(new BigDecimal("10000"), short.class);
-        assertTrue(10000 == x);
-        x = (Short) Converter.convert(new BigInteger("20000"), Short.class);
-        assertTrue(20000 == x);
+        x = Converter.convert(new BigDecimal("10000"), short.class);
+        assert 10000 == x;
+        x = Converter.convert(new BigInteger("20000"), Short.class);
+        assert 20000 == x;
 
-        assertEquals((short)1, Converter.convert(true, short.class));
-        assertEquals((short)0, Converter.convert(false, Short.class));
+        assert (short)1 == Converter.convert(true, short.class);
+        assert (short)0 == Converter.convert(false, Short.class);
 
-        assertEquals((short)25, Converter.convert(new AtomicInteger(25), short.class));
-        assertEquals((short)100, Converter.convert(new AtomicLong(100L), Short.class));
-        assertEquals((short)1, Converter.convert(new AtomicBoolean(true), Short.class));
+        assert (short)25 == Converter.convert(new AtomicInteger(25), short.class);
+        assert (short)100 == Converter.convert(new AtomicLong(100L), Short.class);
+        assert (short)1 == Converter.convert(new AtomicBoolean(true), Short.class);
 
         try
         {
@@ -149,27 +154,27 @@ public class TestConverter
     @Test
     public void testInt()
     {
-        Integer x = (Integer) Converter.convert("-450000", int.class);
+        Integer x = Converter.convert("-450000", int.class);
         assertEquals((Object) (-450000), x);
-        x = (Integer) Converter.convert("550000", Integer.class);
+        x = Converter.convert("550000", Integer.class);
         assertEquals((Object) 550000, x);
 
-        x = (Integer) Converter.convert(100000, int.class);
+        x = Converter.convert(100000, int.class);
         assertEquals((Object) 100000, x);
-        x = (Integer) Converter.convert(200000, Integer.class);
+        x = Converter.convert(200000, Integer.class);
         assertEquals((Object) 200000, x);
 
-        x = (Integer) Converter.convert(new BigDecimal("100000"), int.class);
+        x = Converter.convert(new BigDecimal("100000"), int.class);
         assertEquals((Object) 100000, x);
-        x = (Integer) Converter.convert(new BigInteger("200000"), Integer.class);
+        x = Converter.convert(new BigInteger("200000"), Integer.class);
         assertEquals((Object) 200000, x);
 
-        assertEquals(1, Converter.convert(true, Integer.class));
-        assertEquals(0, Converter.convert(false, int.class));
+        assert 1 == Converter.convert(true, Integer.class);
+        assert 0 == Converter.convert(false, int.class);
 
-        assertEquals(25, Converter.convert(new AtomicInteger(25), int.class));
-        assertEquals(100, Converter.convert(new AtomicLong(100L), Integer.class));
-        assertEquals(1, Converter.convert(new AtomicBoolean(true), Integer.class));
+        assert 25 == Converter.convert(new AtomicInteger(25), int.class);
+        assert 100 == Converter.convert(new AtomicLong(100L), Integer.class);
+        assert 1 == Converter.convert(new AtomicBoolean(true), Integer.class);
 
         try
         {
@@ -193,35 +198,35 @@ public class TestConverter
     @Test
     public void testLong()
     {
-        Long x = (Long) Converter.convert("-450000", long.class);
+        Long x = Converter.convert("-450000", long.class);
         assertEquals((Object)(-450000L), x);
-        x = (Long) Converter.convert("550000", Long.class);
+        x = Converter.convert("550000", Long.class);
         assertEquals((Object)550000L, x);
 
-        x = (Long) Converter.convert(100000L, long.class);
+        x = Converter.convert(100000L, long.class);
         assertEquals((Object)100000L, x);
-        x = (Long) Converter.convert(200000L, Long.class);
+        x = Converter.convert(200000L, Long.class);
         assertEquals((Object)200000L, x);
 
-        x = (Long) Converter.convert(new BigDecimal("100000"), long.class);
+        x = Converter.convert(new BigDecimal("100000"), long.class);
         assertEquals((Object)100000L, x);
-        x = (Long) Converter.convert(new BigInteger("200000"), Long.class);
+        x = Converter.convert(new BigInteger("200000"), Long.class);
         assertEquals((Object)200000L, x);
 
-        assertEquals((long)1, Converter.convert(true, long.class));
-        assertEquals((long)0, Converter.convert(false, Long.class));
+        assert (long)1 == Converter.convert(true, long.class);
+        assert (long)0 == Converter.convert(false, Long.class);
 
         Date now = new Date();
         long now70 = now.getTime();
-        assertEquals(now70, Converter.convert(now, long.class));
+        assert now70 == Converter.convert(now, long.class);
 
         Calendar today = Calendar.getInstance();
         now70 = today.getTime().getTime();
-        assertEquals(now70, Converter.convert(today, Long.class));
+        assert now70 == Converter.convert(today, Long.class);
 
-        assertEquals(25L, Converter.convert(new AtomicInteger(25), long.class));
-        assertEquals(100L, Converter.convert(new AtomicLong(100L), Long.class));
-        assertEquals(1L, Converter.convert(new AtomicBoolean(true), Long.class));
+        assert 25L == Converter.convert(new AtomicInteger(25), long.class);
+        assert 100L == Converter.convert(new AtomicLong(100L), Long.class);
+        assert 1L == Converter.convert(new AtomicBoolean(true), Long.class);
 
         try
         {
@@ -245,41 +250,41 @@ public class TestConverter
     @Test
     public void testAtomicLong()
     {
-        AtomicLong x = (AtomicLong) Converter.convert("-450000", AtomicLong.class);
+        AtomicLong x = Converter.convert("-450000", AtomicLong.class);
         assertEquals(-450000L, x.get());
-        x = (AtomicLong) Converter.convert("550000", AtomicLong.class);
+        x = Converter.convert("550000", AtomicLong.class);
         assertEquals(550000L, x.get());
 
-        x = (AtomicLong) Converter.convert(100000L, AtomicLong.class);
+        x = Converter.convert(100000L, AtomicLong.class);
         assertEquals(100000L, x.get());
-        x = (AtomicLong) Converter.convert(200000L, AtomicLong.class);
+        x = Converter.convert(200000L, AtomicLong.class);
         assertEquals(200000L, x.get());
 
-        x = (AtomicLong) Converter.convert(new BigDecimal("100000"), AtomicLong.class);
+        x = Converter.convert(new BigDecimal("100000"), AtomicLong.class);
         assertEquals(100000L, x.get());
-        x = (AtomicLong) Converter.convert(new BigInteger("200000"), AtomicLong.class);
+        x = Converter.convert(new BigInteger("200000"), AtomicLong.class);
         assertEquals(200000L, x.get());
 
-        x = (AtomicLong)Converter.convert(true, AtomicLong.class);
+        x = Converter.convert(true, AtomicLong.class);
         assertEquals((long)1, x.get());
-        x = (AtomicLong)Converter.convert(false, AtomicLong.class);
+        x = Converter.convert(false, AtomicLong.class);
         assertEquals((long)0, x.get());
 
         Date now = new Date();
         long now70 = now.getTime();
-        x = (AtomicLong) Converter.convert(now, AtomicLong.class);
+        x =  Converter.convert(now, AtomicLong.class);
         assertEquals(now70, x.get());
 
         Calendar today = Calendar.getInstance();
         now70 = today.getTime().getTime();
-        x = (AtomicLong) Converter.convert(today, AtomicLong.class);
+        x =  Converter.convert(today, AtomicLong.class);
         assertEquals(now70, x.get());
 
-        x = (AtomicLong)Converter.convert(new AtomicInteger(25), AtomicLong.class);
+        x = Converter.convert(new AtomicInteger(25), AtomicLong.class);
         assertEquals(25L, x.get());
-        x = (AtomicLong)Converter.convert(new AtomicLong(100L), AtomicLong.class);
+        x = Converter.convert(new AtomicLong(100L), AtomicLong.class);
         assertEquals(100L, x.get());
-        x = (AtomicLong)Converter.convert(new AtomicBoolean(true), AtomicLong.class);
+        x = Converter.convert(new AtomicBoolean(true), AtomicLong.class);
         assertEquals(1L, x.get());
 
         try
@@ -337,7 +342,7 @@ public class TestConverter
     @Test
     public void testBigDecimal()
     {
-        BigDecimal x = (BigDecimal) Converter.convert("-450000", BigDecimal.class);
+        BigDecimal x = Converter.convert("-450000", BigDecimal.class);
         assertEquals(new BigDecimal("-450000"), x);
 
         assertEquals(new BigDecimal("3.14"), Converter.convert(new BigDecimal("3.14"), BigDecimal.class));
@@ -382,7 +387,7 @@ public class TestConverter
     @Test
     public void testBigInteger()
     {
-        BigInteger x = (BigInteger) Converter.convert("-450000", BigInteger.class);
+        BigInteger x = Converter.convert("-450000", BigInteger.class);
         assertEquals(new BigInteger("-450000"), x);
 
         assertEquals(new BigInteger("3"), Converter.convert(new BigDecimal("3.14"), BigInteger.class));
@@ -427,18 +432,18 @@ public class TestConverter
     @Test
     public void testAtomicInteger()
     {
-        AtomicInteger x = (AtomicInteger) Converter.convert("-450000", AtomicInteger.class);
+        AtomicInteger x =  Converter.convert("-450000", AtomicInteger.class);
         assertEquals(-450000, x.get());
 
-        assertEquals(3, ((AtomicInteger) Converter.convert(new BigDecimal("3.14"), AtomicInteger.class)).get());
-        assertEquals(8675309, ((AtomicInteger)Converter.convert(new BigInteger("8675309"), AtomicInteger.class)).get());
-        assertEquals(75, ((AtomicInteger)Converter.convert((short) 75, AtomicInteger.class)).get());
-        assertEquals(1, ((AtomicInteger)Converter.convert(true, AtomicInteger.class)).get());
-        assertEquals(0, ((AtomicInteger)Converter.convert(false, AtomicInteger.class)).get());
+        assertEquals(3, ( Converter.convert(new BigDecimal("3.14"), AtomicInteger.class)).get());
+        assertEquals(8675309, (Converter.convert(new BigInteger("8675309"), AtomicInteger.class)).get());
+        assertEquals(75, (Converter.convert((short) 75, AtomicInteger.class)).get());
+        assertEquals(1, (Converter.convert(true, AtomicInteger.class)).get());
+        assertEquals(0, (Converter.convert(false, AtomicInteger.class)).get());
 
-        assertEquals(25, ((AtomicInteger)Converter.convert(new AtomicInteger(25), AtomicInteger.class)).get());
-        assertEquals(100, ((AtomicInteger)Converter.convert(new AtomicLong(100L), AtomicInteger.class)).get());
-        assertEquals(1, ((AtomicInteger)Converter.convert(new AtomicBoolean(true), AtomicInteger.class)).get());
+        assertEquals(25, (Converter.convert(new AtomicInteger(25), AtomicInteger.class)).get());
+        assertEquals(100, (Converter.convert(new AtomicLong(100L), AtomicInteger.class)).get());
+        assertEquals(1, (Converter.convert(new AtomicBoolean(true), AtomicInteger.class)).get());
 
         try
         {
@@ -464,97 +469,113 @@ public class TestConverter
     {
         // Date to Date
         Date utilNow = new Date();
-        Date coerced = (Date) Converter.convert(utilNow, Date.class);
+        Date coerced = Converter.convert(utilNow, Date.class);
         assertEquals(utilNow, coerced);
         assertFalse(coerced instanceof java.sql.Date);
         assert coerced != utilNow;
 
         // Date to java.sql.Date
-        java.sql.Date sqlCoerced = (java.sql.Date) Converter.convert(utilNow, java.sql.Date.class);
+        java.sql.Date sqlCoerced = Converter.convert(utilNow, java.sql.Date.class);
         assertEquals(utilNow, sqlCoerced);
 
         // java.sql.Date to java.sql.Date
         java.sql.Date sqlNow = new java.sql.Date(utilNow.getTime());
-        sqlCoerced = (java.sql.Date) Converter.convert(sqlNow, java.sql.Date.class);
+        sqlCoerced = Converter.convert(sqlNow, java.sql.Date.class);
         assertEquals(sqlNow, sqlCoerced);
 
         // java.sql.Date to Date
-        coerced = (Date) Converter.convert(sqlNow, Date.class);
+        coerced = Converter.convert(sqlNow, Date.class);
         assertEquals(sqlNow, coerced);
         assertFalse(coerced instanceof java.sql.Date);
 
         // Date to Timestamp
-        Timestamp tstamp = (Timestamp) Converter.convert(utilNow, Timestamp.class);
+        Timestamp tstamp = Converter.convert(utilNow, Timestamp.class);
         assertEquals(utilNow, tstamp);
 
         // Timestamp to Date
-        Date someDate = (Date) Converter.convert(tstamp, Date.class);
+        Date someDate = Converter.convert(tstamp, Date.class);
         assertEquals(utilNow, tstamp);
         assertFalse(someDate instanceof Timestamp);
 
         // java.sql.Date to Timestamp
-        tstamp = (Timestamp) Converter.convert(sqlCoerced, Timestamp.class);
+        tstamp = Converter.convert(sqlCoerced, Timestamp.class);
         assertEquals(sqlCoerced, tstamp);
 
         // Timestamp to java.sql.Date
-        java.sql.Date someDate1 = (java.sql.Date) Converter.convert(tstamp, java.sql.Date.class);
+        java.sql.Date someDate1 = Converter.convert(tstamp, java.sql.Date.class);
         assertEquals(someDate1, utilNow);
 
         // String to Date
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.set(2015, 0, 17, 9, 54);
-        Date date = (Date) Converter.convert("2015-01-17 09:54", Date.class);
+        Date date = Converter.convert("2015-01-17 09:54", Date.class);
         assertEquals(cal.getTime(), date);
-        assertTrue(date instanceof Date);
+        assert date != null;
         assertFalse(date instanceof java.sql.Date);
 
         // String to java.sql.Date
-        java.sql.Date sqlDate = (java.sql.Date) Converter.convert("2015-01-17 09:54", java.sql.Date.class);
+        java.sql.Date sqlDate = Converter.convert("2015-01-17 09:54", java.sql.Date.class);
         assertEquals(cal.getTime(), sqlDate);
-        assertTrue(sqlDate instanceof Date);
-        assertTrue(sqlDate instanceof java.sql.Date);
+        assert sqlDate != null;
 
         // Calendar to Date
-        date = (Date) Converter.convert(cal, Date.class);
+        date = Converter.convert(cal, Date.class);
         assertEquals(date, cal.getTime());
-        assertTrue(date instanceof Date);
+        assert date != null;
         assertFalse(date instanceof java.sql.Date);
 
         // Calendar to java.sql.Date
-        sqlDate = (java.sql.Date) Converter.convert(cal, java.sql.Date.class);
+        sqlDate = Converter.convert(cal, java.sql.Date.class);
         assertEquals(sqlDate, cal.getTime());
-        assertTrue(sqlDate instanceof Date);
-        assertTrue(sqlDate instanceof java.sql.Date);
+        assert sqlDate != null;
 
         // long to Date
         long now = System.currentTimeMillis();
         Date dateNow = new Date(now);
-        Date converted = (Date) Converter.convert(now, Date.class);
+        Date converted = Converter.convert(now, Date.class);
+        assert converted != null;
         assertEquals(dateNow, converted);
-        assertTrue(converted instanceof Date);
         assertFalse(converted instanceof java.sql.Date);
 
         // long to java.sql.Date
-        Date sqlConverted = (java.sql.Date) Converter.convert(now, java.sql.Date.class);
+        Date sqlConverted = Converter.convert(now, java.sql.Date.class);
         assertEquals(dateNow, sqlConverted);
-        assertTrue(sqlConverted instanceof Date);
-        assertTrue(sqlConverted instanceof java.sql.Date);
+        assert sqlConverted != null;
 
         // AtomicLong to Date
         now = System.currentTimeMillis();
         dateNow = new Date(now);
-        converted = (Date) Converter.convert(new AtomicLong(now), Date.class);
+        converted = Converter.convert(new AtomicLong(now), Date.class);
+        assert converted != null;
         assertEquals(dateNow, converted);
-        assertTrue(converted instanceof Date);
         assertFalse(converted instanceof java.sql.Date);
 
         // long to java.sql.Date
         dateNow = new java.sql.Date(now);
-        sqlConverted = (java.sql.Date) Converter.convert(new AtomicLong(now), java.sql.Date.class);
+        sqlConverted = Converter.convert(new AtomicLong(now), java.sql.Date.class);
+        assert sqlConverted != null;
         assertEquals(dateNow, sqlConverted);
-        assertTrue(sqlConverted instanceof Date);
-        assertTrue(sqlConverted instanceof java.sql.Date);
+
+        // BigInteger to java.sql.Date
+        BigInteger bigInt = new BigInteger("" + now);
+        sqlDate = Converter.convert(bigInt, java.sql.Date.class);
+        assert sqlDate.getTime() == now;
+
+        // BigDecimal to java.sql.Date
+        BigDecimal bigDec = new BigDecimal(now);
+        sqlDate = Converter.convert(bigDec, java.sql.Date.class);
+        assert sqlDate.getTime() == now;
+
+        // BigInteger to Timestamp
+        bigInt = new BigInteger("" + now);
+        tstamp = Converter.convert(bigInt, Timestamp.class);
+        assert tstamp.getTime() == now;
+
+        // BigDecimal to TimeStamp
+        bigDec = new BigDecimal(now);
+        tstamp = Converter.convert(bigDec, Timestamp.class);
+        assert tstamp.getTime() == now;
 
         // Invalid source type for Date
         try
@@ -598,19 +619,127 @@ public class TestConverter
     }
 
     @Test
+    public void testCalendar()
+    {
+        // Date to Calendar
+        Date now = new Date();
+        Calendar calendar = Converter.convert(new Date(), Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // SqlDate to Calendar
+        java.sql.Date sqlDate = Converter.convert(now, java.sql.Date.class);
+        calendar = Converter.convert(sqlDate, Calendar.class);
+        assertEquals(calendar.getTime(), sqlDate);
+
+        // Timestamp to Calendar
+        Timestamp timestamp = Converter.convert(now, Timestamp.class);
+        calendar = Converter.convert(timestamp, Calendar.class);
+        assertEquals(calendar.getTime(), timestamp);
+
+        // Long to Calendar
+        calendar = Converter.convert(now.getTime(), Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // AtomicLong to Calendar
+        AtomicLong atomicLong = new AtomicLong(now.getTime());
+        calendar = Converter.convert(atomicLong, Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // String to Calendar
+        String strDate = Converter.convert(now, String.class);
+        calendar = Converter.convert(strDate, Calendar.class);
+        String strDate2 = Converter.convert(calendar, String.class);
+        assertEquals(strDate, strDate2);
+
+        // BigInteger to Calendar
+        BigInteger bigInt = new BigInteger("" + now.getTime());
+        calendar = Converter.convert(bigInt, Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // BigDecimal to Calendar
+        BigDecimal bigDec = new BigDecimal(now.getTime());
+        calendar = Converter.convert(bigDec, Calendar.class);
+        assertEquals(calendar.getTime(), now);
+
+        // Other direction --> Calendar to other date types
+
+        // Calendar to Date
+        calendar = Converter.convert(now, Calendar.class);
+        Date date = Converter.convert(calendar, Date.class);
+        assertEquals(calendar.getTime(), date);
+
+        // Calendar to SqlDate
+        sqlDate = Converter.convert(calendar, java.sql.Date.class);
+        assertEquals(calendar.getTime().getTime(), sqlDate.getTime());
+
+        // Calendar to Timestamp
+        timestamp = Converter.convert(calendar, Timestamp.class);
+        assertEquals(calendar.getTime().getTime(), timestamp.getTime());
+
+        // Calendar to Long
+        long tnow = Converter.convert(calendar, long.class);
+        assertEquals(calendar.getTime().getTime(), tnow);
+
+        // Calendar to AtomicLong
+        atomicLong = Converter.convert(calendar, AtomicLong.class);
+        assertEquals(calendar.getTime().getTime(), atomicLong.get());
+
+        // Calendar to String
+        strDate = Converter.convert(calendar, String.class);
+        strDate2 = Converter.convert(now, String.class);
+        assertEquals(strDate, strDate2);
+
+        // Calendar to BigInteger
+        bigInt = Converter.convert(calendar, BigInteger.class);
+        assertEquals(now.getTime(), bigInt.longValue());
+
+        // Calendar to BigDecimal
+        bigDec = Converter.convert(calendar, BigDecimal.class);
+        assertEquals(now.getTime(), bigDec.longValue());
+    }
+
+    @Test
+    public void testDateErrorHandlingBadInput()
+    {
+        assertNull(Converter.convert(" ", java.util.Date.class));
+        assertNull(Converter.convert("", java.util.Date.class));
+        assertNull(Converter.convert(null, java.util.Date.class));
+
+        assertNull(Converter.convertToDate(" "));
+        assertNull(Converter.convertToDate(""));
+        assertNull(Converter.convertToDate(null));
+
+        assertNull(Converter.convert(" ", java.sql.Date.class));
+        assertNull(Converter.convert("", java.sql.Date.class));
+        assertNull(Converter.convert(null, java.sql.Date.class));
+
+        assertNull(Converter.convertToSqlDate(" "));
+        assertNull(Converter.convertToSqlDate(""));
+        assertNull(Converter.convertToSqlDate(null));
+
+        assertNull(Converter.convert(" ", java.sql.Timestamp.class));
+        assertNull(Converter.convert("", java.sql.Timestamp.class));
+        assertNull(Converter.convert(null, java.sql.Timestamp.class));
+
+        assertNull(Converter.convertToTimestamp(" "));
+        assertNull(Converter.convertToTimestamp(""));
+        assertNull(Converter.convertToTimestamp(null));
+    }
+
+    @Test
     public void testTimestamp()
     {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         assertEquals(now, Converter.convert(now, Timestamp.class));
         assert Converter.convert(now, Timestamp.class) instanceof Timestamp;
 
-        Timestamp christmas = (Timestamp) Converter.convert("2015/12/25", Timestamp.class);
+        Timestamp christmas = Converter.convert("2015/12/25", Timestamp.class);
         Calendar c = Calendar.getInstance();
         c.clear();
         c.set(2015, 11, 25);
         assert christmas.getTime() == c.getTime().getTime();
 
-        Timestamp christmas2 = (Timestamp) Converter.convert(c, Timestamp.class);
+        Timestamp christmas2 = Converter.convert(c, Timestamp.class);
 
         assertEquals(christmas, christmas2);
         assertEquals(christmas2, Converter.convert(christmas.getTime(), Timestamp.class));
@@ -642,21 +771,21 @@ public class TestConverter
     @Test
     public void testFloat()
     {
-        assertEquals(-3.14f, Converter.convert(-3.14f, float.class));
-        assertEquals(-3.14f, Converter.convert(-3.14f, Float.class));
-        assertEquals(-3.14f, Converter.convert("-3.14", float.class));
-        assertEquals(-3.14f, Converter.convert("-3.14", Float.class));
-        assertEquals(-3.14f, Converter.convert(-3.14d, float.class));
-        assertEquals(-3.14f, Converter.convert(-3.14d, Float.class));
-        assertEquals(1.0f, Converter.convert(true, float.class));
-        assertEquals(1.0f, Converter.convert(true, Float.class));
-        assertEquals(0.0f, Converter.convert(false, float.class));
-        assertEquals(0.0f, Converter.convert(false, Float.class));
+        assert -3.14f == Converter.convert(-3.14f, float.class);
+        assert -3.14f == Converter.convert(-3.14f, Float.class);
+        assert -3.14f == Converter.convert("-3.14", float.class);
+        assert -3.14f == Converter.convert("-3.14", Float.class);
+        assert -3.14f == Converter.convert(-3.14d, float.class);
+        assert -3.14f == Converter.convert(-3.14d, Float.class);
+        assert 1.0f == Converter.convert(true, float.class);
+        assert 1.0f == Converter.convert(true, Float.class);
+        assert 0.0f == Converter.convert(false, float.class);
+        assert 0.0f == Converter.convert(false, Float.class);
 
-        assertEquals(0.0f, Converter.convert(new AtomicInteger(0), Float.class));
-        assertEquals(0.0f, Converter.convert(new AtomicLong(0), Float.class));
-        assertEquals(0.0f, Converter.convert(new AtomicBoolean(false), Float.class));
-        assertEquals(1.0f, Converter.convert(new AtomicBoolean(true), Float.class));
+        assert 0.0f == Converter.convert(new AtomicInteger(0), Float.class);
+        assert 0.0f == Converter.convert(new AtomicLong(0), Float.class);
+        assert 0.0f == Converter.convert(new AtomicBoolean(false), Float.class);
+        assert 1.0f == Converter.convert(new AtomicBoolean(true), Float.class);
 
         try
         {
@@ -680,21 +809,21 @@ public class TestConverter
     @Test
     public void testDouble()
     {
-        assertEquals(-3.14d, Converter.convert(-3.14d, double.class));
-        assertEquals(-3.14d, Converter.convert(-3.14d, Double.class));
-        assertEquals(-3.14d, Converter.convert("-3.14", double.class));
-        assertEquals(-3.14d, Converter.convert("-3.14", Double.class));
-        assertEquals(-3.14d, Converter.convert(new BigDecimal("-3.14"), double.class));
-        assertEquals(-3.14d, Converter.convert(new BigDecimal("-3.14"), Double.class));
-        assertEquals(1.0d, Converter.convert(true, double.class));
-        assertEquals(1.0d, Converter.convert(true, Double.class));
-        assertEquals(0.0d, Converter.convert(false, double.class));
-        assertEquals(0.0d, Converter.convert(false, Double.class));
+        assert -3.14d == Converter.convert(-3.14d, double.class);
+        assert -3.14d == Converter.convert(-3.14d, Double.class);
+        assert -3.14d == Converter.convert("-3.14", double.class);
+        assert -3.14d == Converter.convert("-3.14", Double.class);
+        assert -3.14d == Converter.convert(new BigDecimal("-3.14"), double.class);
+        assert -3.14d == Converter.convert(new BigDecimal("-3.14"), Double.class);
+        assert 1.0d == Converter.convert(true, double.class);
+        assert 1.0d == Converter.convert(true, Double.class);
+        assert 0.0d == Converter.convert(false, double.class);
+        assert 0.0d == Converter.convert(false, Double.class);
 
-        assertEquals(0.0d, Converter.convert(new AtomicInteger(0), double.class));
-        assertEquals(0.0d, Converter.convert(new AtomicLong(0), double.class));
-        assertEquals(0.0d, Converter.convert(new AtomicBoolean(false), Double.class));
-        assertEquals(1.0d, Converter.convert(new AtomicBoolean(true), Double.class));
+        assert 0.0d == Converter.convert(new AtomicInteger(0), double.class);
+        assert 0.0d == Converter.convert(new AtomicLong(0), double.class);
+        assert 0.0d == Converter.convert(new AtomicBoolean(false), Double.class);
+        assert 1.0d == Converter.convert(new AtomicBoolean(true), Double.class);
 
         try
         {
@@ -729,7 +858,9 @@ public class TestConverter
         assertEquals(true, Converter.convert(new AtomicBoolean(true), Boolean.class));
 
         assertEquals(true, Converter.convert("TRue", Boolean.class));
+        assertEquals(true, Converter.convert("true", Boolean.class));
         assertEquals(false, Converter.convert("fALse", Boolean.class));
+        assertEquals(false, Converter.convert("false", Boolean.class));
         assertEquals(false, Converter.convert("john", Boolean.class));
 
         assertEquals(true, Converter.convert(true, Boolean.class));
@@ -750,27 +881,27 @@ public class TestConverter
     @Test
     public void testAtomicBoolean()
     {
-        assert ((AtomicBoolean)Converter.convert(-3.14d, AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert(0.0d, AtomicBoolean.class)).get();
-        assert ((AtomicBoolean)Converter.convert(-3.14f, AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert(0.0f, AtomicBoolean.class)).get();
+        assert (Converter.convert(-3.14d, AtomicBoolean.class)).get();
+        assert !(Converter.convert(0.0d, AtomicBoolean.class)).get();
+        assert (Converter.convert(-3.14f, AtomicBoolean.class)).get();
+        assert !(Converter.convert(0.0f, AtomicBoolean.class)).get();
 
-        assert !((AtomicBoolean)Converter.convert(new AtomicInteger(0), AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert(new AtomicLong(0), AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert(new AtomicBoolean(false), AtomicBoolean.class)).get();
-        assert ((AtomicBoolean)Converter.convert(new AtomicBoolean(true), AtomicBoolean.class)).get();
+        assert !(Converter.convert(new AtomicInteger(0), AtomicBoolean.class)).get();
+        assert !(Converter.convert(new AtomicLong(0), AtomicBoolean.class)).get();
+        assert !(Converter.convert(new AtomicBoolean(false), AtomicBoolean.class)).get();
+        assert (Converter.convert(new AtomicBoolean(true), AtomicBoolean.class)).get();
 
-        assert ((AtomicBoolean)Converter.convert("TRue", AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert("fALse", AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert("john", AtomicBoolean.class)).get();
+        assert (Converter.convert("TRue", AtomicBoolean.class)).get();
+        assert !(Converter.convert("fALse", AtomicBoolean.class)).get();
+        assert !(Converter.convert("john", AtomicBoolean.class)).get();
 
-        assert ((AtomicBoolean)Converter.convert(true, AtomicBoolean.class)).get();
-        assert ((AtomicBoolean)Converter.convert(Boolean.TRUE, AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert(false, AtomicBoolean.class)).get();
-        assert !((AtomicBoolean)Converter.convert(Boolean.FALSE, AtomicBoolean.class)).get();
+        assert (Converter.convert(true, AtomicBoolean.class)).get();
+        assert (Converter.convert(Boolean.TRUE, AtomicBoolean.class)).get();
+        assert !(Converter.convert(false, AtomicBoolean.class)).get();
+        assert !(Converter.convert(Boolean.FALSE, AtomicBoolean.class)).get();
 
         AtomicBoolean b1 = new AtomicBoolean(true);
-        AtomicBoolean b2 = (AtomicBoolean) Converter.convert(b1, AtomicBoolean.class);
+        AtomicBoolean b2 = Converter.convert(b1, AtomicBoolean.class);
         assert b1 != b2; // ensure that it returns a different but equivalent instance
         assert b1.get() == b2.get();
 
@@ -802,28 +933,42 @@ public class TestConverter
     public void testNullInstance()
     {
         assertEquals(false, Converter.convert(null, boolean.class));
-        assertNull(Converter.convert(null, Boolean.class));
-        assertEquals((byte) 0, Converter.convert(null, byte.class));
-        assertNull(Converter.convert(null, Byte.class));
-        assertEquals((short) 0, Converter.convert(null, short.class));
-        assertNull(Converter.convert(null, Short.class));
-        assertEquals(0, Converter.convert(null, int.class));
-        assertNull(Converter.convert(null, Integer.class));
-        assertEquals(0L, Converter.convert(null, long.class));
-        assertNull(Converter.convert(null, Long.class));
-        assertEquals(0.0f, Converter.convert(null, float.class));
-        assertNull(Converter.convert(null, Float.class));
-        assertEquals(0.0d, Converter.convert(null, double.class));
-        assertNull(Converter.convert(null, Double.class));
+        assertFalse((Boolean) Converter.convert(null, Boolean.class));
+        assert (byte) 0 == Converter.convert(null, byte.class);
+        assert (byte) 0 == Converter.convert(null, Byte.class);
+        assert (short) 0 == Converter.convert(null, short.class);
+        assert (short) 0 == Converter.convert(null, Short.class);
+        assert 0 == Converter.convert(null, int.class);
+        assert 0 == Converter.convert(null, Integer.class);
+        assert 0L == Converter.convert(null, long.class);
+        assert 0L == Converter.convert(null, Long.class);
+        assert 0.0f == Converter.convert(null, float.class);
+        assert 0.0f == Converter.convert(null, Float.class);
+        assert 0.0d == Converter.convert(null, double.class);
+        assert 0.0d == Converter.convert(null, Double.class);
         assertNull(Converter.convert(null, Date.class));
         assertNull(Converter.convert(null, java.sql.Date.class));
         assertNull(Converter.convert(null, Timestamp.class));
         assertNull(Converter.convert(null, String.class));
-        assertNull(Converter.convert(null, BigInteger.class));
-        assertNull(Converter.convert(null, BigDecimal.class));
-        assertNull(Converter.convert(null, AtomicBoolean.class));
-        assertNull(Converter.convert(null, AtomicInteger.class));
-        assertNull(Converter.convert(null, AtomicLong.class));
+        assertEquals(BigInteger.ZERO, Converter.convert(null, BigInteger.class));
+        assertEquals(BigDecimal.ZERO, Converter.convert(null, BigDecimal.class));
+        assertEquals(false, Converter.convert(null, AtomicBoolean.class).get());
+        assertEquals(0, Converter.convert(null, AtomicInteger.class).get());
+        assertEquals(0, Converter.convert(null, AtomicLong.class).get());
+
+        assert 0 == Converter.convertToByte(null);
+        assert 0 == Converter.convertToInteger(null);
+        assert 0 == Converter.convertToShort(null);
+        assert 0L == Converter.convertToLong(null);
+        assert 0.0f == Converter.convertToFloat(null);
+        assert 0.0d == Converter.convertToDouble(null);
+        assert null == Converter.convertToDate(null);
+        assert null == Converter.convertToSqlDate(null);
+        assert null == Converter.convertToTimestamp(null);
+        assert false == Converter.convertToAtomicBoolean(null).get();
+        assert 0 == Converter.convertToAtomicInteger(null).get();
+        assert 0L == Converter.convertToAtomicLong(null).get();
+        assert null == Converter.convertToString(null);
     }
 
     @Test
@@ -843,18 +988,19 @@ public class TestConverter
     @Test
     public void testEmptyString()
     {
-        assertEquals(Boolean.FALSE, Converter.convert("", boolean.class));
-        assertEquals((byte) 0, Converter.convert("", byte.class));
-        assertEquals((short) 0, Converter.convert("", short.class));
-        assertEquals((int) 0, Converter.convert("", int.class));
-        assertEquals((long) 0, Converter.convert("", long.class));
-        assertEquals(0.0f, Converter.convert("", float.class));
-        assertEquals(0.0d, Converter.convert("", double.class));
+        assertEquals(false, Converter.convert("", boolean.class));
+        assertEquals(false, Converter.convert("", boolean.class));
+        assert (byte) 0 == Converter.convert("", byte.class);
+        assert (short) 0 == Converter.convert("", short.class);
+        assert (int) 0 == Converter.convert("", int.class);
+        assert (long) 0 == Converter.convert("", long.class);
+        assert 0.0f == Converter.convert("", float.class);
+        assert 0.0d == Converter.convert("", double.class);
         assertEquals(BigDecimal.ZERO, Converter.convert("", BigDecimal.class));
         assertEquals(BigInteger.ZERO, Converter.convert("", BigInteger.class));
-        assertEquals(new AtomicBoolean(false).get(), ((AtomicBoolean)Converter.convert("", AtomicBoolean.class)).get());
-        assertEquals(new AtomicInteger(0).get(), ((AtomicInteger)Converter.convert("", AtomicInteger.class)).get());
-        assertEquals(new AtomicLong(0L).get(), ((AtomicLong)Converter.convert("", AtomicLong.class)).get());
+        assertEquals(new AtomicBoolean(false).get(), Converter.convert("", AtomicBoolean.class).get());
+        assertEquals(new AtomicInteger(0).get(), Converter.convert("", AtomicInteger.class).get());
+        assertEquals(new AtomicLong(0L).get(), Converter.convert("", AtomicLong.class).get());
     }
 
     @Test

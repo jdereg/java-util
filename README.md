@@ -11,7 +11,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.38.0</version>
+  <version>1.39.0</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ Included in java-util:
 * **GraphComparator** - Compare any two Java object graphs. It generates a `List` of `Delta` objects which describe the difference between the two Object graphs.  This Delta list can be played back, such that `List deltas = GraphComparator.delta(source, target); GraphComparator.applyDelta(source, deltas)` will bring source up to match target.  See JUnit test cases for example usage.  This is a completely thorough graph difference (and apply delta), including support for `Array`, `Collection`, `Map`, and object field differences.
 * **IOUtilities** - Handy methods for simplifying I/O including such niceties as properly setting up the input stream for HttpUrlConnections based on their specified encoding.  Single line `.close()` method that handles exceptions for you.
 * **MathUtilities** - Handy mathematical algorithms to make your code smaller.  For example, minimum of array of values.
-* **ReflectionUtils** - Simple one-liners for many common reflection tasks.
+* **ReflectionUtils** - Simple one-liners for many common reflection tasks.  Speedy reflection calls due to Method caching.
 * **SafeSimpleDateFormat** - Instances of this class can be stored as member variables and reused without any worry about thread safety.  Fixing the problems with the JDK's `SimpleDateFormat` and thread safety (no reentrancy support).
 * **StringUtilities** - Helpful methods that make simple work of common `String` related tasks.
 * **SystemUtilities** - A Helpful utility methods for working with external entities like the OS, environment variables, and system properties.

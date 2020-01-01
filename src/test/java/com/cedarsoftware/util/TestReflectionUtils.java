@@ -3,12 +3,8 @@ package com.cedarsoftware.util;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.annotation.Annotation;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.io.InputStream;
+import java.lang.annotation.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -17,11 +13,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -257,6 +249,246 @@ public class TestReflectionUtils
     public void testGetClassAnnotationsWithNull() throws Exception
     {
         assertNull(ReflectionUtils.getClassAnnotation(null, null));
+    }
+
+    @Test
+    public void testCachingGetMethod()
+    {
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        assert m1 != null;
+        assert m1 instanceof Method;
+        assert m1.getName() == "methodWithNoArgs";
+
+        Method m2 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        assert m1 == m2;
+    }
+
+    @Test
+    public void testGetMethod1Arg()
+    {
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithOneArg", Integer.TYPE);
+        assert m1 != null;
+        assert m1 instanceof Method;
+        assert m1.getName() == "methodWithOneArg";
+    }
+
+    @Test
+    public void testGetMethod2Args()
+    {
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithTwoArgs", Integer.TYPE, String.class);
+        assert m1 != null;
+        assert m1 instanceof Method;
+        assert m1.getName() == "methodWithTwoArgs";
+    }
+
+    @Test
+    public void testCallWithNoArgs()
+    {
+        TestReflectionUtils gross = new TestReflectionUtils();
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        assert "0".equals(ReflectionUtils.call(gross, m1));
+
+        // Ensuring that methods from both reflection approaches are different
+        Method m2 = ReflectionUtils.getMethod(gross, "methodWithNoArgs", 0);
+        assert m1 != m2;
+        assert m1.getName().equals(m2.getName());
+
+        // Note, method not needed below
+        assert "0".equals(ReflectionUtils.call(gross, "methodWithNoArgs"));
+    }
+
+    @Test
+    public void testCallWith1Arg()
+    {
+        TestReflectionUtils gross = new TestReflectionUtils();
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithOneArg", int.class);
+        assert "1".equals(ReflectionUtils.call(gross, m1, 5));
+
+        Method m2 = ReflectionUtils.getMethod(gross, "methodWithOneArg", 1);
+        assert m1 != m2;
+        assert m1.getName().equals(m2.getName());
+
+        assert "1".equals(ReflectionUtils.call(gross, "methodWithOneArg", 5));
+    }
+
+    @Test
+    public void testCallWithTwoArgs()
+    {
+        TestReflectionUtils gross = new TestReflectionUtils();
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithTwoArgs", Integer.TYPE, String.class);
+        assert "2".equals(ReflectionUtils.call(gross, m1, 9, "foo"));
+
+        Method m2 = ReflectionUtils.getMethod(gross, "methodWithTwoArgs", 2);
+        assert m1 != m2;
+        assert m1.getName().equals(m2.getName());
+
+        assert "2".equals(ReflectionUtils.call(gross, "methodWithTwoArgs", 9, "foo"));
+    }
+
+    @Test
+    public void testGetMethodWithNullBean()
+    {
+        try
+        {
+            ReflectionUtils.getMethod(null, "foo", 1);
+            Assert.fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "getMethod", "null");
+        }
+    }
+
+    @Test
+    public void testCallWithNullBean()
+    {
+        try
+        {
+            Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+            ReflectionUtils.call(null, m1, 1);
+            Assert.fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "cannot", "methodWithNoArgs", "null object");
+        }
+    }
+
+    @Test
+    public void testCallWithNullBeanAndNullMethod()
+    {
+        try
+        {
+            ReflectionUtils.call(null, (Method)null, 0);
+            Assert.fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "null Method", "null bean");
+        }
+    }
+
+    @Test
+    public void testGetMethodWithNullMethod()
+    {
+        try
+        {
+            ReflectionUtils.getMethod(new Object(), null,0);
+            Assert.fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "getMethod", "null", "method name");
+        }
+    }
+
+    @Test
+    public void testGetMethodWithNullMethodAndNullBean()
+    {
+        try
+        {
+            ReflectionUtils.getMethod(null, null,0);
+            Assert.fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "getMethod", "null", "null instance");
+        }
+    }
+
+    @Test
+    public void testInvocationException()
+    {
+        TestReflectionUtils gross = new TestReflectionUtils();
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "pitaMethod");
+        try
+        {
+            ReflectionUtils.call(gross, m1);
+            Assert.fail("should never make it here");
+        }
+        catch (Exception e)
+        {
+            assert e instanceof RuntimeException;
+            assert e.getCause() instanceof IllegalStateException;
+        }
+    }
+
+    @Test
+    public void testInvocationException2()
+    {
+        TestReflectionUtils gross = new TestReflectionUtils();
+        try
+        {
+            ReflectionUtils.call(gross, "pitaMethod");
+            Assert.fail("should never make it here");
+        }
+        catch (Exception e)
+        {
+            assert e instanceof RuntimeException;
+            assert e.getCause() instanceof IllegalStateException;
+        }
+    }
+
+    @Test
+    public void testCantAccessNonPublic()
+    {
+        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "notAllowed");
+        assert m1 == null;
+
+        try
+        {
+            ReflectionUtils.getMethod(new TestReflectionUtils(), "notAllowed", 0);
+            Assert.fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "notAllowed", "not found");
+        }
+    }
+
+    @Test
+    public void testGetClassNameFromByteCode()
+    {
+        Class c = TestReflectionUtils.class;
+        String className = c.getName();
+        String classAsPath = className.replace('.', '/') + ".class";
+        InputStream stream = c.getClassLoader().getResourceAsStream(classAsPath);
+        byte[] byteCode = IOUtilities.inputStreamToBytes(stream);
+
+        try
+        {
+            className = ReflectionUtils.getClassNameFromByteCode(byteCode);
+            assert "com.cedarsoftware.util.TestReflectionUtils".equals(className);
+        }
+        catch (Exception e)
+        {
+            Assert.fail("This should not throw an exception");
+        }
+    }
+
+
+    public String methodWithNoArgs()
+    {
+        return "0";
+    }
+
+    public String methodWithOneArg(int x)
+    {
+        return "1";
+    }
+
+    public String methodWithTwoArgs(int x, String y)
+    {
+        return "2";
+    }
+
+    public String pitaMethod()
+    {
+        throw new IllegalStateException("this always blows up");
+    }
+
+    protected void notAllowed()
+    {
     }
 
     private class Parent {

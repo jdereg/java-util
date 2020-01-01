@@ -8,10 +8,7 @@ import java.lang.reflect.Modifier;
 import java.util.Calendar;
 import java.util.Date;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com)
@@ -508,6 +505,19 @@ public class TestDateUtilities
         c.clear();
         c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
         assertEquals(x, c.getTime());
+    }
+
+    @Test
+    public void test2DigitYear()
+    {
+        try
+        {
+            DateUtilities.parseDate("07/04/19");
+            Assert.fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
     }
 
     @Test

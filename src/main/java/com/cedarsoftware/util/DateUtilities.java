@@ -2,9 +2,9 @@ package com.cedarsoftware.util;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,7 +41,7 @@ public final class DateUtilities
     private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})([+-]\\d{2}[:]?\\d{2}|Z)?");
     private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})([+-]\\d{2}[:]?\\d{2}|Z)?");
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
-    private static final Map<String, String> months = new LinkedHashMap<>();
+    private static final Map<String, String> months = new ConcurrentHashMap<>();
 
     static
     {

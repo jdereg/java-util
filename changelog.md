@@ -1,4 +1,9 @@
 ### Revision History
+* 1.39.0
+  * Added `ReflectionUtils.call(bean, methodName, args...)` to allow one-step reflective calls.  See Javadoc for any limitations.
+  * Added `ReflectionUtils.call(bean, method, args...)` to allow easy reflective calls.  This version requires obtaining the `Method` instance first.  This approach allows methods with the same name and number of arguments (overloaded) to be called.
+  * All `ReflectionUtils.getMethod()` APIs cache reflectively located methods to significantly improve performance when using reflection.
+  * The `call()` methods throw the target of the checked `InvocationTargetException`.  The checked `IllegalAccessException` is rethrown wrapped in a RuntimeException.  This allows making reflective calls without having to handle these two checked exceptions directly at the call point. Instead, these exceptions are usually better handled at a high-level in the code.   
 * 1.38.0
   * Enhancement: `UniqueIdGenerator` now generates the long ids in monotonically increasing order.  @HonorKnight
   * Enhancement: New API [`getDate(uniqueId)`] added to `UniqueIdGenerator` that when passed an ID that it generated, will return the time down to the millisecond when it was generated.

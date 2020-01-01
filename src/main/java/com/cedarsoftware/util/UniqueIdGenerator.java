@@ -21,7 +21,7 @@ import static java.lang.System.currentTimeMillis;
  * the year 2286, however this API will generate unique IDs at a rate up to 10 million per second.  The trade-off is
  * the faster API will generate positive IDs only good for about 286 years [after 2000].<br>
  * <br>
- * The IDs are guaranteed to be monotonically increasing.
+ * The IDs are guaranteed to be strictly increasing.
  * 
  * @author John DeRegnaucourt (john@cedarsoftware.com)
  *         Roger Judd (@HonorKnight on GitHub) for adding code to ensure increasing order.
@@ -102,7 +102,7 @@ public class UniqueIdGenerator
      * delays while it waits for the millisecond to tick over.  This API can return 1,000 unique IDs per millisecond
      * max.<br>
      * <br>
-     * The IDs returned are guaranteed to be monotonically increasing.
+     * The IDs returned are guaranteed to be strictly increasing.
      * @return long unique ID
      */
     public static long getUniqueId()
@@ -153,7 +153,7 @@ public class UniqueIdGenerator
      * <br>
      * This API is faster than the 18 digit API.  This API can return 10,000 unique IDs per millisecond max.<br>
      * <br>
-     * The IDs returned are guaranteed to be monotonically increasing.
+     * The IDs returned are guaranteed to be strictly increasing.
      * @return long unique ID
      */
     public static long getUniqueId19()

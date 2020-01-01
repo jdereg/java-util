@@ -5,16 +5,12 @@ import java.io.DataInputStream;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com)
@@ -35,7 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ReflectionUtils
 {
-    private static final Map<Class, Collection<Field>> _reflectedFields = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Class<?>, Collection<Field>> FIELD_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Method> METHOD_MAP2 = new ConcurrentHashMap<>();
 
     private ReflectionUtils()
     {
@@ -50,13 +48,13 @@ public final class ReflectionUtils
      */
     public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass)
     {
-        final Set<Class> visited = new HashSet<>();
-        final LinkedList<Class> stack = new LinkedList<>();
+        final Set<Class<?>> visited = new HashSet<>();
+        final LinkedList<Class<?>> stack = new LinkedList<>();
         stack.add(classToCheck);
 
         while (!stack.isEmpty())
         {
-            Class classToChk = stack.pop();
+            Class<?> classToChk = stack.pop();
             if (classToChk == null || visited.contains(classToChk))
             {
                 continue;
@@ -73,9 +71,9 @@ public final class ReflectionUtils
         return null;
     }
 
-    private static void addInterfaces(final Class<?> classToCheck, final LinkedList<Class> stack)
+    private static void addInterfaces(final Class<?> classToCheck, final LinkedList<Class<?>> stack)
     {
-        for (Class interFace : classToCheck.getInterfaces())
+        for (Class<?> interFace : classToCheck.getInterfaces())
         {
             stack.push(interFace);
         }
@@ -83,13 +81,13 @@ public final class ReflectionUtils
 
     public static <T extends Annotation> T getMethodAnnotation(final Method method, final Class<T> annoClass)
     {
-        final Set<Class> visited = new HashSet<>();
-        final LinkedList<Class> stack = new LinkedList<>();
+        final Set<Class<?>> visited = new HashSet<>();
+        final LinkedList<Class<?>> stack = new LinkedList<>();
         stack.add(method.getDeclaringClass());
 
         while (!stack.isEmpty())
         {
-            Class classToChk = stack.pop();
+            Class<?> classToChk = stack.pop();
             if (classToChk == null || visited.contains(classToChk))
             {
                 continue;
@@ -111,10 +109,41 @@ public final class ReflectionUtils
         return null;
     }
 
-    public static Method getMethod(Class<?> c, String method, Class<?>...types)  {
+    /**
+     * Fetch a public method reflectively by name with argument types.  This method caches the lookup, so that
+     * subsequent calls are significantly faster.  The method can be on an inherited class of the passed in [starting]
+     * Class.
+     * @param c Class on which method is to be found.
+     * @param methodName String name of method to find.
+     * @param types Argument types for the method (null is used for no argument methods).
+     * @return Method located, or null if not found.
+     */
+    public static Method getMethod(Class<?> c, String methodName, Class<?>...types)
+    {
         try
         {
-            return c.getMethod(method, types);
+            StringBuilder builder = new StringBuilder(c.getName());
+            builder.append('.');
+            builder.append(methodName);
+            for (Class clz : types)
+            {
+                builder.append('|');
+                builder.append(clz.getName());
+            }
+
+            // methodKey is in form ClassName.methodName|arg1.class|arg2.class|...
+            String methodKey = builder.toString();
+            Method method = METHOD_MAP.get(methodKey);
+            if (method == null)
+            {
+                method = c.getMethod(methodName, types);
+                Method other = METHOD_MAP.putIfAbsent(methodKey, method);
+                if (other != null)
+                {
+                    method = other;
+                }
+            }
+            return method;
         }
         catch (Exception nse)
         {
@@ -134,19 +163,19 @@ public final class ReflectionUtils
      */
     public static Collection<Field> getDeepDeclaredFields(Class<?> c)
     {
-        if (_reflectedFields.containsKey(c))
+        if (FIELD_MAP.containsKey(c))
         {
-            return _reflectedFields.get(c);
+            return FIELD_MAP.get(c);
         }
         Collection<Field> fields = new ArrayList<>();
-        Class curr = c;
+        Class<?> curr = c;
 
         while (curr != null)
         {
             getDeclaredFields(curr, fields);
             curr = curr.getSuperclass();
         }
-        _reflectedFields.put(c, fields);
+        FIELD_MAP.put(c, fields);
         return fields;
     }
 
@@ -185,7 +214,6 @@ public final class ReflectionUtils
         {
             ExceptionUtilities.safelyIgnoreException(ignored);
         }
-
     }
 
     /**
@@ -216,6 +244,135 @@ public final class ReflectionUtils
     }
 
     /**
+     * Make reflective method calls without having to handle two checked exceptions (IllegalAccessException and
+     * InvocationTargetException).  These exceptions are caught and rethrown as RuntimeExceptions, with the original
+     * exception passed (nested) on.
+     * @param bean Object (instance) on which to call method.
+     * @param method Method instance from target object [easily obtained by calling ReflectionUtils.getMethod()].
+     * @param args Arguments to pass to method.
+     * @return Object Value from reflectively called method.
+     */
+    public static Object call(Object bean, Method method, Object... args)
+    {
+        if (method == null)
+        {
+            String className = bean == null ? "null bean" : bean.getClass().getName();
+            throw new IllegalArgumentException("null Method passed to ReflectionUtils.call() on bean of type: " + className);
+        }
+        if (bean == null)
+        {
+            throw new IllegalArgumentException("Cannot call [" + method.getName() + "()] on a null object.");
+        }
+        try
+        {
+            return method.invoke(bean, args);
+        }
+        catch (IllegalAccessException e)
+        {
+            throw new RuntimeException("IllegalAccessException occurred attempting to reflectively call method: " + method.getName() + "()", e);
+        }
+        catch (InvocationTargetException e)
+        {
+            throw new RuntimeException("Exception thrown inside reflectively called method: " + method.getName() + "()", e.getTargetException());
+        }
+    }
+
+    /**
+     * Make a reflective method call in one step.  This approach does not support calling two different methods with
+     * the same argument count, since it caches methods internally by "className.methodName|argCount".  For example,
+     * if you had a class with two methods, foo(int, String) and foo(String, String), you cannot use this method.
+     * However, this method would support calling foo(int), foo(int, String), foo(int, String, Object), etc.
+     * Internally, it is caching the reflective method lookups as mentioned earlier for speed, using argument count
+     * as part of the key (not all argument types).
+     *
+     * Ideally, use the call(Object, Method, Object...args) method when possible, as it will support any method, and
+     * also provides caching.  There are times, however, when all that is passed in (REST APIs) is argument types,
+     * and if some of thus are null, you may have an ambiguous targeted method.  With this approach, you can still
+     * call these methods, assuming the methods are not overloaded with the same number of arguments and differing
+     * types.
+     * 
+     * @param bean Object instance on which to call method.
+     * @param methodName String name of method to call.
+     * @param args Arguments to pass.
+     * @return Object value returned from the reflectively invoked method.
+     */
+    public static Object call(Object bean, String methodName, Object... args)
+    {
+        Method method = getMethod(bean, methodName, args.length);
+        try
+        {
+            return method.invoke(bean, args);
+        }
+        catch (IllegalAccessException e)
+        {
+            throw new RuntimeException("IllegalAccessException occurred attempting to reflectively call method: " + method.getName() + "()", e);
+        }
+        catch (InvocationTargetException e)
+        {
+            throw new RuntimeException("Exception thrown inside reflectively called method: " + method.getName() + "()", e.getTargetException());
+        }
+    }
+
+    /**
+     * Fetch the named method from the controller. First a local cache will be checked, and if not
+     * found, the method will be found reflectively on the controller.  If the method is found, then
+     * it will be checked for a ControllerMethod annotation, which can indicate that it is NOT allowed
+     * to be called.  This permits a public controller method to be blocked from remote access.
+     * @param bean Object on which the named method will be found.
+     * @param methodName String name of method to be located on the controller.
+     * @param argCount int number of arguments.  This is used as part of the cache key to allow for
+     * duplicate method names as long as the argument list length is different.
+     */
+    public static Method getMethod(Object bean, String methodName, int argCount)
+    {
+        if (bean == null)
+        {
+            throw new IllegalArgumentException("Attempted to call getMethod() [" + methodName + "()] on a null instance.");
+        }
+        if (methodName == null)
+        {
+            throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on an instance of: " + bean.getClass().getName());
+        }
+        StringBuilder builder = new StringBuilder(bean.getClass().getName());
+        builder.append('.');
+        builder.append(methodName);
+        builder.append('|');
+        builder.append(argCount);
+        String methodKey = builder.toString();
+        Method method = METHOD_MAP2.get(methodKey);
+        if (method == null)
+        {
+            method = getMethod(bean.getClass(), methodName, argCount);
+            if (method == null)
+            {
+                throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + bean.getClass().getName() + ". Perhaps the method is protected, private, or misspelled?");
+            }
+            Method other = METHOD_MAP2.putIfAbsent(methodKey, method);
+            if (other != null)
+            {
+                method = other;
+            }
+        }
+        return method;
+    }
+
+    /**
+     * Reflectively find the requested method on the requested class, only matching on argument count.
+     */
+    private static Method getMethod(Class c, String methodName, int argc)
+    {
+        Method[] methods = c.getMethods();
+        for (Method method : methods)
+        {
+            if (methodName.equals(method.getName()) && method.getParameterTypes().length == argc)
+            {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Return the name of the class on the object, or "null" if the object is null.
      * @param o Object to get the class name.
      * @return String name of the class or "null"
@@ -225,6 +382,12 @@ public final class ReflectionUtils
         return o == null ? "null" : o.getClass().getName();
     }
 
+    /**
+     * Given a byte[] of a Java .class file (compiled Java), this code will retrieve the class name from those bytes.
+     * @param byteCode byte[] of compiled byte code.
+     * @return String name of class
+     * @throws Exception potential io exceptions can happen
+     */
     public static String getClassNameFromByteCode(byte[] byteCode) throws Exception
     {
         InputStream is = new ByteArrayInputStream(byteCode);

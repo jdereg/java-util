@@ -13,6 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
+ * Utilities to simplify writing reflective code as well as improve performance of reflective operations like
+ * method and annotation lookups.
+ *
  * @author John DeRegnaucourt (john@cedarsoftware.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -286,8 +289,8 @@ public final class ReflectionUtils
      * as part of the key (not all argument types).
      *
      * Ideally, use the call(Object, Method, Object...args) method when possible, as it will support any method, and
-     * also provides caching.  There are times, however, when all that is passed in (REST APIs) is argument types,
-     * and if some of thus are null, you may have an ambiguous targeted method.  With this approach, you can still
+     * also provides caching.  There are times, however, when all that is passed in (REST APIs) is argument values,
+     * and if some of those are null, you may have an ambiguous targeted method.  With this approach, you can still
      * call these methods, assuming the methods are not overloaded with the same number of arguments and differing
      * types.
      * 

@@ -37,6 +37,7 @@ public final class ReflectionUtils
     private static final ConcurrentMap<Class<?>, Collection<Field>> FIELD_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP2 = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Method> METHOD_MAP3 = new ConcurrentHashMap<>();
 
     private ReflectionUtils()
     {
@@ -317,14 +318,16 @@ public final class ReflectionUtils
     }
 
     /**
-     * Fetch the named method from the controller. First a local cache will be checked, and if not
-     * found, the method will be found reflectively on the controller.  If the method is found, then
-     * it will be checked for a ControllerMethod annotation, which can indicate that it is NOT allowed
-     * to be called.  This permits a public controller method to be blocked from remote access.
+     * Fetch the named method from the passed in Object instance. This method caches found methods, so it should be used
+     * instead of reflectively searching for the method every time.  Ideally, use the other getMethod() API that
+     * takes an additional argument, Class[] of argument types (most desirable). This is to better support overloaded
+     * methods.  Sometimes, you only have the argument values, and if they can be null, you cannot call the getMethod()
+     * API that take argument Class types.
      * @param bean Object on which the named method will be found.
      * @param methodName String name of method to be located on the controller.
      * @param argCount int number of arguments.  This is used as part of the cache key to allow for
      * duplicate method names as long as the argument list length is different.
+     * @throws IllegalArgumentException
      */
     public static Method getMethod(Object bean, String methodName, int argCount)
     {
@@ -336,7 +339,8 @@ public final class ReflectionUtils
         {
             throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on an instance of: " + bean.getClass().getName());
         }
-        StringBuilder builder = new StringBuilder(bean.getClass().getName());
+        Class beanClass = bean.getClass();
+        StringBuilder builder = new StringBuilder(beanClass.getName());
         builder.append('.');
         builder.append(methodName);
         builder.append('|');
@@ -345,10 +349,10 @@ public final class ReflectionUtils
         Method method = METHOD_MAP2.get(methodKey);
         if (method == null)
         {
-            method = getMethod(bean.getClass(), methodName, argCount);
+            method = getMethodWithArgs(beanClass, methodName, argCount);
             if (method == null)
             {
-                throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + bean.getClass().getName() + ". Perhaps the method is protected, private, or misspelled?");
+                throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + beanClass.getName() + ". Perhaps the method is protected, private, or misspelled?");
             }
             Method other = METHOD_MAP2.putIfAbsent(methodKey, method);
             if (other != null)
@@ -362,7 +366,7 @@ public final class ReflectionUtils
     /**
      * Reflectively find the requested method on the requested class, only matching on argument count.
      */
-    private static Method getMethod(Class c, String methodName, int argc)
+    private static Method getMethodWithArgs(Class c, String methodName, int argc)
     {
         Method[] methods = c.getMethods();
         for (Method method : methods)
@@ -373,6 +377,67 @@ public final class ReflectionUtils
             }
         }
         return null;
+    }
+
+    /**
+     * Fetch the named method from the passed in Class. This method caches found methods, so it should be used
+     * instead of reflectively searching for the method every time.  This method expects the desired method name to
+     * not be overloaded.
+     * @param clazz Class that containst the desired method.
+     * @param methodName String name of method to be located on the controller.
+     * @return Method instance found on the passed in class, or an IllegalArgumentException is thrown.
+     * @throws IllegalArgumentException
+     */
+    public static Method getNonOverloadedMethod(Class clazz, String methodName)
+    {
+        if (clazz == null)
+        {
+            throw new IllegalArgumentException("Attempted to call getMethod() [" + methodName + "()] on a null class.");
+        }
+        if (methodName == null)
+        {
+            throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on class: " + clazz.getName());
+        }
+        StringBuilder builder = new StringBuilder(clazz.getName());
+        builder.append('.');
+        builder.append(methodName);
+        String methodKey = builder.toString();
+        Method method = METHOD_MAP3.get(methodKey);
+        if (method == null)
+        {
+            method = getMethodNoArgs(clazz, methodName);
+            if (method == null)
+            {
+                throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + clazz.getName() + ". Perhaps the method is protected, private, or misspelled?");
+            }
+            Method other = METHOD_MAP3.putIfAbsent(methodKey, method);
+            if (other != null)
+            {
+                method = other;
+            }
+        }
+        return method;
+    }
+
+    /**
+     * Reflectively find the requested method on the requested class, only matching on argument count.
+     */
+    private static Method getMethodNoArgs(Class<?> c, String methodName)
+    {
+        Method[] methods = c.getMethods();
+        Method foundMethod = null;
+        for (Method method : methods)
+        {
+            if (methodName.equals(method.getName()))
+            {
+                if (foundMethod != null)
+                {
+                    throw new IllegalArgumentException("Method: " + methodName + "() called on a class with overloaded methods - ambiguous as to which one to return.  Use getMethod() that takes argument types or argument count.");
+                }
+                foundMethod = method;
+            }
+        }
+        return foundMethod;
     }
 
     /**

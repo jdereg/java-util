@@ -447,6 +447,42 @@ public class TestReflectionUtils
     }
 
     @Test
+    public void testGetMethodWithNoArgs()
+    {
+        Method m1 = ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        Method m2 = ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        assert m1 == m2;
+    }
+
+    @Test
+    public void testGetMethodWithNoArgsOverloaded()
+    {
+        try
+        {
+            ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWith0Args");
+            Assert.fail("shant be here");
+        }
+        catch (Exception e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "methodWith0Args", "overloaded", "ambiguous");
+        }
+    }
+
+    @Test
+    public void testGetMethodWithNoArgsException()
+    {
+        try
+        {
+            ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgz");
+            Assert.fail("shant be here");
+        }
+        catch (Exception e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "methodWithNoArgz", "not found");
+        }
+    }
+
+    @Test
     public void testGetClassNameFromByteCode()
     {
         Class c = TestReflectionUtils.class;
@@ -466,8 +502,16 @@ public class TestReflectionUtils
         }
     }
 
-
     public String methodWithNoArgs()
+    {
+        return "0";
+    }
+
+    public String methodWith0Args()
+    {
+        return "0";
+    }
+    public String methodWith0Args(int justKidding)
     {
         return "0";
     }

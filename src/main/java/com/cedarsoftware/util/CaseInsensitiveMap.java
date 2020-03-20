@@ -1,16 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -277,6 +267,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     public Collection<V> values()
     {
         return map.values();
+    }
+
+    public Map minus(Object removeMe)
+    {
+        throw new UnsupportedOperationException("Unsupported operation [minus] or [-] between Maps.  Use removeAll() or retainAll() instead.");
+    }
+
+    public Map plus(Object right)
+    {
+        throw new UnsupportedOperationException("Unsupported operation [plus] or [+] between Maps.  Use putAll() instead.");
     }
 
     /**
@@ -649,20 +649,20 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * case of Strings when they are compared.  Based on known usage,
      * null checks, proper instance, etc. are dropped.
      */
-    static final class CaseInsensitiveString implements Comparable
+    public static final class CaseInsensitiveString implements Comparable
     {
-        private final String caseInsensitiveString;
+        private final String original;
         private final int hash;
 
         protected CaseInsensitiveString(String string)
         {
-            caseInsensitiveString = string;
+            original = string;
             hash = hashCodeIgnoreCase(string);  // no new String created unlike .toLowerCase()
         }
 
         public String toString()
         {
-            return caseInsensitiveString;
+            return original;
         }
 
         public int hashCode()
@@ -679,11 +679,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             else if (other instanceof CaseInsensitiveString)
             {
                 return hash == ((CaseInsensitiveString)other).hash &&
-                        caseInsensitiveString.equalsIgnoreCase(((CaseInsensitiveString)other).caseInsensitiveString);
+                        original.equalsIgnoreCase(((CaseInsensitiveString)other).original);
             }
             else if (other instanceof String)
             {
-                return caseInsensitiveString.equalsIgnoreCase((String)other);
+                return original.equalsIgnoreCase((String)other);
             }
             return false;
         }
@@ -693,12 +693,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             if (o instanceof CaseInsensitiveString)
             {
                 CaseInsensitiveString other = (CaseInsensitiveString) o;
-                return caseInsensitiveString.compareToIgnoreCase(other.caseInsensitiveString);
+                return original.compareToIgnoreCase(other.original);
             }
             else if (o instanceof String)
             {
                 String other = (String)o;
-                return caseInsensitiveString.compareToIgnoreCase(other);
+                return original.compareToIgnoreCase(other);
             }
             else
             {   // Strings are less than non-Strings (come before)

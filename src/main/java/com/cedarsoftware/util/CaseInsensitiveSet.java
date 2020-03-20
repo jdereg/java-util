@@ -1,11 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -195,6 +190,36 @@ public class CaseInsensitiveSet<E> implements Set<E>
     public void clear()
     {
         map.clear();
+    }
+
+    public Set minus(Iterable removeMe)
+    {
+        for (Object me : removeMe)
+        {
+            remove(me);
+        }
+        return this;
+    }
+
+    public Set minus(Object removeMe)
+    {
+        remove(removeMe);
+        return this;
+    }
+    
+    public Set plus(Iterable right)
+    {
+        for (Object item : right)
+        {
+            add((E)item);
+        }
+        return this;
+    }
+
+    public Set plus(Object right)
+    {
+        add((E)right);
+        return this;
     }
 
     public String toString()

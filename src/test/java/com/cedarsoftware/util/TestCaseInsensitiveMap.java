@@ -1,31 +1,12 @@
 package com.cedarsoftware.util;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com)
@@ -1142,6 +1123,24 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
+    public void testWrappedMapKeyTypes()
+    {
+        CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>();
+        map.put("Alpha", 1);
+        map.put("alpha", 2);
+        map.put("alPHA", 3);
+
+        assert map.size() == 1;
+        assert map.containsKey("Alpha");
+        assert map.containsKey("alpha");
+        assert map.containsKey("alPHA");
+
+        Map check = map.getWrappedMap();
+        assert check.keySet().size() == 1;
+        assert check.keySet().iterator().next() instanceof CaseInsensitiveMap.CaseInsensitiveString;
+    }
+
+    @Test
     public void testUnmodifiableMap()
     {
         Map junkMap = new ConcurrentHashMap();
@@ -1250,36 +1249,69 @@ public class TestCaseInsensitiveMap
         assert !entries.isEmpty();
     }
 
+    @Test
+    public void testPlus()
+    {
+        CaseInsensitiveMap x = new CaseInsensitiveMap();
+        Map y = new HashMap();
+
+        try
+        {
+            x.plus(y);
+            fail();
+        }
+        catch (UnsupportedOperationException e)
+        {
+        }
+    }
+
+    @Test
+    public void testMinus()
+    {
+        CaseInsensitiveMap x = new CaseInsensitiveMap();
+        Map y = new HashMap();
+
+        try
+        {
+            x.minus(y);
+            fail();
+        }
+        catch (UnsupportedOperationException e)
+        {
+        }
+    }
+
     // Used only during development right now
-//    @Test
-//    public void testPerformance()
-//    {
-//        Map<String, String> map = new CaseInsensitiveMap<>();
-//        Random random = new Random();
-//
-//        long start = System.nanoTime();
-//
-//        for (int i=0; i < 10000; i++)
-//        {
-//            String key = StringUtilities.getRandomString(random, 1, 10);
-//            String value = StringUtilities.getRandomString(random, 1, 10);
-//            map.put(key, value);
-//        }
-//
-//        long stop = System.nanoTime();
-//        System.out.println((stop - start) / 1000000);
-//
-//        start = System.nanoTime();
-//
-//        for (int i=0; i < 100000; i++)
-//        {
-//            Map copy = new CaseInsensitiveMap<>(map);
-//        }
-//
-//        stop = System.nanoTime();
-//
-//        System.out.println((stop - start) / 1000000);
-//    }
+    @Ignore
+    @Test
+    public void testPerformance()
+    {
+        Map<String, String> map = new CaseInsensitiveMap<>();
+        Random random = new Random();
+
+        long start = System.nanoTime();
+
+        for (int i=0; i < 10000; i++)
+        {
+            String key = StringUtilities.getRandomString(random, 1, 10);
+            String value = StringUtilities.getRandomString(random, 1, 10);
+            map.put(key, value);
+        }
+
+        long stop = System.nanoTime();
+        System.out.println((stop - start) / 1000000);
+
+        start = System.nanoTime();
+
+        for (int i=0; i < 100000; i++)
+        {
+            Map copy = new CaseInsensitiveMap<>(map);
+        }
+
+        stop = System.nanoTime();
+
+        System.out.println((stop - start) / 1000000);
+    }
 
     // ---------------------------------------------------
 

@@ -2,22 +2,10 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com)
@@ -462,6 +450,60 @@ public class TestCaseInsensitiveSet
         assert set.contains("j");
         assert set.contains("Z");
         set.add("h");
+    }
+
+    @Test
+    public void testMinus()
+    {
+        CaseInsensitiveSet ciSet = new CaseInsensitiveSet<>();
+        ciSet.add("aaa");
+        ciSet.add("bbb");
+        ciSet.add("ccc");
+        ciSet.add('d'); // Character
+
+        Set things = new HashSet();
+        things.add(1L);
+        things.add("aAa");
+        things.add('c');
+        ciSet.minus(things);
+        assert ciSet.size() == 3;
+        assert ciSet.contains("BbB");
+        assert ciSet.contains("cCC");
+
+        ciSet.minus(7);
+        assert ciSet.size() == 3;
+
+        ciSet.minus('d');
+        assert ciSet.size() == 2;
+
+        Set theRest = new HashSet();
+        theRest.add("BBb");
+        theRest.add("CCc");
+        ciSet.minus(theRest);
+        assert ciSet.isEmpty();
+    }
+
+    @Test
+    public void testPlus()
+    {
+        CaseInsensitiveSet ciSet = new CaseInsensitiveSet<>();
+        ciSet.add("aaa");
+        ciSet.add("bbb");
+        ciSet.add("ccc");
+        ciSet.add('d'); // Character
+
+        Set things = new HashSet();
+        things.add(1L);
+        things.add("aAa");  // no duplicate added
+        things.add('c');
+        ciSet.plus(things);
+        assert ciSet.size() == 6;
+        assert ciSet.contains(1L);
+        assert ciSet.contains('c');
+
+        ciSet.plus(7);
+        assert ciSet.size() == 7;
+        assert ciSet.contains(7);
     }
 
     private static Set get123()

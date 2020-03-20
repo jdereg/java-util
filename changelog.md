@@ -1,4 +1,7 @@
 ### Revision History
+* 1.41.0
+  * `CaseInsensitiveMap.plus()` and `.minus()` added to support `+` and `-` operators in languages like Groovy.
+  * `CaseInsenstiveMap.CaseInsensitiveString` (`static` inner Class) is now `public`.  
 * 1.40.0
   * Added `ReflectionUtils.getNonOverloadedMethod()` to support reflectively fetching methods with only Class and Method name available.  This implies there is no method overloading.
 * 1.39.0

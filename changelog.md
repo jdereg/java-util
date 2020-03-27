@@ -1,4 +1,6 @@
 ### Revision History
+* 1.42.0
+  * `CaseInsensitiveMap.putObject(Object key, Object value)` added for placing objects into typed Maps.
 * 1.41.0
   * `CaseInsensitiveMap.plus()` and `.minus()` added to support `+` and `-` operators in languages like Groovy.
   * `CaseInsenstiveMap.CaseInsensitiveString` (`static` inner Class) is now `public`.  

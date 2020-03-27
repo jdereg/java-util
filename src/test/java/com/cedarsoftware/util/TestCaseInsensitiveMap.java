@@ -1281,6 +1281,23 @@ public class TestCaseInsensitiveMap
         }
     }
 
+    @Test
+    public void testPutObject()
+    {
+        CaseInsensitiveMap map = new CaseInsensitiveMap();
+        map.putObject(1L, 1L);
+        map.putObject("hi", "ho");
+        Object x = map.putObject("hi", "hi");
+        assert x == "ho";
+        map.putObject(Boolean.TRUE, Boolean.TRUE);
+        String str = "hello";
+        CaseInsensitiveMap.CaseInsensitiveString ciStr = new CaseInsensitiveMap.CaseInsensitiveString(str);
+        map.putObject(ciStr, str);
+        assert map.get(str) == str;
+        assert 1L == ((Number)map.get(1L)).longValue();
+        assert Boolean.TRUE == map.get(true);
+    }
+
     // Used only during development right now
     @Ignore
     @Test

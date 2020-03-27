@@ -136,6 +136,16 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.get(key);
     }
 
+    public boolean containsKey(Object key)
+    {
+        if (key instanceof String)
+        {
+            String keyString = (String) key;
+            return map.containsKey(new CaseInsensitiveString(keyString));
+        }
+        return map.containsKey(key);
+    }
+
     public V put(K key, V value)
     {
         if (key instanceof String)
@@ -146,14 +156,14 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.put(key, value);
     }
 
-    public boolean containsKey(Object key)
+    public Object putObject(Object key, Object value)
     {
         if (key instanceof String)
-        {
-            String keyString = (String) key;
-            return map.containsKey(new CaseInsensitiveString(keyString));
+        {    // Must remove entry because the key case can change
+            final CaseInsensitiveString newKey = new CaseInsensitiveString((String) key);
+            return map.put((K) newKey, (V)value);
         }
-        return map.containsKey(key);
+        return map.put((K)key, (V)value);
     }
 
     public void putAll(Map<? extends K, ? extends V> m)

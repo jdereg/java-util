@@ -6,7 +6,8 @@
     Map ciMap1 = new CaseInsensitiveMap(someMap, new TreeMap())  // Control Map type, but not initial size
     Map ciMap2 = new CaseInsensitiveMap(someMap, new HashMap(someMap.size()))    // Control both Map type and initial size
     Map ciMap3 = new CaseInsensitiveMap(someMap, new Object2ObjectOpenHashMap(someMap.size()))   // Control both plus use specialized Map from fast-util.  
-  ``` 
+  ```
+  * `CaseInsensitiveMap.CaseInsensitiveString()` constructor made `public`. 
 * 1.42.0
   * `CaseInsensitiveMap.putObject(Object key, Object value)` added for placing objects into typed Maps.
 * 1.41.0

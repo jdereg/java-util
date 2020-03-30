@@ -58,6 +58,17 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     /**
      * Wrap the passed in Map with a CaseInsensitiveMap, allowing other Map types like
+     * TreeMap, ConcurrentHashMap, etc. to be case insensitive.  The caller supplies
+     * the actual Map instance that will back the CaseInsensitiveMap.;
+     * @param m Map to wrap.
+     */
+    public CaseInsensitiveMap(Map<K, V> m, Map<K, V> backingMap)
+    {
+        map = copy(m, backingMap);
+    }
+
+    /**
+     * Wrap the passed in Map with a CaseInsensitiveMap, allowing other Map types like
      * TreeMap, ConcurrentHashMap, etc. to be case insensitive.
      * @param m Map to wrap.
      */
@@ -82,6 +93,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         else if (m instanceof WeakHashMap)
         {
             map = copy(m, new WeakHashMap(m.size()));
+        }
+        else if (m instanceof HashMap)
+        {
+            map = copy(m, new HashMap(m.size()));
         }
         else
         {
@@ -664,7 +679,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         private final String original;
         private final int hash;
 
-        protected CaseInsensitiveString(String string)
+        public CaseInsensitiveString(String string)
         {
             original = string;
             hash = hashCodeIgnoreCase(string);  // no new String created unlike .toLowerCase()

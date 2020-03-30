@@ -11,7 +11,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.42.0</version>
+  <version>1.43.0</version>
 </dependency>
 ```
 

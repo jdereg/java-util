@@ -1298,6 +1298,42 @@ public class TestCaseInsensitiveMap
         assert Boolean.TRUE == map.get(true);
     }
 
+    @Test
+    public void testTwoMapConstructor()
+    {
+        Map real = new HashMap();
+        real.put("z", 26);
+        real.put("y", 25);
+        real.put("m", 13);
+        real.put("d", 4);
+        real.put("c", 3);
+        real.put("b", 2);
+        real.put("a", 1);
+
+        Map backingMap = new TreeMap();
+        CaseInsensitiveMap ciMap = new CaseInsensitiveMap(real, backingMap);
+        assert ciMap.size() == real.size();
+        assert ciMap.containsKey("Z");
+        assert ciMap.containsKey("A");
+        assert ciMap.getWrappedMap() instanceof TreeMap;
+        assert ciMap.getWrappedMap() == backingMap;
+    }
+
+    @Test
+    public void testCaseInsensitiveStringConstructor()
+    {
+        CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("John");
+        assert ciString.equals("JOHN");
+        assert ciString.equals("john");
+        assert ciString.hashCode() == "John".toLowerCase().hashCode();
+        assert ciString.compareTo("JOHN") == 0;
+        assert ciString.compareTo("john") == 0;
+        assert ciString.compareTo("alpha") > 0;
+        assert ciString.compareTo("ALPHA") > 0;
+        assert ciString.compareTo("theta") < 0;
+        assert ciString.compareTo("THETA") < 0;
+        assert ciString.toString().equals("John");
+    }
     // Used only during development right now
     @Ignore
     @Test

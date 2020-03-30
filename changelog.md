@@ -1,4 +1,12 @@
 ### Revision History
+* 1.43.0
+  * `CaseInsensitiveMap(Map orig, Map backing)` added for allowing precise control of what `Map` instance is used to back the `CaseInsensitiveMap`.  For example,
+  ```
+    Map originalMap = someMap  // has content already in it
+    Map ciMap1 = new CaseInsensitiveMap(someMap, new TreeMap())  // Control Map type, but not initial size
+    Map ciMap2 = new CaseInsensitiveMap(someMap, new HashMap(someMap.size()))    // Control both Map type and initial size
+    Map ciMap3 = new CaseInsensitiveMap(someMap, new Object2ObjectOpenHashMap(someMap.size()))   // Control both plus use specialized Map from fast-util.  
+  ``` 
 * 1.42.0
   * `CaseInsensitiveMap.putObject(Object key, Object value)` added for placing objects into typed Maps.
 * 1.41.0

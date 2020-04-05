@@ -323,8 +323,10 @@ public class TestCaseInsensitiveMap
         assertTrue(col.contains("Four"));
         assertTrue(col.contains("Six"));
         assertFalse(col.contains("TWO"));
-    }
 
+        a.remove("one");
+        assert col.size() == 2;
+    }
 
     @Test
     public void testNullKey()

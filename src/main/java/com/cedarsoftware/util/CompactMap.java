@@ -43,7 +43,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         {
             return 0;
         }
-        else if (val instanceof CompactMapEntry || !(val instanceof Map))
+        else if (isCompactMapEntry(val) || !(val instanceof Map))
         {
             return 1;
         }
@@ -115,7 +115,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
                 }
                 else
                 {
-                    val = new CompactMapEntry<>(key, value);
+                    val = new CompactMapEntry(key, value);
                 }
                 return (V) save;
             }
@@ -136,7 +136,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
             }
             else
             {
-                val = new CompactMapEntry<>(key, value);
+                val = new CompactMapEntry(key, value);
             }
             return null;
         }
@@ -305,7 +305,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
                         public Entry<K, V> next()
                         {
                             Entry<K,V> entry = iter.next();
-                            return new CompactMapEntry<>(entry.getKey(), entry.getValue());
+                            return new CompactMapEntry(entry.getKey(), entry.getValue());
                         }
                         public void remove() { CompactMap.this.clear(); }
                     };
@@ -388,7 +388,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
     {
         if (size() == 1)
         {
-            if (val instanceof CompactMapEntry)
+            if (isCompactMapEntry(val))
             {
                 return LogicalValueType.ENTRY;
             }
@@ -409,13 +409,14 @@ public abstract class CompactMap<K, V> implements Map<K, V>
 
     /**
      * Marker Class to hold key and value when the key is not the same as the getSingleValueKey().
+     * This method transmits the setValue() to changes on the outer CompactMap instance.
      */
-    private class CompactMapEntry<K, V> implements Entry<K, V>
+    private class CompactMapEntry implements Entry<K, V>
     {
         K key;
         V value;
 
-        public CompactMapEntry(K key, V value)
+        private CompactMapEntry(K key, V value)
         {
             this.key = key;
             this.value = value;
@@ -427,30 +428,36 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         {
             V save = this.value;
             this.value = value;
+            CompactMap.this.put(key, value);
             return save;
         }
     }
-
+    
     private K getLogicalSingleKey()
     {
-        if (val instanceof CompactMapEntry)
+        if (isCompactMapEntry(val))
         {
-            CompactMapEntry<K, V> entry = (CompactMapEntry<K, V>) val;
-            return (K) entry.getKey();
+            CompactMapEntry entry = (CompactMapEntry) val;
+            return entry.getKey();
         }
         return getSingleValueKey();
     }
 
     private V getLogicalSingleValue()
     {
-        if (val instanceof CompactMapEntry)
+        if (isCompactMapEntry(val))
         {
-            CompactMapEntry<K, V> entry = (CompactMapEntry<K, V>) val;
-            return (V)entry.getValue();
+            CompactMapEntry entry = (CompactMapEntry) val;
+            return entry.getValue();
         }
         return (V) val;
     }
 
+    private boolean isCompactMapEntry(Object o)
+    {
+        if (o == null) { return false; }
+        return CompactMapEntry.class.isAssignableFrom(o.getClass());
+    }
     /**
      * @return String key name when there is only one entry in the Map.
      */

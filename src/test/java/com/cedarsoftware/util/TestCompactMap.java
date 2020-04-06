@@ -1778,9 +1778,15 @@ public class TestCompactMap
     @Test
     public void testEntryValueOverwrite()
     {
+        testEntryValueOverwriteHelper("key1");
+        testEntryValueOverwriteHelper("bingo");
+    }
+
+    private void testEntryValueOverwriteHelper(final String singleKey)
+    {
         CompactMap<String, Object> map = new CompactMap<String, Object>()
         {
-            protected String getSingleValueKey() { return "key1"; }
+            protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1790,7 +1796,72 @@ public class TestCompactMap
             entry.setValue(16);
         }
 
-        System.out.println("map = " + map.values());
         assert 16 == (int) map.get("key1");
+    }
+    
+    @Test
+    public void testEntryValueOverwriteMultiple()
+    {
+        testEntryValueOverwriteMultipleHelper("key1");
+        testEntryValueOverwriteMultipleHelper("bingo");
+    }
+
+    private void testEntryValueOverwriteMultipleHelper(final String singleKey)
+    {
+        CompactMap<String, Integer> map = new CompactMap<String, Integer>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected Map<String, Integer> getNewMap() { return new LinkedHashMap<>(); }
+        };
+
+        for (int i=1; i <= 10; i++)
+        {
+            map.put("key" + i, i * 2);
+        }
+
+        int i=1;
+        Iterator<Map.Entry<String, Integer>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext())
+        {
+            Map.Entry<String, Integer> entry = iterator.next();
+            assert entry.getKey().equals("key" + i);
+            assert entry.getValue() == i * 2;       // all values are even
+            entry.setValue(i * 2 - 1);
+            i++;
+        }
+
+        i=1;
+        iterator = map.entrySet().iterator();
+        while (iterator.hasNext())
+        {
+            Map.Entry<String, Integer> entry = iterator.next();
+            assert entry.getKey().equals("key" + i);
+            assert entry.getValue() == i * 2 - 1;       // all values are now odd
+            i++;
+        }
+    }
+
+    @Test
+    public void testMinus()
+    {
+        CompactMap<String, Integer> map = new CompactMap<String, Integer>()
+        {
+            protected String getSingleValueKey() { return "key1"; }
+            protected Map<String, Integer> getNewMap() { return new LinkedHashMap<>(); }
+        };
+
+        try
+        {
+            map.minus(null);
+            fail();
+        }
+        catch (UnsupportedOperationException e) {  }
+
+        try
+        {
+            map.plus(null);
+            fail();
+        }
+        catch (UnsupportedOperationException e) { }
     }
 }

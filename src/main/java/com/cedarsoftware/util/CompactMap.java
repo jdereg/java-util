@@ -302,7 +302,11 @@ public abstract class CompactMap<K, V> implements Map<K, V>
                     return new Iterator<Entry<K, V>>()
                     {
                         public boolean hasNext() { return iter.hasNext(); }
-                        public Entry<K, V> next() { return iter.next(); }
+                        public Entry<K, V> next()
+                        {
+                            Entry<K,V> entry = iter.next();
+                            return new CompactMapEntry<>(entry.getKey(), entry.getValue());
+                        }
                         public void remove() { CompactMap.this.clear(); }
                     };
                 }
@@ -332,30 +336,30 @@ public abstract class CompactMap<K, V> implements Map<K, V>
 
     private void removeIteratorItem(Iterator iter, String methodName)
     {
-        if (CompactMap.this.size() == 1)
+        if (size() == 1)
         {
-            CompactMap.this.clear();
+            clear();
         }
-        else if (CompactMap.this.isEmpty())
+        else if (isEmpty())
         {
             throw new IllegalStateException(".remove() called on an empty CompactMap's " + methodName + " iterator");
         }
         else
         {
-            if (this.size() == 2)
+            if (size() == 2)
             {
-                Iterator<Entry<K, V>> entryIterator = ((Map<K, V>) this.val).entrySet().iterator();
+                Iterator<Entry<K, V>> entryIterator = ((Map<K, V>) val).entrySet().iterator();
                 Entry<K, V> firstEntry = entryIterator.next();
                 Entry<K, V> secondEntry = entryIterator.next();
-                this.clear();
+                clear();
 
                 if (iter.hasNext())
                 {   // .remove() called on 2nd element in 2 element list
-                    this.put(secondEntry.getKey(), secondEntry.getValue());
+                    put(secondEntry.getKey(), secondEntry.getValue());
                 }
                 else
                 {   // .remove() called on 1st element in 1 element list
-                    this.put(firstEntry.getKey(), firstEntry.getValue());
+                    put(firstEntry.getKey(), firstEntry.getValue());
                 }
             }
             else
@@ -406,7 +410,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
     /**
      * Marker Class to hold key and value when the key is not the same as the getSingleValueKey().
      */
-    public class CompactMapEntry<K, V> implements Entry
+    private class CompactMapEntry<K, V> implements Entry<K, V>
     {
         K key;
         V value;
@@ -417,15 +421,13 @@ public abstract class CompactMap<K, V> implements Map<K, V>
             this.value = value;
         }
 
-        public Object getKey() { return key; }
-        public Object getValue() { return value; }
-        public Object setValue(Object value1)
+        public K getKey() { return key; }
+        public V getValue() { return value; }
+        public V setValue(V value)
         {
-            if (CompactMap.this.size() == 1)
-            {
-                CompactMap.this.clear();
-            }
-            return null;
+            V save = this.value;
+            this.value = value;
+            return save;
         }
     }
 

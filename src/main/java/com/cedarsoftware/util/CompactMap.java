@@ -3,33 +3,36 @@ package com.cedarsoftware.util;
 import java.util.*;
 
 /**
- * `CompactMap` introduced.  This `Map` is especially small when 0 and 1 entries are stored in it.
- *
- *     When `>=2` entries are in the `Map` it acts as regular `Map`.
+ * `CompactMap` introduced.  This `Map` is especially small when 0 and 1 entries are stored in it.  When `>=2` entries
+ * are in the `Map` it acts as regular `Map`.
+ * 
  *     You must override two methods in order to instantiate:
  *     
  *     protected abstract K getSingleValueKey();
  *     protected abstract Map<K, V> getNewMap();
  *
- *      **Empty**
- *      This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
- *      member variable takes on a pointer (points to sentinel value.)
+ * **Empty**
+ * This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
+ * member variable takes on a pointer (points to sentinel value.)
  *
- *      **One entry**
- *      If the entry has a key that matches the value returned from `getSingleValueKey()` then there is no key stored
- *      and the internal single member points to the value (still retried with 100% proper Map semantics).
+ * **One entry**
+ * If the entry has a key that matches the value returned from `getSingleValueKey()` then there is no key stored
+ * and the internal single member points to the value (still retried with 100% proper Map semantics).
  *
- *      If the single entry's key does not match the value returned from `getSingleValueKey()` then the internal field points
- *      to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
- *      the same.
+ * If the single entry's key does not match the value returned from `getSingleValueKey()` then the internal field points
+ * to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
+ * the same.
  *
- *      **Two or more entries**
- *      In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
- *      This allows `CompactMap` to work with nearly all `Map` types.
+ * **Two or more entries**
+ * In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
+ * This allows `CompactMap` to work with nearly all `Map` types.
  *
- *      A future version *may* support an additional option to allow it to maintain entries 2-n in an internal
- *      array (pointed to by the single member variable).  This small array would be 'scanned' in linear time.  Given
- *      a small *`n`*  entries, the resultant `Map` would be significantly smaller than the equivalent `HashMap`, for instance.
+ * This Map supports null for the key and values.  If the Map returned by getNewMap() does not support this, then this
+ * Map will not.
+ *
+ * A future version *may* support an additional option to allow it to maintain entries 2-n in an internal
+ * array (pointed to by the single member variable).  This small array would be 'scanned' in linear time.  Given
+ * a small *`n`*  entries, the resultant `Map` would be significantly smaller than the equivalent `HashMap`, for instance.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -62,11 +65,9 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         {
             return 1;
         }
-        else
-        {
-            Map<K, V> map = (Map<K, V>) val;
-            return map.size();
-        }
+        
+        Map<K, V> map = (Map<K, V>) val;
+        return map.size();
     }
 
     public boolean isEmpty()
@@ -99,6 +100,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         {
             return false;
         }
+
         Map<K, V> map = (Map<K, V>) val;
         return map.containsValue(value);
     }
@@ -155,6 +157,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
             }
             return null;
         }
+        
         Map<K, V> map = (Map<K, V>) val;
         return map.put(key, value);
     }
@@ -203,6 +206,42 @@ public abstract class CompactMap<K, V> implements Map<K, V>
     public void clear()
     {
         val = EMPTY_MAP;
+    }
+
+    public int hashCode()
+    {
+        int h = 0;
+        Iterator<Entry<K,V>> i = entrySet().iterator();
+        while (i.hasNext())
+            h += i.next().hashCode();
+        return h;
+    }
+
+    public boolean equals(Object obj)
+    {
+        if (!(obj instanceof Map))
+        {   // null or a non-Map passed in.
+            return false;
+        }
+        Map other = (Map) obj;
+        int size = size();
+        if (size() != other.size())
+        {   // sizes are not the same
+            return false;
+        }
+
+        if (isEmpty())
+        {
+            return other.isEmpty();
+        }
+
+        if (size == 1)
+        {
+            return entrySet().equals(other.entrySet());
+        }
+
+        Map<K, V> map = (Map<K, V>) val;
+        return map.equals(other);
     }
 
     public Set<K> keySet()
@@ -426,28 +465,22 @@ public abstract class CompactMap<K, V> implements Map<K, V>
      * Marker Class to hold key and value when the key is not the same as the getSingleValueKey().
      * This method transmits the setValue() to changes on the outer CompactMap instance.
      */
-    private class CompactMapEntry implements Entry<K, V>
+    private class CompactMapEntry extends AbstractMap.SimpleEntry<K, V>
     {
-        K key;
-        V value;
-
         private CompactMapEntry(K key, V value)
         {
-            this.key = key;
-            this.value = value;
+            super(key, value);
         }
 
-        public K getKey() { return key; }
-        public V getValue() { return value; }
         public V setValue(V value)
         {
-            V save = this.value;
-            this.value = value;
-            CompactMap.this.put(key, value);    // "Transmit" write through to underlying Map.
+            V save = this.getValue();
+            super.setValue(value);
+            CompactMap.this.put(getKey(), value);    // "Transmit" (write-thru) to underlying Map.
             return save;
         }
     }
-    
+
     private K getLogicalSingleKey()
     {
         if (isCompactMapEntry(val))
@@ -473,7 +506,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         if (o == null) { return false; }
         return CompactMapEntry.class.isAssignableFrom(o.getClass());
     }
-    
+
     /**
      * @return String key name when there is only one entry in the Map.
      */

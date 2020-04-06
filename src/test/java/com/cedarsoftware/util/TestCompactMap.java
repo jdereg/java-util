@@ -1864,4 +1864,48 @@ public class TestCompactMap
         }
         catch (UnsupportedOperationException e) { }
     }
+
+    @Test
+    public void testHashCodeAndEquals()
+    {
+        testHashCodeAndEqualsHelper("key1");
+        testHashCodeAndEqualsHelper("bingo");
+    }
+
+    private void testHashCodeAndEqualsHelper(final String singleKey)
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "key1"; }
+            protected Map<String, String> getNewMap() { return new LinkedHashMap<>(); }
+        };
+
+        // intentionally using LinkedHashMap and TreeMap
+        Map<String, String> other = new TreeMap<>();
+        assert map.hashCode() == other.hashCode();
+        assert map.equals(other);
+
+        map.put("key1", "foo");
+        other.put("key1", "foo");
+        assert map.hashCode() == other.hashCode();
+        assert map.equals(other);
+
+        map.put("key2", "bar");
+        other.put("key2", "bar");
+        assert map.hashCode() == other.hashCode();
+        assert map.equals(other);
+
+        map.put("key3", "baz");
+        other.put("key3", "baz");
+        assert map.hashCode() == other.hashCode();
+        assert map.equals(other);
+
+        map.put("key4", "qux");
+        other.put("key4", "qux");
+        assert map.hashCode() == other.hashCode();
+        assert map.equals(other);
+
+        assert !map.equals(null);
+        assert !map.equals(Collections.emptyMap());
+    }
 }

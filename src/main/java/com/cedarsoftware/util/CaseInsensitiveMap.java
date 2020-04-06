@@ -110,7 +110,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             // Get get from Entry, leaving it in it's original state (in case the key is a CaseInsensitiveString)
             Object key;
-            if (entry instanceof CaseInsensitiveEntry)
+            if (isCaseInsenstiveEntry(entry))
             {
                 key = ((CaseInsensitiveEntry)entry).getOriginalKey();
             }
@@ -134,6 +134,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             dest.put(altKey, entry.getValue());
         }
         return dest;
+    }
+
+    private boolean isCaseInsenstiveEntry(Object o)
+    {
+        if (o == null) { return false; }
+        return CaseInsensitiveEntry.class.isAssignableFrom(o.getClass());
     }
 
     public CaseInsensitiveMap(int initialCapacity, float loadFactor)
@@ -190,7 +196,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
         for (Map.Entry entry : m.entrySet())
         {
-            if (entry instanceof CaseInsensitiveEntry)
+            if (isCaseInsenstiveEntry(entry))
             {
                 CaseInsensitiveEntry ciEntry = (CaseInsensitiveEntry) entry;
                 put((K) ciEntry.getOriginalKey(), (V) entry.getValue());
@@ -304,6 +310,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         throw new UnsupportedOperationException("Unsupported operation [plus] or [+] between Maps.  Use putAll() instead.");
     }
 
+    public Map<K, V> getWrappedMap()
+    {
+        return map;
+    }
+
     /**
      * Returns a Set view of the keys contained in this map.
      * The set is backed by the map, so changes to the map are
@@ -320,11 +331,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     public Set<K> keySet()
     {
         return new LocalSet();
-    }
-
-    public Map<K, V> getWrappedMap()
-    {
-        return map;
     }
 
     private class LocalSet extends AbstractSet<K>
@@ -353,9 +359,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
             for (Object o : c)
             {
-                if (contains(o))
+                if (localMap.containsKey(o))
                 {
-                    remove(o);
+                    localMap.remove(o);
                 }
             }
             return map.size() != size;
@@ -403,22 +409,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             }
             return items;
         }
-
-        public <T> T[] toArray(T[] a)
-        {
-            if (a.length < size())
-            {
-                // Make a new array of a's runtime type, but my contents:
-                return (T[]) Arrays.copyOf(toArray(), size(), a.getClass());
-            }
-            System.arraycopy(toArray(), 0, a, 0, size());
-            if (a.length > size())
-            {
-                a[size()] = null;
-            }
-            return a;
-        }
-
+        
         public int size()
         {
             return map.size();
@@ -623,7 +614,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
                 public E next()
                 {
-                    return (E) new CaseInsensitiveEntry<>(iter.next());
+                    return (E) new CaseInsensitiveEntry(iter.next());
                 }
 
                 public void remove()
@@ -641,31 +632,31 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * Also, when the setValue() API is called on the Entry, it will 'write thru' to the
      * underlying Map's value.
      */
-    public class CaseInsensitiveEntry<KK, VV> extends AbstractMap.SimpleEntry<KK, VV>
+    public class CaseInsensitiveEntry extends AbstractMap.SimpleEntry<K, V>
     {
-        public CaseInsensitiveEntry(Map.Entry<KK, VV> entry)
+        public CaseInsensitiveEntry(Map.Entry<K, V> entry)
         {
             super(entry);
         }
 
-        public KK getKey()
+        public K getKey()
         {
-            KK superKey = super.getKey();
+            K superKey = super.getKey();
             if (superKey instanceof CaseInsensitiveString)
             {
-                return (KK) superKey.toString();
+                return (K) superKey.toString();
             }
             return superKey;
         }
 
-        public KK getOriginalKey()
+        public K getOriginalKey()
         {
             return super.getKey();
         }
 
-        public VV setValue(VV value)
+        public V setValue(V value)
         {
-            return (VV) map.put((K)super.getKey(), (V)value);
+            return map.put(super.getKey(), value);
         }
     }
 

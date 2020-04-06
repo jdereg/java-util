@@ -27,6 +27,9 @@
     In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
     This allows `CompactMap` to work with nearly all `Map` types.
     
+    This `Map` supports `null` for the key or values.  If the `Map` returned by `getSingleValueKey()` does not support
+    `null` for keys or values (like `ConcurrentHashMap`), then this `Map` will not.  It 'follows' the wrapped `Map's` support. 
+    
     A future version *may* support an additional option to allow it to maintain entries 2-n in an internal
     array (pointed to by the single member variable).  This small array would be 'scanned' in linear time.  Given
     a small *`n`*  entries, the resultant `Map` would be significantly smaller than the equivalent `HashMap`, for instance.

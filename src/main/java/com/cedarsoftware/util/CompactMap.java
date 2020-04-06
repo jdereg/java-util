@@ -3,20 +3,35 @@ package com.cedarsoftware.util;
 import java.util.*;
 
 /**
- * Map that uses very little memory when only one entry is inside.
- * CompactMap has one member variable, that either holds the single
- * value, or is a pointer to a Map that holds all the keys and values
- * when there are two (2) or more entries in the Map.  When only one (1)
- * entry is in the Map, the member variable points to that.  When no
- * entries are in the Map, it uses an intern sentinel value to indicate
- * that the map is empty.  In order to support the "key" when there is
- * only one entry, the method singleValueKey() must be overloaded to return
- * a String key name.  This Map supports null values, but the keys must
- * not be null.  Subclasses can overwrite the newMap() API to return their
- * specific Map type (HashMap, LinkedHashMap, etc.) for the Map instance
- * that is used when there is more than one entry in the Map.
+ * `CompactMap` introduced.  This `Map` is especially small when 0 and 1 entries are stored in it.
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ *     When `>=2` entries are in the `Map` it acts as regular `Map`.
+ *     You must override two methods in order to instantiate:
+ *     
+ *     protected abstract K getSingleValueKey();
+ *     protected abstract Map<K, V> getNewMap();
+ *
+ *      **Empty**
+ *      This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
+ *      member variable takes on a pointer (points to sentinel value.)
+ *
+ *      **One entry**
+ *      If the entry has a key that matches the value returned from `getSingleValueKey()` then there is no key stored
+ *      and the internal single member points to the value (still retried with 100% proper Map semantics).
+ *
+ *      If the single entry's key does not match the value returned from `getSingleValueKey()` then the internal field points
+ *      to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
+ *      the same.
+ *
+ *      **Two or more entries**
+ *      In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
+ *      This allows `CompactMap` to work with nearly all `Map` types.
+ *
+ *      A future version *may* support an additional option to allow it to maintain entries 2-n in an internal
+ *      array (pointed to by the single member variable).  This small array would be 'scanned' in linear time.  Given
+ *      a small *`n`*  entries, the resultant `Map` would be significantly smaller than the equivalent `HashMap`, for instance.
+ *
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -428,7 +443,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         {
             V save = this.value;
             this.value = value;
-            CompactMap.this.put(key, value);
+            CompactMap.this.put(key, value);    // "Transmit" write through to underlying Map.
             return save;
         }
     }
@@ -458,6 +473,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         if (o == null) { return false; }
         return CompactMapEntry.class.isAssignableFrom(o.getClass());
     }
+    
     /**
      * @return String key name when there is only one entry in the Map.
      */

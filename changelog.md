@@ -1,4 +1,12 @@
 ### Revision History
+* 1.45.0
+  * `CompactMap` now supports case-insensitivity when using String keys.  By default, it is case sensitive, but you can override the 
+  `isCaseSensitive()` method and return `false`.  This allows you to return `TreeMap(String.CASE_INSENSITIVE_ORDER)` or `CaseInsensitiveMap`
+  from the `getNewMap()` method.  With these overrides, CompactMap is now case insensitive, yet still 'compact.'
+  * `Converter.setNullMode(Converter.NULL_PROPER | Converter.NULL_NULL)` added to allow control over how `null` values are converted.
+  By default, passing a `null` value into primitive `convert*()` methods returns the primitive form of `0` or `false`.  
+  If the static method `Converter.setNullMode(Converter.NULL_NULL)` is called it will change the behavior of the primitive
+  `convert*()` methods return `null`.    
 * 1.44.0
   * `CompactMap` introduced.  This `Map` is especially small when 0 and 1 entries are stored in it. When `>=2` entries are in the `Map` it acts as regular `Map`.
   You must override two methods in order to instantiate:

@@ -1908,4 +1908,311 @@ public class TestCompactMap
         assert !map.equals(null);
         assert !map.equals(Collections.emptyMap());
     }
+
+    @Test
+    public void testCaseInsensitiveMap()
+    {
+        CompactMap<String, Integer> map = new CompactMap<String, Integer>()
+        {
+            protected String getSingleValueKey() { return "key1"; }
+            protected Map<String, Integer> getNewMap() { return new CaseInsensitiveMap<>(); }
+        };
+
+        map.put("Key1", 0);
+        map.put("Key2", 0);
+        assert map.containsKey("Key1");
+        assert map.containsKey("key2");
+    }
+
+    @Test
+    public void testNullHandling()
+    {
+        testNullHandlingHelper("key1");
+        testNullHandlingHelper("bingo");
+    }
+
+    private void testNullHandlingHelper(final String singleKey)
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+        };
+
+        map.put("key1", null);
+        assert map.size() == 1;
+        assert !map.isEmpty();
+        assert map.containsKey("key1");
+
+        map.remove("key1");
+        assert map.size() == 0;
+        assert map.isEmpty();
+
+        map.put(null, "foo");
+        assert map.size() == 1;
+        assert !map.isEmpty();
+        assert map.containsKey(null);
+        assert "foo" == map.get(null);
+        assert map.remove(null) == "foo";
+    }
+
+    @Test
+    public void testCaseInsensitive()
+    {
+        testCaseInsensitiveHelper("key1");
+        testCaseInsensitiveHelper("bingo");
+    }
+
+    private void testCaseInsensitiveHelper(final String singleKey)
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+        };
+
+        // Case insensitive
+        map.put("KEY1", null);
+        assert map.size() == 1;
+        assert !map.isEmpty();
+        assert map.containsKey("key1");
+
+        if (singleKey == "key1")
+        {
+            assert map.getLogicalValueType() == CompactMap.LogicalValueType.OBJECT;
+        }
+        else
+        {
+            assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
+        }
+
+        map.remove("key1");
+        assert map.size() == 0;
+        assert map.isEmpty();
+
+        map.put(null, "foo");
+        assert map.size() == 1;
+        assert !map.isEmpty();
+        assert map.containsKey(null);
+        assert "foo" == map.get(null);
+        assert map.remove(null) == "foo";
+
+        map.put("Key1", "foo");
+        map.put("KEY2", "bar");
+        map.put("KEY3", "baz");
+        map.put("KEY4", "qux");
+        assert map.size() == 4;
+
+        assert map.containsKey("KEY1");
+        assert map.containsKey("KEY2");
+        assert map.containsKey("KEY3");
+        assert map.containsKey("KEY4");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY1") == "foo";
+        assert map.get("KEY2") == "bar";
+        assert map.get("KEY3") == "baz";
+        assert map.get("KEY4") == "qux";
+
+        map.remove("KEY1");
+        assert map.size() == 3;
+        assert map.containsKey("KEY2");
+        assert map.containsKey("KEY3");
+        assert map.containsKey("KEY4");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY2") == "bar";
+        assert map.get("KEY3") == "baz";
+        assert map.get("KEY4") == "qux";
+
+        map.remove("KEY2");
+        assert map.size() == 2;
+        assert map.containsKey("KEY3");
+        assert map.containsKey("KEY4");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY3") == "baz";
+        assert map.get("KEY4") == "qux";
+
+        map.remove("KEY3");
+        assert map.size() == 1;
+        assert map.containsKey("KEY4");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY4") == "qux";
+
+        map.remove("KEY4");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+        assert map.size() == 0;
+    }
+
+    @Test
+    public void testCaseInsensitiveHardWay()
+    {
+        testCaseInsensitiveHardwayHelper("key1");
+        testCaseInsensitiveHardwayHelper("bingo");
+    }
+
+    private void testCaseInsensitiveHardwayHelper(final String singleKey)
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+        };
+
+        // Case insensitive
+        map.put("Key1", null);
+        assert map.size() == 1;
+        assert !map.isEmpty();
+        assert map.containsKey("key1");
+
+        map.remove("key1");
+        assert map.size() == 0;
+        assert map.isEmpty();
+
+        map.put(null, "foo");
+        assert map.size() == 1;
+        assert !map.isEmpty();
+        assert map.containsKey(null);
+        assert "foo" == map.get(null);
+        assert map.remove(null) == "foo";
+
+        map.put("KEY1", "foo");
+        map.put("KEY2", "bar");
+        map.put("KEY3", "baz");
+        map.put("KEY4", "qux");
+
+        assert map.containsKey("KEY1");
+        assert map.containsKey("KEY2");
+        assert map.containsKey("KEY3");
+        assert map.containsKey("KEY4");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY1") == "foo";
+        assert map.get("KEY2") == "bar";
+        assert map.get("KEY3") == "baz";
+        assert map.get("KEY4") == "qux";
+
+        map.remove("KEY4");
+        assert map.size() == 3;
+        assert map.containsKey("KEY1");
+        assert map.containsKey("KEY2");
+        assert map.containsKey("KEY3");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY1") == "foo";
+        assert map.get("KEY2") == "bar";
+        assert map.get("KEY3") == "baz";
+
+        map.remove("KEY3");
+        assert map.size() == 2;
+        assert map.containsKey("KEY1");
+        assert map.containsKey("KEY2");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY1") == "foo";
+        assert map.get("KEY2") == "bar";
+
+        map.remove("KEY2");
+        assert map.size() == 1;
+        assert map.containsKey("KEY1");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+
+        assert map.get("KEY1") == "foo";
+
+        map.remove("KEY1");
+        assert !map.containsKey(17.0d);
+        assert !map.containsKey(null);
+        assert map.size() == 0;
+    }
+
+    @Test
+    public void testCaseInsensitiveInteger()
+    {
+        testCaseInsensitiveIntegerHelper(16);
+        testCaseInsensitiveIntegerHelper(99);
+    }
+
+    private void testCaseInsensitiveIntegerHelper(final Integer singleKey)
+    {
+        CompactMap<Integer, String> map = new CompactMap<Integer, String>()
+        {
+            protected Integer getSingleValueKey() { return 16; }
+            protected Map<Integer, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+        };
+
+        map.put(16, "foo");
+        assert map.containsKey(16);
+        assert map.get(16) == "foo";
+        assert map.get("sponge bob") == null;
+        assert map.get(null) == null;
+
+        map.put(32, "bar");
+        assert map.containsKey(32);
+        assert map.get(32) == "bar";
+        assert map.get("sponge bob") == null;
+        assert map.get(null) == null;
+
+        assert map.remove(32) == "bar";
+        assert map.containsKey(16);
+        assert map.get(16) == "foo";
+        assert map.get("sponge bob") == null;
+        assert map.get(null) == null;
+
+        assert map.remove(16) == "foo";
+        assert map.size() == 0;
+        assert map.isEmpty();
+    }
+
+    @Test
+    public void testCaseInsensitiveIntegerHardWay()
+    {
+        testCaseInsensitiveIntegerHardWayHelper(16);
+        testCaseInsensitiveIntegerHardWayHelper(99);
+    }
+
+    private void testCaseInsensitiveIntegerHardWayHelper(final Integer singleKey)
+    {
+        CompactMap<Integer, String> map = new CompactMap<Integer, String>()
+        {
+            protected Integer getSingleValueKey() { return 16; }
+            protected Map<Integer, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+        };
+
+        map.put(16, "foo");
+        assert map.containsKey(16);
+        assert map.get(16) == "foo";
+        assert map.get("sponge bob") == null;
+        assert map.get(null) == null;
+
+        map.put(32, "bar");
+        assert map.containsKey(32);
+        assert map.get(32) == "bar";
+        assert map.get("sponge bob") == null;
+        assert map.get(null) == null;
+
+        assert map.remove(16) == "foo";
+        assert map.containsKey(32);
+        assert map.get(32) == "bar";
+        assert map.get("sponge bob") == null;
+        assert map.get(null) == null;
+
+        assert map.remove(32) == "bar";
+        assert map.size() == 0;
+        assert map.isEmpty();
+    }
 }

@@ -75,11 +75,37 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         return val == EMPTY_MAP;
     }
 
+    private boolean compareSingleKey(Object key)
+    {
+        if (key == null || getLogicalSingleKey() == null)
+        {   // If one is null, then they both have to be null to be equal
+            return key == getLogicalSingleKey();
+        }
+
+        if (key instanceof String)
+        {
+            if (getLogicalSingleKey() instanceof String)
+            {
+                if (isCaseInsensitive())
+                {
+                    return ((String) getLogicalSingleKey()).equalsIgnoreCase((String) key);
+                }
+                else
+                {
+                    return getLogicalSingleKey().equals(key);
+                }
+            }
+            return false;
+        }
+
+        return Objects.equals(getLogicalSingleKey(), key);
+    }
+
     public boolean containsKey(Object key)
     {
         if (size() == 1)
         {
-            return getLogicalSingleKey().equals(key);
+            return compareSingleKey(key);
         }
         else if (isEmpty())
         {
@@ -109,7 +135,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
     {
         if (size() == 1)
         {
-            return getLogicalSingleKey().equals(key) ? getLogicalSingleValue() : null;
+            return compareSingleKey(key) ? getLogicalSingleValue() : null;
         }
         else if (isEmpty())
         {
@@ -123,7 +149,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
     {
         if (size() == 1)
         {
-            if (getLogicalSingleKey().equals(key))
+            if (compareSingleKey(key))
             {   // Overwrite
                 Object save = getLogicalSingleValue();
                 if (getSingleValueKey().equals(key) && !(value instanceof Map))
@@ -147,7 +173,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         }
         else if (isEmpty())
         {
-            if (getSingleValueKey().equals(key) && !(value instanceof Map))
+            if (compareSingleKey(key) && !(value instanceof Map))
             {
                 val = value;
             }
@@ -166,7 +192,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
     {
         if (size() == 1)
         {
-            if (getLogicalSingleKey().equals(key))
+            if (compareSingleKey(key))
             {   // found
                 Object save = getLogicalSingleValue();
                 val = EMPTY_MAP;
@@ -213,7 +239,9 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         int h = 0;
         Iterator<Entry<K,V>> i = entrySet().iterator();
         while (i.hasNext())
+        {
             h += i.next().hashCode();
+        }
         return h;
     }
 
@@ -388,7 +416,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
         };
     }
 
-    private void removeIteratorItem(Iterator iter, String methodName)
+    private void removeIteratorItem(Iterator<?> iter, String methodName)
     {
         if (size() == 1)
         {
@@ -516,4 +544,6 @@ public abstract class CompactMap<K, V> implements Map<K, V>
      * @return new empty Map instance to use when there is more than one entry.
      */
     protected abstract Map<K, V> getNewMap();
+
+    protected boolean isCaseInsensitive() { return false; }
 }

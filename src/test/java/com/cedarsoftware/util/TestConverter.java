@@ -16,13 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.TestConverter.fubar.bar;
 import static com.cedarsoftware.util.TestConverter.fubar.foo;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (john@cedarsoftware.com) & Ken Partlow
@@ -1008,5 +1002,21 @@ public class TestConverter
     {
         assertEquals("foo", Converter.convert(foo, String.class));
         assertEquals("bar", Converter.convert(bar, String.class));
+    }
+
+    @Test
+    public void testNullModeSupport()
+    {
+        Converter.setNullMode(Converter.NULL_NULL);
+        assert Converter.convertToBoolean(null) == null;
+        assert Converter.convertToByte(null) == null;
+        assert Converter.convertToShort(null) == null;
+        assert Converter.convertToInteger(null) == null;
+        assert Converter.convertToLong(null) == null;
+        assert Converter.convertToFloat(null) == null;
+        assert Converter.convertToDouble(null) == null;
+        assert Converter.convertToBigDecimal(null) == null;
+        assert Converter.convertToBigInteger(null) == null;
+        Converter.setNullMode(Converter.NULL_PROPER);
     }
 }

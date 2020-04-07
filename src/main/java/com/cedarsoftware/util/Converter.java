@@ -5,7 +5,7 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,8 +45,20 @@ public final class Converter
     private static final Float FLOAT_ONE = 1.0f;
     private static final Double DOUBLE_ZERO = 0.0d;
     private static final Double DOUBLE_ONE = 1.0d;
-    private static final Map<Class, Work> conversion = new LinkedHashMap<>();
-    private static final Map<Class, Work> conversionToString = new LinkedHashMap<>();
+    private static final Map<Class<?>, Work> conversion = new HashMap<>();
+    private static final Map<Class<?>, Work> conversionToString = new HashMap<>();
+    public static final int NULL_PROPER = 0;
+    public static final int NULL_NULL = 1;
+    private static int null_mode = NULL_PROPER;
+
+    /**
+     * Set how the primitive 
+     * @param mode
+     */
+    public static void setNullMode(int mode)
+    {
+        null_mode = mode;
+    }
 
     private interface Work
     {
@@ -114,24 +126,21 @@ public final class Converter
         conversion.put(BigDecimal.class, new Work()
         {
             public Object convert(Object fromInstance)
-            {
-                return convertToBigDecimal(fromInstance);
+            { return convertToBigDecimal(fromInstance);
             }
         });
 
         conversion.put(BigInteger.class, new Work()
         {
             public Object convert(Object fromInstance)
-            {
-                return convertToBigInteger(fromInstance);
+            { return convertToBigInteger(fromInstance);
             }
         });
 
         conversion.put(java.sql.Date.class, new Work()
         {
             public Object convert(Object fromInstance)
-            {
-                return convertToSqlDate(fromInstance);
+            { return convertToSqlDate(fromInstance);
             }
         });
 
@@ -146,24 +155,21 @@ public final class Converter
         conversion.put(AtomicInteger.class, new Work()
         {
             public Object convert(Object fromInstance)
-            {
-                return convertToAtomicInteger(fromInstance);
+            { return convertToAtomicInteger(fromInstance);
             }
         });
 
         conversion.put(AtomicLong.class, new Work()
         {
             public Object convert(Object fromInstance)
-            {
-                return convertToAtomicLong(fromInstance);
+            { return convertToAtomicLong(fromInstance);
             }
         });
 
         conversion.put(AtomicBoolean.class, new Work()
         {
             public Object convert(Object fromInstance)
-            {
-                return convertToAtomicBoolean(fromInstance);
+            { return convertToAtomicBoolean(fromInstance);
             }
         });
 
@@ -290,10 +296,11 @@ public final class Converter
         conversionToString.put(Long.class, toString);
         conversionToString.put(AtomicLong.class, toString);
 
+        // Should eliminate possibility of 'e' (exponential) notation
         Work toNoExpString = new Work()
         {
             public Object convert(Object fromInstance)
-            {   // Should eliminate possibility of 'e' (exponential) notation
+            {
                 return fromInstance.toString();
             }
         };
@@ -388,7 +395,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return BigDecimal.ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return BigDecimal.ZERO;
+            }
+            return null;
         }
 
         try
@@ -442,7 +453,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return BigInteger.ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return BigInteger.ZERO;
+            }
+            return null;
         }
         try
         {
@@ -673,7 +688,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return BYTE_ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return BYTE_ZERO;
+            }
+            return null;
         }
         try
         {
@@ -714,7 +733,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return SHORT_ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return SHORT_ZERO;
+            }
+            return null;
         }
         try
         {
@@ -755,7 +778,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return INTEGER_ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return INTEGER_ZERO;
+            }
+            return null;
         }
         try
         {
@@ -796,7 +823,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return LONG_ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return LONG_ZERO;
+            }
+            return null;
         }
         try
         {
@@ -845,7 +876,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return FLOAT_ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return FLOAT_ZERO;
+            }
+            return null;
         }
         try
         {
@@ -886,7 +921,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return DOUBLE_ZERO;
+            if (null_mode == NULL_PROPER)
+            {
+                return DOUBLE_ZERO;
+            }
+            return null;
         }
         try
         {
@@ -927,7 +966,11 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return false;
+            if (null_mode == NULL_PROPER)
+            {
+                return false;
+            }
+            return null;
         }
         else if (fromInstance instanceof Boolean)
         {

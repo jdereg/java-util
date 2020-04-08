@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.Test;
 
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -36,7 +37,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -71,7 +72,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -149,7 +150,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -185,17 +186,17 @@ public class TestCompactMap
     @Test
     public void testContainsValue()
     {
+        testContainsValueHelper("value");
+        testContainsValueHelper("bingo");
+    }
+
+    private void testContainsValueHelper(final String singleKey)
+    {
         Map<String, Object> map = new CompactMap<String, Object>()
         {
-            protected String getSingleValueKey()
-            {
-                return "value";
-            }
-
-            protected Map<String, Object> getNewMap()
-            {
-                return new LinkedHashMap<>();
-            }
+            protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
+            protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
         assert !map.containsValue("6");
@@ -213,6 +214,16 @@ public class TestCompactMap
         assert map.remove("value") == "6";
         assert !map.containsValue("6");
         assert map.isEmpty();
+
+        map.put("key1", "foo");
+        map.put("key2", "bar");
+        map.put("key3", "baz");
+        map.put("key4", "qux");
+        assert map.containsValue("foo");
+        assert map.containsValue("bar");
+        assert map.containsValue("baz");
+        assert map.containsValue("qux");
+        assert !map.containsValue("quux");
     }
 
     @Test
@@ -224,7 +235,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -257,7 +268,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -299,7 +310,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -341,7 +352,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -364,7 +375,7 @@ public class TestCompactMap
             {
                 return "foo";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -403,7 +414,7 @@ public class TestCompactMap
             {
                 return "foo";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -442,7 +453,7 @@ public class TestCompactMap
             {
                 return "foo";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -481,7 +492,7 @@ public class TestCompactMap
             {
                 return "foo";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -509,7 +520,7 @@ public class TestCompactMap
             {
                 return "foo";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -531,13 +542,16 @@ public class TestCompactMap
     @Test
     public void testRemove()
     {
+        testRemoveHelper("value");
+        testRemoveHelper("bingo");
+    }
+
+    private void testRemoveHelper(final String singleKey)
+    {
         Map<String, Object> map = new CompactMap<String, Object>()
         {
-            protected String getSingleValueKey()
-            {
-                return "value";
-            }
-
+            protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -571,6 +585,14 @@ public class TestCompactMap
         assert map.remove("foo") == "bar";
         assert map.remove("baz") == "qux";
         assert map.isEmpty();
+
+        map.put("value", "foo");
+        map.put("key2", "bar");
+        map.put("key3", "baz");
+        map.put("key4", "qux");
+        assert map.size() == 4;
+        assert map.remove("spunky") == null;
+        assert map.size() == 4;
     }
 
     @Test
@@ -582,7 +604,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -636,7 +658,7 @@ public class TestCompactMap
             {
                 return "value";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -659,7 +681,7 @@ public class TestCompactMap
             {
                 return "key1";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -701,7 +723,7 @@ public class TestCompactMap
             {
                 return "key1";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -727,6 +749,7 @@ public class TestCompactMap
 
         assert map.put("key1", "bar") == "foo";
         i = map.keySet().iterator();
+        i.next();
         i.remove();
         assert map.isEmpty();
     }
@@ -740,7 +763,7 @@ public class TestCompactMap
             {
                 return "key1";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -766,6 +789,7 @@ public class TestCompactMap
 
         assert map.put("key9", "bar") == "foo";
         i = map.keySet().iterator();
+        i.next();
         i.remove();
         assert map.isEmpty();
     }
@@ -779,7 +803,7 @@ public class TestCompactMap
             {
                 return "key1";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -802,9 +826,7 @@ public class TestCompactMap
             i.next();
             fail();
         }
-        catch (NoSuchElementException e)
-        {
-        }
+        catch (NoSuchElementException e) { }
 
         assert map.put("key1", "baz") == "foo";
         assert map.put("key2", "qux") == "bar";
@@ -826,7 +848,7 @@ public class TestCompactMap
             {
                 return "key1";
             }
-
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap()
             {
                 return new LinkedHashMap<>();
@@ -849,9 +871,7 @@ public class TestCompactMap
             i.next();
             fail();
         }
-        catch (NoSuchElementException e)
-        {
-        }
+        catch (NoSuchElementException e) { }
 
         assert map.put("key1", "baz") == "foo";
         assert map.put("key2", "qux") == "bar";
@@ -859,9 +879,12 @@ public class TestCompactMap
         i = map.keySet().iterator();
         assert i.next() == "key1";
         assert i.next() == "key2";
+        i = map.keySet().iterator();
+        i.next();
         i.remove();
         assert map.size() == 1;
-        assert map.keySet().contains("key1");
+        assert map.keySet().contains("key2");
+        i.next();
         i.remove();
         assert map.isEmpty();
 
@@ -870,9 +893,7 @@ public class TestCompactMap
             i.remove();
             fail();
         }
-        catch (IllegalStateException e)
-        {
-        }
+        catch (IllegalStateException e) { }
     }
 
     @Test
@@ -887,6 +908,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -943,6 +965,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -996,6 +1019,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1044,6 +1068,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1102,6 +1127,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1138,6 +1164,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1167,6 +1194,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1204,6 +1232,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1242,6 +1271,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "field"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1266,6 +1296,7 @@ public class TestCompactMap
         CompactMap<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1318,6 +1349,7 @@ public class TestCompactMap
         CompactMap<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1383,6 +1415,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1421,6 +1454,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1444,6 +1478,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1505,6 +1540,7 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+            protected int compactSize() { return 3; }
         };
 
         map.put("key1", "foo");
@@ -1528,6 +1564,7 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+            protected int compactSize() { return 3; }
         };
 
         map.put("key1", new TreeMap());
@@ -1553,6 +1590,7 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+            protected int compactSize() { return 3; }
         };
         
         assert map.put("key1", "foo") == null;
@@ -1614,6 +1652,7 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+            protected int compactSize() { return 3; }
         };
 
         assert map.put("key1", "foo") == null;
@@ -1661,6 +1700,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1737,6 +1777,7 @@ public class TestCompactMap
         CompactMap<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1750,6 +1791,7 @@ public class TestCompactMap
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1765,6 +1807,7 @@ public class TestCompactMap
         CompactMap<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1787,6 +1830,7 @@ public class TestCompactMap
         CompactMap<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1916,12 +1960,29 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return "key1"; }
             protected Map<String, Integer> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
         };
 
         map.put("Key1", 0);
         map.put("Key2", 0);
-        assert map.containsKey("Key1");
+        assert map.containsKey("key1");
         assert map.containsKey("key2");
+
+        map.put("Key1", 0);
+        map.put("Key2", 0);
+        map.put("Key3", 0);
+        assert map.containsKey("key1");
+        assert map.containsKey("key2");
+        assert map.containsKey("key3");
+
+        map.put("Key1", 0);
+        map.put("Key2", 0);
+        map.put("Key3", 0);
+        map.put("Key4", 0);
+        assert map.containsKey("key1");
+        assert map.containsKey("key2");
+        assert map.containsKey("key3");
+        assert map.containsKey("key4");
     }
 
     @Test
@@ -2214,5 +2275,160 @@ public class TestCompactMap
         assert map.remove(32) == "bar";
         assert map.size() == 0;
         assert map.isEmpty();
+    }
+
+    @Test
+    public void testContains()
+    {
+        testContainsHelper("key1", 2);
+        testContainsHelper("bingo", 2);
+        testContainsHelper("key1", 3);
+        testContainsHelper("bingo", 3);
+        testContainsHelper("key1", 4);
+        testContainsHelper("bingo", 4);
+    }
+
+    public void testContainsHelper(final String singleKey, final int size)
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected boolean isCaseInsensitive() { return false; }
+            protected int compactSize() { return size; }
+        };
+
+        map.put("key1", "foo");
+        map.put("key2", "bar");
+        map.put("key3", "baz");
+        map.put("key4", "qux");
+
+        assert map.keySet().contains("key1");
+        assert map.keySet().contains("key2");
+        assert map.keySet().contains("key3");
+        assert map.keySet().contains("key4");
+        assert !map.keySet().contains("foot");
+        assert !map.keySet().contains(null);
+
+        assert map.values().contains("foo");
+        assert map.values().contains("bar");
+        assert map.values().contains("baz");
+        assert map.values().contains("qux");
+        assert !map.values().contains("foot");
+        assert !map.values().contains(null);
+        
+        assert map.entrySet().contains(new AbstractMap.SimpleEntry<>("key1", "foo"));
+        assert map.entrySet().contains(new AbstractMap.SimpleEntry<>("key2", "bar"));
+        assert map.entrySet().contains(new AbstractMap.SimpleEntry<>("key3", "baz"));
+        assert map.entrySet().contains(new AbstractMap.SimpleEntry<>("key4", "qux"));
+        assert !map.entrySet().contains(new AbstractMap.SimpleEntry<>("foot", "shoe"));
+        assert !map.entrySet().contains(new AbstractMap.SimpleEntry<>(null, null));
+    }
+
+    @Test
+    public void testRetainOrder()
+    {
+        testRetainOrderHelper("key1", 2);
+        testRetainOrderHelper("bingo", 2);
+        testRetainOrderHelper("key1", 3);
+        testRetainOrderHelper("bingo", 3);
+        testRetainOrderHelper("key1", 4);
+        testRetainOrderHelper("bingo", 4);
+    }
+
+    public void testRetainOrderHelper(final String singleKey, final int size)
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected Map<String, String> getNewMap() { return new TreeMap<>(); }
+            protected boolean isCaseInsensitive() { return false; }
+            protected int compactSize() { return size; }
+        };
+
+        Map<String, String> other = new TreeMap<>();
+        Map<String, String> hash = new HashMap<>();
+        Random random = new SecureRandom();
+        for (int i= 0; i < 100; i++)
+        {
+            String randomKey = StringUtilities.getRandomString(random, 3, 8);
+            map.put(randomKey, null);
+            other.put(randomKey, null);
+            hash.put(randomKey, null);
+        }
+
+        Iterator<String> i = map.keySet().iterator();
+        Iterator<String> j = other.keySet().iterator();
+        Iterator<String> k = hash.keySet().iterator();
+        boolean differ = false;
+
+        while (i.hasNext())
+        {
+            String a = i.next();
+            String b = j.next();
+            String c = k.next();
+            assert a.equals(b);
+            if (!a.equals(c))
+            {
+                differ = true;
+            }
+        }
+
+        assert differ;
+    }
+
+    @Test
+    public void testBadNoArgConstructor()
+    {
+        CompactMap map = new CompactMap();
+        assert "key" == map.getSingleValueKey();
+        assert map.getNewMap() instanceof HashMap;
+        
+        try
+        {
+            new CompactMap() { protected int compactSize() { return 1; } };
+            fail();
+        }
+        catch (IllegalStateException e) { }
+    }
+
+    @Test
+    public void testBadConstructor()
+    {
+        Map tree = new TreeMap();
+        tree.put("foo", "bar");
+        tree.put("baz", "qux");
+        Map map = new CompactMap(tree);
+        assert map.get("foo") == "bar";
+        assert map.get("baz") == "qux";
+        assert map.size() == 2;
+    }
+
+    @Test
+    public void testEqualsDifferingInArrayPortion()
+    {
+        CompactMap<String, String> map = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "key1"; }
+            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected boolean isCaseInsensitive() { return false; }
+            protected int compactSize() { return 3; }
+        };
+
+        map.put("key1", "foo");
+        map.put("key2", "bar");
+        map.put("key3", "baz");
+        Map<String, String> tree = new TreeMap<>(map);
+        assert map.equals(tree);
+        tree.put("key3", "qux");
+        assert tree.size() == 3;
+        assert !map.equals(tree);
+        tree.remove("key3");
+        tree.put("key4", "baz");
+        assert tree.size() == 3;
+        assert !map.equals(tree);
+        tree.remove("key4");
+        tree.put("key3", "baz");
+        assert map.equals(tree);
     }
 }

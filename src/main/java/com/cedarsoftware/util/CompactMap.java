@@ -17,7 +17,7 @@ import java.util.*;
  *
  * **One entry**
  * If the entry has a key that matches the value returned from `getSingleValueKey()` then there is no key stored
- * and the internal single member points to the value (still retried with 100% proper Map semantics).
+ * and the internal single member points to the value only.
  *
  * If the single entry's key does not match the value returned from `getSingleValueKey()` then the internal field points
  * to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
@@ -163,7 +163,7 @@ public abstract class CompactMap<K, V> implements Map<K, V>
                 return (V) save;
             }
             else
-            {   // Add
+            {   // Add (1 -> 2)
                 Map<K, V> map = getNewMap();
                 map.put(getLogicalSingleKey(), getLogicalSingleValue());
                 map.put(key, value);

@@ -686,5 +686,5 @@ public class CompactMap<K, V> implements Map<K, V>
 
     protected boolean isCaseInsensitive() { return false; }
 
-    protected int compactSize() { return 3; }
+    protected int compactSize() { return 100; }
 }

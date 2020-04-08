@@ -598,7 +598,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     protected enum LogicalValueType
     {
-        EMPTY, OBJECT, ENTRY, MAP
+        EMPTY, OBJECT, ENTRY, MAP, ARRAY
     }
 
     protected LogicalValueType getLogicalValueType()
@@ -617,6 +617,10 @@ public class CompactMap<K, V> implements Map<K, V>
         else if (isEmpty())
         {
             return LogicalValueType.EMPTY;
+        }
+        else if (val instanceof Object[])
+        {
+            return LogicalValueType.ARRAY;
         }
         else
         {

@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.security.SecureRandom;
@@ -1307,6 +1308,7 @@ public class TestCompactMap
 
         Collection col = map.values();
         assert col.size() == 4;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
 
         Iterator<Object> i = map.values().iterator();
         assert i.hasNext();
@@ -1314,14 +1316,14 @@ public class TestCompactMap
         i.remove();
         assert map.size() == 3;
         assert col.size() == 3;
-        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ARRAY;
 
         assert i.hasNext();
         assert i.next() == "bar";
         i.remove();
         assert map.size() == 2;
         assert col.size() == 2;
-        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ARRAY;
 
         assert i.hasNext();
         assert i.next() == "baz";
@@ -1360,6 +1362,7 @@ public class TestCompactMap
 
         Collection col = map.values();
         assert col.size() == 4;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
 
         Iterator<Object> i = map.values().iterator();
         i.next();
@@ -1369,7 +1372,7 @@ public class TestCompactMap
         i.remove();
         assert map.size() == 3;
         assert col.size() == 3;
-        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ARRAY;
 
         i = map.values().iterator();
         i.next();
@@ -1378,7 +1381,7 @@ public class TestCompactMap
         i.remove();
         assert map.size() == 2;
         assert col.size() == 2;
-        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ARRAY;
 
         i = map.values().iterator();
         i.next();
@@ -2430,5 +2433,86 @@ public class TestCompactMap
         tree.remove("key4");
         tree.put("key3", "baz");
         assert map.equals(tree);
+    }
+
+    @Ignore
+    @Test
+    public void testPerformance()
+    {
+        int maxSize = 1000;
+        Random random = new SecureRandom();
+        final int[] compactSize = new int[1];
+        int lower = 150;
+        int upper = 200;
+        long totals[] = new long[upper - lower + 1];
+
+        for (int x = 0; x < 25; x++)
+        {
+            for (int i = lower; i < upper; i++)
+            {
+                compactSize[0] = i;
+                CompactMap<String, Integer> map = new CompactMap<String, Integer>()
+                {
+                    protected String getSingleValueKey()
+                    {
+                        return "key1";
+                    }
+
+                    protected Map<String, Integer> getNewMap()
+                    {
+                        return new HashMap<>();
+                    }
+
+                    protected boolean isCaseInsensitive()
+                    {
+                        return false;
+                    }
+
+                    protected int compactSize()
+                    {
+                        return compactSize[0];
+                    }
+                };
+
+                long start = System.nanoTime();
+                // ===== Timed
+                for (int j = 0; j < maxSize; j++)
+                {
+                    map.put(StringUtilities.getRandomString(random, 4, 8), j);
+                }
+
+                Iterator iter = map.keySet().iterator();
+                while (iter.hasNext())
+                {
+                    iter.next();
+                    iter.remove();
+                }
+                // ===== End Timed
+                long end = System.nanoTime();
+                totals[i - lower] += end - start;
+            }
+
+            Map<String, Integer> map = new HashMap<>();
+            long start = System.nanoTime();
+            // ===== Timed
+            for (int i = 0; i < maxSize; i++)
+            {
+                map.put(StringUtilities.getRandomString(random, 4, 8), i);
+            }
+            Iterator iter = map.keySet().iterator();
+            while (iter.hasNext())
+            {
+                iter.next();
+                iter.remove();
+            }
+            // ===== End Timed
+            long end = System.nanoTime();
+            totals[totals.length - 1] += end - start;
+        }
+        for (int i = lower; i < upper; i++)
+        {
+            System.out.println("CompacMap.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
+        }
+        System.out.println("HashMap = " + totals[totals.length - 1] / 1000000.0d);
     }
 }

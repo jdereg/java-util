@@ -5,6 +5,8 @@ import org.junit.Test;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import static org.junit.Assert.*;
 
@@ -50,6 +52,7 @@ public class TestCaseInsensitiveMap
     public void testWithNonStringKeys()
     {
         CaseInsensitiveMap stringMap = new CaseInsensitiveMap();
+        assert stringMap.isEmpty();
 
         stringMap.put(97, "eight");
         stringMap.put(19, "nineteen");
@@ -1336,6 +1339,50 @@ public class TestCaseInsensitiveMap
         assert ciString.compareTo("THETA") < 0;
         assert ciString.toString().equals("John");
     }
+
+    @Test
+    public void testHeterogeneousMap()
+    {
+        Map<Object, Object> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put(1.0d, "foo");
+        ciMap.put("Key", "bar");
+        ciMap.put(true, "baz");
+
+        assert ciMap.get(1.0d) == "foo";
+        assert ciMap.get("Key") == "bar";
+        assert ciMap.get(true) == "baz";
+
+        assert ciMap.remove(true) == "baz";
+        assert ciMap.size() == 2;
+        assert ciMap.remove(1.0d) == "foo";
+        assert ciMap.size() == 1;
+        assert ciMap.remove("Key") == "bar";
+        assert ciMap.size() == 0;
+    }
+
+    @Test
+    public void testCaseInsensitiveString()
+    {
+        CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("foo");
+        assert ciString.equals(ciString);
+        assert ciString.compareTo(1.5d) < 0;
+    }
+
+    @Test
+    public void testConcurrentSkipListMap()
+    {
+        ConcurrentMap<String, Object> map = new ConcurrentSkipListMap<>();
+        map.put("key1", "foo");
+        map.put("key2", "bar");
+        map.put("key3", "baz");
+        map.put("key4", "qux");
+        CaseInsensitiveMap<String, Object> ciMap = new CaseInsensitiveMap<>(map);
+        assert ciMap.get("KEY1") == "foo";
+        assert ciMap.get("KEY2") == "bar";
+        assert ciMap.get("KEY3") == "baz";
+        assert ciMap.get("KEY4") == "qux";
+    }
+
     // Used only during development right now
     @Ignore
     @Test

@@ -14,18 +14,25 @@
   If the static method `Converter.setNullMode(Converter.NULL_NULL)` is called it will change the behavior of the primitive
   `convert*()` methods return `null`.    
 * 1.44.0
-  * `CompactMap` introduced.  This `Map` is especially small when 0 and 1 entries are stored in it. When `>=2` entries are in the `Map` it acts as regular `Map`.
-  You must override two methods in order to instantiate:
-  ```
-    /**
-      * @return String key name when there is only one entry in the Map.
-      */  
-     protected abstract K getSingleValueKey();
+  * `CompactMap` introduced.  
+  `CompactMap` is a `Map` that strives to reduce memory at all costs while retaining speed that is close to `HashMap's` speed.
+  It does this by using only one (1) member variable (of type `Object`) and changing it as the `Map` grows.  It goes from
+  single value, to a single `Map Entry`, to an `Object[]`, and finally it uses a `Map` (user defined).  `CompactMap` is
+  especially small when `0` or `1` entries are stored in it.  When `size()` is from `2` to `compactSize()`, then entries
+  are stored internally in single `Object[]`.  If the `size() > compactSize()` then the entries are stored in a
+  regular `Map`.
+  ``` 
+     // If this key is used and only 1 element then only the value is stored
+     protected K getSingleValueKey() { return "someKey"; }
   
-     /**
-      * @return new empty Map instance to use when there is more than one entry.
-      */
+     // Map you would like it to use when size() > compactSize().  HashMap is default
      protected abstract Map<K, V> getNewMap();
+  
+     // If you want case insensitivity, return true and return new CaseInsensitiveMap or TreeMap(String.CASE_INSENSITIVE_PRDER) from getNewMap()
+     protected boolean isCaseInsensitive() { return false; }        // 1.45.0
+  
+     // When size() > than this amount, the Map returned from getNewMap() is used to store elements.
+     protected int compactSize() { return 100; }                    // 1.46.0
   ```     
     ##### **Empty**
     This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that 
@@ -37,24 +44,24 @@
     If the single entry's key does not match the value returned from `getSingleValueKey()` then the internal field points
     to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
     the same.
-    ##### **Two or more entries**
-    In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
-    This allows `CompactMap` to work with nearly all `Map` types.
-    
-    This `Map` supports `null` for the key or values.  If the `Map` returned by `getSingleValueKey()` does not support
-    `null` for keys or values (like `ConcurrentHashMap`), then this `Map` will not.  It 'follows' the wrapped `Map's` support. 
-    
-    A future version *may* support an additional option to allow it to maintain entries 2-n in an internal
-    array (pointed to by the single member variable).  This small array would be 'scanned' in linear time.  Given
-    a small *`n`*  entries, the resultant `Map` would be significantly smaller than the equivalent `HashMap`, for instance.
-       
+   ##### **2 thru compactSize() entries**
+   In this case, the single member variable points to a single Object[] that contains all the keys and values.  The
+   keys are in the even positions, the values are in the odd positions (1 up from the key).  [0] = key, [1] = value,
+   [2] = next key, [3] = next value, and so on.  The Object[] is dynamically expanded until size() > compactSize(). In
+   addition, it is dynamically shrunk until the size becomes 1, and then it switches to a single Map Entry or a single
+   value.
+ 
+   ##### **size() > compactSize()**
+   In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
+   This allows `CompactMap` to work with nearly all `Map` types.
+   This Map supports null for the key and values, as long as the Map returned by getNewMap() supports null keys-values.       
 * 1.43.0
   * `CaseInsensitiveMap(Map orig, Map backing)` added for allowing precise control of what `Map` instance is used to back the `CaseInsensitiveMap`.  For example,
   ```
     Map originalMap = someMap  // has content already in it
-    Map ciMap1 = new CaseInsensitiveMap(someMap, new TreeMap())  // Control Map type, but not initial size
-    Map ciMap2 = new CaseInsensitiveMap(someMap, new HashMap(someMap.size()))    // Control both Map type and initial size
-    Map ciMap3 = new CaseInsensitiveMap(someMap, new Object2ObjectOpenHashMap(someMap.size()))   // Control both plus use specialized Map from fast-util.  
+    Map ciMap1 = new CaseInsensitiveMap(someMap, new TreeMap())  // Control Map type, but not initial capacity
+    Map ciMap2 = new CaseInsensitiveMap(someMap, new HashMap(someMap.size()))    // Control both Map type and initial capacity
+    Map ciMap3 = new CaseInsensitiveMap(someMap, new Object2ObjectOpenHashMap(someMap.size()))   // Control initial capacity and use specialized Map from fast-util.  
   ```
   * `CaseInsensitiveMap.CaseInsensitiveString()` constructor made `public`. 
 * 1.42.0

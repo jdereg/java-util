@@ -1909,6 +1909,7 @@ public class TestCompactMap
         CompactMap<String, Integer> map = new CompactMap<String, Integer>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, Integer> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1945,6 +1946,7 @@ public class TestCompactMap
         CompactMap<String, Integer> map = new CompactMap<String, Integer>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, Integer> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -1975,6 +1977,7 @@ public class TestCompactMap
         CompactMap<String, String> map = new CompactMap<String, String>()
         {
             protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 3; }
             protected Map<String, String> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -2014,6 +2017,7 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return "key1"; }
             protected Map<String, Integer> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected int compactSize() { return 3; }
             protected boolean isCaseInsensitive() { return true; }
         };
 
@@ -2051,6 +2055,7 @@ public class TestCompactMap
         CompactMap<String, String> map = new CompactMap<String, String>()
         {
             protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 3; }
             protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
         };
 
@@ -2180,6 +2185,7 @@ public class TestCompactMap
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected int compactSize() { return 3; }
             protected boolean isCaseInsensitive() { return true; }
         };
 
@@ -2266,6 +2272,7 @@ public class TestCompactMap
         {
             protected Integer getSingleValueKey() { return 16; }
             protected Map<Integer, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected int compactSize() { return 3; }
             protected boolean isCaseInsensitive() { return true; }
         };
 
@@ -2305,6 +2312,7 @@ public class TestCompactMap
         {
             protected Integer getSingleValueKey() { return 16; }
             protected Map<Integer, String> getNewMap() { return new CaseInsensitiveMap<>(); }
+            protected int compactSize() { return 3; }
             protected boolean isCaseInsensitive() { return true; }
         };
 
@@ -2501,11 +2509,11 @@ public class TestCompactMap
         int maxSize = 1000;
         Random random = new SecureRandom();
         final int[] compactSize = new int[1];
-        int lower = 10;
-        int upper = 300;
+        int lower = 5;
+        int upper = 140;
         long totals[] = new long[upper - lower + 1];
 
-        for (int x = 0; x < 200; x++)
+        for (int x = 0; x < 300; x++)
         {
             for (int i = lower; i < upper; i++)
             {
@@ -2537,8 +2545,12 @@ public class TestCompactMap
                 // ===== Timed
                 for (int j = 0; j < maxSize; j++)
                 {
-//                    map.put(StringUtilities.getRandomString(random, 4, 8), j);
                     map.put("" + j, j);
+                }
+
+                for (int j = 0; j < maxSize; j++)
+                {
+                    map.get("" + j);
                 }
 
                 Iterator iter = map.keySet().iterator();
@@ -2557,9 +2569,14 @@ public class TestCompactMap
             // ===== Timed
             for (int i = 0; i < maxSize; i++)
             {
-//                map.put(StringUtilities.getRandomString(random, 4, 8), i);
                 map.put("" + i, i);
             }
+
+            for (int i = 0; i < maxSize; i++)
+            {
+                map.get("" + i);
+            }
+
             Iterator iter = map.keySet().iterator();
             while (iter.hasNext())
             {

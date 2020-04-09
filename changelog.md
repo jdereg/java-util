@@ -1,4 +1,10 @@
 ### Revision History
+* 1.46.0
+  * `CompactMap` now supports 4 stages of "growth", making it much smaller in memory than nearly any `Map`.  After `0` and `1` entries,
+  and between `2` and `compactSize()` entries, the entries in the `Map` are stored in an `Object[]` (using same single member variable).  The
+  even elements the 'keys' and the odd elements are the associated 'values'.  This array is dynamically resized to exactly match the number of stored entries.
+  When more than `compactSize()` entries are used, the `Map` then uses the `Map` returned from the overrideable `getNewMap()` api to store the entries.
+  In all cases, it maintains the underlying behavior of the `Map` in all cases. 
 * 1.45.0
   * `CompactMap` now supports case-insensitivity when using String keys.  By default, it is case sensitive, but you can override the 
   `isCaseSensitive()` method and return `false`.  This allows you to return `TreeMap(String.CASE_INSENSITIVE_ORDER)` or `CaseInsensitiveMap`

@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.security.SecureRandom;
@@ -1531,6 +1530,58 @@ public class TestCompactMap
     }
 
     @Test
+    public void testWithObjectArrayOnRHS()
+    {
+        testWithObjectArrayOnRHSHelper("key1");
+        testWithObjectArrayOnRHSHelper("bingo");
+    }
+
+    private void testWithObjectArrayOnRHSHelper(final String singleKey)
+    {
+        Map<String, Object> map = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return singleKey; }
+            protected int compactSize() { return 2; }
+            protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+        };
+
+        Object[] array1 = new Object[] { "alpha", "bravo"};
+        map.put("key1", array1);
+
+        Object[] x = (Object[]) map.get("key1");
+        assert x instanceof Object[];
+        assert x.length == 2;
+
+        Object[] array2 = new Object[] { "alpha", "bravo", "charlie" };
+        map.put("key2", array2);
+
+        x = (Object[]) map.get("key2");
+        assert x instanceof Object[];
+        assert x.length == 3;
+
+        Object[] array3 = new Object[] { "alpha", "bravo", "charlie", "delta" };
+        map.put("key3", array3);
+        assert map.size() == 3;
+
+        x = (Object[]) map.get("key3");
+        assert x instanceof Object[];
+        assert x.length == 4;
+
+        assert map.remove("key3") instanceof Object[];
+        x = (Object[]) map.get("key2");
+        assert x.length == 3;
+        assert map.size() == 2;
+
+        assert map.remove("key2") instanceof Object[];
+        x = (Object[]) map.get("key1");
+        assert x.length == 2;
+        assert map.size() == 1;
+
+        map.remove("key1");
+        assert map.size() == 0;
+    }
+
+    @Test
     public void testRemove2To1WithNoMapOnRHS()
     {
         testRemove2To1WithNoMapOnRHSHelper("key1");
@@ -2435,18 +2486,26 @@ public class TestCompactMap
         assert map.equals(tree);
     }
 
-    @Ignore
+    @Test
+    public void testIntegerKeysInDefaultMap()
+    {
+        CompactMap<Integer, Integer> map = new CompactMap<>();
+        map.put(6, 10);
+        Object key = map.getSingleValueKey();
+        assert key instanceof String;   // "key" is the default
+    }
+
     @Test
     public void testPerformance()
     {
         int maxSize = 1000;
         Random random = new SecureRandom();
         final int[] compactSize = new int[1];
-        int lower = 150;
-        int upper = 200;
+        int lower = 10;
+        int upper = 300;
         long totals[] = new long[upper - lower + 1];
 
-        for (int x = 0; x < 25; x++)
+        for (int x = 0; x < 200; x++)
         {
             for (int i = lower; i < upper; i++)
             {
@@ -2478,7 +2537,8 @@ public class TestCompactMap
                 // ===== Timed
                 for (int j = 0; j < maxSize; j++)
                 {
-                    map.put(StringUtilities.getRandomString(random, 4, 8), j);
+//                    map.put(StringUtilities.getRandomString(random, 4, 8), j);
+                    map.put("" + j, j);
                 }
 
                 Iterator iter = map.keySet().iterator();
@@ -2497,7 +2557,8 @@ public class TestCompactMap
             // ===== Timed
             for (int i = 0; i < maxSize; i++)
             {
-                map.put(StringUtilities.getRandomString(random, 4, 8), i);
+//                map.put(StringUtilities.getRandomString(random, 4, 8), i);
+                map.put("" + i, i);
             }
             Iterator iter = map.keySet().iterator();
             while (iter.hasNext())

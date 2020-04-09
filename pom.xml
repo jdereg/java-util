@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.45.0</version>
+    <version>1.46.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -67,7 +67,7 @@
     </developers>
 
     <properties>
-        <version.log4j>2.5</version.log4j>
+        <version.log4j>2.13.1</version.log4j>
         <version.junit>4.12</version.junit>
         <version.json.io>4.11.1</version.json.io>            <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>

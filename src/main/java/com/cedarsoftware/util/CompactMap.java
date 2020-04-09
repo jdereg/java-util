@@ -71,21 +71,19 @@ public class CompactMap<K, V> implements Map<K, V>
     
     public int size()
     {
-        if (val == EMPTY_MAP)
+        if (Object[].class.isInstance(val))
+        {
+            return ((Object[])val).length >> 1;
+        }
+        else if (Map.class.isInstance(val))
+        {
+            return ((Map<K, V>)val).size();
+        }
+        else if (val == EMPTY_MAP)
         {
             return 0;
         }
-        else if (isCompactMapEntry(val) || !(val instanceof Map || val instanceof Object[]))
-        {
-            return 1;
-        }
-        else if (val instanceof Object[])
-        {
-            return ((Object[])val).length / 2;
-        }
-        
-        Map<K, V> map = (Map<K, V>) val;
-        return map.size();
+        return 1;
     }
 
     public boolean isEmpty()
@@ -116,43 +114,33 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public boolean containsKey(Object key)
     {
-        if (size() == 1)
-        {
-            return compareKeys(key, getLogicalSingleKey());
-        }
-        else if (isEmpty())
-        {
-            return false;
-        }
-        else if (val instanceof Object[])
+        if (Object[].class.isInstance(val))
         {
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
             {
-                Object aKey = entries[i];
-                if (compareKeys(key, aKey))
+                if (compareKeys(key, entries[i]))
                 {
                     return true;
                 }
             }
             return false;
         }
-
-        Map<K, V> map = (Map<K, V>) val;
-        return map.containsKey(key);
+        else if (Map.class.isInstance(val))
+        {
+            Map<K, V> map = (Map<K, V>) val;
+            return map.containsKey(key);
+        }
+        else if (val == EMPTY_MAP)
+        {
+            return false;
+        }
+        return compareKeys(key, getLogicalSingleKey());
     }
 
     public boolean containsValue(Object value)
     {
-        if (size() == 1)
-        {
-            return getLogicalSingleValue() == value;
-        }
-        else if (isEmpty())
-        {
-            return false;
-        }
-        else if (val instanceof Object[])
+        if (Object[].class.isInstance(val))
         {
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
@@ -165,9 +153,16 @@ public class CompactMap<K, V> implements Map<K, V>
             }
             return false;
         }
-
-        Map<K, V> map = (Map<K, V>) val;
-        return map.containsValue(value);
+        else if (Map.class.isInstance(val))
+        {
+            Map<K, V> map = (Map<K, V>) val;
+            return map.containsValue(value);
+        }
+        else if (val == EMPTY_MAP)
+        {
+            return false;
+        }
+        return getLogicalSingleValue() == value;
     }
 
     public V get(Object key)
@@ -204,7 +199,7 @@ public class CompactMap<K, V> implements Map<K, V>
             if (compareKeys(key, getLogicalSingleKey()))
             {   // Overwrite
                 Object save = getLogicalSingleValue();
-                if (Objects.equals(getSingleValueKey(), key) && !(value instanceof Map))
+                if (Objects.equals(getSingleValueKey(), key) && !(value instanceof Map || val instanceof Object[]))
                 {
                     val = value;
                 }
@@ -227,7 +222,7 @@ public class CompactMap<K, V> implements Map<K, V>
         }
         else if (isEmpty())
         {
-            if (compareKeys(key, getLogicalSingleKey()) && !(value instanceof Map))
+            if (compareKeys(key, getLogicalSingleKey()) && !(value instanceof Map || val instanceof Object[]))
             {
                 val = value;
             }
@@ -330,7 +325,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 for (int i = 0; i < entries.length; i += 2)
                 {
                     Object aKey = entries[i];
-                    if (Objects.equals(key, aKey))
+                    if (compareKeys(key, aKey))
                     {   // Found, must shrink
                         Object prior = entries[i + 1];
                         Object[] shrink = new Object[entries.length - 2];
@@ -605,7 +600,7 @@ public class CompactMap<K, V> implements Map<K, V>
     {
         if (size() == 1)
         {
-            if (isCompactMapEntry(val))
+            if (CompactMapEntry.class.isInstance(val))
             {
                 return LogicalValueType.ENTRY;
             }
@@ -650,7 +645,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     private K getLogicalSingleKey()
     {
-        if (isCompactMapEntry(val))
+        if (CompactMapEntry.class.isInstance(val))
         {
             CompactMapEntry entry = (CompactMapEntry) val;
             return entry.getKey();
@@ -660,18 +655,12 @@ public class CompactMap<K, V> implements Map<K, V>
 
     private V getLogicalSingleValue()
     {
-        if (isCompactMapEntry(val))
+        if (CompactMapEntry.class.isInstance(val))
         {
             CompactMapEntry entry = (CompactMapEntry) val;
             return entry.getValue();
         }
         return (V) val;
-    }
-
-    private boolean isCompactMapEntry(Object o)
-    {
-        if (o == null) { return false; }
-        return CompactMapEntry.class.isAssignableFrom(o.getClass());
     }
 
     /**
@@ -683,8 +672,6 @@ public class CompactMap<K, V> implements Map<K, V>
      * @return new empty Map instance to use when there is more than one entry.
      */
     protected Map<K, V> getNewMap() { return new HashMap<>(); }
-
     protected boolean isCaseInsensitive() { return false; }
-
     protected int compactSize() { return 100; }
 }

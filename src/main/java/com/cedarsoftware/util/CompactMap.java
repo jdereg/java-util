@@ -3,13 +3,31 @@ package com.cedarsoftware.util;
 import java.util.*;
 
 /**
- * `CompactMap` introduced.  This `Map` is especially small when 0 and 1 entries are stored in it.  When `>=2` entries
- * are in the `Map` it acts as regular `Map`.
- * 
- *     You must override two methods in order to instantiate:
- *     
- *     protected abstract K getSingleValueKey();
+ * Many developers do not realize than they may have thousands or hundreds of thousands of Maps in memory, often
+ * representing small JSON objects.  These maps (often HashMaps) usually have a table of 16/32/64... elements in them,
+ * with so many empty elements.  HashMap doubles it's internal storage each time it expands, so often these Maps have
+ * fewer than 50% of these arrays filled.
+ *
+ * CompactMap is a Map that strives to reduce memory at all costs while retaining speed that is close to HashMap's speed.
+ * It does this by using only one (1) member variable (of type Object) and changing it as the Map grows.  It goes from
+ * single value, to a single MapEntry, to an Object[], and finally it uses a Map (user defined).  CompactMap is
+ * especially small when 0 and 1 entries are stored in it.  When size() is from `2` to compactSize(), then entries
+ * are stored internally in single Object[].  If the size() is > compactSize() then the entries are stored in a
+ * regular `Map`.
+ *
+ *     Methods you may want to override:
+ *
+ *     // If this key is used and only 1 element then only the value is stored
+ *     protected K getSingleValueKey() { return "someKey"; }
+ *
+ *     // Map you would like it to use when size() > compactSize().  HashMap is default
  *     protected abstract Map<K, V> getNewMap();
+ *
+ *     // If you want case insensitivity, return true and return new CaseInsensitiveMap or TreeMap(String.CASE_INSENSITIVE_PRDER) from getNewMap()
+ *     protected boolean isCaseInsensitive() { return false; }
+ *
+ *     // When size() > than this amount, the Map returned from getNewMap() is used to store elements.
+ *     protected int compactSize() { return 100; }
  *
  * **Empty**
  * This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
@@ -23,16 +41,18 @@ import java.util.*;
  * to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
  * the same.
  *
- * **Two or more entries**
+ * **Two thru compactSize() entries**
+ * In this case, the single member variable points to a single Object[] that contains all the keys and values.  The
+ * keys are in the even positions, the values are in the odd positions (1 up from the key).  [0] = key, [1] = value,
+ * [2] = next key, [3] = next value, and so on.  The Object[] is dynamically expanded until size() > compactSize(). In
+ * addition, it is dynamically shrunk until the size becomes 1, and then it switches to a single Map Entry or a single
+ * value.
+ *
+ * **size() greater than compactSize()**
  * In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
  * This allows `CompactMap` to work with nearly all `Map` types.
  *
- * This Map supports null for the key and values.  If the Map returned by getNewMap() does not support this, then this
- * Map will not.
- *
- * A future version *may* support an additional option to allow it to maintain entries 2-n in an internal
- * array (pointed to by the single member variable).  This small array would be 'scanned' in linear time.  Given
- * a small *`n`*  entries, the resultant `Map` would be significantly smaller than the equivalent `HashMap`, for instance.
+ * This Map supports null for the key and values, as long as the Map returned by getNewMap() supports null keys-values.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

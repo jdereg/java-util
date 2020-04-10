@@ -1,6 +1,9 @@
 ### Revision History
-* 1.47.0-SNAPSHOT
-  *
+* 1.47.0
+  * `Converter.convert2*()` methods added: If `null` passed in, primitive 'logical zero' is returned. Example: `Converter.convert(null, boolean.class)` returns `false`.
+  * `Converter.convertTo*()` methods: if `null` passed in, `null` is returned.  Allows "tri-state" Boolean. Example: `Converter.convert(null, Boolean.class)` returns `null`.
+  * `Converter.convert()` converts using `convertTo*()` methods for primitive wrappers, and `convert2*()` methods for primitive classes.
+  * `Converter.setNullMode()` removed.
 * 1.46.0
   * `CompactMap` now supports 4 stages of "growth", making it much smaller in memory than nearly any `Map`.  After `0` and `1` entries,
   and between `2` and `compactSize()` entries, the entries in the `Map` are stored in an `Object[]` (using same single member variable).  The

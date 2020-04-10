@@ -321,6 +321,10 @@ public class TestConverter
         assertEquals("true", convert(new AtomicBoolean(true), String.class));
 
         assertEquals("1.23456789", convert(1.23456789d, String.class));
+
+        int x = 8;
+        String s = convertToString(x);
+        assert s.equals("8");
         // TODO: Add following test once we have preferred method of removing exponential notation, yet retain decimal separator
 //        assertEquals("123456789.12345", convert(123456789.12345, String.class));
 
@@ -927,19 +931,19 @@ public class TestConverter
     @Test
     public void testNullInstance()
     {
-        assert null == convert(null, boolean.class);
+        assert false == convert(null, boolean.class);
         assert null == convert(null, Boolean.class);
-        assert null == convert(null, byte.class);
+        assert 0 == convert(null, byte.class);
         assert null == convert(null, Byte.class);
-        assert null == convert(null, short.class);
+        assert 0 == convert(null, short.class);
         assert null == convert(null, Short.class);
-        assert null == convert(null, int.class);
+        assert 0 == convert(null, int.class);
         assert null == convert(null, Integer.class);
-        assert null == convert(null, long.class);
+        assert 0L == convert(null, long.class);
         assert null == convert(null, Long.class);
-        assert null == convert(null, float.class);
+        assert 0.0f == convert(null, float.class);
         assert null == convert(null, Float.class);
-        assert null == convert(null, double.class);
+        assert 0.0d == convert(null, double.class);
         assert null == convert(null, Double.class);
         
         assert null == convert(null, Date.class);

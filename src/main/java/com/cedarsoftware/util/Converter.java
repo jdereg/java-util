@@ -69,7 +69,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToLong(fromInstance);
+                return convert2Long(fromInstance);
             }
         });
 
@@ -85,7 +85,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToInteger(fromInstance);
+                return convert2Integer(fromInstance);
             }
         });
 
@@ -161,7 +161,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToBoolean(fromInstance);
+                return convert2Boolean(fromInstance);
             }
         });
 
@@ -177,7 +177,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToDouble(fromInstance);
+                return convert2Double(fromInstance);
             }
         });
 
@@ -193,7 +193,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToByte(fromInstance);
+                return convert2Byte(fromInstance);
             }
         });
 
@@ -209,7 +209,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToFloat(fromInstance);
+                return convert2Float(fromInstance);
             }
         });
 
@@ -225,7 +225,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convertToShort(fromInstance);
+                return convert2Short(fromInstance);
             }
         });
 

@@ -1041,5 +1041,7 @@ public class TestConverter
     {
         assertEquals("foo", convert(foo, String.class));
         assertEquals("bar", convert(bar, String.class));
+
+        System.out.println(" = " + convertToBigInteger(new Character('A')));
     }
 }

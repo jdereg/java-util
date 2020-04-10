@@ -33,33 +33,23 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class Converter
 {
-    private static final Byte BYTE_ZERO = (byte)0;
-    private static final Byte BYTE_ONE = (byte)1;
-    private static final Short SHORT_ZERO = (short)0;
-    private static final Short SHORT_ONE = (short)1;
-    private static final Integer INTEGER_ZERO = 0;
-    private static final Integer INTEGER_ONE = 1;
-    private static final Long LONG_ZERO = 0L;
-    private static final Long LONG_ONE = 1L;
-    private static final Float FLOAT_ZERO = 0.0f;
-    private static final Float FLOAT_ONE = 1.0f;
-    private static final Double DOUBLE_ZERO = 0.0d;
-    private static final Double DOUBLE_ONE = 1.0d;
+    public static final Byte BYTE_ZERO = (byte)0;
+    public static final Byte BYTE_ONE = (byte)1;
+    public static final Short SHORT_ZERO = (short)0;
+    public static final Short SHORT_ONE = (short)1;
+    public static final Integer INTEGER_ZERO = 0;
+    public static final Integer INTEGER_ONE = 1;
+    public static final Long LONG_ZERO = 0L;
+    public static final Long LONG_ONE = 1L;
+    public static final Float FLOAT_ZERO = 0.0f;
+    public static final Float FLOAT_ONE = 1.0f;
+    public static final Double DOUBLE_ZERO = 0.0d;
+    public static final Double DOUBLE_ONE = 1.0d;
+    public static final BigDecimal BIG_DECIMAL_ZERO = BigDecimal.ZERO;
+    public static final BigInteger BIG_INTEGER_ZERO = BigInteger.ZERO;
     private static final Map<Class<?>, Work> conversion = new HashMap<>();
     private static final Map<Class<?>, Work> conversionToString = new HashMap<>();
-    public static final int NULL_PROPER = 0;
-    public static final int NULL_NULL = 1;
-    private static int null_mode = NULL_PROPER;
-
-    /**
-     * Set how the primitive 
-     * @param mode
-     */
-    public static void setNullMode(int mode)
-    {
-        null_mode = mode;
-    }
-
+    
     private interface Work
     {
         Object convert(Object fromInstance);
@@ -101,18 +91,12 @@ public final class Converter
 
         conversion.put(Integer.class, new Work()
         {
-            public Object convert(Object fromInstance)
-            {
-                return convertToInteger(fromInstance);
-            }
+            public Object convert(Object fromInstance) { return convertToInteger(fromInstance); }
         });
 
         conversion.put(Calendar.class, new Work()
         {
-            public Object convert(Object fromInstance)
-            {
-                return convertToCalendar(fromInstance);
-            }
+            public Object convert(Object fromInstance) { return convertToCalendar(fromInstance); }
         });
         
         conversion.put(Date.class, new Work()
@@ -368,6 +352,15 @@ public final class Converter
         throw new IllegalArgumentException("Unsupported type '" + toType.getName() + "' for conversion");
     }
 
+    public static String convert2String(Object fromInstance)
+    {
+        if (fromInstance == null)
+        {
+            return "";
+        }
+        return convertToString(fromInstance);
+    }
+
     public static String convertToString(Object fromInstance)
     {
         if (fromInstance == null)
@@ -391,17 +384,17 @@ public final class Converter
         return nope(fromInstance, "String");
     }
 
-    public static BigDecimal convertToBigDecimal(Object fromInstance)
+    public static BigDecimal convert2BigDecimal(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return BigDecimal.ZERO;
-            }
-            return null;
+            return BIG_DECIMAL_ZERO;
         }
+        return convertToBigDecimal(fromInstance);
+    }
 
+    public static BigDecimal convertToBigDecimal(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -441,7 +434,7 @@ public final class Converter
                 return new BigDecimal(((Calendar)fromInstance).getTime().getTime());
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigDecimal'", e);
         }
@@ -449,16 +442,17 @@ public final class Converter
         return null;
     }
 
-    public static BigInteger convertToBigInteger(Object fromInstance)
+    public static BigInteger convert2BigInteger(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return BigInteger.ZERO;
-            }
-            return null;
+            return BIG_INTEGER_ZERO;
         }
+        return convertToBigInteger(fromInstance);
+    }
+    
+    public static BigInteger convertToBigInteger(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -498,7 +492,7 @@ public final class Converter
                 return new BigInteger(Long.toString(((Calendar) fromInstance).getTime().getTime()));
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigInteger'", e);
         }
@@ -508,10 +502,6 @@ public final class Converter
 
     public static java.sql.Date convertToSqlDate(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
-            return null;
-        }
         try
         {
             if (fromInstance instanceof java.sql.Date)
@@ -557,7 +547,7 @@ public final class Converter
                 return new java.sql.Date(((AtomicLong) fromInstance).get());
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'java.sql.Date'", e);
         }
@@ -567,10 +557,6 @@ public final class Converter
 
     public static Timestamp convertToTimestamp(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
-            return null;
-        }
         try
         {
             if (fromInstance instanceof java.sql.Date)
@@ -615,7 +601,7 @@ public final class Converter
                 return new Timestamp(((AtomicLong) fromInstance).get());
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Timestamp'", e);
         }
@@ -625,10 +611,6 @@ public final class Converter
 
     public static Date convertToDate(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
-            return null;
-        }
         try
         {
             if (fromInstance instanceof String)
@@ -669,7 +651,7 @@ public final class Converter
                 return new Date(((AtomicLong) fromInstance).get());
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Date'", e);
         }
@@ -679,21 +661,26 @@ public final class Converter
 
     public static Calendar convertToCalendar(Object fromInstance)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(convertToDate(fromInstance));
         return calendar;
     }
-    
-    public static Byte convertToByte(Object fromInstance)
+
+    public static byte convert2Byte(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return BYTE_ZERO;
-            }
-            return null;
+            return 0;
         }
+        return convertToByte(fromInstance);
+    }
+
+    public static Byte convertToByte(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -721,7 +708,7 @@ public final class Converter
                 return ((AtomicBoolean)fromInstance).get() ? BYTE_ONE : BYTE_ZERO;
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Byte'", e);
         }
@@ -729,16 +716,17 @@ public final class Converter
         return null;
     }
 
-    public static Short convertToShort(Object fromInstance)
+    public static short convert2Short(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return SHORT_ZERO;
-            }
-            return null;
+            return 0;
         }
+        return convertToShort(fromInstance);
+    }
+
+    public static Short convertToShort(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -766,7 +754,7 @@ public final class Converter
                 return ((AtomicBoolean) fromInstance).get() ? SHORT_ONE : SHORT_ZERO;
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Short'", e);
         }
@@ -774,16 +762,17 @@ public final class Converter
         return null;
     }
 
-    public static Integer convertToInteger(Object fromInstance)
+    public static int convert2Integer(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return INTEGER_ZERO;
-            }
-            return null;
+            return 0;
         }
+        return convertToInteger(fromInstance);
+    }
+
+    public static Integer convertToInteger(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof Integer)
@@ -811,7 +800,7 @@ public final class Converter
                 return ((AtomicBoolean) fromInstance).get() ? INTEGER_ONE : INTEGER_ZERO;
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'Integer'", e);
         }
@@ -819,16 +808,17 @@ public final class Converter
         return null;
     }
 
-    public static Long convertToLong(Object fromInstance)
+    public static long convert2Long(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return LONG_ZERO;
-            }
-            return null;
+            return LONG_ZERO;
         }
+        return convertToLong(fromInstance);
+    }
+
+    public static Long convertToLong(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof Long)
@@ -864,7 +854,7 @@ public final class Converter
                 return ((Calendar)fromInstance).getTime().getTime();
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Long'", e);
         }
@@ -872,16 +862,17 @@ public final class Converter
         return null;
     }
 
-    public static Float convertToFloat(Object fromInstance)
+    public static float convert2Float(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return FLOAT_ZERO;
-            }
-            return null;
+            return FLOAT_ZERO;
         }
+        return convertToFloat(fromInstance);
+    }
+
+    public static Float convertToFloat(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -909,7 +900,7 @@ public final class Converter
                 return ((AtomicBoolean) fromInstance).get() ? FLOAT_ONE : FLOAT_ZERO;
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Float'", e);
         }
@@ -917,16 +908,17 @@ public final class Converter
         return null;
     }
 
-    public static Double convertToDouble(Object fromInstance)
+    public static double convert2Double(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return DOUBLE_ZERO;
-            }
-            return null;
+            return DOUBLE_ZERO;
         }
+        return convertToDouble(fromInstance);
+    }
+
+    public static Double convertToDouble(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -954,7 +946,7 @@ public final class Converter
                 return ((AtomicBoolean) fromInstance).get() ? DOUBLE_ONE : DOUBLE_ZERO;
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Double'", e);
         }
@@ -962,17 +954,18 @@ public final class Converter
         return null;
     }
 
-    public static Boolean convertToBoolean(Object fromInstance)
+    public static boolean convert2Boolean(Object fromInstance)
     {
         if (fromInstance == null)
         {
-            if (null_mode == NULL_PROPER)
-            {
-                return false;
-            }
-            return null;
+            return false;
         }
-        else if (fromInstance instanceof Boolean)
+        return convertToBoolean(fromInstance);
+    }
+
+    public static Boolean convertToBoolean(Object fromInstance)
+    {
+        if (fromInstance instanceof Boolean)
         {
             return (Boolean)fromInstance;
         }
@@ -999,15 +992,20 @@ public final class Converter
             return ((AtomicBoolean) fromInstance).get();
         }
         nope(fromInstance, "Boolean");
-        return false;
+        return null;
     }
 
-    public static AtomicInteger convertToAtomicInteger(Object fromInstance)
+    public static AtomicInteger convert2AtomicInteger(Object fromInstance)
     {
         if (fromInstance == null)
         {
             return new AtomicInteger(0);
         }
+        return convertToAtomicInteger(fromInstance);
+    }
+
+    public static AtomicInteger convertToAtomicInteger(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof AtomicInteger)
@@ -1035,7 +1033,7 @@ public final class Converter
                 return ((AtomicBoolean) fromInstance).get() ? new AtomicInteger(1) : new AtomicInteger(0);
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicInteger'", e);
         }
@@ -1043,12 +1041,17 @@ public final class Converter
         return null;
     }
 
-    public static AtomicLong convertToAtomicLong(Object fromInstance)
+    public static AtomicLong convert2AtomicLong(Object fromInstance)
     {
         if (fromInstance == null)
         {
             return new AtomicLong(0);
         }
+        return convertToAtomicLong(fromInstance);
+    }
+
+    public static AtomicLong convertToAtomicLong(Object fromInstance)
+    {
         try
         {
             if (fromInstance instanceof String)
@@ -1084,7 +1087,7 @@ public final class Converter
                 return new AtomicLong(((Calendar)fromInstance).getTime().getTime());
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicLong'", e);
         }
@@ -1092,13 +1095,18 @@ public final class Converter
         return null;
     }
 
-    public static AtomicBoolean convertToAtomicBoolean(Object fromInstance)
+    public static AtomicBoolean convert2AtomicBoolean(Object fromInstance)
     {
         if (fromInstance == null)
         {
             return new AtomicBoolean(false);
         }
-        else if (fromInstance instanceof String)
+        return convertToAtomicBoolean(fromInstance);
+    }
+
+    public static AtomicBoolean convertToAtomicBoolean(Object fromInstance)
+    {
+        if (fromInstance instanceof String)
         {
             if (StringUtilities.isEmpty((String)fromInstance))
             {
@@ -1125,18 +1133,15 @@ public final class Converter
 
     private static String nope(Object fromInstance, String targetType)
     {
+        if (fromInstance == null)
+        {
+            return null;
+        }
         throw new IllegalArgumentException("Unsupported value type [" + name(fromInstance) + "] attempting to convert to '" + targetType + "'");
     }
 
     private static String name(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
-            return "(null)";
-        }
-        else
-        {
-            return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
-        }
+        return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
     }
 }

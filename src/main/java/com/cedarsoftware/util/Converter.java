@@ -78,7 +78,7 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convert2Long(fromInstance);
+                return convert2long(fromInstance);
             }
         });
 
@@ -94,13 +94,109 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             {
-                return convert2Integer(fromInstance);
+                return convert2int(fromInstance);
             }
         });
 
         conversion.put(Integer.class, new Work()
         {
             public Object convert(Object fromInstance) { return convertToInteger(fromInstance); }
+        });
+
+        conversion.put(short.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convert2short(fromInstance);
+            }
+        });
+
+        conversion.put(Short.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToShort(fromInstance);
+            }
+        });
+
+        conversion.put(byte.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convert2byte(fromInstance);
+            }
+        });
+
+        conversion.put(Byte.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToByte(fromInstance);
+            }
+        });
+
+        conversion.put(char.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convert2char(fromInstance);
+            }
+        });
+
+        conversion.put(boolean.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convert2boolean(fromInstance);
+            }
+        });
+
+        conversion.put(Boolean.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToBoolean(fromInstance);
+            }
+        });
+
+        conversion.put(double.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convert2double(fromInstance);
+            }
+        });
+
+        conversion.put(Double.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToDouble(fromInstance);
+            }
+        });
+
+        conversion.put(float.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convert2float(fromInstance);
+            }
+        });
+
+        conversion.put(Float.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToFloat(fromInstance);
+            }
+        });
+
+        conversion.put(Character.class, new Work()
+        {
+            public Object convert(Object fromInstance)
+            {
+                return convertToCharacter(fromInstance);
+            }
         });
 
         conversion.put(Calendar.class, new Work()
@@ -163,86 +259,6 @@ public final class Converter
         {
             public Object convert(Object fromInstance)
             { return convertToAtomicBoolean(fromInstance);
-            }
-        });
-
-        conversion.put(boolean.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2Boolean(fromInstance);
-            }
-        });
-
-        conversion.put(Boolean.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToBoolean(fromInstance);
-            }
-        });
-
-        conversion.put(double.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2Double(fromInstance);
-            }
-        });
-
-        conversion.put(Double.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToDouble(fromInstance);
-            }
-        });
-
-        conversion.put(byte.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2Byte(fromInstance);
-            }
-        });
-
-        conversion.put(Byte.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToByte(fromInstance);
-            }
-        });
-
-        conversion.put(float.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2Float(fromInstance);
-            }
-        });
-
-        conversion.put(Float.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToFloat(fromInstance);
-            }
-        });
-
-        conversion.put(short.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2Short(fromInstance);
-            }
-        });
-
-        conversion.put(Short.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToShort(fromInstance);
             }
         });
 
@@ -752,10 +768,64 @@ public final class Converter
     }
 
     /**
+     * Convert from the passed in instance to a char.  If null is passed in, (char) 0 is returned. Possible inputs
+     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     */
+    public static char convert2char(Object fromInstance)
+    {
+        if (fromInstance == null)
+        {
+            return 0;
+        }
+        return convertToCharacter(fromInstance);
+    }
+
+    /**
+     * Convert from the passed in instance to a Character.  If null is passed in, null is returned. Possible inputs
+     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     */
+    public static Character convertToCharacter(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                if ("".equals(fromInstance))
+                {
+                    return 0;
+                }
+                return (char)Integer.parseInt(((String) fromInstance).trim());
+            }
+            else if (fromInstance instanceof Number)
+            {
+                return (char)((Number)fromInstance).shortValue();
+            }
+            else if (fromInstance instanceof Boolean)
+            {
+                return (boolean)fromInstance ? '1' : '0';
+            }
+            else if (fromInstance instanceof AtomicBoolean)
+            {
+                return ((AtomicBoolean) fromInstance).get() ? '1' : '0';
+            }
+            else if (fromInstance instanceof Character)
+            {
+                return (Character)fromInstance;
+            }
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Character'", e);
+        }
+        nope(fromInstance, "Character");
+        return null;
+    }
+
+    /**
      * Convert from the passed in instance to a byte.  If null is passed in, (byte) 0 is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
      */
-    public static byte convert2Byte(Object fromInstance)
+    public static byte convert2byte(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -778,7 +848,7 @@ public final class Converter
                 {
                     return BYTE_ZERO;
                 }
-                return Byte.valueOf(((String) fromInstance).trim());
+                return Byte.parseByte(((String) fromInstance).trim());
             }
             else if (fromInstance instanceof Byte)
             {
@@ -809,7 +879,7 @@ public final class Converter
      * Convert from the passed in instance to a short.  If null is passed in, (short) 0 is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
      */
-    public static short convert2Short(Object fromInstance)
+    public static short convert2short(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -832,7 +902,7 @@ public final class Converter
                 {
                     return SHORT_ZERO;
                 }
-                return Short.valueOf(((String) fromInstance).trim());
+                return Short.parseShort(((String) fromInstance).trim());
             }
             else if (fromInstance instanceof Short)
             {
@@ -850,6 +920,10 @@ public final class Converter
             {
                 return ((AtomicBoolean) fromInstance).get() ? SHORT_ONE : SHORT_ZERO;
             }
+            else if (fromInstance instanceof Character)
+            {
+                return (short)((char)fromInstance);
+            }
         }
         catch (Exception e)
         {
@@ -863,7 +937,7 @@ public final class Converter
      * Convert from the passed in instance to an int.  If null is passed in, (int) 0 is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
      */
-    public static int convert2Integer(Object fromInstance)
+    public static int convert2int(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -904,6 +978,10 @@ public final class Converter
             {
                 return ((AtomicBoolean) fromInstance).get() ? INTEGER_ONE : INTEGER_ZERO;
             }
+            else if (fromInstance instanceof Character)
+            {
+                return (int)((char)fromInstance);
+            }
         }
         catch (Exception e)
         {
@@ -919,7 +997,7 @@ public final class Converter
      * addition, Date, java.sql.Date, Timestamp, and Calendar can be passed in, in which case the long returned is
      * the number of milliseconds since Jan 1, 1970.
      */
-    public static long convert2Long(Object fromInstance)
+    public static long convert2long(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -970,6 +1048,10 @@ public final class Converter
             {
                 return ((Calendar)fromInstance).getTime().getTime();
             }
+            else if (fromInstance instanceof Character)
+            {
+                return (long)((char)fromInstance);
+            }
         }
         catch (Exception e)
         {
@@ -983,7 +1065,7 @@ public final class Converter
      * Convert from the passed in instance to a float.  If null is passed in, 0.0f is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
      */
-    public static float convert2Float(Object fromInstance)
+    public static float convert2float(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -1037,7 +1119,7 @@ public final class Converter
      * Convert from the passed in instance to a double.  If null is passed in, 0.0d is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
      */
-    public static double convert2Double(Object fromInstance)
+    public static double convert2double(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -1091,7 +1173,7 @@ public final class Converter
      * Convert from the passed in instance to a boolean.  If null is passed in, false is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
      */
-    public static boolean convert2Boolean(Object fromInstance)
+    public static boolean convert2boolean(Object fromInstance)
     {
         if (fromInstance == null)
         {
@@ -1168,7 +1250,7 @@ public final class Converter
                 {
                     return new AtomicInteger(0);
                 }
-                return new AtomicInteger(Integer.valueOf(((String) fromInstance).trim()));
+                return new AtomicInteger(Integer.parseInt(((String) fromInstance).trim()));
             }
             else if (fromInstance instanceof Number)
             {
@@ -1222,7 +1304,7 @@ public final class Converter
                 {
                     return new AtomicLong(0);
                 }
-                return new AtomicLong(Long.valueOf(((String) fromInstance).trim()));
+                return new AtomicLong(Long.parseLong(((String) fromInstance).trim()));
             }
             else if (fromInstance instanceof AtomicLong)
             {   // return a clone of the AtomicLong because it is mutable

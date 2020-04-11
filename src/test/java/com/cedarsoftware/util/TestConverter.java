@@ -100,6 +100,13 @@ public class TestConverter
         {
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
         }
+
+        try
+        {
+            convert2byte("257");
+            fail();
+        }
+        catch (IllegalArgumentException e) { }
     }
     
     @Test
@@ -945,7 +952,9 @@ public class TestConverter
         assert null == convert(null, Float.class);
         assert 0.0d == convert(null, double.class);
         assert null == convert(null, Double.class);
-        
+        assert (char)0 == convert(null, char.class);
+        assert null == convert(null, Character.class);
+
         assert null == convert(null, Date.class);
         assert null == convert(null, java.sql.Date.class);
         assert null == convert(null, Timestamp.class);
@@ -963,6 +972,7 @@ public class TestConverter
         assert null == convertToLong(null);
         assert null == convertToFloat(null);
         assert null == convertToDouble(null);
+        assert null == convertToCharacter(null);
         assert null == convertToDate(null);
         assert null == convertToSqlDate(null);
         assert null == convertToTimestamp(null);
@@ -971,13 +981,14 @@ public class TestConverter
         assert null == convertToAtomicLong(null);
         assert null == convertToString(null);
 
-        assert false == convert2Boolean(null);
-        assert 0 == convert2Byte(null);
-        assert 0 == convert2Integer(null);
-        assert 0 == convert2Short(null);
-        assert 0 == convert2Long(null);
-        assert 0.0f == convert2Float(null);
-        assert 0.0d == convert2Double(null);
+        assert false == convert2boolean(null);
+        assert 0 == convert2byte(null);
+        assert 0 == convert2int(null);
+        assert 0 == convert2short(null);
+        assert 0 == convert2long(null);
+        assert 0.0f == convert2float(null);
+        assert 0.0d == convert2double(null);
+        assert (char)0 == convert2char(null);
         assert BIG_INTEGER_ZERO == convert2BigInteger(null);
         assert BIG_DECIMAL_ZERO == convert2BigDecimal(null);
         assert false == convert2AtomicBoolean(null).get();
@@ -989,13 +1000,14 @@ public class TestConverter
     @Test
     public void testConvert2()
     {
-        assert convert2Boolean("true");
-        assert -8 == convert2Byte("-8");
-        assert -8 == convert2Integer("-8");
-        assert -8 == convert2Short("-8");
-        assert -8 == convert2Long("-8");
-        assert -8.0f == convert2Float("-8");
-        assert -8.0d == convert2Double("-8");
+        assert convert2boolean("true");
+        assert -8 == convert2byte("-8");
+        assert -8 == convert2int("-8");
+        assert -8 == convert2short("-8");
+        assert -8 == convert2long("-8");
+        assert -8.0f == convert2float("-8");
+        assert -8.0d == convert2double("-8");
+        assert 'A' == convert2char(65);
         assert new BigInteger("-8").equals(convert2BigInteger("-8"));
         assert new BigDecimal(-8.0d).equals(convert2BigDecimal("-8"));
         assert convert2AtomicBoolean("true").get();
@@ -1025,7 +1037,7 @@ public class TestConverter
         assertEquals(false, convert("", boolean.class));
         assert (byte) 0 == convert("", byte.class);
         assert (short) 0 == convert("", short.class);
-        assert (int) 0 == convert("", int.class);
+        assert 0 == convert("", int.class);
         assert (long) 0 == convert("", long.class);
         assert 0.0f == convert("", float.class);
         assert 0.0d == convert("", double.class);
@@ -1041,7 +1053,38 @@ public class TestConverter
     {
         assertEquals("foo", convert(foo, String.class));
         assertEquals("bar", convert(bar, String.class));
+    }
 
-        System.out.println(" = " + convertToBigInteger(new Character('A')));
+    @Test
+    public void testCharacterSupport()
+    {
+        assert 65 == convert('A', Short.class);
+        assert 65 == convert('A', short.class);
+        assert 65 == convert('A', Integer.class);
+        assert 65 == convert('A', int.class);
+        assert 65 == convert('A', Long.class);
+        assert 65 == convert('A', long.class);
+        assert 65 == convert('A', BigInteger.class).longValue();
+        assert 65 == convert('A', BigDecimal.class).longValue();
+
+        assert '1' == convert2char(true);
+        assert '0' == convert2char(false);
+        assert '1' == convert2char(new AtomicBoolean(true));
+        assert '0' == convert2char(new AtomicBoolean(false));
+        assert 'z' == convert2char('z');
+        assert 0 == convert2char("");
+        assert 0 == convertToCharacter("");
+        try
+        {
+            convert2char("This is not a number");
+            fail();
+        }
+        catch (IllegalArgumentException e) { }
+        try
+        {
+            convert2char(new Date());
+            fail();
+        }
+        catch (IllegalArgumentException e) { }
     }
 }

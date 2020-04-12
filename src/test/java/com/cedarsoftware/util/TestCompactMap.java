@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.security.SecureRandom;
@@ -2504,12 +2503,11 @@ public class TestCompactMap
         assert key instanceof String;   // "key" is the default
     }
 
-    @Ignore
+//    @Ignore
     @Test
     public void testPerformance()
     {
         int maxSize = 1000;
-        Random random = new SecureRandom();
         final int[] compactSize = new int[1];
         int lower = 5;
         int upper = 140;

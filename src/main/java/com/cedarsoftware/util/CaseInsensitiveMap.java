@@ -51,9 +51,26 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         map = new LinkedHashMap<>();
     }
 
+    /**
+     * Use the constructor that takes two (2) Maps.  The first Map may/may not contain any items to add,
+     * and the second Map is an empty Map configured the way you want it to be (load factor, capacity)
+     * and the type of Map you want.  This Map is used by CaseInsenstiveMap internally to store entries.
+     */
+    @Deprecated
     public CaseInsensitiveMap(int initialCapacity)
     {
         map = new LinkedHashMap<>(initialCapacity);
+    }
+
+    /**
+     * Use the constructor that takes two (2) Maps.  The first Map may/may not contain any items to add,
+     * and the second Map is an empty Map configured the way you want it to be (load factor, capacity)
+     * and the type of Map you want.  This Map is used by CaseInsenstiveMap internally to store entries.
+     */
+    @Deprecated
+    public CaseInsensitiveMap(int initialCapacity, float loadFactor)
+    {
+        map = new LinkedHashMap<>(initialCapacity, loadFactor);
     }
 
     /**
@@ -76,35 +93,35 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         if (m instanceof TreeMap)
         {
-            map = copy(m, new TreeMap<>());
+            map = copy(m, new TreeMap<K, V>());
         }
         else if (m instanceof LinkedHashMap)
         {
-            map = copy(m, new LinkedHashMap<>(m.size()));
+            map = copy(m, new LinkedHashMap<K, V>(m.size()));
         }
         else if (m instanceof ConcurrentSkipListMap)
         {
-            map = copy(m, new ConcurrentSkipListMap<>());
+            map = copy(m, new ConcurrentSkipListMap<K, V>());
         }
         else if (m instanceof ConcurrentMap)
         {
-            map = copy(m, new ConcurrentHashMap<>(m.size()));
+            map = copy(m, new ConcurrentHashMap<K, V>(m.size()));
         }
         else if (m instanceof WeakHashMap)
         {
-            map = copy(m, new WeakHashMap<>(m.size()));
+            map = copy(m, new WeakHashMap<K, V>(m.size()));
         }
         else if (m instanceof HashMap)
         {
-            map = copy(m, new HashMap<>(m.size()));
+            map = copy(m, new HashMap<K, V>(m.size()));
         }
         else
         {
-            map = copy(m, new LinkedHashMap<>(m.size()));
+            map = copy(m, new LinkedHashMap<K, V>(m.size()));
         }
     }
 
-    protected Map<K, V> copy(Map<K, V> source, Map dest)
+    protected Map<K, V> copy(Map<K, V> source, Map<K, V> dest)
     {
         for (Entry<K, V> entry : source.entrySet())
         {
@@ -138,13 +155,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     private boolean isCaseInsenstiveEntry(Object o)
     {
-        if (o == null) { return false; }
-        return CaseInsensitiveEntry.class.isAssignableFrom(o.getClass());
-    }
-
-    public CaseInsensitiveMap(int initialCapacity, float loadFactor)
-    {
-        map = new LinkedHashMap<>(initialCapacity, loadFactor);
+        return CaseInsensitiveEntry.class.isInstance(o);
     }
 
     public V get(Object key)
@@ -431,7 +442,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         return new AbstractSet<Entry<K, V>>()
         {
-            final Map<K, V> localMap = CaseInsensitiveMap.this;
             Iterator<Entry<K, V>> iter;
 
             public int size() { return map.size(); }
@@ -446,9 +456,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 }
 
                 Entry<K, V> that = (Entry<K, V>) o;
-                if (localMap.containsKey(that.getKey()))
+                if (CaseInsensitiveMap.this.containsKey(that.getKey()))
                 {
-                    Object value = localMap.get(that.getKey());
+                    Object value = CaseInsensitiveMap.this.get(that.getKey());
                     return Objects.equals(value, that.getValue());
                 }
                 return false;
@@ -458,7 +468,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             {
                 final int size = map.size();
                 Entry<K, V> that = (Entry<K, V>) o;
-                localMap.remove(that.getKey());
+                CaseInsensitiveMap.this.remove(that.getKey());
                 return map.size() != size;
             }
 
@@ -505,19 +515,9 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                     else
                     {   // Key present, now check value match
                         Object v = other.get(key);
-                        if (v == null)
+                        if (!Objects.equals(v, value))
                         {
-                            if (value != null)
-                            {
-                                i.remove();
-                            }
-                        }
-                        else
-                        {
-                            if (!v.equals(value))
-                            {
-                                i.remove();
-                            }
+                            i.remove();
                         }
                     }
                 }
@@ -557,7 +557,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             K superKey = super.getKey();
             if (superKey instanceof CaseInsensitiveString)
             {
-                return (K) superKey.toString();
+                return (K)((CaseInsensitiveString)superKey).original;
             }
             return superKey;
         }

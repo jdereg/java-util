@@ -27,7 +27,7 @@ import java.util.*;
  *     protected boolean isCaseInsensitive() { return false; }
  *
  *     // When size() > than this amount, the Map returned from getNewMap() is used to store elements.
- *     protected int compactSize() { return 100; }
+ *     protected int compactSize() { return 80; }
  *
  * **Empty**
  * This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
@@ -91,11 +91,11 @@ public class CompactMap<K, V> implements Map<K, V>
     
     public int size()
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             return ((Object[])val).length >> 1;
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             return ((Map<K, V>)val).size();
         }
@@ -136,7 +136,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public boolean containsKey(Object key)
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
@@ -148,7 +148,7 @@ public class CompactMap<K, V> implements Map<K, V>
             }
             return false;
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.containsKey(key);
@@ -164,7 +164,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public boolean containsValue(Object value)
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to Compactsize
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
@@ -177,7 +177,7 @@ public class CompactMap<K, V> implements Map<K, V>
             }
             return false;
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.containsValue(value);
@@ -193,7 +193,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public V get(Object key)
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
@@ -206,7 +206,7 @@ public class CompactMap<K, V> implements Map<K, V>
             }
             return null;
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.get(key);
@@ -222,7 +222,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public V put(K key, V value)
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
@@ -241,7 +241,7 @@ public class CompactMap<K, V> implements Map<K, V>
             {   // Grow array
                 Object[] expand = new Object[entries.length + 2];
                 System.arraycopy(entries, 0, expand, 0, entries.length);
-                // Place new entry
+                // Place new entry at end
                 expand[expand.length - 2] = key;
                 expand[expand.length - 1] = value;
                 val = expand;
@@ -263,7 +263,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 return null;
             }
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.put(key, value);
@@ -309,7 +309,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public V remove(Object key)
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             if (size() == 2)
             {   // When at 2 entries, we must drop back to CompactMapEntry or val (use clear() and put() to get us there).
@@ -351,7 +351,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 return null;    // not found
             }
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             if (!map.containsKey(key))
@@ -430,7 +430,7 @@ public class CompactMap<K, V> implements Map<K, V>
             return false;
         }
 
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             for (int i=0; i < entries.length; i += 2)
@@ -449,7 +449,7 @@ public class CompactMap<K, V> implements Map<K, V>
             }
             return true;
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.equals(other);
@@ -483,7 +483,7 @@ public class CompactMap<K, V> implements Map<K, V>
                         currentEntry = iter.next();
                         return currentEntry.getKey();
                     }
-                    public void remove() { iteratorRemove(currentEntry); }
+                    public void remove() { iteratorRemove(currentEntry, iter); currentEntry = null; }
                 };
             }
 
@@ -513,7 +513,7 @@ public class CompactMap<K, V> implements Map<K, V>
                         currentEntry = iter.next();
                         return currentEntry.getValue();
                     }
-                    public void remove() { iteratorRemove(currentEntry); }
+                    public void remove() { iteratorRemove(currentEntry, iter); currentEntry = null; }
                 };
             }
 
@@ -541,8 +541,8 @@ public class CompactMap<K, V> implements Map<K, V>
                     {
                         currentEntry = iter.next();
                         return new CompactMapEntry(currentEntry.getKey(), currentEntry.getValue());
-                    }
-                    public void remove() { iteratorRemove(currentEntry); }
+                   }
+                    public void remove() { iteratorRemove(currentEntry, iter); currentEntry = null; }
                 };
             }
             
@@ -553,10 +553,11 @@ public class CompactMap<K, V> implements Map<K, V>
                 if (o instanceof Entry)
                 {
                     Entry<K, V> entry = (Entry<K, V>)o;
-                    if (CompactMap.this.containsKey(entry.getKey()))
+                    K entryKey = entry.getKey();
+                    if (CompactMap.this.containsKey(entryKey))
                     {
-                        V value = CompactMap.this.get(entry.getKey());
-                        Entry<K, V> candidate = new AbstractMap.SimpleEntry<>(entry.getKey(), value);
+                        V value = CompactMap.this.get(entryKey);
+                        Entry<K, V> candidate = new AbstractMap.SimpleEntry<>(entryKey, value);
                         return Objects.equals(entry, candidate);
                     }
                 }
@@ -568,7 +569,7 @@ public class CompactMap<K, V> implements Map<K, V>
     private Map<K, V> getCopy()
     {
         Map<K, V> copy = getNewMap();   // Use their Map (TreeMap, HashMap, LinkedHashMap, etc.)
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize - copy Object[] into Map
             Object[] entries = (Object[]) CompactMap.this.val;
             int len = entries.length;
@@ -577,7 +578,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 copy.put((K)entries[i], (V)entries[i + 1]);
             }
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize - putAll to copy
             copy.putAll((Map<K, V>)CompactMap.this.val);
         }
@@ -591,22 +592,14 @@ public class CompactMap<K, V> implements Map<K, V>
         return copy;
     }
 
-    private void iteratorRemove(Entry<K, V> currentEntry)
+    private void iteratorRemove(Entry<K, V> currentEntry, Iterator<Entry<K, V>> i)
     {
         if (currentEntry == null)
         {   // remove() called on iterator
             throw new IllegalStateException("remove() called on an Iterator before calling next()");
         }
 
-        K key = currentEntry.getKey();
-        if (containsKey(key))
-        {
-            remove(key);
-        }
-        else
-        {
-            throw new IllegalStateException("Cannot remove from iterator when it is passed the last item.");
-        }
+        remove(currentEntry.getKey());
     }
 
     public Map minus(Object removeMe)
@@ -626,11 +619,11 @@ public class CompactMap<K, V> implements Map<K, V>
 
     protected LogicalValueType getLogicalValueType()
     {
-        if (Object[].class.isInstance(val))
+        if (val instanceof Object[])
         {   // 2 to compactSize
             return LogicalValueType.ARRAY;
         }
-        else if (Map.class.isInstance(val))
+        else if (val instanceof Map)
         {   // > compactSize
             return LogicalValueType.MAP;
         }
@@ -701,5 +694,5 @@ public class CompactMap<K, V> implements Map<K, V>
      */
     protected Map<K, V> getNewMap() { return new HashMap<>(); }
     protected boolean isCaseInsensitive() { return false; }
-    protected int compactSize() { return 100; }
+    protected int compactSize() { return 80; }
 }

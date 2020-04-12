@@ -1,4 +1,9 @@
 ### Revision History
+* 1.48.0
+  * Added `char` and `Character` support to `Convert.convert*()`
+  * Added full Javadoc to `Converter`.
+  * Performance improvement in `Iterator.remove()` for all of `CompactMap's` iterators: `keySet().iterator()`, `entrySet().iterator`, and `values().iterator`.
+  * In order to get to 100% code coverage with Jacoco, added more tests for `Converter`, `CaseInsenstiveMap`, and `CompactMap`.
 * 1.47.0
   * `Converter.convert2*()` methods added: If `null` passed in, primitive 'logical zero' is returned. Example: `Converter.convert(null, boolean.class)` returns `false`.
   * `Converter.convertTo*()` methods: if `null` passed in, `null` is returned.  Allows "tri-state" Boolean. Example: `Converter.convert(null, Boolean.class)` returns `null`.

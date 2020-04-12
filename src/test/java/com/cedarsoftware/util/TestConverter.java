@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -82,10 +83,12 @@ public class TestConverter
         assert (byte)25 == convert(new AtomicInteger(25), byte.class);
         assert (byte)100 == convert(new AtomicLong(100L), byte.class);
         assert (byte)1 == convert(new AtomicBoolean(true), byte.class);
+        assert (byte)0 == convert(new AtomicBoolean(false), byte.class);
 
         try
         {
             convert(TimeZone.getDefault(), byte.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -95,6 +98,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", byte.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -133,10 +137,12 @@ public class TestConverter
         assert (short)25 == convert(new AtomicInteger(25), short.class);
         assert (short)100 == convert(new AtomicLong(100L), Short.class);
         assert (short)1 == convert(new AtomicBoolean(true), Short.class);
+        assert (short)0 == convert(new AtomicBoolean(false), Short.class);
 
         try
         {
             convert(TimeZone.getDefault(), short.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -146,6 +152,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", short.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -177,10 +184,12 @@ public class TestConverter
         assert 25 == convert(new AtomicInteger(25), int.class);
         assert 100 == convert(new AtomicLong(100L), Integer.class);
         assert 1 == convert(new AtomicBoolean(true), Integer.class);
+        assert 0 == convert(new AtomicBoolean(false), Integer.class);
 
         try
         {
             convert(TimeZone.getDefault(), int.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -190,6 +199,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", int.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -229,10 +239,12 @@ public class TestConverter
         assert 25L == convert(new AtomicInteger(25), long.class);
         assert 100L == convert(new AtomicLong(100L), Long.class);
         assert 1L == convert(new AtomicBoolean(true), Long.class);
+        assert 0L == convert(new AtomicBoolean(false), Long.class);
 
         try
         {
             convert(TimeZone.getDefault(), long.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -242,6 +254,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", long.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -288,10 +301,13 @@ public class TestConverter
         assertEquals(100L, x.get());
         x = convert(new AtomicBoolean(true), AtomicLong.class);
         assertEquals(1L, x.get());
+        x = convert(new AtomicBoolean(false), AtomicLong.class);
+        assertEquals(0L, x.get());
 
         try
         {
             convert(TimeZone.getDefault(), AtomicLong.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -301,6 +317,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", AtomicLong.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -338,10 +355,21 @@ public class TestConverter
         try
         {
             convert(TimeZone.getDefault(), String.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
             assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+        }
+
+        try
+        {
+            convert(new HashMap<>(), HashMap.class);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported type"));
         }
     }
 
@@ -370,10 +398,12 @@ public class TestConverter
         assertEquals(new BigDecimal(25), convert(new AtomicInteger(25), BigDecimal.class));
         assertEquals(new BigDecimal(100), convert(new AtomicLong(100L), BigDecimal.class));
         assertEquals(BigDecimal.ONE, convert(new AtomicBoolean(true), BigDecimal.class));
+        assertEquals(BigDecimal.ZERO, convert(new AtomicBoolean(false), BigDecimal.class));
 
         try
         {
             convert(TimeZone.getDefault(), BigDecimal.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -383,6 +413,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", BigDecimal.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -415,10 +446,12 @@ public class TestConverter
         assertEquals(new BigInteger("25"), convert(new AtomicInteger(25), BigInteger.class));
         assertEquals(new BigInteger("100"), convert(new AtomicLong(100L), BigInteger.class));
         assertEquals(BigInteger.ONE, convert(new AtomicBoolean(true), BigInteger.class));
+        assertEquals(BigInteger.ZERO, convert(new AtomicBoolean(false), BigInteger.class));
 
         try
         {
             convert(TimeZone.getDefault(), BigInteger.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -428,6 +461,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", BigInteger.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -450,10 +484,12 @@ public class TestConverter
         assertEquals(25, (convert(new AtomicInteger(25), AtomicInteger.class)).get());
         assertEquals(100, (convert(new AtomicLong(100L), AtomicInteger.class)).get());
         assertEquals(1, (convert(new AtomicBoolean(true), AtomicInteger.class)).get());
+        assertEquals(0, (convert(new AtomicBoolean(false), AtomicInteger.class)).get());
 
         try
         {
             convert(TimeZone.getDefault(), AtomicInteger.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -463,6 +499,7 @@ public class TestConverter
         try
         {
             convert("45badNumber", AtomicInteger.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -587,6 +624,7 @@ public class TestConverter
         try
         {
             convert(TimeZone.getDefault(), Date.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -597,6 +635,7 @@ public class TestConverter
         try
         {
             convert(TimeZone.getDefault(), java.sql.Date.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -607,6 +646,7 @@ public class TestConverter
         try
         {
             convert("2015/01/33", Date.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -617,6 +657,7 @@ public class TestConverter
         try
         {
             convert("2015/01/33", java.sql.Date.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -796,6 +837,7 @@ public class TestConverter
         try
         {
             convert(TimeZone.getDefault(), float.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -805,6 +847,7 @@ public class TestConverter
         try
         {
             convert("45.6badNumber", Float.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -834,6 +877,7 @@ public class TestConverter
         try
         {
             convert(TimeZone.getDefault(), double.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -843,6 +887,7 @@ public class TestConverter
         try
         {
             convert("45.6badNumber", Double.class);
+            fail();
         }
         catch (IllegalArgumentException e)
         {
@@ -877,6 +922,7 @@ public class TestConverter
         try
         {
             convert(new Date(), Boolean.class);
+            fail();
         }
         catch (Exception e)
         {
@@ -914,6 +960,7 @@ public class TestConverter
         try
         {
             convert(new Date(), AtomicBoolean.class);
+            fail();
         }
         catch (Exception e)
         {
@@ -1074,6 +1121,8 @@ public class TestConverter
         assert 'z' == convert2char('z');
         assert 0 == convert2char("");
         assert 0 == convertToCharacter("");
+        assert 'A' == convert2char("65");
+        assert 'A' == convertToCharacter("65");
         try
         {
             convert2char("This is not a number");
@@ -1083,6 +1132,17 @@ public class TestConverter
         try
         {
             convert2char(new Date());
+            fail();
+        }
+        catch (IllegalArgumentException e) { }
+    }
+
+    @Test
+    public void testConvertUnknown()
+    {
+        try
+        {
+            convertToString(TimeZone.getDefault());
             fail();
         }
         catch (IllegalArgumentException e) { }

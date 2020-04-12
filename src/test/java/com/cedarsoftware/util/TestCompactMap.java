@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.security.SecureRandom;
@@ -1582,6 +1583,34 @@ public class TestCompactMap
     }
 
     @Test
+    public void testWithObjectArrayOnRHS1()
+    {
+        CompactMap<String, Object> map = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "key1"; }
+            protected int compactSize() { return 2; }
+            protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+        };
+
+        map.put("key1", "bar");
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.OBJECT;
+        map.put("key1", new Object[] { "bar" } );
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
+        Arrays.equals((Object[])map.get("key1"), new Object[] { "bar" });
+        map.put("key1", new Object[] { "baz" } );
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
+        Arrays.equals((Object[])map.get("key1"), new Object[] { "baz" });
+        map.put("key1", new HashMap() );
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
+        assert map.get("key1") instanceof HashMap;
+        Map x = (Map) map.get("key1");
+        assert x.isEmpty();
+        map.put("key1", "toad");
+        assert map.size() == 1;
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.OBJECT;
+    }
+
+    @Test
     public void testRemove2To1WithNoMapOnRHS()
     {
         testRemove2To1WithNoMapOnRHSHelper("key1");
@@ -1771,11 +1800,17 @@ public class TestCompactMap
         Iterator<Map.Entry<String, Object>> iterator = entrySet.iterator();
         assert iterator.hasNext();
         iterator.next();
+        assert iterator.hasNext();
         iterator.next();
+        assert iterator.hasNext();
         iterator.next();
+        assert iterator.hasNext();
         iterator.next();
+        assert iterator.hasNext();
         iterator.next();
+        assert !iterator.hasNext();
         iterator.remove();
+        assert !iterator.hasNext();
         assert map.size() == 4;
 
         iterator = entrySet.iterator();
@@ -2503,7 +2538,7 @@ public class TestCompactMap
         assert key instanceof String;   // "key" is the default
     }
 
-//    @Ignore
+    @Ignore
     @Test
     public void testPerformance()
     {

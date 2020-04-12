@@ -1432,6 +1432,50 @@ public class TestCaseInsensitiveMap
         CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("foo");
         assert ciString.equals(ciString);
         assert ciString.compareTo(1.5d) < 0;
+
+        CaseInsensitiveMap.CaseInsensitiveString ciString2 = new CaseInsensitiveMap.CaseInsensitiveString("bar");
+        assert !ciString.equals(ciString2);
+    }
+
+    @Test
+    public void testCaseInsensitiveStringHashcodeCollision()
+    {
+        CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("f608607");
+        CaseInsensitiveMap.CaseInsensitiveString ciString2 = new CaseInsensitiveMap.CaseInsensitiveString("f16010070");
+        assert ciString.hashCode() == ciString2.hashCode();
+        assert !ciString.equals(ciString2);
+    }
+
+    @Ignore
+    @Test
+    public void testGenHash()
+    {
+        final String TEXT = "was stored earlier had the same hash as";
+        HashMap<Integer, CaseInsensitiveMap.CaseInsensitiveString> hs = new HashMap<>();
+        long t1 = System.currentTimeMillis();
+        long t2 = System.currentTimeMillis();
+        for (long l = 0; l < Long.MAX_VALUE; l++)
+        {
+            CaseInsensitiveMap.CaseInsensitiveString key = new CaseInsensitiveMap.CaseInsensitiveString("f" + l);
+            if (hs.containsKey(key.hashCode()))
+            {
+                System.out.println("'" + hs.get(key.hashCode()) + "' " + TEXT + " '" + key + "'");
+                break;
+            }
+            else
+            {
+                hs.put(key.hashCode(),key);
+            }
+
+            t2 = System.currentTimeMillis();
+
+            if (t2 - t1 > 10000)
+            {
+                t1 = System.currentTimeMillis();
+                System.out.println("10 seconds gone! size is:"+hs.size());
+            }
+        }
+        System.out.println("Done");
     }
 
     @Test

@@ -194,6 +194,92 @@ public class TestCompactSet
         catch (IllegalStateException e) { }
     }
 
+    @Test
+    public void testCaseInsensitivity()
+    {
+        CompactSet<String> set = new CompactSet<String>()
+        {
+            protected boolean isCaseInsensitive() { return true; }
+            protected Set<String> getNewSet() { return new CaseInsensitiveSet<>(); }
+        };
+
+        set.add("foo");
+        set.add("bar");
+        set.add("baz");
+        set.add("qux");
+        assert !set.contains("foot");
+        assert !set.contains("bart");
+        assert !set.contains("bazinga");
+        assert !set.contains("quux");
+        assert set.contains("FOO");
+        assert set.contains("BAR");
+        assert set.contains("BAZ");
+        assert set.contains("QUX");
+        clearViaIterator(set);
+    }
+
+    @Test
+    public void testCaseSensitivity()
+    {
+        CompactSet<String> set = new CompactSet<>();
+
+        set.add("foo");
+        set.add("bar");
+        set.add("baz");
+        set.add("qux");
+        assert !set.contains("Foo");
+        assert !set.contains("Bar");
+        assert !set.contains("Baz");
+        assert !set.contains("Qux");
+        assert set.contains("foo");
+        assert set.contains("bar");
+        assert set.contains("baz");
+        assert set.contains("qux");
+        clearViaIterator(set);
+    }
+
+    @Test
+    public void testCaseInsensitivity2()
+    {
+        CompactSet<String> set = new CompactSet<String>()
+        {
+            protected boolean isCaseInsensitive() { return true; }
+            protected Set<String> getNewSet() { return new CaseInsensitiveSet<>(); }
+        };
+
+        for (int i=0; i < set.compactSize() + 5; i++)
+        {
+            set.add("FoO" + i);
+        }
+
+        assert set.contains("foo0");
+        assert set.contains("FOO0");
+        assert set.contains("foo1");
+        assert set.contains("FOO1");
+        assert set.contains("foo" + (set.compactSize() + 3));
+        assert set.contains("FOO" + (set.compactSize() + 3));
+        clearViaIterator(set);
+    }
+
+    @Test
+    public void testCaseSensitivity2()
+    {
+        CompactSet<String> set = new CompactSet<>();
+
+        for (int i=0; i < set.compactSize() + 5; i++)
+        {
+            set.add("FoO" + i);
+        }
+
+        assert set.contains("FoO0");
+        assert !set.contains("foo0");
+        assert set.contains("FoO1");
+        assert !set.contains("foo1");
+        assert set.contains("FoO" + (set.compactSize() + 3));
+        assert !set.contains("foo" + (set.compactSize() + 3));
+        clearViaIterator(set);
+    }
+
     @Ignore
     @Test
     public void testPerformance()

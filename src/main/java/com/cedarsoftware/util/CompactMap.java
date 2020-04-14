@@ -692,7 +692,7 @@ public class CompactMap<K, V> implements Map<K, V>
     /**
      * @return new empty Map instance to use when there is more than one entry.
      */
-    protected Map<K, V> getNewMap() { return new HashMap<>(); }
+    protected Map<K, V> getNewMap() { return new HashMap<>(compactSize() + 1); }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }
 }

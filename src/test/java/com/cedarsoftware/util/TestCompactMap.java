@@ -2537,7 +2537,6 @@ public class TestCompactMap
         assert key instanceof String;   // "key" is the default
     }
 
-//    @Ignore
     @Test
     public void testPerformance()
     {

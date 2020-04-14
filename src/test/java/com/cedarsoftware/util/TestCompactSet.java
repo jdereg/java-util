@@ -1,8 +1,14 @@
 package com.cedarsoftware.util;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.TreeSet;
+
+import static org.junit.Assert.fail;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,8 +35,14 @@ public class TestCompactSet
         Set<String> set = new CompactSet<>();
         assert set.isEmpty();
         assert set.size() == 0;
+        assert !set.contains(null);
+        assert !set.contains("foo");
+        assert !set.remove("foo");
         assert set.add("foo");
+        assert !set.add("foo");
         assert set.size() == 1;
+        assert !set.isEmpty();
+        assert set.contains("foo");
         assert !set.remove("bar");
         assert set.remove("foo");
         assert set.isEmpty();
@@ -43,11 +55,238 @@ public class TestCompactSet
         assert set.isEmpty();
         assert set.size() == 0;
         assert set.add("foo");
+        assert !set.add("foo");
         assert set.add("bar");
+        assert !set.add("bar");
         assert set.size() == 2;
+        assert !set.isEmpty();
         assert !set.remove("baz");
         assert set.remove("foo");
         assert set.remove("bar");
+        assert set.isEmpty();
+    }
+
+    @Test
+    public void testBadNoArgConstructor()
+    {
+        try
+        {
+            new CompactSet() { protected int compactSize() { return 1; } };
+            fail();
+        }
+        catch (IllegalStateException e) { }
+    }
+
+    @Test
+    public void testBadConstructor()
+    {
+        Set treeSet = new TreeSet();
+        treeSet.add("foo");
+        treeSet.add("baz");
+        Set set = new CompactSet(treeSet);
+        assert set.contains("foo");
+        assert set.contains("baz");
+        assert set.size() == 2;
+    }
+
+    @Test
+    public void testSize()
+    {
+        CompactSet<Integer> set = new CompactSet<>();
+        for (int i=0; i < set.compactSize() + 5; i++)
+        {
+            set.add(i);
+        }
+        assert set.size() == set.compactSize() + 5;
+        assert set.contains(0);
+        assert set.contains(1);
+        assert set.contains(set.compactSize() - 5);
+        assert !set.remove("foo");
+
+        clearViaIterator(set);
+    }
+
+    @Test
+    public void testHeterogeneuousItems()
+    {
+        CompactSet<Object> set = new CompactSet<>();
+        assert set.add(16);
+        assert set.add("Foo");
+        assert set.add(true);
+        assert set.add(null);
+        assert set.size() == 4;
+
+        assert !set.contains(7);
+        assert !set.contains("Bar");
+        assert !set.contains(false);
+        assert !set.contains(0);
+
+        assert set.contains(16);
+        assert set.contains("Foo");
+        assert set.contains(true);
+        assert set.contains(null);
+
+        set = new CompactSet() { protected boolean isCaseInsensitive() { return true; } };
+        assert set.add(16);
+        assert set.add("Foo");
+        assert set.add(true);
+        assert set.add(null);
+
+        assert set.contains("foo");
+        assert set.contains("FOO");
+        assert set.size() == 4;
+
+        clearViaIterator(set);
+    }
+
+    @Test
+    public void testClear()
+    {
+        CompactSet<Object> set = new CompactSet<>();
+
+        assert set.isEmpty();
+        set.clear();
+        assert set.isEmpty();
+        assert set.add('A');
+        assert !set.add('A');
+        assert set.size() == 1;
+        assert !set.isEmpty();
+        set.clear();
+        assert set.isEmpty();
+
+        for (int i=0; i < set.compactSize() + 1; i++)
+        {
+            set.add(new Long(i));
+        }
+        assert set.size() == set.compactSize() + 1;
+        set.clear();
+        assert set.isEmpty();
+    }
+
+    @Test
+    public void testRemove()
+    {
+        CompactSet<String> set = new CompactSet<>();
+
+        try
+        {
+            Iterator<String> i = set.iterator();
+            i.remove();
+            fail();
+        }
+        catch (IllegalStateException e) { }
+
+        assert set.add("foo");
+        assert set.add("bar");
+        assert set.add("baz");
+
+        Iterator<String> i = set.iterator();
+        while (i.hasNext())
+        {
+            i.next();
+            i.remove();
+        }
+        try
+        {
+            i.remove();
+            fail();
+        }
+        catch (IllegalStateException e) { }
+    }
+
+    @Ignore
+    @Test
+    public void testPerformance()
+    {
+        int maxSize = 1000;
+        final int[] compactSize = new int[1];
+        int lower = 5;
+        int upper = 140;
+        long totals[] = new long[upper - lower + 1];
+
+        for (int x = 0; x < 300; x++)
+        {
+            for (int i = lower; i < upper; i++)
+            {
+                compactSize[0] = i;
+                CompactSet<String> set = new CompactSet<String>()
+                {
+                    protected Set<String> getNewSet()
+                    {
+                        return new HashSet<>();
+                    }
+                    protected boolean isCaseInsensitive()
+                    {
+                        return false;
+                    }
+                    protected int compactSize()
+                    {
+                        return compactSize[0];
+                    }
+                };
+
+                long start = System.nanoTime();
+                // ===== Timed
+                for (int j = 0; j < maxSize; j++)
+                {
+                    set.add("" + j);
+                }
+
+                for (int j = 0; j < maxSize; j++)
+                {
+                    set.add("" + j);
+                }
+
+                Iterator iter = set.iterator();
+                while (iter.hasNext())
+                {
+                    iter.next();
+                    iter.remove();
+                }
+                // ===== End Timed
+                long end = System.nanoTime();
+                totals[i - lower] += end - start;
+            }
+
+            Set<String> set2 = new HashSet<>();
+            long start = System.nanoTime();
+            // ===== Timed
+            for (int i = 0; i < maxSize; i++)
+            {
+                set2.add("" + i);
+            }
+
+            for (int i = 0; i < maxSize; i++)
+            {
+                set2.contains("" + i);
+            }
+
+            Iterator iter = set2.iterator();
+            while (iter.hasNext())
+            {
+                iter.next();
+                iter.remove();
+            }
+            // ===== End Timed
+            long end = System.nanoTime();
+            totals[totals.length - 1] += end - start;
+        }
+        for (int i = lower; i < upper; i++)
+        {
+            System.out.println("CompacSet.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
+        }
+        System.out.println("HashSet = " + totals[totals.length - 1] / 1000000.0d);
+    }
+
+    private void clearViaIterator(Set set)
+    {
+        Iterator<Integer> i = set.iterator();
+        while (i.hasNext())
+        {
+            i.next();
+            i.remove();
+        }
+        assert set.size() == 0;
         assert set.isEmpty();
     }
 }

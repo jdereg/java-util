@@ -46,6 +46,7 @@ import java.util.*;
 public class CompactSet<E> extends AbstractSet<E>
 {
     private static final String EMPTY_SET = "_︿_ψ_☼";
+    private static final String NO_ENTRY = EMPTY_SET;
     private Object val = EMPTY_SET;
 
     public CompactSet()
@@ -130,9 +131,10 @@ public class CompactSet<E> extends AbstractSet<E>
         return new Iterator<E>()
         {
             Iterator<E> iter = getCopy().iterator();
-            E currentEntry = null;
+            E currentEntry = (E) NO_ENTRY;
 
             public boolean hasNext() { return iter.hasNext(); }
+            
             public E next()
             {
                 currentEntry = iter.next();
@@ -141,21 +143,21 @@ public class CompactSet<E> extends AbstractSet<E>
 
             public void remove()
             {
-                if (currentEntry == null)
+                if (currentEntry == (E)NO_ENTRY)
                 {   // remove() called on iterator
                     throw new IllegalStateException("remove() called on an Iterator before calling next()");
                 }
                 CompactSet.this.remove(currentEntry);
-                currentEntry = null;
+                currentEntry = (E)NO_ENTRY;
             }
         };
     }
 
     private Set<E> getCopy()
     {
-        Set<E> copy = getNewSet();   // Use their Map (TreeMap, HashMap, LinkedHashMap, etc.)
+        Set<E> copy = getNewSet();   // Use their Set (TreeSet, HashSet, LinkedHashSet, etc.)
         if (val instanceof Object[])
-        {   // 1 to compactSize - copy Object[] into Map
+        {   // 1 to compactSize - copy Object[] into Set
             Object[] entries = (Object[]) CompactSet.this.val;
             for (Object entry : entries)
             {

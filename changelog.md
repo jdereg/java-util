@@ -1,4 +1,7 @@
 ### Revision History
+* 1.49.0
+  * Added `CompactSet`.  Works similarly to `CompactMap` with single `Object[]` holding elements until it crosses `compactSize()` threshold.  
+  This `Object[]` is adjusted dynamically as objects are added and removed.  
 * 1.48.0
   * Added `char` and `Character` support to `Convert.convert*()`
   * Added full Javadoc to `Converter`.

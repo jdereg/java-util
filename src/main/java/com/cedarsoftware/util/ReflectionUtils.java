@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentMap;
  * Utilities to simplify writing reflective code as well as improve performance of reflective operations like
  * method and annotation lookups.
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

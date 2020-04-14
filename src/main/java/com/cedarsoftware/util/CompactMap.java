@@ -5,7 +5,7 @@ import java.util.*;
 /**
  * Many developers do not realize than they may have thousands or hundreds of thousands of Maps in memory, often
  * representing small JSON objects.  These maps (often HashMaps) usually have a table of 16/32/64... elements in them,
- * with so many empty elements.  HashMap doubles it's internal storage each time it expands, so often these Maps have
+ * with many empty elements.  HashMap doubles it's internal storage each time it expands, so often these Maps have
  * fewer than 50% of these arrays filled.
  *
  * CompactMap is a Map that strives to reduce memory at all costs while retaining speed that is close to HashMap's speed.
@@ -245,7 +245,6 @@ public class CompactMap<K, V> implements Map<K, V>
                 expand[expand.length - 2] = key;
                 expand[expand.length - 1] = value;
                 val = expand;
-                return null;
             }
             else
             {   // Switch to Map - copy entries
@@ -260,8 +259,8 @@ public class CompactMap<K, V> implements Map<K, V>
                 // Place new entry
                 map.put(key, value);
                 val = map;
-                return null;
             }
+            return null;
         }
         else if (val instanceof Map)
         {   // > compactSize
@@ -468,7 +467,7 @@ public class CompactMap<K, V> implements Map<K, V>
         return new AbstractSet<K>()
         {
             Iterator<Entry<K,V>> iter;
-            Entry<K, V> currentEntry;
+            Entry<K, V> currentEntry = null;
 
             public Iterator<K> iterator()
             {
@@ -498,7 +497,7 @@ public class CompactMap<K, V> implements Map<K, V>
         return new AbstractCollection<V>()
         {
             Iterator<Entry<K, V>> iter;
-            Entry<K, V> currentEntry;
+            Entry<K, V> currentEntry = null;
 
             public Iterator<V> iterator()
             {
@@ -527,7 +526,7 @@ public class CompactMap<K, V> implements Map<K, V>
         return new AbstractSet<Entry<K,V>>()
         {
             Iterator<Entry<K, V>> iter;
-            Entry<K, V> currentEntry;
+            Entry<K, V> currentEntry = null;
 
             public Iterator<Entry<K, V>> iterator()
             {
@@ -595,7 +594,7 @@ public class CompactMap<K, V> implements Map<K, V>
     private void iteratorRemove(Entry<K, V> currentEntry, Iterator<Entry<K, V>> i)
     {
         if (currentEntry == null)
-        {   // remove() called on iterator
+        {   // remove() called on iterator prematurely
             throw new IllegalStateException("remove() called on an Iterator before calling next()");
         }
 
@@ -690,7 +689,7 @@ public class CompactMap<K, V> implements Map<K, V>
     protected K getSingleValueKey() { return (K) "key"; };
 
     /**
-     * @return new empty Map instance to use when there is more than one entry.
+     * @return new empty Map instance to use when size() becomes > compactSize().
      */
     protected Map<K, V> getNewMap() { return new HashMap<>(compactSize() + 1); }
     protected boolean isCaseInsensitive() { return false; }

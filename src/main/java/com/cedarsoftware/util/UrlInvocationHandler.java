@@ -39,7 +39,7 @@ import java.net.HttpURLConnection;
  * </pre>
  *
  * @author Ken Partlow (kpartlow@gmail.com)
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

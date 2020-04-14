@@ -9,16 +9,11 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author Ken Partlow
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

@@ -10,7 +10,7 @@ import java.util.Arrays;
  * also provides direct access to its internal buffer so that it does not need to be
  * duplicated when read.
  * 
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

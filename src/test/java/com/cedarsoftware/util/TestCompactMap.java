@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.security.SecureRandom;
@@ -10,7 +9,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import static org.junit.Assert.fail;
 
 /**
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -2538,7 +2537,7 @@ public class TestCompactMap
         assert key instanceof String;   // "key" is the default
     }
 
-    @Ignore
+//    @Ignore
     @Test
     public void testPerformance()
     {

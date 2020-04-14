@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * `Converter.convert()` converts using `convertTo*()` methods for primitive wrappers, and
  *      `convert2*()` methods for primitives.
  *      
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

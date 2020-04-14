@@ -9,7 +9,7 @@ import java.util.Iterator;
  * Handy utilities for working with Java arrays.
  *
  * @author Ken Partlow
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

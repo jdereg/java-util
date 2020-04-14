@@ -3,7 +3,7 @@ package com.cedarsoftware.util;
 import org.junit.Test;
 
 /**
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

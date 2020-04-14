@@ -2,13 +2,7 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Java Object Graph traverser.  It will visit all Java object
@@ -16,7 +10,7 @@ import java.util.Map;
  * each object encountered, including the root.  It will properly
  * detect cycles within the graph and not hang.
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

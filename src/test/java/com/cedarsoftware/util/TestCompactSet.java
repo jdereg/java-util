@@ -1,8 +1,8 @@
 package com.cedarsoftware.util;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.zip.GZIPOutputStream;
+import org.junit.Test;
+
+import java.util.Set;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -21,17 +21,33 @@ import java.util.zip.GZIPOutputStream;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class AdjustableGZIPOutputStream extends GZIPOutputStream
+public class TestCompactSet
 {
-    public AdjustableGZIPOutputStream(OutputStream out, int level) throws IOException
+    @Test
+    public void testSimpleCases()
     {
-        super(out);
-        def.setLevel(level);
+        Set<String> set = new CompactSet<>();
+        assert set.isEmpty();
+        assert set.size() == 0;
+        assert set.add("foo");
+        assert set.size() == 1;
+        assert !set.remove("bar");
+        assert set.remove("foo");
+        assert set.isEmpty();
     }
 
-    public AdjustableGZIPOutputStream(OutputStream out, int size, int level) throws IOException
+    @Test
+    public void testSimpleCases2()
     {
-        super(out, size);
-        def.setLevel(level);
+        Set<String> set = new CompactSet<>();
+        assert set.isEmpty();
+        assert set.size() == 0;
+        assert set.add("foo");
+        assert set.add("bar");
+        assert set.size() == 2;
+        assert !set.remove("baz");
+        assert set.remove("foo");
+        assert set.remove("bar");
+        assert set.isEmpty();
     }
 }

@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -19,7 +18,7 @@ import java.security.spec.AlgorithmParameterSpec;
  * Useful encryption utilities that simplify tasks like getting an
  * encrypted String return value (or MD5 hash String) for String or
  * Stream input.
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

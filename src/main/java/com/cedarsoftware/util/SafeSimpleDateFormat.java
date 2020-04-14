@@ -1,12 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.text.DateFormatSymbols;
-import java.text.FieldPosition;
-import java.text.Format;
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
+import java.text.*;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
@@ -22,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * by a String format (e.g. "yyyy/M/d", etc.), for each new SimpleDateFormat
  * instance that was created within the threads execution context.
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

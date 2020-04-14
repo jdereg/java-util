@@ -23,7 +23,7 @@ import static java.lang.System.currentTimeMillis;
  * <br>
  * The IDs are guaranteed to be strictly increasing.
  * 
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         Roger Judd (@HonorKnight on GitHub) for adding code to ensure increasing order.
  *         <br>
  *         Copyright (c) Cedar Software LLC

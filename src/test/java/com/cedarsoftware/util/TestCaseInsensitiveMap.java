@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import static org.junit.Assert.*;
 
 /**
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

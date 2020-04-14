@@ -26,7 +26,7 @@ import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
  * .getKey() on the entry is case insensitive when compared, but the
  * returned key is a String.
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

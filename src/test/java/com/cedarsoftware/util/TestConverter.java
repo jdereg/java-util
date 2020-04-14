@@ -21,7 +21,7 @@ import static com.cedarsoftware.util.TestConverter.fubar.foo;
 import static org.junit.Assert.*;
 
 /**
- * @author John DeRegnaucourt (john@cedarsoftware.com) & Ken Partlow
+ * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

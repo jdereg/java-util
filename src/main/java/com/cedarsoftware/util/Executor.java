@@ -13,7 +13,7 @@ import java.io.File;
  * String result = exec.getOut()
  * </pre>
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

@@ -2,19 +2,7 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -35,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * A, B, and C.  Then a.deepEquals(a') will return true.  It uses cycle detection
  * storing visited objects in a Set to prevent endless loops.
  *
- * @author John DeRegnaucourt (john@cedarsoftware.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

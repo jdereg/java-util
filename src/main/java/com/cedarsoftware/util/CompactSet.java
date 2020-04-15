@@ -19,10 +19,10 @@ import java.util.*;
  *     // Map you would like it to use when size() > compactSize().  HashSet is default
  *     protected abstract Map<K, V> getNewMap();
  *
- *     // If you want case insensitivity, return true and return new CaseInsensitiveSet or TreeSet(String.CASE_INSENSITIVE_PRDER) from getNewMap()
+ *     // If you want case insensitivity, return true and return new CaseInsensitiveSet or TreeSet(String.CASE_INSENSITIVE_PRDER) from getNewSet()
  *     protected boolean isCaseInsensitive() { return false; }
  *
- *     // When size() > than this amount, the Map returned from getNewMap() is used to store elements.
+ *     // When size() > than this amount, the Set returned from getNewSet() is used to store elements.
  *     protected int compactSize() { return 80; }
  *
  * This Set supports holding a null element.

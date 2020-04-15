@@ -284,7 +284,7 @@ public class CompactMap<K, V> implements Map<K, V>
         if (compareKeys(key, getLogicalSingleKey()))
         {   // Overwrite
             Object save = getLogicalSingleValue();
-            if (Objects.equals(getSingleValueKey(), key) && !(value instanceof Map || value instanceof Object[]))
+            if (compareKeys(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[]))
             {
                 val = value;
             }

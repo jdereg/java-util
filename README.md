@@ -4,6 +4,7 @@ java-util
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util)
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 [![HitCount](http://hits.dwyl.com/jdereg/java-util.svg)](http://hits.dwyl.com/jdereg/java-util)
+
 Rarely available and hard-to-write Java utilities, written correctly, and thoroughly tested (> 98% code coverage via JUnit tests).
 
 To include in your project:

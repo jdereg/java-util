@@ -993,7 +993,6 @@ public class TestCaseInsensitiveMap
         assertFalse(s.equals(secondStringMap.entrySet()));
         m.put("five", null);
         assertTrue(m.entrySet().equals(secondStringMap.entrySet()));
-
     }
 
     @Test

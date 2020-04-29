@@ -7,7 +7,7 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -1663,17 +1663,23 @@ public class TestCompactMap
     @Test
     public void testEntrySet()
     {
-        testEntrySetHelper("key1");
-        testEntrySetHelper("bingo");
+        testEntrySetHelper("key1", 2);
+        testEntrySetHelper("bingo", 2);
+        testEntrySetHelper("key1", 3);
+        testEntrySetHelper("bingo", 3);
+        testEntrySetHelper("key1", 4);
+        testEntrySetHelper("bingo", 4);
+        testEntrySetHelper("key1", 5);
+        testEntrySetHelper("bingo", 5);
     }
 
-    private void testEntrySetHelper(final String singleKey)
+    private void testEntrySetHelper(final String singleKey, final int compactSize)
     {
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
-            protected int compactSize() { return 3; }
+            protected int compactSize() { return compactSize; }
         };
         
         assert map.put("key1", "foo") == null;
@@ -1725,17 +1731,23 @@ public class TestCompactMap
     @Test
     public void testEntrySetIterator()
     {
-        testEntrySetIteratorHelper("key1");
-        testEntrySetIteratorHelper("bingo");
+        testEntrySetIteratorHelper("key1", 2);
+        testEntrySetIteratorHelper("bingo", 2);
+        testEntrySetIteratorHelper("key1", 3);
+        testEntrySetIteratorHelper("bingo", 3);
+        testEntrySetIteratorHelper("key1", 4);
+        testEntrySetIteratorHelper("bingo", 4);
+        testEntrySetIteratorHelper("key1", 5);
+        testEntrySetIteratorHelper("bingo", 5);
     }
 
-    private void testEntrySetIteratorHelper(final String singleKey)
+    private void testEntrySetIteratorHelper(final String singleKey, final int compactSize)
     {
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
-            protected int compactSize() { return 3; }
+            protected int compactSize() { return compactSize; }
         };
 
         assert map.put("key1", "foo") == null;
@@ -1774,16 +1786,22 @@ public class TestCompactMap
     @Test
     public void testEntrySetIteratorHardWay()
     {
-        testEntrySetIteratorHardWayHelper("key1");
-        testEntrySetIteratorHardWayHelper("bingo");
+        testEntrySetIteratorHardWayHelper("key1", 2);
+        testEntrySetIteratorHardWayHelper("bingo", 2);
+        testEntrySetIteratorHardWayHelper("key1", 3);
+        testEntrySetIteratorHardWayHelper("bingo", 3);
+        testEntrySetIteratorHardWayHelper("key1", 4);
+        testEntrySetIteratorHardWayHelper("bingo", 4);
+        testEntrySetIteratorHardWayHelper("key1", 5);
+        testEntrySetIteratorHardWayHelper("bingo", 5);
     }
 
-    private void testEntrySetIteratorHardWayHelper(final String singleKey)
+    private void testEntrySetIteratorHardWayHelper(final String singleKey, final int compactSize)
     {
         Map<String, Object> map = new CompactMap<String, Object>()
         {
             protected String getSingleValueKey() { return singleKey; }
-            protected int compactSize() { return 3; }
+            protected int compactSize() { return compactSize; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
         };
 
@@ -2538,6 +2556,608 @@ public class TestCompactMap
         assert key instanceof String;   // "key" is the default
     }
 
+    @Test
+    public void testCaseInsensitiveEntries()
+    {
+        CompactMap<Object, Object> map = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 3; }
+        };
+        
+        map.put("Key1", "foo");
+        map.put("Key2", "bar");
+        map.put("Key3", "baz");
+        map.put("Key4", "qux");
+        map.put("Key5", "quux");
+        map.put("Key6", "quux");
+        map.put(TimeZone.getDefault(), "garply");
+        map.put(16, "x");
+        map.put(29, "x");
+        map.put(100, 200);
+        map.put(null, null);
+        TestUtil.assertContainsIgnoreCase(map.toString(), "Key1", "foo", "ZoneInfo");
+
+        Map map2 = new LinkedHashMap<>();
+        map2.put("KEy1", "foo");
+        map2.put("KEy2", "bar");
+        map2.put("KEy3", "baz");
+        map2.put(TimeZone.getDefault(), "qux");
+        map2.put("Key55", "quux");
+        map2.put("Key6", "xuuq");
+        map2.put("Key7", "garply");
+        map2.put("Key8", "garply");
+        map2.put(29, "garply");
+        map2.put(100, 200);
+        map2.put(null, null);
+
+        List answers = Arrays.asList(new Object[] {true, true, true, false, false, false, false, false, false, true, true });
+        assert answers.size() == map.size();
+        assert map.size() == map2.size();
+
+        Iterator<Map.Entry<Object, Object>> i = map.entrySet().iterator();
+        Iterator<Map.Entry<Object, Object>> j = map2.entrySet().iterator();
+        Iterator<Boolean> k = answers.iterator();
+
+        while (i.hasNext())
+        {
+            Map.Entry<Object, Object> entry1 = i.next();
+            Map.Entry<Object, Object> entry2 = j.next();
+            Boolean answer = k.next();
+            assert Objects.equals(answer, entry1.equals(entry2));
+        }
+
+        Map mapLinked = new CompactCILinkedMap(map);
+        Map mapHash = new CompactCIHashMap(map2);
+        assert mapLinked.containsKey("key1");
+        assert mapHash.containsKey("key1");
+        assert mapLinked.containsValue("garply");
+        assert mapHash.containsValue("garply");
+    }
+
+    @Test
+    public void testCaseInsensitiveEntries2()
+    {
+        CompactMap<Object, Object> map = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 3; }
+        };
+
+        map.put("Key1", "foo");
+        
+        Iterator<Map.Entry<Object, Object>> i = map.entrySet().iterator();
+        Map.Entry<Object, Object> entry = i.next();
+        assert !entry.equals(TimeZone.getDefault());
+    }
+
+    @Test
+    public void testIdentityEquals()
+    {
+        Map compact = new CompactMap();
+        compact.put("foo", "bar");
+        assert compact.equals(compact);
+    }
+
+    @Test
+    public void testCI()
+    {
+        CompactMap<Object, Object> map = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        map.put("One", "Two");
+        map.put("Three", "Four");
+        map.put("Five", "Six");
+        map.put("thREe", "foo");
+        assert map.size() == 3;
+    }
+
+    @Test
+    public void testWrappedTreeMap()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("z", "zulu");
+        m.put("J", "juliet");
+        m.put("a", "alpha");
+        assert m.size() == 3;
+        Iterator i = m.keySet().iterator();
+        assert "a" == i.next();
+        assert "J" == i.next();
+        assert "z" == i.next();
+        assert m.containsKey("A");
+        assert m.containsKey("j");
+        assert m.containsKey("Z");
+    }
+
+    @Test
+    public void testKeySetRemoveAll2()
+    {
+        CompactMap<Object, Object> m = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        
+        Set s = m.keySet();
+        Set items = new HashSet();
+        items.add("one");
+        items.add("five");
+        assertTrue(s.removeAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("three"));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add("dog");
+        s.removeAll(items);
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("three"));
+        assertTrue(m.containsKey("three"));
+    }
+
+    @Test
+    public void testEntrySetContainsAll()
+    {
+        CompactMap<Object, Object> m = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("one", "Two"));
+        items.add(getEntry("thRee", "Four"));
+        assertTrue(s.containsAll(items));
+
+        items = new HashSet();
+        items.add(getEntry("one", "two"));
+        items.add(getEntry("thRee", "Four"));
+        assertFalse(s.containsAll(items));
+    }
+
+    @Test
+    public void testEntrySetRemoveAll()
+    {
+        CompactMap<Object, Object> m = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("one", "Two"));
+        items.add(getEntry("five", "Six"));
+        assertTrue(s.removeAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains(getEntry("three", "Four")));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add(getEntry("dog", "Two"));
+        assertFalse(s.removeAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains(getEntry("three", "Four")));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add(getEntry("three", "Four"));
+        assertTrue(s.removeAll(items));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testEntrySetRetainAll()
+    {
+        CompactMap<Object, Object> m = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        Set s = m.entrySet();
+        Set items = new HashSet();
+        items.add(getEntry("three", "Four"));
+        assertTrue(s.retainAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains(getEntry("three", "Four")));
+        assertTrue(m.containsKey("three"));
+
+        items.clear();
+        items.add("dog");
+        assertTrue(s.retainAll(items));
+        assertEquals(0, m.size());
+        assertEquals(0, s.size());
+    }
+
+    @Test
+    public void testPutAll2()
+    {
+        CompactMap<String, Object> stringMap = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        stringMap.put("One", "Two");
+        stringMap.put("Three", "Four");
+        stringMap.put("Five", "Six");
+        CompactCILinkedMap<String, Object> newMap = new CompactCILinkedMap<String, Object>();
+        newMap.put("thREe", "four");
+        newMap.put("Seven", "Eight");
+
+        stringMap.putAll(newMap);
+
+        assertTrue(stringMap.size() == 4);
+        assertFalse(stringMap.get("one").equals("two"));
+        assertTrue(stringMap.get("fIvE").equals("Six"));
+        assertTrue(stringMap.get("three").equals("four"));
+        assertTrue(stringMap.get("seven").equals("Eight"));
+
+        CompactMap<String, Object> a = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+        a.putAll(null);     // Ensure NPE not happening
+    }
+
+    @Test
+    public void testKeySetRetainAll2()
+    {
+        CompactMap<Object, Object> m = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        Set s = m.keySet();
+        Set items = new HashSet();
+        items.add("three");
+        assertTrue(s.retainAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("three"));
+        assertTrue(m.containsKey("three"));
+
+        m = new CompactMap<Object, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        s = m.keySet();
+        items.clear();
+        items.add("dog");
+        items.add("one");
+        assertTrue(s.retainAll(items));
+        assertEquals(1, m.size());
+        assertEquals(1, s.size());
+        assertTrue(s.contains("one"));
+        assertTrue(m.containsKey("one"));
+    }
+
+    @Test
+    public void testEqualsWithNullOnRHS()
+    {
+        // Must have 2 entries and <= compactSize() in the 2 maps:
+        Map compact = new CompactMap();
+        compact.put("foo", null);
+        compact.put("bar", null);
+        assert compact.hashCode() != 0;
+        Map compact2 = new CompactMap();
+        compact2.put("foo", null);
+        compact2.put("bar", null);
+        assert compact.equals(compact2);
+
+        compact.put("foo", "");
+        assert !compact.equals(compact2);
+
+        compact2.put("foo", "");
+        compact.put("foo", null);
+        assert compact.hashCode() != 0;
+        assert compact2.hashCode() != 0;
+        assert !compact.equals(compact2);
+    }
+
+    @Test
+    public void testToStringOnEmptyMap()
+    {
+        Map compact = new CompactMap();
+        assert compact.toString() == "{}";
+    }
+
+    @Test
+    public void testToStringDoesNotRecurseInfinitely()
+    {
+        Map compact = new CompactMap();
+        compact.put("foo", compact);
+        assert compact.toString() != null;
+        assert compact.toString().contains("this Map");
+
+        compact.put(compact, "foo");
+        assert compact.toString() != null;
+
+        compact.put(compact, compact);
+        assert compact.toString() != null;
+
+        assert new HashMap().hashCode() == new CompactMap<>().hashCode();
+
+        compact.clear();
+        compact.put("bar", compact);
+        assert compact.toString() != null;
+        assert compact.toString().contains("this Map");
+
+        compact.put(compact, "bar");
+        assert compact.toString() != null;
+
+        compact.put(compact, compact);
+        assert compact.toString() != null;
+    }
+
+    @Test
+    public void testEntrySetKeyInsensitive()
+    {
+        CompactMap<String, Object> m = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        
+        int one = 0;
+        int three = 0;
+        int five = 0;
+        for (Map.Entry<String, Object> entry : m.entrySet())
+        {
+            if (entry.equals(new AbstractMap.SimpleEntry("one", "Two")))
+            {
+                one++;
+            }
+            if (entry.equals(new AbstractMap.SimpleEntry("thrEe", "Four")))
+            {
+                three++;
+            }
+            if (entry.equals(new AbstractMap.SimpleEntry("FIVE", "Six")))
+            {
+                five++;
+            }
+        }
+
+        assertEquals(1, one);
+        assertEquals(1, three);
+        assertEquals(1, five);
+    }
+
+    @Test
+    public void testEntrySetEquals()
+    {
+        CompactMap<String, Object> m = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        
+        Set s = m.entrySet();
+
+        Set s2 = new HashSet();
+        s2.add(getEntry("One", "Two"));
+        s2.add(getEntry("Three", "Four"));
+        s2.add(getEntry("Five", "Six"));
+        assertTrue(s.equals(s2));
+
+        s2.clear();
+        s2.add(getEntry("One", "Two"));
+        s2.add(getEntry("Three", "Four"));
+        s2.add(getEntry("Five", "six"));    // lowercase six
+        assertFalse(s.equals(s2));
+
+        s2.clear();
+        s2.add(getEntry("One", "Two"));
+        s2.add(getEntry("Thre", "Four"));   // missing 'e' on three
+        s2.add(getEntry("Five", "Six"));
+        assertFalse(s.equals(s2));
+
+        Set s3 = new HashSet();
+        s3.add(getEntry("one", "Two"));
+        s3.add(getEntry("three", "Four"));
+        s3.add(getEntry("five","Six"));
+        assertTrue(s.equals(s3));
+
+        Set s4 = new CaseInsensitiveSet();
+        s4.add(getEntry("one", "Two"));
+        s4.add(getEntry("three", "Four"));
+        s4.add(getEntry("five","Six"));
+        assertTrue(s.equals(s4));
+
+        CompactMap<String, Object> secondStringMap = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        secondStringMap.put("One", "Two");
+        secondStringMap.put("Three", "Four");
+        secondStringMap.put("Five", "Six");
+        assertFalse(s.equals("one"));
+
+        assertTrue(s.equals(secondStringMap.entrySet()));
+        // case-insensitive
+        secondStringMap.put("five", "Six");
+        assertTrue(s.equals(secondStringMap.entrySet()));
+        secondStringMap.put("six", "sixty");
+        assertFalse(s.equals(secondStringMap.entrySet()));
+        secondStringMap.remove("five");
+        assertFalse(s.equals(secondStringMap.entrySet()));
+        secondStringMap.put("five", null);
+        secondStringMap.remove("six");
+        assertFalse(s.equals(secondStringMap.entrySet()));
+        m.put("five", null);
+        assertTrue(m.entrySet().equals(secondStringMap.entrySet()));
+    }
+
+    @Test
+    public void testEntrySetHashCode()
+    {
+        CompactMap<String, Object> m = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+        m.put("One", "Two");
+        m.put("Three", "Four");
+        m.put("Five", "Six");
+        CompactMap<String, Object> m2 = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+        m2.put("one", "Two");
+        m2.put("three", "Four");
+        m2.put("five", "Six");
+        assertEquals(m.hashCode(), m2.hashCode());
+
+        Map m3 = new LinkedHashMap();
+        m3.put("One", "Two");
+        m3.put("Three", "Four");
+        m3.put("Five", "Six");
+        assertNotEquals(m.hashCode(), m3.hashCode());
+    }
+
+    @Test
+    public void testEntrySetHashCode2()
+    {
+        // Case-sensitive
+        CompactMap.CompactMapEntry entry = new CompactMap().new CompactMapEntry("One", "Two");
+        AbstractMap.SimpleEntry entry2 = new AbstractMap.SimpleEntry("One", "Two");
+        assert entry.equals(entry2);
+        assert entry.hashCode() == entry2.hashCode();
+
+        // Case-insensitive
+        CompactMap<String, Object> m = new CompactMap<String, Object>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        CompactMap.CompactMapEntry entry3 = m.new CompactMapEntry("One", "Two");
+        assert entry.equals(entry3);
+        assert entry.hashCode() != entry3.hashCode();
+
+        entry3 = m.new CompactMapEntry("one", "Two");
+        assert m.isCaseInsensitive();
+        assert entry3.equals(entry);
+        assert entry3.hashCode() != entry.hashCode();
+
+    }
+
+    @Test
+    public void testCompactCILinkedMap()
+    {
+        // Case-insensitive
+        CompactMap<String, Object> m = new CompactCILinkedMap<>();
+        m.put("foo", "bar");
+        m.put("baz", "qux");
+        assert m.size() == 2;
+        assert m.containsKey("FOO");
+
+        CaseInsensitiveMap ciMap = (CaseInsensitiveMap) m.getNewMap();
+        assert ciMap.getWrappedMap() instanceof LinkedHashMap;
+    }
+
+    @Test
+    public void testCompactCIHashMap()
+    {
+        // Case-insensitive
+        CompactMap<String, Object> m = new CompactCIHashMap<>();
+        m.put("foo", "bar");
+        m.put("baz", "qux");
+        assert m.size() == 2;
+        assert m.containsKey("FOO");
+
+        CaseInsensitiveMap ciMap = (CaseInsensitiveMap) m.getNewMap();
+        assert ciMap.getWrappedMap() instanceof HashMap;
+    }
+
     @Ignore
     @Test
     public void testPerformance()
@@ -2627,5 +3247,30 @@ public class TestCompactMap
             System.out.println("CompacMap.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
         }
         System.out.println("HashMap = " + totals[totals.length - 1] / 1000000.0d);
+    }
+
+    private Map.Entry getEntry(final Object key, final Object value)
+    {
+        return new Map.Entry()
+        {
+            Object myValue = value;
+
+            public Object getKey()
+            {
+                return key;
+            }
+
+            public Object getValue()
+            {
+                return value;
+            }
+
+            public Object setValue(Object value)
+            {
+                Object save = myValue;
+                myValue = value;
+                return save;
+            }
+        };
     }
 }

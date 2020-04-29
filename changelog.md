@@ -1,4 +1,6 @@
 ### Revision History
+* 1.50.0
+  * 
 * 1.49.0
   * Added `CompactSet`.  Works similarly to `CompactMap` with single `Object[]` holding elements until it crosses `compactSize()` threshold.  
   This `Object[]` is adjusted dynamically as objects are added and removed.  

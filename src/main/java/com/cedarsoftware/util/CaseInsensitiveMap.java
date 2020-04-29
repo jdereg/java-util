@@ -56,7 +56,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * and the second Map is an empty Map configured the way you want it to be (load factor, capacity)
      * and the type of Map you want.  This Map is used by CaseInsenstiveMap internally to store entries.
      */
-    @Deprecated
     public CaseInsensitiveMap(int initialCapacity)
     {
         map = new LinkedHashMap<>(initialCapacity);
@@ -67,7 +66,6 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * and the second Map is an empty Map configured the way you want it to be (load factor, capacity)
      * and the type of Map you want.  This Map is used by CaseInsenstiveMap internally to store entries.
      */
-    @Deprecated
     public CaseInsensitiveMap(int initialCapacity, float loadFactor)
     {
         map = new LinkedHashMap<>(initialCapacity, loadFactor);
@@ -373,11 +371,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 }
 
                 final int size = map.size();
-                Iterator<Entry<K, V>> i = map.entrySet().iterator();
+                Iterator<K> i = map.keySet().iterator();
                 while (i.hasNext())
                 {
-                    Entry<K, V> entry = i.next();
-                    if (!other.containsKey(entry.getKey()))
+                    K key = i.next();
+                    if (!other.containsKey(key))
                     {
                         i.remove();
                     }

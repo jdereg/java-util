@@ -1,6 +1,9 @@
 ### Revision History
 * 1.50.0
-  * 
+  * `CompactCIHashMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 80), it uses a `CaseInsenstiveMap` `HashMap` to hold its entries. 
+  * `CompactCILinkedMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 80), it uses a `CaseInsenstiveMap` `LinkedHashMap` to hold its entries.
+  * Bug fix: `CompactMap` `entrySet()` and `keySet()` were not handling the `retainAll()`, `containsAll()`, and `removeAll()` methods case-insensitively when case-insensitivity was activated.
+  * `Converter` methods that convert to byte, short, int, and long now accepted String decimal numbers.  The decimal portion is truncated.
 * 1.49.0
   * Added `CompactSet`.  Works similarly to `CompactMap` with single `Object[]` holding elements until it crosses `compactSize()` threshold.  
   This `Object[]` is adjusted dynamically as objects are added and removed.  

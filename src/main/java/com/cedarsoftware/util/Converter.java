@@ -848,7 +848,19 @@ public final class Converter
                 {
                     return BYTE_ZERO;
                 }
-                return Byte.parseByte(((String) fromInstance).trim());
+                try
+                {
+                    return Byte.valueOf(((String) fromInstance).trim());
+                }
+                catch (NumberFormatException e)
+                {
+                    long value = convertToBigDecimal(fromInstance).longValue();
+                    if (value < -128 || value > 127)
+                    {
+                        throw new NumberFormatException("Value: " + fromInstance + " outside -128 to 127");
+                    }
+                    return (byte)value;
+                }
             }
             else if (fromInstance instanceof Byte)
             {
@@ -902,7 +914,19 @@ public final class Converter
                 {
                     return SHORT_ZERO;
                 }
-                return Short.parseShort(((String) fromInstance).trim());
+                try
+                {
+                    return Short.valueOf(((String) fromInstance).trim());
+                }
+                catch (NumberFormatException e)
+                {
+                    long value = convertToBigDecimal(fromInstance).longValue();
+                    if (value < -32768 || value > 32767)
+                    {
+                        throw new NumberFormatException("Value: " + fromInstance + " outside -32768 to 32767");
+                    }
+                    return (short) value;
+                }
             }
             else if (fromInstance instanceof Short)
             {
@@ -968,7 +992,19 @@ public final class Converter
                 {
                     return INTEGER_ZERO;
                 }
-                return Integer.valueOf(((String) fromInstance).trim());
+                try
+                {
+                    return Integer.valueOf(((String) fromInstance).trim());
+                }
+                catch (NumberFormatException e)
+                {
+                    long value = convertToBigDecimal(fromInstance).longValue();
+                    if (value < -2147483648 || value > 2147483647)
+                    {
+                        throw new NumberFormatException("Value: " + fromInstance + " outside -2147483648 to 2147483647");
+                    }
+                    return (int) value;
+                }
             }
             else if (fromInstance instanceof Boolean)
             {
@@ -1026,7 +1062,14 @@ public final class Converter
                 {
                     return LONG_ZERO;
                 }
-                return Long.valueOf(((String) fromInstance).trim());
+                try
+                {
+                    return Long.valueOf(((String) fromInstance).trim());
+                }
+                catch (NumberFormatException e)
+                {
+                    return convertToBigDecimal(fromInstance).longValue();
+                }
             }
             else if (fromInstance instanceof Number)
             {

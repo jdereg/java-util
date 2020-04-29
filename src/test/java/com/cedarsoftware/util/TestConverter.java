@@ -85,6 +85,9 @@ public class TestConverter
         assert (byte)1 == convert(new AtomicBoolean(true), byte.class);
         assert (byte)0 == convert(new AtomicBoolean(false), byte.class);
 
+        byte z = convert2byte("11.5");
+        assert z == 11;
+
         try
         {
             convert(TimeZone.getDefault(), byte.class);
@@ -139,6 +142,9 @@ public class TestConverter
         assert (short)1 == convert(new AtomicBoolean(true), Short.class);
         assert (short)0 == convert(new AtomicBoolean(false), Short.class);
 
+        int z = convert2short("11.5");
+        assert z == 11;
+
         try
         {
             convert(TimeZone.getDefault(), short.class);
@@ -158,6 +164,14 @@ public class TestConverter
         {
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
         }
+
+        try
+        {
+            convert2short("33000");
+            fail();
+        }
+        catch (IllegalArgumentException e) { }
+
     }
 
     @Test
@@ -186,6 +200,9 @@ public class TestConverter
         assert 1 == convert(new AtomicBoolean(true), Integer.class);
         assert 0 == convert(new AtomicBoolean(false), Integer.class);
 
+        int z = convert2int("11.5");
+        assert z == 11;
+        
         try
         {
             convert(TimeZone.getDefault(), int.class);
@@ -205,6 +222,14 @@ public class TestConverter
         {
             assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
         }
+
+        try
+        {
+            convert2int("2147483649");
+            fail();
+        }
+        catch (IllegalArgumentException e) { }
+
     }
 
     @Test
@@ -240,6 +265,9 @@ public class TestConverter
         assert 100L == convert(new AtomicLong(100L), Long.class);
         assert 1L == convert(new AtomicBoolean(true), Long.class);
         assert 0L == convert(new AtomicBoolean(false), Long.class);
+
+        long z = convert2int("11.5");
+        assert z == 11;
 
         try
         {

@@ -16,7 +16,7 @@ To include in your project:
 </dependency>
 ```
 
-The java-util jar is about 77K in size.
+The java-util jar is about 150K in size.
 
 ### Sponsors
 [![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)

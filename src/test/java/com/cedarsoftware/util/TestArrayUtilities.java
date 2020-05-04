@@ -4,15 +4,10 @@ import org.junit.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collection;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * useful Array utilities
@@ -139,5 +134,19 @@ public class TestArrayUtilities
         String[] expected3 = new String[] { "foo", "baz" };
 
         assertArrayEquals(expected3, test3);
+    }
+
+    @Test
+    public void testToArray()
+    {
+        Collection<String> strings = new ArrayList<>();
+        strings.add("foo");
+        strings.add("bar");
+        strings.add("baz");
+        String[] strs = ArrayUtilities.toArray(String.class, strings);
+        assert strs.length == 3;
+        assert strs[0] == "foo";
+        assert strs[1] == "bar";
+        assert strs[2] == "baz";
     }
 }

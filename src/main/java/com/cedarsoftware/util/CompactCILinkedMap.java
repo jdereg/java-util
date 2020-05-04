@@ -12,7 +12,7 @@ import java.util.Map;
  * <p>
  * This Map uses very little memory (See CompactMap).  When the Map
  * has more than 'compactSize()' elements in it, the 'delegate' Map
- * it uses is a LinkedHashMap.
+ * a LinkedHashMap.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -34,6 +34,6 @@ public class CompactCILinkedMap<K, V> extends CompactMap<K, V>
 {
     public CompactCILinkedMap() { }
     public CompactCILinkedMap(Map<K ,V> other) { super(other); }
-    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>((Map<K, V>)Collections.emptyMap(), new LinkedHashMap<K, V>(compactSize() + 1)); }
+    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.<K, V>emptyMap(), new LinkedHashMap<K, V>(compactSize() + 1)); }
     protected boolean isCaseInsensitive() { return true; }
 }

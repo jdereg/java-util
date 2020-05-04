@@ -75,11 +75,12 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * Wrap the passed in Map with a CaseInsensitiveMap, allowing other Map types like
      * TreeMap, ConcurrentHashMap, etc. to be case insensitive.  The caller supplies
      * the actual Map instance that will back the CaseInsensitiveMap.;
-     * @param m Map to wrap.
+     * @param source existing Map to supply the entries.
+     * @param mapInstance empty new Map to use.  This lets you decide what Map to use to back the CaseInsensitiveMap.
      */
-    public CaseInsensitiveMap(Map<K, V> m, Map<K, V> backingMap)
+    public CaseInsensitiveMap(Map<K, V> source, Map<K, V> mapInstance)
     {
-        map = copy(m, backingMap);
+        map = copy(source, mapInstance);
     }
 
     /**
@@ -259,15 +260,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
             Object thatValue = entry.getValue();
             Object thisValue = get(thatKey);
-
-            if (thatValue == null || thisValue == null)
-            {   // Perform null checks
-                if (thatValue != thisValue)
-                {
-                    return false;
-                }
-            }
-            else if (!thisValue.equals(thatValue))
+            if (!Objects.equals(thisValue, thatValue))
             {
                 return false;
             }
@@ -464,6 +457,10 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
             public boolean remove(Object o)
             {
+                if (!(o instanceof Entry))
+                {
+                    return false;
+                }
                 final int size = map.size();
                 Entry<K, V> that = (Entry<K, V>) o;
                 CaseInsensitiveMap.this.remove(that.getKey());
@@ -480,7 +477,11 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 final int size = map.size();
                 for (Object o : c)
                 {
-                    remove(o);
+                    if (o instanceof Entry)
+                    {
+                        Entry<K, V> that = (Entry<K, V>) o;
+                        CaseInsensitiveMap.this.remove(that.getKey());
+                    }
                 }
                 return map.size() != size;
             }

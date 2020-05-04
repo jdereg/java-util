@@ -1,4 +1,15 @@
 ### Revision History
+* 1.51.0
+  * New Sets:
+    * `CompactCIHashSet` added. This `CompactSet` expands to a case-insensitive `HashSet` when `size() > compactSize()`.
+    * `CompactCILinkedSet` added. This `CompactSet` expands to a case-insensitive `LinkedHashSet` when `size() > compactSize()`.
+    * `CompactLinkedSet` added.  This `CompactSet` expands to a `LinkedHashSet` when `size() > compactSize()`.
+    * `CompactSet` exists. This `CompactSet` expands to a `HashSet` when `size() > compactSize()`.
+  * New Maps
+    * `CompactCILinkedMap` exists. This `CompactMap` expands to a case-insensitive `LinkedHashMap` when `size() > compactSize()` entries.
+    * `CompactCIHashMap` exists.  This `CompactMap` expands to a case-insensitive `HashMap` when `size() > compactSize()` entries.      
+    * `CompactLinkedMap` added.  This `CompactMap` expands to a `LinkedHashMap` when `size() > compactSize()` entries.
+    * `CompactMap` exists.  This `CompactMap` expands to a `HashMap` when `size() > compactSize()` entries.
 * 1.50.0
   * `CompactCIHashMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 80), it uses a `CaseInsenstiveMap` `HashMap` to hold its entries. 
   * `CompactCILinkedMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 80), it uses a `CaseInsenstiveMap` `LinkedHashMap` to hold its entries.

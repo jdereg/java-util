@@ -1,18 +1,12 @@
 package com.cedarsoftware.util;
 
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Useful Map that does not care about the case-sensitivity of keys
- * when the key value is a String.  Other key types can be used.
- * String keys will be treated case insensitively, yet key case will
- * be retained.  Non-string keys will work as they normally would.
- * <p>
  * This Map uses very little memory (See CompactMap).  When the Map
  * has more than 'compactSize()' elements in it, the 'delegate' Map
- * is a HashMap.
+ * is a LinkedHashMap.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -30,10 +24,9 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CompactCIHashMap<K, V> extends CompactMap<K, V>
+public class CompactLinkedMap<K, V> extends CompactMap<K, V>
 {
-    public CompactCIHashMap() { }
-    public CompactCIHashMap(Map<K ,V> other) { super(other); }
-    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.<K, V>emptyMap(), new HashMap<K, V>(compactSize() + 1)); }
-    protected boolean isCaseInsensitive() { return true; }
+    public CompactLinkedMap() { }
+    public CompactLinkedMap(Map<K ,V> other) { super(other); }
+    protected Map<K, V> getNewMap() { return new LinkedHashMap<>(compactSize() + 1); }
 }

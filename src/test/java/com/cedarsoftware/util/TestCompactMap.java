@@ -2608,13 +2608,93 @@ public class TestCompactMap
             Boolean answer = k.next();
             assert Objects.equals(answer, entry1.equals(entry2));
         }
+    }
 
-        Map mapLinked = new CompactCILinkedMap(map);
-        Map mapHash = new CompactCIHashMap(map2);
-        assert mapLinked.containsKey("key1");
-        assert mapHash.containsKey("key1");
-        assert mapLinked.containsValue("garply");
-        assert mapHash.containsValue("garply");
+    @Test
+    public void testCompactLinkedMap()
+    {
+        // Ensure CompactLinkedMap is minimally exercised.
+        CompactMap<String, Integer> linkedMap = new CompactLinkedMap<>();
+
+        for (int i=0; i < linkedMap.compactSize() + 5; i++)
+        {
+            linkedMap.put("FoO" + i, i);
+        }
+
+        assert linkedMap.containsKey("FoO0");
+        assert !linkedMap.containsKey("foo0");
+        assert linkedMap.containsKey("FoO1");
+        assert !linkedMap.containsKey("foo1");
+        assert linkedMap.containsKey("FoO" + (linkedMap.compactSize() + 3));
+        assert !linkedMap.containsKey("foo" + (linkedMap.compactSize() + 3));
+
+        CompactMap<String, Integer> copy = new CompactLinkedMap<>(linkedMap);
+        assert copy.equals(linkedMap);
+
+        assert copy.containsKey("FoO0");
+        assert !copy.containsKey("foo0");
+        assert copy.containsKey("FoO1");
+        assert !copy.containsKey("foo1");
+        assert copy.containsKey("FoO" + (copy.compactSize() + 3));
+        assert !copy.containsKey("foo" + (copy.compactSize() + 3));
+    }
+
+    @Test
+    public void testCompactCIHashMap()
+    {
+        // Ensure CompactLinkedMap is minimally exercised.
+        CompactMap<String, Integer> ciHashMap = new CompactCIHashMap<>();
+
+        for (int i=0; i < ciHashMap.compactSize() + 5; i++)
+        {
+            ciHashMap.put("FoO" + i, i);
+        }
+
+        assert ciHashMap.containsKey("FoO0");
+        assert ciHashMap.containsKey("foo0");
+        assert ciHashMap.containsKey("FoO1");
+        assert ciHashMap.containsKey("foo1");
+        assert ciHashMap.containsKey("FoO" + (ciHashMap.compactSize() + 3));
+        assert ciHashMap.containsKey("foo" + (ciHashMap.compactSize() + 3));
+
+        CompactMap<String, Integer> copy = new CompactCIHashMap<>(ciHashMap);
+        assert copy.equals(ciHashMap);
+
+        assert copy.containsKey("FoO0");
+        assert copy.containsKey("foo0");
+        assert copy.containsKey("FoO1");
+        assert copy.containsKey("foo1");
+        assert copy.containsKey("FoO" + (copy.compactSize() + 3));
+        assert copy.containsKey("foo" + (copy.compactSize() + 3));
+    }
+
+    @Test
+    public void testCompactCILinkedMap()
+    {
+        // Ensure CompactLinkedMap is minimally exercised.
+        CompactMap<String, Integer> ciLinkedMap = new CompactCILinkedMap<>();
+
+        for (int i=0; i < ciLinkedMap.compactSize() + 5; i++)
+        {
+            ciLinkedMap.put("FoO" + i, i);
+        }
+
+        assert ciLinkedMap.containsKey("FoO0");
+        assert ciLinkedMap.containsKey("foo0");
+        assert ciLinkedMap.containsKey("FoO1");
+        assert ciLinkedMap.containsKey("foo1");
+        assert ciLinkedMap.containsKey("FoO" + (ciLinkedMap.compactSize() + 3));
+        assert ciLinkedMap.containsKey("foo" + (ciLinkedMap.compactSize() + 3));
+
+        CompactMap<String, Integer> copy = new CompactCILinkedMap<>(ciLinkedMap);
+        assert copy.equals(ciLinkedMap);
+
+        assert copy.containsKey("FoO0");
+        assert copy.containsKey("foo0");
+        assert copy.containsKey("FoO1");
+        assert copy.containsKey("foo1");
+        assert copy.containsKey("FoO" + (copy.compactSize() + 3));
+        assert copy.containsKey("foo" + (copy.compactSize() + 3));
     }
 
     @Test
@@ -3127,35 +3207,38 @@ public class TestCompactMap
         assert m.isCaseInsensitive();
         assert entry3.equals(entry);
         assert entry3.hashCode() != entry.hashCode();
-
     }
 
     @Test
-    public void testCompactCILinkedMap()
+    public void testUnmodifiability()
     {
-        // Case-insensitive
-        CompactMap<String, Object> m = new CompactCILinkedMap<>();
-        m.put("foo", "bar");
-        m.put("baz", "qux");
-        assert m.size() == 2;
-        assert m.containsKey("FOO");
-
-        CaseInsensitiveMap ciMap = (CaseInsensitiveMap) m.getNewMap();
-        assert ciMap.getWrappedMap() instanceof LinkedHashMap;
-    }
-
-    @Test
-    public void testCompactCIHashMap()
-    {
-        // Case-insensitive
         CompactMap<String, Object> m = new CompactCIHashMap<>();
         m.put("foo", "bar");
         m.put("baz", "qux");
-        assert m.size() == 2;
-        assert m.containsKey("FOO");
+        Map<String, Object> noModMap = Collections.unmodifiableMap(m);
+        assert noModMap.containsKey("FOO");
+        assert noModMap.containsKey("BAZ");
 
-        CaseInsensitiveMap ciMap = (CaseInsensitiveMap) m.getNewMap();
-        assert ciMap.getWrappedMap() instanceof HashMap;
+        try
+        {
+            noModMap.put("Foo", 9);
+            fail();
+        }
+        catch(UnsupportedOperationException e) { }
+    }
+
+    @Test
+    public void testCompactCIHashMap2()
+    {
+        CompactCIHashMap map = new CompactCIHashMap();
+
+        for (int i=0; i < map.compactSize() + 10; i++)
+        {
+            map.put("" + i, i);
+        }
+        assert map.containsKey("0");
+        assert map.containsKey("" + (map.compactSize() + 1));
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;    // ensure switch over
     }
 
     @Ignore

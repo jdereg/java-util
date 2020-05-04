@@ -51,6 +51,12 @@ public class CaseInsensitiveSet<E> implements Set<E>
         addAll(collection);
     }
 
+    public CaseInsensitiveSet(Collection<? extends E> source, Map backingMap)
+    {
+        map = backingMap;
+        addAll(source);
+    }
+
     public CaseInsensitiveSet(int initialCapacity)
     {
         map = new CaseInsensitiveMap<>(initialCapacity);

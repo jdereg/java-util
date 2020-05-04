@@ -1,18 +1,14 @@
 package com.cedarsoftware.util;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.Set;
 
 /**
- * Useful Map that does not care about the case-sensitivity of keys
- * when the key value is a String.  Other key types can be used.
- * String keys will be treated case insensitively, yet key case will
- * be retained.  Non-string keys will work as they normally would.
- * <p>
- * This Map uses very little memory (See CompactMap).  When the Map
- * has more than 'compactSize()' elements in it, the 'delegate' Map
- * is a HashMap.
+ * Similar to CompactSet, except that it uses a HashSet as delegate Set when
+ * more than compactSize() elements are held.  This means that it will uphold the
+ * "linked" contract, maintaining insertion order.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -30,10 +26,14 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CompactCIHashMap<K, V> extends CompactMap<K, V>
+public class CompactCIHashSet<E> extends CompactSet<E>
 {
-    public CompactCIHashMap() { }
-    public CompactCIHashMap(Map<K ,V> other) { super(other); }
-    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.<K, V>emptyMap(), new HashMap<K, V>(compactSize() + 1)); }
+    public CompactCIHashSet() { }
+    public CompactCIHashSet(Collection<E> other) { super(other); }
+
+    /**
+     * @return new empty Set instance to use when size() becomes > compactSize().
+     */
+    protected Set<E> getNewSet() { return new CaseInsensitiveSet<>(Collections.<E>emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>())); }
     protected boolean isCaseInsensitive() { return true; }
 }

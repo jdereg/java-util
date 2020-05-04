@@ -156,7 +156,7 @@ public final class ArrayUtilities
      * @param <T> Type of the array
      * @return Array of the type (T) containing the items from collection 'c'.
      */
-    public static <T> T[] toArray(Class<T> classToCastTo, Collection c)
+    public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c)
     {
         T[] array = (T[]) c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
         Iterator i = c.iterator();

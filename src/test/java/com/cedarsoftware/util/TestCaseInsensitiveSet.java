@@ -184,9 +184,18 @@ public class TestCaseInsensitiveSet
         List list = new ArrayList();
         list.add("TWO");
         list.add("four");
-        set.retainAll(list);
+        assert set.retainAll(list);
         assertTrue(set.size() == 1);
         assertTrue(set.contains("tWo"));
+    }
+
+    @Test
+    public void testRetainAll3()
+    {
+        Set set = get123();
+        Set set2 = get123();
+        assert !set.retainAll(set2);
+        assert set2.size() == set.size();
     }
 
     @Test
@@ -199,6 +208,21 @@ public class TestCaseInsensitiveSet
         set.removeAll(set2);
         assertEquals(1, set.size());
         assertTrue(set.contains("TWO"));
+    }
+
+    @Test
+    public void testRemoveAll3()
+    {
+        Set set = get123();
+        Set set2 = new HashSet();
+        set2.add("a");
+        set2.add("b");
+        set2.add("c");
+        assert !set.removeAll(set2);
+        assert set.size() == get123().size();
+        set2.add("one");
+        assert set.removeAll(set2);
+        assert set.size() == get123().size() - 1;
     }
 
     @Test
@@ -504,6 +528,52 @@ public class TestCaseInsensitiveSet
         ciSet.plus(7);
         assert ciSet.size() == 7;
         assert ciSet.contains(7);
+    }
+
+    @Test
+    public void testHashMapBacked()
+    {
+        String[] strings = new String[] { "foo", "bar", "baz", "qux", "quux", "garpley"};
+        Set set = new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>()));
+        Set ordered = new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()));
+
+        set.addAll(Arrays.asList(strings));
+        ordered.addAll(Arrays.asList(strings));
+
+        assert ordered.equals(set);
+
+        Iterator<String> i = set.iterator();
+        Iterator<String> j = ordered.iterator();
+
+        boolean orderDiffered = false;
+
+        while (i.hasNext())
+        {
+            String x = i.next();
+            String y = j.next();
+            
+            if (x != y)
+            {
+                orderDiffered = true;
+            }
+        }
+
+        assert orderDiffered;
+    }
+
+    @Test
+    public void testEquals()
+    {
+        Set<String> set = new CaseInsensitiveSet<>(get123());
+        assert set.equals(set);
+        assert !set.equals("cat");
+        Set<String> other = new CaseInsensitiveSet<>(get123());
+        assert set.equals(other);
+
+        other.remove("Two");
+        assert !set.equals(other);
+        other.add("too");
+        assert !set.equals(other);
     }
 
     private static Set get123()

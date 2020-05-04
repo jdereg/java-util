@@ -280,6 +280,89 @@ public class TestCompactSet
         clearViaIterator(set);
     }
 
+    @Test
+    public void testCompactLinkedSet()
+    {
+        Set<String> set = new CompactLinkedSet<>();
+        set.add("foo");
+        set.add("bar");
+        set.add("baz");
+
+        Iterator<String> i = set.iterator();
+        assert i.next() == "foo";
+        assert i.next() == "bar";
+        assert i.next() == "baz";
+        assert !i.hasNext();
+
+        Set<String> set2 = new CompactLinkedSet<>(set);
+        assert set2.equals(set);
+    }
+
+    @Test
+    public void testCompactCIHashSet()
+    {
+        CompactSet<String> set = new CompactCIHashSet<>();
+
+        for (int i=0; i < set.compactSize() + 5; i++)
+        {
+            set.add("FoO" + i);
+        }
+
+        assert set.contains("FoO0");
+        assert set.contains("foo0");
+        assert set.contains("FoO1");
+        assert set.contains("foo1");
+        assert set.contains("FoO" + (set.compactSize() + 3));
+        assert set.contains("foo" + (set.compactSize() + 3));
+
+        Set<String> copy = new CompactCIHashSet<>(set);
+        assert copy.equals(set);
+        assert copy != set;
+
+        assert copy.contains("FoO0");
+        assert copy.contains("foo0");
+        assert copy.contains("FoO1");
+        assert copy.contains("foo1");
+        assert copy.contains("FoO" + (set.compactSize() + 3));
+        assert copy.contains("foo" + (set.compactSize() + 3));
+
+        clearViaIterator(set);
+        clearViaIterator(copy);
+    }
+
+    @Test
+    public void testCompactCILinkedSet()
+    {
+        CompactSet<String> set = new CompactCILinkedSet<>();
+
+        for (int i=0; i < set.compactSize() + 5; i++)
+        {
+            set.add("FoO" + i);
+        }
+
+        assert set.contains("FoO0");
+        assert set.contains("foo0");
+        assert set.contains("FoO1");
+        assert set.contains("foo1");
+        assert set.contains("FoO" + (set.compactSize() + 3));
+        assert set.contains("foo" + (set.compactSize() + 3));
+
+        Set<String> copy = new CompactCILinkedSet<>(set);
+        assert copy.equals(set);
+        assert copy != set;
+
+        assert copy.contains("FoO0");
+        assert copy.contains("foo0");
+        assert copy.contains("FoO1");
+        assert copy.contains("foo1");
+        assert copy.contains("FoO" + (set.compactSize() + 3));
+        assert copy.contains("foo" + (set.compactSize() + 3));
+
+        clearViaIterator(set);
+        clearViaIterator(copy);
+    }
+
+
     @Ignore
     @Test
     public void testPerformance()
@@ -366,7 +449,7 @@ public class TestCompactSet
 
     private void clearViaIterator(Set set)
     {
-        Iterator<Integer> i = set.iterator();
+        Iterator i = set.iterator();
         while (i.hasNext())
         {
             i.next();

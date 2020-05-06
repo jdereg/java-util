@@ -7,8 +7,7 @@ import java.util.Set;
 
 /**
  * Similar to CompactSet, except that it uses a HashSet as delegate Set when
- * more than compactSize() elements are held.  This means that it will uphold the
- * "linked" contract, maintaining insertion order.
+ * more than compactSize() elements are held.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

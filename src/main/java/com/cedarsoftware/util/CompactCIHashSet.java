@@ -33,6 +33,6 @@ public class CompactCIHashSet<E> extends CompactSet<E>
     /**
      * @return new empty Set instance to use when size() becomes > compactSize().
      */
-    protected Set<E> getNewSet() { return new CaseInsensitiveSet<>(Collections.<E>emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>())); }
+    protected Set<E> getNewSet() { return new CaseInsensitiveSet<>(Collections.<E>emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(compactSize() + 1))); }
     protected boolean isCaseInsensitive() { return true; }
 }

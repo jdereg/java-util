@@ -32,6 +32,6 @@ public class CompactCILinkedSet<E> extends CompactSet<E>
     /**
      * @return new empty Set instance to use when size() becomes > compactSize().
      */
-    protected Set<E> getNewSet() { return new CaseInsensitiveSet<>(); }
+    protected Set<E> getNewSet() { return new CaseInsensitiveSet<>(compactSize() + 1); }
     protected boolean isCaseInsensitive() { return true; }
 }

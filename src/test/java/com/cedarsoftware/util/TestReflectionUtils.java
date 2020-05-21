@@ -9,6 +9,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URLClassLoader;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Map;
@@ -455,6 +456,30 @@ public class TestReflectionUtils
     }
 
     @Test
+    public void testGetMethodWithNoArgsNull()
+    {
+        try
+        {
+            ReflectionUtils.getNonOverloadedMethod(null, "methodWithNoArgs");
+            fail();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        try
+        {
+            ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, null);
+            fail();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
     public void testGetMethodWithNoArgsOverloaded()
     {
         try
@@ -502,6 +527,77 @@ public class TestReflectionUtils
         }
     }
 
+    @Test
+    public void testGetMethodWithDifferentClassLoaders()
+    {
+        TestClassLoader testClassLoader1 = new TestClassLoader();
+        TestClassLoader testClassLoader2 = new TestClassLoader();
+        try
+        {
+            Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
+            Method m1 = ReflectionUtils.getMethod(clazz1,"getPrice", null);
+
+            Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
+            Method m2 = ReflectionUtils.getMethod(clazz2,"getPrice", null);
+
+            // Should get different Method instances since this class was loaded via two different ClassLoaders.
+            assert m1 != m2;
+        }
+        catch (ClassNotFoundException e)
+        {
+            e.printStackTrace();
+            fail();
+        }
+    }
+
+    @Test
+    public void testGetMethod2WithDifferentClassLoaders()
+    {
+        TestClassLoader testClassLoader1 = new TestClassLoader();
+        TestClassLoader testClassLoader2 = new TestClassLoader();
+        try
+        {
+            Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
+            Object foo = clazz1.newInstance();
+            Method m1 = ReflectionUtils.getMethod(foo, "getPrice", 0);
+
+            Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
+            Object bar = clazz2.newInstance();
+            Method m2 = ReflectionUtils.getMethod(bar,"getPrice", 0);
+
+            // Should get different Method instances since this class was loaded via two different ClassLoaders.
+            assert m1 != m2;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            fail();
+        }
+    }
+
+    @Test
+    public void testGetMethod3WithDifferentClassLoaders()
+    {
+        TestClassLoader testClassLoader1 = new TestClassLoader();
+        TestClassLoader testClassLoader2 = new TestClassLoader();
+        try
+        {
+            Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
+            Method m1 = ReflectionUtils.getNonOverloadedMethod(clazz1, "getPrice");
+
+            Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
+            Method m2 = ReflectionUtils.getNonOverloadedMethod(clazz2,"getPrice");
+
+            // Should get different Method instances since this class was loaded via two different ClassLoaders.
+            assert m1 != m2;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            fail();
+        }
+    }
+
     public String methodWithNoArgs()
     {
         return "0";
@@ -541,5 +637,23 @@ public class TestReflectionUtils
 
     private class Child extends Parent {
         private String foo;
+    }
+
+    public class TestClassLoader extends URLClassLoader
+    {
+        public TestClassLoader()
+        {
+            super(((URLClassLoader)getSystemClassLoader()).getURLs());
+        }
+
+        public Class<?> loadClass(String name) throws ClassNotFoundException
+        {
+            if (name.contains("TestClass"))
+            {
+                return super.findClass(name);
+            }
+
+            return super.loadClass(name);
+        }
     }
 }

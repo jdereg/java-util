@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class ReflectionUtils
 {
-    private static final ConcurrentMap<Class<?>, Collection<Field>> FIELD_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Collection<Field>> FIELD_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP2 = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP3 = new ConcurrentHashMap<>();
@@ -126,15 +126,19 @@ public final class ReflectionUtils
     {
         try
         {
-            StringBuilder builder = new StringBuilder(c.getName());
+            StringBuilder builder = new StringBuilder(getClassLoaderName(c));
+            builder.append('.');
+            builder.append(c.getName());
             builder.append('.');
             builder.append(methodName);
-            for (Class clz : types)
+            if (types != null)
             {
-                builder.append('|');
-                builder.append(clz.getName());
+                for (Class clz : types)
+                {
+                    builder.append('|');
+                    builder.append(clz.getName());
+                }
             }
-
             // methodKey is in form ClassName.methodName|arg1.class|arg2.class|...
             String methodKey = builder.toString();
             Method method = METHOD_MAP.get(methodKey);
@@ -167,11 +171,16 @@ public final class ReflectionUtils
      */
     public static Collection<Field> getDeepDeclaredFields(Class<?> c)
     {
-        if (FIELD_MAP.containsKey(c))
+        StringBuilder builder = new StringBuilder(getClassLoaderName(c));
+        builder.append('.');
+        builder.append(c.getName());
+        String key = builder.toString();
+        Collection<Field> fields = FIELD_MAP.get(key);
+        if (fields != null)
         {
-            return FIELD_MAP.get(c);
+            return fields;
         }
-        Collection<Field> fields = new ArrayList<>();
+        fields = new ArrayList<>();
         Class<?> curr = c;
 
         while (curr != null)
@@ -179,7 +188,7 @@ public final class ReflectionUtils
             getDeclaredFields(curr, fields);
             curr = curr.getSuperclass();
         }
-        FIELD_MAP.put(c, fields);
+        FIELD_MAP.put(key, fields);
         return fields;
     }
 
@@ -340,7 +349,9 @@ public final class ReflectionUtils
             throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on an instance of: " + bean.getClass().getName());
         }
         Class beanClass = bean.getClass();
-        StringBuilder builder = new StringBuilder(beanClass.getName());
+        StringBuilder builder = new StringBuilder(getClassLoaderName(beanClass));
+        builder.append('.');
+        builder.append(beanClass.getName());
         builder.append('.');
         builder.append(methodName);
         builder.append('|');
@@ -383,7 +394,7 @@ public final class ReflectionUtils
      * Fetch the named method from the passed in Class. This method caches found methods, so it should be used
      * instead of reflectively searching for the method every time.  This method expects the desired method name to
      * not be overloaded.
-     * @param clazz Class that containst the desired method.
+     * @param clazz Class that contains the desired method.
      * @param methodName String name of method to be located on the controller.
      * @return Method instance found on the passed in class, or an IllegalArgumentException is thrown.
      * @throws IllegalArgumentException
@@ -398,7 +409,9 @@ public final class ReflectionUtils
         {
             throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on class: " + clazz.getName());
         }
-        StringBuilder builder = new StringBuilder(clazz.getName());
+        StringBuilder builder = new StringBuilder(getClassLoaderName(clazz));
+        builder.append('.');
+        builder.append(clazz.getName());
         builder.append('.');
         builder.append(methodName);
         String methodKey = builder.toString();
@@ -491,5 +504,11 @@ public final class ReflectionUtils
         }
         dis.readShort(); // skip access flags
         return strings[classes[(dis.readShort() & 0xffff) - 1] - 1].replace('/', '.');
+    }
+
+    private static String getClassLoaderName(Class<?> c)
+    {
+        ClassLoader loader = c.getClassLoader();
+        return loader == null ? "bootstrap" : loader.toString();
     }
 }

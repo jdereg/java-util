@@ -464,9 +464,17 @@ public final class Converter
             {
                 return new BigDecimal((BigInteger) fromInstance);
             }
+            else if (fromInstance instanceof Long)
+            {
+                return new BigDecimal((Long)fromInstance);
+            }
+            else if (fromInstance instanceof AtomicLong)
+            {
+                return new BigDecimal(((AtomicLong) fromInstance).get());
+            }
             else if (fromInstance instanceof Number)
             {
-                return new BigDecimal(((Number) fromInstance).doubleValue());
+                return new BigDecimal(String.valueOf(fromInstance));
             }
             else if (fromInstance instanceof Boolean)
             {

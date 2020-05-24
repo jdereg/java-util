@@ -506,7 +506,7 @@ public final class ReflectionUtils
         return strings[classes[(dis.readShort() & 0xffff) - 1] - 1].replace('/', '.');
     }
 
-    private static String getClassLoaderName(Class<?> c)
+    protected static String getClassLoaderName(Class<?> c)
     {
         ClassLoader loader = c.getClassLoader();
         return loader == null ? "bootstrap" : loader.toString();

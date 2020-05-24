@@ -463,20 +463,14 @@ public class TestReflectionUtils
             ReflectionUtils.getNonOverloadedMethod(null, "methodWithNoArgs");
             fail();
         }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+        catch (Exception e) { }
 
         try
         {
             ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, null);
             fail();
         }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+        catch (Exception e) { }
     }
 
     @Test

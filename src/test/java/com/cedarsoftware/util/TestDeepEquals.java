@@ -4,24 +4,13 @@ import org.agrona.collections.Object2ObjectHashMap;
 import org.junit.Test;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.DeepEquals.deepEquals;
@@ -85,6 +74,81 @@ public class TestDeepEquals
         skip.add(Point.class);
         options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, skip);
         assert deepEquals(p1, p2, options);        // Not told to skip Person's .equals() - so it will compare on name only
+    }
+
+    @Test
+    public void testBigDecimal()
+    {
+        BigDecimal ten = new BigDecimal("10.0");
+        assert deepEquals(ten, 10.0f);
+        assert deepEquals(ten, 10.0d);
+        assert deepEquals(ten, 10);
+        assert deepEquals(ten, 10l);
+        assert deepEquals(ten, new BigInteger("10"));
+        assert deepEquals(ten, new AtomicLong(10L));
+        assert deepEquals(ten, new AtomicInteger(10));
+
+        assert !deepEquals(ten, 10.01f);
+        assert !deepEquals(ten, 10.01d);
+        assert !deepEquals(ten, 11);
+        assert !deepEquals(ten, 11l);
+        assert !deepEquals(ten, new BigInteger("11"));
+        assert !deepEquals(ten, new AtomicLong(11L));
+        assert !deepEquals(ten, new AtomicInteger(11));
+
+        BigDecimal x = new BigDecimal(new BigInteger("1"), -1);
+        assert deepEquals(ten, x);
+        x = new BigDecimal(new BigInteger("1"), -2);
+        assert !deepEquals(ten, x);
+
+        assert !deepEquals(ten, TimeZone.getDefault());
+        assert !deepEquals(ten, "10");
+
+        assert deepEquals(0.1d, new BigDecimal("0.1"));
+        assert deepEquals(0.04d, new BigDecimal("0.04"));
+        assert deepEquals(0.1f, new BigDecimal("0.1"));
+        assert deepEquals(0.04f, new BigDecimal("0.04"));
+    }
+
+    @Test
+    public void testBigInteger()
+    {
+        BigInteger ten = new BigInteger("10");
+        assert deepEquals(ten, new BigInteger("10"));
+        assert !deepEquals(ten, new BigInteger("11"));
+        assert deepEquals(ten, 10.0f);
+        assert !deepEquals(ten, 11.0f);
+        assert deepEquals(ten, 10.0d);
+        assert !deepEquals(ten, 11.0d);
+        assert deepEquals(ten, 10);
+        assert deepEquals(ten, 10l);
+        assert deepEquals(ten, new BigDecimal("10.0"));
+        assert deepEquals(ten, new AtomicLong(10L));
+        assert deepEquals(ten, new AtomicInteger(10));
+
+        assert !deepEquals(ten, 10.01f);
+        assert !deepEquals(ten, 10.01d);
+        assert !deepEquals(ten, 11);
+        assert !deepEquals(ten, 11l);
+        assert !deepEquals(ten, new BigDecimal("10.001"));
+        assert !deepEquals(ten, new BigDecimal("11"));
+        assert !deepEquals(ten, new AtomicLong(11L));
+        assert !deepEquals(ten, new AtomicInteger(11));
+
+        assert !deepEquals(ten, TimeZone.getDefault());
+        assert !deepEquals(ten, "10");
+
+        assert !deepEquals(new BigInteger("1"), new BigDecimal("0.99999999999999999999999999999"));
+    }
+
+    @Test
+    public void testDifferentNumericTypes()
+    {
+        assert deepEquals(1.0f, 1L);
+        assert deepEquals(1.0d, 1L);
+        assert deepEquals(1L, 1.0f);
+        assert deepEquals(1L, 1.0d);
+        assert !deepEquals(1, TimeZone.getDefault());
     }
 
     @Test
@@ -341,6 +405,34 @@ public class TestDeepEquals
         assertTrue(deepEquals(map1, map2));
         map2.remove("papa");
         assertFalse(deepEquals(map1, map2));
+
+        map1 = new HashMap();
+        map1.put("foo", "bar");
+        map1.put("baz", "qux");
+        map2 = new HashMap();
+        map2.put("foo", "bar");
+        assert !deepEquals(map1, map2);
+    }
+
+    @Test
+    public void testNumbersAndStrings()
+    {
+        Map<String, Boolean> options = new HashMap<>();
+        options.put(DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
+
+        assert !deepEquals("10", 10);
+        assert deepEquals("10", 10, options);
+        assert deepEquals(10, "10", options);
+        assert deepEquals(10, "10.0", options);
+        assert deepEquals(10.0f, "10.0", options);
+        assert deepEquals(10.0f, "10", options);
+        assert deepEquals(10.0d, "10.0", options);
+        assert deepEquals(10.0d, "10", options);
+        assert !deepEquals(10.0d, "10.01", options);
+        assert !deepEquals(10.0d, "10.0d", options);
+        assert deepEquals(new BigDecimal("3.14159"), 3.14159d, options);
+        assert !deepEquals(new BigDecimal("3.14159"), "3.14159");
+        assert deepEquals(new BigDecimal("3.14159"), "3.14159", options);
     }
 
     @Test

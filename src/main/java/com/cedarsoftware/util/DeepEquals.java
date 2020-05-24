@@ -2,8 +2,13 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.cedarsoftware.util.Converter.convert2BigDecimal;
+import static com.cedarsoftware.util.Converter.convert2boolean;
+import static com.cedarsoftware.util.ReflectionUtils.getClassLoaderName;
 
 /**
  * Test two objects for equivalence with a 'deep' comparison.  This will traverse
@@ -21,7 +26,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * This method will handle cycles correctly, for example A-&gt;B-&gt;C-&gt;A.  Suppose a and
  * a' are two separate instances of A with the same values for all fields on
  * A, B, and C.  Then a.deepEquals(a') will return true.  It uses cycle detection
- * storing visited objects in a Set to prevent endless loops.
+ * storing visited objects in a Set to prevent endless loops.<br><br>
+ *
+ * Numbers will be compared for value.  Meaning an int that has the same value
+ * as a long will match.  Similarly, a double that has the same value as a long
+ * will match.  If the flag "ALLOW_STRING_TO_MATCH_NUMBERS" is passed in the options
+ * are set to true, then Strings will be converted to BigDecimal and compared to
+ * the corresponding non-String Number.  Two Strings will not be compared as numbers,
+ * however.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -44,8 +56,9 @@ public class DeepEquals
     private DeepEquals () {}
 
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
-    private static final Map<Class, Boolean> _customEquals = new ConcurrentHashMap<>();
-    private static final Map<Class, Boolean> _customHash = new ConcurrentHashMap<>();
+    public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
+    private static final Map<String, Boolean> _customEquals = new ConcurrentHashMap<>();
+    private static final Map<String, Boolean> _customHash = new ConcurrentHashMap<>();
     private static final double doubleEplison = 1e-15;
     private static final double floatEplison = 1e-6;
     private static final Set<Class> prims = new HashSet<>();
@@ -62,12 +75,12 @@ public class DeepEquals
         prims.add(Short.class);
     }
 
-    private final static class DualKey
+    private final static class ItemsToCompare
     {
         private final Object _key1;
         private final Object _key2;
 
-        private DualKey(Object k1, Object k2)
+        private ItemsToCompare(Object k1, Object k2)
         {
             _key1 = k1;
             _key2 = k2;
@@ -75,12 +88,12 @@ public class DeepEquals
 
         public boolean equals(Object other)
         {
-            if (!(other instanceof DualKey))
+            if (!(other instanceof ItemsToCompare))
             {
                 return false;
             }
 
-            DualKey that = (DualKey) other;
+            ItemsToCompare that = (ItemsToCompare) other;
             return _key1 == that._key1 && _key2 == that._key2;
         }
 
@@ -155,96 +168,115 @@ public class DeepEquals
      */
     public static boolean deepEquals(Object a, Object b, Map<?, ?> options)
     {
-        Set<DualKey> visited = new HashSet<>();
-        Deque<DualKey> stack = new LinkedList<>();
+        Set<ItemsToCompare> visited = new HashSet<>();
+        Deque<ItemsToCompare> stack = new LinkedList<>();
         Set<String> ignoreCustomEquals = (Set<String>) options.get(IGNORE_CUSTOM_EQUALS);
-        stack.addFirst(new DualKey(a, b));
+        final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
+
+        stack.addFirst(new ItemsToCompare(a, b));
 
         while (!stack.isEmpty())
         {
-            DualKey dualKey = stack.removeFirst();
-            visited.add(dualKey);
+            ItemsToCompare itemsToCompare = stack.removeFirst();
+            visited.add(itemsToCompare);
 
-            if (dualKey._key1 == dualKey._key2)
+            final Object key1 = itemsToCompare._key1;
+            final Object key2 = itemsToCompare._key2;
+            if (key1 == key2)
             {   // Same instance is always equal to itself.
                 continue;
             }
 
-            if (dualKey._key1 == null || dualKey._key2 == null)
-            {   // If either one is null, not equal (both can't be null, due to above comparison).
+            if (key1 == null || key2 == null)
+            {   // If either one is null, they are not equal (both can't be null, due to above comparison).
                 return false;
             }
 
-            if (dualKey._key1 instanceof Double && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, doubleEplison))
+            if (key1 instanceof Number && key2 instanceof Number && compareNumbers((Number)key1, (Number)key2))
             {
                 continue;
             }
 
-            if (dualKey._key1 instanceof Float && compareFloatingPointNumbers(dualKey._key1, dualKey._key2, floatEplison))
-            {
-                continue;
+            if (key1 instanceof Number || key2 instanceof Number)
+            {   // If one is a Number and the other one is not, then optionally compare them as strings, otherwise return false
+                if (allowStringsToMatchNumbers)
+                {
+                    try
+                    {
+                        if (key1 instanceof String && compareNumbers(convert2BigDecimal(key1), (Number)key2))
+                        {
+                            continue;
+                        }
+                        else if (key2 instanceof String && compareNumbers((Number)key1, convert2BigDecimal(key2)))
+                        {
+                            continue;
+                        }
+                    }
+                    catch (Exception e) { }
+                }
+                return false;
             }
 
-            Class key1Class = dualKey._key1.getClass();
+            Class key1Class = key1.getClass();
 
-            if (key1Class.isPrimitive() || prims.contains(key1Class) || dualKey._key1 instanceof String || dualKey._key1 instanceof Date || dualKey._key1 instanceof Class)
+            if (key1Class.isPrimitive() || prims.contains(key1Class) || key1 instanceof String || key1 instanceof Date || key1 instanceof Class)
             {
-                if (!dualKey._key1.equals(dualKey._key2))
+                if (!key1.equals(key2))
                 {
                     return false;
                 }
                 continue;   // Nothing further to push on the stack
             }
             
-            if (dualKey._key1 instanceof Collection)
+            if (key1 instanceof Collection)
             {   // If Collections, they both must be Collection
-                if (!(dualKey._key2 instanceof Collection))
+                if (!(key2 instanceof Collection))
                 {
                     return false;
                 }
             }
-            else if (dualKey._key2 instanceof Collection)
+            else if (key2 instanceof Collection)
             {   // They both must be Collection
                 return false;
             }
 
-            if (dualKey._key1 instanceof SortedSet)
+            if (key1 instanceof SortedSet)
             {
-                if (!(dualKey._key2 instanceof SortedSet))
+                if (!(key2 instanceof SortedSet))
                 {
                     return false;
                 }
             }
-            else if (dualKey._key2 instanceof SortedSet)
+            else if (key2 instanceof SortedSet)
             {
                 return false;
             }
 
-            if (dualKey._key1 instanceof SortedMap)
+            if (key1 instanceof SortedMap)
             {
-                if (!(dualKey._key2 instanceof SortedMap))
+                if (!(key2 instanceof SortedMap))
                 {
                     return false;
                 }
             }
-            else if (dualKey._key2 instanceof SortedMap)
+            else if (key2 instanceof SortedMap)
             {
                 return false;
             }
 
-            if (dualKey._key1 instanceof Map)
+            if (key1 instanceof Map)
             {
-                if (!(dualKey._key2 instanceof Map))
+                if (!(key2 instanceof Map))
                 {
                     return false;
                 }
             }
-            else if (dualKey._key2 instanceof Map)
+            else if (key2 instanceof Map)
             {
                 return false;
             }
 
-            if (!isContainerType(dualKey._key1) && !isContainerType(dualKey._key2) && !key1Class.equals(dualKey._key2.getClass()))
+            if (!isContainerType(key1) && !isContainerType(key2) && !key1Class.equals(key2.getClass()))
             {   // Must be same class
                 return false;
             }
@@ -254,7 +286,7 @@ public class DeepEquals
             // the array must be deeply equivalent.
             if (key1Class.isArray())
             {
-                if (!compareArrays(dualKey._key1, dualKey._key2, stack, visited))
+                if (!compareArrays(key1, key2, stack, visited))
                 {
                     return false;
                 }
@@ -263,9 +295,9 @@ public class DeepEquals
 
             // Special handle SortedSets because they are fast to compare because their
             // elements must be in the same order to be equivalent Sets.
-            if (dualKey._key1 instanceof SortedSet)
+            if (key1 instanceof SortedSet)
             {
-                if (!compareOrderedCollection((Collection) dualKey._key1, (Collection) dualKey._key2, stack, visited))
+                if (!compareOrderedCollection((Collection) key1, (Collection) key2, stack, visited))
                 {
                     return false;
                 }
@@ -274,9 +306,9 @@ public class DeepEquals
 
             // Handled unordered Sets.  This is a slightly more expensive comparison because order cannot
             // be assumed, a temporary Map must be created, however the comparison still runs in O(N) time.
-            if (dualKey._key1 instanceof Set)
+            if (key1 instanceof Set)
             {
-                if (!compareUnorderedCollection((Collection) dualKey._key1, (Collection) dualKey._key2, stack, visited))
+                if (!compareUnorderedCollection((Collection) key1, (Collection) key2, stack, visited))
                 {
                     return false;
                 }
@@ -285,9 +317,9 @@ public class DeepEquals
 
             // Check any Collection that is not a Set.  In these cases, element order
             // matters, therefore this comparison is faster than using unordered comparison.
-            if (dualKey._key1 instanceof Collection)
+            if (key1 instanceof Collection)
             {
-                if (!compareOrderedCollection((Collection) dualKey._key1, (Collection) dualKey._key2, stack, visited))
+                if (!compareOrderedCollection((Collection) key1, (Collection) key2, stack, visited))
                 {
                     return false;
                 }
@@ -296,9 +328,9 @@ public class DeepEquals
 
             // Compare two SortedMaps.  This takes advantage of the fact that these
             // Maps can be compared in O(N) time due to their ordering.
-            if (dualKey._key1 instanceof SortedMap)
+            if (key1 instanceof SortedMap)
             {
-                if (!compareSortedMap((SortedMap) dualKey._key1, (SortedMap) dualKey._key2, stack, visited))
+                if (!compareSortedMap((SortedMap) key1, (SortedMap) key2, stack, visited))
                 {
                     return false;
                 }
@@ -308,9 +340,9 @@ public class DeepEquals
             // Compare two Unordered Maps. This is a slightly more expensive comparison because
             // order cannot be assumed, therefore a temporary Map must be created, however the
             // comparison still runs in O(N) time.
-            if (dualKey._key1 instanceof Map)
+            if (key1 instanceof Map)
             {
-                if (!compareUnorderedMap((Map) dualKey._key1, (Map) dualKey._key2, stack, visited))
+                if (!compareUnorderedMap((Map) key1, (Map) key2, stack, visited))
                 {
                     return false;
                 }
@@ -325,7 +357,7 @@ public class DeepEquals
             {
                 if (ignoreCustomEquals == null || (ignoreCustomEquals.size() > 0 && !ignoreCustomEquals.contains(key1Class)))
                 {
-                    if (!dualKey._key1.equals(dualKey._key2))
+                    if (!key1.equals(key2))
                     {
                         return false;
                     }
@@ -339,7 +371,7 @@ public class DeepEquals
             {
                 try
                 {
-                    DualKey dk = new DualKey(field.get(dualKey._key1), field.get(dualKey._key2));
+                    ItemsToCompare dk = new ItemsToCompare(field.get(key1), field.get(key2));
                     if (!visited.contains(dk))
                     {
                         stack.addFirst(dk);
@@ -379,7 +411,7 @@ public class DeepEquals
 
         for (int i = 0; i < len; i++)
         {
-            DualKey dk = new DualKey(Array.get(array1, i), Array.get(array2, i));
+            ItemsToCompare dk = new ItemsToCompare(Array.get(array1, i), Array.get(array2, i));
             if (!visited.contains(dk))
             {   // push contents for further comparison
                 stack.addFirst(dk);
@@ -411,7 +443,7 @@ public class DeepEquals
 
         while (i1.hasNext())
         {
-            DualKey dk = new DualKey(i1.next(), i2.next());
+            ItemsToCompare dk = new ItemsToCompare(i1.next(), i2.next());
             if (!visited.contains(dk))
             {   // push contents for further comparison
                 stack.addFirst(dk);
@@ -421,7 +453,7 @@ public class DeepEquals
     }
 
     /**
-     * Deeply compare the two sets referenced by dualKey.  This method attempts
+     * Deeply compare the two sets referenced by ItemsToCompare.  This method attempts
      * to quickly determine inequality by length, then if lengths match, it
      * places one collection into a temporary Map by deepHashCode(), so that it
      * can walk the other collection and look for each item in the map, which
@@ -468,7 +500,7 @@ public class DeepEquals
 
             if (other.size() == 1)
             {   // no hash collision, items must be equivalent or deepEquals is false
-                DualKey dk = new DualKey(o, other.iterator().next());
+                ItemsToCompare dk = new ItemsToCompare(o, other.iterator().next());
                 if (!visited.contains(dk))
                 {   // Place items on 'stack' for future equality comparison.
                     stack.addFirst(dk);
@@ -514,13 +546,13 @@ public class DeepEquals
             Map.Entry entry2 = (Map.Entry)i2.next();
 
             // Must split the Key and Value so that Map.Entry's equals() method is not used.
-            DualKey dk = new DualKey(entry1.getKey(), entry2.getKey());
+            ItemsToCompare dk = new ItemsToCompare(entry1.getKey(), entry2.getKey());
             if (!visited.contains(dk))
             {   // Push Keys for further comparison
                 stack.addFirst(dk);
             }
 
-            dk = new DualKey(entry1.getValue(), entry2.getValue());
+            dk = new ItemsToCompare(entry1.getValue(), entry2.getValue());
             if (!visited.contains(dk))
             {   // Push values for further comparison
                 stack.addFirst(dk);
@@ -576,13 +608,13 @@ public class DeepEquals
             if (other.size() == 1)
             {
                 Map.Entry entry2 = other.iterator().next();
-                DualKey dk = new DualKey(entry.getKey(), entry2.getKey());
+                ItemsToCompare dk = new ItemsToCompare(entry.getKey(), entry2.getKey());
                 if (!visited.contains(dk))
                 {   // Push keys for further comparison
                     stack.addFirst(dk);
                 }
 
-                dk = new DualKey(entry.getValue(), entry2.getValue());
+                dk = new ItemsToCompare(entry.getValue(), entry2.getValue());
                 if (!visited.contains(dk))
                 {   // Push values for further comparison
                     stack.addFirst(dk);
@@ -618,6 +650,29 @@ public class DeepEquals
             }
         }
         return false;
+    }
+    
+    private static boolean compareNumbers(Number a, Number b)
+    {
+        if (a instanceof Float && (b instanceof Float || b instanceof Double))
+        {
+            return compareFloatingPointNumbers(a, b, floatEplison);
+        }
+        else if (a instanceof Double && (b instanceof Float || b instanceof Double))
+        {
+            return compareFloatingPointNumbers(a, b, doubleEplison);
+        }
+
+        try
+        {
+            BigDecimal x = convert2BigDecimal(a);
+            BigDecimal y = convert2BigDecimal(b);
+            return x.compareTo(y) == 0.0;
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
     }
 
     /**
@@ -671,10 +726,15 @@ public class DeepEquals
      */
     public static boolean hasCustomEquals(Class<?> c)
     {
-        Class origClass = c;
-        if (_customEquals.containsKey(c))
+        StringBuilder sb = new StringBuilder(getClassLoaderName(c));
+        sb.append('.');
+        sb.append(c.getName());
+        String key = sb.toString();
+        Boolean ret = _customEquals.get(key);
+        
+        if (ret != null)
         {
-            return _customEquals.get(c);
+            return ret;
         }
 
         while (!Object.class.equals(c))
@@ -682,13 +742,13 @@ public class DeepEquals
             try
             {
                 c.getDeclaredMethod("equals", Object.class);
-                _customEquals.put(origClass, true);
+                _customEquals.put(key, true);
                 return true;
             }
             catch (Exception ignored) { }
             c = c.getSuperclass();
         }
-        _customEquals.put(origClass, false);
+        _customEquals.put(key, false);
         return false;
     }
 
@@ -785,10 +845,15 @@ public class DeepEquals
      */
     public static boolean hasCustomHashCode(Class<?> c)
     {
-        Class origClass = c;
-        if (_customHash.containsKey(c))
+        StringBuilder sb = new StringBuilder(getClassLoaderName(c));
+        sb.append('.');
+        sb.append(c.getName());
+        String key = sb.toString();
+        Boolean ret = _customHash.get(key);
+        
+        if (ret != null)
         {
-            return _customHash.get(c);
+            return ret;
         }
 
         while (!Object.class.equals(c))
@@ -796,13 +861,13 @@ public class DeepEquals
             try
             {
                 c.getDeclaredMethod("hashCode");
-                _customHash.put(origClass, true);
+                _customHash.put(key, true);
                 return true;
             }
             catch (Exception ignored) { }
             c = c.getSuperclass();
         }
-        _customHash.put(origClass, false);
+        _customHash.put(key, false);
         return false;
     }
 }

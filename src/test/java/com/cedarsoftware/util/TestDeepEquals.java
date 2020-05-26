@@ -149,6 +149,46 @@ public class TestDeepEquals
         assert deepEquals(1L, 1.0f);
         assert deepEquals(1L, 1.0d);
         assert !deepEquals(1, TimeZone.getDefault());
+
+        long x = Integer.MAX_VALUE;
+        assert deepEquals(Integer.MAX_VALUE, x);
+        assert deepEquals(x, Integer.MAX_VALUE);
+        assert !deepEquals(Integer.MAX_VALUE, x + 1);
+        assert !deepEquals(x + 1, Integer.MAX_VALUE);
+
+        x = Integer.MIN_VALUE;
+        assert deepEquals(Integer.MIN_VALUE, x);
+        assert deepEquals(x, Integer.MIN_VALUE);
+        assert !deepEquals(Integer.MIN_VALUE, x - 1);
+        assert !deepEquals(x - 1, Integer.MIN_VALUE);
+
+        BigDecimal y = new BigDecimal("1.7976931348623157e+308");
+        assert deepEquals(Double.MAX_VALUE, y);
+        assert deepEquals(y, Double.MAX_VALUE);
+        y = y.add(BigDecimal.ONE);
+        assert !deepEquals(Double.MAX_VALUE, y);
+        assert !deepEquals(y, Double.MAX_VALUE);
+
+        y = new BigDecimal("4.9e-324");
+        assert deepEquals(Double.MIN_VALUE, y);
+        assert deepEquals(y, Double.MIN_VALUE);
+        y = y.subtract(BigDecimal.ONE);
+        assert !deepEquals(Double.MIN_VALUE, y);
+        assert !deepEquals(y, Double.MIN_VALUE);
+
+        x = Byte.MAX_VALUE;
+        assert deepEquals((byte)127, x);
+        assert deepEquals(x, (byte)127);
+        x++;
+        assert !deepEquals((byte)127, x);
+        assert !deepEquals(x, (byte)127);
+
+        x = Byte.MIN_VALUE;
+        assert deepEquals((byte)-128, x);
+        assert deepEquals(x, (byte)-128);
+        x--;
+        assert !deepEquals((byte)-128, x);
+        assert !deepEquals(x, (byte)-128);
     }
 
     @Test

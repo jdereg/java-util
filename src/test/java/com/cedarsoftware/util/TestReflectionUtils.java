@@ -9,10 +9,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
@@ -524,8 +523,8 @@ public class TestReflectionUtils
     @Test
     public void testGetMethodWithDifferentClassLoaders()
     {
-        TestClassLoader testClassLoader1 = new TestClassLoader();
-        TestClassLoader testClassLoader2 = new TestClassLoader();
+        ClassLoader testClassLoader1 = new TestClassLoader();
+        ClassLoader testClassLoader2 = new TestClassLoader();
         try
         {
             Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
@@ -547,16 +546,16 @@ public class TestReflectionUtils
     @Test
     public void testGetMethod2WithDifferentClassLoaders()
     {
-        TestClassLoader testClassLoader1 = new TestClassLoader();
-        TestClassLoader testClassLoader2 = new TestClassLoader();
+        ClassLoader testClassLoader1 = new TestClassLoader();
+        ClassLoader testClassLoader2 = new TestClassLoader();
         try
         {
             Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
-            Object foo = clazz1.newInstance();
+            Object foo = clazz1.getDeclaredConstructor().newInstance();
             Method m1 = ReflectionUtils.getMethod(foo, "getPrice", 0);
 
             Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
-            Object bar = clazz2.newInstance();
+            Object bar = clazz2.getDeclaredConstructor().newInstance();
             Method m2 = ReflectionUtils.getMethod(bar,"getPrice", 0);
 
             // Should get different Method instances since this class was loaded via two different ClassLoaders.
@@ -572,8 +571,8 @@ public class TestReflectionUtils
     @Test
     public void testGetMethod3WithDifferentClassLoaders()
     {
-        TestClassLoader testClassLoader1 = new TestClassLoader();
-        TestClassLoader testClassLoader2 = new TestClassLoader();
+        ClassLoader testClassLoader1 = new TestClassLoader();
+        ClassLoader testClassLoader2 = new TestClassLoader();
         try
         {
             Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
@@ -633,11 +632,11 @@ public class TestReflectionUtils
         private String foo;
     }
 
-    public class TestClassLoader extends URLClassLoader
+    public static class TestClassLoader extends URLClassLoader
     {
         public TestClassLoader()
         {
-            super(((URLClassLoader)getSystemClassLoader()).getURLs());
+            super(getClasspathURLs());
         }
 
         public Class<?> loadClass(String name) throws ClassNotFoundException
@@ -648,6 +647,29 @@ public class TestReflectionUtils
             }
 
             return super.loadClass(name);
+        }
+
+        private static URL[] getClasspathURLs()
+        {
+            // If this were Java 8 or earlier, we could have done:
+//            URL[] urls = ((URLClassLoader)getSystemClassLoader()).getURLs();
+            try
+            {
+                URL url = TestReflectionUtils.class.getClassLoader().getResource("test.txt");
+                String path = url.getPath();
+                path = path.substring(0,path.length() - 8);
+
+                List<URL> urls = new ArrayList<>();
+                urls.add(new URL("file:" + path));
+
+                URL[] urlz = urls.toArray(new URL[1]);
+                return urlz;
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                return null;
+            }
         }
     }
 }

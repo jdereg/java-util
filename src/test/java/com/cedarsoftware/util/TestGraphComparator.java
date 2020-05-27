@@ -4,39 +4,11 @@ import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 import static com.cedarsoftware.util.DeepEquals.deepEquals;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_RESIZE;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_SET_ELEMENT;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.LIST_RESIZE;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.LIST_SET_ELEMENT;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.MAP_PUT;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.MAP_REMOVE;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.OBJECT_ASSIGN_FIELD;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.OBJECT_FIELD_TYPE_CHANGED;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.OBJECT_ORPHAN;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.SET_ADD;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.SET_REMOVE;
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.fromName;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.*;
+import static org.junit.Assert.*;
 
 /**
  * Test for GraphComparator
@@ -1162,18 +1134,6 @@ public class TestGraphComparator
         target.list.add(2L);
         target.list.add(3L);
 
-        assertFalse(deepEquals(src, target));
-
-        List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
-        assertTrue(deltas.size() == 1);
-        GraphComparator.Delta delta = deltas.get(0);
-        assertTrue(LIST_SET_ELEMENT == delta.getCmd());
-        assertEquals("list", delta.getFieldName());
-        assertEquals(1, delta.getOptionalKey());
-        assertEquals(2, delta.getSourceValue());
-        assertEquals(2L, delta.getTargetValue());
-
-        GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
         assertTrue(deepEquals(src, target));
     }
 

@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.52.0</version>
+    <version>1.53.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -82,22 +82,7 @@
         <version.agrona>1.0.7</version.agrona>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
-    <!--  pluginRepositories>
-        <pluginRepository>
-            <id>central</id>
-            <name>Maven Plugin Repository</name>
-            <url>http://repo1.maven.org/maven2</url>
-            <layout>default</layout>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <releases>
-                <updatePolicy>never</updatePolicy>
-            </releases>
-        </pluginRepository>
-    </pluginRepositories -->
-
+    
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>

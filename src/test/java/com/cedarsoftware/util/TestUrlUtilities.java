@@ -10,7 +10,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.net.*;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,25 +61,18 @@ public class TestUrlUtilities
     @Test
     public void testGetContentFromUrlAsString() throws Exception
     {
-        String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
         String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl);
         String content3 = UrlUtilities.getContentFromUrlAsString(new URL(httpsUrl), true);
         String content4 = UrlUtilities.getContentFromUrlAsString(new URL(httpsUrl), null, null, true);
-        String content5 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, 0, null, null, true);
         String content6 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, null, true);
 
-        assertTrue(content1.contains(domain));
         assertTrue(content2.contains(domain));
         assertTrue(content3.contains(domain));
         assertTrue(content4.contains(domain));
-        assertTrue(content5.contains(domain));
         assertTrue(content6.contains(domain));
 
-        assertEquals(content1, content2);
 
-        String content7 = UrlUtilities.getContentFromUrlAsString(httpUrl, Proxy.NO_PROXY);
         String content8 = UrlUtilities.getContentFromUrlAsString(httpUrl);
-        String content9 = UrlUtilities.getContentFromUrlAsString(httpUrl, null, 0, null, null, true);
         String content10 = UrlUtilities.getContentFromUrlAsString(httpUrl, null, null, true);
 
         // TODO: Test data is no longer hosted.
@@ -149,28 +145,6 @@ public class TestUrlUtilities
     @Test
     public void testGetContentFromUrlWithMalformedUrl() {
         assertNull(UrlUtilities.getContentFromUrl("", null, null, true));
-        assertNull(UrlUtilities.getContentFromUrl("", null, null, null, true));
-
-        assertNull(UrlUtilities.getContentFromUrl("www.google.com", "localhost", 80, null, null, true));
-    }
-
-    @Test
-    public void testSSLTrust() throws Exception
-    {
-        String content1 = UrlUtilities.getContentFromUrlAsString(httpsUrl, Proxy.NO_PROXY);
-        String content2 = UrlUtilities.getContentFromUrlAsString(httpsUrl, null, 0, null, null, true);
-
-        assertTrue(content1.contains(domain));
-        assertTrue(content2.contains(domain));
-
-        assertTrue(StringUtilities.levenshteinDistance(content1, content2) < 10);
-
-    }
-
-    @Test
-    public void testHostName()
-    {
-        assertNotNull(UrlUtilities.getHostName());
     }
 
     @Test
@@ -178,9 +152,7 @@ public class TestUrlUtilities
     {
         URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
         compareIO(UrlUtilities.getConnection(u, true, false, false));
-        compareIO(UrlUtilities.getConnection(u, null, 0, null, true, false, false, true));
         compareIO(UrlUtilities.getConnection(u, null, true, false, false, true));
-        compareIO(UrlUtilities.getConnection(u, null, true, false, false, Proxy.NO_PROXY, true));
     }
 
     private void compareIO(URLConnection c) throws Exception {
@@ -218,7 +190,7 @@ public class TestUrlUtilities
         Map gCookie = new HashMap();
         gCookie.put("param", new HashMap());
         cookies.put("google.com", gCookie);
-        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), cookies, true, false, false, null, null, null);
+        HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), cookies, true, false, false, true);
         UrlUtilities.setCookies(c, cookies);
         c.connect();
         Map outCookies = new HashMap();

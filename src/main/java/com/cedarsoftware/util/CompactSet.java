@@ -5,26 +5,26 @@ import java.util.*;
 /**
  * Often, memory may be consumed by lots of Maps or Sets (HashSet uses a HashMap to implement it's set).  HashMaps
  * and other similar Maps often have a lot of blank entries in their internal structures.  If you have a lot of Maps
- * in memory, perhaps representing JSON objects, large amounts of memory can be consumed by these empty Map entries.
+ * in memory, perhaps representing JSON objects, large amounts of memory can be consumed by these empty Map entries.<p></p>
  *
  * CompactSet is a Set that strives to reduce memory at all costs while retaining speed that is close to HashSet's speed.
  * It does this by using only one (1) member variable (of type Object) and changing it as the Set grows.  It goes from
  * an Object[] to a Set when the size() of the Set crosses the threshold defined by the method compactSize() (defaults
  * to 80).  After the Set crosses compactSize() size, then it uses a Set (defined by the user) to hold the items.  This
- * Set is defined by a method that can be overridden, which returns a new empty Set() for use in the > compactSize()
- * state.
+ * Set is defined by a method that can be overridden, which returns a new empty Set() for use in the {@literal >} compactSize()
+ * state.<pre>
  *
  *     Methods you may want to override:
  *
- *     // Map you would like it to use when size() > compactSize().  HashSet is default
- *     protected abstract Map<K, V> getNewMap();
+ *     // Map you would like it to use when size() {@literal >} compactSize().  HashSet is default
+ *     protected abstract Map{@literal <}K, V{@literal >} getNewMap();
  *
  *     // If you want case insensitivity, return true and return new CaseInsensitiveSet or TreeSet(String.CASE_INSENSITIVE_PRDER) from getNewSet()
  *     protected boolean isCaseInsensitive() { return false; }
  *
- *     // When size() > than this amount, the Set returned from getNewSet() is used to store elements.
+ *     // When size() {@literal >} than this amount, the Set returned from getNewSet() is used to store elements.
  *     protected int compactSize() { return 80; }
- *
+ * </pre>
  * This Set supports holding a null element.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -276,7 +276,7 @@ public class CompactSet<E> extends AbstractSet<E>
     }
 
     /**
-     * @return new empty Set instance to use when size() becomes > compactSize().
+     * @return new empty Set instance to use when size() becomes {@literal >} compactSize().
      */
     protected Set<E> getNewSet() { return new HashSet<>(compactSize() + 1); }
     protected boolean isCaseInsensitive() { return false; }

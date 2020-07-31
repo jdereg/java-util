@@ -1,11 +1,13 @@
 package com.cedarsoftware.util;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.security.SecureRandom;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static com.cedarsoftware.util.StringUtilities.isEmpty;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
@@ -22,27 +24,31 @@ import static java.lang.System.currentTimeMillis;
  * the faster API will generate positive IDs only good for about 286 years [after 2000].<br>
  * <br>
  * The IDs are guaranteed to be strictly increasing.
- * 
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
- *         Roger Judd (@HonorKnight on GitHub) for adding code to ensure increasing order.
- *         <br>
- *         Copyright (c) Cedar Software LLC
- *         <br><br>
- *         Licensed under the Apache License, Version 2.0 (the "License");
- *         you may not use this file except in compliance with the License.
- *         You may obtain a copy of the License at
- *         <br><br>
- *         http://www.apache.org/licenses/LICENSE-2.0
- *         <br><br>
- *         Unless required by applicable law or agreed to in writing, software
- *         distributed under the License is distributed on an "AS IS" BASIS,
- *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *         See the License for the specific language governing permissions and
- *         limitations under the License.
+ * Roger Judd (@HonorKnight on GitHub) for adding code to ensure increasing order.
+ * <br>
+ * Copyright (c) Cedar Software LLC
+ * <br><br>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <br><br>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <br><br>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 public class UniqueIdGenerator
 {
-    private UniqueIdGenerator () {}
+    private static final Logger log = LogManager.getLogger(UniqueIdGenerator.class);
+
+    private UniqueIdGenerator()
+    {
+    }
 
     private static final Object lock = new Object();
     private static final Object lock19 = new Object();
@@ -50,7 +56,7 @@ public class UniqueIdGenerator
     private static int count2 = 0;
     private static long previousTimeMilliseconds = 0;
     private static long previousTimeMilliseconds2 = 0;
-    private static final int clusterId;
+    private static final int serverId;
     private static final Map<Long, Long> lastIds = new LinkedHashMap<Long, Long>()
     {
         protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
@@ -68,22 +74,35 @@ public class UniqueIdGenerator
 
     static
     {
-        String id = SystemUtilities.getExternalVariable("JAVA_UTIL_CLUSTERID");
-        if (isEmpty(id))
+        int id = getServerId("CF_INSTANCE_INDEX");
+        if (id == -1)
         {
-            SecureRandom random = new SecureRandom();
-            clusterId = abs(random.nextInt()) % 100;
+            id = getServerId("JAVA_UTIL_CLUSTERID");
+            if (id == -1)
+            {
+                SecureRandom random = new SecureRandom();
+                id = abs(random.nextInt()) % 100;
+                log.info("java-util using server id=" + id + " for last two digits of generated unique IDs.");
+            }
         }
-        else
+        serverId = id;
+    }
+
+    private static int getServerId(String externalVarName)
+    {
+        String id = SystemUtilities.getExternalVariable(externalVarName);
+        try
         {
-            try
+            if (StringUtilities.isEmpty(id))
             {
-                clusterId = abs(parseInt(id)) % 100;
+                return -1;
             }
-            catch (NumberFormatException e)
-            {
-                throw new IllegalArgumentException("Environment / System variable JAVA_UTIL_CLUSTERID must be 0-99");
-            }
+            return abs(parseInt(id)) % 100;
+        }
+        catch (NumberFormatException e)
+        {
+            log.warn("Unable to get unique server id or index from environment variable/system property key-value: " + externalVarName + "=" + id, e);
+            return -1;
         }
     }
 
@@ -103,6 +122,7 @@ public class UniqueIdGenerator
      * max.<br>
      * <br>
      * The IDs returned are guaranteed to be strictly increasing.
+     *
      * @return long unique ID
      */
     public static long getUniqueId()
@@ -135,7 +155,7 @@ public class UniqueIdGenerator
             previousTimeMilliseconds = currentTimeMilliseconds;
         }
 
-        return currentTimeMilliseconds * 100000 + count * 100 + clusterId;
+        return currentTimeMilliseconds * 100000 + count * 100 + serverId;
     }
 
     /**
@@ -154,6 +174,7 @@ public class UniqueIdGenerator
      * This API is faster than the 18 digit API.  This API can return 10,000 unique IDs per millisecond max.<br>
      * <br>
      * The IDs returned are guaranteed to be strictly increasing.
+     *
      * @return long unique ID
      */
     public static long getUniqueId19()
@@ -187,11 +208,12 @@ public class UniqueIdGenerator
             previousTimeMilliseconds2 = currentTimeMilliseconds;
         }
 
-        return currentTimeMilliseconds * 1000000 + count2 * 100 + clusterId;
+        return currentTimeMilliseconds * 1000000 + count2 * 100 + serverId;
     }
 
     /**
      * Find out when the ID was generated.
+     *
      * @param uniqueId long unique ID that was generated from the the .getUniqueId() API
      * @return Date when the ID was generated, with the time portion accurate to the millisecond. The time
      * is measured in milliseconds, between the time the id was generated and midnight, January 1, 1970 UTC.
@@ -203,6 +225,7 @@ public class UniqueIdGenerator
 
     /**
      * Find out when the ID was generated. "19" version.
+     *
      * @param uniqueId long unique ID that was generated from the the .getUniqueId19() API
      * @return Date when the ID was generated, with the time portion accurate to the millisecond. The time
      * is measured in milliseconds, between the time the id was generated and midnight, January 1, 1970 UTC.

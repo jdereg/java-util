@@ -31,7 +31,7 @@ public class CompactLinkedSet<E> extends CompactSet<E>
     public CompactLinkedSet(Collection<E> other) { super(other); }
 
     /**
-     * @return new empty Set instance to use when size() becomes > compactSize().
+     * @return new empty Set instance to use when size() becomes {@literal >} compactSize().
      */
     protected Set<E> getNewSet() { return new LinkedHashSet<>(compactSize() + 1); }
 }

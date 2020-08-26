@@ -69,8 +69,8 @@
     <properties>
         <version.log4j>2.13.3</version.log4j>
         <version.junit>4.12</version.junit>
-        <version.json.io>4.11.1</version.json.io>            <!-- testing only -->
-        <version.mockito>1.10.19</version.mockito>
+        <version.json.io>4.12.0</version.json.io>           <!-- testing only -->
+        <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
         <version.plugin.compiler>3.8.1</version.plugin.compiler>
         <version.plugin.gpg>1.6</version.plugin.gpg>
         <version.plugin.javadoc>3.1.1</version.plugin.javadoc>
@@ -79,7 +79,7 @@
         <version.plugin.source>3.1.0</version.plugin.source>
         <version.plugin.felix.scr>1.26.2</version.plugin.felix.scr>
         <version.plugin.felix.bundle>4.2.1</version.plugin.felix.bundle>
-        <version.agrona>1.0.7</version.agrona>
+        <version.agrona>1.0.7</version.agrona>              <!-- testing only -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     

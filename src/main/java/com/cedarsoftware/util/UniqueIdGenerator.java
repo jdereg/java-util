@@ -23,7 +23,8 @@ import static java.lang.System.currentTimeMillis;
  * the year 2286, however this API will generate unique IDs at a rate up to 10 million per second.  The trade-off is
  * the faster API will generate positive IDs only good for about 286 years [after 2000].<br>
  * <br>
- * The IDs are guaranteed to be strictly increasing.
+ * The IDs are guaranteed to be strictly increasing.  There is an API you can call (getDate()) that will return the
+ * date and time (to the millisecond) that they ID was created.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  * Roger Judd (@HonorKnight on GitHub) for adding code to ensure increasing order.
@@ -44,6 +45,7 @@ import static java.lang.System.currentTimeMillis;
  */
 public class UniqueIdGenerator
 {
+    public static final String JAVA_UTIL_CLUSTERID = "JAVA_UTIL_CLUSTERID";
     private static final Logger log = LogManager.getLogger(UniqueIdGenerator.class);
 
     private UniqueIdGenerator()
@@ -74,15 +76,24 @@ public class UniqueIdGenerator
 
     static
     {
-        int id = getServerId("CF_INSTANCE_INDEX");
+        int id = getServerId(JAVA_UTIL_CLUSTERID);
         if (id == -1)
         {
-            id = getServerId("JAVA_UTIL_CLUSTERID");
-            if (id == -1)
+            String envName = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
+            if (StringUtilities.hasContent(envName))
             {
-                SecureRandom random = new SecureRandom();
-                id = abs(random.nextInt()) % 100;
-                log.info("java-util using server id=" + id + " for last two digits of generated unique IDs.");
+                String envValue = SystemUtilities.getExternalVariable(envName);
+                id = getServerId(envValue);
+                if (id == -1)
+                {   // Try Cloud Foundry instance index
+                    id = getServerId("CF_INSTANCE_INDEX");
+                    if (id == -1)
+                    {
+                        SecureRandom random = new SecureRandom();
+                        id = abs(random.nextInt()) % 100;
+                        log.info("java-util using server id=" + id + " for last two digits of generated unique IDs.");
+                    }
+                }
             }
         }
         serverId = id;

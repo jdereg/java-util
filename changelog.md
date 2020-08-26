@@ -1,7 +1,7 @@
 ### Revision History
 * 1.60.0  [Java 1.8+]
   * Updated to require Java 1.8 or newer.
-  * `UniqueIdGenerator` will recognize Cloud Foundry `CF_INSTANCE_INDEX`, in addition to `JAVA_UTIL_CLUSTERID` as an environment variable or Java system property.  This will be the last two digits of the generated unique id (making it cluster safe).
+  * `UniqueIdGenerator` will recognize Cloud Foundry `CF_INSTANCE_INDEX`, in addition to `JAVA_UTIL_CLUSTERID` as an environment variable or Java system property.  This will be the last two digits of the generated unique id (making it cluster safe).  Alternatively, the value can be the name of another environment variable (detected by not being parseable as an int), in which case the value of the specified environment variable will be parsed as server id within cluster (value parsed as int, mod 100).
   * Removed a bunch of Javadoc warnings from build.
 * 1.53.0  [Java 1.7+]
   * Updated to consume `log4j 2.13.3` - more secure.

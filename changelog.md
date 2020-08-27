@@ -9,7 +9,7 @@
   * `ReflectionUtils` now caches the methods it finds by `ClassLoader` and `Class`.  Earlier, found methods were cached per `Class`. This did not handle the case when multiple `ClassLoaders` were used to load the same class with the same method.  Using `ReflectionUtils` to locate the `foo()` method will find it in `ClassLoaderX.ClassA.foo()` (and cache it as such), and if asked to find it in `ClassLoaderY.ClassA.foo()`, `ReflectionUtils` will not find it in the cache with `ClassLoaderX.ClassA.foo()`, but it will fetch it from `ClassLoaderY.ClassA.foo()` and then cache the method with that `ClassLoader/Class` pairing.
   * `DeepEquals.equals()` was not comparing `BigDecimals` correctly.  If they had different scales but represented the same value, it would return `false`.  Now they are properly compared using `bd1.compareTo(bd2) == 0`.
   * `DeepEquals.equals(x, y, options)` has a new option.  If you add `ALLOW_STRINGS_TO_MATCH_NUMBERS` to the options map, then if a `String` is being compared to a `Number` (or vice-versa), it will convert the `String` to a `BigDecimal` and then attempt to see if the values still match.  If so, then it will continue.  If it could not convert the `String` to a `Number`, or the converted `String` as a `Number` did not match, `false` is returned.
-  * `convertToBigDecimal()` now handles very larg `longs` and `AtomicLongs` correctly (before it returned `false` if the `longs` were greater than a `double's` max integer representation.)
+  * `convertToBigDecimal()` now handles very large `longs` and `AtomicLongs` correctly (before it returned `false` if the `longs` were greater than a `double's` max integer representation.)
   * `CompactCIHashSet` and `CompactCILinkedHashSet` now return a new `Map` that is sized to `compactSize() + 1` when switching from internal storage to `HashSet` / `LinkedHashSet` for storage.  This is purely a performance enhancement.
 * 1.51.0
   * New Sets:
@@ -45,7 +45,7 @@
   and between `2` and `compactSize()` entries, the entries in the `Map` are stored in an `Object[]` (using same single member variable).  The
   even elements the 'keys' and the odd elements are the associated 'values'.  This array is dynamically resized to exactly match the number of stored entries.
   When more than `compactSize()` entries are used, the `Map` then uses the `Map` returned from the overrideable `getNewMap()` api to store the entries.
-  In all cases, it maintains the underlying behavior of the `Map` in all cases. 
+  In all cases, it maintains the underlying behavior of the `Map`. 
   * Updated to consume `log4j 2.13.1`
 * 1.45.0
   * `CompactMap` now supports case-insensitivity when using String keys.  By default, it is case sensitive, but you can override the 
@@ -192,10 +192,10 @@
   * `CaseInsensitiveMap` has a constructor that takes a `Map`, which allows it to take on the nature of the `Map`, allowing for case-insensitive `ConcurrentHashMap`, sorted `CaseInsensitiveMap`, etc.  The 'Unmodifiable' `Map` nature is intentionally not taken on.  The passed in `Map` is not mutated.
   * `CaseInsensitiveSet` has a constructor that takes a `Collection`, nwhich allows it to take on the nature of the `Collection`, allowing for sorted `CaseInsensitiveSets`.  The 'unmodifiable' `Collection` nature is intentionally not taken on.  The passed in `Set` is not mutated.  
 * 1.20.2
-  * `TrackingMap` changed so that an existing key associated to null counts as accessed. It is valid for many Map types to allow null values to be associated to the key.
-  * `TrackingMap.getWrappedMap()` added so that you can fetch the wrapped Map.
+  * `TrackingMap` changed so that an existing key associated to null counts as accessed. It is valid for many `Map` types to allow null values to be associated to the key.
+  * `TrackingMap.getWrappedMap()` added so that you can fetch the wrapped `Map`.
 * 1.20.1
-  * TrackingMap changed so that .put() does not mark the key as accessed.
+  * `TrackingMap` changed so that `.put()` does not mark the key as accessed.
 * 1.20.0
   * `TrackingMap` added.  Create this map around any type of Map, and it will track which keys are accessed via .get(), .containsKey(), or .put() (when put overwrites a value already associated to the key).  Provided by @seankellner.
 * 1.19.3

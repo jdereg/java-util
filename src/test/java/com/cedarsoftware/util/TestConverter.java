@@ -7,6 +7,7 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -1175,4 +1176,28 @@ public class TestConverter
         }
         catch (IllegalArgumentException e) { }
     }
+
+    @Test
+    public void testLongToBigDecimal()
+    {
+        BigDecimal big = convert2BigDecimal(7L);
+        assert big instanceof BigDecimal;
+        assert big.longValue() == 7L;
+
+        big = convertToBigDecimal(null);
+        assert big == null;
+    }
+
+    @Test
+    public void testLocalDateToBigDecimal()
+    {
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(2020, 8, 4);   // 0-based for month
+        
+        BigDecimal big = convert2BigDecimal(LocalDate.of(2020, 9, 4));
+        assert big instanceof BigDecimal;
+        assert big.longValue() == cal.getTime().getTime(); 
+    }
+
 }

@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.*;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -59,243 +60,53 @@ public final class Converter
     private static final Map<Class<?>, Work> conversion = new HashMap<>();
     private static final Map<Class<?>, Work> conversionToString = new HashMap<>();
     
-    private interface Work
+    private interface Work<T>
     {
-        Object convert(Object fromInstance);
+        Object convert(T fromInstance);
     }
     
     static
     {
-        conversion.put(String.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToString(fromInstance);
-            }
-        });
+        conversion.put(String.class, Converter::convertToString);
+        conversion.put(long.class, Converter::convert2long);
+        conversion.put(Long.class, Converter::convertToLong);
+        conversion.put(int.class, Converter::convert2int);
+        conversion.put(Integer.class, Converter::convertToInteger);
+        conversion.put(short.class, Converter::convert2short);
+        conversion.put(Short.class, Converter::convertToShort);
+        conversion.put(byte.class, Converter::convert2byte);
+        conversion.put(Byte.class, Converter::convertToByte);
+        conversion.put(char.class, Converter::convert2char);
+        conversion.put(boolean.class, Converter::convert2boolean);
+        conversion.put(Boolean.class, Converter::convertToBoolean);
+        conversion.put(double.class, Converter::convert2double);
+        conversion.put(Double.class, Converter::convertToDouble);
+        conversion.put(float.class, Converter::convert2float);
+        conversion.put(Float.class, Converter::convertToFloat);
+        conversion.put(Character.class, Converter::convertToCharacter);
+        conversion.put(Calendar.class, Converter::convertToCalendar);
+        conversion.put(Date.class, Converter::convertToDate);
+        conversion.put(LocalDate.class, Converter::convertToLocalDate);
+        conversion.put(LocalDateTime.class, Converter::convertToLocalDateTime);
+        conversion.put(ZonedDateTime.class, Converter::convertToZonedDateTime);
+        conversion.put(BigDecimal.class, Converter::convertToBigDecimal);
+        conversion.put(BigInteger.class, Converter::convertToBigInteger);
+        conversion.put(java.sql.Date.class, Converter::convertToSqlDate);
+        conversion.put(Timestamp.class, Converter::convertToTimestamp);
+        conversion.put(AtomicInteger.class, Converter::convertToAtomicInteger);
+        conversion.put(AtomicLong.class, Converter::convertToAtomicLong);
+        conversion.put(AtomicBoolean.class, Converter::convertToAtomicBoolean);
 
-        conversion.put(long.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2long(fromInstance);
-            }
+        conversionToString.put(String.class, fromInstance -> fromInstance);
+        conversionToString.put(BigDecimal.class, fromInstance -> {
+            BigDecimal bd = convertToBigDecimal(fromInstance);
+            return bd.stripTrailingZeros().toPlainString();
         });
-
-        conversion.put(Long.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToLong(fromInstance);
-            }
+        conversionToString.put(BigInteger.class, fromInstance -> {
+            BigInteger bi = convertToBigInteger(fromInstance);
+            return bi.toString();
         });
-
-        conversion.put(int.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2int(fromInstance);
-            }
-        });
-
-        conversion.put(Integer.class, new Work()
-        {
-            public Object convert(Object fromInstance) { return convertToInteger(fromInstance); }
-        });
-
-        conversion.put(short.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2short(fromInstance);
-            }
-        });
-
-        conversion.put(Short.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToShort(fromInstance);
-            }
-        });
-
-        conversion.put(byte.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2byte(fromInstance);
-            }
-        });
-
-        conversion.put(Byte.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToByte(fromInstance);
-            }
-        });
-
-        conversion.put(char.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2char(fromInstance);
-            }
-        });
-
-        conversion.put(boolean.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2boolean(fromInstance);
-            }
-        });
-
-        conversion.put(Boolean.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToBoolean(fromInstance);
-            }
-        });
-
-        conversion.put(double.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2double(fromInstance);
-            }
-        });
-
-        conversion.put(Double.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToDouble(fromInstance);
-            }
-        });
-
-        conversion.put(float.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convert2float(fromInstance);
-            }
-        });
-
-        conversion.put(Float.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToFloat(fromInstance);
-            }
-        });
-
-        conversion.put(Character.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToCharacter(fromInstance);
-            }
-        });
-
-        conversion.put(Calendar.class, new Work()
-        {
-            public Object convert(Object fromInstance) { return convertToCalendar(fromInstance); }
-        });
-        
-        conversion.put(Date.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToDate(fromInstance);
-            }
-        });
-
-        conversion.put(BigDecimal.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            { return convertToBigDecimal(fromInstance);
-            }
-        });
-
-        conversion.put(BigInteger.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            { return convertToBigInteger(fromInstance);
-            }
-        });
-
-        conversion.put(java.sql.Date.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            { return convertToSqlDate(fromInstance);
-            }
-        });
-
-        conversion.put(Timestamp.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return convertToTimestamp(fromInstance);
-            }
-        });
-
-        conversion.put(AtomicInteger.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            { return convertToAtomicInteger(fromInstance);
-            }
-        });
-
-        conversion.put(AtomicLong.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            { return convertToAtomicLong(fromInstance);
-            }
-        });
-
-        conversion.put(AtomicBoolean.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            { return convertToAtomicBoolean(fromInstance);
-            }
-        });
-
-        conversionToString.put(String.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return fromInstance;
-            }
-        });
-
-        conversionToString.put(BigDecimal.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                BigDecimal bd = convertToBigDecimal(fromInstance);
-                return bd.stripTrailingZeros().toPlainString();
-            }
-        });
-
-        conversionToString.put(BigInteger.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                BigInteger bi = convertToBigInteger(fromInstance);
-                return bi.toString();
-            }
-        });
-
-        Work toString = new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return fromInstance.toString();
-            }
-        };
-
+        Work<?> toString = Object::toString;
         conversionToString.put(Boolean.class, toString);
         conversionToString.put(AtomicBoolean.class, toString);
         conversionToString.put(Byte.class, toString);
@@ -306,32 +117,12 @@ public final class Converter
         conversionToString.put(AtomicLong.class, toString);
 
         // Should eliminate possibility of 'e' (exponential) notation
-        Work toNoExpString = new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return fromInstance.toString();
-            }
-        };
-
+        Work<?> toNoExpString = Object::toString;
         conversionToString.put(Double.class, toNoExpString);
         conversionToString.put(Float.class, toNoExpString);
 
-        conversionToString.put(Date.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance);
-            }
-        });
-
-        conversionToString.put(Character.class, new Work()
-        {
-            public Object convert(Object fromInstance)
-            {
-                return "" + fromInstance;
-            }
-        });
+        conversionToString.put(Date.class, fromInstance -> SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance));
+        conversionToString.put(Character.class, fromInstance -> "" + fromInstance);
     }
 
     /**
@@ -404,7 +195,7 @@ public final class Converter
         {
             return null;
         }
-        Class clazz = fromInstance.getClass();
+        Class<?> clazz = fromInstance.getClass();
         Work work = conversionToString.get(clazz);
         if (work != null)
         {
@@ -441,8 +232,8 @@ public final class Converter
      * Convert from the passed in instance to a BigDecimal.  If null is passed in, this method will return null.  If ""
      * is passed in, this method will return a BigDecimal with the value of 0.  Possible inputs are String (base10
      * numeric values in string), BigInteger, any primitive/primitive wrapper, Boolean/AtomicBoolean (returns
-     * BigDecimal of 0 or 1), Date/Calendar (returns BigDecimal with the value of number of milliseconds since Jan 1, 1970),
-     * and Character (returns integer value of character).
+     * BigDecimal of 0 or 1), Date, Calendar, LocalDate, LocalDateTime, ZonedDateTime (returns BigDecimal with the
+     * value of number of milliseconds since Jan 1, 1970), and Character (returns integer value of character).
      */
     public static BigDecimal convertToBigDecimal(Object fromInstance)
     {
@@ -488,6 +279,18 @@ public final class Converter
             {
                 return new BigDecimal(((Date)fromInstance).getTime());
             }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return new BigDecimal(localDateToMillis((LocalDate)fromInstance));
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return new BigDecimal(localDateTimeToMillis((LocalDateTime)fromInstance));
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return new BigDecimal(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
+            }
             else if (fromInstance instanceof Calendar)
             {
                 return new BigDecimal(((Calendar)fromInstance).getTime().getTime());
@@ -525,8 +328,8 @@ public final class Converter
      * Convert from the passed in instance to a BigInteger.  If null is passed in, this method will return null.  If ""
      * is passed in, this method will return a BigInteger with the value of 0.  Possible inputs are String (base10
      * numeric values in string), BigDecimal, any primitive/primitive wrapper, Boolean/AtomicBoolean (returns
-     * BigInteger of 0 or 1), Date/Calendar (returns BigInteger with the value of number of milliseconds since Jan 1, 1970),
-     * and Character (returns integer value of character).
+     * BigInteger of 0 or 1), Date, Calendar, LocalDate, LocalDateTime, ZonedDateTime (returns BigInteger with the value
+     * of number of milliseconds since Jan 1, 1970), and Character (returns integer value of character).
      */
     public static BigInteger convertToBigInteger(Object fromInstance)
     {
@@ -564,6 +367,18 @@ public final class Converter
             {
                 return new BigInteger(Long.toString(((Date) fromInstance).getTime()));
             }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return BigInteger.valueOf(localDateToMillis((LocalDate)fromInstance));
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return BigInteger.valueOf(localDateTimeToMillis((LocalDateTime)fromInstance));
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return BigInteger.valueOf(zonedDateTimeToMillis((ZonedDateTime) fromInstance));
+            }
             else if (fromInstance instanceof Calendar)
             {
                 return new BigInteger(Long.toString(((Calendar) fromInstance).getTime().getTime()));
@@ -583,9 +398,10 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a java.sql.Date.  If null is passed in, this method will return null.
-     * Possible inputs are TimeStamp, Date, Calendar, java.sql.Date (will return a copy), String (which will be parsed
-     * by DateUtilities into a Date and a java.sql.Date will created from that), Long, BigInteger, BigDecimal, and
-     * AtomicLong (all of which the java.sql.Date will be created directly from [number of milliseconds since Jan 1, 1970]).
+     * Possible inputs are TimeStamp, Date, Calendar, java.sql.Date (will return a copy), LocalDate, LocalDateTime,
+     * ZonedDateTime, String (which will be parsed by DateUtilities into a Date and a java.sql.Date will created from that),
+     * Long, BigInteger, BigDecimal, and AtomicLong (all of which the java.sql.Date will be created directly from
+     * [number of milliseconds since Jan 1, 1970]).
      */
     public static java.sql.Date convertToSqlDate(Object fromInstance)
     {
@@ -612,6 +428,18 @@ public final class Converter
                     return null;
                 }
                 return new java.sql.Date(date.getTime());
+            }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return new java.sql.Date(localDateToMillis((LocalDate)fromInstance));
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return new java.sql.Date(localDateTimeToMillis((LocalDateTime)fromInstance));
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return new java.sql.Date(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
             }
             else if (fromInstance instanceof Calendar)
             {
@@ -644,9 +472,10 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a Timestamp.  If null is passed in, this method will return null.
-     * Possible inputs are java.sql.Date, Date, Calendar, TimeStamp (will return a copy), String (which will be parsed
-     * by DateUtilities into a Date and a Timestamp will created from that), Long, BigInteger, BigDecimal, and
-     * AtomicLong (all of which the Timestamp will be created directly from [number of milliseconds since Jan 1, 1970]).
+     * Possible inputs are java.sql.Date, Date, Calendar, LocalDate, LocalDateTime, ZonedDateTime, TimeStamp
+     * (will return a copy), String (which will be parsed by DateUtilities into a Date and a Timestamp will created
+     * from that), Long, BigInteger, BigDecimal, and AtomicLong (all of which the Timestamp will be created directly
+     * from [number of milliseconds since Jan 1, 1970]).
      */
     public static Timestamp convertToTimestamp(Object fromInstance)
     {
@@ -663,6 +492,18 @@ public final class Converter
             else if (fromInstance instanceof Date)
             {
                 return new Timestamp(((Date) fromInstance).getTime());
+            }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return new Timestamp(localDateToMillis((LocalDate)fromInstance));
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return new Timestamp(localDateTimeToMillis((LocalDateTime)fromInstance));
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return new Timestamp(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
             }
             else if (fromInstance instanceof String)
             {
@@ -729,6 +570,18 @@ public final class Converter
             {   // Return a clone, not the same instance because Dates are not immutable
                 return new Date(((Date)fromInstance).getTime());
             }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return new Date(localDateToMillis((LocalDate)fromInstance));
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return new Date(localDateTimeToMillis((LocalDateTime)fromInstance));
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return new Date(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
+            }
             else if (fromInstance instanceof Calendar)
             {
                 return ((Calendar) fromInstance).getTime();
@@ -755,6 +608,204 @@ public final class Converter
             throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Date'", e);
         }
         nope(fromInstance, "Date");
+        return null;
+    }
+
+    public static LocalDate convertToLocalDate(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+            else if (fromInstance instanceof LocalDate)
+            {   // return passed in instance (no need to copy, LocalDate is immutable)
+                return (LocalDate) fromInstance;
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return ((LocalDateTime) fromInstance).toLocalDate();
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return ((ZonedDateTime) fromInstance).toLocalDate();
+            }
+            else if (fromInstance instanceof java.sql.Date)
+            {   
+                return ((java.sql.Date) fromInstance).toLocalDate();
+            }
+            else if (fromInstance instanceof Timestamp)
+            {
+                return ((Timestamp) fromInstance).toLocalDateTime().toLocalDate();
+            }
+            else if (fromInstance instanceof Date)
+            {   
+                return ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+            else if (fromInstance instanceof Calendar)
+            {
+                return ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+            else if (fromInstance instanceof Long)
+            {
+                Long dateInMillis = (Long) fromInstance;
+                return Instant.ofEpochMilli(dateInMillis).atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+            else if (fromInstance instanceof BigInteger)
+            {
+                BigInteger big = (BigInteger) fromInstance;
+                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                BigDecimal big = (BigDecimal) fromInstance;
+                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+            else if (fromInstance instanceof AtomicLong)
+            {
+                AtomicLong atomicLong = (AtomicLong) fromInstance;
+                return Instant.ofEpochMilli(atomicLong.longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'LocalDate'", e);
+        }
+        nope(fromInstance, "LocalDate");
+        return null;
+    }
+
+    public static LocalDateTime convertToLocalDateTime(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return ((LocalDate) fromInstance).atStartOfDay();
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {   // return passed in instance (no need to copy, LocalDateTime is immutable)
+                return ((LocalDateTime) fromInstance);
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return ((ZonedDateTime) fromInstance).toLocalDateTime();
+            }
+            else if (fromInstance instanceof java.sql.Date)
+            {
+                return ((java.sql.Date) fromInstance).toLocalDate().atStartOfDay();
+            }
+            else if (fromInstance instanceof Timestamp)
+            {
+                return ((Timestamp) fromInstance).toLocalDateTime();
+            }
+            else if (fromInstance instanceof Date)
+            {
+                return ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            else if (fromInstance instanceof Calendar)
+            {
+                return ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            else if (fromInstance instanceof Long)
+            {
+                Long dateInMillis = (Long) fromInstance;
+                return Instant.ofEpochMilli(dateInMillis).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            else if (fromInstance instanceof BigInteger)
+            {
+                BigInteger big = (BigInteger) fromInstance;
+                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                BigDecimal big = (BigDecimal) fromInstance;
+                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+            else if (fromInstance instanceof AtomicLong)
+            {
+                AtomicLong atomicLong = (AtomicLong) fromInstance;
+                return Instant.ofEpochMilli(atomicLong.longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'LocalDateTime'", e);
+        }
+        nope(fromInstance, "LocalDateTime");
+        return null;
+    }
+
+    public static ZonedDateTime convertToZonedDateTime(Object fromInstance)
+    {
+        try
+        {
+            if (fromInstance instanceof String)
+            {
+                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
+                return date.toInstant().atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return ((LocalDate)fromInstance).atStartOfDay(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {   // return passed in instance (no need to copy, LocalDateTime is immutable)
+                return ((LocalDateTime) fromInstance).atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {   // return passed in instance (no need to copy, ZonedDateTime is immutable)
+                return ((ZonedDateTime) fromInstance);
+            }
+            else if (fromInstance instanceof java.sql.Date)
+            {
+                return ((java.sql.Date) fromInstance).toInstant().atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof Timestamp)
+            {
+                return ((Timestamp) fromInstance).toInstant().atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof Date)
+            {
+                return ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof Calendar)
+            {
+                return ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof Long)
+            {
+                Long dateInMillis = (Long) fromInstance;
+                return Instant.ofEpochMilli(dateInMillis).atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof BigInteger)
+            {
+                BigInteger big = (BigInteger) fromInstance;
+                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof BigDecimal)
+            {
+                BigDecimal big = (BigDecimal) fromInstance;
+                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault());
+            }
+            else if (fromInstance instanceof AtomicLong)
+            {
+                AtomicLong atomicLong = (AtomicLong) fromInstance;
+                return Instant.ofEpochMilli(atomicLong.longValue()).atZone(ZoneId.systemDefault());
+            }
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'LocalDateTime'", e);
+        }
+        nope(fromInstance, "LocalDateTime");
         return null;
     }
 
@@ -1038,8 +1089,8 @@ public final class Converter
     /**
      * Convert from the passed in instance to an long.  If null is passed in, (long) 0 is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  In
-     * addition, Date, java.sql.Date, Timestamp, and Calendar can be passed in, in which case the long returned is
-     * the number of milliseconds since Jan 1, 1970.
+     * addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar can be passed in,
+     * in which case the long returned is the number of milliseconds since Jan 1, 1970.
      */
     public static long convert2long(Object fromInstance)
     {
@@ -1051,10 +1102,10 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a Long.  If null is passed in, (Long) 0 is returned. Possible inputs
+     * Convert from the passed in instance to a Long.  If null is passed in, null is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  In
-     * addition, Date, java.sql.Date, Timestamp, and Calendar can be passed in, in which case the long returned is
-     * the number of milliseconds since Jan 1, 1970.
+     * addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar can be passed in,
+     * in which case the long returned is the number of milliseconds since Jan 1, 1970.
      */
     public static Long convertToLong(Object fromInstance)
     {
@@ -1090,6 +1141,18 @@ public final class Converter
             else if (fromInstance instanceof Date)
             {
                 return ((Date)fromInstance).getTime();
+            }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return localDateToMillis((LocalDate)fromInstance);
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return localDateTimeToMillis((LocalDateTime)fromInstance);
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return zonedDateTimeToMillis((ZonedDateTime)fromInstance);
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
@@ -1327,8 +1390,8 @@ public final class Converter
     /**
      * Convert from the passed in instance to an AtomicLong.  If null is passed in, new AtomicLong(0L) is returned.
      * Possible inputs are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and
-     * all Atomic*s.  In addition, Date, java.sql.Date, Timestamp, and Calendar can be passed in, in which case the
-     * AtomicLong returned is the number of milliseconds since Jan 1, 1970.
+     * all Atomic*s.  In addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar
+     * can be passed in, in which case the AtomicLong returned is the number of milliseconds since Jan 1, 1970.
      */
     public static AtomicLong convert2AtomicLong(Object fromInstance)
     {
@@ -1342,8 +1405,8 @@ public final class Converter
     /**
      * Convert from the passed in instance to an AtomicLong.  If null is passed in, null is returned. Possible inputs
      * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  In
-     * addition, Date, java.sql.Date, Timestamp, and Calendar can be passed in, in which case the AtomicLong returned
-     * is the number of milliseconds since Jan 1, 1970.
+     * addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar can be passed in,
+     * in which case the AtomicLong returned is the number of milliseconds since Jan 1, 1970.
      */
     public static AtomicLong convertToAtomicLong(Object fromInstance)
     {
@@ -1368,6 +1431,18 @@ public final class Converter
             else if (fromInstance instanceof Date)
             {
                 return new AtomicLong(((Date)fromInstance).getTime());
+            }
+            else if (fromInstance instanceof LocalDate)
+            {
+                return new AtomicLong(localDateToMillis((LocalDate)fromInstance));
+            }
+            else if (fromInstance instanceof LocalDateTime)
+            {
+                return new AtomicLong(localDateTimeToMillis((LocalDateTime)fromInstance));
+            }
+            else if (fromInstance instanceof ZonedDateTime)
+            {
+                return new AtomicLong(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
             }
             else if (fromInstance instanceof Boolean)
             {
@@ -1447,5 +1522,35 @@ public final class Converter
     private static String name(Object fromInstance)
     {
         return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
+    }
+
+    /**
+     * @param localDate A Java LocalDate
+     * @return a long representing the localDate as the number of milliseconds since the
+     * number of milliseconds since Jan 1, 1970
+     */
+    public static long localDateToMillis(LocalDate localDate)
+    {
+        return localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    /**
+     * @param localDateTime A Java LocalDateTime
+     * @return a long representing the localDateTime as the number of milliseconds since the
+     * number of milliseconds since Jan 1, 1970
+     */
+    public static long localDateTimeToMillis(LocalDateTime localDateTime)
+    {
+        return localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    /**
+     * @param zonedDateTime A Java ZonedDateTime
+     * @return a long representing the zonedDateTime as the number of milliseconds since the
+     * number of milliseconds since Jan 1, 1970
+     */
+    public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime)
+    {
+        return zonedDateTime.toInstant().toEpochMilli();
     }
 }

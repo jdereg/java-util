@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.text.MessageFormat;
 import java.time.*;
 import java.util.Calendar;
 import java.util.Date;
@@ -123,6 +124,14 @@ public final class Converter
 
         conversionToString.put(Date.class, fromInstance -> SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance));
         conversionToString.put(Character.class, fromInstance -> "" + fromInstance);
+        conversionToString.put(LocalDate.class, fromInstance -> {
+            LocalDate localDate = (LocalDate) fromInstance;
+            return String.format("%04d-%02d-%02d", localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
+        });
+        conversionToString.put(LocalDateTime.class, fromInstance -> {
+            LocalDateTime localDateTime = (LocalDateTime) fromInstance;
+            return String.format("%04d-%02d-%02dT%02d:%02d:%02d", localDateTime.getYear(), localDateTime.getMonthValue(), localDateTime.getDayOfMonth(), localDateTime.getHour(), localDateTime.getMinute(), localDateTime.getSecond());
+        });
     }
 
     /**

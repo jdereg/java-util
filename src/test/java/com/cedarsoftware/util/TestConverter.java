@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -261,6 +264,10 @@ public class TestConverter
         Calendar today = Calendar.getInstance();
         now70 = today.getTime().getTime();
         assert now70 == convert(today, Long.class);
+
+        LocalDate localDate = LocalDate.now();
+        now70 = Converter.localDateToMillis(localDate);
+        assert now70 == convert(localDate, long.class);
 
         assert 25L == convert(new AtomicInteger(25), long.class);
         assert 100L == convert(new AtomicLong(100L), Long.class);
@@ -775,6 +782,234 @@ public class TestConverter
     }
 
     @Test
+    public void testLocalDateToOthers()
+    {
+        // Date to LocalDate
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2020, 8, 30, 0, 0, 0);
+        Date now = calendar.getTime();
+        LocalDate localDate = convert(now, LocalDate.class);
+        assertEquals(localDateToMillis(localDate), now.getTime());
+
+        // LocalDate to LocalDate - identity check
+        LocalDate x = convertToLocalDate(localDate);
+        assert localDate == x;
+
+        // LocalDateTime to LocalDate
+        LocalDateTime ldt = LocalDateTime.of(2020, 8, 30, 0, 0, 0);
+        x = convertToLocalDate(ldt);
+        assert localDateTimeToMillis(ldt) == localDateToMillis(x);
+
+        // ZonedDateTime to LocalDate
+        ZonedDateTime zdt = ZonedDateTime.of(2020, 8, 30, 0, 0, 0, 0, ZoneId.systemDefault());
+        x = convertToLocalDate(zdt);
+        assert zonedDateTimeToMillis(zdt) == localDateToMillis(x);
+
+        // Calendar to LocalDate
+        x = convertToLocalDate(calendar);
+        assert localDateToMillis(localDate) == calendar.getTime().getTime();
+
+        // SqlDate to LocalDate
+        java.sql.Date sqlDate = convert(now, java.sql.Date.class);
+        localDate = convert(sqlDate, LocalDate.class);
+        assertEquals(localDateToMillis(localDate), sqlDate.getTime());
+
+        // Timestamp to LocalDate
+        Timestamp timestamp = convert(now, Timestamp.class);
+        localDate = convert(timestamp, LocalDate.class);
+        assertEquals(localDateToMillis(localDate), timestamp.getTime());
+
+        // Long to LocalDate
+        localDate = convert(now.getTime(), LocalDate.class);
+        assertEquals(localDateToMillis(localDate), now.getTime());
+
+        // AtomicLong to LocalDate
+        AtomicLong atomicLong = new AtomicLong(now.getTime());
+        localDate = convert(atomicLong, LocalDate.class);
+        assertEquals(localDateToMillis(localDate), now.getTime());
+
+        // String to LocalDate
+        String strDate = convert(now, String.class);
+        localDate = convert(strDate, LocalDate.class);
+        String strDate2 = convert(localDate, String.class);
+        assert strDate.startsWith(strDate2);
+
+        // BigInteger to LocalDate
+        BigInteger bigInt = new BigInteger("" + now.getTime());
+        localDate = convert(bigInt, LocalDate.class);
+        assertEquals(localDateToMillis(localDate), now.getTime());
+
+        // BigDecimal to LocalDate
+        BigDecimal bigDec = new BigDecimal(now.getTime());
+        localDate = convert(bigDec, LocalDate.class);
+        assertEquals(localDateToMillis(localDate), now.getTime());
+
+        // Other direction --> LocalDate to other date types
+
+        // LocalDate to Date
+        localDate = convert(now, LocalDate.class);
+        Date date = convert(localDate, Date.class);
+        assertEquals(localDateToMillis(localDate), date.getTime());
+
+        // LocalDate to SqlDate
+        sqlDate = convert(localDate, java.sql.Date.class);
+        assertEquals(localDateToMillis(localDate), sqlDate.getTime());
+
+        // LocalDate to Timestamp
+        timestamp = convert(localDate, Timestamp.class);
+        assertEquals(localDateToMillis(localDate), timestamp.getTime());
+
+        // LocalDate to Long
+        long tnow = convert(localDate, long.class);
+        assertEquals(localDateToMillis(localDate), tnow);
+
+        // LocalDate to AtomicLong
+        atomicLong = convert(localDate, AtomicLong.class);
+        assertEquals(localDateToMillis(localDate), atomicLong.get());
+
+        // LocalDate to String
+        strDate = convert(localDate, String.class);
+        strDate2 = convert(now, String.class);
+        assert strDate2.startsWith(strDate);
+
+        // LocalDate to BigInteger
+        bigInt = convert(localDate, BigInteger.class);
+        assertEquals(now.getTime(), bigInt.longValue());
+
+        // LocalDate to BigDecimal
+        bigDec = convert(localDate, BigDecimal.class);
+        assertEquals(now.getTime(), bigDec.longValue());
+
+        // Error handling
+        try
+        {
+            convertToLocalDate("2020-12-40");
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "local");
+        }
+
+        assert convertToLocalDate(null) == null;
+    }
+
+    @Test
+    public void testLocalDateTimeToOthers()
+    {
+        // Date to LocalDateTime
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2020, 8, 30, 13, 1, 11);
+        Date now = calendar.getTime();
+        LocalDateTime localDateTime = convert(now, LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), now.getTime());
+
+        // LocalDateTime to LocalDateTime - identity check
+        LocalDateTime x = convertToLocalDateTime(localDateTime);
+        assert localDateTime == x;
+
+        // LocalDate to LocalDateTime
+        LocalDate ld = LocalDate.of(2020, 8, 30);
+        x = convertToLocalDateTime(ld);
+        assert localDateToMillis(ld) == localDateTimeToMillis(x);
+
+        // ZonedDateTime to LocalDateTime
+        ZonedDateTime zdt = ZonedDateTime.of(2020, 8, 30, 13, 1, 11, 0, ZoneId.systemDefault());
+        x = convertToLocalDateTime(zdt);
+        assert zonedDateTimeToMillis(zdt) == localDateTimeToMillis(x);
+
+        // Calendar to LocalDateTime
+        x = convertToLocalDateTime(calendar);
+        assert localDateTimeToMillis(localDateTime) == calendar.getTime().getTime();
+
+        // SqlDate to LocalDateTime
+        java.sql.Date sqlDate = convert(now, java.sql.Date.class);
+        localDateTime = convert(sqlDate, LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), localDateToMillis(sqlDate.toLocalDate()));
+
+        // Timestamp to LocalDateTime
+        Timestamp timestamp = convert(now, Timestamp.class);
+        localDateTime = convert(timestamp, LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), timestamp.getTime());
+
+        // Long to LocalDateTime
+        localDateTime = convert(now.getTime(), LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), now.getTime());
+
+        // AtomicLong to LocalDateTime
+        AtomicLong atomicLong = new AtomicLong(now.getTime());
+        localDateTime = convert(atomicLong, LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), now.getTime());
+
+        // String to LocalDateTime
+        String strDate = convert(now, String.class);
+        localDateTime = convert(strDate, LocalDateTime.class);
+        String strDate2 = convert(localDateTime, String.class);
+        assert strDate.startsWith(strDate2);
+
+        // BigInteger to LocalDateTime
+        BigInteger bigInt = new BigInteger("" + now.getTime());
+        localDateTime = convert(bigInt, LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), now.getTime());
+
+        // BigDecimal to LocalDateTime
+        BigDecimal bigDec = new BigDecimal(now.getTime());
+        localDateTime = convert(bigDec, LocalDateTime.class);
+        assertEquals(localDateTimeToMillis(localDateTime), now.getTime());
+
+        // Other direction --> LocalDateTime to other date types
+
+        // LocalDateTime to Date
+        localDateTime = convert(now, LocalDateTime.class);
+        Date date = convert(localDateTime, Date.class);
+        assertEquals(localDateTimeToMillis(localDateTime), date.getTime());
+
+        // LocalDateTime to SqlDate
+        sqlDate = convert(localDateTime, java.sql.Date.class);
+        assertEquals(localDateTimeToMillis(localDateTime), sqlDate.getTime());
+
+        // LocalDateTime to Timestamp
+        timestamp = convert(localDateTime, Timestamp.class);
+        assertEquals(localDateTimeToMillis(localDateTime), timestamp.getTime());
+
+        // LocalDateTime to Long
+        long tnow = convert(localDateTime, long.class);
+        assertEquals(localDateTimeToMillis(localDateTime), tnow);
+
+        // LocalDateTime to AtomicLong
+        atomicLong = convert(localDateTime, AtomicLong.class);
+        assertEquals(localDateTimeToMillis(localDateTime), atomicLong.get());
+
+        // LocalDateTime to String
+        strDate = convert(localDateTime, String.class);
+        strDate2 = convert(now, String.class);
+        assert strDate2.startsWith(strDate);
+
+        // LocalDateTime to BigInteger
+        bigInt = convert(localDateTime, BigInteger.class);
+        assertEquals(now.getTime(), bigInt.longValue());
+
+        // LocalDateTime to BigDecimal
+        bigDec = convert(localDateTime, BigDecimal.class);
+        assertEquals(now.getTime(), bigDec.longValue());
+
+        // Error handling
+        try
+        {
+            convertToLocalDateTime("2020-12-40");
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "local");
+        }
+
+        assert convertToLocalDateTime(null) == null;
+    }
+
+    @Test
     public void testDateErrorHandlingBadInput()
     {
         assertNull(convert(" ", java.util.Date.class));
@@ -1189,15 +1424,83 @@ public class TestConverter
     }
 
     @Test
-    public void testLocalDateToBigDecimal()
+    public void testLocalDate()
     {
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.set(2020, 8, 4);   // 0-based for month
         
         BigDecimal big = convert2BigDecimal(LocalDate.of(2020, 9, 4));
-        assert big instanceof BigDecimal;
-        assert big.longValue() == cal.getTime().getTime(); 
+        assert big.longValue() == cal.getTime().getTime();
+
+        BigInteger bigI = convert2BigInteger(LocalDate.of(2020, 9, 4));
+        assert bigI.longValue() == cal.getTime().getTime();
+
+        java.sql.Date sqlDate = convertToSqlDate(LocalDate.of(2020, 9, 4));
+        assert sqlDate.getTime() == cal.getTime().getTime();
+
+        Timestamp timestamp = convertToTimestamp(LocalDate.of(2020, 9, 4));
+        assert timestamp.getTime() == cal.getTime().getTime();
+
+        Date date = convertToDate(LocalDate.of(2020, 9, 4));
+        assert date.getTime() == cal.getTime().getTime();
+
+        Long lng = convertToLong(LocalDate.of(2020, 9, 4));
+        assert lng == cal.getTime().getTime();
+
+        AtomicLong atomicLong = convertToAtomicLong(LocalDate.of(2020, 9, 4));
+        assert atomicLong.get() == cal.getTime().getTime();
     }
 
+    @Test
+    public void testLocalDateTimeToBig()
+    {
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(2020, 8, 8, 13, 11, 1);   // 0-based for month
+
+        BigDecimal big = convert2BigDecimal(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert big.longValue() == cal.getTime().getTime();
+
+        BigInteger bigI = convert2BigInteger(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert bigI.longValue() == cal.getTime().getTime();
+
+        java.sql.Date sqlDate = convertToSqlDate(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert sqlDate.getTime() == cal.getTime().getTime();
+
+        Timestamp timestamp = convertToTimestamp(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert timestamp.getTime() == cal.getTime().getTime();
+
+        Date date = convertToDate(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert date.getTime() == cal.getTime().getTime();
+
+        Long lng = convertToLong(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert lng == cal.getTime().getTime();
+
+        AtomicLong atomicLong = convertToAtomicLong(LocalDateTime.of(2020, 9, 8, 13, 11, 1));
+        assert atomicLong.get() == cal.getTime().getTime();
+    }
+
+    @Test
+    public void testLocalZonedDateTimeToBig()
+    {
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(2020, 8, 8, 13, 11, 1);   // 0-based for month
+
+        BigDecimal big = convert2BigDecimal(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()));
+        assert big.longValue() == cal.getTime().getTime();
+
+        BigInteger bigI = convert2BigInteger(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()));
+        assert bigI.longValue() == cal.getTime().getTime();
+
+        java.sql.Date sqlDate = convertToSqlDate(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()));
+        assert sqlDate.getTime() == cal.getTime().getTime();
+
+        Date date = convertToDate(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()));
+        assert date.getTime() == cal.getTime().getTime();
+
+        AtomicLong atomicLong = convertToAtomicLong(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()));
+        assert atomicLong.get() == cal.getTime().getTime();
+    }
 }

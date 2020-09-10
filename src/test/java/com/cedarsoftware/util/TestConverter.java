@@ -407,6 +407,16 @@ public class TestConverter
         {
             assertTrue(e.getMessage().toLowerCase().contains("unsupported type"));
         }
+
+        try
+        {
+            convertToString(ZoneId.systemDefault());
+            fail();
+        }
+        catch (Exception e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "unsupported", "type", "zone");
+        }
     }
 
     @Test
@@ -1058,6 +1068,9 @@ public class TestConverter
         AtomicLong al = new AtomicLong(christmas.getTime());
         assertEquals(christmas2, convert(al, Timestamp.class));
 
+        ZonedDateTime zdt = ZonedDateTime.of(2020, 8, 30, 13, 11, 17, 0, ZoneId.systemDefault());
+        Timestamp alexaBirthday = convertToTimestamp(zdt);
+        assert alexaBirthday.getTime() == zonedDateTimeToMillis(zdt);
         try
         {
             convert(Boolean.TRUE, Timestamp.class);

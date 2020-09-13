@@ -1020,6 +1020,125 @@ public class TestConverter
     }
 
     @Test
+    public void testZonedDateTimeToOthers()
+    {
+        // Date to ZonedDateTime
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2020, 8, 30, 13, 1, 11);
+        Date now = calendar.getTime();
+        ZonedDateTime zonedDateTime = convert(now, ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), now.getTime());
+
+        // ZonedDateTime to ZonedDateTime - identity check
+        ZonedDateTime x = convertToZonedDateTime(zonedDateTime);
+        assert zonedDateTime == x;
+
+        // LocalDate to ZonedDateTime
+        LocalDate ld = LocalDate.of(2020, 8, 30);
+        x = convertToZonedDateTime(ld);
+        assert localDateToMillis(ld) == zonedDateTimeToMillis(x);
+
+        // LocalDateTime to ZonedDateTime
+        LocalDateTime ldt = LocalDateTime.of(2020, 8, 30, 13, 1, 11);
+        x = convertToZonedDateTime(ldt);
+        assert localDateTimeToMillis(ldt) == zonedDateTimeToMillis(x);
+
+        // ZonedDateTime to ZonedDateTime
+        ZonedDateTime zdt = ZonedDateTime.of(2020, 8, 30, 13, 1, 11, 0, ZoneId.systemDefault());
+        x = convertToZonedDateTime(zdt);
+        assert zonedDateTimeToMillis(zdt) == zonedDateTimeToMillis(x);
+
+        // Calendar to ZonedDateTime
+        x = convertToZonedDateTime(calendar);
+        assert zonedDateTimeToMillis(zonedDateTime) == calendar.getTime().getTime();
+
+        // SqlDate to ZonedDateTime
+        java.sql.Date sqlDate = convert(now, java.sql.Date.class);
+        zonedDateTime = convert(sqlDate, ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), localDateToMillis(sqlDate.toLocalDate()));
+
+        // Timestamp to ZonedDateTime
+        Timestamp timestamp = convert(now, Timestamp.class);
+        zonedDateTime = convert(timestamp, ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), timestamp.getTime());
+
+        // Long to ZonedDateTime
+        zonedDateTime = convert(now.getTime(), ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), now.getTime());
+
+        // AtomicLong to ZonedDateTime
+        AtomicLong atomicLong = new AtomicLong(now.getTime());
+        zonedDateTime = convert(atomicLong, ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), now.getTime());
+
+        // String to ZonedDateTime
+        String strDate = convert(now, String.class);
+        zonedDateTime = convert(strDate, ZonedDateTime.class);
+        String strDate2 = convert(zonedDateTime, String.class);
+        assert strDate2.startsWith(strDate);
+
+        // BigInteger to ZonedDateTime
+        BigInteger bigInt = new BigInteger("" + now.getTime());
+        zonedDateTime = convert(bigInt, ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), now.getTime());
+
+        // BigDecimal to ZonedDateTime
+        BigDecimal bigDec = new BigDecimal(now.getTime());
+        zonedDateTime = convert(bigDec, ZonedDateTime.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), now.getTime());
+
+        // Other direction --> ZonedDateTime to other date types
+
+        // ZonedDateTime to Date
+        zonedDateTime = convert(now, ZonedDateTime.class);
+        Date date = convert(zonedDateTime, Date.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), date.getTime());
+
+        // ZonedDateTime to SqlDate
+        sqlDate = convert(zonedDateTime, java.sql.Date.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), sqlDate.getTime());
+
+        // ZonedDateTime to Timestamp
+        timestamp = convert(zonedDateTime, Timestamp.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), timestamp.getTime());
+
+        // ZonedDateTime to Long
+        long tnow = convert(zonedDateTime, long.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), tnow);
+
+        // ZonedDateTime to AtomicLong
+        atomicLong = convert(zonedDateTime, AtomicLong.class);
+        assertEquals(zonedDateTimeToMillis(zonedDateTime), atomicLong.get());
+
+        // ZonedDateTime to String
+        strDate = convert(zonedDateTime, String.class);
+        strDate2 = convert(now, String.class);
+        assert strDate.startsWith(strDate2);
+
+        // ZonedDateTime to BigInteger
+        bigInt = convert(zonedDateTime, BigInteger.class);
+        assertEquals(now.getTime(), bigInt.longValue());
+
+        // ZonedDateTime to BigDecimal
+        bigDec = convert(zonedDateTime, BigDecimal.class);
+        assertEquals(now.getTime(), bigDec.longValue());
+
+        // Error handling
+        try
+        {
+            convertToZonedDateTime("2020-12-40");
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "local");
+        }
+
+        assert convertToZonedDateTime(null) == null;
+    }
+    
+    @Test
     public void testDateErrorHandlingBadInput()
     {
         assertNull(convert(" ", java.util.Date.class));

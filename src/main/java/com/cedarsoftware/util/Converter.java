@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.text.MessageFormat;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -131,6 +132,11 @@ public final class Converter
         conversionToString.put(LocalDateTime.class, fromInstance -> {
             LocalDateTime localDateTime = (LocalDateTime) fromInstance;
             return String.format("%04d-%02d-%02dT%02d:%02d:%02d", localDateTime.getYear(), localDateTime.getMonthValue(), localDateTime.getDayOfMonth(), localDateTime.getHour(), localDateTime.getMinute(), localDateTime.getSecond());
+        });
+        conversionToString.put(ZonedDateTime.class, fromInstance -> {
+            ZonedDateTime zonedDateTime = (ZonedDateTime) fromInstance;
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
+            return zonedDateTime.format(formatter);
         });
     }
 
@@ -775,7 +781,7 @@ public final class Converter
             }
             else if (fromInstance instanceof java.sql.Date)
             {
-                return ((java.sql.Date) fromInstance).toInstant().atZone(ZoneId.systemDefault());
+                return ((java.sql.Date) fromInstance).toLocalDate().atStartOfDay(ZoneId.systemDefault());
             }
             else if (fromInstance instanceof Timestamp)
             {

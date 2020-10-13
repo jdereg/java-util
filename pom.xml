@@ -68,7 +68,7 @@
 
     <properties>
         <version.log4j>2.13.3</version.log4j>
-        <version.junit>4.12</version.junit>
+        <version.junit>4.13.1</version.junit>
         <version.json.io>4.12.0</version.json.io>           <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
         <version.plugin.compiler>3.8.1</version.plugin.compiler>

@@ -973,6 +973,29 @@ public class TestGraphComparator
     }
 
     @Test
+    public void testMapPutForReplace() throws Exception
+    {
+        Dictionary[] dictionaries = createTwoDictionaries();
+        long id = dictionaries[0].id;
+        dictionaries[0].contents.put("Entry2", "Bar");
+        dictionaries[1].contents.put("Entry2", "Foo");
+        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
+        assertTrue(deltas.size() == 1);
+        GraphComparator.Delta delta = deltas.get(0);
+        assertTrue(MAP_PUT == delta.getCmd());
+        assertTrue("contents".equals(delta.getFieldName()));
+        assertTrue(delta.getId().equals(id));
+        assertEquals(delta.getTargetValue(), "Foo");
+        assertEquals(delta.getOptionalKey(), "Entry2");
+        assertEquals(delta.getSourceValue(), "Bar");
+
+        GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
+        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+    }
+
+    @Test
     public void testMapRemove() throws Exception
     {
         Dictionary[] dictionaries = createTwoDictionaries();

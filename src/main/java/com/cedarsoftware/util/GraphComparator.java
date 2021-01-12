@@ -236,6 +236,10 @@ public class GraphComparator
         {
             return error;
         }
+
+        public String toString(){
+            return String.format("%s (%s)", getError(), super.toString());
+        }
     }
 
     public interface DeltaProcessor
@@ -764,7 +768,7 @@ public class GraphComparator
                 {   // Null value in either source or target
                     if (srcValue != targetValue)
                     {   // Value differed, must create PUT command to overwrite source value associated to key
-                        addMapPutDelta(delta, deltas, srcPtr, targetValue, srcKey);
+                        addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
                     }
                 }
                 else if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher))
@@ -775,12 +779,12 @@ public class GraphComparator
                     }
                     else
                     {   // Different ID associated to same key, must create PUT command to overwrite source value associated to key
-                        addMapPutDelta(delta, deltas, srcPtr, targetValue, srcKey);
+                        addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
                     }
                 }
                 else if (!DeepEquals.deepEquals(srcValue, targetValue))
                 {   // Non-null, non-ID value associated to key, and the two values are not equal.  Create PUT command to overwrite.
-                    addMapPutDelta(delta, deltas, srcPtr, targetValue, srcKey);
+                    addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
                 }
             }
             else
@@ -806,9 +810,9 @@ public class GraphComparator
         // TODO: If LinkedHashMap, may need to issue commands to reorder...
     }
 
-    private static void addMapPutDelta(Delta delta, Collection<Delta> deltas, String srcPtr, Object targetValue, Object key)
+    private static void addMapPutDelta(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, Object key)
     {
-        Delta putDelta = new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, key);
+        Delta putDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, key);
         putDelta.setCmd(MAP_PUT);
         deltas.add(putDelta);
     }

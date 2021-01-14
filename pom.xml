@@ -10,38 +10,70 @@
     <url>https://github.com/jdereg/java-util</url>
 
     <profiles>
-
         <profile>
-            <id>release-sign-artifacts</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>${version.plugin.gpg}</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                                <configuration>
-                                    <keyname>${gpg.keyname}</keyname>
-                                    <passphrase>${gpg.passphrase}</passphrase>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+<!--            <activation>-->
+<!--                <property>-->
+<!--                    <name>performRelease</name>-->
+<!--                    <value>true</value>-->
+<!--                </property>-->
+<!--            </activation>-->
+            <repositories>
+                <repository>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                    <id>bintray-jdereg-java-util</id>
+                    <name>bintray</name>
+                    <url>https://dl.bintray.com/jdereg/java-util</url>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                    <id>bintray-jdereg-java-util</id>
+                    <name>bintray-plugins</name>
+                    <url>https://dl.bintray.com/jdereg/java-util</url>
+                </pluginRepository>
+            </pluginRepositories>
+            <id>bintray</id>
         </profile>
+
+<!--        <profile>-->
+<!--            <id>release-sign-artifacts</id>-->
+<!--            <activation>-->
+<!--                <property>-->
+<!--                    <name>performRelease</name>-->
+<!--                    <value>true</value>-->
+<!--                </property>-->
+<!--            </activation>-->
+<!--            <build>-->
+<!--                <plugins>-->
+<!--                    <plugin>-->
+<!--                        <groupId>org.apache.maven.plugins</groupId>-->
+<!--                        <artifactId>maven-gpg-plugin</artifactId>-->
+<!--                        <version>${version.plugin.gpg}</version>-->
+<!--                        <executions>-->
+<!--                            <execution>-->
+<!--                                <id>sign-artifacts</id>-->
+<!--                                <phase>verify</phase>-->
+<!--                                <goals>-->
+<!--                                    <goal>sign</goal>-->
+<!--                                </goals>-->
+<!--                                <configuration>-->
+<!--                                    <keyname>${gpg.keyname}</keyname>-->
+<!--                                    <passphrase>${gpg.passphrase}</passphrase>-->
+<!--                                </configuration>-->
+<!--                            </execution>-->
+<!--                        </executions>-->
+<!--                    </plugin>-->
+<!--                </plugins>-->
+<!--            </build>-->
+<!--        </profile>-->
+<!--        <activeProfiles>-->
+<!--            <activeProfile>bintray</activeProfile>-->
+<!--        </activeProfiles>-->
     </profiles>
 
     <licenses>

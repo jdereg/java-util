@@ -529,6 +529,14 @@ public class TestDateUtilities
     }
 
     @Test
+    public void testDatePrecision()
+    {
+        Date x = DateUtilities.parseDate("2021-01-13T13:01:54.6747552-05:00");
+        Date y = DateUtilities.parseDate("2021-01-13T13:01:55.2589242-05:00");
+        assertTrue(x.compareTo(y) < 0);
+    }
+
+    @Test
     public void testParseErrors()
     {
         try

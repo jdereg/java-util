@@ -270,7 +270,7 @@ public final class DateUtilities
             int h = Integer.parseInt(hour);
             int mn = Integer.parseInt(min);
             int s = Integer.parseInt(sec);
-            int ms = Integer.parseInt(milli);
+            int ms = Integer.parseInt(prepareMillis(milli));
 
             if (h > 23)
             {
@@ -290,6 +290,27 @@ public final class DateUtilities
             c.set(Calendar.MILLISECOND, ms);
         }
         return c.getTime();
+    }
+
+    private static String prepareMillis(String milli)
+    {
+        if (StringUtilities.isEmpty(milli))
+        {
+            return "000";
+        }
+        int length = milli.length();
+        if (length == 1)
+        {
+            return milli + "00";
+        }
+        else if (length == 2)
+        {
+            return milli + "0";
+        }
+        else
+        {
+            return milli.substring(0, 3);
+        }
     }
 
     private static void error(String msg)

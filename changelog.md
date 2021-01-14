@@ -1,4 +1,7 @@
 ### Revision History
+* 1.62.0
+  * Updated `DateUtilities` to handle sub-seconds precision more robustly.
+  * Updated `GraphComparator` to add missing srcValue when MAP_PUT replaces existing value. @marcobjorge
 * 1.61.0
   * `Converter` now supports `LocalDate`, `LocalDateTime`, `ZonedDateTime` to/from `Calendar`, `Date`, `java.sql.Date`, `Timestamp`, `Long`, `BigInteger`, `BigDecimal`, `AtomicLong`, `LocalDate`, `LocalDateTime`, and `ZonedDateTime`.
 * 1.60.0  [Java 1.8+]

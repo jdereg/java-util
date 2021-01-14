@@ -5,75 +5,44 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
+    <version>1.61.0</version>
     <version>1.62.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
     <profiles>
+
         <profile>
+            <id>release-sign-artifacts</id>
             <activation>
                 <property>
                     <name>performRelease</name>
                     <value>true</value>
                 </property>
             </activation>
-            <repositories>
-                <repository>
-                    <snapshots>
-                        <enabled>false</enabled>
-                    </snapshots>
-                    <id>bintray-jdereg-java-util</id>
-                    <name>bintray</name>
-                    <url>https://dl.bintray.com/jdereg/java-util</url>
-                </repository>
-            </repositories>
-            <pluginRepositories>
-                <pluginRepository>
-                    <snapshots>
-                        <enabled>false</enabled>
-                    </snapshots>
-                    <id>bintray-jdereg-java-util</id>
-                    <name>bintray-plugins</name>
-                    <url>https://dl.bintray.com/jdereg/java-util</url>
-                </pluginRepository>
-            </pluginRepositories>
-            <id>bintray</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${version.plugin.gpg}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <keyname>${gpg.keyname}</keyname>
+                                    <passphrase>${gpg.passphrase}</passphrase>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
-
-<!--        <profile>-->
-<!--            <id>release-sign-artifacts</id>-->
-<!--            <activation>-->
-<!--                <property>-->
-<!--                    <name>performRelease</name>-->
-<!--                    <value>true</value>-->
-<!--                </property>-->
-<!--            </activation>-->
-<!--            <build>-->
-<!--                <plugins>-->
-<!--                    <plugin>-->
-<!--                        <groupId>org.apache.maven.plugins</groupId>-->
-<!--                        <artifactId>maven-gpg-plugin</artifactId>-->
-<!--                        <version>${version.plugin.gpg}</version>-->
-<!--                        <executions>-->
-<!--                            <execution>-->
-<!--                                <id>sign-artifacts</id>-->
-<!--                                <phase>verify</phase>-->
-<!--                                <goals>-->
-<!--                                    <goal>sign</goal>-->
-<!--                                </goals>-->
-<!--                                <configuration>-->
-<!--                                    <keyname>${gpg.keyname}</keyname>-->
-<!--                                    <passphrase>${gpg.passphrase}</passphrase>-->
-<!--                                </configuration>-->
-<!--                            </execution>-->
-<!--                        </executions>-->
-<!--                    </plugin>-->
-<!--                </plugins>-->
-<!--            </build>-->
-<!--        </profile>-->
-<!--        <activeProfiles>-->
-<!--            <activeProfile>bintray</activeProfile>-->
-<!--        </activeProfiles>-->
     </profiles>
 
     <licenses>
@@ -114,7 +83,7 @@
         <version.agrona>1.0.7</version.agrona>              <!-- testing only -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    
+
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
@@ -223,7 +192,7 @@
     </build>
 
     <dependencies>
-        
+
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -242,14 +211,14 @@
             <version>${version.junit}</version>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
             <version>${version.mockito}</version>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>com.cedarsoftware</groupId>
             <artifactId>json-io</artifactId>
@@ -266,3 +235,4 @@
 
     </dependencies>
 </project>
+

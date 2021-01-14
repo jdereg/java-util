@@ -5,7 +5,6 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.61.0</version>
     <version>1.62.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>

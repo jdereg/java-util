@@ -402,9 +402,28 @@ public class CompactMap<K, V> implements Map<K, V>
         {
             return;
         }
-        for (Entry<? extends K, ? extends V> entry : m.entrySet())
+        int mSize = m.size();
+        if (val instanceof Map || mSize > compactSize())
         {
-            put(entry.getKey(), entry.getValue());
+            if (val == EMPTY_MAP)
+            {
+                Map<K, V> map = getNewMap();
+                try
+                {   // Extra step here is to get a Map of the same type as above, with the "size" already established
+                    // which saves the time of growing the internal array dynamically.
+                    map = map.getClass().getConstructor(Integer.TYPE).newInstance(mSize);
+                }
+                catch (Exception ignored) { }
+                val = map;
+            }
+            ((Map) val).putAll(m);
+        }
+        else
+        {
+            for (Entry<? extends K, ? extends V> entry : m.entrySet())
+            {
+                put(entry.getKey(), entry.getValue());
+            }
         }
     }
 

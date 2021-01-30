@@ -12,7 +12,7 @@ To include in your project:
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.62.0</version>
+  <version>1.63.0</version>
 </dependency>
 ```
 

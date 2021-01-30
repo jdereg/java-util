@@ -251,7 +251,7 @@ public class CompactMap<K, V> implements Map<K, V>
             }
             else
             {   // Switch to Map - copy entries
-                Map<K, V> map = getNewMap();
+                Map<K, V> map = getNewMap(size() + 1);
                 entries = (Object[]) val;
                 for (int i=0; i < entries.length; i += 2)
                 {
@@ -407,14 +407,7 @@ public class CompactMap<K, V> implements Map<K, V>
         {
             if (val == EMPTY_MAP)
             {
-                Map<K, V> map = getNewMap();
-                try
-                {   // Extra step here is to get a Map of the same type as above, with the "size" already established
-                    // which saves the time of growing the internal array dynamically.
-                    map = map.getClass().getConstructor(Integer.TYPE).newInstance(mSize);
-                }
-                catch (Exception ignored) { }
-                val = map;
+                val = getNewMap(mSize);
             }
             ((Map) val).putAll(m);
         }
@@ -583,7 +576,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 {   // Match outer
                     protected boolean isCaseInsensitive() { return CompactMap.this.isCaseInsensitive(); }
                     protected int compactSize() { return CompactMap.this.compactSize(); }
-                    protected Map<K, V> getNewMap() { return CompactMap.this.getNewMap(); }
+                    protected Map<K, V> getNewMap() { return CompactMap.this.getNewMap(c.size()); }
                 };
                 for (Object o : c)
                 {
@@ -603,7 +596,6 @@ public class CompactMap<K, V> implements Map<K, V>
 
                 return size() != size;
             }
-
         };
     }
 
@@ -714,7 +706,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 {   // Match outer
                     protected boolean isCaseInsensitive() { return CompactMap.this.isCaseInsensitive(); }
                     protected int compactSize() { return CompactMap.this.compactSize(); }
-                    protected Map<K, V> getNewMap() { return CompactMap.this.getNewMap(); }
+                    protected Map<K, V> getNewMap() { return CompactMap.this.getNewMap(c.size()); }
                 };
                 for (Object o : c)
                 {
@@ -754,7 +746,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     private Map<K, V> getCopy()
     {
-        Map<K, V> copy = getNewMap();   // Use their Map (TreeMap, HashMap, LinkedHashMap, etc.)
+        Map<K, V> copy = getNewMap(size());   // Use their Map (TreeMap, HashMap, LinkedHashMap, etc.)
         if (val instanceof Object[])
         {   // 2 to compactSize - copy Object[] into Map
             Object[] entries = (Object[]) CompactMap.this.val;
@@ -933,6 +925,17 @@ public class CompactMap<K, V> implements Map<K, V>
      * @return new empty Map instance to use when size() becomes {@literal >} compactSize().
      */
     protected Map<K, V> getNewMap() { return new HashMap<>(compactSize() + 1); }
+    protected Map<K, V> getNewMap(int size)
+    {
+        Map<K, V> map = getNewMap();
+        try
+        {   // Extra step here is to get a Map of the same type as above, with the "size" already established
+            // which saves the time of growing the internal array dynamically.
+            map = map.getClass().getConstructor(Integer.TYPE).newInstance(size);
+        }
+        catch (Exception ignored) { }
+        return map;
+    }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }
 }

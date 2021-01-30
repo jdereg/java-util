@@ -1,4 +1,6 @@
 ### Revision History
+* 1.63.0
+  * Performance Improvement: Anytime `CompactMap` is copied internally, the destination map is pre-sized to correct size, eliminating growing underlying Map more than once.   
 * 1.62.0
   * Updated `DateUtilities` to handle sub-seconds precision more robustly.
   * Updated `GraphComparator` to add missing srcValue when MAP_PUT replaces existing value. @marcobjorge

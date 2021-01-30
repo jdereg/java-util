@@ -108,7 +108,8 @@ public class CompactSet<E> extends AbstractSet<E>
         if (val instanceof Object[])
         {   // 1 to compactSize
             Object[] entries = (Object[]) val;
-            for (int i=0; i < entries.length; i++)
+            int len = entries.length;
+            for (int i=0; i < len; i++)
             {
                 if (compareItems(item, entries[i]))
                 {
@@ -155,7 +156,7 @@ public class CompactSet<E> extends AbstractSet<E>
 
     private Set<E> getCopy()
     {
-        Set<E> copy = getNewSet();   // Use their Set (TreeSet, HashSet, LinkedHashSet, etc.)
+        Set<E> copy = getNewSet(size());   // Use their Set (TreeSet, HashSet, LinkedHashSet, etc.)
         if (val instanceof Object[])
         {   // 1 to compactSize - copy Object[] into Set
             Object[] entries = (Object[]) CompactSet.this.val;
@@ -194,7 +195,7 @@ public class CompactSet<E> extends AbstractSet<E>
             }
             else
             {   // Switch to Map - copy entries
-                Set<E> set = getNewSet();
+                Set<E> set = getNewSet(size() + 1);
                 entries = (Object[]) val;
                 for (Object anItem : entries)
                 {
@@ -279,6 +280,17 @@ public class CompactSet<E> extends AbstractSet<E>
      * @return new empty Set instance to use when size() becomes {@literal >} compactSize().
      */
     protected Set<E> getNewSet() { return new HashSet<>(compactSize() + 1); }
+    protected Set<E> getNewSet(int size)
+    {
+        Set<E> set = getNewSet();
+        try
+        {   // Extra step here is to get a Map of the same type as above, with the "size" already established
+            // which saves the time of growing the internal array dynamically.
+            set = set.getClass().getConstructor(Integer.TYPE).newInstance(size);
+        }
+        catch (Exception ignored) { }
+        return set;
+    }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }
 }

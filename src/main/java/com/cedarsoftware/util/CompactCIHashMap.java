@@ -34,6 +34,6 @@ public class CompactCIHashMap<K, V> extends CompactMap<K, V>
 {
     public CompactCIHashMap() { }
     public CompactCIHashMap(Map<K ,V> other) { super(other); }
-    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.<K, V>emptyMap(), new HashMap<K, V>(compactSize() + 1)); }
+    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(compactSize() + 1)); }
     protected boolean isCaseInsensitive() { return true; }
 }

@@ -361,8 +361,7 @@ public class TestCompactSet
         clearViaIterator(set);
         clearViaIterator(copy);
     }
-
-
+    
     @Ignore
     @Test
     public void testPerformance()
@@ -373,7 +372,7 @@ public class TestCompactSet
         int upper = 140;
         long totals[] = new long[upper - lower + 1];
 
-        for (int x = 0; x < 300; x++)
+        for (int x = 0; x < 2000; x++)
         {
             for (int i = lower; i < upper; i++)
             {

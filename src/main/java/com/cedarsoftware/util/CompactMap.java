@@ -142,7 +142,8 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            for (int i=0; i < entries.length; i += 2)
+            int len = entries.length;
+            for (int i=0; i < len; i += 2)
             {
                 if (compareKeys(key, entries[i]))
                 {
@@ -170,7 +171,8 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to Compactsize
             Object[] entries = (Object[]) val;
-            for (int i=0; i < entries.length; i += 2)
+            int len = entries.length;
+            for (int i=0; i < len; i += 2)
             {
                 Object aValue = entries[i + 1];
                 if (Objects.equals(value, aValue))
@@ -199,7 +201,8 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            for (int i=0; i < entries.length; i += 2)
+            int len = entries.length;
+            for (int i=0; i < len; i += 2)
             {
                 Object aKey = entries[i];
                 if (compareKeys(key, aKey))
@@ -228,7 +231,8 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            for (int i=0; i < entries.length; i += 2)
+            int len = entries.length;
+            for (int i=0; i < len; i += 2)
             {
                 Object aKey = entries[i];
                 Object aValue = entries[i + 1];
@@ -242,8 +246,8 @@ public class CompactMap<K, V> implements Map<K, V>
             // Not present in Object[]
             if (size() < compactSize())
             {   // Grow array
-                Object[] expand = new Object[entries.length + 2];
-                System.arraycopy(entries, 0, expand, 0, entries.length);
+                Object[] expand = new Object[len + 2];
+                System.arraycopy(entries, 0, expand, 0, len);
                 // Place new entry at end
                 expand[expand.length - 2] = key;
                 expand[expand.length - 1] = value;
@@ -253,7 +257,8 @@ public class CompactMap<K, V> implements Map<K, V>
             {   // Switch to Map - copy entries
                 Map<K, V> map = getNewMap(size() + 1);
                 entries = (Object[]) val;
-                for (int i=0; i < entries.length; i += 2)
+                len = entries.length;
+                for (int i=0; i < len; i += 2)
                 {
                     Object aKey = entries[i];
                     Object aValue = entries[i + 1];
@@ -336,13 +341,14 @@ public class CompactMap<K, V> implements Map<K, V>
             else
             {
                 Object[] entries = (Object[]) val;
-                for (int i = 0; i < entries.length; i += 2)
+                int len = entries.length;
+                for (int i = 0; i < len; i += 2)
                 {
                     Object aKey = entries[i];
                     if (compareKeys(key, aKey))
                     {   // Found, must shrink
                         Object prior = entries[i + 1];
-                        Object[] shrink = new Object[entries.length - 2];
+                        Object[] shrink = new Object[len - 2];
                         System.arraycopy(entries, 0, shrink, 0, i);
                         System.arraycopy(entries, i + 2, shrink, i, shrink.length - i);
                         val = shrink;
@@ -431,7 +437,8 @@ public class CompactMap<K, V> implements Map<K, V>
         {
             int h = 0;
             Object[] entries = (Object[]) val;
-            for (int i=0; i < entries.length; i += 2)
+            int len = entries.length;
+            for (int i=0; i < len; i += 2)
             {
                 Object aKey = entries[i];
                 Object aValue = entries[i + 1];

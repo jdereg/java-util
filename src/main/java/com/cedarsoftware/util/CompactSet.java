@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Constructor;
 import java.util.*;
 
 /**
@@ -286,10 +287,13 @@ public class CompactSet<E> extends AbstractSet<E>
         try
         {   // Extra step here is to get a Map of the same type as above, with the "size" already established
             // which saves the time of growing the internal array dynamically.
-            set = set.getClass().getConstructor(Integer.TYPE).newInstance(size);
+            Constructor<?> constructor = ReflectionUtils.getConstructor(set.getClass(), Integer.TYPE);
+            return (Set<E>) constructor.newInstance(size);
         }
-        catch (Exception ignored) { }
-        return set;
+        catch (Exception ignored)
+        {
+            return set;
+        }
     }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }

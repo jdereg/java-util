@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
@@ -936,12 +938,14 @@ public class CompactMap<K, V> implements Map<K, V>
     {
         Map<K, V> map = getNewMap();
         try
-        {   // Extra step here is to get a Map of the same type as above, with the "size" already established
-            // which saves the time of growing the internal array dynamically.
-            map = map.getClass().getConstructor(Integer.TYPE).newInstance(size);
+        {
+            Constructor<?> constructor = ReflectionUtils.getConstructor(map.getClass(), Integer.TYPE);
+            return (Map<K, V>) constructor.newInstance(size);
         }
-        catch (Exception ignored) { }
-        return map;
+        catch (Exception e)
+        {
+            return map;
+        }
     }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }

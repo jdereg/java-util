@@ -4,10 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,6 +35,7 @@ public final class ReflectionUtils
     private static final ConcurrentMap<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP2 = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP3 = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Constructor> CONSTRUCTORS = new ConcurrentHashMap<>();
 
     private ReflectionUtils()
     {
@@ -131,15 +129,9 @@ public final class ReflectionUtils
             builder.append(c.getName());
             builder.append('.');
             builder.append(methodName);
-            if (types != null)
-            {
-                for (Class clz : types)
-                {
-                    builder.append('|');
-                    builder.append(clz.getName());
-                }
-            }
-            // methodKey is in form ClassName.methodName|arg1.class|arg2.class|...
+            builder.append(makeParamKey(types));
+            
+            // methodKey is in form ClassName.methodName:arg1.class|arg2.class|...
             String methodKey = builder.toString();
             Method method = METHOD_MAP.get(methodKey);
             if (method == null)
@@ -388,6 +380,50 @@ public final class ReflectionUtils
             }
         }
         return null;
+    }
+
+    public static Constructor<?> getConstructor(Class<?> clazz, Class<?>... parameterTypes)
+    {
+        try
+        {
+            String key = clazz.getName() + makeParamKey(parameterTypes);
+            Constructor<?> constructor = CONSTRUCTORS.get(key);
+            if (constructor == null)
+            {
+                constructor = clazz.getConstructor(parameterTypes);
+                Constructor<?> constructorRef = CONSTRUCTORS.putIfAbsent(key, constructor);
+                if (constructorRef != null)
+                {
+                    constructor = constructorRef;
+                }
+            }
+            return constructor;
+        }
+        catch (NoSuchMethodException e)
+        {
+            throw new IllegalArgumentException("Attempted to get Constructor that did not exist.", e);
+        }
+    }
+
+    private static String makeParamKey(Class<?>... parameterTypes)
+    {
+        if (parameterTypes == null || parameterTypes.length == 0)
+        {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(":");
+        Iterator<Class<?>> i = Arrays.stream(parameterTypes).iterator();
+        while (i.hasNext())
+        {
+            Class<?> param = i.next();
+            builder.append(param.getName());
+            if (i.hasNext())
+            {
+                builder.append('|');
+            }
+        }
+        return builder.toString();
     }
 
     /**

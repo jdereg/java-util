@@ -89,8 +89,8 @@ public class TestUniqueIdGenerator
 
     private void assertMonotonicallyIncreasing(Long[] ids)
     {
+        final long len = ids.length;
         long prevId = -1;
-        long len = ids.length;
         for (int i=0; i < len; i++)
         {
             long id = ids[i];

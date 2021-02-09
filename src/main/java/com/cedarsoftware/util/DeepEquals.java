@@ -403,7 +403,7 @@ public class DeepEquals
     {
         // Same instance check already performed...
 
-        int len = Array.getLength(array1);
+        final int len = Array.getLength(array1);
         if (len != Array.getLength(array2))
         {
             return false;
@@ -787,7 +787,7 @@ public class DeepEquals
 
             if (obj.getClass().isArray())
             {
-                int len = Array.getLength(obj);
+                final int len = Array.getLength(obj);
                 for (int i = 0; i < len; i++)
                 {
                     stack.addFirst(Array.get(obj, i));

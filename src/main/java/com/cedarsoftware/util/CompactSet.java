@@ -109,7 +109,7 @@ public class CompactSet<E> extends AbstractSet<E>
         if (val instanceof Object[])
         {   // 1 to compactSize
             Object[] entries = (Object[]) val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i++)
             {
                 if (compareItems(item, entries[i]))
@@ -223,7 +223,7 @@ public class CompactSet<E> extends AbstractSet<E>
         if (val instanceof Object[])
         {
             Object[] local = (Object[]) val;
-            int len = local.length;
+            final int len = local.length;
 
             for (int i=0; i < len; i++)
             {

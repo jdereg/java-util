@@ -37,7 +37,7 @@ public final class MathUtilities
      */
     public static long minimum(long... values)
     {
-        int len = values.length;
+        final int len = values.length;
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -56,7 +56,7 @@ public final class MathUtilities
      */
     public static long maximum(long... values)
     {
-        int len = values.length;
+        final int len = values.length;
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -75,7 +75,7 @@ public final class MathUtilities
      */
     public static double minimum(double... values)
     {
-        int len = values.length;
+        final int len =values.length;
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -94,7 +94,7 @@ public final class MathUtilities
      */
     public static double maximum(double... values)
     {
-        int len = values.length;
+        final int len = values.length;
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -113,7 +113,7 @@ public final class MathUtilities
      */
     public static BigInteger minimum(BigInteger... values)
     {
-        int len = values.length;
+        final int len = values.length;
         if (len == 1)
         {
             if (values[0] == null)
@@ -144,7 +144,7 @@ public final class MathUtilities
      */
     public static BigInteger maximum(BigInteger... values)
     {
-        int len = values.length;
+        final int len = values.length;
         if (len == 1)
         {
             if (values[0] == null)
@@ -175,7 +175,7 @@ public final class MathUtilities
      */
     public static BigDecimal minimum(BigDecimal... values)
     {
-        int len = values.length;
+        final int len = values.length;
         if (len == 1)
         {
             if (values[0] == null)
@@ -206,12 +206,12 @@ public final class MathUtilities
      */
     public static BigDecimal maximum(BigDecimal... values)
     {
-        int len = values.length;
+        final int len = values.length;
         if (len == 1)
         {
             if (values[0] == null)
             {
-                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to maximum()");
+                throw new IllegalArgumentException("Cannot pass null BigDecimal entry to maximum()");
             }
             return values[0];
         }
@@ -221,7 +221,7 @@ public final class MathUtilities
         {
             if (values[i] == null)
             {
-                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to maximum()");
+                throw new IllegalArgumentException("Cannot pass null BigDecimal entry to maximum()");
             }
             current = values[i].max(current);
         }

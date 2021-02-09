@@ -314,7 +314,7 @@ public class GraphComparator
                 {
                     StringBuilder s = new StringBuilder();
                     s.append('[');
-                    int len = Array.getLength(foo);
+                    final int len = Array.getLength(foo);
                     for (int i=0; i < len; i++)
                     {
                         Object element = Array.get(foo, i);

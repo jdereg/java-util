@@ -40,7 +40,7 @@ public final class ByteUtilities
 
 	public static byte[] decode(final String s)
 	{
-		int len = s.length();
+		final int len = s.length();
 		if (len % 2 != 0)
 		{
 			return null;

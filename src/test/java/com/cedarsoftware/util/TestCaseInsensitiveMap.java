@@ -152,7 +152,7 @@ public class TestCaseInsensitiveMap
     public void testPutAll()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
-        CaseInsensitiveMap<String, Object> newMap = new CaseInsensitiveMap<String, Object>(2);
+        CaseInsensitiveMap<String, Object> newMap = new CaseInsensitiveMap<>(2);
         newMap.put("thREe", "four");
         newMap.put("Seven", "Eight");
 
@@ -364,7 +364,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testConstructors()
     {
-        Map<String, Object> map = new CaseInsensitiveMap<String, Object>();
+        Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("BTC", "Bitcoin");
         map.put("LTC", "Litecoin");
 
@@ -372,7 +372,7 @@ public class TestCaseInsensitiveMap
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
 
-        map = new CaseInsensitiveMap<String, Object>(20);
+        map = new CaseInsensitiveMap<>(20);
         map.put("BTC", "Bitcoin");
         map.put("LTC", "Litecoin");
 
@@ -380,7 +380,7 @@ public class TestCaseInsensitiveMap
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
 
-        map = new CaseInsensitiveMap<String, Object>(20, 0.85f);
+        map = new CaseInsensitiveMap<>(20, 0.85f);
         map.put("BTC", "Bitcoin");
         map.put("LTC", "Litecoin");
 
@@ -388,11 +388,11 @@ public class TestCaseInsensitiveMap
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
 
-        Map map1 = new HashMap<String, Object>();
+        Map map1 = new HashMap<>();
         map1.put("BTC", "Bitcoin");
         map1.put("LTC", "Litecoin");
 
-        map = new CaseInsensitiveMap<String, Object>(map1);
+        map = new CaseInsensitiveMap<>(map1);
         assertTrue(map.size() == 2);
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
@@ -737,7 +737,7 @@ public class TestCaseInsensitiveMap
     public void testEntrySetRemoveAll()
     {
         // Pure JDK test that fails
-//        LinkedHashMap<String, Object> mm = new LinkedHashMap<String, Object>();
+//        LinkedHashMap<String, Object> mm = new LinkedHashMap<>();
 //        mm.put("One", "Two");
 //        mm.put("Three", "Four");
 //        mm.put("Five", "Six");
@@ -1529,7 +1529,7 @@ public class TestCaseInsensitiveMap
 
     private CaseInsensitiveMap<String, Object> createSimpleMap()
     {
-        CaseInsensitiveMap<String, Object> stringMap = new CaseInsensitiveMap<String, Object>();
+        CaseInsensitiveMap<String, Object> stringMap = new CaseInsensitiveMap<>();
         stringMap.put("One", "Two");
         stringMap.put("Three", "Four");
         stringMap.put("Five", "Six");

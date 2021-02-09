@@ -91,7 +91,7 @@ public class Traverser
 
             if (clazz.isArray())
             {
-                int len = Array.getLength(current);
+                final int len = Array.getLength(current);
                 Class compType = clazz.getComponentType();
 
                 if (!compType.isPrimitive())

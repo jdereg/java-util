@@ -120,7 +120,7 @@ public final class StringUtilities
 
     public static byte[] decode(String s)
     {
-        int len = s.length();
+        final int len = s.length();
         if (len % 2 != 0)
         {
             return null;
@@ -174,8 +174,8 @@ public final class StringUtilities
             return 0;
         }
 
+        final int len = s.length();
         int count = 0;
-        int len = s.length();
         for (int i = 0; i < len; i++)
         {
             if (s.charAt(i) == c)
@@ -192,9 +192,10 @@ public final class StringUtilities
      */
     public static String wildcardToRegexString(String wildcard)
     {
-        StringBuilder s = new StringBuilder(wildcard.length());
+        final int len = wildcard.length();
+        StringBuilder s = new StringBuilder(len);
         s.append('^');
-        for (int i = 0, is = wildcard.length(); i < is; i++)
+        for (int i = 0; i < len; i++)
         {
             char c = wildcard.charAt(i);
             switch (c)
@@ -391,8 +392,8 @@ public final class StringUtilities
     public static String getRandomString(Random random, int minLen, int maxLen)
     {
         StringBuilder s = new StringBuilder();
-        int length = minLen + random.nextInt(maxLen - minLen + 1);
-        for (int i=0; i < length; i++)
+        final int len = minLen + random.nextInt(maxLen - minLen + 1);
+        for (int i=0; i < len; i++)
         {
             s.append(getRandomChar(random, i == 0));
         }
@@ -492,12 +493,11 @@ public final class StringUtilities
         {
             return 0;
         }
+        final int len = s.length();
         int hash = 0;
-        int len = s.length();
         for (int i = 0; i < len; i++)
         {
-            char c = Character.toLowerCase(s.charAt(i));
-            hash = 31 * hash + c;
+            hash = 31 * hash + Character.toLowerCase((int)s.charAt(i));
         }
         return hash;
     }

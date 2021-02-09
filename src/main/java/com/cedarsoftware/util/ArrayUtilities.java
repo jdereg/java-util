@@ -136,11 +136,11 @@ public final class ArrayUtilities
 
     public static <T> T[] removeItem(T[] array, int pos)
     {
-        int length = Array.getLength(array);
-        T[] dest = (T[]) Array.newInstance(array.getClass().getComponentType(), length - 1);
+        final int len = Array.getLength(array);
+        T[] dest = (T[]) Array.newInstance(array.getClass().getComponentType(), len - 1);
 
         System.arraycopy(array, 0, dest, 0, pos);
-        System.arraycopy(array, pos + 1, dest, pos, length - pos - 1);
+        System.arraycopy(array, pos + 1, dest, pos, len - pos - 1);
         return dest;
     }
 

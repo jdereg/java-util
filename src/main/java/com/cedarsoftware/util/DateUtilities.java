@@ -298,12 +298,12 @@ public final class DateUtilities
         {
             return "000";
         }
-        int length = milli.length();
-        if (length == 1)
+        final int len = milli.length();
+        if (len == 1)
         {
             return milli + "00";
         }
-        else if (length == 2)
+        else if (len == 2)
         {
             return milli + "0";
         }

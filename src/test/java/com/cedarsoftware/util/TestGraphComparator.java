@@ -662,7 +662,7 @@ public class TestGraphComparator
         Person[] persons = createTwoPersons();
         long bellaId = persons[0].pets[1].id;
         Person p2 = persons[1];
-        int len = p2.pets[1].nickNames.length;
+        final int len = p2.pets[1].nickNames.length;
         String[] nickNames = new String[len + 1];
         System.arraycopy(p2.pets[1].nickNames, 0, nickNames, 0, len);
         nickNames[len] = "Scissor hands";

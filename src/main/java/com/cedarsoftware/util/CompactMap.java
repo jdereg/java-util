@@ -144,7 +144,7 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i += 2)
             {
                 if (compareKeys(key, entries[i]))
@@ -173,7 +173,7 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to Compactsize
             Object[] entries = (Object[]) val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i += 2)
             {
                 Object aValue = entries[i + 1];
@@ -203,7 +203,7 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i += 2)
             {
                 Object aKey = entries[i];
@@ -233,7 +233,7 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i += 2)
             {
                 Object aKey = entries[i];
@@ -259,8 +259,8 @@ public class CompactMap<K, V> implements Map<K, V>
             {   // Switch to Map - copy entries
                 Map<K, V> map = getNewMap(size() + 1);
                 entries = (Object[]) val;
-                len = entries.length;
-                for (int i=0; i < len; i += 2)
+                final int len2 = entries.length;
+                for (int i=0; i < len2; i += 2)
                 {
                     Object aKey = entries[i];
                     Object aValue = entries[i + 1];
@@ -343,7 +343,7 @@ public class CompactMap<K, V> implements Map<K, V>
             else
             {
                 Object[] entries = (Object[]) val;
-                int len = entries.length;
+                final int len = entries.length;
                 for (int i = 0; i < len; i += 2)
                 {
                     Object aKey = entries[i];
@@ -439,7 +439,7 @@ public class CompactMap<K, V> implements Map<K, V>
         {
             int h = 0;
             Object[] entries = (Object[]) val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i += 2)
             {
                 Object aKey = entries[i];
@@ -759,7 +759,7 @@ public class CompactMap<K, V> implements Map<K, V>
         if (val instanceof Object[])
         {   // 2 to compactSize - copy Object[] into Map
             Object[] entries = (Object[]) CompactMap.this.val;
-            int len = entries.length;
+            final int len = entries.length;
             for (int i=0; i < len; i += 2)
             {
                 copy.put((K)entries[i], (V)entries[i + 1]);

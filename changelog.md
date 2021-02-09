@@ -1,4 +1,6 @@
 ### Revision History
+* 1.64.0
+  * Performance Improvement: `StringUtilities.hashCodeIgnoreCase()` slightly faster - calls JDK method that makes one less call internally.
 * 1.63.0
   * Performance Improvement: Anytime `CompactMap` / `CompactSet` is copied internally, the destination map is pre-sized to correct size, eliminating growing underlying Map more than once.
   * `ReflectionUtils.getConstructor()` added.  Fetches Constructor, caches reflection operation - 2nd+ calls pull from cache.

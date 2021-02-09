@@ -92,31 +92,31 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         if (m instanceof TreeMap)
         {
-            map = copy(m, new TreeMap<K, V>());
+            map = copy(m, new TreeMap<>());
         }
         else if (m instanceof LinkedHashMap)
         {
-            map = copy(m, new LinkedHashMap<K, V>(m.size()));
+            map = copy(m, new LinkedHashMap<>(m.size()));
         }
         else if (m instanceof ConcurrentSkipListMap)
         {
-            map = copy(m, new ConcurrentSkipListMap<K, V>());
+            map = copy(m, new ConcurrentSkipListMap<>());
         }
         else if (m instanceof ConcurrentMap)
         {
-            map = copy(m, new ConcurrentHashMap<K, V>(m.size()));
+            map = copy(m, new ConcurrentHashMap<>(m.size()));
         }
         else if (m instanceof WeakHashMap)
         {
-            map = copy(m, new WeakHashMap<K, V>(m.size()));
+            map = copy(m, new WeakHashMap<>(m.size()));
         }
         else if (m instanceof HashMap)
         {
-            map = copy(m, new HashMap<K, V>(m.size()));
+            map = copy(m, new HashMap<>(m.size()));
         }
         else
         {
-            map = copy(m, new LinkedHashMap<K, V>(m.size()));
+            map = copy(m, new LinkedHashMap<>(m.size()));
         }
     }
 
@@ -124,7 +124,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
     {
         for (Entry<K, V> entry : source.entrySet())
         {
-            // Get get from Entry, leaving it in it's original state (in case the key is a CaseInsensitiveString)
+            // Get key from Entry, leaving it in it's original state (in case the key is a CaseInsensitiveString)
             Object key;
             if (isCaseInsenstiveEntry(entry))
             {
@@ -199,7 +199,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
 
     public void putAll(Map<? extends K, ? extends V> m)
     {
-        if (m == null)
+        if (MapUtilities.isEmpty(m))
         {
             return;
         }

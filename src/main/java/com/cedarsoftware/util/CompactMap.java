@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
@@ -538,24 +537,16 @@ public class CompactMap<K, V> implements Map<K, V>
     {
         return new AbstractSet<K>()
         {
-            Iterator<Entry<K,V>> iter;
-            Entry<K, V> currentEntry = null;
-
             public Iterator<K> iterator()
             {
-                Map<K, V> copy = getCopy();
-                iter = copy.entrySet().iterator();
-
-                return new Iterator<K>()
+                if (useCopyIterator())
                 {
-                    public boolean hasNext() { return iter.hasNext(); }
-                    public K next()
-                    {
-                        currentEntry = iter.next();
-                        return currentEntry.getKey();
-                    }
-                    public void remove() { iteratorRemove(currentEntry, iter); currentEntry = null; }
-                };
+                    return new CopyKeyIterator();
+                }
+                else
+                {
+                    return new CompactKeyIterator();
+                }
             }
 
             public int size() { return CompactMap.this.size(); }
@@ -612,24 +603,16 @@ public class CompactMap<K, V> implements Map<K, V>
     {
         return new AbstractCollection<V>()
         {
-            Iterator<Entry<K, V>> iter;
-            Entry<K, V> currentEntry = null;
-
             public Iterator<V> iterator()
             {
-                Map<K, V> copy = getCopy();
-                iter = copy.entrySet().iterator();
-
-                return new Iterator<V>()
+                if (useCopyIterator())
                 {
-                    public boolean hasNext() { return iter.hasNext(); }
-                    public V next()
-                    {
-                        currentEntry = iter.next();
-                        return currentEntry.getValue();
-                    }
-                    public void remove() { iteratorRemove(currentEntry, iter); currentEntry = null; }
-                };
+                    return new CopyValueIterator();
+                }
+                else
+                {
+                    return new CompactValueIterator();
+                }
             }
 
             public int size() { return CompactMap.this.size(); }
@@ -641,24 +624,16 @@ public class CompactMap<K, V> implements Map<K, V>
     {
         return new AbstractSet<Entry<K,V>>()
         {
-            Iterator<Entry<K, V>> iter;
-            Entry<K, V> currentEntry = null;
-
             public Iterator<Entry<K, V>> iterator()
             {
-                Map<K, V> copy = getCopy();
-                iter = copy.entrySet().iterator();
-                
-                return new Iterator<Entry<K, V>>()
+                if (useCopyIterator())
                 {
-                    public boolean hasNext() { return iter.hasNext(); }
-                    public Entry<K, V> next()
-                    {
-                        currentEntry = iter.next();
-                        return new CompactMapEntry(currentEntry.getKey(), currentEntry.getValue());
-                   }
-                    public void remove() { iteratorRemove(currentEntry, iter); currentEntry = null; }
-                };
+                    return new CopyEntryIterator();
+                }
+                else
+                {
+                    return new CompactEntryIterator();
+                }
             }
             
             public int size() { return CompactMap.this.size(); }
@@ -949,4 +924,167 @@ public class CompactMap<K, V> implements Map<K, V>
     }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }
+    protected boolean useCopyIterator() {
+        Map newMap = getNewMap();
+        if (newMap instanceof CaseInsensitiveMap) {
+            newMap = ((CaseInsensitiveMap) newMap).getWrappedMap();
+        }
+        return newMap instanceof SortedMap;
+    }
+
+    /* ------------------------------------------------------------ */
+    // iterators
+
+    abstract class CompactIterator {
+        Iterator<Map.Entry<K,V>> mapIterator;
+        Object current; // Map.Entry if > compactsize, key <= compactsize
+        int expectedSize;  // for fast-fail
+        int index;             // current slot
+
+        CompactIterator() {
+            expectedSize = size();
+            current = EMPTY_MAP;
+            index = -1;
+            if (val instanceof Map) {
+                mapIterator = ((Map)val).entrySet().iterator();
+            }
+        }
+
+        public final boolean hasNext() {
+            if (mapIterator!=null) {
+                return mapIterator.hasNext();
+            }
+            else {
+                return (index+1) < size();
+            }
+        }
+
+        final void advance() {
+            if (expectedSize != size()) {
+                throw new ConcurrentModificationException();
+            }
+            if (++index>=size()) {
+                throw new NoSuchElementException();
+            }
+            if (mapIterator!=null) {
+                current = mapIterator.next();
+            }
+            else if (expectedSize==1) {
+                current = getLogicalSingleKey();
+            }
+            else {
+                current = ((Object [])val)[index*2];
+            }
+        }
+
+        public final void remove() {
+            if (current==EMPTY_MAP) {
+                throw new IllegalStateException();
+            }
+            if (size() != expectedSize)
+                throw new ConcurrentModificationException();
+            int newSize = expectedSize-1;
+
+            // account for the change in size
+            if (mapIterator!=null && newSize==compactSize()) {
+                current = ((Map.Entry<K,V>)current).getKey();
+                mapIterator = null;
+            }
+
+            // perform the remove
+            if (mapIterator==null) {
+                CompactMap.this.remove(current);
+            } else {
+                mapIterator.remove();
+            }
+
+            index--;
+            current = EMPTY_MAP;
+            expectedSize--;
+        }
+    }
+
+    final class CompactKeyIterator extends CompactMap.CompactIterator
+            implements Iterator<K> {
+        public final K next() {
+            advance();
+            if (mapIterator!=null) {
+                return ((Map.Entry<K,V>)current).getKey();
+            } else {
+                return (K) current;
+            }
+        }
+    }
+
+    final class CompactValueIterator extends CompactMap.CompactIterator
+            implements Iterator<V> {
+        public final V next() {
+            advance();
+            if (mapIterator != null) {
+                return ((Map.Entry<K, V>) current).getValue();
+            } else if (expectedSize == 1) {
+                return getLogicalSingleValue();
+            } else {
+                return (V) ((Object[]) val)[(index*2) + 1];
+            }
+        }
+    }
+
+    final class CompactEntryIterator extends CompactMap.CompactIterator
+            implements Iterator<Map.Entry<K,V>> {
+        public final Map.Entry<K,V> next() {
+            advance();
+            if (mapIterator != null) {
+                return (Map.Entry<K, V>) current;
+            } else if (expectedSize == 1) {
+                if (val instanceof CompactMap.CompactMapEntry) {
+                    return (CompactMapEntry) val;
+                }
+                else {
+                    return new CompactMapEntry(getLogicalSingleKey(), getLogicalSingleValue());
+                }
+            } else {
+                Object [] objs = (Object []) val;
+                return new CompactMapEntry((K)objs[(index*2)],(V)objs[(index*2) + 1]);
+            }
+        }
+    }
+
+    abstract class CopyIterator {
+        Iterator<Entry<K, V>> iter;
+        Entry<K, V> currentEntry = null;
+
+        public CopyIterator() {
+            iter = getCopy().entrySet().iterator();
+        }
+
+        public final boolean hasNext() {
+            return iter.hasNext();
+        }
+
+        public final Entry<K,V> nextEntry() {
+            currentEntry = iter.next();
+            return currentEntry;
+        }
+
+        public final void remove() {
+            iteratorRemove(currentEntry, iter);
+            currentEntry = null;
+        }
+    }
+
+    final class CopyKeyIterator extends CopyIterator
+            implements Iterator<K> {
+        public final K next() { return nextEntry().getKey(); }
+    }
+
+    final class CopyValueIterator extends CopyIterator
+            implements Iterator<V> {
+        public final V next() { return nextEntry().getValue(); }
+    }
+
+    final class CopyEntryIterator extends CompactMap.CopyIterator
+            implements Iterator<Map.Entry<K,V>> {
+        public final Map.Entry<K,V> next() { return nextEntry(); }
+    }
 }

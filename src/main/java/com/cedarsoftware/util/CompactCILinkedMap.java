@@ -36,4 +36,5 @@ public class CompactCILinkedMap<K, V> extends CompactMap<K, V>
     public CompactCILinkedMap(Map<K ,V> other) { super(other); }
     protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>(compactSize() + 1)); }
     protected boolean isCaseInsensitive() { return true; }
+    protected boolean useCopyIterator() { return false; }
 }

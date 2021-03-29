@@ -1762,23 +1762,23 @@ public class TestCompactMap
         // test contains() for success
         Iterator<Map.Entry<String, Object>> iterator = entrySet.iterator();
 
-        iterator.next();
+        assert "key1" == iterator.next().getKey();
         iterator.remove();
         assert map.size() == 4;
 
-        iterator.next();
+        assert "key2" == iterator.next().getKey();
         iterator.remove();
         assert map.size() == 3;
 
-        iterator.next();
+        assert "key3" == iterator.next().getKey();
         iterator.remove();
         assert map.size() == 2;
 
-        iterator.next();
+        assert "key4" == iterator.next().getKey();
         iterator.remove();
         assert map.size() == 1;
 
-        iterator.next();
+        assert null == iterator.next().getKey();
         iterator.remove();
         assert map.size() == 0;
     }
@@ -2763,6 +2763,228 @@ public class TestCompactMap
         assert m.containsKey("A");
         assert m.containsKey("j");
         assert m.containsKey("Z");
+    }
+
+    @Test
+    public void testMultipleSortedKeysetIterators()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("z", "zulu");
+        m.put("J", "juliet");
+        m.put("a", "alpha");
+        assert m.size() == 3;
+
+        Set<String> keyset = m.keySet();
+        Iterator<String> iter1 = keyset.iterator();
+        Iterator<String> iter2 = keyset.iterator();
+
+        assert iter1.hasNext();
+        assert iter2.hasNext();
+
+        assert "a" == iter1.next();
+        assert "a" == iter2.next();
+
+        assert "J" == iter2.next();
+        assert "J" == iter1.next();
+
+        assert "z" == iter1.next();
+        assert false == iter1.hasNext();
+        assert true == iter2.hasNext();
+
+        assert "z" == iter2.next();
+        assert false == iter2.hasNext();
+    }
+
+    @Test
+    public void testMultipleSortedValueIterators()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("z", "zulu");
+        m.put("J", "juliet");
+        m.put("a", "alpha");
+        assert m.size() == 3;
+
+        Collection<String> values = m.values();
+        Iterator<String> iter1 = values.iterator();
+        Iterator<String> iter2 = values.iterator();
+
+        assert iter1.hasNext();
+        assert iter2.hasNext();
+
+        assert "alpha" == iter1.next();
+        assert "alpha" == iter2.next();
+
+        assert "juliet" == iter2.next();
+        assert "juliet" == iter1.next();
+
+        assert "zulu" == iter1.next();
+        assert false == iter1.hasNext();
+        assert true == iter2.hasNext();
+
+        assert "zulu" == iter2.next();
+        assert false == iter2.hasNext();
+    }
+
+    @Test
+    public void testMultipleSortedEntrySetIterators()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("z", "zulu");
+        m.put("J", "juliet");
+        m.put("a", "alpha");
+        assert m.size() == 3;
+
+        Set<Map.Entry<String,String>> entrySet = m.entrySet();
+        Iterator<Map.Entry<String,String>> iter1 = entrySet.iterator();
+        Iterator<Map.Entry<String,String>> iter2 = entrySet.iterator();
+
+        assert iter1.hasNext();
+        assert iter2.hasNext();
+
+        assert "a" == iter1.next().getKey();
+        assert "a" == iter2.next().getKey();
+
+        assert "juliet" == iter2.next().getValue();
+        assert "juliet" == iter1.next().getValue();
+
+        assert "z" == iter1.next().getKey();
+        assert false == iter1.hasNext();
+        assert true == iter2.hasNext();
+
+        assert "zulu" == iter2.next().getValue();
+        assert false == iter2.hasNext();
+    }
+
+    @Test
+    public void testMultipleNonSortedKeysetIterators()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("a", "alpha");
+        m.put("J", "juliet");
+        m.put("z", "zulu");
+        assert m.size() == 3;
+
+        Set<String> keyset = m.keySet();
+        Iterator<String> iter1 = keyset.iterator();
+        Iterator<String> iter2 = keyset.iterator();
+
+        assert iter1.hasNext();
+        assert iter2.hasNext();
+
+        assert "a" == iter1.next();
+        assert "a" == iter2.next();
+
+        assert "J" == iter2.next();
+        assert "J" == iter1.next();
+
+        assert "z" == iter1.next();
+        assert false == iter1.hasNext();
+        assert true == iter2.hasNext();
+
+        assert "z" == iter2.next();
+        assert false == iter2.hasNext();
+    }
+
+    @Test
+    public void testMultipleNonSortedValueIterators()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("a", "alpha");
+        m.put("J", "juliet");
+        m.put("z", "zulu");
+        assert m.size() == 3;
+
+        Collection<String> values = m.values();
+        Iterator<String> iter1 = values.iterator();
+        Iterator<String> iter2 = values.iterator();
+
+        assert iter1.hasNext();
+        assert iter2.hasNext();
+
+        assert "alpha" == iter1.next();
+        assert "alpha" == iter2.next();
+
+        assert "juliet" == iter2.next();
+        assert "juliet" == iter1.next();
+
+        assert "zulu" == iter1.next();
+        assert false == iter1.hasNext();
+        assert true == iter2.hasNext();
+
+        assert "zulu" == iter2.next();
+        assert false == iter2.hasNext();
+    }
+
+    @Test
+    public void testMultipleNonSortedEntrySetIterators()
+    {
+        CompactMap<String, String> m = new CompactMap<String, String>()
+        {
+            protected String getSingleValueKey() { return "a"; }
+            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected boolean isCaseInsensitive() { return true; }
+            protected int compactSize() { return 4; }
+        };
+
+        m.put("a", "alpha");
+        m.put("J", "juliet");
+        m.put("z", "zulu");
+        assert m.size() == 3;
+
+        Set<Map.Entry<String,String>> entrySet = m.entrySet();
+        Iterator<Map.Entry<String,String>> iter1 = entrySet.iterator();
+        Iterator<Map.Entry<String,String>> iter2 = entrySet.iterator();
+
+        assert iter1.hasNext();
+        assert iter2.hasNext();
+
+        assert "a" == iter1.next().getKey();
+        assert "a" == iter2.next().getKey();
+
+        assert "juliet" == iter2.next().getValue();
+        assert "juliet" == iter1.next().getValue();
+
+        assert "z" == iter1.next().getKey();
+        assert false == iter1.hasNext();
+        assert true == iter2.hasNext();
+
+        assert "zulu" == iter2.next().getValue();
+        assert false == iter2.hasNext();
     }
 
     @Test

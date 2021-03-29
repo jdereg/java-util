@@ -29,4 +29,5 @@ public class CompactLinkedMap<K, V> extends CompactMap<K, V>
     public CompactLinkedMap() { }
     public CompactLinkedMap(Map<K ,V> other) { super(other); }
     protected Map<K, V> getNewMap() { return new LinkedHashMap<>(compactSize() + 1); }
+    protected boolean useCopyIterator() { return false; }
 }

@@ -166,9 +166,12 @@ public class DeepEquals
      * or via the respectively encountered overridden .equals() methods during
      * traversal.
      */
-    public static boolean deepEquals(Object a, Object b, Map<?, ?> options)
-    {
+    public static boolean deepEquals(Object a, Object b, Map<?, ?> options) {
         Set<ItemsToCompare> visited = new HashSet<>();
+        return deepEquals(a, b, options,visited);
+    }
+
+    private static boolean deepEquals(Object a, Object b, Map<?, ?> options, Set<ItemsToCompare> visited) {
         Deque<ItemsToCompare> stack = new LinkedList<>();
         Set<String> ignoreCustomEquals = (Set<String>) options.get(IGNORE_CUSTOM_EQUALS);
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
@@ -308,7 +311,7 @@ public class DeepEquals
             // be assumed, a temporary Map must be created, however the comparison still runs in O(N) time.
             if (key1 instanceof Set)
             {
-                if (!compareUnorderedCollection((Collection) key1, (Collection) key2, stack, visited))
+                if (!compareUnorderedCollection((Collection) key1, (Collection) key2, stack, visited, options))
                 {
                     return false;
                 }
@@ -342,7 +345,7 @@ public class DeepEquals
             // comparison still runs in O(N) time.
             if (key1 instanceof Map)
             {
-                if (!compareUnorderedMap((Map) key1, (Map) key2, stack, visited))
+                if (!compareUnorderedMap((Map) key1, (Map) key2, stack, visited, options))
                 {
                     return false;
                 }
@@ -464,11 +467,13 @@ public class DeepEquals
      * @param stack add items to compare to the Stack (Stack versus recursion)
      * @param visited Set containing items that have already been compared,
      * so as to prevent cycles.
+     * @param options the options for comparison (see {@link #deepEquals(Object, Object, Map)}
      * @return boolean false if the Collections are for certain not equals. A
      * value of 'true' indicates that the Collections may be equal, and the sets
      * items will be added to the Stack for further comparison.
      */
-    private static boolean compareUnorderedCollection(Collection col1, Collection col2, Deque stack, Set visited)
+    private static boolean compareUnorderedCollection(Collection col1, Collection col2, Deque stack, Set visited,
+                                                      Map options)
     {
         // Same instance check already performed...
 
@@ -509,7 +514,7 @@ public class DeepEquals
             else
             {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
                 // from collision list, making further comparisons faster)
-                if (!isContained(o, other))
+                if (!isContained(o, other,visited, options))
                 {
                     return false;
                 }
@@ -568,10 +573,11 @@ public class DeepEquals
      * @param map2 Map two
      * @param stack add items to compare to the Stack (Stack versus recursion)
      * @param visited Set containing items that have already been compared, to prevent cycles.
+     * @param options the options for comparison (see {@link #deepEquals(Object, Object, Map)}
      * @return false if the Maps are for certain not equals.  'true' indicates that 'on the surface' the maps
      * are equal, however, it will place the contents of the Maps on the stack for further comparisons.
      */
-    private static boolean compareUnorderedMap(Map map1, Map map2, Deque stack, Set visited)
+    private static boolean compareUnorderedMap(Map map1, Map map2, Deque stack, Set visited, Map options)
     {
         // Same instance check already performed...
 
@@ -623,7 +629,7 @@ public class DeepEquals
             else
             {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
                 // from collision list, making further comparisons faster)
-                if (!isContained(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()), other))
+                if (!isContained(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()), other,visited, options))
                 {
                     return false;
                 }
@@ -637,13 +643,15 @@ public class DeepEquals
      * @return true of the passed in o is within the passed in Collection, using a deepEquals comparison
      * element by element.  Used only for hash collisions.
      */
-    private static boolean isContained(Object o, Collection other)
+    private static boolean isContained(Object o, Collection other, Set visited, Map options)
     {
         Iterator i = other.iterator();
         while (i.hasNext())
         {
             Object x = i.next();
-            if (DeepEquals.deepEquals(o, x))
+            Set<ItemsToCompare> visitedForSubelements=new HashSet<>(visited);
+            visitedForSubelements.add(new ItemsToCompare(o, x));
+            if (DeepEquals.deepEquals(o, x, options, visitedForSubelements))
             {
                 i.remove(); // can only be used successfully once - remove from list
                 return true;

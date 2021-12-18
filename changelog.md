@@ -1,4 +1,6 @@
 ### Revision History
+* 1.66.0
+  * Updated log4j dependencies to version `2.16.0`.
 * 1.65.0
   * Bug fix: Options (IGNORE_CUSTOM_EQUALS and ALLOW_STRINGS_TO_MATCH_NUMBERS) were not propagated inside containers\
   * Bug fix: When progagating options the Set of visited ItemsToCompare (or a copy if it) should be passed on to prevent StackOverFlow from occurring.

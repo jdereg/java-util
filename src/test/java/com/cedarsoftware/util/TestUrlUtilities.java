@@ -40,8 +40,8 @@ import static org.mockito.Mockito.*;
  */
 public class TestUrlUtilities
 {
-    private static final String httpsUrl = "https://gotofail.com/";
-    private static final String domain  = "ssllabs";
+    private static final String httpsUrl = "https://www.howsmyssl.com/";
+    private static final String domain  = "darkishgreen";
     private static final String httpUrl = "http://files.cedarsoftware.com/tests/ncube/some.txt";
     private static final String _expected = "CAFEBABE";
 

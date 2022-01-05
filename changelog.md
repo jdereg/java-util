@@ -1,4 +1,6 @@
 ### Revision History
+* 1.67.0
+  * Updated log4j dependencies to version `2.17.1`.
 * 1.66.0
   * Updated log4j dependencies to version `2.17.0`.
 * 1.65.0

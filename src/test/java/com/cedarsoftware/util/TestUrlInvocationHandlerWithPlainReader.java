@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -34,8 +32,6 @@ import java.net.URLConnection;
  */
 public class TestUrlInvocationHandlerWithPlainReader
 {
-    private static final Logger LOG = LogManager.getLogger(TestUrlInvocationHandlerWithPlainReader.class);
-
     // TODO: Test data is no longer hosted
     @Ignore
     public void testWithBadUrl() {

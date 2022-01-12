@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.ByteArrayOutputStream;
@@ -68,7 +68,7 @@ public final class UrlUtilities
     public static final char DOT = '.';
 
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
-    private static final Logger LOG = LogManager.getLogger(UrlUtilities.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UrlUtilities.class);
 
     public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
     {

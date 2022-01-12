@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
 import java.util.Date;
@@ -46,7 +46,7 @@ import static java.lang.System.currentTimeMillis;
 public class UniqueIdGenerator
 {
     public static final String JAVA_UTIL_CLUSTERID = "JAVA_UTIL_CLUSTERID";
-    private static final Logger log = LogManager.getLogger(UniqueIdGenerator.class);
+    private static final Logger log = LoggerFactory.getLogger(UniqueIdGenerator.class);
 
     private UniqueIdGenerator()
     {

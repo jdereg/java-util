@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.cedarsoftware.util.StringUtilities.hasContent;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
@@ -77,25 +78,30 @@ public class UniqueIdGenerator
     static
     {
         int id = getServerId(JAVA_UTIL_CLUSTERID);
+        String setVia = "environment variable: " + JAVA_UTIL_CLUSTERID;
         if (id == -1)
         {
             String envName = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
-            if (StringUtilities.hasContent(envName))
+            if (hasContent(envName))
             {
                 String envValue = SystemUtilities.getExternalVariable(envName);
                 id = getServerId(envValue);
+                setVia = "environment variable: " + envName;
+            }
+            if (id == -1)
+            {   // Try Cloud Foundry instance index
+                id = getServerId("CF_INSTANCE_INDEX");
+                setVia = "environment variable: CF_INSTANCE_INDEX";
                 if (id == -1)
-                {   // Try Cloud Foundry instance index
-                    id = getServerId("CF_INSTANCE_INDEX");
-                    if (id == -1)
-                    {
-                        SecureRandom random = new SecureRandom();
-                        id = abs(random.nextInt()) % 100;
-                        log.info("java-util using server id=" + id + " for last two digits of generated unique IDs.");
-                    }
+                {
+                    // use random number if all else fails
+                    SecureRandom random = new SecureRandom();
+                    id = abs(random.nextInt()) % 100;
+                    setVia = "new SecureRandom()";
                 }
             }
         }
+        log.info("java-util using server id=" + id + " for last two digits of generated unique IDs. Set using " + setVia);
         serverId = id;
     }
 

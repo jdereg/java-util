@@ -1,5 +1,6 @@
 ### Revision History
 * 1.68.0
+  * Fixed `UniqueIdGenerator` code that determines a unique `serverId`.  
   * Removed `log4j` in favor of `slf4j` and `logback`.
 * 1.67.0
   * Updated log4j dependencies to version `2.17.1`.

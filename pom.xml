@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>1.67.0</version>
+    <version>1.68.0-SNAPSHOT</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -67,7 +67,8 @@
     </developers>
 
     <properties>
-        <version.log4j>2.17.1</version.log4j>
+        <version.slf4j>1.7.32</version.slf4j>
+        <version.logback>1.2.10</version.logback>
         <version.junit>4.13.1</version.junit>
         <version.json.io>4.12.0</version.json.io>           <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
@@ -191,17 +192,16 @@
     </build>
 
     <dependencies>
-
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>${version.log4j}</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${version.slf4j}</version>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>${version.log4j}</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${version.logback}</version>
         </dependency>
 
         <dependency>

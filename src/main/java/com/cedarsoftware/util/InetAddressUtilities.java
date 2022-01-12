@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -27,7 +27,7 @@ import java.net.UnknownHostException;
  */
 public class InetAddressUtilities
 {
-    private static final Logger LOG = LogManager.getLogger(InetAddressUtilities.class);
+    private static final Logger LOG = LoggerFactory.getLogger(InetAddressUtilities.class);
 
     private InetAddressUtilities() {
         super();

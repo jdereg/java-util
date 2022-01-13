@@ -8,11 +8,17 @@ java-util
 Rarely available and hard-to-write Java utilities, written correctly, and thoroughly tested (> 98% code coverage via JUnit tests).
 
 To include in your project:
+##### Gradle
+```
+implementation 'com.cedarsoftware:java-util:2.0.0'
+```
+
+##### Maven
 ```
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>1.68.0</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 

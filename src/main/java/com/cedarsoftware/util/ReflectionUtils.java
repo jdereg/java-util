@@ -509,37 +509,80 @@ public final class ReflectionUtils
     {
         InputStream is = new ByteArrayInputStream(byteCode);
         DataInputStream dis = new DataInputStream(is);
-        dis.readLong(); // skip header and class version
+        dis.readInt(); // magic number
+        dis.readShort(); // minor version
+        dis.readShort(); // major version
         int cpcnt = (dis.readShort() & 0xffff) - 1;
         int[] classes = new int[cpcnt];
         String[] strings = new String[cpcnt];
+        int prevT;
+        int t = 0;
         for (int i=0; i < cpcnt; i++)
         {
-            int t = dis.read();
-            if (t == 7)
-            {
-                classes[i] = dis.readShort() & 0xffff;
-            }
-            else if (t == 1)
+            prevT = t;
+            t = dis.read(); // tag - 1 byte
+
+            if (t == 1) // CONSTANT_Utf8
             {
                 strings[i] = dis.readUTF();
             }
-            else if (t == 5 || t == 6)
+            else if (t == 3 || t == 4) // CONSTANT_Integer || CONSTANT_Float
             {
-                dis.readLong();
-                i++;
+                dis.readInt(); // bytes
             }
-            else if (t == 8)
+            else if (t == 5 || t == 6) // CONSTANT_Long || CONSTANT_Double
             {
-                dis.readShort();
+                dis.readInt(); // high_bytes
+                dis.readInt(); // low_bytes
+                i++; // All 8-byte constants take up two entries in the constant_pool table of the class file.
+            }
+            else if (t == 7) // CONSTANT_Class
+            {
+                classes[i] = dis.readShort() & 0xffff;
+            }
+            else if (t == 8) // CONSTANT_String
+            {
+                dis.readShort(); // string_index
+            }
+            else if (t == 9 || t == 10 || t == 11)  // CONSTANT_Fieldref || CONSTANT_Methodref || CONSTANT_InterfaceMethodref
+            {
+                dis.readShort(); // class_index
+                dis.readShort(); // name_and_type_index
+            }
+            else if (t == 12) // CONSTANT_NameAndType
+            {
+                dis.readShort(); // name_index
+                dis.readShort(); // descriptor_index
+            }
+            else if (t == 15) // CONSTANT_MethodHandle
+            {
+                dis.readByte(); // reference_kind
+                dis.readShort(); // reference_index
+            }
+            else if (t == 16) // CONSTANT_MethodType
+            {
+                dis.readShort(); // descriptor_index
+            }
+            else if (t == 17 || t == 18) // CONSTANT_Dynamic || CONSTANT_InvokeDynamic
+            {
+                dis.readShort(); // bootstrap_method_attr_index
+                dis.readShort(); // name_and_type_index
+            }
+            else if (t == 19 || t == 20) // CONSTANT_Module || CONSTANT_Package
+            {
+                dis.readShort(); // name_index
             }
             else
             {
-                dis.readInt();
+                throw new IllegalStateException("Byte code format exceeds JDK 17 format.");
             }
         }
-        dis.readShort(); // skip access flags
-        return strings[classes[(dis.readShort() & 0xffff) - 1] - 1].replace('/', '.');
+
+        dis.readShort(); // access flags
+        int thisClassIndex = dis.readShort() & 0xffff; // this_class
+        int stringIndex = classes[thisClassIndex - 1];
+        String className = strings[stringIndex - 1];
+        return className.replace('/', '.');
     }
 
     protected static String getClassLoaderName(Class<?> c)

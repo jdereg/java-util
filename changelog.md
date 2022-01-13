@@ -1,4 +1,7 @@
 ### Revision History
+* 2.0.0
+  * Upgraded from Java 8 to Java 11.
+  * Updated `ReflectionUtils.getClassNameFromByteCode()` to handle up to Java 17 `class` file format.
 * 1.68.0
   * Fixed: `UniqueIdGenerator` now correctly gets last two digits of ID using 3 attempts - JAVA_UTIL_CLUSTERID (optional), CF_INSTANCE_INDEX, and finally using SecuritRandom for the last two digits.  
   * Removed `log4j` in favor of `slf4j` and `logback`.

@@ -62,12 +62,12 @@ public class TestDeepEquals
         assert deepEquals(p1, p2);
 
         Map<String, Object> options = new HashMap<>();
-        Set<Class> skip = new HashSet<>();
+        Set<Class<?>> skip = new HashSet<>();
         skip.add(Person.class);
         options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, skip);
         assert !deepEquals(p1, p2, options);       // told to skip Person's .equals() - so it will compare all fields
 
-        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, new HashSet());
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, new HashSet<>());
         assert !deepEquals(p1, p2, options);       // told to skip all custom .equals() - so it will compare all fields
 
         skip.clear();

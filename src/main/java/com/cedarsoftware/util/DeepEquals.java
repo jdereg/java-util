@@ -173,7 +173,7 @@ public class DeepEquals
 
     private static boolean deepEquals(Object a, Object b, Map<?, ?> options, Set<ItemsToCompare> visited) {
         Deque<ItemsToCompare> stack = new LinkedList<>();
-        Set<String> ignoreCustomEquals = (Set<String>) options.get(IGNORE_CUSTOM_EQUALS);
+        Set<Class<?>> ignoreCustomEquals = (Set<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
 
         stack.addFirst(new ItemsToCompare(a, b));

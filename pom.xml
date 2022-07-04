@@ -34,6 +34,55 @@
         <version.agrona>1.0.7</version.agrona>              <!-- testing only -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    
+        <profiles>
+
+        <profile>
+            <id>release-sign-artifacts</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${version.plugin.gpg}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <keyname>${gpg.keyname}</keyname>
+                                    <passphrase>${gpg.passphrase}</passphrase>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/jdereg/java-util</url>
+        <connection>scm:git:git://github.com/jdereg/java-util.git</connection>
+        <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
+    </scm>
 
     <distributionManagement>
         <snapshotRepository>

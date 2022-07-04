@@ -111,7 +111,7 @@ public class TestEncryption
         FileChannel f = mock(FileChannel.class);
         when(f.read(any(ByteBuffer.class))).thenReturn(0).thenReturn(-1);
 
-        EncryptionUtilities.calculateMD5Hash(f);
+        EncryptionUtilities.calculateFileHash(f, EncryptionUtilities.getMD5Digest());
     }
 
 

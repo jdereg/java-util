@@ -1,4 +1,6 @@
 ### Revision History
+* 2.1.0
+  * Updated all dependent libraries to latest versions as of 16 Sept 2023.
 * 2.0.0
   * Upgraded from Java 8 to Java 11.
   * Updated `ReflectionUtils.getClassNameFromByteCode()` to handle up to Java 17 `class` file format.

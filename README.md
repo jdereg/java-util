@@ -10,7 +10,7 @@ Rare, hard-to-write utilities that are thoroughly tested (> 98% code coverage vi
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.0.0'
+implementation 'com.cedarsoftware:java-util:2.1.0'
 ```
 
 ##### Maven
@@ -18,7 +18,7 @@ implementation 'com.cedarsoftware:java-util:2.0.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.0.0</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 

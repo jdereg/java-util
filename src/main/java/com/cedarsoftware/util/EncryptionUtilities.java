@@ -41,7 +41,7 @@ public class EncryptionUtilities
     }
 
     /**
-     * Super-fast MD5 calculation from entire file.  Uses FileChannel and
+     * Super-fast MD5 calculation from entire file. Uses FileChannel and
      * direct ByteBuffer (internal JVM memory).
      * @param file File that from which to compute the MD5
      * @return String MD5 value.
@@ -50,7 +50,61 @@ public class EncryptionUtilities
     {        
         try (FileInputStream in = new FileInputStream(file))
         {            
-            return calculateMD5Hash(in.getChannel());
+            return calculateFileHash(in.getChannel(), getMD5Digest());
+        }
+        catch (IOException e)
+        {
+            return null;
+        }        
+    }
+    
+     /**
+     * Super-fast SHA-1 calculation from entire file. Uses FileChannel and
+     * direct ByteBuffer (internal JVM memory).
+     * @param file File that from which to compute the SHA-1
+     * @return String SHA-1 value.
+     */
+    public static String fastSHA1(File file)
+    {        
+        try (FileInputStream in = new FileInputStream(file))
+        {            
+            return calculateFileHash(in.getChannel(), getSHA1Digest());
+        }
+        catch (IOException e)
+        {
+            return null;
+        }        
+    }
+    
+     /**
+     * Super-fast SHA-256 calculation from entire file. Uses FileChannel and
+     * direct ByteBuffer (internal JVM memory).
+     * @param file File that from which to compute the SHA-256
+     * @return String SHA-256 value.
+     */
+    public static String fastSHA256(File file)
+    {        
+        try (FileInputStream in = new FileInputStream(file))
+        {            
+            return calculateFileHash(in.getChannel(), getSHA256Digest());
+        }
+        catch (IOException e)
+        {
+            return null;
+        }        
+    }
+    
+     /**
+     * Super-fast SHA-512 calculation from entire file. Uses FileChannel and
+     * direct ByteBuffer (internal JVM memory).
+     * @param file File that from which to compute the SHA-512
+     * @return String SHA-512 value.
+     */
+    public static String fastSHA512(File file)
+    {        
+        try (FileInputStream in = new FileInputStream(file))
+        {            
+            return calculateFileHash(in.getChannel(), getSHA512Digest());
         }
         catch (IOException e)
         {
@@ -58,10 +112,9 @@ public class EncryptionUtilities
         }        
     }
 
-    public static String calculateMD5Hash(FileChannel ch) throws IOException
+    public static String calculateFileHash(FileChannel ch, MessageDigest d) throws IOException
     {
         ByteBuffer bb = ByteBuffer.allocateDirect(65536);
-        MessageDigest d = getMD5Digest();
 
         int nRead;
 

@@ -9,7 +9,33 @@
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
-    <profiles>
+    <developers>
+        <developer>
+            <id>jdereg</id>
+            <name>John DeRegnaucourt</name>
+            <email>john@cedarsoftware.com</email>
+        </developer>
+    </developers>
+
+    <properties>
+        <version.slf4j>2.0.9</version.slf4j>
+        <version.logback>1.4.11</version.logback>
+        <version.junit>4.13.2</version.junit>
+        <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
+        <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
+        <version.plugin.compiler>3.11.0</version.plugin.compiler>
+        <version.plugin.gpg>3.1.0</version.plugin.gpg>
+        <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
+        <version.plugin.nexus>1.6.13</version.plugin.nexus>
+        <version.plugin.surefire>3.1.2</version.plugin.surefire>
+        <version.plugin.source>3.3.0</version.plugin.source>
+        <version.plugin.felix.scr>1.26.4</version.plugin.felix.scr>
+        <version.plugin.felix.bundle>5.1.9</version.plugin.felix.bundle>
+        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    
+        <profiles>
 
         <profile>
             <id>release-sign-artifacts</id>
@@ -58,32 +84,6 @@
         <developerConnection>scm:git:git@github.com:jdereg/java-util.git</developerConnection>
     </scm>
 
-    <developers>
-        <developer>
-            <id>jdereg</id>
-            <name>John DeRegnaucourt</name>
-            <email>john@cedarsoftware.com</email>
-        </developer>
-    </developers>
-
-    <properties>
-        <version.slf4j>2.0.9</version.slf4j>
-        <version.logback>1.4.11</version.logback>
-        <version.junit>4.13.2</version.junit>
-        <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
-        <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
-        <version.plugin.compiler>3.11.0</version.plugin.compiler>
-        <version.plugin.gpg>3.1.0</version.plugin.gpg>
-        <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
-        <version.plugin.nexus>1.6.13</version.plugin.nexus>
-        <version.plugin.surefire>3.1.2</version.plugin.surefire>
-        <version.plugin.source>3.3.0</version.plugin.source>
-        <version.plugin.felix.scr>1.26.4</version.plugin.felix.scr>
-        <version.plugin.felix.bundle>5.1.9</version.plugin.felix.bundle>
-        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
@@ -94,7 +94,7 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-
+    
     <build>
         <plugins>
             <plugin>

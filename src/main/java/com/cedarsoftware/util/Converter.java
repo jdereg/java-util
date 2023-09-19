@@ -62,7 +62,7 @@ public final class Converter
     private static final Map<Class<?>, Work> conversion = new HashMap<>();
     private static final Map<Class<?>, Work> conversionToString = new HashMap<>();
     
-    private interface Work<T>
+    protected interface Work<T>
     {
         Object convert(T fromInstance);
     }

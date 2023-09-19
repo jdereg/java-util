@@ -28,13 +28,13 @@ import java.util.*;
  */
 public class Traverser
 {
-    public interface Visitor
+    public interface  Visitor
     {
         void process(Object o);
     }
 
     private final Map<Object, Object> _objVisited = new IdentityHashMap<>();
-    private final Map<Class, ClassInfo> _classCache = new HashMap<>();
+    protected final Map<Class, ClassInfo> _classCache = new HashMap<>();
 
     /**
      * @param o Any Java Object

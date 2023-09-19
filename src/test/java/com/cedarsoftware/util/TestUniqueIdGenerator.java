@@ -1,6 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Date;
 import java.util.HashSet;
@@ -9,12 +9,12 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import static com.cedarsoftware.util.UniqueIdGenerator.*;
+
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.out;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)

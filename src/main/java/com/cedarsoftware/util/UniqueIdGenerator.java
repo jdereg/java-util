@@ -8,7 +8,6 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static com.cedarsoftware.util.StringUtilities.hasContent;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
@@ -82,7 +81,7 @@ public class UniqueIdGenerator
         if (id == -1)
         {
             String envName = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
-            if (hasContent(envName))
+            if (StringUtilities.hasContent(envName))
             {
                 String envValue = SystemUtilities.getExternalVariable(envName);
                 id = getServerId(envValue);

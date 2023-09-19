@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -33,29 +33,29 @@ public class TestByteUtilities
 
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Class c = ByteUtilities.class;
-        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+        Class<?> c = ByteUtilities.class;
+        assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<ByteUtilities> con = c.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = c.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
     @Test
 	public void testDecode() 
 	{
-		Assert.assertArrayEquals(_array1, ByteUtilities.decode(_str1));
-		Assert.assertArrayEquals(_array2, ByteUtilities.decode(_str2));
-		Assert.assertArrayEquals(null, ByteUtilities.decode("456"));
+		assertArrayEquals(_array1, ByteUtilities.decode(_str1));
+		assertArrayEquals(_array2, ByteUtilities.decode(_str2));
+		assertArrayEquals(null, ByteUtilities.decode("456"));
 
 	}
 	
 	@Test
 	public void testEncode() 
 	{
-		Assert.assertEquals(_str1, ByteUtilities.encode(_array1));
-		Assert.assertEquals(_str2, ByteUtilities.encode(_array2));
+		assertEquals(_str1, ByteUtilities.encode(_array1));
+		assertEquals(_str2, ByteUtilities.encode(_array2));
 	}
 }

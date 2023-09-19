@@ -2,13 +2,12 @@ package com.cedarsoftware.util;
 
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
-import static com.cedarsoftware.util.DeepEquals.deepEquals;
 import static com.cedarsoftware.util.GraphComparator.Delta.Command.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test for GraphComparator
@@ -168,19 +167,19 @@ public class TestGraphComparator
         String state;
         String city;
         int zip;
-        Collection junk;
+        Collection<Object> junk;
 
         public Object getId()
         {
             return id;
         }
 
-        public Collection getJunk()
+        public Collection<Object> getJunk()
         {
             return junk;
         }
 
-        public void setJunk(Collection col)
+        public void setJunk(Collection<Object> col)
         {
             junk = col;
         }
@@ -243,7 +242,7 @@ public class TestGraphComparator
     {
         long id;
         String name;
-        Map contents;
+        Map<Object, Object> contents;
 
         public Object getId()
         {
@@ -265,7 +264,7 @@ public class TestGraphComparator
     private static class ListContainer implements HasId
     {
         long id;
-        List list;
+        List<Object> list;
 
         public Object getId()
         {
@@ -316,7 +315,7 @@ public class TestGraphComparator
         long id = persons[0].id;
         Person p2 = persons[1];
         p2.first = "Jack";
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -329,7 +328,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == id);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     @Test
@@ -339,7 +338,7 @@ public class TestGraphComparator
         long id = persons[0].id;
         Pet savePet = persons[0].favoritePet;
         persons[1].favoritePet = null;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -353,7 +352,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == id);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // An element within an array having a primitive field differences
@@ -367,7 +366,7 @@ public class TestGraphComparator
         p2.pets[1].age = 2;
         long edId = persons[0].pets[0].id;
         long bellaId = persons[0].pets[1].id;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -389,7 +388,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == bellaId);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // New array is shorter than original
@@ -402,7 +401,7 @@ public class TestGraphComparator
         Person p2 = persons[1];
         p2.pets = new Pet[1];
         p2.pets[0] = persons[0].pets[0];
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -420,7 +419,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == bellaId);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // New array has no elements (but not null)
@@ -432,7 +431,7 @@ public class TestGraphComparator
         long bellaId = persons[0].pets[1].id;
         Person p2 = persons[1];
         p2.pets = new Pet[0];
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -450,7 +449,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == bellaId);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // New array has no elements (but not null)
@@ -460,7 +459,7 @@ public class TestGraphComparator
         Person[] persons = createTwoPersons();
         long petId = persons[0].pets[0].id;
         persons[1].pets[0].nickNames = new String[]{};
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -475,7 +474,7 @@ public class TestGraphComparator
         assertTrue(0 == (Integer) delta.getOptionalKey());
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // New array is longer than original
@@ -490,7 +489,7 @@ public class TestGraphComparator
         long id = UniqueIdGenerator.getUniqueId();
         pets[2] = new Pet(id, "Andy", "feline", 3, new String[]{"andrew", "candy", "dandy", "dumbo"});
         p2.pets = pets;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -512,7 +511,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == pid);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     @Test
@@ -524,7 +523,7 @@ public class TestGraphComparator
         Person p2 = persons[1];
         p2.pets[0] = null;
         p2.pets[1] = null;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -551,7 +550,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == bellaId);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // New array is shorter than original array, plus element 0 is what was in element 1
@@ -563,7 +562,7 @@ public class TestGraphComparator
         Person p2 = persons[1];
         p2.pets = new Pet[1];
         p2.pets[0] = persons[0].pets[1];
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -584,7 +583,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == id);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     // New element set into an array
@@ -597,7 +596,7 @@ public class TestGraphComparator
         Person p2 = persons[1];
         p2.pets[0] = new Pet(UniqueIdGenerator.getUniqueId(), "Andy", "feline", 3, new String[]{"fat cat"});
         p2.favoritePet = p2.pets[0];
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
         assertTrue(deltas.size() == 3);
@@ -620,7 +619,7 @@ public class TestGraphComparator
         assertTrue(edId == (Long) delta.getId());
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
         assertTrue(persons[0].pets[0] == persons[0].favoritePet);   // Ensure same instance is used in array and favoritePet field
     }
 
@@ -632,7 +631,7 @@ public class TestGraphComparator
         Person p2 = persons[1];
         p2.pets[0].nickNames[0] = null;
         p2.pets[0].nickNames[1] = "bobo";
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
         assertTrue(deltas.size() == 2);
@@ -653,7 +652,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == edId);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     @Test
@@ -667,7 +666,7 @@ public class TestGraphComparator
         System.arraycopy(p2.pets[1].nickNames, 0, nickNames, 0, len);
         nickNames[len] = "Scissor hands";
         p2.pets[1].nickNames = nickNames;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
         assertTrue(deltas.size() == 2);
@@ -688,7 +687,7 @@ public class TestGraphComparator
         assertTrue((Long) delta.getId() == bellaId);
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     @Test
@@ -699,7 +698,7 @@ public class TestGraphComparator
         long bellaId = persons[0].pets[1].id;
         Person p2 = persons[1];
         p2.pets = null;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -719,7 +718,7 @@ public class TestGraphComparator
         // Eddie not orphaned because favoritePet field still points to him
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     @Test
@@ -728,7 +727,7 @@ public class TestGraphComparator
         Person[] persons = createTwoPersons();
         persons[1].pets[0].nickNames = null;
         long id = persons[1].pets[0].id;
-        assertFalse(deepEquals(persons[0], persons[1]));
+        assertFalse(DeepEquals.deepEquals(persons[0], persons[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
 
@@ -742,7 +741,7 @@ public class TestGraphComparator
         assertNull(delta.getOptionalKey());
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(persons[0], persons[1]));
+        assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));
     }
 
     @Test
@@ -755,7 +754,7 @@ public class TestGraphComparator
         ObjectArray target = (ObjectArray) clone(source);
         target.array[3] = 5;
 
-        assertFalse(deepEquals(source, target));
+        assertFalse(DeepEquals.deepEquals(source, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(source, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -767,7 +766,7 @@ public class TestGraphComparator
         assertEquals(5, delta.getTargetValue());
 
         GraphComparator.applyDelta(source, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(source, target));
+        assertTrue(DeepEquals.deepEquals(source, target));
     }
 
     @Test
@@ -781,7 +780,7 @@ public class TestGraphComparator
         String[] strings = (String[]) target.array[1];
         strings[2] = "2C";
 
-        assertFalse(deepEquals(source, target));
+        assertFalse(DeepEquals.deepEquals(source, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(source, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -793,7 +792,7 @@ public class TestGraphComparator
         assertTrue(((String[]) delta.getTargetValue())[2] == "2C");
 
         GraphComparator.applyDelta(source, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(source, target));
+        assertTrue(DeepEquals.deepEquals(source, target));
     }
 
     @Test
@@ -811,7 +810,7 @@ public class TestGraphComparator
         target.array[1] = 2;
         target.array[2] = null;
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -835,7 +834,7 @@ public class TestGraphComparator
         long id = employees[0].id;
         Iterator i = employees[1].addresses.iterator();
         employees[1].addresses.remove(i.next());
-        assertFalse(deepEquals(employees[0], employees[1]));
+        assertFalse(DeepEquals.deepEquals(employees[0], employees[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(employees[0], employees[1], getIdFetcher());
 
@@ -849,7 +848,7 @@ public class TestGraphComparator
         assertTrue(employees[0].addresses.iterator().next().equals(delta.getSourceValue()));
 
         GraphComparator.applyDelta(employees[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(employees[0], employees[1]));
+        assertTrue(DeepEquals.deepEquals(employees[0], employees[1]));
     }
 
     @Test
@@ -864,7 +863,7 @@ public class TestGraphComparator
         addr.city = "Beverly Hills";
         addr.street = "1000 Rodeo Drive";
         employees[1].addresses.add(addr);
-        assertFalse(deepEquals(employees[0], employees[1]));
+        assertFalse(DeepEquals.deepEquals(employees[0], employees[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(employees[0], employees[1], getIdFetcher());
 
@@ -878,7 +877,7 @@ public class TestGraphComparator
         assertNull(delta.getOptionalKey());
 
         GraphComparator.applyDelta(employees[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(employees[0], employees[1]));
+        assertTrue(DeepEquals.deepEquals(employees[0], employees[1]));
     }
 
     @Test
@@ -888,17 +887,17 @@ public class TestGraphComparator
         Iterator i = employees[0].addresses.iterator();
         Address address = (Address) i.next();
         long id = (Long) address.getId();
-        address.setJunk(new HashSet());
+        address.setJunk(new HashSet<>());
         address.getJunk().add("lat/lon");
         Date now = new Date();
         address.getJunk().add(now);
         i = employees[1].addresses.iterator();
         address = (Address) i.next();
-        address.setJunk(new HashSet());
+        address.setJunk(new HashSet<>());
         address.getJunk().add(now);
         address.getJunk().add(19);
 
-        assertFalse(deepEquals(employees[0], employees[1]));
+        assertFalse(DeepEquals.deepEquals(employees[0], employees[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(employees[0], employees[1], getIdFetcher());
 
@@ -920,7 +919,7 @@ public class TestGraphComparator
         assertTrue(19 == (Integer) delta.getTargetValue());
 
         GraphComparator.applyDelta(employees[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(employees[0], employees[1]));
+        assertTrue(DeepEquals.deepEquals(employees[0], employees[1]));
     }
 
     @Test
@@ -930,7 +929,7 @@ public class TestGraphComparator
         long id = employees[0].id;
         employees[1].addresses = null;
 
-        assertFalse(deepEquals(employees[0], employees[1]));
+        assertFalse(DeepEquals.deepEquals(employees[0], employees[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(employees[0], employees[1], getIdFetcher());
 
@@ -947,7 +946,7 @@ public class TestGraphComparator
         assertTrue(OBJECT_ORPHAN == delta.getCmd());
 
         GraphComparator.applyDelta(employees[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(employees[0], employees[1]));
+        assertTrue(DeepEquals.deepEquals(employees[0], employees[1]));
     }
 
     @Test
@@ -956,7 +955,7 @@ public class TestGraphComparator
         Dictionary[] dictionaries = createTwoDictionaries();
         long id = dictionaries[0].id;
         dictionaries[1].contents.put("Entry2", "Foo");
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -969,7 +968,7 @@ public class TestGraphComparator
         assertNull(delta.getSourceValue());
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -979,7 +978,7 @@ public class TestGraphComparator
         long id = dictionaries[0].id;
         dictionaries[0].contents.put("Entry2", "Bar");
         dictionaries[1].contents.put("Entry2", "Foo");
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -992,7 +991,7 @@ public class TestGraphComparator
         assertEquals(delta.getSourceValue(), "Bar");
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -1001,7 +1000,7 @@ public class TestGraphComparator
         Dictionary[] dictionaries = createTwoDictionaries();
         long id = dictionaries[0].id;
         dictionaries[1].contents.remove("Eddie");
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1014,7 +1013,7 @@ public class TestGraphComparator
         assertNull(delta.getTargetValue());
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -1023,7 +1022,7 @@ public class TestGraphComparator
         Dictionary[] dictionaries = createTwoDictionaries();
         long id = dictionaries[0].id;
         dictionaries[1].contents.clear();
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 5);
@@ -1048,7 +1047,7 @@ public class TestGraphComparator
         assertTrue(OBJECT_ORPHAN == delta.getCmd());
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -1056,7 +1055,7 @@ public class TestGraphComparator
     {
         Dictionary[] dictionaries = createTwoDictionaries();
         dictionaries[1].contents = null;
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 4);
@@ -1076,7 +1075,7 @@ public class TestGraphComparator
         assertTrue(OBJECT_ORPHAN == delta.getCmd());
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -1086,7 +1085,7 @@ public class TestGraphComparator
         Person p = (Person) dictionaries[0].contents.get("DeRegnaucourt");
         dictionaries[1].contents.put("Eddie", p.pets[1]);
 
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1097,7 +1096,7 @@ public class TestGraphComparator
         assertTrue(delta.getTargetValue() instanceof Pet);
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -1106,7 +1105,7 @@ public class TestGraphComparator
         Dictionary[] dictionaries = createTwoDictionaries();
         dictionaries[1].contents.put("Eddie", null);
 
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1117,7 +1116,7 @@ public class TestGraphComparator
         assertNull(delta.getTargetValue());
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     @Test
@@ -1126,7 +1125,7 @@ public class TestGraphComparator
         Dictionary[] dictionaries = createTwoDictionaries();
         dictionaries[1].contents.put("Eddie", Boolean.TRUE);
 
-        assertFalse(deepEquals(dictionaries[0], dictionaries[1]));
+        assertFalse(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(dictionaries[0], dictionaries[1], getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1137,7 +1136,7 @@ public class TestGraphComparator
         assertTrue((Boolean) delta.getTargetValue());
 
         GraphComparator.applyDelta(dictionaries[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(dictionaries[0], dictionaries[1]));
+        assertTrue(DeepEquals.deepEquals(dictionaries[0], dictionaries[1]));
     }
 
     // An element within a List having a primitive field differences
@@ -1146,18 +1145,18 @@ public class TestGraphComparator
     public void testListItemDifferences() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
         target.list.add("one");
         target.list.add(2L);
         target.list.add(3L);
 
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     // New array is shorter than original
@@ -1165,17 +1164,17 @@ public class TestGraphComparator
     public void testShortenList() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
         target.list.add("one");
         target.list.add(2);
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1185,7 +1184,7 @@ public class TestGraphComparator
         assertEquals(2, delta.getOptionalKey());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     // New List has no elements (but not null)
@@ -1193,15 +1192,15 @@ public class TestGraphComparator
     public void testShortenListToZeroLength() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1211,7 +1210,7 @@ public class TestGraphComparator
         assertEquals(0, delta.getOptionalKey());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     // New List is longer than original
@@ -1219,19 +1218,19 @@ public class TestGraphComparator
     public void testLengthenList() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
         target.list.add("one");
         target.list.add(2);
         target.list.add(3L);
         target.list.add(Boolean.TRUE);
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 2);
@@ -1248,24 +1247,24 @@ public class TestGraphComparator
         assertEquals(true, delta.getTargetValue());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     @Test
     public void testNullOutListElements() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
         target.list.add(null);
         target.list.add(null);
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 3);
@@ -1289,14 +1288,14 @@ public class TestGraphComparator
         assertNull(delta.getTargetValue());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     @Test
     public void testNullListField() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
@@ -1304,7 +1303,7 @@ public class TestGraphComparator
         ListContainer target = new ListContainer();
         target.list = null;
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1316,7 +1315,7 @@ public class TestGraphComparator
         assertNull(delta.getTargetValue());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     @Test
@@ -1326,7 +1325,7 @@ public class TestGraphComparator
         Pet dog1 = persons[0].pets[0];
         Pet dog2 = persons[0].pets[1];
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add(dog1);
         src.list.add(dog2);
 
@@ -1334,7 +1333,7 @@ public class TestGraphComparator
         Pet dog2copy = (Pet) target.list.get(1);
         dog2copy.age = 7;
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1346,7 +1345,7 @@ public class TestGraphComparator
         assertEquals(7, delta.getTargetValue());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     @Test
@@ -1355,7 +1354,7 @@ public class TestGraphComparator
         Pet dog1 = getPet("Eddie");
         Pet dog2 = getPet("Bella");
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add(dog1);
         src.list.add(dog2);
 
@@ -1363,7 +1362,7 @@ public class TestGraphComparator
         Pet fido = new Pet(UniqueIdGenerator.getUniqueId(), "Fido", "canine", 3, new String[]{"Buddy", "Captain D-Bag", "Sam"});
         target.list.set(1, fido);
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 2);
@@ -1379,22 +1378,22 @@ public class TestGraphComparator
         assertEquals(dog2.id, delta.getId());
 
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     @Test
     public void testBadResizeValue()
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1415,18 +1414,18 @@ public class TestGraphComparator
     public void testDiffListTypes() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new LinkedList();
+        target.list = new LinkedList<>();
         target.list.add("one");
         target.list.add(2);
         target.list.add(3L);
 
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
 
         // Prove that it ignored List type and only considered the contents
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
@@ -1438,7 +1437,7 @@ public class TestGraphComparator
     {
         Employee emps[] = createTwoEmployees(SET_TYPE_LINKED);
         Employee empTarget = emps[1];
-        empTarget.addresses = new ArrayList();
+        empTarget.addresses = new ArrayList<>();
         empTarget.addresses.addAll(emps[0].addresses);
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(emps[0], empTarget, getIdFetcher());
@@ -1458,18 +1457,18 @@ public class TestGraphComparator
     public void testListSetElementOutOfBounds() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
         src.list.add(2);
         src.list.add(3L);
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
         target.list.add("one");
         target.list.add(2);
         target.list.add(null);
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1533,14 +1532,14 @@ public class TestGraphComparator
     public void testApplyDeltaWithCommandParams() throws Exception
     {
         ListContainer src = new ListContainer();
-        src.list = new ArrayList();
+        src.list = new ArrayList<>();
         src.list.add("one");
 
         ListContainer target = new ListContainer();
-        target.list = new ArrayList();
+        target.list = new ArrayList<>();
         target.list.add("once");
 
-        assertFalse(deepEquals(src, target));
+        assertFalse(DeepEquals.deepEquals(src, target));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(src, target, getIdFetcher());
         assertTrue(deltas.size() == 1);
@@ -1569,7 +1568,7 @@ public class TestGraphComparator
 
         delta.setFieldName(name);
         GraphComparator.applyDelta(src, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(src, target));
+        assertTrue(DeepEquals.deepEquals(src, target));
     }
 
     @Test
@@ -1630,7 +1629,7 @@ public class TestGraphComparator
         Object[] srcPets = new Object[]{eddie, bella};
         Object[] targetPets = new Object[]{eddie, andy};
 
-        assertFalse(deepEquals(srcPets, targetPets));
+        assertFalse(DeepEquals.deepEquals(srcPets, targetPets));
         List<GraphComparator.Delta> deltas = GraphComparator.compare(srcPets, targetPets, getIdFetcher());
         assertEquals(deltas.size(), 2);
 
@@ -1638,7 +1637,7 @@ public class TestGraphComparator
         assertTrue(delta.getCmd() == ARRAY_SET_ELEMENT);
         assertEquals(delta.getOptionalKey(), 1);
         assertEquals(delta.getFieldName(), GraphComparator.ROOT);
-        assertTrue(deepEquals(delta.getTargetValue(), andy));
+        assertTrue(DeepEquals.deepEquals(delta.getTargetValue(), andy));
 
         delta = deltas.get(1);
         assertTrue(delta.getCmd() == OBJECT_ORPHAN);
@@ -1652,9 +1651,9 @@ public class TestGraphComparator
     {
         Dude sourceDude = getDude("Dan", 48);
         Dude targetDude = (Dude) clone(sourceDude);
-        assertTrue(deepEquals(sourceDude, targetDude));
+        assertTrue(DeepEquals.deepEquals(sourceDude, targetDude));
         targetDude.dude.pets.get(0).name = "bunny";
-        assertFalse(deepEquals(sourceDude, targetDude));
+        assertFalse(DeepEquals.deepEquals(sourceDude, targetDude));
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(sourceDude, targetDude, getIdFetcher());
         assertEquals(deltas.size(), 1);
@@ -1665,7 +1664,7 @@ public class TestGraphComparator
         assertEquals(delta.getFieldName(), "dude");
 
         GraphComparator.applyDelta(sourceDude, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
-        assertTrue(deepEquals(sourceDude, targetDude));
+        assertTrue(DeepEquals.deepEquals(sourceDude, targetDude));
     }
 
     @Test
@@ -1686,7 +1685,7 @@ public class TestGraphComparator
         Object[] srcPets = new Object[]{eddie, bella};
         Object[] targetPets = new Object[]{eddie, andy};
 
-        assertFalse(deepEquals(srcPets, targetPets));
+        assertFalse(DeepEquals.deepEquals(srcPets, targetPets));
         List<GraphComparator.Delta> deltas = GraphComparator.compare(srcPets, targetPets, getIdFetcher());
         assertEquals(deltas.size(), 2);
 
@@ -1805,7 +1804,7 @@ public class TestGraphComparator
         Node Acopy = (Node) clone(A);
 
         // Equal with cycle
-        List deltas = new ArrayList();
+        List deltas = new ArrayList<>();
         GraphComparator.compare(A, Acopy, getIdFetcher());
         assertEquals(0, deltas.size());
     }
@@ -1835,6 +1834,7 @@ public class TestGraphComparator
         assertEquals(2, deltas.size());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testTwoPointersToSameInstanceOrderedCollection() throws Exception
     {
@@ -1845,21 +1845,22 @@ public class TestGraphComparator
         Node C = new Node("C", X);
         Node D = new Node("D", X);
 
-        List A = new ArrayList();
+        List<Object> A = new ArrayList<>();
         A.add(B);
         A.add(C);
         A.add(D);
 
-        List Acopy = (List) clone(A);
+        List<Object> Acopy = (List<Object>) clone(A);
 
         B = (Node) Acopy.get(0);
         D = (Node) Acopy.get(2);
         B.child = Y;
         D.child = Y;
-        List deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
         assertEquals(2, deltas.size());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testTwoPointersToSameInstanceUnorderedCollection() throws Exception
     {
@@ -1870,12 +1871,12 @@ public class TestGraphComparator
         Node C = new Node("C", X);
         Node D = new Node("D", X);
 
-        Set A = new LinkedHashSet();
+        Set<Object> A = new LinkedHashSet<>();
         A.add(B);
         A.add(C);
         A.add(D);
 
-        Set Acopy = (Set) clone(A);
+        Set<Object> Acopy = (Set<Object>) clone(A);
 
         Iterator i = Acopy.iterator();
         B = (Node) i.next();
@@ -1884,10 +1885,11 @@ public class TestGraphComparator
         B.child = Y;
         D.child = Y;
 
-        List deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
         assertEquals(2, deltas.size());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testTwoPointersToSameInstanceUnorderedMap() throws Exception
     {
@@ -1898,22 +1900,23 @@ public class TestGraphComparator
         Node C = new Node("C", X);
         Node D = new Node("D", X);
 
-        Map A = new HashMap();
+        Map<String, Object> A = new HashMap<>();
         A.put("childB", B);
         A.put("childC", C);
         A.put("childD", D);
 
-        Map Acopy = (Map) clone(A);
+        Map<String, Object> Acopy = (Map<String, Object>) clone(A);
 
         B = (Node) Acopy.get("childB");
         D = (Node) Acopy.get("childD");
         B.child = Y;
         D.child = Y;
 
-        List deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
         assertEquals(2, deltas.size());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testTwoPointersToSameInstanceOrderedMap() throws Exception
     {
@@ -1924,19 +1927,19 @@ public class TestGraphComparator
         Node C = new Node("C", X);
         Node D = new Node("D", X);
 
-        Map A = new TreeMap();
+        Map<String, Object> A = new TreeMap<>();
         A.put("childB", B);
         A.put("childC", C);
         A.put("childD", D);
 
-        Map Acopy = (Map) clone(A);
+        Map<String, Object> Acopy = (Map<String, Object>) clone(A);
 
         B = (Node) Acopy.get("childB");
         D = (Node) Acopy.get("childD");
         B.child = Y;
         D.child = Y;
 
-        List deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
         assertEquals(2, deltas.size());
     }
 
@@ -1989,7 +1992,7 @@ public class TestGraphComparator
         Dictionary dictionary = new Dictionary();
         dictionary.id = UniqueIdGenerator.getUniqueId();
         dictionary.name = "Websters";
-        dictionary.contents = new HashMap();
+        dictionary.contents = new HashMap<>();
         dictionary.contents.put(persons[0].last, persons[0]);
         dictionary.contents.put(persons[0].pets[0].name, persons[0].pets[0]);
 

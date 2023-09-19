@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * This class implements a Thread-Safe (re-entrant) SimpleDateFormat
@@ -50,7 +51,11 @@ public class SafeSimpleDateFormat extends Format
         if (formatter == null)
         {
             formatter = new SimpleDateFormat(format);
-            formatters.put(format, formatter);
+            SimpleDateFormat simpleDateFormatRef = formatters.putIfAbsent(format, formatter);
+            if (simpleDateFormatRef != null)
+            {
+                formatter = simpleDateFormatRef;
+            }
         }
         return formatter;
     }

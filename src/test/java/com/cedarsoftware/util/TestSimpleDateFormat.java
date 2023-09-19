@@ -1,6 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.text.*;
 import java.util.Calendar;
@@ -8,7 +8,7 @@ import java.util.Date;
 import java.util.Random;
 import java.util.TimeZone;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -48,7 +48,7 @@ public class TestSimpleDateFormat
         assertEquals(0, cal.get(Calendar.SECOND));
     }
 
-    @Test(expected=ParseException.class)
+    @Test
     public void testSetLenient() throws Exception
     {
         //February 942, 1996
@@ -66,10 +66,17 @@ public class TestSimpleDateFormat
         assertEquals(0, cal.get(Calendar.SECOND));
 
         x.setLenient(false);
-        then = x.parse("March 33, 2013");
+        try
+        {
+            then = x.parse("March 33, 2013");
+            fail("should not make it here");
+        }
+        catch (ParseException e)
+        {
+        }
     }
 
-    @Test(expected=ParseException.class)
+    @Test
     public void testSetCalendar() throws Exception
     {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
@@ -96,11 +103,11 @@ public class TestSimpleDateFormat
         cal.clear();
         cal.setTime(then);
         assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(7, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
+        assertEquals(3, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));
+        assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
+        assertEquals(0, cal.get(Calendar.MINUTE));
+        assertEquals(0, cal.get(Calendar.SECOND));
 
         cal.clear();
         cal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
@@ -108,19 +115,24 @@ public class TestSimpleDateFormat
         x.setCalendar(cal);
         x2.setCalendar(cal);
 
-        then = x2.parse(s);
+        then = x.parse(s);
 
         cal = Calendar.getInstance();
         cal.clear();
         cal.setTime(then);
         assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(3, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));
-        assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
-        assertEquals(0, cal.get(Calendar.MINUTE));
-        assertEquals(0, cal.get(Calendar.SECOND));
+        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
+        assertEquals(7, cal.get(Calendar.HOUR_OF_DAY));
+        assertEquals(15, cal.get(Calendar.MINUTE));
+        assertEquals(31, cal.get(Calendar.SECOND));
 
-        then = x.parse("March 33, 2013");
+        try
+        {
+            then = x.parse("March 33, 2013");
+            fail("should not make it here");
+        }
+        catch (ParseException ignored) { }
     }
 
     @Test
@@ -156,7 +168,7 @@ public class TestSimpleDateFormat
 
             @Override
             public Number parse(String source, ParsePosition parsePosition) {
-                return new Integer(0);
+                return 0;
             }
         });
         s = x.format(getDate(2013, 9, 7, 16, 15, 31));
@@ -213,7 +225,7 @@ public class TestSimpleDateFormat
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         final Random random = new Random();
         Thread[] threads = new Thread[16];
-        final long[]iter = new long[16];
+        final long[] iter = new long[16];
 
         final Date date1 = getDate(1965, 12, 17, 17, 40, 05);
         final Date date2 = getDate(1996, 12, 24, 16, 18, 43);
@@ -287,7 +299,7 @@ public class TestSimpleDateFormat
             }
         }
 
-        assertFalse(passed[0], passed[0] == null);
+        assertNotNull(passed[0]);
 //        System.out.println("r = " + r[0]);
 //        System.out.println("s = " + s[0]);
 //        System.out.println("t = " + t[0]);
@@ -299,7 +311,7 @@ public class TestSimpleDateFormat
         final SafeSimpleDateFormat format = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         final Random random = new Random();
         Thread[] threads = new Thread[16];
-        final long[]iter = new long[16];
+        final long[] iter = new long[16];
 
         final Date date1 = getDate(1965, 12, 17, 17, 40, 05);
         final Date date2 = getDate(1996, 12, 24, 16, 18, 43);
@@ -373,7 +385,7 @@ public class TestSimpleDateFormat
             }
         }
 
-        assertTrue(passed[0], passed[0] == null);
+        assertNull(passed[0]);
 //        System.out.println("r = " + r[0]);
 //        System.out.println("s = " + s[0]);
 //        System.out.println("t = " + t[0]);
@@ -390,9 +402,9 @@ public class TestSimpleDateFormat
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.setTime((Date)then);
-        assertTrue(cal.get(Calendar.YEAR) == 2013);
-        assertTrue(cal.get(Calendar.MONTH) == 8);   // Sept
-        assertTrue(cal.get(Calendar.DAY_OF_MONTH) == 7);
+        assertEquals(2013, cal.get(Calendar.YEAR));
+        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
 
     }
 

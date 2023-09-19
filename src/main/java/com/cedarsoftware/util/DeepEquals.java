@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.cedarsoftware.util.Converter.convert2BigDecimal;
 import static com.cedarsoftware.util.Converter.convert2boolean;
-import static com.cedarsoftware.util.ReflectionUtils.getClassLoaderName;
 
 /**
  * Test two objects for equivalence with a 'deep' comparison.  This will traverse
@@ -734,7 +733,7 @@ public class DeepEquals
      */
     public static boolean hasCustomEquals(Class<?> c)
     {
-        StringBuilder sb = new StringBuilder(getClassLoaderName(c));
+        StringBuilder sb = new StringBuilder(ReflectionUtils.getClassLoaderName(c));
         sb.append('.');
         sb.append(c.getName());
         String key = sb.toString();
@@ -853,7 +852,7 @@ public class DeepEquals
      */
     public static boolean hasCustomHashCode(Class<?> c)
     {
-        StringBuilder sb = new StringBuilder(getClassLoaderName(c));
+        StringBuilder sb = new StringBuilder(ReflectionUtils.getClassLoaderName(c));
         sb.append('.');
         sb.append(c.getName());
         String key = sb.toString();

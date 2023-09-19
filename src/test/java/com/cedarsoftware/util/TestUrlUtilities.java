@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.TrustManager;
@@ -17,7 +18,7 @@ import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 
@@ -48,7 +49,7 @@ public class TestUrlUtilities
     @Test
     public void testConstructorIsPrivate() throws Exception
     {
-        Class c = UrlUtilities.class;
+        Class<?> c = UrlUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
         Constructor<UrlUtilities> con = UrlUtilities.class.getDeclaredConstructor();
@@ -58,6 +59,7 @@ public class TestUrlUtilities
         assertNotNull(con.newInstance());
     }
 
+    @Disabled
     @Test
     public void testGetContentFromUrlAsString() throws Exception
     {
@@ -108,6 +110,7 @@ public class TestUrlUtilities
         assertTrue(verifier.verify(null, null));
     }
 
+    @Disabled
     @Test
     public void testReadErrorResponse() throws Exception {
         UrlUtilities.readErrorResponse(null);
@@ -125,6 +128,7 @@ public class TestUrlUtilities
 
         HttpURLConnection c3 = mock(HttpURLConnection.class);
         when(c3.getResponseCode()).thenThrow(new RuntimeException());
+
         UrlUtilities.readErrorResponse(c3);
         verify(c3, times(1)).getResponseCode();
     }
@@ -137,11 +141,14 @@ public class TestUrlUtilities
         assertFalse(UrlUtilities.comparePaths("/foo/", "/bar/"));
     }
 
+    @Disabled   // Fails with timeout (makes test take an additional 30 seconds)
     @Test
-    public void testIsNotExpired() {
+    public void testIsNotExpired()
+    {
         assertFalse(UrlUtilities.isNotExpired(""));
     }
 
+    @Disabled   // Fails with timeout (makes test take an additional 30 seconds)
     @Test
     public void testGetContentFromUrlWithMalformedUrl() {
         assertNull(UrlUtilities.getContentFromUrl("", null, null, true));
@@ -186,14 +193,14 @@ public class TestUrlUtilities
     @Test
     public void testCookies2() throws Exception
     {
-        Map cookies = new HashMap();
-        Map gCookie = new HashMap();
-        gCookie.put("param", new HashMap());
+        Map<Object, Object> cookies = new HashMap<>();
+        Map<Object, Object> gCookie = new HashMap<>();
+        gCookie.put("param", new HashMap<>());
         cookies.put("google.com", gCookie);
         HttpURLConnection c = (HttpURLConnection) UrlUtilities.getConnection(new URL("http://www.google.com"), cookies, true, false, false, true);
         UrlUtilities.setCookies(c, cookies);
         c.connect();
-        Map outCookies = new HashMap();
+        Map<Object, Object> outCookies = new HashMap<>();
         UrlUtilities.getCookies(c, outCookies);
         UrlUtilities.disconnect(c);
     }

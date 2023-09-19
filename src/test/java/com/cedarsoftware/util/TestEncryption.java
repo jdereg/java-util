@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
@@ -10,7 +10,6 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 
@@ -38,10 +37,10 @@ public class TestEncryption
     @Test
     public void testConstructorIsPrivate() throws Exception {
         Constructor<EncryptionUtilities> con = EncryptionUtilities.class.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
     @Test
@@ -49,9 +48,16 @@ public class TestEncryption
         assertNotNull(EncryptionUtilities.getDigest("MD5"));
     }
 
-    @Test(expected=IllegalArgumentException.class)
     public void testGetDigestWithInvalidDigest() {
-        EncryptionUtilities.getDigest("foo");
+        try
+        {
+            EncryptionUtilities.getDigest("foo");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -86,10 +92,17 @@ public class TestEncryption
         assertNull(EncryptionUtilities.calculateSHA512Hash(null));
     }
 
-    @Test(expected=IllegalStateException.class)
     public void testEncryptWithNull()
     {
-        EncryptionUtilities.encrypt("GavynRocks", (String)null);
+
+        try
+        {
+            EncryptionUtilities.encrypt("GavynRocks", (String)null);
+            fail("Should not make it here.");
+        }
+        catch (IllegalStateException e)
+        {
+        }
     }
 
     @Test
@@ -98,15 +111,21 @@ public class TestEncryption
         assertNull(EncryptionUtilities.fastMD5(new File("foo/bar/file")));
     }
 
-    @Test(expected=NullPointerException.class)
     public void testFastMd5WithNull()
     {
-        assertNull(EncryptionUtilities.fastMD5(null));
+        try
+        {
+            assertNull(EncryptionUtilities.fastMD5(null));
+            fail("should not make it here");
+        }
+        catch (NullPointerException e)
+        {
+        }
     }
 
     @Test
     public void testFastMd50BytesReturned() throws Exception {
-        Class c = FileChannel.class;
+        Class<?> c = FileChannel.class;
 
         FileChannel f = mock(FileChannel.class);
         when(f.read(any(ByteBuffer.class))).thenReturn(0).thenReturn(-1);

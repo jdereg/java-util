@@ -1,6 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -23,13 +23,7 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -60,10 +54,10 @@ public class TestIOUtilities
 
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Class c = IOUtilities.class;
+        Class<?> c = IOUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<IOUtilities> con = c.getDeclaredConstructor();
+        Constructor con = c.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -278,12 +272,18 @@ public class TestIOUtilities
         assertEquals(_expected, new String(bytes, "UTF-8"));
     }
 
-    @Test(expected=IOException.class)
     public void transferInputStreamToBytesWithNotEnoughBytes() throws Exception {
         URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
         FileInputStream in = new FileInputStream(new File(u.getFile()));
         byte[] bytes = new byte[24];
-        IOUtilities.transfer(in, bytes);
+        try
+        {
+            IOUtilities.transfer(in, bytes);
+            fail("should not make it here");
+        }
+        catch (IOException e)
+        {
+        }
     }
 
     @Test

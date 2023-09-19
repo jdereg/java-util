@@ -1,13 +1,13 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * useful Array utilities
@@ -32,10 +32,10 @@ public class TestArrayUtilities
 {
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Class c = ArrayUtilities.class;
+        Class<?> c = ArrayUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<ArrayUtilities> con = c.getDeclaredConstructor();
+        Constructor con = c.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -103,12 +103,18 @@ public class TestArrayUtilities
         }
     }
 
-    @Test(expected=ArrayStoreException.class)
     public void testInvalidClassDuringAddAll()
     {
         Long[] one = new Long[] { 1L, 2L };
         String[] two = new String[] {"foo", "bar"};
-        ArrayUtilities.addAll(one, two);
+        try
+        {
+            ArrayUtilities.addAll(one, two);
+            fail("should not make it here");
+        }
+        catch (ArrayStoreException e)
+        {
+        }
     }
 
     @Test

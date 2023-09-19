@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -31,23 +31,23 @@ public class TestInetAddressUtilities
     @Test
     public void testMapUtilitiesConstructor() throws Exception
     {
-        Constructor<InetAddressUtilities> con = InetAddressUtilities.class.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = InetAddressUtilities.class.getDeclaredConstructor();
+        Assertions.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        Assertions.assertNotNull(con.newInstance());
     }
 
     @Test
     public void testGetIpAddress() throws Exception {
         byte[] bytes = InetAddress.getLocalHost().getAddress();
-        Assert.assertArrayEquals(bytes, InetAddressUtilities.getIpAddress());
+        Assertions.assertArrayEquals(bytes, InetAddressUtilities.getIpAddress());
     }
 
     @Test
     public void testGetLocalHost() throws Exception {
         String name = InetAddress.getLocalHost().getHostName();
-        Assert.assertEquals(name, InetAddressUtilities.getHostName());
+        Assertions.assertEquals(name, InetAddressUtilities.getHostName());
     }
 
 

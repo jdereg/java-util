@@ -5,8 +5,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
-
 /**
  * Useful Map that does not care about the case-sensitivity of keys
  * when the key value is a String.  Other key types can be used.
@@ -585,7 +583,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         public CaseInsensitiveString(String string)
         {
             original = string;
-            hash = hashCodeIgnoreCase(string);  // no new String created unlike .toLowerCase()
+            hash = StringUtilities.hashCodeIgnoreCase(string);  // no new String created unlike .toLowerCase()
         }
 
         public String toString()

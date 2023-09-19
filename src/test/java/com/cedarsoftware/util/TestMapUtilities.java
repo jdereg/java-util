@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -9,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author Kenneth Partlow
@@ -33,58 +32,66 @@ public class TestMapUtilities
     @Test
     public void testMapUtilitiesConstructor() throws Exception
     {
-        Constructor<MapUtilities> con = MapUtilities.class.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = MapUtilities.class.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
-    @Test(expected = ClassCastException.class)
-    public void testGetWithWrongType() {
-        Map map = new TreeMap();
+    @Test
+    public void testGetWithWrongType()
+    {
+        Map<String, Object> map = new TreeMap<>();
         map.put("foo", Boolean.TRUE);
-        String s = (String) MapUtilities.get(map, "foo", null);
+        try
+        {
+            String s = (String) MapUtilities.get(map, "foo", null);
+            fail("should not make it here");
+        }
+        catch (ClassCastException ignored)
+        {
+        }
     }
 
     @Test
     public void testGet() {
-        Map map = new HashMap();
-        Assert.assertEquals("bar", MapUtilities.get(map, "baz", "bar"));
-        Assert.assertEquals(7, (long) MapUtilities.get(map, "baz", 7));
-        Assert.assertEquals(new Long(7), MapUtilities.get(map, "baz", 7L));
+        Map<Object, Object> map = new HashMap<>();
+        assertEquals("bar", MapUtilities.get(map, "baz", "bar"));
+        assertEquals(7, (long) MapUtilities.get(map, "baz", 7L));
+        assertEquals(Long.valueOf(7), MapUtilities.get(map, "baz", 7L));
 
         // auto boxing tests
-        Assert.assertEquals(Boolean.TRUE, (Boolean)MapUtilities.get(map, "baz", true));
-        Assert.assertEquals(true, MapUtilities.get(map, "baz", Boolean.TRUE));
+        assertEquals(Boolean.TRUE, (Boolean)MapUtilities.get(map, "baz", true));
+        assertEquals(true, MapUtilities.get(map, "baz", Boolean.TRUE));
 
         map.put("foo", "bar");
-        Assert.assertEquals("bar", MapUtilities.get(map, "foo", null));
+        assertEquals("bar", MapUtilities.get(map, "foo", null));
 
-        map.put("foo", 5);
-        Assert.assertEquals(5, (long)MapUtilities.get(map, "foo", 9));
+        map.put("foo", 5L);
+        assertEquals(5, (long)MapUtilities.get(map, "foo", 9L));
 
         map.put("foo", 9L);
-        Assert.assertEquals(new Long(9), MapUtilities.get(map, "foo", null));
+        assertEquals(9L, MapUtilities.get(map, "foo", null));
 
     }
 
     @Test
     public void testIsEmpty()
     {
-        Assert.assertTrue(MapUtilities.isEmpty(null));
+        assertTrue(MapUtilities.isEmpty(null));
 
-        Map map = new HashMap();
-        Assert.assertTrue(MapUtilities.isEmpty(new HashMap()));
+        Map<String, Object> map = new HashMap<>();
+        assertTrue(MapUtilities.isEmpty(new HashMap<>()));
 
         map.put("foo", "bar");
-        Assert.assertFalse(MapUtilities.isEmpty(map));
+        assertFalse(MapUtilities.isEmpty(map));
     }
 
     @Test
     public void testGetOrThrow()
     {
-        Map map = new TreeMap();
+        Map<String, Object> map = new TreeMap<>();
         map.put("foo", Boolean.TRUE);
         map.put("bar", null);
         Object value = MapUtilities.getOrThrow(map, "foo", new RuntimeException("garply"));

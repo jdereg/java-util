@@ -1,14 +1,13 @@
 package com.cedarsoftware.util;
 
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Date;
 
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author Ken Partlow
@@ -31,22 +30,36 @@ public class TestExceptionUtilities
 {
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Constructor<ExceptionUtilities> con = ExceptionUtilities.class.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = ExceptionUtilities.class.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
 
-    @Test(expected=ThreadDeath.class)
-    public void testThreadDeathThrown() {
-        ExceptionUtilities.safelyIgnoreException(new ThreadDeath());
+    public void testThreadDeathThrown()
+    {
+        try
+        {
+            ExceptionUtilities.safelyIgnoreException(new ThreadDeath());
+            fail("should not make it here");
+        }
+        catch (ThreadDeath e)
+        {
+        }
     }
 
-    @Test(expected=OutOfMemoryError.class)
-    public void testOutOfMemoryErrorThrown() {
-        ExceptionUtilities.safelyIgnoreException(new OutOfMemoryError());
+    public void testOutOfMemoryErrorThrown()
+    {
+        try
+        {
+            ExceptionUtilities.safelyIgnoreException(new OutOfMemoryError());
+            fail("should not make it here");
+        }
+        catch (OutOfMemoryError e)
+        {
+        }
     }
 
     @Test

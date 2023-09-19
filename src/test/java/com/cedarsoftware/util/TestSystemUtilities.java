@@ -1,12 +1,11 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,11 +28,11 @@ public class TestSystemUtilities
 {
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Constructor<SystemUtilities> con = SystemUtilities.class.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = SystemUtilities.class.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
     @Test

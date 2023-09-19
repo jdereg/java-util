@@ -1,6 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static com.cedarsoftware.util.Converter.*;
 import static com.cedarsoftware.util.TestConverter.fubar.bar;
 import static com.cedarsoftware.util.TestConverter.fubar.foo;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
@@ -51,10 +51,10 @@ public class TestConverter
     @Test
     public void testConstructorIsPrivateAndClassIsFinal() throws Exception
     {
-        Class c = Converter.class;
+        Class<?> c = Converter.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<StringUtilities> con = c.getDeclaredConstructor();
+        Constructor con = c.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 

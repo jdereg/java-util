@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
@@ -10,8 +9,7 @@ import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author Ken Partlow
@@ -34,14 +32,14 @@ public class TestProxyFactory
 {
     @Test
     public void testClassCompliance() throws Exception {
-        Class c = ProxyFactory.class;
-        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+        Class<?> c = ProxyFactory.class;
+        assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<ProxyFactory> con = c.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = c.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
 
         con.setAccessible(true);
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
     @Test

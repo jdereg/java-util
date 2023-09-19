@@ -3,8 +3,6 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.util.*;
 
-import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
-
 /**
  * Many developers do not realize than they may have thousands or hundreds of thousands of Maps in memory, often
  * representing small JSON objects.  These maps (often HashMaps) usually have a table of 16/32/64... elements in them,
@@ -846,7 +844,7 @@ public class CompactMap<K, V> implements Map<K, V>
         {
             if (isCaseInsensitive())
             {
-                return hashCodeIgnoreCase((String)key);
+                return StringUtilities.hashCodeIgnoreCase((String)key);
             }
             else
             {   // k can't be null here (null is not instanceof String)

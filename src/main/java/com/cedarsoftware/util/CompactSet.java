@@ -72,7 +72,7 @@ public class CompactSet<E> extends AbstractSet<E>
         }
         else if (val instanceof Set)
         {   // > compactSize
-            return ((Set<E>)val).size();
+            return ((Set)val).size();
         }
         // empty
         return 0;
@@ -109,10 +109,9 @@ public class CompactSet<E> extends AbstractSet<E>
         if (val instanceof Object[])
         {   // 1 to compactSize
             Object[] entries = (Object[]) val;
-            final int len = entries.length;
-            for (int i=0; i < len; i++)
+            for (Object entry : entries)
             {
-                if (compareItems(item, entries[i]))
+                if (compareItems(item, entry))
                 {
                     return true;
                 }
@@ -145,7 +144,7 @@ public class CompactSet<E> extends AbstractSet<E>
 
             public void remove()
             {
-                if (currentEntry == (E)NO_ENTRY)
+                if (currentEntry == NO_ENTRY)
                 {   // remove() called on iterator
                     throw new IllegalStateException("remove() called on an Iterator before calling next()");
                 }

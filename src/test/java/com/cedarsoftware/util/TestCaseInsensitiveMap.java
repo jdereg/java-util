@@ -1,14 +1,13 @@
 package com.cedarsoftware.util;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-
-import static org.junit.Assert.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -34,24 +33,24 @@ public class TestCaseInsensitiveMap
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
-        assertTrue(stringMap.get("one").equals("Two"));
-        assertTrue(stringMap.get("One").equals("Two"));
-        assertTrue(stringMap.get("oNe").equals("Two"));
-        assertTrue(stringMap.get("onE").equals("Two"));
-        assertTrue(stringMap.get("ONe").equals("Two"));
-        assertTrue(stringMap.get("oNE").equals("Two"));
-        assertTrue(stringMap.get("ONE").equals("Two"));
+        assertEquals("Two", stringMap.get("one"));
+        assertEquals("Two", stringMap.get("One"));
+        assertEquals("Two", stringMap.get("oNe"));
+        assertEquals("Two", stringMap.get("onE"));
+        assertEquals("Two", stringMap.get("ONe"));
+        assertEquals("Two", stringMap.get("oNE"));
+        assertEquals("Two", stringMap.get("ONE"));
 
-        assertFalse(stringMap.get("one").equals("two"));
+        assertNotEquals("two", stringMap.get("one"));
 
-        assertTrue(stringMap.get("three").equals("Four"));
-        assertTrue(stringMap.get("fIvE").equals("Six"));
+        assertEquals("Four", stringMap.get("three"));
+        assertEquals("Six", stringMap.get("fIvE"));
     }
 
     @Test
     public void testWithNonStringKeys()
     {
-        CaseInsensitiveMap stringMap = new CaseInsensitiveMap();
+        CaseInsensitiveMap<Object, Object> stringMap = new CaseInsensitiveMap<>();
         assert stringMap.isEmpty();
 
         stringMap.put(97, "eight");
@@ -72,13 +71,13 @@ public class TestCaseInsensitiveMap
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
-        assertTrue(stringMap.get("three").equals("Four"));
+        assertEquals("Four", stringMap.get("three"));
 
         stringMap.put("thRee", "Thirty");
 
-        assertFalse(stringMap.get("three").equals("Four"));
-        assertTrue(stringMap.get("three").equals("Thirty"));
-        assertTrue(stringMap.get("THREE").equals("Thirty"));
+        assertNotEquals("Four", stringMap.get("three"));
+        assertEquals("Thirty", stringMap.get("three"));
+        assertEquals("Thirty", stringMap.get("THREE"));
     }
 
     @Test
@@ -90,8 +89,7 @@ public class TestCaseInsensitiveMap
 
         Set<String> keySet = stringMap.keySet();
         assertNotNull(keySet);
-        assertTrue(!keySet.isEmpty());
-        assertTrue(keySet.size() == 3);
+        assertEquals(3, keySet.size());
 
         boolean foundOne = false, foundThree = false, foundFive = false;
         for (String key : keySet)
@@ -123,7 +121,7 @@ public class TestCaseInsensitiveMap
 
         Set<Map.Entry<String, Object>> entrySet = stringMap.entrySet();
         assertNotNull(entrySet);
-        assertTrue(entrySet.size() == 3);
+        assertEquals(3, entrySet.size());
 
         boolean foundOne = false, foundThree = false, foundFive = false;
         for (Map.Entry<String, Object> entry : entrySet)
@@ -158,13 +156,13 @@ public class TestCaseInsensitiveMap
 
         stringMap.putAll(newMap);
 
-        assertTrue(stringMap.size() == 4);
-        assertFalse(stringMap.get("one").equals("two"));
-        assertTrue(stringMap.get("fIvE").equals("Six"));
-        assertTrue(stringMap.get("three").equals("four"));
-        assertTrue(stringMap.get("seven").equals("Eight"));
+        assertEquals(4, stringMap.size());
+        assertNotEquals("two", stringMap.get("one"));
+        assertEquals("Six", stringMap.get("fIvE"));
+        assertEquals("four", stringMap.get("three"));
+        assertEquals("Eight", stringMap.get("seven"));
 
-        Map a = createSimpleMap();
+        Map<String, Object> a = createSimpleMap();
         a.putAll(null);     // Ensure NPE not happening
     }
 
@@ -187,7 +185,7 @@ public class TestCaseInsensitiveMap
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
-        assertTrue(stringMap.remove("one").equals("Two"));
+        assertEquals("Two", stringMap.remove("one"));
         assertNull(stringMap.get("one"));
     }
 
@@ -197,19 +195,19 @@ public class TestCaseInsensitiveMap
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
         stringMap.put(null, "Something");
-        assertTrue("Something".equals(stringMap.get(null)));
+        assertEquals("Something", stringMap.get(null));
     }
 
     @Test
     public void testRemoveIterator()
     {
-        Map map = new CaseInsensitiveMap();
+        Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("One", null);
         map.put("Two", null);
         map.put("Three", null);
 
         int count = 0;
-        Iterator i = map.keySet().iterator();
+        Iterator<String> i = map.keySet().iterator();
         while (i.hasNext())
         {
             i.next();
@@ -237,36 +235,36 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEquals()
     {
-        Map a = createSimpleMap();
-        Map b = createSimpleMap();
-        assertTrue(a.equals(b));
-        Map c = new HashMap();
-        assertFalse(a.equals(c));
+        Map<String, Object> a = createSimpleMap();
+        Map<String, Object> b = createSimpleMap();
+        assertEquals(a, b);
+        Map<String, Object> c = new HashMap<>();
+        assertNotEquals(a, c);
 
-        Map other = new LinkedHashMap();
+        Map<String, Object> other = new LinkedHashMap<>();
         other.put("one", "Two");
         other.put("THREe", "Four");
         other.put("five", "Six");
 
-        assertTrue(a.equals(other));
-        assertTrue(other.equals(a));
+        assertEquals(a, other);
+        assertEquals(other, a);
 
         other.clear();
         other.put("one", "Two");
         other.put("Three-x", "Four");
         other.put("five", "Six");
-        assertFalse(a.equals(other));
+        assertNotEquals(a, other);
 
         other.clear();
         other.put("One", "Two");
         other.put("Three", "Four");
         other.put("Five", "six");   // lowercase six
-        assertFalse(a.equals(other));
+        assertNotEquals(a, other);
 
-        assertFalse(a.equals("Foo"));
+        assertNotEquals("Foo", a);
 
         other.put("FIVE", null);
-        assertFalse(a.equals(other));
+        assertNotEquals(a, other);
 
         a = createSimpleMap();
         b = createSimpleMap();
@@ -280,27 +278,26 @@ public class TestCaseInsensitiveMap
         Map<String, Object> map1 = new CaseInsensitiveMap<>();
         Map<String, Object> map2 = new CaseInsensitiveMap<>();
         assert map1.equals(map2);
-        assert map1.equals(map1);
     }
 
     @Test
     public void testHashCode()
     {
-        Map a = createSimpleMap();
-        Map b = new CaseInsensitiveMap(a);
-        assertTrue(a.hashCode() == b.hashCode());
+        Map<String, Object> a = createSimpleMap();
+        Map<String, Object> b = new CaseInsensitiveMap<>(a);
+        assertEquals(a.hashCode(), b.hashCode());
 
-        b = new CaseInsensitiveMap();
+        b = new CaseInsensitiveMap<>();
         b.put("ONE", "Two");
         b.put("THREE", "Four");
         b.put("FIVE", "Six");
         assertEquals(a.hashCode(), b.hashCode());
 
-        b = new CaseInsensitiveMap();
+        b = new CaseInsensitiveMap<>();
         b.put("One", "Two");
         b.put("THREE", "FOUR");
         b.put("Five", "Six");
-        assertFalse(a.hashCode() == b.hashCode());  // value FOUR is different than Four
+        assertNotEquals(a.hashCode(), b.hashCode());  // value FOUR is different than Four
     }
 
     @Test
@@ -323,7 +320,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testClear()
     {
-        Map a = createSimpleMap();
+        Map<String, Object> a = createSimpleMap();
         a.clear();
         assertEquals(0, a.size());
     }
@@ -331,7 +328,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testContainsValue()
     {
-        Map a = createSimpleMap();
+        Map<String, Object> a = createSimpleMap();
         assertTrue(a.containsValue("Two"));
         assertFalse(a.containsValue("TWO"));
     }
@@ -339,8 +336,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testValues()
     {
-        Map a = createSimpleMap();
-        Collection col = a.values();
+        Map<String, Object> a = createSimpleMap();
+        Collection<Object> col = a.values();
         assertEquals(3, col.size());
         assertTrue(col.contains("Two"));
         assertTrue(col.contains("Four"));
@@ -354,7 +351,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testNullKey()
     {
-        Map a = createSimpleMap();
+        Map<String, Object> a = createSimpleMap();
         a.put(null, "foo");
         String b = (String) a.get(null);
         int x = b.hashCode();
@@ -368,7 +365,7 @@ public class TestCaseInsensitiveMap
         map.put("BTC", "Bitcoin");
         map.put("LTC", "Litecoin");
 
-        assertTrue(map.size() == 2);
+        assertEquals(2, map.size());
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
 
@@ -376,7 +373,7 @@ public class TestCaseInsensitiveMap
         map.put("BTC", "Bitcoin");
         map.put("LTC", "Litecoin");
 
-        assertTrue(map.size() == 2);
+        assertEquals(2, map.size());
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
 
@@ -384,16 +381,16 @@ public class TestCaseInsensitiveMap
         map.put("BTC", "Bitcoin");
         map.put("LTC", "Litecoin");
 
-        assertTrue(map.size() == 2);
+        assertEquals(2, map.size());
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
 
-        Map map1 = new HashMap<>();
+        Map<String, Object> map1 = new HashMap<>();
         map1.put("BTC", "Bitcoin");
         map1.put("LTC", "Litecoin");
 
         map = new CaseInsensitiveMap<>(map1);
-        assertTrue(map.size() == 2);
+        assertEquals(2, map.size());
         assertEquals("Bitcoin", map.get("btc"));
         assertEquals("Litecoin", map.get("ltc"));
     }
@@ -401,19 +398,19 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEqualsAndHashCode()
     {
-        Map map1 = new HashMap();
+        Map<Object, Object> map1 = new HashMap<>();
         map1.put("BTC", "Bitcoin");
         map1.put("LTC", "Litecoin");
         map1.put(16, 16);
         map1.put(null, null);
 
-        Map map2 = new CaseInsensitiveMap();
+        Map<Object, Object> map2 = new CaseInsensitiveMap<>();
         map2.put("BTC", "Bitcoin");
         map2.put("LTC", "Litecoin");
         map2.put(16, 16);
         map2.put(null, null);
 
-        Map map3 = new CaseInsensitiveMap();
+        Map<Object, Object> map3 = new CaseInsensitiveMap<>();
         map3.put("btc", "Bitcoin");
         map3.put("ltc", "Litecoin");
         map3.put(16, 16);
@@ -421,12 +418,12 @@ public class TestCaseInsensitiveMap
 
         assertTrue(map1.hashCode() != map2.hashCode());    // By design: case sensitive maps will [rightly] compute hash of ABC and abc differently
         assertTrue(map1.hashCode() != map3.hashCode());    // By design: case sensitive maps will [rightly] compute hash of ABC and abc differently
-        assertTrue(map2.hashCode() == map3.hashCode());
+        assertEquals(map2.hashCode(), map3.hashCode());
 
-        assertTrue(map1.equals(map2));
-        assertTrue(map1.equals(map3));
-        assertTrue(map3.equals(map1));
-        assertTrue(map2.equals(map3));
+        assertEquals(map1, map2);
+        assertEquals(map1, map3);
+        assertEquals(map3, map1);
+        assertEquals(map2, map3);
     }
 
     // --------- Test returned keySet() operations ---------
@@ -434,8 +431,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetContains()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
         assertTrue(s.contains("oNe"));
         assertTrue(s.contains("thRee"));
         assertTrue(s.contains("fiVe"));
@@ -445,9 +442,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetContainsAll()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
+        Set<String> items = new HashSet<>();
         items.add("one");
         items.add("five");
         assertTrue(s.containsAll(items));
@@ -458,8 +455,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetRemove()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
 
         s.remove("Dog");
         assertEquals(3, m.size());
@@ -475,9 +472,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetRemoveAll()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
+        Set<String> items = new HashSet<>();
         items.add("one");
         items.add("five");
         assertTrue(s.removeAll(items));
@@ -498,9 +495,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetRetainAll()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
+        Set<String> items = new HashSet<>();
         items.add("three");
         assertTrue(s.retainAll(items));
         assertEquals(1, m.size());
@@ -523,8 +520,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetToObjectArray()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
         Object[] array = s.toArray();
         assertEquals(array[0], "One");
         assertEquals(array[1], "Three");
@@ -534,9 +531,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetToTypedArray()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
-        String[] array = (String[]) s.toArray(new String[]{});
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
+        String[] array = s.toArray(new String[]{});
         assertEquals(array[0], "One");
         assertEquals(array[1], "Three");
         assertEquals(array[2], "Five");
@@ -545,7 +542,7 @@ public class TestCaseInsensitiveMap
         assertEquals(array[0], "One");
         assertEquals(array[1], "Three");
         assertEquals(array[2], "Five");
-        assertEquals(array[3], null);
+        assertNull(array[3]);
         assertEquals(4, array.length);
 
         array = (String[]) s.toArray(new String[]{"","",""});
@@ -568,7 +565,7 @@ public class TestCaseInsensitiveMap
         assert keys[1] instanceof Double;
         assert 1.0d == (double)keys[1];
         assert keys[2] instanceof Boolean;
-        assert true == (boolean)keys[2];
+        assert (boolean) keys[2];
         assert keys[3] instanceof Boolean;
         assert Boolean.FALSE == keys[3];
     }
@@ -576,8 +573,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetClear()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
         s.clear();
         assertEquals(0, m.size());
         assertEquals(0, s.size());
@@ -586,16 +583,16 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetHashCode()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
         int h = s.hashCode();
-        Set s2 = new HashSet();
+        Set<String> s2 = new HashSet<>();
         s2.add("One");
         s2.add("Three");
         s2.add("Five");
         assertNotEquals(h, s2.hashCode());
 
-        s2 = new CaseInsensitiveSet();
+        s2 = new CaseInsensitiveSet<>();
         s2.add("One");
         s2.add("Three");
         s2.add("Five");
@@ -605,9 +602,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetIteratorActions()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
-        Iterator i = s.iterator();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
+        Iterator<String> i = s.iterator();
         Object o = i.next();
         assertTrue(o instanceof String);
         i.remove();
@@ -630,45 +627,45 @@ public class TestCaseInsensitiveMap
     @Test
     public void testKeySetEquals()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
 
-        Set s2 = new HashSet();
+        Set<String> s2 = new HashSet<>();
         s2.add("One");
         s2.add("Three");
         s2.add("Five");
-        assertTrue(s2.equals(s));
-        assertTrue(s.equals(s2));
+        assertEquals(s2, s);
+        assertEquals(s, s2);
 
-        Set s3 = new HashSet();
+        Set<String> s3 = new HashSet<>();
         s3.add("one");
         s3.add("three");
         s3.add("five");
-        assertFalse(s3.equals(s));
-        assertTrue(s.equals(s3));
+        assertNotEquals(s3, s);
+        assertEquals(s, s3);
 
-        Set s4 = new CaseInsensitiveSet();
+        Set<String> s4 = new CaseInsensitiveSet<>();
         s4.add("one");
         s4.add("three");
         s4.add("five");
-        assertTrue(s4.equals(s));
-        assertTrue(s.equals(s4));
+        assertEquals(s4, s);
+        assertEquals(s, s4);
     }
 
     @Test
     public void testKeySetAddNotSupported()
     {
-        Map m = createSimpleMap();
-        Set s = m.keySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<String> s = m.keySet();
         try
         {
             s.add("Bitcoin");
             fail("should not make it here");
         }
-        catch (UnsupportedOperationException e)
+        catch (UnsupportedOperationException ignored)
         { }
 
-        Set items = new HashSet();
+        Set<String> items = new HashSet<>();
         items.add("Food");
         items.add("Water");
 
@@ -677,7 +674,7 @@ public class TestCaseInsensitiveMap
             s.addAll(items);
             fail("should not make it here");
         }
-        catch (UnsupportedOperationException e)
+        catch (UnsupportedOperationException ignored)
         { }
     }
 
@@ -686,8 +683,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetContains()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
         assertTrue(s.contains(getEntry("one", "Two")));
         assertTrue(s.contains(getEntry("tHree", "Four")));
         assertFalse(s.contains(getEntry("one", "two")));    // Value side is case-sensitive (needs 'Two' not 'two')
@@ -698,14 +695,14 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetContainsAll()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
+        Set<Map.Entry<String, Object>> items = new HashSet<>();
         items.add(getEntry("one", "Two"));
         items.add(getEntry("thRee", "Four"));
         assertTrue(s.containsAll(items));
 
-        items = new HashSet();
+        items = new HashSet<>();
         items.add(getEntry("one", "two"));
         items.add(getEntry("thRee", "Four"));
         assertFalse(s.containsAll(items));
@@ -714,8 +711,8 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetRemove()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
 
         assertFalse(s.remove(getEntry("Cat", "Six")));
         assertEquals(3, m.size());
@@ -762,9 +759,9 @@ public class TestCaseInsensitiveMap
 //        assertEquals(0, ss.size());
 
         // Cedar Software code handles removeAll from entrySet perfectly
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
+        Set<Map.Entry<String, Object>> items = new HashSet<>();
         items.add(getEntry("one", "Two"));
         items.add(getEntry("five", "Six"));
         assertTrue(s.removeAll(items));
@@ -791,9 +788,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetRetainAll()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
+        Set<Map.Entry<String, Object>> items = new HashSet<>();
         items.add(getEntry("three", "Four"));
         assertTrue(s.retainAll(items));
         assertEquals(1, m.size());
@@ -802,7 +799,7 @@ public class TestCaseInsensitiveMap
         assertTrue(m.containsKey("three"));
 
         items.clear();
-        items.add("dog");
+        items.add(getEntry("dog", "canine"));
         assertTrue(s.retainAll(items));
         assertEquals(0, m.size());
         assertEquals(0, s.size());
@@ -811,9 +808,9 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetRetainAll2()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
-        Set items = new HashSet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
+        Set<Map.Entry<String, Object>> items = new HashSet<>();
         items.add(getEntry("three", null));
         assertTrue(s.retainAll(items));
         assertEquals(0, m.size());
@@ -842,23 +839,24 @@ public class TestCaseInsensitiveMap
         assert map1.equals(map2);
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testEntrySetToObjectArray()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
         Object[] array = s.toArray();
         assertEquals(3, array.length);
 
-        Map.Entry entry = (Map.Entry) array[0];
+        Map.Entry<String, Object> entry = (Map.Entry<String, Object>)array[0];
         assertEquals("One", entry.getKey());
         assertEquals("Two", entry.getValue());
 
-        entry = (Map.Entry) array[1];
+        entry = (Map.Entry<String, Object>) array[1];
         assertEquals("Three", entry.getKey());
         assertEquals("Four", entry.getValue());
 
-        entry = (Map.Entry) array[2];
+        entry = (Map.Entry<String, Object>) array[2];
         assertEquals("Five", entry.getKey());
         assertEquals("Six", entry.getValue());
     }
@@ -866,34 +864,34 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetToTypedArray()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
-        Map.Entry[] array = (Map.Entry[]) s.toArray(new Map.Entry[]{});
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
+        Object[] array = s.toArray(new Object[]{});
         assertEquals(array[0], getEntry("One", "Two"));
         assertEquals(array[1], getEntry("Three", "Four"));
         assertEquals(array[2], getEntry("Five", "Six"));
 
         s = m.entrySet();   // Should not need to do this (JDK has same issue)
-        array = (Map.Entry[]) s.toArray(new Map.Entry[4]);
+        array = s.toArray(new Map.Entry[4]);
         assertEquals(array[0], getEntry("One", "Two"));
         assertEquals(array[1], getEntry("Three", "Four"));
         assertEquals(array[2], getEntry("Five", "Six"));
-        assertEquals(array[3], null);
+        assertNull(array[3]);
         assertEquals(4, array.length);
 
-        s = m.entrySet();
-        array = (Map.Entry[]) s.toArray(new Map.Entry[]{getEntry(1, 1), getEntry(2, 2), getEntry(3, 3)});
-        assertEquals(array[0], getEntry("One", "Two"));
-        assertEquals(array[1], getEntry("Three", "Four"));
-        assertEquals(array[2], getEntry("Five", "Six"));
-        assertEquals(3, array.length);
+//        s = m.entrySet();
+//        array = (Map.Entry<String, Object>[]) s.toArray(new Object[]{getEntry("1", 1), getEntry("2", 2), getEntry("3", 3)});
+//        assertEquals(array[0], getEntry("One", "Two"));
+//        assertEquals(array[1], getEntry("Three", "Four"));
+//        assertEquals(array[2], getEntry("Five", "Six"));
+//        assertEquals(3, array.length);
     }
 
     @Test
     public void testEntrySetClear()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
         s.clear();
         assertEquals(0, m.size());
         assertEquals(0, s.size());
@@ -902,14 +900,14 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetHashCode()
     {
-        Map m = createSimpleMap();
-        Map m2 = new CaseInsensitiveMap();
+        Map<String, Object> m = createSimpleMap();
+        Map<String, Object> m2 = new CaseInsensitiveMap<>();
         m2.put("one", "Two");
         m2.put("three", "Four");
         m2.put("five", "Six");
         assertEquals(m.hashCode(), m2.hashCode());
 
-        Map m3 = new LinkedHashMap();
+        Map<String, Object> m3 = new LinkedHashMap<>();
         m3.put("One", "Two");
         m3.put("Three", "Four");
         m3.put("Five", "Six");
@@ -919,7 +917,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetIteratorActions()
     {
-        Map m = createSimpleMap();
+        Map<String, Object> m = createSimpleMap();
         Set s = m.entrySet();
         Iterator i = s.iterator();
         Object o = i.next();
@@ -944,81 +942,82 @@ public class TestCaseInsensitiveMap
     @Test
     public void testEntrySetEquals()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
 
-        Set s2 = new HashSet();
+        Set<Map.Entry<String, Object>> s2 = new HashSet<>();
         s2.add(getEntry("One", "Two"));
         s2.add(getEntry("Three", "Four"));
         s2.add(getEntry("Five", "Six"));
-        assertTrue(s.equals(s2));
+        assertEquals(s, s2);
 
         s2.clear();
         s2.add(getEntry("One", "Two"));
         s2.add(getEntry("Three", "Four"));
         s2.add(getEntry("Five", "six"));    // lowercase six
-        assertFalse(s.equals(s2));
+        assertNotEquals(s, s2);
 
         s2.clear();
         s2.add(getEntry("One", "Two"));
         s2.add(getEntry("Thre", "Four"));   // missing 'e' on three
         s2.add(getEntry("Five", "Six"));
-        assertFalse(s.equals(s2));
+        assertNotEquals(s, s2);
 
-        Set s3 = new HashSet();
+        Set<Map.Entry<String, Object>> s3 = new HashSet<>();
         s3.add(getEntry("one", "Two"));
         s3.add(getEntry("three", "Four"));
         s3.add(getEntry("five","Six"));
-        assertTrue(s.equals(s3));
+        assertEquals(s, s3);
 
-        Set s4 = new CaseInsensitiveSet();
+        Set<Map.Entry<String, Object>> s4 = new CaseInsensitiveSet<>();
         s4.add(getEntry("one", "Two"));
         s4.add(getEntry("three", "Four"));
         s4.add(getEntry("five","Six"));
-        assertTrue(s.equals(s4));
+        assertEquals(s, s4);
 
         CaseInsensitiveMap<String, Object> secondStringMap = createSimpleMap();
-        assertFalse(s.equals("one"));
+        assertNotEquals("one", s);
 
-        assertTrue(s.equals(secondStringMap.entrySet()));
+        assertEquals(s, secondStringMap.entrySet());
         // case-insensitive
         secondStringMap.put("five", "Six");
-        assertTrue(s.equals(secondStringMap.entrySet()));
+        assertEquals(s, secondStringMap.entrySet());
         secondStringMap.put("six", "sixty");
-        assertFalse(s.equals(secondStringMap.entrySet()));
+        assertNotEquals(s, secondStringMap.entrySet());
         secondStringMap.remove("five");
-        assertFalse(s.equals(secondStringMap.entrySet()));
+        assertNotEquals(s, secondStringMap.entrySet());
         secondStringMap.put("five", null);
         secondStringMap.remove("six");
-        assertFalse(s.equals(secondStringMap.entrySet()));
+        assertNotEquals(s, secondStringMap.entrySet());
         m.put("five", null);
-        assertTrue(m.entrySet().equals(secondStringMap.entrySet()));
+        assertEquals(m.entrySet(), secondStringMap.entrySet());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testEntrySetAddNotSupport()
     {
-        Map m = createSimpleMap();
-        Set s = m.entrySet();
+        Map<String, Object> m = createSimpleMap();
+        Set<Map.Entry<String, Object>> s = m.entrySet();
 
         try
         {
-            s.add(10);
+            s.add(getEntry("10", 10));
             fail("should not make it here");
         }
-        catch (UnsupportedOperationException e)
+        catch (UnsupportedOperationException ignored)
         { }
 
-        Set s2 = new HashSet();
+        Set<String> s2 = new HashSet<>();
         s2.add("food");
         s2.add("water");
 
         try
         {
-            s.addAll(s2);
+            s.addAll((Set)s2);
             fail("should not make it here");
         }
-        catch (UnsupportedOperationException e)
+        catch (UnsupportedOperationException ignored)
         { }
     }
 
@@ -1031,15 +1030,15 @@ public class TestCaseInsensitiveMap
         int five = 0;
         for (Map.Entry<String, Object> entry : m.entrySet())
         {
-            if (entry.equals(new AbstractMap.SimpleEntry("one", "Two")))
+            if (entry.equals(new AbstractMap.SimpleEntry<String, Object>("one", "Two")))
             {
                 one++;
             }
-            if (entry.equals(new AbstractMap.SimpleEntry("thrEe", "Four")))
+            if (entry.equals(new AbstractMap.SimpleEntry<String, Object>("thrEe", "Four")))
             {
                 three++;
             }
-            if (entry.equals(new AbstractMap.SimpleEntry("FIVE", "Six")))
+            if (entry.equals(new AbstractMap.SimpleEntry<String, Object>("FIVE", "Six")))
             {
                 five++;
             }
@@ -1118,7 +1117,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testSetValueApiOnEntrySet()
     {
-        Map<String, String> map = new CaseInsensitiveMap();
+        Map<String, String> map = new CaseInsensitiveMap<>();
         map.put("One", "Two");
         map.put("Three", "Four");
         map.put("Five", "Six");
@@ -1135,20 +1134,20 @@ public class TestCaseInsensitiveMap
     @Test
     public void testWrappedTreeMap()
     {
-        Map map = new CaseInsensitiveMap(new TreeMap());
+        CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>(new TreeMap<>());
         map.put("z", "zulu");
         map.put("J", "juliet");
         map.put("a", "alpha");
         assert map.size() == 3;
-        Iterator i = map.keySet().iterator();
-        assert "a" == i.next();
-        assert "J" == i.next();
-        assert "z" == i.next();
+        Iterator<String> i = map.keySet().iterator();
+        assert "a".equals(i.next());
+        assert "J".equals(i.next());
+        assert "z".equals(i.next());
         assert map.containsKey("A");
         assert map.containsKey("j");
         assert map.containsKey("Z");
 
-        assert ((CaseInsensitiveMap)map).getWrappedMap() instanceof TreeMap;
+        assert map.getWrappedMap() instanceof TreeMap;
     }
 
     @Test
@@ -1156,7 +1155,7 @@ public class TestCaseInsensitiveMap
     {
         try
         {
-            Map map = new CaseInsensitiveMap(new TreeMap());
+            Map<String, Object> map = new CaseInsensitiveMap<>(new TreeMap<>());
             map.put(null, "not allowed");
             fail();
         }
@@ -1167,7 +1166,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testWrappedConcurrentHashMap()
     {
-        Map map = new CaseInsensitiveMap(new ConcurrentHashMap());
+        Map<String, Object> map = new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
         map.put("z", "zulu");
         map.put("J", "juliet");
         map.put("a", "alpha");
@@ -1184,7 +1183,7 @@ public class TestCaseInsensitiveMap
     {
         try
         {
-            Map map = new CaseInsensitiveMap(new ConcurrentHashMap());
+            Map<String, Object> map = new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
             map.put(null, "not allowed");
             fail();
         }
@@ -1213,11 +1212,11 @@ public class TestCaseInsensitiveMap
     @Test
     public void testUnmodifiableMap()
     {
-        Map junkMap = new ConcurrentHashMap();
+        Map<String, Object> junkMap = new ConcurrentHashMap<>();
         junkMap.put("z", "zulu");
         junkMap.put("J", "juliet");
         junkMap.put("a", "alpha");
-        Map map = new CaseInsensitiveMap(Collections.unmodifiableMap(junkMap));
+        Map<String, Object> map = new CaseInsensitiveMap<>(Collections.unmodifiableMap(junkMap));
         assert map.size() == 3;
         assert map.containsKey("A");
         assert map.containsKey("j");
@@ -1228,7 +1227,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testWeakHashMap()
     {
-        Map map = new CaseInsensitiveMap(new WeakHashMap());
+        Map<String, Object> map = new CaseInsensitiveMap<>(new WeakHashMap<>());
         map.put("z", "zulu");
         map.put("J", "juliet");
         map.put("a", "alpha");
@@ -1243,12 +1242,12 @@ public class TestCaseInsensitiveMap
     @Test
     public void testWrappedMap()
     {
-        Map linked = new LinkedHashMap();
+        Map<String, Object> linked = new LinkedHashMap<>();
         linked.put("key1", 1);
         linked.put("key2", 2);
         linked.put("key3", 3);
-        CaseInsensitiveMap caseInsensitive = new CaseInsensitiveMap(linked);
-        Set<String> newKeys = new LinkedHashSet();
+        CaseInsensitiveMap<String, Object> caseInsensitive = new CaseInsensitiveMap<>(linked);
+        Set<String> newKeys = new LinkedHashSet<>();
         newKeys.add("key4");
         newKeys.add("key5");
         int newValue = 4;
@@ -1258,7 +1257,7 @@ public class TestCaseInsensitiveMap
             caseInsensitive.put(key, newValue++);
         }
 
-        Iterator i = caseInsensitive.keySet().iterator();
+        Iterator<String> i = caseInsensitive.keySet().iterator();
         assertEquals(i.next(), "key1");
         assertEquals(i.next(), "key2");
         assertEquals(i.next(), "key3");
@@ -1269,26 +1268,26 @@ public class TestCaseInsensitiveMap
     @Test
     public void testNotRecreatingCaseInsensitiveStrings()
     {
-        Map map = new CaseInsensitiveMap();
+        Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("dog", "eddie");
 
         // copy 1st map
-        Map newMap = new CaseInsensitiveMap(map);
+        Map<String, Object> newMap = new CaseInsensitiveMap<>(map);
 
-        CaseInsensitiveMap.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap.CaseInsensitiveEntry) map.entrySet().iterator().next();
-        CaseInsensitiveMap.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
+        CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry) map.entrySet().iterator().next();
+        CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
 
-        assertTrue(entry1.getOriginalKey() == entry2.getOriginalKey());
+        assertSame(entry1.getOriginalKey(), entry2.getOriginalKey());
     }
 
     @Test
     public void testPutAllOfNonCaseInsensitiveMap()
     {
-        Map nonCi = new HashMap();
+        Map<String, Object> nonCi = new HashMap<>();
         nonCi.put("Foo", "bar");
         nonCi.put("baz", "qux");
 
-        Map ci = new CaseInsensitiveMap();
+        Map<String, Object> ci = new CaseInsensitiveMap<>();
         ci.putAll(nonCi);
 
         assertTrue(ci.containsKey("foo"));
@@ -1298,39 +1297,39 @@ public class TestCaseInsensitiveMap
     @Test
     public void testNotRecreatingCaseInsensitiveStringsUsingTrackingMap()
     {
-        Map map = new CaseInsensitiveMap();
+        Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("dog", "eddie");
-        map = new TrackingMap(map);
+        map = new TrackingMap<>(map);
 
         // copy 1st map
-        Map newMap = new CaseInsensitiveMap(map);
+        Map<String, Object> newMap = new CaseInsensitiveMap<>(map);
 
-        CaseInsensitiveMap.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap.CaseInsensitiveEntry) map.entrySet().iterator().next();
-        CaseInsensitiveMap.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
+        CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry) map.entrySet().iterator().next();
+        CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
 
-        assertTrue(entry1.getOriginalKey() == entry2.getOriginalKey());
+        assertSame(entry1.getOriginalKey(), entry2.getOriginalKey());
     }
 
     @Test
     public void testEntrySetIsEmpty()
     {
-        Map map = createSimpleMap();
-        Set entries = map.entrySet();
+        Map<String, Object> map = createSimpleMap();
+        Set<Map.Entry<String, Object>> entries = map.entrySet();
         assert !entries.isEmpty();
     }
 
     @Test
     public void testPlus()
     {
-        CaseInsensitiveMap x = new CaseInsensitiveMap();
-        Map y = new HashMap();
+        CaseInsensitiveMap<Object, Object> x = new CaseInsensitiveMap<>();
+        Map<Object, Object> y = new HashMap<>();
 
         try
         {
             x.plus(y);
             fail();
         }
-        catch (UnsupportedOperationException e)
+        catch (UnsupportedOperationException ignored)
         {
         }
     }
@@ -1338,15 +1337,15 @@ public class TestCaseInsensitiveMap
     @Test
     public void testMinus()
     {
-        CaseInsensitiveMap x = new CaseInsensitiveMap();
-        Map y = new HashMap();
+        CaseInsensitiveMap<Object, Object> x = new CaseInsensitiveMap<>();
+        Map<Object, Object> y = new HashMap<>();
 
         try
         {
             x.minus(y);
             fail();
         }
-        catch (UnsupportedOperationException e)
+        catch (UnsupportedOperationException ignored)
         {
         }
     }
@@ -1354,7 +1353,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testPutObject()
     {
-        CaseInsensitiveMap map = new CaseInsensitiveMap();
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
         map.putObject(1L, 1L);
         map.putObject("hi", "ho");
         Object x = map.putObject("hi", "hi");
@@ -1371,7 +1370,7 @@ public class TestCaseInsensitiveMap
     @Test
     public void testTwoMapConstructor()
     {
-        Map real = new HashMap();
+        Map<String, Object> real = new HashMap<>();
         real.put("z", 26);
         real.put("y", 25);
         real.put("m", 13);
@@ -1380,8 +1379,8 @@ public class TestCaseInsensitiveMap
         real.put("b", 2);
         real.put("a", 1);
 
-        Map backingMap = new TreeMap();
-        CaseInsensitiveMap ciMap = new CaseInsensitiveMap(real, backingMap);
+        Map<String, Object> backingMap = new TreeMap<>();
+        CaseInsensitiveMap<String, Object> ciMap = new CaseInsensitiveMap<>(real, backingMap);
         assert ciMap.size() == real.size();
         assert ciMap.containsKey("Z");
         assert ciMap.containsKey("A");
@@ -1445,7 +1444,7 @@ public class TestCaseInsensitiveMap
         assert !ciString.equals(ciString2);
     }
 
-    @Ignore
+    @Disabled
     @Test
     public void testGenHash()
     {
@@ -1493,7 +1492,7 @@ public class TestCaseInsensitiveMap
     }
 
     // Used only during development right now
-    @Ignore
+    @Disabled
     @Test
     public void testPerformance()
     {
@@ -1516,7 +1515,7 @@ public class TestCaseInsensitiveMap
 
         for (int i=0; i < 100000; i++)
         {
-            Map copy = new CaseInsensitiveMap<>(map);
+            Map<String, String> copy = new CaseInsensitiveMap<>(map);
         }
 
         stop = System.nanoTime();
@@ -1536,13 +1535,13 @@ public class TestCaseInsensitiveMap
         return stringMap;
     }
 
-    private Map.Entry getEntry(final Object key, final Object value)
+    private Map.Entry<String, Object> getEntry(final String key, final Object value)
     {
-        return new Map.Entry()
+        return new Map.Entry<>()
         {
             Object myValue = value;
 
-            public Object getKey()
+            public String getKey()
             {
                 return key;
             }

@@ -1,14 +1,13 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Calendar;
 import java.util.Date;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -171,17 +170,17 @@ public class TestDateUtilities
         assertEquals(60 * 1000, t1.getTime() - t4.getTime());
         assertEquals(-60 * 1000, t1.getTime() - t5.getTime());
     }
-        @Test
+    @Test
     public void testConstructorIsPrivate() throws Exception
     {
-        Class c = DateUtilities.class;
-        Assert.assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
+        Class<?> c = DateUtilities.class;
+        assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor<DateUtilities> con = c.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        Constructor con = c.getDeclaredConstructor();
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
     @Test
@@ -513,7 +512,7 @@ public class TestDateUtilities
         try
         {
             DateUtilities.parseDate("07/04/19");
-            Assert.fail();
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {

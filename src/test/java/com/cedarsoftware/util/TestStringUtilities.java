@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -8,8 +9,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Ken Partlow
@@ -33,7 +33,7 @@ public class TestStringUtilities
 {
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Class c = StringUtilities.class;
+        Class<StringUtilities> c = StringUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
         Constructor<StringUtilities> con = c.getDeclaredConstructor();
@@ -118,10 +118,16 @@ public class TestStringUtilities
         assertEquals("", StringUtilities.encode(new byte[]{}));
     }
 
-    @Test(expected=NullPointerException.class)
     public void testEncodeWithNull()
     {
-        StringUtilities.encode(null);
+        try
+        {
+            StringUtilities.encode(null);
+            fail("should not make it here");
+        }
+        catch (NullPointerException e)
+        {
+        }
     }
 
     @Test
@@ -131,10 +137,16 @@ public class TestStringUtilities
         assertNull(StringUtilities.decode("1AB"));
     }
 
-    @Test(expected=NullPointerException.class)
     public void testDecodeWithNull()
     {
-        StringUtilities.decode(null);
+        try
+        {
+            StringUtilities.decode(null);
+            fail("should not make it here");
+        }
+        catch (NullPointerException e)
+        {
+        }
     }
 
     @Test
@@ -238,9 +250,15 @@ public class TestStringUtilities
         }
     }
 
-    @Test(expected=IllegalArgumentException.class)
     public void testGetBytesWithInvalidEncoding() {
-        StringUtilities.getBytes("foo", "foo");
+        try
+        {
+            StringUtilities.getBytes("foo", "foo");
+            fail("should not make it here");
+        }
+        catch (IllegalArgumentException e)
+        {
+        }
     }
 
     @Test
@@ -258,7 +276,7 @@ public class TestStringUtilities
     @Test
     public void testGetBytesWithNull()
     {
-        assertNull(null, StringUtilities.getBytes(null, "UTF-8"));
+        assert StringUtilities.getBytes(null, "UTF-8") == null;
     }
 
     @Test
@@ -315,9 +333,16 @@ public class TestStringUtilities
         assertEquals("", StringUtilities.createUTF8String(new byte[]{}));
     }
 
-    @Test(expected=IllegalArgumentException.class)
-    public void testCreateStringWithInvalidEncoding() {
-        StringUtilities.createString(new byte[] {102, 111, 111}, "baz");
+    @Test
+    public void testCreateStringWithInvalidEncoding()
+    {
+        try
+        {
+            StringUtilities.createString(new byte[] {102, 111, 111}, "baz");
+            fail("Should not make it here");
+        }
+        catch(IllegalArgumentException e)
+        { }
     }
 
     @Test
@@ -343,12 +368,12 @@ public class TestStringUtilities
     {
         String s = "Hello";
         String t = "HELLO";
-        assert hashCodeIgnoreCase(s) == hashCodeIgnoreCase(t);
+        assert StringUtilities.hashCodeIgnoreCase(s) == StringUtilities.hashCodeIgnoreCase(t);
 
         s = "Hell0";
-        assert hashCodeIgnoreCase(s) != hashCodeIgnoreCase(t);
+        assert StringUtilities.hashCodeIgnoreCase(s) != StringUtilities.hashCodeIgnoreCase(t);
 
-        assert hashCodeIgnoreCase(null) == 0;
-        assert hashCodeIgnoreCase("") == 0;
+        assert StringUtilities.hashCodeIgnoreCase(null) == 0;
+        assert StringUtilities.hashCodeIgnoreCase("") == 0;
     }
 }

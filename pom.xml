@@ -20,9 +20,10 @@
     <properties>
         <version.slf4j>2.0.9</version.slf4j>
         <version.logback>1.4.11</version.logback>
-        <version.junit>4.13.2</version.junit>
+        <version.junit>5.10.0</version.junit>
         <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
         <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
+        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
         <version.plugin.compiler>3.11.0</version.plugin.compiler>
         <version.plugin.gpg>3.1.0</version.plugin.gpg>
         <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
@@ -31,11 +32,10 @@
         <version.plugin.source>3.3.0</version.plugin.source>
         <version.plugin.felix.scr>1.26.4</version.plugin.felix.scr>
         <version.plugin.felix.bundle>5.1.9</version.plugin.felix.bundle>
-        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     
-        <profiles>
+    <profiles>
 
         <profile>
             <id>release-sign-artifacts</id>
@@ -205,8 +205,8 @@
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
             <version>${version.junit}</version>
             <scope>test</scope>
         </dependency>

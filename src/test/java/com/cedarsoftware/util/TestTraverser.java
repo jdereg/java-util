@@ -1,11 +1,10 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,21 +28,21 @@ public class TestTraverser
     class Alpha
     {
         String name;
-        Collection contacts;
+        Collection<Object> contacts;
         Beta beta;
     }
 
     class Beta
     {
         int age;
-        Map friends;
+        Map<Object, Object> friends;
         Charlie charlie;
     }
 
     class Charlie
     {
         double salary;
-        Collection timezones;
+        Collection<Object> timezones;
         Object[] dates;
         Alpha alpha;
         TimeZone zone = TimeZone.getDefault();
@@ -64,22 +63,21 @@ public class TestTraverser
 
         alpha.name = "alpha";
         alpha.beta = beta;
-        alpha.contacts = new ArrayList();
+        alpha.contacts = new ArrayList<>();
         alpha.contacts.add(beta);
         alpha.contacts.add(charlie);
         alpha.contacts.add("Harry");
 
         beta.age = 45;
         beta.charlie = charlie;
-        beta.friends = new LinkedHashMap();
-        beta.friends = new LinkedHashMap();
+        beta.friends = new LinkedHashMap<>();
         beta.friends.put("Tom", "Tom Jones");
         beta.friends.put(alpha, "Alpha beta");
         beta.friends.put("beta", beta);
 
         charlie.salary = 150000.01;
         charlie.alpha = alpha;
-        charlie.timezones = new LinkedList();
+        charlie.timezones = new LinkedList<>();
         charlie.timezones.add(TimeZone.getTimeZone("EST"));
         charlie.timezones.add(TimeZone.getTimeZone("GMT"));
         charlie.dates = new Date[] { new Date() };

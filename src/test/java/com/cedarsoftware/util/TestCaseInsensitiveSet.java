@@ -1,11 +1,11 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,7 +29,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testSize()
     {
-        CaseInsensitiveSet set = new CaseInsensitiveSet();
+        CaseInsensitiveSet<Object> set = new CaseInsensitiveSet<>();
         set.add(16);
         set.add("Hi");
         assertEquals(2, set.size());
@@ -42,7 +42,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testIsEmpty()
     {
-        CaseInsensitiveSet set = new CaseInsensitiveSet();
+        CaseInsensitiveSet<String> set = new CaseInsensitiveSet<>();
         assertTrue(set.isEmpty());
         set.add("Seven");
         assertFalse(set.isEmpty());
@@ -53,7 +53,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testContains()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         set.add(9);
         assertTrue(set.contains("One"));
         assertTrue(set.contains("one"));
@@ -73,10 +73,10 @@ public class TestCaseInsensitiveSet
     @Test
     public void testIterator()
     {
-        Set set = get123();
+        Set<Object> set = get123();
 
         int count = 0;
-        Iterator i = set.iterator();
+        Iterator<Object> i = set.iterator();
         while (i.hasNext())
         {
             i.next();
@@ -104,7 +104,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testToArray()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         Object[] items = set.toArray();
         assertEquals(3, items.length);
         assertEquals(items[0], "One");
@@ -115,9 +115,9 @@ public class TestCaseInsensitiveSet
     @Test
     public void testToArrayWithArgs()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         String[] empty = new String[]{};
-        String[] items = (String[]) set.toArray(empty);
+        String[] items = set.toArray(empty);
         assertEquals(3, items.length);
         assertEquals(items[0], "One");
         assertEquals(items[1], "Two");
@@ -127,7 +127,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testAdd()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         set.add("Four");
         assertEquals(set.size(), 4);
         assertTrue(set.contains("FOUR"));
@@ -136,7 +136,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testRemove()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         assertEquals(3, set.size());
         set.remove("one");
         assertEquals(2, set.size());
@@ -151,13 +151,13 @@ public class TestCaseInsensitiveSet
     @Test
     public void testContainsAll()
     {
-        List list = new ArrayList();
+        List<String> list = new ArrayList<>();
         list.add("one");
         list.add("two");
         list.add("three");
-        Set set = get123();
+        Set<Object> set = get123();
         assertTrue(set.containsAll(list));
-        assertTrue(set.containsAll(new ArrayList()));
+        assertTrue(set.containsAll(new ArrayList<>()));
         list.clear();
         list.add("one");
         list.add("four");
@@ -167,33 +167,33 @@ public class TestCaseInsensitiveSet
     @Test
     public void testAddAll()
     {
-        Set set = get123();
-        List list = new ArrayList();
+        Set<Object> set = get123();
+        List<Object> list = new ArrayList<>();
         list.add("one");
         list.add("TWO");
         list.add("four");
         set.addAll(list);
-        assertTrue(set.size() == 4);
+        assertEquals(4, set.size());
         assertTrue(set.contains("FOUR"));
     }
 
     @Test
     public void testRetainAll()
     {
-        Set set = get123();
-        List list = new ArrayList();
+        Set<Object> set = get123();
+        List<Object> list = new ArrayList<>();
         list.add("TWO");
         list.add("four");
         assert set.retainAll(list);
-        assertTrue(set.size() == 1);
+        assertEquals(1, set.size());
         assertTrue(set.contains("tWo"));
     }
 
     @Test
     public void testRetainAll3()
     {
-        Set set = get123();
-        Set set2 = get123();
+        Set<Object> set = get123();
+        Set<Object> set2 = get123();
         assert !set.retainAll(set2);
         assert set2.size() == set.size();
     }
@@ -201,8 +201,8 @@ public class TestCaseInsensitiveSet
     @Test
     public void testRemoveAll()
     {
-        Set set = get123();
-        Set set2 = new HashSet();
+        Set<Object> set = get123();
+        Set<Object> set2 = new HashSet<>();
         set2.add("one");
         set2.add("three");
         set.removeAll(set2);
@@ -213,8 +213,8 @@ public class TestCaseInsensitiveSet
     @Test
     public void testRemoveAll3()
     {
-        Set set = get123();
-        Set set2 = new HashSet();
+        Set<Object> set = get123();
+        Set<Object> set2 = new HashSet<>();
         set2.add("a");
         set2.add("b");
         set2.add("c");
@@ -228,7 +228,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testClearAll()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         assertEquals(3, set.size());
         set.clear();
         assertEquals(0, set.size());
@@ -239,26 +239,26 @@ public class TestCaseInsensitiveSet
     @Test
     public void testConstructors()
     {
-        Set hashSet = new HashSet();
+        Set<Object> hashSet = new HashSet<>();
         hashSet.add("BTC");
         hashSet.add("LTC");
 
-        Set set1 = new CaseInsensitiveSet(hashSet);
-        assertTrue(set1.size() == 2);
+        Set<Object> set1 = new CaseInsensitiveSet<>(hashSet);
+        assertEquals(2, set1.size());
         assertTrue(set1.contains("btc"));
         assertTrue(set1.contains("ltc"));
 
-        Set set2 = new CaseInsensitiveSet(10);
+        Set<Object> set2 = new CaseInsensitiveSet<>(10);
         set2.add("BTC");
         set2.add("LTC");
-        assertTrue(set2.size() == 2);
+        assertEquals(2, set2.size());
         assertTrue(set2.contains("btc"));
         assertTrue(set2.contains("ltc"));
 
-        Set set3 = new CaseInsensitiveSet(10, 0.75f);
+        Set<Object> set3 = new CaseInsensitiveSet<Object>(10, 0.75f);
         set3.add("BTC");
         set3.add("LTC");
-        assertTrue(set3.size() == 2);
+        assertEquals(2, set3.size());
         assertTrue(set3.contains("btc"));
         assertTrue(set3.contains("ltc"));
     }
@@ -266,19 +266,19 @@ public class TestCaseInsensitiveSet
     @Test
     public void testHashCodeAndEquals()
     {
-        Set set1 = new HashSet();
+        Set<Object> set1 = new HashSet<>();
         set1.add("Bitcoin");
         set1.add("Litecoin");
         set1.add(16);
         set1.add(null);
 
-        Set set2 = new CaseInsensitiveSet();
+        Set<Object> set2 = new CaseInsensitiveSet<>();
         set2.add("Bitcoin");
         set2.add("Litecoin");
         set2.add(16);
         set2.add(null);
 
-        Set set3 = new CaseInsensitiveSet();
+        Set<Object> set3 = new CaseInsensitiveSet<>();
         set3.add("BITCOIN");
         set3.add("LITECOIN");
         set3.add(16);
@@ -286,18 +286,18 @@ public class TestCaseInsensitiveSet
 
         assertTrue(set1.hashCode() != set2.hashCode());
         assertTrue(set1.hashCode() != set3.hashCode());
-        assertTrue(set2.hashCode() == set3.hashCode());
+        assertEquals(set2.hashCode(), set3.hashCode());
 
-        assertTrue(set1.equals(set2));
-        assertFalse(set1.equals(set3));
-        assertTrue(set3.equals(set1));
-        assertTrue(set2.equals(set3));
+        assertEquals(set1, set2);
+        assertNotEquals(set1, set3);
+        assertEquals(set3, set1);
+        assertEquals(set2, set3);
     }
 
     @Test
     public void testToString()
     {
-        Set set = get123();
+        Set<Object> set = get123();
         String s = set.toString();
         assertTrue(s.contains("One"));
         assertTrue(s.contains("Two"));
@@ -307,13 +307,13 @@ public class TestCaseInsensitiveSet
     @Test
     public void testKeySet()
     {
-        Set s = get123();
+        Set<Object> s = get123();
         assertTrue(s.contains("oNe"));
         assertTrue(s.contains("tWo"));
         assertTrue(s.contains("tHree"));
 
         s = get123();
-        Iterator i = s.iterator();
+        Iterator<Object> i = s.iterator();
         i.next();
         i.remove();
         assertEquals(2, s.size());
@@ -388,7 +388,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testTreeSet()
     {
-        Collection set = new CaseInsensitiveSet(new TreeSet());
+        Collection<String> set = new CaseInsensitiveSet<>(new TreeSet<>());
         set.add("zuLU");
         set.add("KIlo");
         set.add("charLIE");
@@ -407,8 +407,9 @@ public class TestCaseInsensitiveSet
     {
         try
         {
-            Collection set = new CaseInsensitiveSet(new TreeSet());
+            Collection<String> set = new CaseInsensitiveSet<>(new TreeSet<>());
             set.add(null);
+            fail("should not make it here");
         }
         catch (NullPointerException ignored)
         { }
@@ -417,7 +418,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testConcurrentSet()
     {
-        Collection set = new CaseInsensitiveSet(new ConcurrentSkipListSet());
+        Collection<String> set = new CaseInsensitiveSet<>(new ConcurrentSkipListSet<>());
         set.add("zuLU");
         set.add("KIlo");
         set.add("charLIE");
@@ -432,7 +433,7 @@ public class TestCaseInsensitiveSet
     {
         try
         {
-            Collection set = new CaseInsensitiveSet(new ConcurrentSkipListSet());
+            Collection<String> set = new CaseInsensitiveSet<String>(new ConcurrentSkipListSet<String>());
             set.add(null);
         }
         catch (NullPointerException ignored)
@@ -442,7 +443,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testHashSet()
     {
-        Collection set = new CaseInsensitiveSet(new HashSet());
+        Collection<String> set = new CaseInsensitiveSet<>(new HashSet<>());
         set.add("zuLU");
         set.add("KIlo");
         set.add("charLIE");
@@ -455,7 +456,7 @@ public class TestCaseInsensitiveSet
     @Test
     public void testHashSetNoNull()
     {
-        Collection set = new CaseInsensitiveSet(new HashSet());
+        Collection<String> set = new CaseInsensitiveSet<>(new HashSet<>());
         set.add(null);
         set.add("alpha");
         assert set.size() == 2;
@@ -464,11 +465,11 @@ public class TestCaseInsensitiveSet
     @Test
     public void testUnmodifiableSet()
     {
-        Set junkSet = new HashSet();
+        Set<String> junkSet = new HashSet<>();
         junkSet.add("z");
         junkSet.add("J");
         junkSet.add("a");
-        Set set = new CaseInsensitiveSet(Collections.unmodifiableSet(junkSet));
+        Set<String> set = new CaseInsensitiveSet<>(Collections.unmodifiableSet(junkSet));
         assert set.size() == 3;
         assert set.contains("A");
         assert set.contains("j");
@@ -479,13 +480,13 @@ public class TestCaseInsensitiveSet
     @Test
     public void testMinus()
     {
-        CaseInsensitiveSet ciSet = new CaseInsensitiveSet<>();
+        CaseInsensitiveSet<Object> ciSet = new CaseInsensitiveSet<>();
         ciSet.add("aaa");
         ciSet.add("bbb");
         ciSet.add("ccc");
         ciSet.add('d'); // Character
 
-        Set things = new HashSet();
+        Set<Object> things = new HashSet<>();
         things.add(1L);
         things.add("aAa");
         things.add('c');
@@ -500,7 +501,7 @@ public class TestCaseInsensitiveSet
         ciSet.minus('d');
         assert ciSet.size() == 2;
 
-        Set theRest = new HashSet();
+        Set<Object> theRest = new HashSet<>();
         theRest.add("BBb");
         theRest.add("CCc");
         ciSet.minus(theRest);
@@ -510,13 +511,13 @@ public class TestCaseInsensitiveSet
     @Test
     public void testPlus()
     {
-        CaseInsensitiveSet ciSet = new CaseInsensitiveSet<>();
+        CaseInsensitiveSet<Object> ciSet = new CaseInsensitiveSet<>();
         ciSet.add("aaa");
         ciSet.add("bbb");
         ciSet.add("ccc");
         ciSet.add('d'); // Character
 
-        Set things = new HashSet();
+        Set<Object> things = new HashSet<>();
         things.add(1L);
         things.add("aAa");  // no duplicate added
         things.add('c');
@@ -534,8 +535,8 @@ public class TestCaseInsensitiveSet
     public void testHashMapBacked()
     {
         String[] strings = new String[] { "foo", "bar", "baz", "qux", "quux", "garpley"};
-        Set set = new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>()));
-        Set ordered = new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()));
+        Set<String> set = new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>()));
+        Set<String> ordered = new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()));
 
         set.addAll(Arrays.asList(strings));
         ordered.addAll(Arrays.asList(strings));
@@ -552,7 +553,7 @@ public class TestCaseInsensitiveSet
             String x = i.next();
             String y = j.next();
             
-            if (x != y)
+            if (!Objects.equals(x, y))
             {
                 orderDiffered = true;
             }
@@ -564,10 +565,9 @@ public class TestCaseInsensitiveSet
     @Test
     public void testEquals()
     {
-        Set<String> set = new CaseInsensitiveSet<>(get123());
-        assert set.equals(set);
+        Set<Object> set = new CaseInsensitiveSet<>(get123());
         assert !set.equals("cat");
-        Set<String> other = new CaseInsensitiveSet<>(get123());
+        Set<Object> other = new CaseInsensitiveSet<>(get123());
         assert set.equals(other);
 
         other.remove("Two");
@@ -576,9 +576,9 @@ public class TestCaseInsensitiveSet
         assert !set.equals(other);
     }
 
-    private static Set get123()
+    private static Set<Object> get123()
     {
-        Set set = new CaseInsensitiveSet();
+        Set<Object> set = new CaseInsensitiveSet<>();
         set.add("One");
         set.add("Two");
         set.add("Three");

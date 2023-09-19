@@ -1,14 +1,14 @@
 package com.cedarsoftware.util;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -71,7 +71,7 @@ public class TestCompactSet
     {
         try
         {
-            new CompactSet() { protected int compactSize() { return 1; } };
+            new CompactSet<>() { protected int compactSize() { return 1; } };
             fail();
         }
         catch (IllegalStateException e) { }
@@ -80,10 +80,10 @@ public class TestCompactSet
     @Test
     public void testBadConstructor()
     {
-        Set treeSet = new TreeSet();
+        Set<String> treeSet = new TreeSet<>();
         treeSet.add("foo");
         treeSet.add("baz");
-        Set set = new CompactSet(treeSet);
+        Set<String> set = new CompactSet<>(treeSet);
         assert set.contains("foo");
         assert set.contains("baz");
         assert set.size() == 2;
@@ -126,7 +126,7 @@ public class TestCompactSet
         assert set.contains(true);
         assert set.contains(null);
 
-        set = new CompactSet() { protected boolean isCaseInsensitive() { return true; } };
+        set = new CompactSet<>() { protected boolean isCaseInsensitive() { return true; } };
         assert set.add(16);
         assert set.add("Foo");
         assert set.add(true);
@@ -156,7 +156,7 @@ public class TestCompactSet
 
         for (int i=0; i < set.compactSize() + 1; i++)
         {
-            set.add(new Long(i));
+            set.add((long) i);
         }
         assert set.size() == set.compactSize() + 1;
         set.clear();
@@ -362,7 +362,7 @@ public class TestCompactSet
         clearViaIterator(copy);
     }
     
-    @Ignore
+    @Disabled
     @Test
     public void testPerformance()
     {

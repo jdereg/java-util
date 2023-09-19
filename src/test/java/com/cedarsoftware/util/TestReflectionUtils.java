@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.lang.annotation.*;
@@ -13,7 +12,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.*;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -89,10 +88,10 @@ public class TestReflectionUtils
     @Test
     public void testConstructorIsPrivate() throws Exception {
         Constructor<ReflectionUtils> con = ReflectionUtils.class.getDeclaredConstructor();
-        Assert.assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
+        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
-        Assert.assertNotNull(con.newInstance());
+        assertNotNull(con.newInstance());
     }
 
     @Test
@@ -184,15 +183,24 @@ public class TestReflectionUtils
         assertNull(a);
     }
 
-    @Test(expected=ThreadDeath.class)
-    public void testGetDeclaredFields() throws Exception {
-        Class c = Parent.class;
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testGetDeclaredFields() throws Exception
+    {
+        Class<?> c = Parent.class;
 
         Field f = c.getDeclaredField("foo");
 
         Collection<Field> fields = mock(Collection.class);
         when(fields.add(f)).thenThrow(new ThreadDeath());
-        ReflectionUtils.getDeclaredFields(Parent.class, fields);
+        try
+        {
+            ReflectionUtils.getDeclaredFields(Parent.class, fields);
+            fail("should not make it here");
+        }
+        catch (ThreadDeath e)
+        {
+        }
     }
 
     @Test
@@ -331,7 +339,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.getMethod(null, "foo", 1);
-            Assert.fail("should not make it here");
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
@@ -346,7 +354,7 @@ public class TestReflectionUtils
         {
             Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
             ReflectionUtils.call(null, m1, 1);
-            Assert.fail("should not make it here");
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
@@ -360,7 +368,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.call(null, (Method)null, 0);
-            Assert.fail("should not make it here");
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
@@ -374,7 +382,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.getMethod(new Object(), null,0);
-            Assert.fail("should not make it here");
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
@@ -388,7 +396,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.getMethod(null, null,0);
-            Assert.fail("should not make it here");
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
@@ -404,7 +412,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.call(gross, m1);
-            Assert.fail("should never make it here");
+            fail("should never make it here");
         }
         catch (Exception e)
         {
@@ -420,7 +428,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.call(gross, "pitaMethod");
-            Assert.fail("should never make it here");
+            fail("should never make it here");
         }
         catch (Exception e)
         {
@@ -438,7 +446,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.getMethod(new TestReflectionUtils(), "notAllowed", 0);
-            Assert.fail("should not make it here");
+            fail("should not make it here");
         }
         catch (IllegalArgumentException e)
         {
@@ -478,7 +486,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWith0Args");
-            Assert.fail("shant be here");
+            fail("shant be here");
         }
         catch (Exception e)
         {
@@ -492,7 +500,7 @@ public class TestReflectionUtils
         try
         {
             ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgz");
-            Assert.fail("shant be here");
+            fail("shant be here");
         }
         catch (Exception e)
         {
@@ -503,7 +511,7 @@ public class TestReflectionUtils
     @Test
     public void testGetClassNameFromByteCode()
     {
-        Class c = TestReflectionUtils.class;
+        Class<?> c = TestReflectionUtils.class;
         String className = c.getName();
         String classAsPath = className.replace('.', '/') + ".class";
         InputStream stream = c.getClassLoader().getResourceAsStream(classAsPath);
@@ -516,7 +524,7 @@ public class TestReflectionUtils
         }
         catch (Exception e)
         {
-            Assert.fail("This should not throw an exception");
+            fail("This should not throw an exception");
         }
     }
 
@@ -528,10 +536,10 @@ public class TestReflectionUtils
         try
         {
             Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
-            Method m1 = ReflectionUtils.getMethod(clazz1,"getPrice", null);
+            Method m1 = ReflectionUtils.getMethod(clazz1,"getPrice", (Class<?>[])null);
 
             Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
-            Method m2 = ReflectionUtils.getMethod(clazz2,"getPrice", null);
+            Method m2 = ReflectionUtils.getMethod(clazz2,"getPrice", (Class<?>[])null);
 
             // Should get different Method instances since this class was loaded via two different ClassLoaders.
             assert m1 != m2;
@@ -550,11 +558,11 @@ public class TestReflectionUtils
         ClassLoader testClassLoader2 = new TestClassLoader();
         try
         {
-            Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
+            Class<?> clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
             Object foo = clazz1.getDeclaredConstructor().newInstance();
             Method m1 = ReflectionUtils.getMethod(foo, "getPrice", 0);
 
-            Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
+            Class<?> clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
             Object bar = clazz2.getDeclaredConstructor().newInstance();
             Method m2 = ReflectionUtils.getMethod(bar,"getPrice", 0);
 

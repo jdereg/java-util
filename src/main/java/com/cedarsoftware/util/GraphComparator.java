@@ -545,7 +545,7 @@ public class GraphComparator
         {
             return false;
         }
-        Class c = o.getClass();
+        Class<?> c = o.getClass();
         if (isLogicalPrimitive(c) ||
                 c.isArray() ||
                 Collection.class.isAssignableFrom(c) ||

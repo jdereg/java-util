@@ -1,6 +1,6 @@
 package com.cedarsoftware.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -9,12 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
 public class TestTrackingMap
@@ -100,8 +95,8 @@ public class TestTrackingMap
 
     @Test
     public void equalBackingMapsAreEqual() {
-        Map map1 = new TrackingMap<>(new HashMap<>());
-        Map map2 = new TrackingMap<>(new HashMap<>());
+        Map<Character, Object> map1 = new TrackingMap<>(new HashMap<>());
+        Map<Character, Object> map2 = new TrackingMap<>(new HashMap<>());
         assertEquals(map1, map2);
 
         map1.put('a', 65);
@@ -115,8 +110,8 @@ public class TestTrackingMap
     @Test
     public void unequalBackingMapsAreNotEqual()
     {
-        Map map1 = new TrackingMap<>(new HashMap<>());
-        Map map2 = new TrackingMap<>(new HashMap<>());
+        Map<Character, Object> map1 = new TrackingMap<>(new HashMap<>());
+        Map<Character, Object> map2 = new TrackingMap<>(new HashMap<>());
         assertEquals(map1, map2);
 
         map1.put('a', 65);
@@ -136,11 +131,11 @@ public class TestTrackingMap
         backingMap.put("b", "bravo");
 
         // Identity check
-        Map map1 = new TrackingMap<>(backingMap);
+        Map<String, Object> map1 = new TrackingMap<>(backingMap);
         assert map1.equals(backingMap);
 
         // Equivalence check
-        Map map2 = new LinkedHashMap<>();
+        Map<String, Object> map2 = new LinkedHashMap<>();
         map2.put("b", "bravo");
         map2.put("a", "alpha");
 
@@ -179,7 +174,7 @@ public class TestTrackingMap
         Map<String, Object> ciMap = new CaseInsensitiveMap<>();
         ciMap.put("foo", "bar");
         Map<String, Object> map = new TrackingMap<>(ciMap);
-        Map additionalEntries = new HashMap();
+        Map<String, Object> additionalEntries = new HashMap<>();
         additionalEntries.put("animal", "aardvaark");
         additionalEntries.put("ballast", "bubbles");
         additionalEntries.put("tricky", additionalEntries);
@@ -213,7 +208,7 @@ public class TestTrackingMap
         map2.put("o", "foxtrot");
         map2.put("f", "oscar");
 
-        Map map3 = new TrackingMap<>(new CaseInsensitiveMap<>());
+        Map<String, Object> map3 = new TrackingMap<>(new CaseInsensitiveMap<>());
         map3.put("F", "foxtrot");
         map3.put("O", "oscar");
 
@@ -322,7 +317,7 @@ public class TestTrackingMap
     {
         try
         {
-            new TrackingMap(null);
+            new TrackingMap<>(null);
             fail();
         }
         catch (IllegalArgumentException ignored)
@@ -332,7 +327,7 @@ public class TestTrackingMap
     @Test
     public void testPuDoesNotCountAsAccess()
     {
-        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        TrackingMap<String, Object> trackMap = new TrackingMap<>(new CaseInsensitiveMap<>());
         trackMap.put("k", "kite");
         trackMap.put("u", "uniform");
 
@@ -346,7 +341,7 @@ public class TestTrackingMap
     @Test
     public void testContainsKeyNotCoundOnNonExistentKey()
     {
-        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        TrackingMap<String, String> trackMap = new TrackingMap<>(new CaseInsensitiveMap<>());
         trackMap.put("y", "yankee");
         trackMap.put("z", "zulu");
 
@@ -359,7 +354,7 @@ public class TestTrackingMap
     @Test
     public void testGetNotCoundOnNonExistentKey()
     {
-        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        TrackingMap<String, String> trackMap = new TrackingMap<>(new CaseInsensitiveMap<>());
         trackMap.put("y", "yankee");
         trackMap.put("z", "zulu");
 
@@ -372,7 +367,7 @@ public class TestTrackingMap
     @Test
     public void testGetOfNullValueCountsAsAccess()
     {
-        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        TrackingMap<String, String> trackMap = new TrackingMap<>(new CaseInsensitiveMap<>());
 
         trackMap.put("y", null);
         trackMap.put("z", "zulu");
@@ -385,9 +380,9 @@ public class TestTrackingMap
     @Test
     public void testFetchInternalMap()
     {
-        TrackingMap trackMap = new TrackingMap(new CaseInsensitiveMap());
+        TrackingMap<String, Object> trackMap = new TrackingMap<>(new CaseInsensitiveMap<>());
         assert trackMap.getWrappedMap() instanceof CaseInsensitiveMap;
-        trackMap = new TrackingMap(new HashMap());
+        trackMap = new TrackingMap<>(new HashMap<>());
         assert trackMap.getWrappedMap() instanceof HashMap;
     }
 }

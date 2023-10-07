@@ -59,6 +59,7 @@ public class SafeSimpleDateFormat extends DateFormat
         DateFormat dateFormat = getDateFormat(_format);
         // Reset for new instance
         Calendar cal = Calendar.getInstance();
+        cal.clear();
         dateFormat.setCalendar(cal);
         dateFormat.setLenient(cal.isLenient());
         dateFormat.setTimeZone(cal.getTimeZone());

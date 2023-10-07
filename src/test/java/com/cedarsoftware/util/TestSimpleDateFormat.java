@@ -102,7 +102,7 @@ public class TestSimpleDateFormat
         cal.clear();
         cal.setTime(then);
         assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(2, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(2, cal.get(Calendar.MONTH));   // March
         assertEquals(31, cal.get(Calendar.DAY_OF_MONTH));
         assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
         assertEquals(0, cal.get(Calendar.MINUTE));

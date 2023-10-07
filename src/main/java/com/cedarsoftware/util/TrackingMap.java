@@ -41,6 +41,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         readKeys = new HashSet<>();
     }
 
+    @SuppressWarnings("unchecked")
     public V get(Object key) {
         V value = internalMap.get(key);
         readKeys.add((K) key);
@@ -52,6 +53,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         return internalMap.put(key, value);
     }
 
+    @SuppressWarnings("unchecked")
     public boolean containsKey(Object key) {
         boolean containsKey = internalMap.containsKey(key);
         readKeys.add((K)key);
@@ -144,5 +146,5 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * Fetch the Map that this TrackingMap wraps.
      * @return Map the wrapped Map
      */
-    public Map getWrappedMap() { return internalMap; }
+    public Map<K, V> getWrappedMap() { return internalMap; }
 }

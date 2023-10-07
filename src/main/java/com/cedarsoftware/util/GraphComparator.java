@@ -48,6 +48,7 @@ import static com.cedarsoftware.util.GraphComparator.Delta.Command.SET_REMOVE;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@SuppressWarnings("unchecked")
 public class GraphComparator
 {
     public static final String ROOT = "-root-";

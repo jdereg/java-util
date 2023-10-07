@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.text.MessageFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -168,6 +167,7 @@ public final class Converter
      * wrapper.
      * @return An instanceof targetType class, based upon the value passed in.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T convert(Object fromInstance, Class<T> toType)
     {
         if (toType == null)
@@ -204,6 +204,7 @@ public final class Converter
      * Calendar (returns ISO-DATE format: 2020-04-10T12:15:47), any Enum (returns Enum's name()), BigDecimal,
      * BigInteger, AtomicBoolean, AtomicInteger, AtomicLong, and Character.
      */
+    @SuppressWarnings("unchecked")
     public static String convertToString(Object fromInstance)
     {
         if (fromInstance == null)

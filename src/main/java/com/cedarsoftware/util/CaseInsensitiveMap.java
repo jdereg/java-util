@@ -118,6 +118,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected Map<K, V> copy(Map<K, V> source, Map<K, V> dest)
     {
         for (Entry<K, V> entry : source.entrySet())
@@ -175,6 +176,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.containsKey(key);
     }
 
+    @SuppressWarnings("unchecked")
     public V put(K key, V value)
     {
         if (key instanceof String)
@@ -185,6 +187,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.put(key, value);
     }
 
+    @SuppressWarnings("unchecked")
     public Object putObject(Object key, Object value)
     {   // not calling put() to save a little speed.
         if (key instanceof String)
@@ -195,6 +198,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.put((K)key, (V)value);
     }
 
+    @SuppressWarnings("unchecked")
     public void putAll(Map<? extends K, ? extends V> m)
     {
         if (MapUtilities.isEmpty(m))
@@ -353,7 +357,8 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return map.size() != size;
             }
 
-            public boolean retainAll(Collection c)
+            @SuppressWarnings("unchecked")
+            public boolean retainAll(Collection<?> c)
             {
                 Map<K, V> other = new CaseInsensitiveMap<>();
                 for (Object o : c)
@@ -406,6 +411,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return h;
             }
 
+            @SuppressWarnings("unchecked")
             public Iterator<K> iterator()
             {
                 iter = map.keySet().iterator();
@@ -437,6 +443,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             public boolean isEmpty() { return map.isEmpty(); }
             public void clear() { map.clear(); }
 
+            @SuppressWarnings("unchecked")
             public boolean contains(Object o)
             {
                 if (!(o instanceof Entry))
@@ -453,6 +460,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return false;
             }
 
+            @SuppressWarnings("unchecked")
             public boolean remove(Object o)
             {
                 if (!(o instanceof Entry))
@@ -470,6 +478,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
              * on iterator solution.  This method is fast because contains()
              * and remove() are both hashed O(1) look ups.
              */
+            @SuppressWarnings("unchecked")
             public boolean removeAll(Collection c)
             {
                 final int size = map.size();
@@ -484,6 +493,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
                 return map.size() != size;
             }
 
+            @SuppressWarnings("unchecked")
             public boolean retainAll(Collection c)
             {
                 // Create fast-access O(1) to all elements within passed in Collection
@@ -549,6 +559,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
             super(entry);
         }
 
+        @SuppressWarnings("unchecked")
         public K getKey()
         {
             K superKey = super.getKey();

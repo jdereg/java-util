@@ -238,6 +238,7 @@ public final class UrlUtilities
      * @param conn a java.net.URLConnection - must be open, or IOException will
      *             be thrown
      */
+    @SuppressWarnings("unchecked")
     public static void getCookies(URLConnection conn, Map store)
     {
         // let's determine the domain from where these cookies are being sent

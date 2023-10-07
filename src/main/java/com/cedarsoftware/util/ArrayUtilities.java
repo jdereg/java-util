@@ -118,6 +118,7 @@ public final class ArrayUtilities
      * @return The new array, <code>null</code> if <code>null</code> array inputs.
      *         The type of the new array is the type of the first array.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T[] addAll(final T[] array1, final T[] array2)
     {
         if (array1 == null)
@@ -134,6 +135,7 @@ public final class ArrayUtilities
         return newArray;
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> T[] removeItem(T[] array, int pos)
     {
         final int len = Array.getLength(array);
@@ -156,9 +158,10 @@ public final class ArrayUtilities
      * @param <T> Type of the array
      * @return Array of the type (T) containing the items from collection 'c'.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c)
     {
-        T[] array = (T[]) c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
+        T[] array = c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
         Iterator i = c.iterator();
         int idx = 0;
         while (i.hasNext())

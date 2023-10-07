@@ -70,6 +70,7 @@ public final class ProxyFactory
      *		if the invocation handler, <code>h</code>, is
      *		<code>null</code>
      */
+    @SuppressWarnings("unchecked")
     public static <T> T create(ClassLoader loader, Class<T> intf, InvocationHandler h) {
         return (T)Proxy.newProxyInstance(loader, new Class[]{intf}, h);
     }

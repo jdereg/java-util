@@ -104,6 +104,7 @@ public class CompactSet<E> extends AbstractSet<E>
         return Objects.equals(item, anItem);
     }
 
+    @SuppressWarnings("unchecked")
     public boolean contains(Object item)
     {
         if (val instanceof Object[])
@@ -127,11 +128,12 @@ public class CompactSet<E> extends AbstractSet<E>
         return false;
     }
 
+    @SuppressWarnings("unchecked")
     public Iterator<E> iterator()
     {
         return new Iterator<E>()
         {
-            Iterator<E> iter = getCopy().iterator();
+            final Iterator<E> iter = getCopy().iterator();
             E currentEntry = (E) NO_ENTRY;
 
             public boolean hasNext() { return iter.hasNext(); }
@@ -154,6 +156,7 @@ public class CompactSet<E> extends AbstractSet<E>
         };
     }
 
+    @SuppressWarnings("unchecked")
     private Set<E> getCopy()
     {
         Set<E> copy = getNewSet(size());   // Use their Set (TreeSet, HashSet, LinkedHashSet, etc.)
@@ -174,7 +177,8 @@ public class CompactSet<E> extends AbstractSet<E>
 //        }
         return copy;
     }
-    
+
+    @SuppressWarnings("unchecked")
     public boolean add(E item)
     {
         if (val instanceof Object[])
@@ -217,6 +221,7 @@ public class CompactSet<E> extends AbstractSet<E>
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     public boolean remove(Object item)
     {
         if (val instanceof Object[])
@@ -280,6 +285,8 @@ public class CompactSet<E> extends AbstractSet<E>
      * @return new empty Set instance to use when size() becomes {@literal >} compactSize().
      */
     protected Set<E> getNewSet() { return new HashSet<>(compactSize() + 1); }
+    
+    @SuppressWarnings("unchecked")
     protected Set<E> getNewSet(int size)
     {
         Set<E> set = getNewSet();

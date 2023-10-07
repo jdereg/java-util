@@ -6,7 +6,6 @@ import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * This class implements a Thread-Safe (re-entrant) SimpleDateFormat
@@ -33,16 +32,10 @@ import java.util.concurrent.ConcurrentMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class SafeSimpleDateFormat extends Format
+public class SafeSimpleDateFormat extends DateFormat
 {
     private final String _format;
-    private static final ThreadLocal<Map<String, SimpleDateFormat>> _dateFormats = new ThreadLocal<Map<String, SimpleDateFormat>>()
-    {
-        public Map<String, SimpleDateFormat> initialValue()
-        {
-            return new ConcurrentHashMap<>();
-        }
-    };
+    private static final ThreadLocal<Map<String, SimpleDateFormat>> _dateFormats = ThreadLocal.withInitial(ConcurrentHashMap::new);
 
     public static SimpleDateFormat getDateFormat(String format)
     {
@@ -63,21 +56,20 @@ public class SafeSimpleDateFormat extends Format
     public SafeSimpleDateFormat(String format)
     {
         _format = format;
+        DateFormat dateFormat = getDateFormat(_format);
+        // Reset for new instance
+        dateFormat.setNumberFormat(NumberFormat.getNumberInstance());
+        dateFormat.setTimeZone(TimeZone.getDefault());
     }
 
-    public StringBuffer format(Object obj, StringBuffer toAppendTo, FieldPosition pos)
+    public StringBuffer format(Date date, StringBuffer toAppendTo, FieldPosition fieldPosition)
     {
-        return getDateFormat(_format).format(obj, toAppendTo, pos);
+        return getDateFormat(_format).format(date, toAppendTo, fieldPosition);
     }
-
-    public Object parseObject(String source, ParsePosition pos)
+    
+    public Date parse(String source, ParsePosition pos)
     {
         return getDateFormat(_format).parse(source, pos);
-    }
-
-    public Date parse(String day) throws ParseException
-    {
-        return getDateFormat(_format).parse(day);
     }
 
     public void setTimeZone(TimeZone tz)

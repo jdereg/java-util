@@ -59,8 +59,8 @@ public class TestSimpleDateFormat
         cal.clear();
         cal.setTime(then);
         assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(3, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));
+        assertEquals(3, cal.get(Calendar.MONTH));  // April
+        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));   // 2nd
         assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
         assertEquals(0, cal.get(Calendar.MINUTE));
         assertEquals(0, cal.get(Calendar.SECOND));
@@ -71,9 +71,8 @@ public class TestSimpleDateFormat
             then = x.parse("March 33, 2013");
             fail("should not make it here");
         }
-        catch (ParseException e)
-        {
-        }
+        catch (ParseException ignore)
+        { }
     }
 
     @Test
@@ -97,14 +96,14 @@ public class TestSimpleDateFormat
         assertEquals(31, cal.get(Calendar.SECOND));
 
         SafeSimpleDateFormat x2 = new SafeSimpleDateFormat("MMM dd, yyyy");
-        then = x2.parse("March 33, 2013");
+        then = x2.parse("March 31, 2013");
 
         cal = Calendar.getInstance();
         cal.clear();
         cal.setTime(then);
         assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(3, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(2, cal.get(Calendar.DAY_OF_MONTH));
+        assertEquals(2, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(31, cal.get(Calendar.DAY_OF_MONTH));
         assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
         assertEquals(0, cal.get(Calendar.MINUTE));
         assertEquals(0, cal.get(Calendar.SECOND));
@@ -414,7 +413,7 @@ public class TestSimpleDateFormat
         String s = x.format(getDate(13, 9, 7, 16, 15, 31));
         assertEquals("13-09-07", s);
 
-        Object then = (Date)x.parse(s);
+        Object then = x.parse(s);
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.setTime((Date)then);
@@ -458,6 +457,4 @@ public class TestSimpleDateFormat
         cal.set(year, month - 1, day, hour, min, sec);
         return cal.getTime();
     }
-
-
 }

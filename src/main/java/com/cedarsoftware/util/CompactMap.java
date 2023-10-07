@@ -72,6 +72,7 @@ import java.util.*;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V>
 {
     private static final String EMPTY_MAP = "_︿_ψ_☼";
@@ -90,7 +91,7 @@ public class CompactMap<K, V> implements Map<K, V>
         this();
         putAll(other);
     }
-    
+
     public int size()
     {
         if (val instanceof Object[])
@@ -566,7 +567,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 }
                 return size() != size;
             }
-            
+
             public boolean retainAll(Collection c)
             {
                 // Create fast-access O(1) to all elements within passed in Collection
@@ -620,7 +621,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public Set<Entry<K, V>> entrySet()
     {
-        return new AbstractSet<Entry<K,V>>()
+        return new AbstractSet<>()
         {
             public Iterator<Entry<K, V>> iterator()
             {
@@ -922,10 +923,11 @@ public class CompactMap<K, V> implements Map<K, V>
     }
     protected boolean isCaseInsensitive() { return false; }
     protected int compactSize() { return 80; }
+
     protected boolean useCopyIterator() {
-        Map newMap = getNewMap();
+        Map<K, V> newMap = getNewMap();
         if (newMap instanceof CaseInsensitiveMap) {
-            newMap = ((CaseInsensitiveMap) newMap).getWrappedMap();
+            newMap = ((CaseInsensitiveMap<K, V>) newMap).getWrappedMap();
         }
         return newMap instanceof SortedMap;
     }
@@ -944,7 +946,7 @@ public class CompactMap<K, V> implements Map<K, V>
             current = EMPTY_MAP;
             index = -1;
             if (val instanceof Map) {
-                mapIterator = ((Map)val).entrySet().iterator();
+                mapIterator = ((Map<K, V>)val).entrySet().iterator();
             }
         }
 
@@ -1073,16 +1075,16 @@ public class CompactMap<K, V> implements Map<K, V>
 
     final class CopyKeyIterator extends CopyIterator
             implements Iterator<K> {
-        public final K next() { return nextEntry().getKey(); }
+        public K next() { return nextEntry().getKey(); }
     }
 
     final class CopyValueIterator extends CopyIterator
             implements Iterator<V> {
-        public final V next() { return nextEntry().getValue(); }
+        public V next() { return nextEntry().getValue(); }
     }
 
     final class CopyEntryIterator extends CompactMap.CopyIterator
             implements Iterator<Map.Entry<K,V>> {
-        public final Map.Entry<K,V> next() { return nextEntry(); }
+        public Map.Entry<K,V> next() { return nextEntry(); }
     }
 }

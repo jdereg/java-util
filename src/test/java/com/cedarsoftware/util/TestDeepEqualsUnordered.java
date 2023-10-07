@@ -8,9 +8,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class TestDeepEqualsUnordered
 {
-
   @Test
-  public void testUnorderedCollectionWithCollidingHashcodesAndParentLinks() {
+  public void testUnorderedCollectionWithCollidingHashcodesAndParentLinks()
+  {
     Set<BadHashingValueWithParentLink> elementsA = new HashSet<>();
     elementsA.add(new BadHashingValueWithParentLink(0, 1));
     elementsA.add(new BadHashingValueWithParentLink(1, 0));
@@ -23,7 +23,7 @@ public class TestDeepEqualsUnordered
     Parent parentB = new Parent();
     parentB.addElements(elementsB);
 
-    Map<Object,Object> options = new HashMap<Object, Object>();
+    Map<String, Object> options = new HashMap<>();
     options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, Collections.emptySet());
     assertTrue(DeepEquals.deepEquals(parentA, parentB, options));
   }

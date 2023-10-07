@@ -417,7 +417,7 @@ public class TestDeepEquals
         Map<String, Object> map2 = new HashMap<>();
         fillMap(map2);
         // Sorted versus non-sorted Map
-        assertFalse(DeepEquals.deepEquals(map1, map2));
+        assertTrue(DeepEquals.deepEquals(map1, map2));
 
         // Hashcodes are equals because the Maps have same elements
         assertEquals(DeepEquals.deepHashCode(map1), DeepEquals.deepHashCode(map2));
@@ -435,7 +435,7 @@ public class TestDeepEquals
         fillMap(map1);
         map2 = new ConcurrentSkipListMap<>();
         fillMap(map2);
-        assertFalse(DeepEquals.deepEquals(map1, map2));
+        assertTrue(DeepEquals.deepEquals(map1, map2));
 
         map1 = new TreeMap<>();
         fillMap(map1);
@@ -510,7 +510,7 @@ public class TestDeepEquals
         fillCollection(col1);
         Collection<String> col2 = new HashSet<>();
         fillCollection(col2);
-        assertFalse(DeepEquals.deepEquals(col1, col2));
+        assertTrue(DeepEquals.deepEquals(col1, col2));
         assertEquals(DeepEquals.deepHashCode(col1), DeepEquals.deepHashCode(col2));
 
         col2 = new TreeSet<>();
@@ -552,6 +552,63 @@ public class TestDeepEquals
         boolean one = DeepEquals.deepEquals(new ArrayList<String>(), new EmptyClass());
         boolean two = DeepEquals.deepEquals(new EmptyClass(), new ArrayList<String>());
         assert one == two;
+
+        one = DeepEquals.deepEquals(new HashSet<String>(), new EmptyClass());
+        two = DeepEquals.deepEquals(new EmptyClass(), new HashSet<String>());
+        assert one == two;
+
+        one = DeepEquals.deepEquals(new HashMap<>(), new EmptyClass());
+        two = DeepEquals.deepEquals(new EmptyClass(), new HashMap<>());
+        assert one == two;
+
+        one = DeepEquals.deepEquals(new Object[]{}, new EmptyClass());
+        two = DeepEquals.deepEquals(new EmptyClass(), new Object[]{});
+        assert one == two;
+    }
+
+    @Test
+    public void testSortedAndUnsortedMap()
+    {
+        Map<String, String> map1 = new LinkedHashMap<>();
+        Map<String, String> map2 = new TreeMap<>();
+        map1.put("C", "charlie");
+        map1.put("A", "alpha");
+        map1.put("B", "beta");
+        map2.put("C", "charlie");
+        map2.put("B", "beta");
+        map2.put("A", "alpha");
+        assert DeepEquals.deepEquals(map1, map2);
+
+        map1 = new TreeMap<>(Comparator.naturalOrder());
+        map1.put("a", "b");
+        map1.put("c", "d");
+        map2 = new TreeMap<>(Comparator.reverseOrder());
+        map2.put("a", "b");
+        map2.put("c", "d");
+        assert DeepEquals.deepEquals(map1, map2);
+    }
+
+    @Test
+    public void testSortedAndUnsortedSet()
+    {
+        SortedSet<String> set1 = new TreeSet<>();
+        Set<String> set2 = new HashSet<>();
+        assert DeepEquals.deepEquals(set1, set2);
+
+        set1 = new TreeSet<>();
+        set1.add("a");
+        set1.add("b");
+        set1.add("c");
+        set1.add("d");
+        set1.add("e");
+
+        set2 = new LinkedHashSet<>();
+        set2.add("e");
+        set2.add("d");
+        set2.add("c");
+        set2.add("b");
+        set2.add("a");
+        assert DeepEquals.deepEquals(set1, set2);
     }
 
     static class DumbHash

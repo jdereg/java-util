@@ -61,7 +61,7 @@ public class DeepEquals
     private static final Map<String, Boolean> _customHash = new ConcurrentHashMap<>();
     private static final double doubleEplison = 1e-15;
     private static final double floatEplison = 1e-6;
-    private static final Set<Class> prims = new HashSet<>();
+    private static final Set<Class<?>> prims = new HashSet<>();
 
     static
     {
@@ -103,6 +103,15 @@ public class DeepEquals
             int h2 = _key2 != null ? _key2.hashCode() : 0;
             return h1 + h2;
         }
+
+        public String toString()
+        {
+            if (_key1.getClass().isPrimitive() && _key2.getClass().isPrimitive())
+            {
+                return _key1 + " | " + _key2;
+            }
+            return _key1.getClass().getName() + " | " + _key2.getClass().getName();
+        }
     }
 
     /**
@@ -131,7 +140,7 @@ public class DeepEquals
      */
     public static boolean deepEquals(Object a, Object b)
     {
-        return deepEquals(a, b, new HashMap());
+        return deepEquals(a, b, new HashMap<>());
     }
 
     /**
@@ -166,12 +175,35 @@ public class DeepEquals
      * or via the respectively encountered overridden .equals() methods during
      * traversal.
      */
-    public static boolean deepEquals(Object a, Object b, Map<?, ?> options) {
+    public static boolean deepEquals(Object a, Object b, Map<String, ?> options)
+    {
         Set<ItemsToCompare> visited = new HashSet<>();
-        return deepEquals(a, b, options,visited);
+        return deepEquals(a, b, options, visited);
     }
 
-    private static boolean deepEquals(Object a, Object b, Map<?, ?> options, Set<ItemsToCompare> visited) {
+    public static void dumpBreadCrumb(Set<ItemsToCompare> breadCrumbs)
+    {
+        Iterator<ItemsToCompare> i = breadCrumbs.iterator();
+        int space = 0;
+        while (i.hasNext())
+        {
+            ItemsToCompare compare = i.next();
+            whitespace(space);
+            System.out.println(compare.toString());
+            space += 2;
+        }
+    }
+
+    private static void whitespace(int x)
+    {
+        for (int i=0; i < x; i++)
+        {
+            System.out.print(' ');
+        }
+    }
+
+    private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<ItemsToCompare> visited)
+    {
         Deque<ItemsToCompare> stack = new LinkedList<>();
         Set<Class<?>> ignoreCustomEquals = (Set<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
@@ -215,12 +247,12 @@ public class DeepEquals
                             continue;
                         }
                     }
-                    catch (Exception e) { }
+                    catch (Exception ignore) { }
                 }
                 return false;
             }
 
-            Class key1Class = key1.getClass();
+            Class<?> key1Class = key1.getClass();
 
             if (key1Class.isPrimitive() || prims.contains(key1Class) || key1 instanceof String || key1 instanceof Date || key1 instanceof Class)
             {
@@ -230,7 +262,19 @@ public class DeepEquals
                 }
                 continue;   // Nothing further to push on the stack
             }
-            
+
+            if (key1 instanceof Set)
+            {
+                if (!(key2 instanceof Set))
+                {
+                    return false;
+                }
+            }
+            else if (key2 instanceof Set)
+            {
+                return false;
+            }
+
             if (key1 instanceof Collection)
             {   // If Collections, they both must be Collection
                 if (!(key2 instanceof Collection))
@@ -239,30 +283,6 @@ public class DeepEquals
                 }
             }
             else if (key2 instanceof Collection)
-            {   // They both must be Collection
-                return false;
-            }
-
-            if (key1 instanceof SortedSet)
-            {
-                if (!(key2 instanceof SortedSet))
-                {
-                    return false;
-                }
-            }
-            else if (key2 instanceof SortedSet)
-            {
-                return false;
-            }
-
-            if (key1 instanceof SortedMap)
-            {
-                if (!(key2 instanceof SortedMap))
-                {
-                    return false;
-                }
-            }
-            else if (key2 instanceof SortedMap)
             {
                 return false;
             }
@@ -279,9 +299,54 @@ public class DeepEquals
                 return false;
             }
 
+            Class<?> key2Class = key2.getClass();
+            if (key1Class.isArray())
+            {
+                if (!key2Class.isArray())
+                {
+                    return false;
+                }
+            }
+            else if (key2Class.isArray())
+            {
+                return false;
+            }
+
             if (!isContainerType(key1) && !isContainerType(key2) && !key1Class.equals(key2.getClass()))
             {   // Must be same class
                 return false;
+            }
+
+            // Special handle Sets - items matter but order does not for equality.
+            if (key1 instanceof Set<?>)
+            {
+                if (!compareUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, visited, options))
+                {
+                    return false;
+                }
+                continue;
+            }
+
+            // Collections must match in items and order for equality.
+            if (key1 instanceof Collection<?>)
+            {
+                if (!compareOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, visited))
+                {
+                    return false;
+                }
+                continue;
+            }
+
+            // Compare two Maps. This is a slightly more expensive comparison because
+            // order cannot be assumed, therefore a temporary Map must be created, however the
+            // comparison still runs in O(N) time.
+            if (key1 instanceof Map)
+            {
+                if (!compareMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, visited, options))
+                {
+                    return false;
+                }
+                continue;
             }
 
             // Handle all [] types.  In order to be equal, the arrays must be the same
@@ -290,62 +355,6 @@ public class DeepEquals
             if (key1Class.isArray())
             {
                 if (!compareArrays(key1, key2, stack, visited))
-                {
-                    return false;
-                }
-                continue;
-            }
-
-            // Special handle SortedSets because they are fast to compare because their
-            // elements must be in the same order to be equivalent Sets.
-            if (key1 instanceof SortedSet)
-            {
-                if (!compareOrderedCollection((Collection) key1, (Collection) key2, stack, visited))
-                {
-                    return false;
-                }
-                continue;
-            }
-
-            // Handled unordered Sets.  This is a slightly more expensive comparison because order cannot
-            // be assumed, a temporary Map must be created, however the comparison still runs in O(N) time.
-            if (key1 instanceof Set)
-            {
-                if (!compareUnorderedCollection((Collection) key1, (Collection) key2, stack, visited, options))
-                {
-                    return false;
-                }
-                continue;
-            }
-
-            // Check any Collection that is not a Set.  In these cases, element order
-            // matters, therefore this comparison is faster than using unordered comparison.
-            if (key1 instanceof Collection)
-            {
-                if (!compareOrderedCollection((Collection) key1, (Collection) key2, stack, visited))
-                {
-                    return false;
-                }
-                continue;
-            }
-
-            // Compare two SortedMaps.  This takes advantage of the fact that these
-            // Maps can be compared in O(N) time due to their ordering.
-            if (key1 instanceof SortedMap)
-            {
-                if (!compareSortedMap((SortedMap) key1, (SortedMap) key2, stack, visited))
-                {
-                    return false;
-                }
-                continue;
-            }
-
-            // Compare two Unordered Maps. This is a slightly more expensive comparison because
-            // order cannot be assumed, therefore a temporary Map must be created, however the
-            // comparison still runs in O(N) time.
-            if (key1 instanceof Map)
-            {
-                if (!compareUnorderedMap((Map) key1, (Map) key2, stack, visited, options))
                 {
                     return false;
                 }
@@ -402,7 +411,7 @@ public class DeepEquals
      * @param visited Set of objects already compared (prevents cycles)
      * @return true if the two arrays are the same length and contain deeply equivalent items.
      */
-    private static boolean compareArrays(Object array1, Object array2, Deque stack, Set visited)
+    private static boolean compareArrays(Object array1, Object array2, Deque<ItemsToCompare> stack, Set<?> visited)
     {
         // Same instance check already performed...
 
@@ -432,7 +441,7 @@ public class DeepEquals
      * value of 'true' indicates that the Collections may be equal, and the sets
      * items will be added to the Stack for further comparison.
      */
-    private static boolean compareOrderedCollection(Collection col1, Collection col2, Deque stack, Set visited)
+    private static boolean compareOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, Set<?> visited)
     {
         // Same instance check already performed...
 
@@ -441,8 +450,8 @@ public class DeepEquals
             return false;
         }
 
-        Iterator i1 = col1.iterator();
-        Iterator i2 = col2.iterator();
+        Iterator<?> i1 = col1.iterator();
+        Iterator<?> i2 = col2.iterator();
 
         while (i1.hasNext())
         {
@@ -472,8 +481,7 @@ public class DeepEquals
      * value of 'true' indicates that the Collections may be equal, and the sets
      * items will be added to the Stack for further comparison.
      */
-    private static boolean compareUnorderedCollection(Collection col1, Collection col2, Deque stack, Set visited,
-                                                      Map options)
+    private static boolean compareUnorderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited, Map<String, ?> options)
     {
         // Same instance check already performed...
 
@@ -482,14 +490,14 @@ public class DeepEquals
             return false;
         }
 
-        Map<Integer, Collection> fastLookup = new HashMap<>();
+        Map<Integer, Collection<Object>> fastLookup = new HashMap<>();
         for (Object o : col2)
         {
             int hash = deepHashCode(o);
-            Collection items = fastLookup.get(hash);
+            Collection<Object> items = fastLookup.get(hash);
             if (items == null)
             {
-                items = new ArrayList();
+                items = new ArrayList<>();
                 fastLookup.put(hash, items);
             }
             items.add(o);
@@ -497,7 +505,7 @@ public class DeepEquals
 
         for (Object o : col1)
         {
-            Collection other = fastLookup.get(deepHashCode(o));
+            Collection<?> other = fastLookup.get(deepHashCode(o));
             if (other == null || other.isEmpty())
             {   // fail fast: item not even found in other Collection, no need to continue.
                 return false;
@@ -514,7 +522,7 @@ public class DeepEquals
             else
             {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
                 // from collision list, making further comparisons faster)
-                if (!isContained(o, other,visited, options))
+                if (!isContained(o, other, visited, options))
                 {
                     return false;
                 }
@@ -522,50 +530,7 @@ public class DeepEquals
         }
         return true;
     }
-
-    /**
-     * Deeply compare two SortedMap instances.  This method walks the Maps in order,
-     * taking advantage of the fact that the Maps are SortedMaps.
-     * @param map1 SortedMap one
-     * @param map2 SortedMap two
-     * @param stack add items to compare to the Stack (Stack versus recursion)
-     * @param visited Set containing items that have already been compared, to prevent cycles.
-     * @return false if the Maps are for certain not equals.  'true' indicates that 'on the surface' the maps
-     * are equal, however, it will place the contents of the Maps on the stack for further comparisons.
-     */
-    private static boolean compareSortedMap(SortedMap map1, SortedMap map2, Deque stack, Set visited)
-    {
-        // Same instance check already performed...
-
-        if (map1.size() != map2.size())
-        {
-            return false;
-        }
-
-        Iterator i1 = map1.entrySet().iterator();
-        Iterator i2 = map2.entrySet().iterator();
-
-        while (i1.hasNext())
-        {
-            Map.Entry entry1 = (Map.Entry)i1.next();
-            Map.Entry entry2 = (Map.Entry)i2.next();
-
-            // Must split the Key and Value so that Map.Entry's equals() method is not used.
-            ItemsToCompare dk = new ItemsToCompare(entry1.getKey(), entry2.getKey());
-            if (!visited.contains(dk))
-            {   // Push Keys for further comparison
-                stack.addFirst(dk);
-            }
-
-            dk = new ItemsToCompare(entry1.getValue(), entry2.getValue());
-            if (!visited.contains(dk))
-            {   // Push values for further comparison
-                stack.addFirst(dk);
-            }
-        }
-        return true;
-    }
-
+    
     /**
      * Deeply compare two Map instances.  After quick short-circuit tests, this method
      * uses a temporary Map so that this method can run in O(N) time.
@@ -577,7 +542,7 @@ public class DeepEquals
      * @return false if the Maps are for certain not equals.  'true' indicates that 'on the surface' the maps
      * are equal, however, it will place the contents of the Maps on the stack for further comparisons.
      */
-    private static boolean compareUnorderedMap(Map map1, Map map2, Deque stack, Set visited, Map options)
+    private static boolean compareMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited, Map<String, ?> options)
     {
         // Same instance check already performed...
 
@@ -586,26 +551,26 @@ public class DeepEquals
             return false;
         }
 
-        Map<Integer, Collection<Map.Entry>> fastLookup = new HashMap<>();
+        Map<Integer, Collection<Object>> fastLookup = new HashMap<>();
 
-        for (Map.Entry entry : (Set<Map.Entry>)map2.entrySet())
+        for (Map.Entry<?, ?> entry : map2.entrySet())
         {
             int hash = deepHashCode(entry.getKey());
-            Collection items = fastLookup.get(hash);
+            Collection<Object> items = fastLookup.get(hash);
             if (items == null)
             {
-                items = new ArrayList();
+                items = new ArrayList<>();
                 fastLookup.put(hash, items);
             }
 
             // Use only key and value, not specific Map.Entry type for equality check.
             // This ensures that Maps that might use different Map.Entry types still compare correctly.
-            items.add(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()));
+            items.add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()));
         }
 
-        for (Map.Entry entry : (Set<Map.Entry>)map1.entrySet())
+        for (Map.Entry<?, ?> entry : map1.entrySet())
         {
-            Collection<Map.Entry> other = fastLookup.get(deepHashCode(entry.getKey()));
+            Collection<Object> other = fastLookup.get(deepHashCode(entry.getKey()));
             if (other == null || other.isEmpty())
             {
                 return false;
@@ -613,7 +578,7 @@ public class DeepEquals
 
             if (other.size() == 1)
             {
-                Map.Entry entry2 = other.iterator().next();
+                Map.Entry<?, ?> entry2 = (Map.Entry<?, ?>)other.iterator().next();
                 ItemsToCompare dk = new ItemsToCompare(entry.getKey(), entry2.getKey());
                 if (!visited.contains(dk))
                 {   // Push keys for further comparison
@@ -629,7 +594,7 @@ public class DeepEquals
             else
             {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
                 // from collision list, making further comparisons faster)
-                if (!isContained(new AbstractMap.SimpleEntry(entry.getKey(), entry.getValue()), other,visited, options))
+                if (!isContained(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()), other, visited, options))
                 {
                     return false;
                 }
@@ -643,13 +608,13 @@ public class DeepEquals
      * @return true of the passed in o is within the passed in Collection, using a deepEquals comparison
      * element by element.  Used only for hash collisions.
      */
-    private static boolean isContained(Object o, Collection other, Set visited, Map options)
+    private static boolean isContained(Object o, Collection<?> other, Set<ItemsToCompare> visited, Map<String, ?> options)
     {
-        Iterator i = other.iterator();
+        Iterator<?> i = other.iterator();
         while (i.hasNext())
         {
             Object x = i.next();
-            Set<ItemsToCompare> visitedForSubelements=new HashSet<>(visited);
+            Set<ItemsToCompare> visitedForSubelements = new HashSet<>(visited);
             visitedForSubelements.add(new ItemsToCompare(o, x));
             if (DeepEquals.deepEquals(o, x, options, visitedForSubelements))
             {
@@ -805,14 +770,14 @@ public class DeepEquals
 
             if (obj instanceof Collection)
             {
-                stack.addAll(0, (Collection)obj);
+                stack.addAll(0, (Collection<?>)obj);
                 continue;
             }
 
             if (obj instanceof Map)
             {
-                stack.addAll(0, ((Map)obj).keySet());
-                stack.addAll(0, ((Map)obj).values());
+                stack.addAll(0, ((Map<?, ?>)obj).keySet());
+                stack.addAll(0, ((Map<?, ?>)obj).values());
                 continue;
             }
 

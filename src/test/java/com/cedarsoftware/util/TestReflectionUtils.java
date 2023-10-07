@@ -198,7 +198,7 @@ public class TestReflectionUtils
             ReflectionUtils.getDeclaredFields(Parent.class, fields);
             fail("should not make it here");
         }
-        catch (ThreadDeath e)
+        catch (ThreadDeath ignored)
         {
         }
     }

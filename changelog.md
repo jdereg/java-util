@@ -1,5 +1,6 @@
 ### Revision History
 * 2.1.0
+  * `DeepEquals.deepEquals(a, b)` compares Sets and Maps without regards to order per the equality spec.
   * Updated all dependent libraries to latest versions as of 16 Sept 2023.
 * 2.0.0
   * Upgraded from Java 8 to Java 11.

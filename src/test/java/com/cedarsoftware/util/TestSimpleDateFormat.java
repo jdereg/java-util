@@ -109,7 +109,7 @@ public class TestSimpleDateFormat
         assertEquals(0, cal.get(Calendar.SECOND));
 
         cal.clear();
-        cal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        cal.setTimeZone(TimeZone.getTimeZone("PST"));
         cal.setLenient(false);
         x.setCalendar(cal);
         x2.setCalendar(cal);

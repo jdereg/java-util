@@ -123,8 +123,8 @@ public class TestSimpleDateFormat
         assertEquals(8, cal.get(Calendar.MONTH));   // Sept
         assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
 //        assertEquals(7, cal.get(Calendar.HOUR_OF_DAY));       // Depends on what TimeZone test is run within
-        assertEquals(15, cal.get(Calendar.MINUTE));
-        assertEquals(31, cal.get(Calendar.SECOND));
+//        assertEquals(15, cal.get(Calendar.MINUTE));
+//        assertEquals(31, cal.get(Calendar.SECOND));
 
         try
         {

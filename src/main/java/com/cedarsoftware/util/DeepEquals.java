@@ -181,27 +181,6 @@ public class DeepEquals
         return deepEquals(a, b, options, visited);
     }
 
-    public static void dumpBreadCrumb(Set<ItemsToCompare> breadCrumbs)
-    {
-        Iterator<ItemsToCompare> i = breadCrumbs.iterator();
-        int space = 0;
-        while (i.hasNext())
-        {
-            ItemsToCompare compare = i.next();
-            whitespace(space);
-            System.out.println(compare.toString());
-            space += 2;
-        }
-    }
-
-    private static void whitespace(int x)
-    {
-        for (int i=0; i < x; i++)
-        {
-            System.out.print(' ');
-        }
-    }
-
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<ItemsToCompare> visited)
     {
         Deque<ItemsToCompare> stack = new LinkedList<>();
@@ -494,12 +473,7 @@ public class DeepEquals
         for (Object o : col2)
         {
             int hash = deepHashCode(o);
-            Collection<Object> items = fastLookup.get(hash);
-            if (items == null)
-            {
-                items = new ArrayList<>();
-                fastLookup.put(hash, items);
-            }
+            Collection<Object> items = fastLookup.computeIfAbsent(hash, k -> new ArrayList<>());
             items.add(o);
         }
 
@@ -556,12 +530,7 @@ public class DeepEquals
         for (Map.Entry<?, ?> entry : map2.entrySet())
         {
             int hash = deepHashCode(entry.getKey());
-            Collection<Object> items = fastLookup.get(hash);
-            if (items == null)
-            {
-                items = new ArrayList<>();
-                fastLookup.put(hash, items);
-            }
+            Collection<Object> items = fastLookup.computeIfAbsent(hash, k -> new ArrayList<>());
 
             // Use only key and value, not specific Map.Entry type for equality check.
             // This ensures that Maps that might use different Map.Entry types still compare correctly.
@@ -605,7 +574,7 @@ public class DeepEquals
     }
 
     /**
-     * @return true of the passed in o is within the passed in Collection, using a deepEquals comparison
+     * @return true if the passed in o is within the passed in Collection, using a deepEquals comparison
      * element by element.  Used only for hash collisions.
      */
     private static boolean isContained(Object o, Collection<?> other, Set<ItemsToCompare> visited, Map<String, ?> options)

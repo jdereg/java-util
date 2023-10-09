@@ -12,7 +12,10 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -187,20 +190,11 @@ public class TestReflectionUtils
     @Test
     public void testGetDeclaredFields() throws Exception
     {
-        Class<?> c = Parent.class;
+        var fields = mock(ArrayList.class);
+        when(fields.add(any())).thenThrow(ThreadDeath.class);
 
-        Field f = c.getDeclaredField("foo");
-
-        Collection<Field> fields = mock(Collection.class);
-        when(fields.add(f)).thenThrow(new ThreadDeath());
-        try
-        {
-            ReflectionUtils.getDeclaredFields(Parent.class, fields);
-            fail("should not make it here");
-        }
-        catch (ThreadDeath ignored)
-        {
-        }
+        assertThatExceptionOfType(ThreadDeath.class)
+                .isThrownBy(() -> ReflectionUtils.getDeclaredFields(Parent.class, fields));
     }
 
     @Test

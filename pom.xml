@@ -22,8 +22,11 @@
         <version.logback>1.4.11</version.logback>
         <version.junit>5.10.0</version.junit>
         <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
-        <version.mockito>1.10.19</version.mockito>          <!-- testing only -->
+        <version.mockito>5.6.0</version.mockito>          <!-- testing only -->
+        <version.mockito.inline>5.2.0</version.mockito.inline>          <!-- testing only -->
         <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
+        <version.mockito.inline>5.2.0</version.mockito.inline>          <!-- testing only -->
+        <version.assertj>3.24.2</version.assertj>              <!-- testing only -->
         <version.plugin.compiler>3.11.0</version.plugin.compiler>
         <version.plugin.gpg>3.1.0</version.plugin.gpg>
         <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
@@ -213,10 +216,32 @@
 
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
+            <artifactId>mockito-core</artifactId>
             <version>${version.mockito}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${version.mockito.inline}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>${version.mockito.inline}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.24.2</version>
+            <scope>test</scope>
+        </dependency>
+
 
         <dependency>
             <groupId>com.cedarsoftware</groupId>

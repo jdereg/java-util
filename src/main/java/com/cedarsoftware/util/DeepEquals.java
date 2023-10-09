@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.cedarsoftware.util.Converter.convert2BigDecimal;
 import static com.cedarsoftware.util.Converter.convert2boolean;
@@ -209,6 +210,15 @@ public class DeepEquals
             if (key1 instanceof Number && key2 instanceof Number && compareNumbers((Number)key1, (Number)key2))
             {
                 continue;
+            }
+
+            if (key1 instanceof AtomicBoolean && key2 instanceof AtomicBoolean)
+            {
+                if (!compareAtomicBoolean((AtomicBoolean)key1, (AtomicBoolean)key2)) {
+                    return false;
+                } else {
+                    continue;
+                }
             }
 
             if (key1 instanceof Number || key2 instanceof Number)
@@ -593,7 +603,11 @@ public class DeepEquals
         }
         return false;
     }
-    
+
+    private static boolean compareAtomicBoolean(AtomicBoolean a, AtomicBoolean b) {
+        return a.get() == b.get();
+    }
+
     private static boolean compareNumbers(Number a, Number b)
     {
         if (a instanceof Float && (b instanceof Float || b instanceof Double))

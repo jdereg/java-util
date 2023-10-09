@@ -200,18 +200,15 @@ public final class ReflectionUtils
 
             for (Field field : local)
             {
-                try
+                if (field.trySetAccessible())
                 {
-                    field.setAccessible(true);
-                }
-                catch (Exception ignored) { }
-
-                int modifiers = field.getModifiers();
-                if (!Modifier.isStatic(modifiers) &&
-                        !field.getName().startsWith("this$") &&
-                        !Modifier.isTransient(modifiers))
-                {   // speed up: do not count static fields, do not go back up to enclosing object in nested case, do not consider transients
-                    fields.add(field);
+                    int modifiers = field.getModifiers();
+                    if (!Modifier.isStatic(modifiers) &&
+                            !field.getName().startsWith("this$") &&
+                            !Modifier.isTransient(modifiers))
+                    {   // speed up: do not count static fields, do not go back up to enclosing object in nested case, do not consider transients
+                        fields.add(field);
+                    }
                 }
             }
         }

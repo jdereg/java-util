@@ -77,13 +77,10 @@ Included in java-util:
 * **IOUtilities** - Handy methods for simplifying I/O including such niceties as properly setting up the input stream for HttpUrlConnections based on their specified encoding.  Single line `.close()` method that handles exceptions for you.
 * **MathUtilities** - Handy mathematical algorithms to make your code smaller.  For example, minimum of array of values.
 * **ReflectionUtils** - Simple one-liners for many common reflection tasks.  Speedy reflection calls due to Method caching.
-* **SafeSimpleDateFormat** - Instances of this class can be stored as member variables and reused without any worry about thread safety.  Fixing the problems with the JDK's `SimpleDateFormat` and thread safety (no reentrancy support).
 * **StringUtilities** - Helpful methods that make simple work of common `String` related tasks.
 * **SystemUtilities** - A Helpful utility methods for working with external entities like the OS, environment variables, and system properties.
 * **Traverser** - Pass any Java object to this Utility class, it will call your passed in anonymous method for each object it encounters while traversing the complete graph.  It handles cycles within the graph. Permits you to perform generalized actions on all objects within an object graph.
 * **UniqueIdGenerator** - Generates unique Java long value, that can be deterministically unique across up to 100 servers in a cluster (if configured with an environment variable), the ids are monotonically increasing, and can generate the ids at a rate of about 10 million per second.  Because the current time to the millisecond is embedded in the id, one can back-calculate when the id was generated.
-* **UrlUtitilies** - Fetch cookies from headers, getUrlConnections(), HTTP Response error handler, and more.
-* **UrlInvocationHandler** - Use to easily communicate with RESTful JSON servers, especially ones that implement a Java interface that you have access to.
 
 See [changelog.md](/changelog.md) for revision history.
 

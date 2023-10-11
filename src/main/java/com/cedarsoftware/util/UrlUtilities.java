@@ -1,8 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.net.ssl.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -51,6 +48,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@Deprecated
 public final class UrlUtilities
 {
     private static String globalUserAgent = null;
@@ -68,8 +66,7 @@ public final class UrlUtilities
     public static final char DOT = '.';
 
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
-    private static final Logger LOG = LoggerFactory.getLogger(UrlUtilities.class);
-
+    
     public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
     {
             new X509TrustManager()
@@ -115,7 +112,7 @@ public final class UrlUtilities
         }
         catch (Exception e)
         {
-            LOG.warn("Failed to build Naive SSLSocketFactory", e);
+            e.printStackTrace(System.err);
         }
     }
 
@@ -187,7 +184,6 @@ public final class UrlUtilities
             {
                 return;
             }
-            LOG.warn("HTTP error response: " + ((HttpURLConnection) c).getResponseMessage());
             // read the response body
             ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
             int count;
@@ -196,19 +192,18 @@ public final class UrlUtilities
             {
                 out.write(bytes, 0, count);
             }
-            LOG.warn("HTTP error Code:  " + error);
         }
         catch (ConnectException e)
         {
-            LOG.error("Connection exception trying to read HTTP error response", e);
+            e.printStackTrace(System.err);
         }
         catch (IOException e)
         {
-            LOG.error("IO Exception trying to read HTTP error response", e);
+            e.printStackTrace(System.err);
         }
         catch (Exception e)
         {
-            LOG.error("Exception trying to read HTTP error response", e);
+            e.printStackTrace(System.err);
         }
         finally
         {
@@ -376,7 +371,7 @@ public final class UrlUtilities
         }
         catch (ParseException e)
         {
-            LOG.info("Parse error on cookie expires value: " + cookieExpires, e);
+            e.printStackTrace(System.err);
             return false;
         }
     }
@@ -490,7 +485,7 @@ public final class UrlUtilities
         try {
             return getContentFromUrl(getActualUrl(url),inCookies, outCookies, allowAllCerts);
         } catch (Exception e) {
-            LOG.warn("Exception occurred fetching content from url: " + url, e);
+            e.printStackTrace(System.err);
             return null;
         }
     }
@@ -527,13 +522,13 @@ public final class UrlUtilities
         }
         catch (SSLHandshakeException e)
         {   // Don't read error response.  it will just cause another exception.
-            LOG.warn("SSL Exception occurred fetching content from url: " + url, e);
+            e.printStackTrace(System.err);
             return null;
         }
         catch (Exception e)
         {
             readErrorResponse(c);
-            LOG.warn("Exception occurred fetching content from url: " + url, e);
+            e.printStackTrace(System.err);
             return null;
         }
         finally
@@ -626,7 +621,7 @@ public final class UrlUtilities
             }
             catch(Exception e)
             {
-                LOG.warn("Could not access '" + url.toString() + "'", e);
+                e.printStackTrace(System.err);
             }
         }
 

@@ -25,6 +25,7 @@ import java.net.URLConnection;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@Deprecated
 public interface UrlInvocationHandlerStrategy
 {
     URL buildURL(Object proxy, Method m, Object[] args) throws MalformedURLException;

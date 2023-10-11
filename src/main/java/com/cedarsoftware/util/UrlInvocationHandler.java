@@ -1,8 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -55,10 +52,10 @@ import java.net.HttpURLConnection;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@Deprecated
 public class UrlInvocationHandler implements InvocationHandler
 {
     public static final int SLEEP_TIME = 5000;
-    private final Logger LOG = LoggerFactory.getLogger(UrlInvocationHandler.class);
     private final UrlInvocationHandlerStrategy _strategy;
 
     public UrlInvocationHandler(UrlInvocationHandlerStrategy strategy)
@@ -100,7 +97,6 @@ public class UrlInvocationHandler implements InvocationHandler
             }
             catch (Throwable e)
             {
-                LOG.error("Error occurred getting HTTP response from server", e);
                 UrlUtilities.readErrorResponse(c);
                 if (retry-- > 0)
                 {
@@ -117,7 +113,6 @@ public class UrlInvocationHandler implements InvocationHandler
         {
             checkForThrowable(result);
         } catch (Throwable t) {
-            LOG.error("Error occurred on server", t);
             return null;
         }
         return result;

@@ -1,8 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.security.SecureRandom;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -46,7 +43,6 @@ import static java.lang.System.currentTimeMillis;
 public class UniqueIdGenerator
 {
     public static final String JAVA_UTIL_CLUSTERID = "JAVA_UTIL_CLUSTERID";
-    private static final Logger log = LoggerFactory.getLogger(UniqueIdGenerator.class);
 
     private UniqueIdGenerator()
     {
@@ -100,7 +96,7 @@ public class UniqueIdGenerator
                 }
             }
         }
-        log.info("java-util using server id=" + id + " for last two digits of generated unique IDs. Set using " + setVia);
+        System.out.println("java-util using server id=" + id + " for last two digits of generated unique IDs. Set using " + setVia);
         serverId = id;
     }
 
@@ -117,7 +113,8 @@ public class UniqueIdGenerator
         }
         catch (NumberFormatException e)
         {
-            log.warn("Unable to get unique server id or index from environment variable/system property key-value: " + externalVarName + "=" + id, e);
+            System.out.println("Unable to get unique server id or index from environment variable/system property key-value: " + externalVarName + "=" + id);
+            e.printStackTrace(System.err);
             return -1;
         }
     }

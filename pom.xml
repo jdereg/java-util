@@ -18,8 +18,6 @@
     </developers>
 
     <properties>
-        <version.slf4j>2.0.9</version.slf4j>
-        <version.logback>1.4.11</version.logback>
         <version.junit>5.10.0</version.junit>
         <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
         <version.mockito>5.6.0</version.mockito>          <!-- testing only -->
@@ -195,18 +193,6 @@
     </build>
 
     <dependencies>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${version.slf4j}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>${version.logback}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>

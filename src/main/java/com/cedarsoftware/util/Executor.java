@@ -1,8 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 
 /**
@@ -33,7 +30,6 @@ public class Executor
 {
     private String _error;
     private String _out;
-    private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
 
     public int exec(String command)
     {
@@ -44,7 +40,8 @@ public class Executor
         }
         catch (Exception e)
         {
-            LOG.warn("Error occurred executing command: " + command, e);
+            System.err.println("Error occurred executing command: " + command);
+            e.printStackTrace(System.err);
             return -1;
         }
     }
@@ -58,7 +55,8 @@ public class Executor
         }
         catch (Exception e)
         {
-            LOG.warn("Error occurred executing command: " + cmdArrayToString(cmdarray), e);
+            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
+            e.printStackTrace(System.err);
             return -1;
         }
     }
@@ -72,7 +70,8 @@ public class Executor
         }
         catch (Exception e)
         {
-            LOG.warn("Error occurred executing command: " + command, e);
+            System.err.println("Error occurred executing command: " + command);
+            e.printStackTrace(System.err);
             return -1;
         }
     }
@@ -86,7 +85,8 @@ public class Executor
         }
         catch (Exception e)
         {
-            LOG.warn("Error occurred executing command: " + cmdArrayToString(cmdarray), e);
+            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
+            e.printStackTrace(System.err);
             return -1;
         }
     }
@@ -100,7 +100,8 @@ public class Executor
         }
         catch (Exception e)
         {
-            LOG.warn("Error occurred executing command: " + command, e);
+            System.err.println("Error occurred executing command: " + command);
+            e.printStackTrace(System.err);
             return -1;
         }
     }
@@ -114,7 +115,8 @@ public class Executor
         }
         catch (Exception e)
         {
-            LOG.warn("Error occurred executing command: " + cmdArrayToString(cmdarray), e);
+            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
+            e.printStackTrace(System.err);
             return -1;
         }
     }

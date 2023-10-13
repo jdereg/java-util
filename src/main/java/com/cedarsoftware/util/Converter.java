@@ -16,16 +16,16 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Handy conversion utilities.  Convert from primitive to other primitives, plus support for Date, TimeStamp SQL Date,
  * and the Atomic's.
- *
+ * <p>
  * `Converter.convert2*()` methods: If `null` passed in, primitive 'logical zero' is returned.
  *      Example: `Converter.convert(null, boolean.class)` returns `false`.
- *
+ * <p>
  * `Converter.convertTo*()` methods: if `null` passed in, `null` is returned.  Allows "tri-state" Boolean.
  *      Example: `Converter.convert(null, Boolean.class)` returns `null`.
- *
+ * <p>
  * `Converter.convert()` converts using `convertTo*()` methods for primitive wrappers, and
  *      `convert2*()` methods for primitives.
- *      
+ * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -58,8 +58,8 @@ public final class Converter
     public static final Double DOUBLE_ONE = 1.0d;
     public static final BigDecimal BIG_DECIMAL_ZERO = BigDecimal.ZERO;
     public static final BigInteger BIG_INTEGER_ZERO = BigInteger.ZERO;
-    private static final Map<Class<?>, Work> conversion = new HashMap<>();
-    private static final Map<Class<?>, Work> conversionToString = new HashMap<>();
+    private static final Map<Class<?>, Work<?>> conversion = new HashMap<>();
+    private static final Map<Class<?>, Work<?>> conversionToString = new HashMap<>();
     
     protected interface Work<T>
     {

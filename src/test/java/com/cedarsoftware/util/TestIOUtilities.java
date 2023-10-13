@@ -48,16 +48,14 @@ import static org.mockito.Mockito.when;
  */
 public class TestIOUtilities
 {
-
-    private String _expected = "This is for an IO test!";
-
-
+    private final String _expected = "This is for an IO test!";
+    
     @Test
     public void testConstructorIsPrivate() throws Exception {
         Class<?> c = IOUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor con = c.getDeclaredConstructor();
+        Constructor<?> con = c.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -100,7 +98,6 @@ public class TestIOUtilities
         assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
         f.delete();
     }
-
 
     @Test
     public void testTransferWithGzip() throws Exception {
@@ -173,9 +170,8 @@ public class TestIOUtilities
             IOUtilities.compressBytes(null);
             fail();
         }
-        catch (Exception e)
-        {
-        }
+        catch (Exception ignore)
+        { }
     }
 
     @Test
@@ -318,7 +314,8 @@ public class TestIOUtilities
     }
 
     @Test
-    public void testInputStreamToBytes() throws Exception {
+    public void testInputStreamToBytes()
+    {
         ByteArrayInputStream in = new ByteArrayInputStream("This is a test".getBytes());
 
         byte[] bytes = IOUtilities.inputStreamToBytes(in);
@@ -326,17 +323,19 @@ public class TestIOUtilities
     }
 
     @Test
-    public void transferInputStreamToBytesWithNull() throws Exception {
+    public void transferInputStreamToBytesWithNull()
+    {
         assertNull(IOUtilities.inputStreamToBytes(null));
     }
 
     @Test
-    public void testGzipInputStream() throws Exception {
+    public void testGzipInputStream() throws Exception
+    {
         URL outUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
         URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
 
         OutputStream out = new GZIPOutputStream(new FileOutputStream(outUrl.getFile()));
-        InputStream in = new FileInputStream(new File(inUrl.getFile()));
+        InputStream in = new FileInputStream(inUrl.getFile());
         IOUtilities.transfer(in, out);
         IOUtilities.close(in);
         IOUtilities.flush(out);
@@ -344,7 +343,8 @@ public class TestIOUtilities
     }
 
     @Test
-    public void testInflateInputStream() throws Exception {
+    public void testInflateInputStream() throws Exception
+    {
         URL outUrl = TestIOUtilities.class.getClassLoader().getResource("test.inflate");
         URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
 

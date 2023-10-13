@@ -33,7 +33,7 @@ public class TestMathUtilities
         Class<?> c = MathUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor con = c.getDeclaredConstructor();
+        Constructor<?> con = c.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -72,28 +72,28 @@ public class TestMathUtilities
     public void testMinimumDouble()
     {
         double min = MathUtilities.minimum(0.1, 1.1, 2.1);
-        assertTrue(0.1 == min);
+        assertEquals(0.1, min);
         min = MathUtilities.minimum(-0.01, 1.0);
-        assertTrue(-0.01 == min);
+        assertEquals(-0.01, min);
         min = MathUtilities.minimum(0.0);
-        assertTrue(0.0 == min);
+        assertEquals(0.0, min);
         min = MathUtilities.minimum(-10.0, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-        assertTrue(-10.0 == min);
+        assertEquals(-10.0, min);
         min = MathUtilities.minimum(10.0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10);
-        assertTrue(-10.0 == min);
+        assertEquals(-10.0, min);
 
         min = MathUtilities.minimum(-1.0, 0.0, 1.0);
-        assertTrue(-1.0 == min);
+        assertEquals(-1.0, min);
         min = MathUtilities.minimum(-1.0, 1.0);
-        assertTrue(-1.0 == min);
+        assertEquals(-1.0, min);
 
         min = MathUtilities.minimum(-100000000.0, 0, 100000000.0);
-        assertTrue(-100000000.0 == min);
+        assertEquals(-100000000.0, min);
         min = MathUtilities.minimum(-100000000.0, 100000000.0);
-        assertTrue(-100000000.0 == min);
+        assertEquals(-100000000.0, min);
 
         double[] values = {45.1, -13.1, 123213123.1};
-        assertTrue(-13.1 == MathUtilities.minimum(values));
+        assertEquals(-13.1, MathUtilities.minimum(values));
     }
 
     @Test
@@ -118,7 +118,7 @@ public class TestMathUtilities
 
         try
         {
-            MathUtilities.minimum(new BigInteger[]{new BigInteger("1"), null, new BigInteger("3")});
+            MathUtilities.minimum(new BigInteger("1"), null, new BigInteger("3"));
             fail("Should not make it here");
         }
         catch (Exception ignored) { }
@@ -145,7 +145,7 @@ public class TestMathUtilities
 
         try
         {
-            MathUtilities.minimum(new BigDecimal[]{new BigDecimal("1"), null, new BigDecimal("3")});
+            MathUtilities.minimum(new BigDecimal("1"), null, new BigDecimal("3"));
             fail("Should not make it here");
         }
         catch (Exception ignored) { }
@@ -183,28 +183,28 @@ public class TestMathUtilities
     public void testMaximumDouble()
     {
         double max = MathUtilities.maximum(0.1, 1.1, 2.1);
-        assertTrue(2.1 == max);
+        assertEquals(2.1, max);
         max = MathUtilities.maximum(-0.01, 1.0);
-        assertTrue(1.0 == max);
+        assertEquals(1.0, max);
         max = MathUtilities.maximum(0.0);
-        assertTrue(0.0 == max);
+        assertEquals(0.0, max);
         max = MathUtilities.maximum(-10.0, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-        assertTrue(10.0 == max);
+        assertEquals(10.0, max);
         max = MathUtilities.maximum(10.0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10);
-        assertTrue(10.0 == max);
+        assertEquals(10.0, max);
 
         max = MathUtilities.maximum(-1.0, 0.0, 1.0);
-        assertTrue(1.0 == max);
+        assertEquals(1.0, max);
         max = MathUtilities.maximum(-1.0, 1.0);
-        assertTrue(1.0 == max);
+        assertEquals(1.0, max);
 
         max = MathUtilities.maximum(-100000000.0, 0, 100000000.0);
-        assertTrue(100000000.0 == max);
+        assertEquals(100000000.0, max);
         max = MathUtilities.maximum(-100000000.0, 100000000.0);
-        assertTrue(100000000.0 == max);
+        assertEquals(100000000.0, max);
 
         double[] values = {45.1, -13.1, 123213123.1};
-        assertTrue(123213123.1 == MathUtilities.maximum(values));
+        assertEquals(123213123.1, MathUtilities.maximum(values));
     }
 
     @Test
@@ -229,12 +229,13 @@ public class TestMathUtilities
 
         try
         {
-            MathUtilities.minimum(new BigInteger[]{new BigInteger("1"), null, new BigInteger("3")});
+            MathUtilities.minimum(new BigInteger("1"), null, new BigInteger("3"));
             fail("Should not make it here");
         }
         catch (Exception ignored) { }
     }
 
+    @Test
     public void testNullInMaximumBigInteger()
     {
         try
@@ -242,9 +243,7 @@ public class TestMathUtilities
             MathUtilities.maximum(new BigInteger("1"), null);
             fail("should not make it here");
         }
-        catch (IllegalArgumentException e)
-        {
-        }
+        catch (IllegalArgumentException ignored) { }
     }
 
     @Test
@@ -269,7 +268,7 @@ public class TestMathUtilities
 
         try
         {
-            MathUtilities.maximum(new BigDecimal[]{new BigDecimal("1"), null, new BigDecimal("3")});
+            MathUtilities.maximum(new BigDecimal("1"), null, new BigDecimal("3"));
             fail("Should not make it here");
         }
         catch (Exception ignored) { }

@@ -710,9 +710,8 @@ public class TestCompactMap
             i.remove();
             fail();
         }
-        catch (IllegalStateException e)
-        {
-        }
+        catch (IllegalStateException ignore)
+        { }
     }
 
     @Test
@@ -744,9 +743,8 @@ public class TestCompactMap
             i.next();
             fail();
         }
-        catch (NoSuchElementException e)
-        {
-        }
+        catch (NoSuchElementException ignore)
+        { }
 
         assert map.put("key1", "bar") == "foo";
         i = map.keySet().iterator();
@@ -784,7 +782,7 @@ public class TestCompactMap
             i.next();
             fail();
         }
-        catch (NoSuchElementException e)
+        catch (NoSuchElementException ignore)
         {
         }
 
@@ -819,23 +817,23 @@ public class TestCompactMap
 
         Iterator<String> i = map.keySet().iterator();
         assert i.hasNext();
-        assert i.next() == "key1";
+        assert i.next().equals("key1");
         assert i.hasNext();
-        assert i.next() == "key2";
+        assert i.next().equals("key2");
         try
         {
             i.next();
             fail();
         }
-        catch (NoSuchElementException e) { }
+        catch (NoSuchElementException ignore) { }
 
         assert map.put("key1", "baz") == "foo";
         assert map.put("key2", "qux") == "bar";
 
         i = map.keySet().iterator();
-        assert i.next() == "key1";
+        assert i.next().equals("key1");
         i.remove();
-        assert i.next() == "key2";
+        assert i.next().equals("key2");
         i.remove();
         assert map.isEmpty();
     }
@@ -864,9 +862,9 @@ public class TestCompactMap
 
         Iterator<String> i = map.keySet().iterator();
         assert i.hasNext();
-        assert i.next() == "key1";
+        assert i.next().equals("key1");
         assert i.hasNext();
-        assert i.next() == "key2";
+        assert i.next().equals("key2");
         try
         {
             i.next();
@@ -878,8 +876,8 @@ public class TestCompactMap
         assert map.put("key2", "qux") == "bar";
 
         i = map.keySet().iterator();
-        assert i.next() == "key1";
-        assert i.next() == "key2";
+        assert i.next().equals("key1");
+        assert i.next().equals("key2");
         i = map.keySet().iterator();
         i.next();
         i.remove();
@@ -894,7 +892,7 @@ public class TestCompactMap
             i.remove();
             fail();
         }
-        catch (IllegalStateException e) { }
+        catch (IllegalStateException ignore) { }
     }
 
     @Test
@@ -979,28 +977,28 @@ public class TestCompactMap
         Iterator<String> i = keys.iterator();
 
         String key = i.next();
-        assert key == "key1";
+        assert key.equals("key1");
         assert map.get("key1") == "foo";
         i.remove();
         assert !map.containsKey("key1");
         assert map.size() == 3;
 
         key = i.next();
-        assert key == "key2";
+        assert key.equals("key2");
         assert map.get("key2") == "bar";
         i.remove();
         assert !map.containsKey("key2");
         assert map.size() == 2;
 
         key = i.next();
-        assert key == "key3";
+        assert key.equals("key3");
         assert map.get("key3") == "baz";
         i.remove();
         assert !map.containsKey("key3");
         assert map.size() == 1;
 
         key = i.next();
-        assert key == "key4";
+        assert key.equals("key4");
         assert map.get("key4") == "qux";
         i.remove();
         assert !map.containsKey("key4");
@@ -1082,9 +1080,9 @@ public class TestCompactMap
         String[] keys = set.toArray(strings);
         assert keys != strings;
         assert keys.length == 3;
-        assert keys[0] == "key1";
-        assert keys[1] == "key2";
-        assert keys[2] == "key3";
+        assert keys[0].equals("key1");
+        assert keys[1].equals("key2");
+        assert keys[2].equals("key3");
         
         strings = new String[]{"a", "b"};
         keys = set.toArray(strings);
@@ -1104,15 +1102,15 @@ public class TestCompactMap
         set = map.keySet();
         keys = set.toArray(new String[]{});
         assert keys.length == 2;
-        assert keys[0] == "key1";
-        assert keys[1] == "key2";
+        assert keys[0].equals("key1");
+        assert keys[1].equals("key2");
         assert map.size() == 2;
 
         assert map.remove("key2") == "bar";
         set = map.keySet();
         keys = set.toArray(new String[]{});
         assert keys.length == 1;
-        assert keys[0] == "key1";
+        assert keys[0].equals("key1");
         assert map.size() == 1;
 
         assert map.remove("key1") == "foo";
@@ -1140,7 +1138,7 @@ public class TestCompactMap
             set.add("bingo");
             fail();
         }
-        catch (UnsupportedOperationException e) { }
+        catch (UnsupportedOperationException ignore) { }
 
         try
         {
@@ -1150,7 +1148,7 @@ public class TestCompactMap
             set.addAll(col);
             fail();
         }
-        catch (UnsupportedOperationException e) { }
+        catch (UnsupportedOperationException ignore) { }
     }
 
     @Test
@@ -1360,7 +1358,7 @@ public class TestCompactMap
         assert map.put("key3", "baz") == null;
         assert map.put("key4", "qux") == null;
 
-        Collection col = map.values();
+        Collection<Object> col = map.values();
         assert col.size() == 4;
         assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;
 
@@ -1439,7 +1437,7 @@ public class TestCompactMap
             i.next();
             fail();
         }
-        catch (NoSuchElementException e) { }
+        catch (NoSuchElementException ignore) { }
 
         i = map.values().iterator();
         try
@@ -1447,7 +1445,7 @@ public class TestCompactMap
             i.remove();
             fail();
         }
-        catch (IllegalStateException e) { }
+        catch (IllegalStateException ignore) { }
 
     }
 
@@ -1601,7 +1599,7 @@ public class TestCompactMap
         map.put("key1", new Object[] { "baz" } );
         assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
         Arrays.equals((Object[])map.get("key1"), new Object[] { "baz" });
-        map.put("key1", new HashMap() );
+        map.put("key1", new HashMap<>() );
         assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
         assert map.get("key1") instanceof HashMap;
         Map x = (Map) map.get("key1");
@@ -1764,19 +1762,19 @@ public class TestCompactMap
         // test contains() for success
         Iterator<Map.Entry<String, Object>> iterator = entrySet.iterator();
 
-        assert "key1" == iterator.next().getKey();
+        assert "key1".equals(iterator.next().getKey());
         iterator.remove();
         assert map.size() == 4;
 
-        assert "key2" == iterator.next().getKey();
+        assert "key2".equals(iterator.next().getKey());
         iterator.remove();
         assert map.size() == 3;
 
-        assert "key3" == iterator.next().getKey();
+        assert "key3".equals(iterator.next().getKey());
         iterator.remove();
         assert map.size() == 2;
 
-        assert "key4" == iterator.next().getKey();
+        assert "key4".equals(iterator.next().getKey());
         iterator.remove();
         assert map.size() == 1;
 
@@ -1870,13 +1868,13 @@ public class TestCompactMap
             iterator.remove();
             fail();
         }
-        catch (IllegalStateException e) { }
+        catch (IllegalStateException ignore) { }
 
         try
         {
             iterator.next();
         }
-        catch (NoSuchElementException e) { }
+        catch (NoSuchElementException ignore) { }
         assert map.size() == 0;
     }
 
@@ -2153,7 +2151,7 @@ public class TestCompactMap
         assert !map.isEmpty();
         assert map.containsKey("key1");
 
-        if (singleKey == "key1")
+        if (singleKey.equals("key1"))
         {
             assert map.getLogicalValueType() == CompactMap.LogicalValueType.OBJECT;
         }
@@ -2186,10 +2184,10 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY1") == "foo";
-        assert map.get("KEY2") == "bar";
-        assert map.get("KEY3") == "baz";
-        assert map.get("KEY4") == "qux";
+        assert map.get("KEY1").equals("foo");
+        assert map.get("KEY2").equals("bar");
+        assert map.get("KEY3").equals("baz");
+        assert map.get("KEY4").equals("qux");
 
         map.remove("KEY1");
         assert map.size() == 3;
@@ -2199,9 +2197,9 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY2") == "bar";
-        assert map.get("KEY3") == "baz";
-        assert map.get("KEY4") == "qux";
+        assert map.get("KEY2").equals("bar");
+        assert map.get("KEY3").equals("baz");
+        assert map.get("KEY4").equals("qux");
 
         map.remove("KEY2");
         assert map.size() == 2;
@@ -2210,8 +2208,8 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY3") == "baz";
-        assert map.get("KEY4") == "qux";
+        assert map.get("KEY3").equals("baz");
+        assert map.get("KEY4").equals("qux");
 
         map.remove("KEY3");
         assert map.size() == 1;
@@ -2219,7 +2217,7 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY4") == "qux";
+        assert map.get("KEY4").equals("qux");
 
         map.remove("KEY4");
         assert !map.containsKey(17.0d);
@@ -2258,8 +2256,8 @@ public class TestCompactMap
         assert map.size() == 1;
         assert !map.isEmpty();
         assert map.containsKey(null);
-        assert "foo" == map.get(null);
-        assert map.remove(null) == "foo";
+        assert "foo".equals(map.get(null));
+        assert map.remove(null).equals("foo");
 
         map.put("KEY1", "foo");
         map.put("KEY2", "bar");
@@ -2273,10 +2271,10 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY1") == "foo";
-        assert map.get("KEY2") == "bar";
-        assert map.get("KEY3") == "baz";
-        assert map.get("KEY4") == "qux";
+        assert map.get("KEY1").equals("foo");
+        assert map.get("KEY2").equals("bar");
+        assert map.get("KEY3").equals("baz");
+        assert map.get("KEY4").equals("qux");
 
         map.remove("KEY4");
         assert map.size() == 3;
@@ -2286,9 +2284,9 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY1") == "foo";
-        assert map.get("KEY2") == "bar";
-        assert map.get("KEY3") == "baz";
+        assert map.get("KEY1").equals("foo");
+        assert map.get("KEY2").equals("bar");
+        assert map.get("KEY3").equals("baz");
 
         map.remove("KEY3");
         assert map.size() == 2;
@@ -2297,8 +2295,8 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY1") == "foo";
-        assert map.get("KEY2") == "bar";
+        assert map.get("KEY1").equals("foo");
+        assert map.get("KEY2").equals("bar");
 
         map.remove("KEY2");
         assert map.size() == 1;
@@ -2306,7 +2304,7 @@ public class TestCompactMap
         assert !map.containsKey(17.0d);
         assert !map.containsKey(null);
 
-        assert map.get("KEY1") == "foo";
+        assert map.get("KEY1").equals("foo");
 
         map.remove("KEY1");
         assert !map.containsKey(17.0d);
@@ -2333,23 +2331,23 @@ public class TestCompactMap
 
         map.put(16, "foo");
         assert map.containsKey(16);
-        assert map.get(16) == "foo";
+        assert map.get(16).equals("foo");
         assert map.get("sponge bob") == null;
         assert map.get(null) == null;
 
         map.put(32, "bar");
         assert map.containsKey(32);
-        assert map.get(32) == "bar";
+        assert map.get(32).equals("bar");
         assert map.get("sponge bob") == null;
         assert map.get(null) == null;
 
-        assert map.remove(32) == "bar";
+        assert map.remove(32).equals("bar");
         assert map.containsKey(16);
-        assert map.get(16) == "foo";
+        assert map.get(16).equals("foo");
         assert map.get("sponge bob") == null;
         assert map.get(null) == null;
 
-        assert map.remove(16) == "foo";
+        assert map.remove(16).equals("foo");
         assert map.size() == 0;
         assert map.isEmpty();
     }
@@ -2373,23 +2371,23 @@ public class TestCompactMap
 
         map.put(16, "foo");
         assert map.containsKey(16);
-        assert map.get(16) == "foo";
+        assert map.get(16).equals("foo");
         assert map.get("sponge bob") == null;
         assert map.get(null) == null;
 
         map.put(32, "bar");
         assert map.containsKey(32);
-        assert map.get(32) == "bar";
+        assert map.get(32).equals("bar");
         assert map.get("sponge bob") == null;
         assert map.get(null) == null;
 
-        assert map.remove(16) == "foo";
+        assert map.remove(16).equals("foo");
         assert map.containsKey(32);
-        assert map.get(32) == "bar";
+        assert map.get(32).equals("bar");
         assert map.get("sponge bob") == null;
         assert map.get(null) == null;
 
-        assert map.remove(32) == "bar";
+        assert map.remove(32).equals("bar");
         assert map.size() == 0;
         assert map.isEmpty();
     }
@@ -2498,7 +2496,7 @@ public class TestCompactMap
     public void testBadNoArgConstructor()
     {
         CompactMap<String, Object> map = new CompactMap<>();
-        assert "key" == map.getSingleValueKey();
+        assert "key".equals(map.getSingleValueKey());
         assert map.getNewMap() instanceof HashMap;
         
         try
@@ -2516,8 +2514,8 @@ public class TestCompactMap
         tree.put("foo", "bar");
         tree.put("baz", "qux");
         Map<String, String> map = new CompactMap<>(tree);
-        assert map.get("foo") == "bar";
-        assert map.get("baz") == "qux";
+        assert map.get("foo").equals("bar");
+        assert map.get("baz").equals("qux");
         assert map.size() == 2;
     }
 
@@ -2790,13 +2788,13 @@ public class TestCompactMap
         assert iter1.hasNext();
         assert iter2.hasNext();
 
-        assert "a" == iter1.next();
-        assert "a" == iter2.next();
+        assert "a".equals(iter1.next());
+        assert "a".equals(iter2.next());
 
-        assert "J" == iter2.next();
-        assert "J" == iter1.next();
+        assert "J".equals(iter2.next());
+        assert "J".equals(iter1.next());
 
-        assert "z" == iter1.next();
+        assert "z".equals(iter1.next());
         assert false == iter1.hasNext();
         assert true == iter2.hasNext();
 
@@ -2827,17 +2825,17 @@ public class TestCompactMap
         assert iter1.hasNext();
         assert iter2.hasNext();
 
-        assert "alpha" == iter1.next();
-        assert "alpha" == iter2.next();
+        assert "alpha".equals(iter1.next());
+        assert "alpha".equals(iter2.next());
 
-        assert "juliet" == iter2.next();
-        assert "juliet" == iter1.next();
+        assert "juliet".equals(iter2.next());
+        assert "juliet".equals(iter1.next());
 
-        assert "zulu" == iter1.next();
+        assert "zulu".equals(iter1.next());
         assert false == iter1.hasNext();
         assert true == iter2.hasNext();
 
-        assert "zulu" == iter2.next();
+        assert "zulu".equals(iter2.next());
         assert false == iter2.hasNext();
     }
 
@@ -2864,17 +2862,17 @@ public class TestCompactMap
         assert iter1.hasNext();
         assert iter2.hasNext();
 
-        assert "a" == iter1.next().getKey();
-        assert "a" == iter2.next().getKey();
+        assert "a".equals(iter1.next().getKey());
+        assert "a".equals(iter2.next().getKey());
 
-        assert "juliet" == iter2.next().getValue();
-        assert "juliet" == iter1.next().getValue();
+        assert "juliet".equals(iter2.next().getValue());
+        assert "juliet".equals(iter1.next().getValue());
 
-        assert "z" == iter1.next().getKey();
+        assert "z".equals(iter1.next().getKey());
         assert false == iter1.hasNext();
         assert true == iter2.hasNext();
 
-        assert "zulu" == iter2.next().getValue();
+        assert "zulu".equals(iter2.next().getValue());
         assert false == iter2.hasNext();
     }
 
@@ -2901,17 +2899,17 @@ public class TestCompactMap
         assert iter1.hasNext();
         assert iter2.hasNext();
 
-        assert "a" == iter1.next();
-        assert "a" == iter2.next();
+        assert "a".equals(iter1.next());
+        assert "a".equals(iter2.next());
 
-        assert "J" == iter2.next();
-        assert "J" == iter1.next();
+        assert "J".equals(iter2.next());
+        assert "J".equals(iter1.next());
 
-        assert "z" == iter1.next();
+        assert "z".equals(iter1.next());
         assert false == iter1.hasNext();
         assert true == iter2.hasNext();
 
-        assert "z" == iter2.next();
+        assert "z".equals(iter2.next());
         assert false == iter2.hasNext();
     }
 
@@ -2938,17 +2936,17 @@ public class TestCompactMap
         assert iter1.hasNext();
         assert iter2.hasNext();
 
-        assert "alpha" == iter1.next();
-        assert "alpha" == iter2.next();
+        assert "alpha".equals(iter1.next());
+        assert "alpha".equals(iter2.next());
 
-        assert "juliet" == iter2.next();
-        assert "juliet" == iter1.next();
+        assert "juliet".equals(iter2.next());
+        assert "juliet".equals(iter1.next());
 
-        assert "zulu" == iter1.next();
+        assert "zulu".equals(iter1.next());
         assert false == iter1.hasNext();
         assert true == iter2.hasNext();
 
-        assert "zulu" == iter2.next();
+        assert "zulu".equals(iter2.next());
         assert false == iter2.hasNext();
     }
 
@@ -2975,17 +2973,17 @@ public class TestCompactMap
         assert iter1.hasNext();
         assert iter2.hasNext();
 
-        assert "a" == iter1.next().getKey();
-        assert "a" == iter2.next().getKey();
+        assert "a".equals(iter1.next().getKey());
+        assert "a".equals(iter2.next().getKey());
 
-        assert "juliet" == iter2.next().getValue();
-        assert "juliet" == iter1.next().getValue();
+        assert "juliet".equals(iter2.next().getValue());
+        assert "juliet".equals(iter1.next().getValue());
 
-        assert "z" == iter1.next().getKey();
+        assert "z".equals(iter1.next().getKey());
         assert false == iter1.hasNext();
         assert true == iter2.hasNext();
 
-        assert "zulu" == iter2.next().getValue();
+        assert "zulu".equals(iter2.next().getValue());
         assert false == iter2.hasNext();
     }
 
@@ -3140,11 +3138,11 @@ public class TestCompactMap
 
         stringMap.putAll(newMap);
 
-        assertTrue(stringMap.size() == 4);
-        assertFalse(stringMap.get("one").equals("two"));
-        assertTrue(stringMap.get("fIvE").equals("Six"));
-        assertTrue(stringMap.get("three").equals("four"));
-        assertTrue(stringMap.get("seven").equals("Eight"));
+        assertEquals(4, stringMap.size());
+        assertNotEquals("two", stringMap.get("one"));
+        assertEquals("Six", stringMap.get("fIvE"));
+        assertEquals("four", stringMap.get("three"));
+        assertEquals("Eight", stringMap.get("seven"));
 
         CompactMap<String, Object> a = new CompactMap<>()
         {
@@ -3228,7 +3226,7 @@ public class TestCompactMap
     public void testToStringOnEmptyMap()
     {
         Map<String, Object> compact = new CompactMap<>();
-        assert compact.toString() == "{}";
+        assert compact.toString().equals("{}");
     }
 
     @Test
@@ -3318,31 +3316,31 @@ public class TestCompactMap
         s2.add(getEntry("One", "Two"));
         s2.add(getEntry("Three", "Four"));
         s2.add(getEntry("Five", "Six"));
-        assertTrue(s.equals(s2));
+        assertEquals(s, s2);
 
         s2.clear();
         s2.add(getEntry("One", "Two"));
         s2.add(getEntry("Three", "Four"));
         s2.add(getEntry("Five", "six"));    // lowercase six
-        assertFalse(s.equals(s2));
+        assertNotEquals(s, s2);
 
         s2.clear();
         s2.add(getEntry("One", "Two"));
         s2.add(getEntry("Thre", "Four"));   // missing 'e' on three
         s2.add(getEntry("Five", "Six"));
-        assertFalse(s.equals(s2));
+        assertNotEquals(s, s2);
 
         Set<Map.Entry<Object, Object>> s3 = new HashSet<>();
         s3.add(getEntry("one", "Two"));
         s3.add(getEntry("three", "Four"));
         s3.add(getEntry("five","Six"));
-        assertTrue(s.equals(s3));
+        assertEquals(s, s3);
 
         Set<Map.Entry<Object, Object>> s4 = new CaseInsensitiveSet<>();
         s4.add(getEntry("one", "Two"));
         s4.add(getEntry("three", "Four"));
         s4.add(getEntry("five","Six"));
-        assertTrue(s.equals(s4));
+        assertEquals(s, s4);
 
         CompactMap<String, Object> secondStringMap = new CompactMap<>()
         {
@@ -3355,21 +3353,21 @@ public class TestCompactMap
         secondStringMap.put("One", "Two");
         secondStringMap.put("Three", "Four");
         secondStringMap.put("Five", "Six");
-        assertFalse(s.equals("one"));
+        assertNotEquals("one", s);
 
-        assertTrue(s.equals(secondStringMap.entrySet()));
+        assertEquals(s, secondStringMap.entrySet());
         // case-insensitive
         secondStringMap.put("five", "Six");
-        assertTrue(s.equals(secondStringMap.entrySet()));
+        assertEquals(s, secondStringMap.entrySet());
         secondStringMap.put("six", "sixty");
-        assertFalse(s.equals(secondStringMap.entrySet()));
+        assertNotEquals(s, secondStringMap.entrySet());
         secondStringMap.remove("five");
-        assertFalse(s.equals(secondStringMap.entrySet()));
+        assertNotEquals(s, secondStringMap.entrySet());
         secondStringMap.put("five", null);
         secondStringMap.remove("six");
-        assertFalse(s.equals(secondStringMap.entrySet()));
+        assertNotEquals(s, secondStringMap.entrySet());
         m.put("five", null);
-        assertTrue(m.entrySet().equals(secondStringMap.entrySet()));
+        assertEquals(m.entrySet(), secondStringMap.entrySet());
     }
 
     @Test

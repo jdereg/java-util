@@ -35,7 +35,7 @@ public final class ReflectionUtils
     private static final ConcurrentMap<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP2 = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP3 = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<String, Constructor> CONSTRUCTORS = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Constructor<?>> CONSTRUCTORS = new ConcurrentHashMap<>();
 
     private ReflectionUtils()
     {
@@ -130,7 +130,7 @@ public final class ReflectionUtils
             builder.append('.');
             builder.append(methodName);
             builder.append(makeParamKey(types));
-            
+
             // methodKey is in form ClassName.methodName:arg1.class|arg2.class|...
             String methodKey = builder.toString();
             Method method = METHOD_MAP.get(methodKey);
@@ -200,21 +200,36 @@ public final class ReflectionUtils
 
             for (Field field : local)
             {
-                if (field.trySetAccessible())
+                int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers))
+                {   // skip static and transient fields
+                    continue;
+                }
+                String fieldName = field.getName();
+                if ("metaClass".equals(fieldName) && "groovy.lang.MetaClass".equals(field.getType().getName()))
+                {   // skip Groovy metaClass field if present (without tying this project to Groovy in any way).
+                    continue;
+                }
+
+                if (fieldName.startsWith("this$"))
+                {   // Skip field in nested class pointing to enclosing outer class instance
+                    continue;
+                }
+
+                if (Modifier.isPublic(modifiers))
                 {
-                    int modifiers = field.getModifiers();
-                    if (!Modifier.isStatic(modifiers) &&
-                            !field.getName().startsWith("this$") &&
-                            !Modifier.isTransient(modifiers))
-                    {   // speed up: do not count static fields, do not go back up to enclosing object in nested case, do not consider transients
-                        fields.add(field);
-                    }
+                    fields.add(field);
+                }
+                else
+                {
+                    field.trySetAccessible();
+                    fields.add(field);
                 }
             }
         }
-        catch (Throwable ignored)
+        catch (Throwable ignore)
         {
-            ExceptionUtilities.safelyIgnoreException(ignored);
+            ExceptionUtilities.safelyIgnoreException(ignore);
         }
     }
 
@@ -337,7 +352,7 @@ public final class ReflectionUtils
         {
             throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on an instance of: " + bean.getClass().getName());
         }
-        Class beanClass = bean.getClass();
+        Class<?> beanClass = bean.getClass();
         StringBuilder builder = new StringBuilder(getClassLoaderName(beanClass));
         builder.append('.');
         builder.append(beanClass.getName());
@@ -366,7 +381,7 @@ public final class ReflectionUtils
     /**
      * Reflectively find the requested method on the requested class, only matching on argument count.
      */
-    private static Method getMethodWithArgs(Class c, String methodName, int argc)
+    private static Method getMethodWithArgs(Class<?> c, String methodName, int argc)
     {
         Method[] methods = c.getMethods();
         for (Method method : methods)
@@ -432,7 +447,7 @@ public final class ReflectionUtils
      * @return Method instance found on the passed in class, or an IllegalArgumentException is thrown.
      * @throws IllegalArgumentException
      */
-    public static Method getNonOverloadedMethod(Class clazz, String methodName)
+    public static Method getNonOverloadedMethod(Class<?> clazz, String methodName)
     {
         if (clazz == null)
         {

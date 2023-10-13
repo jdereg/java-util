@@ -190,7 +190,7 @@ public class GraphComparator
             LIST_RESIZE("list.resize"),
             LIST_SET_ELEMENT("list.setElement");
 
-            private String name;
+            private final String name;
             Command(final String name)
             {
                 this.name = name.intern();
@@ -487,7 +487,7 @@ public class GraphComparator
         }
 
         // source objects by ID
-        final Set potentialOrphans = new HashSet();
+        final Set<Object> potentialOrphans = new HashSet<>();
         Traverser.traverse(source, new Traverser.Visitor()
         {
             public void process(Object o)
@@ -501,14 +501,10 @@ public class GraphComparator
 
         // Remove all target objects from potential orphan map, leaving remaining objects
         // that are no longer referenced in the potentialOrphans map.
-        Traverser.traverse(target, new Traverser.Visitor()
-        {
-            public void process(Object o)
+        Traverser.traverse(target, o -> {
+            if (isIdObject(o, idFetcher))
             {
-                if (isIdObject(o, idFetcher))
-                {
-                    potentialOrphans.remove(idFetcher.getId(o));
-                }
+                potentialOrphans.remove(idFetcher.getId(o));
             }
         });
 
@@ -585,7 +581,7 @@ public class GraphComparator
         }
 
         final String sysId = "(" + System.identityHashCode(delta.srcValue) + ')';
-        final Class compType = delta.targetValue.getClass().getComponentType();
+        final Class<?> compType = delta.targetValue.getClass().getComponentType();
 
         if (isLogicalPrimitive(compType))
         {
@@ -666,15 +662,16 @@ public class GraphComparator
 
     /**
      * Deeply compare two Sets and generate the appropriate 'add' or 'remove' commands
-     * to rectify their differences.
+     * to rectify their differences.  Order of Sets does not matter (two equal Sets do
+     * not have to be in the same order).
      */
     private static void compareSets(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
-        Set srcSet = (Set) delta.srcValue;
-        Set targetSet = (Set) delta.targetValue;
+        Set<?> srcSet = (Set<?>) delta.srcValue;
+        Set<?> targetSet = (Set<?>) delta.targetValue;
 
         // Create ID to Object map for target Set
-        Map targetIdToValue = new HashMap();
+        Map<Object, Object> targetIdToValue = new HashMap<>();
         for (Object targetValue : targetSet)
         {
             if (isIdObject(targetValue, idFetcher))
@@ -683,7 +680,7 @@ public class GraphComparator
             }
         }
 
-        Map srcIdToValue = new HashMap();
+        Map<Object, Object> srcIdToValue = new HashMap<>();
         String sysId = "(" + System.identityHashCode(srcSet) + ").remove(";
         for (Object srcValue : srcSet)
         {
@@ -739,13 +736,13 @@ public class GraphComparator
                 }
             }
         }
-
-        // TODO: If LinkedHashSet, may need to issue commands to reorder...
     }
 
     /**
      * Deeply compare two Maps and generate the appropriate 'put' or 'remove' commands
-     * to rectify their differences.
+     * to rectify their differences.  Order of Maps des not matter from an equality standpoint.
+     * So for example, a TreeMap and a HashMap are considered equal (no Deltas) if they contain
+     * the same entries, regardless of order.
      */
     private static void compareMaps(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
@@ -756,7 +753,7 @@ public class GraphComparator
         // If the key exists in both, then the value must tested for equivalence.  If !equal, then a PUT command
         // is created to re-associate target value to key.
         final String sysId = "(" + System.identityHashCode(srcMap) + ')';
-        for (Map.Entry entry : srcMap.entrySet())
+        for (Map.Entry<Object, Object> entry : srcMap.entrySet())
         {
             Object srcKey = entry.getKey();
             Object srcValue = entry.getValue();
@@ -796,7 +793,7 @@ public class GraphComparator
             }
         }
 
-        for (Map.Entry entry : targetMap.entrySet())
+        for (Map.Entry<Object, Object> entry : targetMap.entrySet())
         {
             Object targetKey = entry.getKey();
             String srcPtr = sysId + "['" + System.identityHashCode(targetKey) + "']";
@@ -808,7 +805,6 @@ public class GraphComparator
                 deltas.add(putDelta);
             }
         }
-        // TODO: If LinkedHashMap, may need to issue commands to reorder...
     }
 
     private static void addMapPutDelta(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, Object key)
@@ -824,8 +820,8 @@ public class GraphComparator
      */
     private static void compareLists(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
     {
-        List srcList = (List) delta.srcValue;
-        List targetList = (List) delta.targetValue;
+        List<Object> srcList = (List<Object>) delta.srcValue;
+        List<Object> targetList = (List<Object>) delta.targetValue;
         int srcLen = srcList.size();
         int targetLen = targetList.size();
 
@@ -907,15 +903,11 @@ public class GraphComparator
     public static List<DeltaError> applyDelta(Object source, List<Delta> commands, final ID idFetcher, DeltaProcessor deltaProcessor, boolean ... failFast)
     {
         // Index all objects in source graph
-        final Map srcMap = new HashMap();
-        Traverser.traverse(source, new Traverser.Visitor()
-        {
-            public void process(Object o)
+        final Map<Object, Object> srcMap = new HashMap<>();
+        Traverser.traverse(source, o -> {
+            if (isIdObject(o, idFetcher))
             {
-                if (isIdObject(o, idFetcher))
-                {
-                    srcMap.put(idFetcher.getId(o), o);
-                }
+                srcMap.put(idFetcher.getId(o), o);
             }
         });
 
@@ -1106,25 +1098,25 @@ public class GraphComparator
 
         public void processSetAdd(Object source, Field field, Delta delta)
         {
-            Set set = (Set) Helper.getFieldValueAs(source, field, Set.class, delta);
+            Set<Object> set = (Set<Object>) Helper.getFieldValueAs(source, field, Set.class, delta);
             set.add(delta.getTargetValue());
         }
 
         public void processSetRemove(Object source, Field field, Delta delta)
         {
-            Set set = (Set) Helper.getFieldValueAs(source, field, Set.class, delta);
+            Set<Object> set = (Set<Object>) Helper.getFieldValueAs(source, field, Set.class, delta);
             set.remove(delta.getSourceValue());
         }
 
         public void processMapPut(Object source, Field field, Delta delta)
         {
-            Map map = (Map) Helper.getFieldValueAs(source, field, Map.class, delta);
+            Map<Object, Object> map = (Map<Object, Object>) Helper.getFieldValueAs(source, field, Map.class, delta);
             map.put(delta.optionalKey, delta.getTargetValue());
         }
 
         public void processMapRemove(Object source, Field field, Delta delta)
         {
-            Map map = (Map) Helper.getFieldValueAs(source, field, Map.class, delta);
+            Map<Object, Object> map = (Map<Object, Object>) Helper.getFieldValueAs(source, field, Map.class, delta);
             map.remove(delta.optionalKey);
         }
 
@@ -1153,7 +1145,7 @@ public class GraphComparator
 
         public void processListSetElement(Object source, Field field, Delta delta)
         {
-            List list = (List) Helper.getFieldValueAs(source, field, List.class, delta);
+            List<Object> list = (List<Object>) Helper.getFieldValueAs(source, field, List.class, delta);
             int pos = Helper.getResizeValue(delta);
             int listLen = list.size();
 

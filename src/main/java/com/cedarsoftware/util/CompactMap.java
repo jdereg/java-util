@@ -291,7 +291,7 @@ public class CompactMap<K, V> implements Map<K, V>
         // size == 1
         if (compareKeys(key, getLogicalSingleKey()))
         {   // Overwrite
-            Object save = getLogicalSingleValue();
+            V save = getLogicalSingleValue();
             if (compareKeys(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[]))
             {
                 val = value;
@@ -300,7 +300,7 @@ public class CompactMap<K, V> implements Map<K, V>
             {
                 val = new CompactMapEntry(key, value);
             }
-            return (V) save;
+            return save;
         }
         else
         {   // CompactMapEntry to []
@@ -318,9 +318,9 @@ public class CompactMap<K, V> implements Map<K, V>
     {
         if (val instanceof Object[])
         {   // 2 to compactSize
+            Object[] entries = (Object[]) val;
             if (size() == 2)
             {   // When at 2 entries, we must drop back to CompactMapEntry or val (use clear() and put() to get us there).
-                Object[] entries = (Object[]) val;
                 if (compareKeys(key, entries[0]))
                 {
                     Object prevValue = entries[1];
@@ -335,12 +335,9 @@ public class CompactMap<K, V> implements Map<K, V>
                     put((K)entries[0], (V)entries[1]);
                     return (V) prevValue;
                 }
-
-                return null;    // not found
             }
             else
             {
-                Object[] entries = (Object[]) val;
                 final int len = entries.length;
                 for (int i = 0; i < len; i += 2)
                 {
@@ -355,9 +352,8 @@ public class CompactMap<K, V> implements Map<K, V>
                         return (V) prior;
                     }
                 }
-
-                return null;    // not found
             }
+            return null;    // not found
         }
         else if (val instanceof Map)
         {   // > compactSize
@@ -392,9 +388,9 @@ public class CompactMap<K, V> implements Map<K, V>
         // size == 1
         if (compareKeys(key, getLogicalSingleKey()))
         {   // found
-            Object save = getLogicalSingleValue();
+            V save = getLogicalSingleValue();
             val = EMPTY_MAP;
-            return (V) save;
+            return save;
         }
         else
         {   // not found
@@ -402,24 +398,24 @@ public class CompactMap<K, V> implements Map<K, V>
         }
     }
 
-    public void putAll(Map<? extends K, ? extends V> m)
+    public void putAll(Map<? extends K, ? extends V> map)
     {
-        if (m == null)
+        if (map == null)
         {
             return;
         }
-        int mSize = m.size();
+        int mSize = map.size();
         if (val instanceof Map || mSize > compactSize())
         {
             if (val == EMPTY_MAP)
             {
                 val = getNewMap(mSize);
             }
-            ((Map) val).putAll(m);
+            ((Map<K, V>) val).putAll(map);
         }
         else
         {
-            for (Entry<? extends K, ? extends V> entry : m.entrySet())
+            for (Entry<? extends K, ? extends V> entry : map.entrySet())
             {
                 put(entry.getKey(), entry.getValue());
             }
@@ -583,15 +579,7 @@ public class CompactMap<K, V> implements Map<K, V>
                 }
 
                 final int size = size();
-                Iterator<K> i = keySet().iterator();
-                while (i.hasNext())
-                {
-                    K key = i.next();
-                    if (!other.containsKey(key))
-                    {
-                        i.remove();
-                    }
-                }
+                keySet().removeIf(key -> !other.containsKey(key));
 
                 return size() != size;
             }
@@ -763,12 +751,12 @@ public class CompactMap<K, V> implements Map<K, V>
         remove(currentEntry.getKey());
     }
 
-    public Map minus(Object removeMe)
+    public Map<K, V> minus(Object removeMe)
     {
         throw new UnsupportedOperationException("Unsupported operation [minus] or [-] between Maps.  Use removeAll() or retainAll() instead.");
     }
 
-    public Map plus(Object right)
+    public Map<K, V> plus(Object right)
     {
         throw new UnsupportedOperationException("Unsupported operation [plus] or [+] between Maps.  Use putAll() instead.");
     }
@@ -1004,8 +992,8 @@ public class CompactMap<K, V> implements Map<K, V>
         }
     }
 
-    final class CompactKeyIterator extends CompactMap.CompactIterator
-            implements Iterator<K> {
+    final class CompactKeyIterator extends CompactMap<K, V>.CompactIterator implements Iterator<K>
+    {
         public final K next() {
             advance();
             if (mapIterator!=null) {
@@ -1016,8 +1004,8 @@ public class CompactMap<K, V> implements Map<K, V>
         }
     }
 
-    final class CompactValueIterator extends CompactMap.CompactIterator
-            implements Iterator<V> {
+    final class CompactValueIterator extends CompactMap<K, V>.CompactIterator implements Iterator<V>
+    {
         public final V next() {
             advance();
             if (mapIterator != null) {
@@ -1030,8 +1018,8 @@ public class CompactMap<K, V> implements Map<K, V>
         }
     }
 
-    final class CompactEntryIterator extends CompactMap.CompactIterator
-            implements Iterator<Map.Entry<K,V>> {
+    final class CompactEntryIterator extends CompactMap<K, V>.CompactIterator implements Iterator<Map.Entry<K,V>>
+    {
         public final Map.Entry<K,V> next() {
             advance();
             if (mapIterator != null) {
@@ -1083,8 +1071,8 @@ public class CompactMap<K, V> implements Map<K, V>
         public V next() { return nextEntry().getValue(); }
     }
 
-    final class CopyEntryIterator extends CompactMap.CopyIterator
-            implements Iterator<Map.Entry<K,V>> {
+    final class CopyEntryIterator extends CompactMap<K, V>.CopyIterator implements Iterator<Map.Entry<K,V>>
+    {
         public Map.Entry<K,V> next() { return nextEntry(); }
     }
 }

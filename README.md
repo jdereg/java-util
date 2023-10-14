@@ -5,7 +5,8 @@ java-util
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
 
-Rare, hard-to-write utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
+Rare, hard-to-write utilities that are thoroughly tested (> 98% code coverage via JUnit tests).  This library has no
+dependencies on other libraries for runtime.  Built purely on JDK.
 
 To include in your project:
 ##### Gradle

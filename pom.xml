@@ -19,12 +19,12 @@
 
     <properties>
         <version.junit>5.10.0</version.junit>
+        <version.assertj>3.24.2</version.assertj>              <!-- testing only -->
         <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
         <version.mockito>5.6.0</version.mockito>          <!-- testing only -->
         <version.mockito.inline>5.2.0</version.mockito.inline>          <!-- testing only -->
-        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
         <version.mockito.inline>5.2.0</version.mockito.inline>          <!-- testing only -->
-        <version.assertj>3.24.2</version.assertj>              <!-- testing only -->
+        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
         <version.plugin.compiler>3.11.0</version.plugin.compiler>
         <version.plugin.gpg>3.1.0</version.plugin.gpg>
         <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
@@ -37,7 +37,6 @@
     </properties>
     
     <profiles>
-
         <profile>
             <id>release-sign-artifacts</id>
             <activation>

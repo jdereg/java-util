@@ -55,14 +55,14 @@ public class UniqueIdGenerator
     private static long previousTimeMilliseconds = 0;
     private static long previousTimeMilliseconds2 = 0;
     private static final int serverId;
-    private static final Map<Long, Long> lastIds = new LinkedHashMap<Long, Long>()
+    private static final Map<Long, Long> lastIds = new LinkedHashMap<>()
     {
         protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
         {
             return size() > 1000;
         }
     };
-    private static final Map<Long, Long> lastIdsFull = new LinkedHashMap<Long, Long>()
+    private static final Map<Long, Long> lastIdsFull = new LinkedHashMap<>()
     {
         protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
         {
@@ -113,7 +113,7 @@ public class UniqueIdGenerator
         }
         catch (NumberFormatException e)
         {
-            System.out.println("Unable to get unique server id or index from environment variable/system property key-value: " + externalVarName + "=" + id);
+            System.err.println("Unable to get unique server id or index from environment variable/system property key-value: " + externalVarName + "=" + id);
             e.printStackTrace(System.err);
             return -1;
         }
@@ -130,7 +130,7 @@ public class UniqueIdGenerator
      * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond
      * <b>with</b> the count at the same position.<br>
      * <br>
-     * This API is slower than the 19 digit API.  Grabbing a bunch of IDs in a tight loop for example, could causes
+     * This API is slower than the 19 digit API.  Grabbing a bunch of IDs in a tight loop for example, could cause
      * delays while it waits for the millisecond to tick over.  This API can return 1,000 unique IDs per millisecond
      * max.<br>
      * <br>
@@ -227,7 +227,7 @@ public class UniqueIdGenerator
     /**
      * Find out when the ID was generated.
      *
-     * @param uniqueId long unique ID that was generated from the the .getUniqueId() API
+     * @param uniqueId long unique ID that was generated from the .getUniqueId() API
      * @return Date when the ID was generated, with the time portion accurate to the millisecond. The time
      * is measured in milliseconds, between the time the id was generated and midnight, January 1, 1970 UTC.
      */
@@ -239,7 +239,7 @@ public class UniqueIdGenerator
     /**
      * Find out when the ID was generated. "19" version.
      *
-     * @param uniqueId long unique ID that was generated from the the .getUniqueId19() API
+     * @param uniqueId long unique ID that was generated from the .getUniqueId19() API
      * @return Date when the ID was generated, with the time portion accurate to the millisecond. The time
      * is measured in milliseconds, between the time the id was generated and midnight, January 1, 1970 UTC.
      */

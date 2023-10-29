@@ -18,21 +18,30 @@
     </developers>
 
     <properties>
+        <!-- Java source, target, and release version -->
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.release>11</maven.compiler.release>
+
+        <!-- testing only -->
         <version.junit>5.10.0</version.junit>
-        <version.assertj>3.24.2</version.assertj>              <!-- testing only -->
-        <version.json.io>4.14.1</version.json.io>           <!-- testing only -->
-        <version.mockito>5.6.0</version.mockito>          <!-- testing only -->
-        <version.mockito.inline>5.2.0</version.mockito.inline>          <!-- testing only -->
-        <version.mockito.inline>5.2.0</version.mockito.inline>          <!-- testing only -->
-        <version.agrona>1.19.2</version.agrona>              <!-- testing only -->
-        <version.plugin.compiler>3.11.0</version.plugin.compiler>
-        <version.plugin.gpg>3.1.0</version.plugin.gpg>
-        <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
+        <version.assertj>3.24.2</version.assertj>
+        <version.json.io>4.14.1</version.json.io>
+        <version.mockito.inline>5.2.0</version.mockito.inline>
+        <version.agrona>1.19.2</version.agrona>
+
+        <!-- release plugin -->
         <version.plugin.nexus>1.6.13</version.plugin.nexus>
-        <version.plugin.surefire>3.1.2</version.plugin.surefire>
+
+        <!-- Build maven-***-plugins -->
+        <version.plugin.gpg>3.1.0</version.plugin.gpg>
+        <version.plugin.compiler>3.11.0</version.plugin.compiler>
+        <version.plugin.javadoc>3.6.0</version.plugin.javadoc>
+        <version.plugin.surefire>3.2.1</version.plugin.surefire>
         <version.plugin.source>3.3.0</version.plugin.source>
         <version.plugin.felix.scr>1.26.4</version.plugin.felix.scr>
         <version.plugin.felix.bundle>5.1.9</version.plugin.felix.bundle>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     
@@ -131,9 +140,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${version.plugin.compiler}</version>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
-                    <release>11</release>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
@@ -200,21 +209,7 @@
 
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>${version.mockito}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>${version.mockito.inline}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-inline</artifactId>
             <version>${version.mockito.inline}</version>
             <scope>test</scope>
         </dependency>
@@ -225,7 +220,6 @@
             <version>${version.assertj}</version>
             <scope>test</scope>
         </dependency>
-
 
         <dependency>
             <groupId>com.cedarsoftware</groupId>

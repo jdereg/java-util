@@ -169,22 +169,44 @@ public final class StringUtilities
 
     public static int count(String s, char c)
     {
-        if (isEmpty(s))
+        return count (s, "" + c);
+    }
+
+    /**
+     * Count the number of times that 'token' occurs within 'content'.
+     * @return int count (0 if it never occurs, null is the source string, or null is the token).
+     */
+    public static int count(CharSequence content, CharSequence token)
+    {
+        if (content == null || token == null)
         {
             return 0;
         }
 
-        final int len = s.length();
-        int count = 0;
-        for (int i = 0; i < len; i++)
+        String source = content.toString();
+        if (source.isEmpty())
         {
-            if (s.charAt(i) == c)
-            {
-                count++;
-            }
+            return 0;
+        }
+        String sub = token.toString();
+        if (sub.isEmpty())
+        {
+            return 0;
         }
 
-        return count;
+        int answer = 0;
+        int idx = 0;
+
+        while (true)
+        {
+            idx = source.indexOf(sub, idx);
+            if (idx < answer)
+            {
+                return answer;
+            }
+            answer = ++answer;
+            idx = ++idx;
+        }
     }
 
     /**

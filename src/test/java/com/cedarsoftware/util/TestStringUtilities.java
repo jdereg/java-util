@@ -376,4 +376,15 @@ public class TestStringUtilities
         assert StringUtilities.hashCodeIgnoreCase(null) == 0;
         assert StringUtilities.hashCodeIgnoreCase("") == 0;
     }
+
+    @Test
+    public void testCount2()
+    {
+        assert 0 == StringUtilities.count("alphabet", null);
+        assert 0 == StringUtilities.count(null, "al");
+        assert 0 == StringUtilities.count("alphabet", "");
+        assert 0 == StringUtilities.count("", "al");
+        assert 1 == StringUtilities.count("alphabet", "al");
+        assert 2 == StringUtilities.count("halal", "al");
+    }
 }

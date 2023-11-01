@@ -11,7 +11,7 @@ This library has <b>no dependencies</b> on other libraries for runtime.
 The`.jar`file is only`144K.`
 Works with`JDK 1.8`through`JDK 21`.
 The classes in the`.jar`file are version 52 (`JDK 1.8`).
-
+---
 To include in your project:
 ##### Gradle
 ```
@@ -26,9 +26,7 @@ implementation 'com.cedarsoftware:java-util:2.2.0'
   <version>2.2.0</version>
 </dependency>
 ```
-
-The java-util jar is about **150K** in size.
-
+---
 
 Since Java 1.5, you can statically import classes.  Using this technique with many of the classes below, it makes their methods directly accessible in your source code, keeping your source code smaller and easier to read.  For example:
 
@@ -79,6 +77,7 @@ Included in java-util:
 
 See [changelog.md](/changelog.md) for revision history.
 
+---
 ### Sponsors
 [![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)
 
@@ -91,4 +90,4 @@ innovative and intelligent tools for profiling Java and .NET applications.
 **Intellij IDEA**<hr>
 
 
-By: John DeRegnaucourt and Ken Partlow
+By: John DeRegnaucourt and Kenny Partlow

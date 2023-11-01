@@ -32,11 +32,6 @@ public final class ExceptionUtilities
      */
     public static void safelyIgnoreException(Throwable t)
     {
-        if (t instanceof ThreadDeath)
-        {
-            throw (ThreadDeath) t;
-        }
-
         if (t instanceof OutOfMemoryError)
         {
             throw (OutOfMemoryError) t;

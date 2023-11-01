@@ -186,17 +186,6 @@ public class TestReflectionUtils
         assertNull(a);
     }
 
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testGetDeclaredFields() throws Exception
-    {
-        List fields = mock(ArrayList.class);
-        when(fields.add(any())).thenThrow(ThreadDeath.class);
-
-        assertThatExceptionOfType(ThreadDeath.class)
-                .isThrownBy(() -> ReflectionUtils.getDeclaredFields(Parent.class, fields));
-    }
-
     @Test
     public void testDeepDeclaredFields() throws Exception
     {

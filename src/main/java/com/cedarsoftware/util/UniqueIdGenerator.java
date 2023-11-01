@@ -40,6 +40,7 @@ import static java.lang.System.currentTimeMillis;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@SuppressWarnings("unchecked")
 public class UniqueIdGenerator
 {
     public static final String JAVA_UTIL_CLUSTERID = "JAVA_UTIL_CLUSTERID";
@@ -168,7 +169,7 @@ public class UniqueIdGenerator
             previousTimeMilliseconds = currentTimeMilliseconds;
         }
 
-        return currentTimeMilliseconds * 100000 + count * 100 + serverId;
+        return currentTimeMilliseconds * 100000 + count * 100L + serverId;
     }
 
     /**
@@ -221,7 +222,7 @@ public class UniqueIdGenerator
             previousTimeMilliseconds2 = currentTimeMilliseconds;
         }
 
-        return currentTimeMilliseconds * 1000000 + count2 * 100 + serverId;
+        return currentTimeMilliseconds * 1000000 + count2 * 100L + serverId;
     }
 
     /**

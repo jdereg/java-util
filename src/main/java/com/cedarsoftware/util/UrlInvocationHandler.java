@@ -91,10 +91,6 @@ public class UrlInvocationHandler implements InvocationHandler
                 // Get the return value of the call
                 result = _strategy.readResponse(c);
             }
-            catch (ThreadDeath e)
-            {
-                throw e;
-            }
             catch (Throwable e)
             {
                 UrlUtilities.readErrorResponse(c);

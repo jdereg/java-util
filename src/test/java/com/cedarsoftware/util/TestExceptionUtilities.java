@@ -37,19 +37,7 @@ public class TestExceptionUtilities
         assertNotNull(con.newInstance());
     }
 
-
-    public void testThreadDeathThrown()
-    {
-        try
-        {
-            ExceptionUtilities.safelyIgnoreException(new ThreadDeath());
-            fail("should not make it here");
-        }
-        catch (ThreadDeath e)
-        {
-        }
-    }
-
+    
     public void testOutOfMemoryErrorThrown()
     {
         try

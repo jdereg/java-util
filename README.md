@@ -6,12 +6,12 @@ java-util
 
 
 Rare, hard-to-write utilities that are thoroughly tested (> 98% code coverage via JUnit tests).  This library has <b>no
-dependencies</b> on other libraries for runtime.  Built purely on JDK.
+dependencies</b> on other libraries for runtime.  Built purely on JDK.  Works with JDK 1.8 through JDK 21.
 
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.1.1'
+implementation 'com.cedarsoftware:java-util:2.2.0'
 ```
 
 ##### Maven
@@ -19,22 +19,12 @@ implementation 'com.cedarsoftware:java-util:2.1.1'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.1.1</version>
+  <version>2.2.0</version>
 </dependency>
 ```
 
-The java-util jar is about 150K in size.
+The java-util jar is about **150K** in size.
 
-### Sponsors
-[![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)
-
-YourKit supports open source projects with its full-featured Java Profiler.
-YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/index.jsp">YourKit Java Profiler</a>
-and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
-innovative and intelligent tools for profiling Java and .NET applications.
-
-<a href="https://www.jetbrains.com/idea/"><img alt="Intellij IDEA from JetBrains" src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" data-canonical-src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" width="100" height="100" /></a>
-**Intellij IDEA**<hr>
 
 Since Java 1.5, you can statically import classes.  Using this technique with many of the classes below, it makes their methods directly accessible in your source code, keeping your source code smaller and easier to read.  For example:
 
@@ -84,5 +74,17 @@ Included in java-util:
 * **UniqueIdGenerator** - Generates unique Java long value, that can be deterministically unique across up to 100 servers in a cluster (if configured with an environment variable), the ids are monotonically increasing, and can generate the ids at a rate of about 10 million per second.  Because the current time to the millisecond is embedded in the id, one can back-calculate when the id was generated.
 
 See [changelog.md](/changelog.md) for revision history.
+
+### Sponsors
+[![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)
+
+YourKit supports open source projects with its full-featured Java Profiler.
+YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/index.jsp">YourKit Java Profiler</a>
+and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
+innovative and intelligent tools for profiling Java and .NET applications.
+
+<a href="https://www.jetbrains.com/idea/"><img alt="Intellij IDEA from JetBrains" src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" data-canonical-src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" width="100" height="100" /></a>
+**Intellij IDEA**<hr>
+
 
 By: John DeRegnaucourt and Ken Partlow

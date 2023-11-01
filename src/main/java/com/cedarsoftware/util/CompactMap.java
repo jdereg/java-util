@@ -609,7 +609,7 @@ public class CompactMap<K, V> implements Map<K, V>
 
     public Set<Entry<K, V>> entrySet()
     {
-        return new AbstractSet<>()
+        return new AbstractSet()
         {
             public Iterator<Entry<K, V>> iterator()
             {

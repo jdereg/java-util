@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import com.cedarsoftware.util.io.JsonReader;
 import com.cedarsoftware.util.io.JsonWriter;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -1941,6 +1942,55 @@ public class TestGraphComparator
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(A, Acopy, getIdFetcher());
         assertEquals(2, deltas.size());
+    }
+
+    @Test
+    public void testSortedAndUnsortedMap()
+    {
+        Map<String, String> map1 = new LinkedHashMap<>();
+        Map<String, String> map2 = new TreeMap<>();
+        map1.put("C", "charlie");
+        map1.put("A", "alpha");
+        map1.put("B", "beta");
+        map2.put("C", "charlie");
+        map2.put("B", "beta");
+        map2.put("A", "alpha");
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(map1, map2, null);
+        assertEquals(0, deltas.size());
+
+        map1 = new TreeMap<>(Comparator.naturalOrder());
+        map1.put("a", "b");
+        map1.put("c", "d");
+        map2 = new TreeMap<>(Comparator.reverseOrder());
+        map2.put("a", "b");
+        map2.put("c", "d");
+        deltas = GraphComparator.compare(map1, map2, null);
+        assertEquals(0, deltas.size());
+    }
+
+    @Test
+    public void testSortedAndUnsortedSet()
+    {
+        SortedSet<String> set1 = new TreeSet<>();
+        Set<String> set2 = new HashSet<>();
+        List<GraphComparator.Delta> deltas =  GraphComparator.compare(set1, set2, null);
+        assertEquals(0, deltas.size());
+
+        set1 = new TreeSet<>();
+        set1.add("a");
+        set1.add("b");
+        set1.add("c");
+        set1.add("d");
+        set1.add("e");
+
+        set2 = new LinkedHashSet<>();
+        set2.add("e");
+        set2.add("d");
+        set2.add("c");
+        set2.add("b");
+        set2.add("a");
+        deltas =  GraphComparator.compare(set1, set2, null);
+        assertEquals(0, deltas.size());
     }
 
     // ----------------------------------------------------------

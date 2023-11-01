@@ -1,4 +1,8 @@
 ### Revision History
+* 2.2.0
+  * Built with JDK 1.8 and runs with JDK 1.8 through JDK 21.
+  * The 2.2.x will continue to maintain JDK 1.8.  The 3.0 branch [not yet created] will be JDK11+
+  * Added tests to verify that `GraphComparator` and `DeepEquals` do not count sorted order of Sets for equivalency.  It does however, require `Collections` that are not `Sets` to be in order.
 * 2.1.1
   * ReflectionUtils skips static fields, speeding it up and remove runtime warning (field SerialVersionUID).  Supports JDK's up through 21.
 * 2.1.0

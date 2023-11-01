@@ -190,7 +190,7 @@ public class TestReflectionUtils
     @Test
     public void testGetDeclaredFields() throws Exception
     {
-        var fields = mock(ArrayList.class);
+        List fields = mock(ArrayList.class);
         when(fields.add(any())).thenThrow(ThreadDeath.class);
 
         assertThatExceptionOfType(ThreadDeath.class)

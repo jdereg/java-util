@@ -1537,7 +1537,7 @@ public class TestCaseInsensitiveMap
 
     private Map.Entry<String, Object> getEntry(final String key, final Object value)
     {
-        return new Map.Entry<>()
+        return new Map.Entry()
         {
             Object myValue = value;
 

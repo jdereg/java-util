@@ -55,16 +55,16 @@ public class UniqueIdGenerator
     private static long previousTimeMilliseconds = 0;
     private static long previousTimeMilliseconds2 = 0;
     private static final int serverId;
-    private static final Map<Long, Long> lastIds = new LinkedHashMap<>()
+    private static final Map<Long, Long> lastIds = new LinkedHashMap()
     {
-        protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
+        protected boolean removeEldestEntry(Map.Entry eldest)
         {
             return size() > 1000;
         }
     };
-    private static final Map<Long, Long> lastIdsFull = new LinkedHashMap<>()
+    private static final Map<Long, Long> lastIdsFull = new LinkedHashMap()
     {
-        protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest)
+        protected boolean removeEldestEntry(Map.Entry eldest)
         {
             return size() > 10000;
         }

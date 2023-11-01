@@ -32,7 +32,7 @@ public class TestCompactMap
     @Test
     public void testSizeAndEmpty()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -67,7 +67,7 @@ public class TestCompactMap
     @Test
     public void testSizeAndEmptyHardOrder()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -103,7 +103,7 @@ public class TestCompactMap
     @Test
     public void testContainsKey()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -145,7 +145,7 @@ public class TestCompactMap
     @Test
     public void testContainsKeyHardOrder()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -193,7 +193,7 @@ public class TestCompactMap
 
     private void testContainsValueHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -230,7 +230,7 @@ public class TestCompactMap
     @Test
     public void testContainsValueHardOrder()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -263,7 +263,7 @@ public class TestCompactMap
     @Test
     public void testGet()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -305,7 +305,7 @@ public class TestCompactMap
     @Test
     public void testGetHardOrder()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -347,7 +347,7 @@ public class TestCompactMap
     @Test
     public void testPutWithOverride()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -370,7 +370,7 @@ public class TestCompactMap
     @Test
     public void testPutWithManyEntries()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -409,7 +409,7 @@ public class TestCompactMap
     @Test
     public void testPutWithManyEntriesHardOrder()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -448,7 +448,7 @@ public class TestCompactMap
     @Test
     public void testPutWithManyEntriesHardOrder2()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -487,7 +487,7 @@ public class TestCompactMap
     @Test
     public void testWeirdPuts()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -515,7 +515,7 @@ public class TestCompactMap
     @Test
     public void testWeirdPuts1()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -549,7 +549,7 @@ public class TestCompactMap
 
     private void testRemoveHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -599,7 +599,7 @@ public class TestCompactMap
     @Test
     public void testPutAll()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -653,7 +653,7 @@ public class TestCompactMap
     @Test
     public void testClear()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -676,7 +676,7 @@ public class TestCompactMap
     @Test
     public void testKeySetEmpty()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -717,7 +717,7 @@ public class TestCompactMap
     @Test
     public void testKeySet1Item()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -756,7 +756,7 @@ public class TestCompactMap
     @Test
     public void testKeySet1ItemHardWay()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -796,7 +796,7 @@ public class TestCompactMap
     @Test
     public void testKeySetMultiItem()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -841,7 +841,7 @@ public class TestCompactMap
     @Test
     public void testKeySetMultiItem2()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey()
             {
@@ -904,7 +904,7 @@ public class TestCompactMap
 
     private void testKeySetMultiItemReverseRemoveHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -961,7 +961,7 @@ public class TestCompactMap
 
     private void testKeySetMultiItemForwardRemoveHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1015,7 +1015,7 @@ public class TestCompactMap
 
     private void testKeySetToObjectArrayHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1064,7 +1064,7 @@ public class TestCompactMap
 
     private void testKeySetToTypedObjectArrayHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1123,7 +1123,7 @@ public class TestCompactMap
     @Test
     public void testAddToKeySet()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -1160,7 +1160,7 @@ public class TestCompactMap
 
     private void testKeySetContainsAllHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1190,7 +1190,7 @@ public class TestCompactMap
 
     private void testKeySetRetainAllHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1228,7 +1228,7 @@ public class TestCompactMap
 
     private void testKeySetRemoveAllHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1267,7 +1267,7 @@ public class TestCompactMap
     @Test
     public void testKeySetClear()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "field"; }
             protected int compactSize() { return 3; }
@@ -1292,7 +1292,7 @@ public class TestCompactMap
 
     private void testValuesHelper(final String singleKey)
     {
-        CompactMap<String, Object> map = new CompactMap<>()
+        CompactMap<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1346,7 +1346,7 @@ public class TestCompactMap
 
     private void testValuesHardWayHelper(final String singleKey)
     {
-        CompactMap<String, Object> map = new CompactMap<>()
+        CompactMap<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1413,7 +1413,7 @@ public class TestCompactMap
 
     private void testValuesWith1Helper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -1452,7 +1452,7 @@ public class TestCompactMap
     @Test
     public void testValuesClear()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -1477,7 +1477,7 @@ public class TestCompactMap
     @SuppressWarnings("unchecked")
     private void testWithMapOnRHSHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1538,7 +1538,7 @@ public class TestCompactMap
 
     private void testWithObjectArrayOnRHSHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 2; }
@@ -1584,7 +1584,8 @@ public class TestCompactMap
     @Test
     public void testWithObjectArrayOnRHS1()
     {
-        CompactMap<String, Object> map = new CompactMap<>()
+
+        CompactMap<String, Object> map = new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 2; }
@@ -1618,7 +1619,7 @@ public class TestCompactMap
 
     private void testRemove2To1WithNoMapOnRHSHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
@@ -1643,7 +1644,7 @@ public class TestCompactMap
     @SuppressWarnings("unchecked")
     private void testRemove2To1WithMapOnRHSHelper(final String singleKey)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
@@ -1675,7 +1676,7 @@ public class TestCompactMap
 
     private void testEntrySetHelper(final String singleKey, final int compactSize)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
@@ -1743,7 +1744,7 @@ public class TestCompactMap
 
     private void testEntrySetIteratorHelper(final String singleKey, final int compactSize)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
@@ -1798,7 +1799,7 @@ public class TestCompactMap
 
     private void testEntrySetIteratorHardWayHelper(final String singleKey, final int compactSize)
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return compactSize; }
@@ -1881,7 +1882,7 @@ public class TestCompactMap
     @Test
     public void testCompactEntry()
     {
-        CompactMap<String, Object> map = new CompactMap<>()
+        CompactMap<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -1895,7 +1896,7 @@ public class TestCompactMap
     @Test
     public void testEntrySetClear()
     {
-        Map<String, Object> map = new CompactMap<>()
+        Map<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -1911,7 +1912,7 @@ public class TestCompactMap
     @Test
     public void testUsingCompactEntryWhenMapOnRHS()
     {
-        CompactMap<String, Object> map = new CompactMap<>()
+        CompactMap<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -1934,7 +1935,7 @@ public class TestCompactMap
 
     private void testEntryValueOverwriteHelper(final String singleKey)
     {
-        CompactMap<String, Object> map = new CompactMap<>()
+        CompactMap<String, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1959,7 +1960,7 @@ public class TestCompactMap
 
     private void testEntryValueOverwriteMultipleHelper(final String singleKey)
     {
-        CompactMap<String, Integer> map = new CompactMap<>()
+        CompactMap<String, Integer> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -1996,7 +1997,7 @@ public class TestCompactMap
     @Test
     public void testMinus()
     {
-        CompactMap<String, Integer> map = new CompactMap<>()
+        CompactMap<String, Integer> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -2027,7 +2028,7 @@ public class TestCompactMap
 
     private void testHashCodeAndEqualsHelper(final String singleKey)
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected int compactSize() { return 3; }
@@ -2066,7 +2067,7 @@ public class TestCompactMap
     @Test
     public void testCaseInsensitiveMap()
     {
-        CompactMap<String, Integer> map = new CompactMap<>()
+        CompactMap<String, Integer> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected Map<String, Integer> getNewMap() { return new CaseInsensitiveMap<>(); }
@@ -2105,7 +2106,7 @@ public class TestCompactMap
 
     private void testNullHandlingHelper(final String singleKey)
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected int compactSize() { return 3; }
@@ -2138,7 +2139,7 @@ public class TestCompactMap
 
     private void testCaseInsensitiveHelper(final String singleKey)
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
@@ -2234,7 +2235,7 @@ public class TestCompactMap
 
     private void testCaseInsensitiveHardwayHelper(final String singleKey)
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(); }
@@ -2321,7 +2322,7 @@ public class TestCompactMap
 
     private void testCaseInsensitiveIntegerHelper(final Integer singleKey)
     {
-        CompactMap<Integer, String> map = new CompactMap<>()
+        CompactMap<Integer, String> map= new CompactMap()
         {
             protected Integer getSingleValueKey() { return 16; }
             protected Map<Integer, String> getNewMap() { return new CaseInsensitiveMap<>(); }
@@ -2361,7 +2362,7 @@ public class TestCompactMap
 
     private void testCaseInsensitiveIntegerHardWayHelper(final Integer singleKey)
     {
-        CompactMap<Integer, String> map = new CompactMap<>()
+        CompactMap<Integer, String> map= new CompactMap()
         {
             protected Integer getSingleValueKey() { return 16; }
             protected Map<Integer, String> getNewMap() { return new CaseInsensitiveMap<>(); }
@@ -2405,7 +2406,7 @@ public class TestCompactMap
 
     public void testContainsHelper(final String singleKey, final int size)
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, String> getNewMap() { return new HashMap<>(); }
@@ -2453,7 +2454,7 @@ public class TestCompactMap
 
     public void testRetainOrderHelper(final String singleKey, final int size)
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(); }
@@ -2495,7 +2496,7 @@ public class TestCompactMap
     @Test
     public void testBadNoArgConstructor()
     {
-        CompactMap<String, Object> map = new CompactMap<>();
+        CompactMap<String, Object> map= new CompactMap();
         assert "key".equals(map.getSingleValueKey());
         assert map.getNewMap() instanceof HashMap;
         
@@ -2522,7 +2523,7 @@ public class TestCompactMap
     @Test
     public void testEqualsDifferingInArrayPortion()
     {
-        CompactMap<String, String> map = new CompactMap<>()
+        CompactMap<String, String> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "key1"; }
             protected Map<String, String> getNewMap() { return new HashMap<>(); }
@@ -2550,7 +2551,7 @@ public class TestCompactMap
     @Test
     public void testIntegerKeysInDefaultMap()
     {
-        CompactMap<Integer, Integer> map = new CompactMap<>();
+        CompactMap<Integer, Integer> map= new CompactMap();
         map.put(6, 10);
         Object key = map.getSingleValueKey();
         assert key instanceof String;   // "key" is the default
@@ -2700,7 +2701,7 @@ public class TestCompactMap
     @Test
     public void testCaseInsensitiveEntries2()
     {
-        CompactMap<Object, Object> map = new CompactMap<>()
+        CompactMap<Object, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -2718,7 +2719,7 @@ public class TestCompactMap
     @Test
     public void testIdentityEquals()
     {
-        Map<String, Object> compact = new CompactMap<>();
+        Map<String, Object> compact= new CompactMap();
         compact.put("foo", "bar");
         assert compact.equals(compact);
     }
@@ -2726,7 +2727,7 @@ public class TestCompactMap
     @Test
     public void testCI()
     {
-        CompactMap<Object, Object> map = new CompactMap<>()
+        CompactMap<Object, Object> map= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -2744,7 +2745,7 @@ public class TestCompactMap
     @Test
     public void testWrappedTreeMap()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
@@ -2768,7 +2769,7 @@ public class TestCompactMap
     @Test
     public void testMultipleSortedKeysetIterators()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
@@ -2805,7 +2806,7 @@ public class TestCompactMap
     @Test
     public void testMultipleSortedValueIterators()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
@@ -2842,7 +2843,7 @@ public class TestCompactMap
     @Test
     public void testMultipleSortedEntrySetIterators()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
@@ -2879,7 +2880,7 @@ public class TestCompactMap
     @Test
     public void testMultipleNonSortedKeysetIterators()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new HashMap<>(); }
@@ -2916,7 +2917,7 @@ public class TestCompactMap
     @Test
     public void testMultipleNonSortedValueIterators()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new HashMap<>(); }
@@ -2953,7 +2954,7 @@ public class TestCompactMap
     @Test
     public void testMultipleNonSortedEntrySetIterators()
     {
-        CompactMap<String, String> m = new CompactMap<>()
+        CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new HashMap<>(); }
@@ -2990,7 +2991,7 @@ public class TestCompactMap
     @Test
     public void testKeySetRemoveAll2()
     {
-        CompactMap<Object, Object> m = new CompactMap<>()
+        CompactMap<Object, Object> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3024,7 +3025,7 @@ public class TestCompactMap
     @Test
     public void testEntrySetContainsAll()
     {
-        CompactMap<Object, Object> m = new CompactMap<>()
+        CompactMap<Object, Object> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3051,7 +3052,7 @@ public class TestCompactMap
     @Test
     public void testEntrySetRemoveAll()
     {
-        CompactMap<Object, Object> m = new CompactMap<>()
+        CompactMap<Object, Object> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3091,7 +3092,7 @@ public class TestCompactMap
     @Test
     public void testEntrySetRetainAll()
     {
-        CompactMap<Object, Object> m = new CompactMap<>()
+        CompactMap<Object, Object> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3121,7 +3122,7 @@ public class TestCompactMap
     @Test
     public void testPutAll2()
     {
-        CompactMap<String, Object> stringMap = new CompactMap<>()
+        CompactMap<String, Object> stringMap= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3144,7 +3145,7 @@ public class TestCompactMap
         assertEquals("four", stringMap.get("three"));
         assertEquals("Eight", stringMap.get("seven"));
 
-        CompactMap<String, Object> a = new CompactMap<>()
+        CompactMap<String, Object> a= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3157,7 +3158,7 @@ public class TestCompactMap
     @Test
     public void testKeySetRetainAll2()
     {
-        CompactMap<Object, Object> m = new CompactMap<>()
+        CompactMap<Object, Object> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3177,7 +3178,7 @@ public class TestCompactMap
         assertTrue(s.contains("three"));
         assertTrue(m.containsKey("three"));
 
-        m = new CompactMap<>()
+        m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3203,11 +3204,11 @@ public class TestCompactMap
     public void testEqualsWithNullOnRHS()
     {
         // Must have 2 entries and <= compactSize() in the 2 maps:
-        Map<String, Object> compact = new CompactMap<>();
+        Map<String, Object> compact= new CompactMap();
         compact.put("foo", null);
         compact.put("bar", null);
         assert compact.hashCode() != 0;
-        Map<String, Object> compact2 = new CompactMap<>();
+        Map<String, Object> compact2= new CompactMap();
         compact2.put("foo", null);
         compact2.put("bar", null);
         assert compact.equals(compact2);
@@ -3225,14 +3226,14 @@ public class TestCompactMap
     @Test
     public void testToStringOnEmptyMap()
     {
-        Map<String, Object> compact = new CompactMap<>();
+        Map<String, Object> compact= new CompactMap();
         assert compact.toString().equals("{}");
     }
 
     @Test
     public void testToStringDoesNotRecurseInfinitely()
     {
-        Map<Object, Object> compact = new CompactMap<>();
+        Map<Object, Object> compact= new CompactMap();
         compact.put("foo", compact);
         assert compact.toString() != null;
         assert compact.toString().contains("this Map");
@@ -3299,7 +3300,7 @@ public class TestCompactMap
     @Test
     public void testEntrySetEquals()
     {
-        CompactMap<Object, Object> m = new CompactMap<>()
+        CompactMap<Object, Object> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3342,7 +3343,7 @@ public class TestCompactMap
         s4.add(getEntry("five","Six"));
         assertEquals(s, s4);
 
-        CompactMap<String, Object> secondStringMap = new CompactMap<>()
+        CompactMap<String, Object> secondStringMap= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3478,7 +3479,7 @@ public class TestCompactMap
             for (int i = lower; i < upper; i++)
             {
                 compactSize[0] = i;
-                CompactMap<String, Integer> map = new CompactMap<>()
+                CompactMap<String, Integer> map= new CompactMap()
                 {
                     protected String getSingleValueKey()
                     {

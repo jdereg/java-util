@@ -222,7 +222,13 @@ public final class ReflectionUtils
                 }
                 else
                 {
-                    field.trySetAccessible();
+                    // JDK11+ field.trySetAccessible();
+                    try
+                    {
+                        field.setAccessible(true);
+                    }
+                    catch(Exception e) { }
+                    // JDK11+
                     fields.add(field);
                 }
             }

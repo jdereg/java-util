@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>jar</packaging>
-    <version>2.1.2-SNAPSHOT</version>
+    <version>2.2.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -19,15 +19,15 @@
 
     <properties>
         <!-- Java source, target, and release version -->
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+<!--        <maven.compiler.release>11</maven.compiler.release>-->
 
         <!-- testing only -->
         <version.junit>5.10.0</version.junit>
         <version.assertj>3.24.2</version.assertj>
         <version.json.io>4.14.1</version.json.io>
-        <version.mockito.inline>5.2.0</version.mockito.inline>
+        <version.mockito.inline>4.11.0</version.mockito.inline>
         <version.agrona>1.19.2</version.agrona>
 
         <!-- release plugin -->

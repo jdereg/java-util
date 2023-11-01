@@ -71,7 +71,7 @@ public class TestCompactSet
     {
         try
         {
-            new CompactSet<>() { protected int compactSize() { return 1; } };
+            new CompactSet() { protected int compactSize() { return 1; } };
             fail();
         }
         catch (IllegalStateException e) { }
@@ -126,7 +126,7 @@ public class TestCompactSet
         assert set.contains(true);
         assert set.contains(null);
 
-        set = new CompactSet<>() { protected boolean isCaseInsensitive() { return true; } };
+        set = new CompactSet() { protected boolean isCaseInsensitive() { return true; } };
         assert set.add(16);
         assert set.add("Foo");
         assert set.add(true);

@@ -4,7 +4,6 @@ java-util
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util)
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
-
 Rare, hard-to-find utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
 Available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cjava-util). 
 This library has <b>no dependencies</b> on other libraries for runtime.

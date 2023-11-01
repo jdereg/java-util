@@ -5,8 +5,12 @@ java-util
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
 
-Rare, hard-to-write utilities that are thoroughly tested (> 98% code coverage via JUnit tests).  This library has <b>no
-dependencies</b> on other libraries for runtime.  Built purely on JDK.  Works with JDK 1.8 through JDK 21.
+Rare, hard-to-find utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
+Available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cjava-util). 
+This library has <b>no dependencies</b> on other libraries for runtime.
+The`.jar`file is only`144K.`
+Works with`JDK 1.8`through`JDK 21`.
+The classes in the`.jar`file are version 52 (`JDK 1.8`).
 
 To include in your project:
 ##### Gradle

@@ -7,7 +7,7 @@ java-util
 Rare, hard-to-find utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
 Available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cjava-util). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is only`144K.`
+The`.jar`file is only`148K.`
 Works with`JDK 1.8`through`JDK 21`.
 The classes in the`.jar`file are version 52 (`JDK 1.8`).
 

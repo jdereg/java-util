@@ -15,7 +15,7 @@ The classes in the`.jar`file are version 52 (`JDK 1.8`).
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.2.0'
+implementation 'com.cedarsoftware:java-util:2.3.0'
 ```
 
 ##### Maven
@@ -23,7 +23,7 @@ implementation 'com.cedarsoftware:java-util:2.2.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.2.0</version>
+  <version>2.3.0</version>
 </dependency>
 ```
 ---
@@ -63,6 +63,9 @@ Included in java-util:
 * **Converter** - Convert from one instance to another.  For example, `convert("45.3", BigDecimal.class)` will convert the `String` to a `BigDecimal`.  Works for all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`, `BigInteger`, `AtomicBoolean`, `AtomicLong`, etc.  The method is very generous on what it allows to be converted.  For example, a `Calendar` instance can be input for a `Date` or `Long`.  Examine source to see all possibilities.
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, `y/m/d` and `m/d/y` ordering as well.
 * **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an `equals()` method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.  Has options to turn on/off using `.equals()` methods that may exist on classes.
+* **IO**
+  * **FastReader** - Works like `BufferedReader` and `PushbackReader` without the synchronization.  Tracks `line` and `col` by watching for `0x0a,` which can be useful when reading text/json/xml files. You can `.pushback()` a character read, which is very useful in parsers.  
+  * **FastWriter** - Works like `BufferedWriter` without the synchronization.  
 * **EncryptionUtilities** - Makes it easy to compute MD5, SHA-1, SHA-256, SHA-512 checksums for `Strings`, `byte[]`, as well as making it easy to AES-128 encrypt `Strings` and `byte[]`'s.
 * **Executor** - One line call to execute operating system commands.  `Executor executor = new Executor(); executor.exec('ls -l');`  Call `executor.getOut()` to fetch the output, `executor.getError()` retrieve error output.  If a -1 is returned, there was an error.
 * **FastByteArrayOutputStream** - Unlike the JDK `ByteArrayOutputStream`, `FastByteArrayOutputStream` is 1) not `synchronized`, and 2) allows access to it's internal `byte[]` eliminating the duplication of the `byte[]` when `toByteArray()` is called.

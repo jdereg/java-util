@@ -131,7 +131,7 @@ public class ClassUtilities
      * Compare two primitives.
      * @return 0 if they are the same, -1 if not.  Primitive wrapper classes are consider the same as primitive classes.
      */
-    public static int comparePrimitiveToWrapper(Class<?> source, Class<?> destination)
+    private static int comparePrimitiveToWrapper(Class<?> source, Class<?> destination)
     {
         try
         {
@@ -139,7 +139,7 @@ public class ClassUtilities
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Error while attempting comparison of primitive types: " + source.getName() + " vs " + destination.getName(), e);
+            return -1;
         }
     }
 }

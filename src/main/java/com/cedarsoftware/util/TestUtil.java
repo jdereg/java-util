@@ -1,5 +1,10 @@
 package com.cedarsoftware.util;
 
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 /**
  * Useful Test utilities for common tasks
  *
@@ -76,4 +81,17 @@ public class TestUtil
         return true;
     }
 
+    public static String fetchResource(String name)
+    {
+        try
+        {
+            URL url = TestUtil.class.getResource("/" + name);
+            Path resPath = Paths.get(url.toURI());
+            return new String(Files.readAllBytes(resPath));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
 }

@@ -2,7 +2,11 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
@@ -12,7 +16,7 @@ public class TestIO
     @Test
     public void testFastReader() throws Exception
     {
-        String content = TestUtilTest.fetchResource("prettyPrint.json");
+        String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
         assert reader.read() == '{';
@@ -54,7 +58,7 @@ public class TestIO
     @Test
     public void testFastWriter() throws Exception
     {
-        String content = TestUtilTest.fetchResource("prettyPrint.json");
+        String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
 
@@ -77,7 +81,7 @@ public class TestIO
     @Test
     public void testFastWriterCharBuffer() throws Exception
     {
-        String content = TestUtilTest.fetchResource("prettyPrint.json");
+        String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
 
@@ -100,7 +104,7 @@ public class TestIO
     @Test
     public void testFastWriterString() throws Exception
     {
-        String content = TestUtilTest.fetchResource("prettyPrint.json");
+        String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
 

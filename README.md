@@ -7,7 +7,7 @@ java-util
 Rare, hard-to-find utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
 Available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cjava-util). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is only`148K.`
+The`.jar`file is only`152K.`
 Works with`JDK 1.8`through`JDK 21`.
 The classes in the`.jar`file are version 52 (`JDK 1.8`).
 
@@ -15,7 +15,7 @@ The classes in the`.jar`file are version 52 (`JDK 1.8`).
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.3.0'
+implementation 'com.cedarsoftware:java-util:2.4.0'
 ```
 
 ##### Maven
@@ -23,7 +23,7 @@ implementation 'com.cedarsoftware:java-util:2.3.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.3.0</version>
+  <version>2.4.0</version>
 </dependency>
 ```
 ---
@@ -47,6 +47,9 @@ String s = convertToString(atomicLong)
 Included in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays `[]`
 * **ByteUtilities** - Useful routines for converting `byte[]` to HEX character `[]` and visa-versa.
+* **ClassUtilities** - Useful utilities for Class work. For example, call `computeInheritanceDistance(source, destination)` to get the inheritance distance (number of super class steps to make it from source to destination. It will return the distance as an integer.  If there is no inheritance relationship between the two,
+then -1 is returned.  The primitives and primitive wrappers return 0 distance as if they are the
+same class.
 * **Sets**
   * **CompactSet** - Small memory footprint `Set` that expands to a `HashSet` when `size() > compactSize()`.
   * **CompactLinkedSet** - Small memory footprint `Set` that expands to a `LinkedHashSet` when `size() > compactSize()`.
@@ -59,6 +62,7 @@ Included in java-util:
   * **CompactCILinkedMap** - Small memory footprint `Map` that expands to a case-insensitive `LinkedHashMap` when `size() > compactSize()` entries.
   * **CompactCIHashMap** - Small memory footprint `Map` that expands to a case-insensitive `HashMap` when `size() > compactSize()` entries.      
   * **CaseInsensitiveMap** - `Map` that ignores case when `Strings` are used as keys.
+  * **LRUCache** - Thread safe LRUCache that implements the full Map API and supports a maximum capacity.  Once max capacity is reached, placing another item in the cache will cause the eviction of the item that was the least recently used (LRU).
   * **TrackingMap** - `Map` class that tracks when the keys are accessed via `.get()` or `.containsKey()`. Provided by @seankellner
 * **Converter** - Convert from one instance to another.  For example, `convert("45.3", BigDecimal.class)` will convert the `String` to a `BigDecimal`.  Works for all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`, `BigInteger`, `AtomicBoolean`, `AtomicLong`, etc.  The method is very generous on what it allows to be converted.  For example, a `Calendar` instance can be input for a `Date` or `Long`.  Examine source to see all possibilities.
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, `y/m/d` and `m/d/y` ordering as well.

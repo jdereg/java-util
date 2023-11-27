@@ -122,24 +122,36 @@ public class FastByteArrayOutputStream extends OutputStream
         size += 1;
     }
 
+
     /**
      * Writes <code>len</code> bytes from the specified byte array
      * starting at offset <code>off</code> to this stream.
      *
+     * @author Zeel Ravalani
      * @param bytes byte[] the data to write to this stream.
      * @param offset the start offset in the data.
      * @param len the number of bytes to write.
+     * @throws IndexOutOfBoundsException If the specified offset or length is invalid.
      */
-    public void write(byte[] bytes, int offset, int len)
-    {
-        if (bytes == null)
-        {
+    public void write(byte[] bytes, int offset, int len) {
+        // Check for null byte array
+        if (bytes == null) {
             return;
         }
-        if ((offset < 0) || (offset > bytes.length) || (len < 0) || ((offset + len) - bytes.length > 0))
-        {
+
+        // Introduce explaining variables for better readability
+        boolean isOffsetNegative = offset < 0;                    // Check if the offset is negative
+        boolean isOffsetTooLarge = offset > bytes.length;          // Check if the offset is beyond the array size
+        boolean isLengthNegative = len < 0;                        // Check if the length is negative
+        boolean isEndOffsetTooLarge = (offset + len) > bytes.length; // Check if the end offset is beyond the array size
+
+        // Check for invalid offset or length
+        if (isOffsetNegative || isOffsetTooLarge || isLengthNegative || isEndOffsetTooLarge) {
+            // Throw an exception with details about the invalid offset or length
             throw new IndexOutOfBoundsException("offset=" + offset + ", len=" + len + ", bytes.length=" + bytes.length);
         }
+
+        // Ensure capacity and copy bytes to buffer
         ensureCapacity(size + len);
         System.arraycopy(bytes, offset, buffer, size, len);
         size += len;

@@ -608,28 +608,63 @@ public class DeepEquals
         return a.get() == b.get();
     }
 
-    private static boolean compareNumbers(Number a, Number b)
-    {
-        if (a instanceof Float && (b instanceof Float || b instanceof Double))
-        {
-            return compareFloatingPointNumbers(a, b, floatEplison);
+    /**
+     * Utility method for comparing numbers with a refactored complex conditional implementation smell.
+     * Detection performed by DesigniteJava.
+     *
+     * @author Zeel Ravalani
+     *
+     * Compares two numbers.
+     * @param a The first number.
+     * @param b The second number.
+     * @return True if the numbers are equal, false otherwise.
+     */
+    private static boolean compareNumbers(Number a, Number b) {
+        if (isFloatingPointComparison(a, b)) {
+            return compareFloatingPointNumbers(a, b, getEpsilon(a));
+        } else {
+            return compareBigDecimalNumbers(a, b);
         }
-        else if (a instanceof Double && (b instanceof Float || b instanceof Double))
-        {
-            return compareFloatingPointNumbers(a, b, doubleEplison);
-        }
+    }
 
-        try
-        {
+    /**
+     * Checks if the comparison involves floating-point numbers.
+     *
+     * @param a The first number.
+     * @param b The second number.
+     * @return True if both numbers are floating-point, false otherwise.
+     */
+    private static boolean isFloatingPointComparison(Number a, Number b) {
+        return (a instanceof Float || a instanceof Double) && (b instanceof Float || b instanceof Double);
+    }
+
+    /**
+     * Gets the epsilon value for floating-point comparison.
+     *
+     * @param number The number for which epsilon is determined.
+     * @return The epsilon value.
+     */
+    private static double getEpsilon(Number number) {
+        return (number instanceof Float) ? floatEplison : doubleEplison;
+    }
+
+    /**
+     * Compares two numbers using BigDecimal.
+     *
+     * @param a The first number.
+     * @param b The second number.
+     * @return True if the numbers are equal, false otherwise.
+     */
+    private static boolean compareBigDecimalNumbers(Number a, Number b) {
+        try {
             BigDecimal x = convert2BigDecimal(a);
             BigDecimal y = convert2BigDecimal(b);
-            return x.compareTo(y) == 0.0;
-        }
-        catch (Exception e)
-        {
+            return x.compareTo(y) == 0;
+        } catch (Exception e) {
             return false;
         }
     }
+
 
     /**
      * Compare if two floating point numbers are within a given range

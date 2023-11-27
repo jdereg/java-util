@@ -68,9 +68,9 @@ public class GraphComparator
         private Object targetValue;
         private Object optionalKey;
         private Command cmd;
+        private String error; // Variable pulled up from DeltaError class
 
-        public Delta(Object id, String fieldName, String srcPtr, Object srcValue, Object targetValue, Object optKey)
-        {
+        public Delta(Object id, String fieldName, String srcPtr, Object srcValue, Object targetValue, Object optKey) {
             this.id = id;
             this.fieldName = fieldName;
             this.srcPtr = srcPtr;
@@ -139,6 +139,14 @@ public class GraphComparator
             this.cmd = cmd;
         }
 
+        public String getError() {
+            return error;
+        }
+
+        public void setError(String error) {
+            this.error = error;
+        }
+
         public String toString()
         {
             return "Delta {" +
@@ -148,7 +156,8 @@ public class GraphComparator
                     ", srcValue=" + srcValue +
                     ", targetValue=" + targetValue +
                     ", optionalKey=" + optionalKey +
-                    ", cmd='" + cmd + '\'' +
+                    ", cmd='" + cmd +
+                    ", error='" + error + '\'' +
                     '}';
         }
 
@@ -222,20 +231,20 @@ public class GraphComparator
         }
     }
 
+    /**
+     * Refactoring was performed to enhance code organization and eliminate redundancy.
+     * By pulling up the 'error' variable from the 'DeltaError' subclass to the 'Delta' superclass,
+     * common properties are centralized, promoting a more cohesive and maintainable design.
+     * This refactoring simplifies the codebase, avoids duplication, and ensures a cleaner
+     * implementation within the 'Delta' class.
+     */
     public static class DeltaError extends Delta
     {
         private static final long serialVersionUID = 6248596026486571238L;
-        public String error;
 
         public DeltaError(String error, Delta delta)
         {
             super(delta.getId(), delta.fieldName, delta.srcPtr, delta.srcValue, delta.targetValue, delta.optionalKey);
-            this.error = error;
-        }
-
-        public String getError()
-        {
-            return error;
         }
 
         public String toString(){

@@ -1495,35 +1495,79 @@ public final class Converter
         return convertToAtomicBoolean(fromInstance);
     }
 
-    /**
-     * Convert from the passed in instance to an AtomicBoolean.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
-     */
-    public static AtomicBoolean convertToAtomicBoolean(Object fromInstance)
-    {
-        if (fromInstance instanceof String)
-        {
-            if (StringUtilities.isEmpty((String)fromInstance))
-            {
-                return new AtomicBoolean(false);
-            }
-            String value = (String)  fromInstance;
-            return new AtomicBoolean("true".equalsIgnoreCase(value));
+    public interface AtomicBooleanConverter {
+        AtomicBoolean convert(Object fromInstance);
+    }
+
+    public static class StringConverter implements AtomicBooleanConverter {
+        @Override
+        public AtomicBoolean convert(Object fromInstance) {
+            String stringValue = (String) fromInstance;
+            return new AtomicBoolean(!StringUtilities.isEmpty(stringValue) && "true".equalsIgnoreCase(stringValue));
         }
-        else if (fromInstance instanceof AtomicBoolean)
-        {   // return a clone of the AtomicBoolean because it is mutable
-            return new AtomicBoolean(((AtomicBoolean)fromInstance).get());
+    }
+
+    public static class AtomicBooleanConverterWrapper implements AtomicBooleanConverter {
+        @Override
+        public AtomicBoolean convert(Object fromInstance) {
+            return new AtomicBoolean(((AtomicBoolean) fromInstance).get());
         }
-        else if (fromInstance instanceof Boolean)
-        {
+    }
+
+    public static class BooleanConverter implements AtomicBooleanConverter {
+        @Override
+        public AtomicBoolean convert(Object fromInstance) {
             return new AtomicBoolean((Boolean) fromInstance);
         }
-        else if (fromInstance instanceof Number)
-        {
-            return new AtomicBoolean(((Number)fromInstance).longValue() != 0);
+    }
+
+    public static class NumberConverter implements AtomicBooleanConverter {
+        @Override
+        public AtomicBoolean convert(Object fromInstance) {
+            return new AtomicBoolean(((Number) fromInstance).longValue() != 0);
         }
-        nope(fromInstance, "AtomicBoolean");
-        return null;
+    }
+
+    /**
+     * Converts the given object to an AtomicBoolean using a polymorphic approach.
+     * This refactoring was necessary to replace the if-else conditional checks
+     * with a more maintainable and extensible polymorphic solution. The conversion logic
+     * for each type is encapsulated in separate converter classes, improving readability
+     * and easing the addition of new types in the future.
+     *
+     * Original Comment:
+     * Converts various types to AtomicBoolean. Handles String, AtomicBoolean, Boolean,
+     * and Number types, providing a consistent way to create AtomicBoolean instances.
+     *
+     * @author Zeel Ravalani
+     * @param fromInstance The object to be converted to AtomicBoolean.
+     * @return AtomicBoolean instance or null if conversion is not supported for the given type.
+     */
+    public static AtomicBoolean convertToAtomicBoolean(Object fromInstance) {
+        AtomicBooleanConverter converter = createConverter(fromInstance);
+        return (converter != null) ? converter.convert(fromInstance) : null;
+    }
+
+    /**
+     * Creates the appropriate converter for the given object type.
+     *
+     * @author Zeel Ravalani
+     * @param fromInstance The object for which to create a converter.
+     * @return The converter for the given object type, or null if not supported.
+     */
+    private static AtomicBooleanConverter createConverter(Object fromInstance) {
+        if (fromInstance instanceof String) {
+            return new StringConverter();
+        } else if (fromInstance instanceof AtomicBoolean) {
+            return new AtomicBooleanConverterWrapper();
+        } else if (fromInstance instanceof Boolean) {
+            return new BooleanConverter();
+        } else if (fromInstance instanceof Number) {
+            return new NumberConverter();
+        } else {
+            nope(fromInstance, "AtomicBoolean");
+            return null;
+        }
     }
 
     private static String nope(Object fromInstance, String targetType)

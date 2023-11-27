@@ -35,15 +35,18 @@ public class MapUtilities
      *
      * @param map Map to retrieve item from
      * @param key the key whose associated value is to be returned
-     * @param def value to return if item was not found.
+     * @param defaultValue value to return if item was not found.
      * @return Returns a string value that was found at the location key.
      * If the item is null then the def value is sent back.
      * If the item is not the expected type, an exception is thrown.
+     *
+     * <p>The parameter 'def' is renamed to 'defaultValue' for better readability and clarity.
+     * It represents the value to be returned if the item is not found in the map.</p>
      */
-    public static <T> T get(Map<?, T> map, Object key, T def)
+    public static <T> T get(Map<?, T> map, Object key, T defaultValue)
     {
         T val = map.get(key);
-        return val == null ? def : val;
+        return val == null ? defaultValue : val;
     }
 
     /**

@@ -100,18 +100,18 @@ public class TestReflectionUtils
     @Test
     public void testClassAnnotation()
     {
-        Annotation a = ReflectionUtils.getClassAnnotation(Bar.class, ControllerClass.class);
+        Annotation a = AnnotationUtils.getClassAnnotation(Bar.class, ControllerClass.class);
         assertNotNull(a);
         assertTrue(a instanceof ControllerClass);
 
-        a = ReflectionUtils.getClassAnnotation(Alpha.class, ControllerClass.class);
+        a = AnnotationUtils.getClassAnnotation(Alpha.class, ControllerClass.class);
         assertNotNull(a);
         assertTrue(a instanceof ControllerClass);
 
-        a = ReflectionUtils.getClassAnnotation(Bogus.class, ControllerClass.class);
+        a = AnnotationUtils.getClassAnnotation(Bogus.class, ControllerClass.class);
         assertNull(a);
 
-        a = ReflectionUtils.getClassAnnotation(CCC.class, ControllerClass.class);
+        a = AnnotationUtils.getClassAnnotation(CCC.class, ControllerClass.class);
         assertNull(a);
     }
 
@@ -171,18 +171,18 @@ public class TestReflectionUtils
     public void testMethodAnnotation() throws Exception
     {
         Method m = ReflectionUtils.getMethod(Bar1.class, "yelp");
-        Annotation a = ReflectionUtils.getMethodAnnotation(m, ControllerMethod.class);
+        Annotation a = AnnotationUtils.getMethodAnnotation(m, ControllerMethod.class);
         assertNotNull(a);
         assertTrue(a instanceof ControllerMethod);
         assertEquals("false", ((ControllerMethod) a).allow());
 
         m = ReflectionUtils.getMethod(Alpha1.class, "yelp");
-        a = ReflectionUtils.getMethodAnnotation(m, ControllerMethod.class);
+        a = AnnotationUtils.getMethodAnnotation(m, ControllerMethod.class);
         assertNotNull(a);
         assertTrue(a instanceof ControllerMethod);
 
         m = ReflectionUtils.getMethod(Bogus1.class, "yelp");
-        a = ReflectionUtils.getMethodAnnotation(m, ControllerMethod.class);
+        a = AnnotationUtils.getMethodAnnotation(m, ControllerMethod.class);
         assertNull(a);
     }
 
@@ -239,7 +239,7 @@ public class TestReflectionUtils
     @Test
     public void testGetClassAnnotationsWithNull() throws Exception
     {
-        assertNull(ReflectionUtils.getClassAnnotation(null, null));
+        assertNull(AnnotationUtils.getClassAnnotation(null, null));
     }
 
     @Test

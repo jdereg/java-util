@@ -1419,7 +1419,7 @@ public class TestConverter
         assert null == convertToDate(null);
         assert null == convertToSqlDate(null);
         assert null == convertToTimestamp(null);
-        assert null == convertToAtomicBoolean(null);
+        assert null == Converter.convertToAtomicBoolean(null);
         assert null == convertToAtomicInteger(null);
         assert null == convertToAtomicLong(null);
         assert null == convertToString(null);

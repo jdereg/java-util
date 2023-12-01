@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -9,12 +7,17 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import static com.cedarsoftware.util.UniqueIdGenerator.*;
 
+import org.junit.jupiter.api.Test;
+
+import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
+import static com.cedarsoftware.util.UniqueIdGenerator.getDate19;
+import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId;
+import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId19;
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.out;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -25,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br><br>
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
  *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,

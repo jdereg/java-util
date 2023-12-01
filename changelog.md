@@ -1,4 +1,7 @@
 ### Revision History
+* 2.5.0
+  * `FastByteArrayOutputStream` updated to match `ByteArrayOutputStream` API. This means that `.getBuffer()` is `.toByteArray()` and `.clear()` is now `.reset().`
+  * `FastByteArrayInputStream` added.  Matches `ByteArrayInputStream` API.
 * 2.4.0
   * Added ClassUtilities.  This class has a method to get the distance between a source and destination class.  It includes support for Classes, multiple inheritance of interfaces, primitives, and class-to-interface, interface-interface, and class to class.
   * Added LRUCache.  This class provides a simple cache API that will evict the least recently used items, once a threshold is met.

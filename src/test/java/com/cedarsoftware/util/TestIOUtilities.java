@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamReader;
@@ -23,7 +21,15 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -153,12 +159,12 @@ public class TestIOUtilities
         FastByteArrayOutputStream start = getFastUncompressedByteArray();
         FastByteArrayOutputStream small = new FastByteArrayOutputStream(8192);
         IOUtilities.compressBytes(start, small);
-        byte[] restored = IOUtilities.uncompressBytes(small.getBuffer(), 0, small.size());
+        byte[] restored = IOUtilities.uncompressBytes(small.toByteArray(), 0, small.size());
 
         assert small.size() < start.size();
 
         String restoredString = new String(restored);
-        String origString = new String(start.getBuffer(), 0, start.size());
+        String origString = new String(start.toByteArray(), 0, start.size());
         assert origString.equals(restoredString);
     }
 

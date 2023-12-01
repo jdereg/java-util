@@ -3,10 +3,25 @@ package com.cedarsoftware.util;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.Flushable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URLConnection;
 import java.util.Arrays;
-import java.util.zip.*;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
 /**
  * Useful IOUtilities that simplify common io tasks
@@ -234,7 +249,7 @@ public final class IOUtilities
         {
             FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384);
             transfer(in, out);
-            return Arrays.copyOf(out.buffer, out.size);
+            return out.toByteArray();
         }
         catch (Exception e)
         {
@@ -267,7 +282,7 @@ public final class IOUtilities
     public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
     {
         DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
-        gzipStream.write(original.buffer, 0, original.size);
+        gzipStream.write(original.toByteArray(), 0, original.size());
         gzipStream.flush();
         gzipStream.close();
     }
@@ -286,7 +301,7 @@ public final class IOUtilities
                 gzipStream.write(bytes, offset, len);
                 gzipStream.flush();
             }
-            return Arrays.copyOf(byteStream.buffer, byteStream.size);
+            return Arrays.copyOf(byteStream.toByteArray(), byteStream.size());
         }
         catch (Exception e)
         {

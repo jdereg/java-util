@@ -1,23 +1,32 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import java.io.InputStream;
-import java.lang.annotation.*;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -28,7 +37,7 @@ import static org.mockito.Mockito.when;
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br><br>
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
  *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
@@ -234,6 +243,8 @@ public class TestReflectionUtils
     {
         assertEquals("null", ReflectionUtils.getClassName((Object)null));
         assertEquals("java.lang.String", ReflectionUtils.getClassName("item"));
+        assertEquals("java.lang.String", ReflectionUtils.getClassName(""));
+        assertEquals("null", ReflectionUtils.getClassName(null));
     }
 
     @Test
@@ -663,4 +674,82 @@ public class TestReflectionUtils
             }
         }
     }
+
+
+    @Retention(RetentionPolicy.RUNTIME)
+    private @interface TestAnnotation {}
+
+    @TestAnnotation
+    private static class AnnotatedTestClass {
+        @Override
+        public String toString()
+        {
+            return super.toString();
+        }
+    }
+
+    private static class TestClass {
+        private int field1;
+        public int field2;
+    }
+
+    @Test
+    void testGetClassAnnotation() {
+        assertNotNull(ReflectionUtils.getClassAnnotation(AnnotatedTestClass.class, TestAnnotation.class));
+        assertNull(ReflectionUtils.getClassAnnotation(TestClass.class, TestAnnotation.class));
+    }
+
+    @Test
+    void testGetMethodAnnotation() throws NoSuchMethodException {
+        Method method = AnnotatedTestClass.class.getDeclaredMethod("toString");
+        assertNull(ReflectionUtils.getMethodAnnotation(method, TestAnnotation.class));
+    }
+
+    @Test
+    void testGetMethod() throws NoSuchMethodException {
+        Method method = ReflectionUtils.getMethod(TestClass.class, "toString");
+        assertNotNull(method);
+        assertEquals("toString", method.getName());
+
+        assertNull(ReflectionUtils.getMethod(TestClass.class, "nonExistentMethod"));
+    }
+
+    @Test
+    void testGetDeepDeclaredFields() {
+        Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(TestClass.class);
+        assertEquals(2, fields.size()); // field1 and field2
+    }
+
+    @Test
+    void testGetDeepDeclaredFieldMap() {
+        Map<String, Field> fieldMap = ReflectionUtils.getDeepDeclaredFieldMap(TestClass.class);
+        assertEquals(2, fieldMap.size());
+        assertTrue(fieldMap.containsKey("field1"));
+        assertTrue(fieldMap.containsKey("field2"));
+    }
+
+    @Test
+    void testCall() throws NoSuchMethodException {
+        TestClass testInstance = new TestClass();
+        Method method = TestClass.class.getMethod("toString");
+        String result = (String) ReflectionUtils.call(testInstance, method);
+        assertEquals(testInstance.toString(), result);
+    }
+
+    @Test
+    void testCallWithArgs() throws NoSuchMethodException {
+        TestClass testInstance = new TestClass();
+        String methodName = "equals";
+        Object[] args = new Object[]{testInstance};
+        Boolean result = (Boolean) ReflectionUtils.call(testInstance, methodName, args);
+        assertTrue(result);
+    }
+
+    @Test
+    void testGetNonOverloadedMethod() {
+        Method method = ReflectionUtils.getNonOverloadedMethod(TestClass.class, "toString");
+        assertNotNull(method);
+        assertEquals("toString", method.getName());
+    }
 }
+

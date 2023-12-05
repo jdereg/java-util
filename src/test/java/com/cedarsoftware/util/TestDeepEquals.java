@@ -1,21 +1,47 @@
 package com.cedarsoftware.util;
 
-import org.agrona.collections.Object2ObjectHashMap;
-import org.junit.jupiter.api.Test;
-
 import java.awt.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TimeZone;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.lang.Math.*;
+import org.agrona.collections.Object2ObjectHashMap;
+import org.junit.jupiter.api.Test;
+
+import static java.lang.Math.E;
+import static java.lang.Math.PI;
+import static java.lang.Math.atan;
+import static java.lang.Math.cos;
+import static java.lang.Math.log;
+import static java.lang.Math.pow;
+import static java.lang.Math.sin;
+import static java.lang.Math.tan;
 import static java.util.Arrays.asList;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author John DeRegnaucourt
@@ -25,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *         may not use this file except in compliance with the License. You may
  *         obtain a copy of the License at <br>
  * <br>
- *         http://www.apache.org/licenses/LICENSE-2.0 <br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a> <br>
  * <br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,

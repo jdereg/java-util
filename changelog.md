@@ -1,4 +1,14 @@
 ### Revision History
+* 2.5.0
+  * `FastByteArrayOutputStream` updated to match `ByteArrayOutputStream` API. This means that `.getBuffer()` is `.toByteArray()` and `.clear()` is now `.reset().`
+  * `FastByteArrayInputStream` added.  Matches `ByteArrayInputStream` API.
+* 2.4.0
+  * Added ClassUtilities.  This class has a method to get the distance between a source and destination class.  It includes support for Classes, multiple inheritance of interfaces, primitives, and class-to-interface, interface-interface, and class to class.
+  * Added LRUCache.  This class provides a simple cache API that will evict the least recently used items, once a threshold is met.
+* 2.3.0
+  * Added `FastReader` and `FastWriter.` 
+    * `FastReader` can be used instead of the JDK `PushbackReader(BufferedReader)).` It is much faster with no synchronization and combines both.  It also tracks line `[getLine()]`and column `[getCol()]` position monitoring for `0x0a` which it can be queried for.  It also can be queried for the last snippet read: `getLastSnippet().`  Great for showing parsing error messages that accurately point out where a syntax error occurred.  Make sure you use a new instance per each thread.
+    * `FastWriter` can be used instead of the JDK `BufferedWriter` as it has no synchronization.  Make sure you use a new Instance per each thread.
 * 2.2.0
   * Built with JDK 1.8 and runs with JDK 1.8 through JDK 21.
   * The 2.2.x will continue to maintain JDK 1.8.  The 3.0 branch [not yet created] will be JDK11+

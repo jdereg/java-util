@@ -1,0 +1,25 @@
+{
+  "@type":"com.cedarsoftware.util.io.PrettyPrintTest$Nice",
+  "name":"Louie",
+  "items":{
+    "@type":"java.util.ArrayList",
+    "@items":[
+      "One",
+      1,
+      {
+        "@type":"int",
+        "value":1
+      },
+      true
+    ]
+  },
+  "dictionary":{
+    "@type":"java.util.LinkedHashMap",
+    "grade":"A",
+    "price":100.0,
+    "bigdec":{
+      "@type":"java.math.BigDecimal",
+      "value":"3.141592653589793238462643383"
+    }
+  }
+}

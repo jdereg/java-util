@@ -1,7 +1,12 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
-import java.util.*;
+import java.util.AbstractSet;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Often, memory may be consumed by lots of Maps or Sets (HashSet uses a HashMap to implement it's set).  HashMaps
@@ -36,7 +41,7 @@ import java.util.*;
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br><br>
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
  *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,

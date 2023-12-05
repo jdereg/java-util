@@ -1,5 +1,10 @@
 package com.cedarsoftware.util;
 
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 /**
  * Useful Test utilities for common tasks
  *
@@ -11,7 +16,7 @@ package com.cedarsoftware.util;
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br><br>
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
  *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +27,7 @@ package com.cedarsoftware.util;
 public class TestUtil
 {
     /**
-     * Ensure that the passed in source contains all of the Strings passed in the 'contains' parameter AND
+     * Ensure that the passed in source contains all the Strings passed in the 'contains' parameter AND
      * that they appear in the order they are passed in.  This is a better check than simply asserting
      * that a particular error message contains a set of tokens...it also ensures the order in which the
      * tokens appear.  If the strings passed in do not appear in the same order within the source string,
@@ -35,11 +40,9 @@ public class TestUtil
      * the strings in the contains comma separated list must appear in the source string, in the same order as they
      * are passed in.
      */
-    public static void assertContainsIgnoreCase(String source, String... contains)
-    {
+    public static void assertContainsIgnoreCase(String source, String... contains) {
         String lowerSource = source.toLowerCase();
-        for (String contain : contains)
-        {
+        for (String contain : contains) {
             int idx = lowerSource.indexOf(contain.toLowerCase());
             String msg = "'" + contain + "' not found in '" + lowerSource + "'";
             assert idx >=0 : msg;
@@ -48,7 +51,7 @@ public class TestUtil
     }
 
     /**
-     * Ensure that the passed in source contains all of the Strings passed in the 'contains' parameter AND
+     * Ensure that the passed in source contains all the Strings passed in the 'contains' parameter AND
      * that they appear in the order they are passed in.  This is a better check than simply asserting
      * that a particular error message contains a set of tokens...it also ensures the order in which the
      * tokens appear.  If the strings passed in do not appear in the same order within the source string,
@@ -61,18 +64,29 @@ public class TestUtil
      * the strings in the contains comma separated list must appear in the source string, in the same order as they
      * are passed in.
      */
-    public static boolean checkContainsIgnoreCase(String source, String... contains)
-    {
+    public static boolean checkContainsIgnoreCase(String source, String... contains) {
         String lowerSource = source.toLowerCase();
-        for (String contain : contains)
-        {
+        for (String contain : contains) {
             int idx = lowerSource.indexOf(contain.toLowerCase());
-            if (idx == -1)
-            {
+            if (idx == -1) {
                 return false;
             }
             lowerSource = lowerSource.substring(idx);
         }
         return true;
+    }
+
+    public static String fetchResource(String name)
+    {
+        try
+        {
+            URL url = TestUtil.class.getResource("/" + name);
+            Path resPath = Paths.get(url.toURI());
+            return new String(Files.readAllBytes(resPath));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 }

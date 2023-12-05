@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -19,10 +17,55 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.cedarsoftware.util.Converter.*;
+import org.junit.jupiter.api.Test;
+
+import static com.cedarsoftware.util.Converter.BIG_DECIMAL_ZERO;
+import static com.cedarsoftware.util.Converter.BIG_INTEGER_ZERO;
+import static com.cedarsoftware.util.Converter.convert;
+import static com.cedarsoftware.util.Converter.convert2AtomicBoolean;
+import static com.cedarsoftware.util.Converter.convert2AtomicInteger;
+import static com.cedarsoftware.util.Converter.convert2AtomicLong;
+import static com.cedarsoftware.util.Converter.convert2BigDecimal;
+import static com.cedarsoftware.util.Converter.convert2BigInteger;
+import static com.cedarsoftware.util.Converter.convert2String;
+import static com.cedarsoftware.util.Converter.convert2boolean;
+import static com.cedarsoftware.util.Converter.convert2byte;
+import static com.cedarsoftware.util.Converter.convert2char;
+import static com.cedarsoftware.util.Converter.convert2double;
+import static com.cedarsoftware.util.Converter.convert2float;
+import static com.cedarsoftware.util.Converter.convert2int;
+import static com.cedarsoftware.util.Converter.convert2long;
+import static com.cedarsoftware.util.Converter.convert2short;
+import static com.cedarsoftware.util.Converter.convertToAtomicBoolean;
+import static com.cedarsoftware.util.Converter.convertToAtomicInteger;
+import static com.cedarsoftware.util.Converter.convertToAtomicLong;
+import static com.cedarsoftware.util.Converter.convertToBigDecimal;
+import static com.cedarsoftware.util.Converter.convertToByte;
+import static com.cedarsoftware.util.Converter.convertToCharacter;
+import static com.cedarsoftware.util.Converter.convertToDate;
+import static com.cedarsoftware.util.Converter.convertToDouble;
+import static com.cedarsoftware.util.Converter.convertToFloat;
+import static com.cedarsoftware.util.Converter.convertToInteger;
+import static com.cedarsoftware.util.Converter.convertToLocalDate;
+import static com.cedarsoftware.util.Converter.convertToLocalDateTime;
+import static com.cedarsoftware.util.Converter.convertToLong;
+import static com.cedarsoftware.util.Converter.convertToShort;
+import static com.cedarsoftware.util.Converter.convertToSqlDate;
+import static com.cedarsoftware.util.Converter.convertToString;
+import static com.cedarsoftware.util.Converter.convertToTimestamp;
+import static com.cedarsoftware.util.Converter.convertToZonedDateTime;
+import static com.cedarsoftware.util.Converter.localDateTimeToMillis;
+import static com.cedarsoftware.util.Converter.localDateToMillis;
+import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
 import static com.cedarsoftware.util.TestConverter.fubar.bar;
 import static com.cedarsoftware.util.TestConverter.fubar.foo;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
@@ -33,7 +76,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *         you may not use this file except in compliance with the License.
  *         You may obtain a copy of the License at
  *         <br><br>
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
  *         <br><br>
  *         Unless required by applicable law or agreed to in writing, software
  *         distributed under the License is distributed on an "AS IS" BASIS,

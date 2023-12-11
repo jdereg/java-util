@@ -1480,7 +1480,7 @@ public class TestConverter
         assert false == convert2AtomicBoolean(null).get();
         assert 0 == convert2AtomicInteger(null).get();
         assert 0L == convert2AtomicLong(null).get();
-        assert "" == convert2String(null);
+        assert "".equals(convert2String(null));
     }
 
     @Test

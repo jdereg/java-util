@@ -75,7 +75,7 @@ public class TestCompactMap
         assert map.size() == 2;
         assert !map.isEmpty();
 
-        assert map.remove("alpha") == "beta";
+        assert map.remove("alpha").equals("beta");
         assert map.size() == 1;
         assert !map.isEmpty();
 

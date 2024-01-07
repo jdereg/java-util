@@ -30,19 +30,19 @@
 
         <!-- testing only -->
         <version.junit>5.10.1</version.junit>
-        <version.assertj>3.24.2</version.assertj>
+        <version.assertj>3.25.1</version.assertj>
         <version.json.io>4.19.1</version.json.io>
-        <version.mockito.inline>4.11.0</version.mockito.inline>
-        <version.agrona>1.19.2</version.agrona>
+        <version.mockito.inline>5.8.0</version.mockito.inline>
+        <version.agrona>1.20.0</version.agrona>
 
         <!-- release plugin -->
         <version.plugin.nexus>1.6.13</version.plugin.nexus>
 
         <!-- Build maven-***-plugins -->
         <version.plugin.gpg>3.1.0</version.plugin.gpg>
-        <version.plugin.compiler>3.11.0</version.plugin.compiler>
-        <version.plugin.javadoc>3.6.2</version.plugin.javadoc>
-        <version.plugin.surefire>3.2.2</version.plugin.surefire>
+        <version.plugin.compiler>3.12.1</version.plugin.compiler>
+        <version.plugin.javadoc>3.6.3</version.plugin.javadoc>
+        <version.plugin.surefire>3.2.3</version.plugin.surefire>
         <version.plugin.source>3.3.0</version.plugin.source>
         <version.plugin.felix.scr>1.26.4</version.plugin.felix.scr>
         <version.plugin.felix.bundle>5.1.9</version.plugin.felix.bundle>

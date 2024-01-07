@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
  * hh:mm:ss.sss:offset              which will match: "12:34", "12:34:56", "12:34.789", "12:34:56.789", "12:34+01:00",
  *                                  "12:34:56+1:00", "12:34-01", "12:34:56-1", "12:34Z", "12:34:56Z"
  *
- * hh:mm:zone -or-                  Zone can be specified as Z (Zooloo = UTC), older short forms: GMT, EST, CST, MST,
+ * hh:mm:zone -or-                  Zone can be specified as Z (Zulu = UTC), older short forms: GMT, EST, CST, MST,
  * hh:mm:ss.sss:zone                PST, IST, JST, BST etc. as well as the long forms: "America/New York", "Asia/Saigon",
  *                                  etc. See ZoneId.getAvailableZoneIds().
  * </pre>
@@ -89,15 +89,16 @@ public final class DateUtilities {
     private static final Pattern allDigits = Pattern.compile("^\\d+$");
     private static final String days = "(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)"; // longer before shorter matters
     private static final String mos = "(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)";
+    private static final String ord = "(\\d{1,2})(st|nd|rd|th)?";
     private static final Pattern datePattern1 = Pattern.compile("(\\d{4})([./-])(\\d{1,2})\\2(\\d{1,2})|(\\d{1,2})([./-])(\\d{1,2})\\6(\\d{4})");  // \2 and \6 references the separator, enforcing same
-    private static final Pattern datePattern2 = Pattern.compile(mos + "[ ,]*(\\d{1,2})(st|nd|rd|th)?[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern3 = Pattern.compile("(\\d{1,2})(st|nd|rd|th)?[ ,]*" + mos + "[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern4 = Pattern.compile("(\\d{4})[ ,]*" + mos + "[ ,]*(\\d{1,2})(st|nd|rd|th)?", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern2 = Pattern.compile(mos + "[ ,]*" + ord +"[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern3 = Pattern.compile(ord + "[ ,]*" + mos + "[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern4 = Pattern.compile("(\\d{4})[ ,]*" + mos + "[ ,]*" + ord, Pattern.CASE_INSENSITIVE);
     private static final Pattern unixDatePattern = Pattern.compile(days + "\\s+" + mos + "\\s+(\\d{1,2})\\s+(\\d{2}:\\d{2}:\\d{2})\\s*([A-Z]{1,3})?\\s*(\\d{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern timePattern = Pattern.compile("(\\d{2}):(\\d{2})(?::(\\d{2}))?(\\.\\d+)?([+-]\\d{1,2}:\\d{2}|[+-]\\d{4}|[+-]\\d{1,2}|Z|\\s+[A-Za-z][A-Za-z0-9~/._+-]+)?", Pattern.CASE_INSENSITIVE);
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
     private static final Map<String, String> months = new ConcurrentHashMap<>();
-    // Sat Jan  6 22:06:58 EST 2024
+    
     static {
         // Month name to number map
         months.put("jan", "1");
@@ -146,7 +147,7 @@ public final class DateUtilities {
         // Determine which date pattern (Matcher) to use
         Matcher matcher = datePattern1.matcher(dateStr);
 
-        String year = null, month = null, day = null, mon = null, remains = "", sep, tz = null;
+        String year, month = null, day, mon = null, remains, tz = null;
 
         if (matcher.find()) {
             if (matcher.group(1) != null) {
@@ -159,47 +160,38 @@ public final class DateUtilities {
                 day = matcher.group(7);
             }
             remains = matcher.replaceFirst("");
+        } else if (((matcher = datePattern2.matcher(dateStr)).find())) {
+            mon = matcher.group(1);
+            day = matcher.group(2);
+            year = matcher.group(4);
+            remains = matcher.replaceFirst("");
+        } else if (((matcher = datePattern3.matcher(dateStr)).find())) {
+            day = matcher.group(1);
+            mon = matcher.group(3);
+            year = matcher.group(4);
+            remains = matcher.replaceFirst("");
+        } else if (((matcher = datePattern4.matcher(dateStr)).find())) {
+            year = matcher.group(1);
+            mon = matcher.group(2);
+            day = matcher.group(3);
+            remains = matcher.replaceFirst("");
         } else {
-            matcher = datePattern2.matcher(dateStr);
-            if (matcher.find()) {
-                mon = matcher.group(1);
-                day = matcher.group(2);
-                year = matcher.group(4);
-                remains = matcher.replaceFirst("");
-            } else {
-                matcher = datePattern3.matcher(dateStr);
-                if (matcher.find()) {
-                    day = matcher.group(1);
-                    mon = matcher.group(3);
-                    year = matcher.group(4);
-                    remains = matcher.replaceFirst("");
-                } else {
-                    matcher = datePattern4.matcher(dateStr);
-                    if (matcher.find()) {
-                        year = matcher.group(1);
-                        mon = matcher.group(2);
-                        day = matcher.group(3);
-                        remains = matcher.replaceFirst("");
-                    } else {
-                        matcher = unixDatePattern.matcher(dateStr);
-                        if (!matcher.find()) {
-                            throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
-                        }
-                        year = matcher.group(6);
-                        mon = matcher.group(2);
-                        day = matcher.group(3);
-                        tz = matcher.group(5);
-                        remains = matcher.group(4);
-                    }
-                }
+            matcher = unixDatePattern.matcher(dateStr);
+            if (!matcher.find()) {
+                throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
             }
+            year = matcher.group(6);
+            mon = matcher.group(2);
+            day = matcher.group(3);
+            tz = matcher.group(5);
+            remains = matcher.group(4);
         }
 
         if (mon != null) {   // Month will always be in Map, because regex forces this.
             month = months.get(mon.trim().toLowerCase());
         }
 
-        // Determine which date pattern (Matcher) to use
+        // For the remaining String, match the time portion (which could have appeared ahead of the date portion)
         String hour = null, min = null, sec = "00", milli = "0";
         remains = remains.trim();
         matcher = timePattern.matcher(remains);
@@ -241,7 +233,7 @@ public final class DateUtilities {
         if (tz != null) {
             if (tz.startsWith("-") || tz.startsWith("+")) {
                 ZoneOffset offset = ZoneOffset.of(tz);
-                ZoneId zoneId = ZoneId.ofOffset("UTC", offset);
+                ZoneId zoneId = ZoneId.ofOffset("GMT", offset);
                 TimeZone timeZone = TimeZone.getTimeZone(zoneId);
                 c.setTimeZone(timeZone);
             } else {
@@ -261,7 +253,7 @@ public final class DateUtilities {
         }
         c.clear();
 
-        // Regex prevents these from ever failing to parse
+        // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
         int y = Integer.parseInt(year);
         int m = Integer.parseInt(month) - 1;    // months are 0-based
         int d = Integer.parseInt(day);

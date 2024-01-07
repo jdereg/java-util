@@ -90,49 +90,74 @@ public final class DateUtilities {
     private static final String days = "(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)"; // longer before shorter matters
     private static final String mos = "(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)";
     private static final String yr = "(\\d{4})";
-    private static final String dig12 = "(\\d{1,2})";
-    private static final String ord = dig12 + "(st|nd|rd|th)?";
-    private static final String dotDashOrSlash = "([./-])";
-    private static final String wsOrComma = "[ ,]*";
-    private static final Pattern isoPattern = Pattern.compile(    // Regex's using | (OR)
-            yr + dotDashOrSlash + dig12 + "\\2" + dig12 + "|" +   // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
-            dig12 + dotDashOrSlash + dig12 + "\\6" + yr);         // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 1st separator (ensures both same)
-    private static final Pattern alphaMonth = Pattern.compile(
-            mos + wsOrComma + ord + wsOrComma + yr + "|" +  // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
-            ord + wsOrComma + mos + wsOrComma + yr + "|" +        // 21st Jan, 2024  (ditto)
-            yr + wsOrComma + mos + wsOrComma + ord,               // 2024 Jan 21st   (ditto)
+    private static final String dig1or2 = "\\d{1,2}";
+    private static final String dig1or2grp = "(" + dig1or2 + ")";
+    private static final String ord = dig1or2grp + "(st|nd|rd|th)?";
+    private static final String dig2 = "\\d{2}";
+    private static final String dig2gr = "(" + dig2 + ")";
+    private static final String sep = "([./-])";
+    private static final String ws = "\\s+";
+    private static final String wsOp = "\\s*";
+    private static final String wsOrComma = "[ ,]+";
+    private static final String tzUnix = "([A-Z]{1,3})?";
+    private static final String opNano = "(\\.\\d+)?";
+    private static final String dayOfMon = dig1or2grp;
+    private static final String opSec = "(?:" + ":" + dig2gr + ")?";
+    private static final String hh = dig2gr;
+    private static final String mm = dig2gr;
+    private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
+    private static final String tz_HHMM = "[+-]\\d{4}";
+    private static final String tz_Hh = "[+-]\\d{1,2}";
+    private static final String tzNamed = ws + "[A-Za-z][A-Za-z0-9~/._+-]+";
+
+    // Patterns defined in BNF-style using above named elements
+    private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
+            yr + sep + dig1or2grp + "\\2" + dig1or2grp + "|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
+            dig1or2grp + sep + dig1or2grp + "\\6" + yr);              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 1st separator (ensures both same)
+
+    private static final Pattern alphaMonthPattern = Pattern.compile(
+            mos + wsOrComma + ord + wsOrComma + yr + "|" +      // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
+            ord + wsOrComma + mos + wsOrComma + yr + "|" +            // 21st Jan, 2024  (ditto)
+            yr + wsOrComma + mos + wsOrComma + ord,                   // 2024 Jan 21st   (ditto)
             Pattern.CASE_INSENSITIVE);
-    private static final Pattern unixDatePattern = Pattern.compile(days + "\\s+" + mos + "\\s+" + dig12 + "\\s+(\\d{2}:\\d{2}:\\d{2})\\s*([A-Z]{1,3})?\\s*" + yr, Pattern.CASE_INSENSITIVE);
-    private static final Pattern timePattern = Pattern.compile("(\\d{2}):(\\d{2})(?::(\\d{2}))?(\\.\\d+)?([+-]\\d{1,2}:\\d{2}|[+-]\\d{4}|[+-]\\d{1,2}|Z|\\s+[A-Za-z][A-Za-z0-9~/._+-]+)?", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern unixDateTimePattern = Pattern.compile(
+            days + ws + mos + ws + dayOfMon + ws + "(" + dig2 + ":" + dig2 + ":" + dig2 + ")" + wsOp + tzUnix + wsOp + yr,
+            Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern timePattern = Pattern.compile(
+            hh + ":" + mm + opSec + opNano + "(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed +")?",
+            Pattern.CASE_INSENSITIVE);
+    
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
-    private static final Map<String, String> months = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> months = new ConcurrentHashMap<>();
     
     static {
         // Month name to number map
-        months.put("jan", "1");
-        months.put("january", "1");
-        months.put("feb", "2");
-        months.put("february", "2");
-        months.put("mar", "3");
-        months.put("march", "3");
-        months.put("apr", "4");
-        months.put("april", "4");
-        months.put("may", "5");
-        months.put("jun", "6");
-        months.put("june", "6");
-        months.put("jul", "7");
-        months.put("july", "7");
-        months.put("aug", "8");
-        months.put("august", "8");
-        months.put("sep", "9");
-        months.put("sept", "9");
-        months.put("september", "9");
-        months.put("oct", "10");
-        months.put("october", "10");
-        months.put("nov", "11");
-        months.put("november", "11");
-        months.put("dec", "12");
-        months.put("december", "12");
+        months.put("jan", 1);
+        months.put("january", 1);
+        months.put("feb", 2);
+        months.put("february", 2);
+        months.put("mar", 3);
+        months.put("march", 3);
+        months.put("apr", 4);
+        months.put("april", 4);
+        months.put("may", 5);
+        months.put("jun", 6);
+        months.put("june", 6);
+        months.put("jul", 7);
+        months.put("july", 7);
+        months.put("aug", 8);
+        months.put("august", 8);
+        months.put("sep", 9);
+        months.put("sept", 9);
+        months.put("september", 9);
+        months.put("oct", 10);
+        months.put("october", 10);
+        months.put("nov", 11);
+        months.put("november", 11);
+        months.put("dec", 12);
+        months.put("december", 12);
     }
 
     private DateUtilities() {
@@ -152,52 +177,53 @@ public final class DateUtilities {
             return parseEpochString(dateStr);
         }
 
-        String year, month = null, day, mon = null, remains, tz = null;
-        Matcher matcher;
+        String year, day, remains, tz = null;
+        int month;
 
         // Determine which date pattern to use
-        if (((matcher = isoPattern.matcher(dateStr)).find())) {
+        Matcher matcher = isoDatePattern.matcher(dateStr);
+        String remnant = matcher.replaceFirst("");
+        if (remnant.length() < dateStr.length()) {
             if (matcher.group(1) != null) {
                 year = matcher.group(1);
-                month = matcher.group(3);
+                month = Integer.parseInt(matcher.group(3));
                 day = matcher.group(4);
             } else {
                 year = matcher.group(8);
-                month = matcher.group(5);
+                month = Integer.parseInt(matcher.group(5));
                 day = matcher.group(7);
             }
-            remains = matcher.replaceFirst("");
-        } else if (((matcher = alphaMonth.matcher(dateStr)).find())) {
+            remains = remnant;
+        } else if ((remnant = (matcher = alphaMonthPattern.matcher(dateStr)).replaceFirst("")).length() < dateStr.length()) {
+            String mon;
             if (matcher.group(1) != null) {
                 mon = matcher.group(1);
                 day = matcher.group(2);
                 year = matcher.group(4);
-                remains = matcher.replaceFirst("");
+                remains = remnant;
             } else if (matcher.group(7) != null) {
                 mon = matcher.group(7);
                 day = matcher.group(5);
                 year = matcher.group(8);
-                remains = matcher.replaceFirst("");
+                remains = remnant;
             } else {
                 year = matcher.group(9);
                 mon = matcher.group(10);
                 day = matcher.group(11);
-                remains = matcher.replaceFirst("");
+                remains = remnant;
             }
+            month = months.get(mon.trim().toLowerCase());
         } else {
-            matcher = unixDatePattern.matcher(dateStr);
-            if (!matcher.find()) {
+            matcher = unixDateTimePattern.matcher(dateStr);
+            if ((remnant = matcher.replaceFirst("")).length() == dateStr.length()) {
                 throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
             }
             year = matcher.group(6);
-            mon = matcher.group(2);
+            String mon = matcher.group(2);
+            month = months.get(mon.trim().toLowerCase());
             day = matcher.group(3);
             tz = matcher.group(5);
-            remains = matcher.group(4);
-        }
-
-        if (mon != null) {   // Month will always be in Map, because regex forces this.
-            month = months.get(mon.trim().toLowerCase());
+            remains = matcher.group(4);     // leave optional time portion remaining
         }
 
         // For the remaining String, match the time portion (which could have appeared ahead of the date portion)
@@ -221,7 +247,7 @@ public final class DateUtilities {
         }
 
         if (matcher != null) {
-            remains = matcher.replaceFirst("");
+            remains = matcher.replaceFirst("").trim();
         }
 
         // Clear out day of week (mon, tue, wed, ...)
@@ -231,6 +257,8 @@ public final class DateUtilities {
                 remains = dayMatcher.replaceFirst("").trim();
             }
         }
+
+        // Verify that nothing or , or T is all that remains
         if (StringUtilities.length(remains) > 0) {
             remains = remains.trim();
             if (!remains.equals(",") && (!remains.equals("T"))) {
@@ -238,6 +266,7 @@ public final class DateUtilities {
             }
         }
 
+        // Set Timezone into Calendar if one is supplied
         Calendar c = Calendar.getInstance();
         if (tz != null) {
             if (tz.startsWith("-") || tz.startsWith("+")) {
@@ -264,7 +293,7 @@ public final class DateUtilities {
 
         // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
         int y = Integer.parseInt(year);
-        int m = Integer.parseInt(month) - 1;    // months are 0-based
+        int m = month - 1;    // months are 0-based
         int d = Integer.parseInt(day);
 
         if (m < 0 || m > 11) {

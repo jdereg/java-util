@@ -313,7 +313,7 @@ class TestDateUtilities
     @Test
     void testDayOfWeek()
     {
-        for (int i=0; i < 1; i++) {
+        for (int i=0; i < 100000; i++) {
             DateUtilities.parseDate("thu, Dec 25, 2014");
             DateUtilities.parseDate("thur, Dec 25, 2014");
             DateUtilities.parseDate("thursday, December 25, 2014");
@@ -352,7 +352,7 @@ class TestDateUtilities
     @Test
     void testDaySuffixesLower()
     {
-        for (int i=0; i < 1; i++) {
+        for (int i=0; i < 100000; i++) {
             Date x = DateUtilities.parseDate("January 21st, 1994");
             Calendar c = Calendar.getInstance();
             c.clear();
@@ -404,7 +404,7 @@ class TestDateUtilities
     @Test
     void testDaySuffixesUpper()
     {
-        for (int i=0; i < 1; i++) {
+        for (int i=0; i < 100000; i++) {
             Date x = DateUtilities.parseDate("January 21ST, 1994");
             Calendar c = Calendar.getInstance();
             c.clear();

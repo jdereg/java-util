@@ -194,43 +194,48 @@ public final class DateUtilities {
                 day = matcher.group(7);
             }
             remains = remnant;
-        } else if ((remnant = (matcher = alphaMonthPattern.matcher(dateStr)).replaceFirst("")).length() < dateStr.length()) {
-            String mon;
-            if (matcher.group(1) != null) {
-                mon = matcher.group(1);
-                day = matcher.group(2);
-                year = matcher.group(4);
-                remains = remnant;
-            } else if (matcher.group(7) != null) {
-                mon = matcher.group(7);
-                day = matcher.group(5);
-                year = matcher.group(8);
-                remains = remnant;
-            } else {
-                year = matcher.group(9);
-                mon = matcher.group(10);
-                day = matcher.group(11);
-                remains = remnant;
-            }
-            month = months.get(mon.trim().toLowerCase());
         } else {
-            matcher = unixDateTimePattern.matcher(dateStr);
-            if ((remnant = matcher.replaceFirst("")).length() == dateStr.length()) {
-                throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
+            matcher = alphaMonthPattern.matcher(dateStr);
+            remnant = matcher.replaceFirst("");
+            if (remnant.length() < dateStr.length()) {
+                String mon;
+                if (matcher.group(1) != null) {
+                    mon = matcher.group(1);
+                    day = matcher.group(2);
+                    year = matcher.group(4);
+                    remains = remnant;
+                } else if (matcher.group(7) != null) {
+                    mon = matcher.group(7);
+                    day = matcher.group(5);
+                    year = matcher.group(8);
+                    remains = remnant;
+                } else {
+                    year = matcher.group(9);
+                    mon = matcher.group(10);
+                    day = matcher.group(11);
+                    remains = remnant;
+                }
+                month = months.get(mon.trim().toLowerCase());
+            } else {
+                matcher = unixDateTimePattern.matcher(dateStr);
+                if (matcher.replaceFirst("").length() == dateStr.length()) {
+                    throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
+                }
+                year = matcher.group(6);
+                String mon = matcher.group(2);
+                month = months.get(mon.trim().toLowerCase());
+                day = matcher.group(3);
+                tz = matcher.group(5);
+                remains = matcher.group(4);     // leave optional time portion remaining
             }
-            year = matcher.group(6);
-            String mon = matcher.group(2);
-            month = months.get(mon.trim().toLowerCase());
-            day = matcher.group(3);
-            tz = matcher.group(5);
-            remains = matcher.group(4);     // leave optional time portion remaining
         }
 
         // For the remaining String, match the time portion (which could have appeared ahead of the date portion)
         String hour = null, min = null, sec = "00", milli = "0";
         remains = remains.trim();
         matcher = timePattern.matcher(remains);
-        if (matcher.find()) {
+        remnant = matcher.replaceFirst("");
+        if (remnant.length() < remains.length()) {
             hour = matcher.group(1);
             min = matcher.group(2);
             if (matcher.group(3) != null) {
@@ -243,19 +248,15 @@ public final class DateUtilities {
                 tz = matcher.group(5).trim();
             }
         } else {
-            matcher = null;
+            matcher = null;     // indicates no "time" portion
         }
 
-        if (matcher != null) {
-            remains = matcher.replaceFirst("").trim();
-        }
+        remains = remnant;
 
         // Clear out day of week (mon, tue, wed, ...)
         if (StringUtilities.length(remains) > 0) {
             Matcher dayMatcher = dayPattern.matcher(remains);
-            if (dayMatcher.find()) {
-                remains = dayMatcher.replaceFirst("").trim();
-            }
+            remains = dayMatcher.replaceFirst("").trim();
         }
 
         // Verify that nothing or , or T is all that remains
@@ -348,11 +349,11 @@ public final class DateUtilities {
 
     private static Date parseEpochString(String dateStr) {
         long num = Long.parseLong(dateStr);
-        if (dateStr.length() < 7) {         // days since epoch
+        if (dateStr.length() < 8) {         // days since epoch (good until 1970 +/- 27,397 years)
             return new Date(LocalDate.ofEpochDay(num).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
-        } else if (dateStr.length() < 12) { // seconds since epoch
+        } else if (dateStr.length() < 13) { // seconds since epoch (good until 1970 +/- 31,709 years)
             return new Date(num * 1000);
-        } else {                            // millis since epoch
+        } else {                            // millis since epoch (good until 1970 +/- 31,709,791 years)
             return new Date(num);
         }
     }

@@ -313,30 +313,31 @@ class TestDateUtilities
     @Test
     void testDayOfWeek()
     {
-        DateUtilities.parseDate("thu, Dec 25, 2014");
-        DateUtilities.parseDate("thur, Dec 25, 2014");
-        DateUtilities.parseDate("thursday, December 25, 2014");
+        for (int i=0; i < 1; i++) {
+            DateUtilities.parseDate("thu, Dec 25, 2014");
+            DateUtilities.parseDate("thur, Dec 25, 2014");
+            DateUtilities.parseDate("thursday, December 25, 2014");
 
-        DateUtilities.parseDate("Dec 25, 2014 thu");
-        DateUtilities.parseDate("Dec 25, 2014 thur");
-        DateUtilities.parseDate("Dec 25, 2014 thursday");
+            DateUtilities.parseDate("Dec 25, 2014 thu");
+            DateUtilities.parseDate("Dec 25, 2014 thur");
+            DateUtilities.parseDate("Dec 25, 2014 thursday");
 
-        DateUtilities.parseDate("thu Dec 25, 2014");
-        DateUtilities.parseDate("thur Dec 25, 2014");
-        DateUtilities.parseDate("thursday December 25, 2014");
+            DateUtilities.parseDate("thu Dec 25, 2014");
+            DateUtilities.parseDate("thur Dec 25, 2014");
+            DateUtilities.parseDate("thursday December 25, 2014");
 
-        DateUtilities.parseDate(" thu, Dec 25, 2014 ");
-        DateUtilities.parseDate(" thur, Dec 25, 2014 ");
-        DateUtilities.parseDate(" thursday, Dec 25, 2014 ");
+            DateUtilities.parseDate(" thu, Dec 25, 2014 ");
+            DateUtilities.parseDate(" thur, Dec 25, 2014 ");
+            DateUtilities.parseDate(" thursday, Dec 25, 2014 ");
 
-        DateUtilities.parseDate(" thu Dec 25, 2014 ");
-        DateUtilities.parseDate(" thur Dec 25, 2014 ");
-        DateUtilities.parseDate(" thursday Dec 25, 2014 ");
+            DateUtilities.parseDate(" thu Dec 25, 2014 ");
+            DateUtilities.parseDate(" thur Dec 25, 2014 ");
+            DateUtilities.parseDate(" thursday Dec 25, 2014 ");
 
-        DateUtilities.parseDate(" Dec 25, 2014, thu ");
-        DateUtilities.parseDate(" Dec 25, 2014, thur ");
-        DateUtilities.parseDate(" Dec 25, 2014, thursday ");
-
+            DateUtilities.parseDate(" Dec 25, 2014, thu ");
+            DateUtilities.parseDate(" Dec 25, 2014, thur ");
+            DateUtilities.parseDate(" Dec 25, 2014, thursday ");
+        }
         try {
             DateUtilities.parseDate("text Dec 25, 2014");
             fail();
@@ -351,101 +352,105 @@ class TestDateUtilities
     @Test
     void testDaySuffixesLower()
     {
-        Date x = DateUtilities.parseDate("January 21st, 1994");
-        Calendar c = Calendar.getInstance();
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
-        assertEquals(x, c.getTime());
+        for (int i=0; i < 1; i++) {
+            Date x = DateUtilities.parseDate("January 21st, 1994");
+            Calendar c = Calendar.getInstance();
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("January 22nd 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("January 22nd 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("Jan 23rd 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("Jan 23rd 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("June 24th, 1994");
-        c.clear();
-        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("June 24th, 1994");
+            c.clear();
+            c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("21st January, 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("21st January, 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("22nd January 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("22nd January 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("23rd Jan 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("23rd Jan 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("24th June, 1994");
-        c.clear();
-        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("24th June, 1994");
+            c.clear();
+            c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("24th, June, 1994");
-        c.clear();
-        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("24th, June, 1994");
+            c.clear();
+            c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+            assertEquals(x, c.getTime());
+        }
     }
 
     @Test
     void testDaySuffixesUpper()
     {
-        Date x = DateUtilities.parseDate("January 21ST, 1994");
-        Calendar c = Calendar.getInstance();
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
-        assertEquals(x, c.getTime());
+        for (int i=0; i < 1; i++) {
+            Date x = DateUtilities.parseDate("January 21ST, 1994");
+            Calendar c = Calendar.getInstance();
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("January 22ND 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("January 22ND 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("Jan 23RD 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("Jan 23RD 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("June 24TH, 1994");
-        c.clear();
-        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("June 24TH, 1994");
+            c.clear();
+            c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("21ST January, 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("21ST January, 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 21, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("22ND January 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("22ND January 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 22, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("23RD Jan 1994");
-        c.clear();
-        c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("23RD Jan 1994");
+            c.clear();
+            c.set(1994, Calendar.JANUARY, 23, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("24TH June, 1994");
-        c.clear();
-        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("24TH June, 1994");
+            c.clear();
+            c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+            assertEquals(x, c.getTime());
 
-        x = DateUtilities.parseDate("24TH, June, 1994");
-        c.clear();
-        c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
-        assertEquals(x, c.getTime());
+            x = DateUtilities.parseDate("24TH, June, 1994");
+            c.clear();
+            c.set(1994, Calendar.JUNE, 24, 0, 0, 0);
+            assertEquals(x, c.getTime());
+        }
     }
 
     @Test

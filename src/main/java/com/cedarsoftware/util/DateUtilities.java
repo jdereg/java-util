@@ -89,12 +89,19 @@ public final class DateUtilities {
     private static final Pattern allDigits = Pattern.compile("^\\d+$");
     private static final String days = "(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)"; // longer before shorter matters
     private static final String mos = "(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)";
+    private static final String yr = "(\\d{4})";
     private static final String ord = "(\\d{1,2})(st|nd|rd|th)?";
-    private static final Pattern datePattern1 = Pattern.compile("(\\d{4})([./-])(\\d{1,2})\\2(\\d{1,2})|(\\d{1,2})([./-])(\\d{1,2})\\6(\\d{4})");  // \2 and \6 references the separator, enforcing same
-    private static final Pattern datePattern2 = Pattern.compile(mos + "[ ,]*" + ord +"[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern3 = Pattern.compile(ord + "[ ,]*" + mos + "[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern4 = Pattern.compile("(\\d{4})[ ,]*" + mos + "[ ,]*" + ord, Pattern.CASE_INSENSITIVE);
-    private static final Pattern unixDatePattern = Pattern.compile(days + "\\s+" + mos + "\\s+(\\d{1,2})\\s+(\\d{2}:\\d{2}:\\d{2})\\s*([A-Z]{1,3})?\\s*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final String dig12 = "(\\d{1,2})";
+    private static final String dotDashOrSlash = "([./-])";
+    private static final Pattern isoPattern = Pattern.compile(    // Regex's using | (OR)
+            yr + dotDashOrSlash + dig12 + "\\2" + dig12 + "|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
+            dig12 + dotDashOrSlash + dig12 + "\\6" + yr);              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 1st separator (ensures both same)
+    private static final Pattern alphaMonth = Pattern.compile(
+            mos + "[ ,]*" + ord +"[ ,]*" + yr + "|" +       // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
+            ord + "[ ,]*" + mos + "[ ,]*" + yr + "|" +            // 21st Jan, 2024  (ditto)
+            yr + "[ ,]*" + mos + "[ ,]*" + ord,                   // 2024 Jan 21st   (ditto)
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern unixDatePattern = Pattern.compile(days + "\\s+" + mos + "\\s+" + dig12 + "\\s+(\\d{2}:\\d{2}:\\d{2})\\s*([A-Z]{1,3})?\\s*" + yr, Pattern.CASE_INSENSITIVE);
     private static final Pattern timePattern = Pattern.compile("(\\d{2}):(\\d{2})(?::(\\d{2}))?(\\.\\d+)?([+-]\\d{1,2}:\\d{2}|[+-]\\d{4}|[+-]\\d{1,2}|Z|\\s+[A-Za-z][A-Za-z0-9~/._+-]+)?", Pattern.CASE_INSENSITIVE);
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
     private static final Map<String, String> months = new ConcurrentHashMap<>();
@@ -144,12 +151,11 @@ public final class DateUtilities {
             return parseEpochString(dateStr);
         }
 
-        // Determine which date pattern (Matcher) to use
-        Matcher matcher = datePattern1.matcher(dateStr);
-
         String year, month = null, day, mon = null, remains, tz = null;
+        Matcher matcher;
 
-        if (matcher.find()) {
+        // Determine which date pattern to use
+        if (((matcher = isoPattern.matcher(dateStr)).find())) {
             if (matcher.group(1) != null) {
                 year = matcher.group(1);
                 month = matcher.group(3);
@@ -160,21 +166,23 @@ public final class DateUtilities {
                 day = matcher.group(7);
             }
             remains = matcher.replaceFirst("");
-        } else if (((matcher = datePattern2.matcher(dateStr)).find())) {
-            mon = matcher.group(1);
-            day = matcher.group(2);
-            year = matcher.group(4);
-            remains = matcher.replaceFirst("");
-        } else if (((matcher = datePattern3.matcher(dateStr)).find())) {
-            day = matcher.group(1);
-            mon = matcher.group(3);
-            year = matcher.group(4);
-            remains = matcher.replaceFirst("");
-        } else if (((matcher = datePattern4.matcher(dateStr)).find())) {
-            year = matcher.group(1);
-            mon = matcher.group(2);
-            day = matcher.group(3);
-            remains = matcher.replaceFirst("");
+        } else if (((matcher = alphaMonth.matcher(dateStr)).find())) {
+            if (matcher.group(1) != null) {
+                mon = matcher.group(1);
+                day = matcher.group(2);
+                year = matcher.group(4);
+                remains = matcher.replaceFirst("");
+            } else if (matcher.group(7) != null) {
+                mon = matcher.group(7);
+                day = matcher.group(5);
+                year = matcher.group(8);
+                remains = matcher.replaceFirst("");
+            } else {
+                year = matcher.group(9);
+                mon = matcher.group(10);
+                day = matcher.group(11);
+                remains = matcher.replaceFirst("");
+            }
         } else {
             matcher = unixDatePattern.matcher(dateStr);
             if (!matcher.find()) {

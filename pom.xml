@@ -32,7 +32,7 @@
         <version.junit>5.10.1</version.junit>
         <version.assertj>3.25.1</version.assertj>
         <version.json.io>4.19.1</version.json.io>
-        <version.mockito.inline>5.8.0</version.mockito.inline>
+        <version.mockito.inline>4.11.0</version.mockito.inline>
         <version.agrona>1.20.0</version.agrona>
 
         <!-- release plugin -->

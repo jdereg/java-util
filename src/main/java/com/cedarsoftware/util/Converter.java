@@ -13,6 +13,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -101,6 +102,8 @@ public final class Converter
         conversion.put(AtomicInteger.class, Converter::convertToAtomicInteger);
         conversion.put(AtomicLong.class, Converter::convertToAtomicLong);
         conversion.put(AtomicBoolean.class, Converter::convertToAtomicBoolean);
+        conversion.put(Class.class, Converter::convertToClass);
+        conversion.put(UUID.class, Converter::convertToUUID);
 
         conversionToString.put(String.class, fromInstance -> fromInstance);
         conversionToString.put(BigDecimal.class, fromInstance -> {
@@ -125,7 +128,11 @@ public final class Converter
         Work<?> toNoExpString = Object::toString;
         conversionToString.put(Double.class, toNoExpString);
         conversionToString.put(Float.class, toNoExpString);
-
+        conversionToString.put(Class.class, fromInstance -> {
+            Class<?> clazz = (Class<?>) fromInstance;
+            return clazz.getName();
+        });
+        conversionToString.put(UUID.class, Object::toString);
         conversionToString.put(Date.class, fromInstance -> SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance));
         conversionToString.put(Character.class, fromInstance -> "" + fromInstance);
         conversionToString.put(LocalDate.class, fromInstance -> {
@@ -230,6 +237,50 @@ public final class Converter
             return ((Enum)fromInstance).name();
         }
         return nope(fromInstance, "String");
+    }
+
+    public static Class<?> convertToClass(Object fromInstance) {
+        if (fromInstance instanceof Class) {
+            return (Class<?>)fromInstance;
+        } else if (fromInstance instanceof String) {
+            try {
+                Class<?> clazz = Class.forName((String)fromInstance);
+                return clazz;
+            }
+            catch (ClassNotFoundException ignore) {
+            }
+        }
+        throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Class'");
+    }
+
+    public static UUID convertToUUID(Object fromInstance) {
+        try {
+            if (fromInstance instanceof UUID) {
+                return (UUID)fromInstance;
+            } else if (fromInstance instanceof String) {
+                return UUID.fromString((String)fromInstance);
+            } else if (fromInstance instanceof BigInteger) {
+                BigInteger bigInteger = (BigInteger) fromInstance;
+                BigInteger mask = BigInteger.valueOf(Long.MAX_VALUE);
+                long mostSignificantBits = bigInteger.shiftRight(64).and(mask).longValue();
+                long leastSignificantBits = bigInteger.and(mask).longValue();
+                return new UUID(mostSignificantBits, leastSignificantBits);
+            }
+            else if (fromInstance instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) fromInstance;
+                if (map.containsKey("mostSigBits") && map.containsKey("leastSigBits")) {
+                    long mostSigBits = convert2long(map.get("mostSigBits"));
+                    long leastSigBits = convert2long(map.get("leastSigBits"));
+                    return new UUID(mostSigBits, leastSigBits);
+                } else {
+                    throw new IllegalArgumentException("To convert Map to UUID, the Map must contain both a 'mostSigBits' and 'leastSigBits' key.");
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'UUID'", e);
+        }
+        nope(fromInstance, "UUID");
+        return null;
     }
 
     /**
@@ -374,6 +425,12 @@ public final class Converter
             else if (fromInstance instanceof Number)
             {
                 return new BigInteger(Long.toString(((Number) fromInstance).longValue()));
+            } else if (fromInstance instanceof UUID) {
+                UUID uuid = (UUID) fromInstance;
+                BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
+                BigInteger leastSignificant = BigInteger.valueOf(uuid.getLeastSignificantBits());
+                // Shift the most significant bits to the left and add the least significant bits
+                return mostSignificant.shiftLeft(64).add(leastSignificant);
             }
             else if (fromInstance instanceof Boolean)
             {
@@ -823,7 +880,7 @@ public final class Converter
         }
         catch (Exception e)
         {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'LocalDateTime'", e);
+            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'ZonedDateTime'", e);
         }
         nope(fromInstance, "LocalDateTime");
         return null;
@@ -1541,6 +1598,9 @@ public final class Converter
 
     private static String name(Object fromInstance)
     {
+        if (fromInstance == null) {
+            return "null";
+        }
         return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
     }
 

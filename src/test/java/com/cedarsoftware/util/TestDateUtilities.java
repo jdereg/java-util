@@ -7,6 +7,7 @@ import java.util.Date;
 
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,10 +32,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestDateUtilities
+class TestDateUtilities
 {
     @Test
-    public void testXmlDates()
+    void testXmlDates()
     {
         Date t12 = DateUtilities.parseDate("2013-08-30T22:00Z");
         Date t22 = DateUtilities.parseDate("2013-08-30T22:00+00:00");
@@ -92,10 +93,12 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testXmlDatesWithOffsets()
+    void testXmlDatesWithOffsets()
     {
         Date t1 = DateUtilities.parseDate("2013-08-30T22:00Z");
         Date t2 = DateUtilities.parseDate("2013-08-30T22:00+01:00");
+        assertEquals(60 * 60 * 1000, t1.getTime() - t2.getTime());
+
         Date t3 = DateUtilities.parseDate("2013-08-30T22:00-01:00");
         Date t4 = DateUtilities.parseDate("2013-08-30T22:00+0100");
         Date t5 = DateUtilities.parseDate("2013-08-30T22:00-0100");
@@ -151,7 +154,7 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testXmlDatesWithMinuteOffsets()
+    void testXmlDatesWithMinuteOffsets()
     {
         Date t1 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789Z");
         Date t2 = DateUtilities.parseDate("2013-08-30T22:17:34.123456789+00:01");
@@ -176,12 +179,12 @@ public class TestDateUtilities
         assertEquals(-60 * 1000, t1.getTime() - t5.getTime());
     }
     @Test
-    public void testConstructorIsPrivate() throws Exception
+    void testConstructorIsPrivate() throws Exception
     {
         Class<?> c = DateUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
-        Constructor con = c.getDeclaredConstructor();
+        Constructor<?> con = c.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
@@ -189,12 +192,12 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDateAloneNumbers()
+    void testDateAloneNumbers()
     {
         Date d1 = DateUtilities.parseDate("2014-01-18");
         Calendar c = Calendar.getInstance();
         c.clear();
-        c.set(2014, 0, 18, 0, 0, 0);
+        c.set(2014, Calendar.JANUARY, 18, 0, 0, 0);
         assertEquals(c.getTime(), d1);
         d1 = DateUtilities.parseDate("2014/01/18");
         assertEquals(c.getTime(), d1);
@@ -207,12 +210,12 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDateAloneNames()
+    void testDateAloneNames()
     {
         Date d1 = DateUtilities.parseDate("2014 Jan 18");
         Calendar c = Calendar.getInstance();
         c.clear();
-        c.set(2014, 0, 18, 0, 0, 0);
+        c.set(2014, Calendar.JANUARY, 18, 0, 0, 0);
         assertEquals(c.getTime(), d1);
         d1 = DateUtilities.parseDate("2014 January 18");
         assertEquals(c.getTime(), d1);
@@ -229,12 +232,12 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDate24TimeParse()
+    void testDate24TimeParse()
     {
         Date d1 = DateUtilities.parseDate("2014-01-18 16:43");
         Calendar c = Calendar.getInstance();
         c.clear();
-        c.set(2014, 0, 18, 16, 43, 0);
+        c.set(2014, Calendar.JANUARY, 18, 16, 43, 0);
         assertEquals(c.getTime(), d1);
         d1 = DateUtilities.parseDate("2014/01/18 16:43");
         assertEquals(c.getTime(), d1);
@@ -258,12 +261,12 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDate24TimeSecParse()
+    void testDate24TimeSecParse()
     {
         Date d1 = DateUtilities.parseDate("2014-01-18 16:43:27");
         Calendar c = Calendar.getInstance();
         c.clear();
-        c.set(2014, 0, 18, 16, 43, 27);
+        c.set(2014, Calendar.JANUARY, 18, 16, 43, 27);
         assertEquals(c.getTime(), d1);
         d1 = DateUtilities.parseDate("2014/1/18 16:43:27");
         assertEquals(c.getTime(), d1);
@@ -274,12 +277,12 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDate24TimeSecMilliParse()
+    void testDate24TimeSecMilliParse()
     {
         Date d1 = DateUtilities.parseDate("2014-01-18 16:43:27.123");
         Calendar c = Calendar.getInstance();
         c.clear();
-        c.set(2014, 0, 18, 16, 43, 27);
+        c.set(2014, Calendar.JANUARY, 18, 16, 43, 27);
         c.setTimeInMillis(c.getTime().getTime() + 123);
         assertEquals(c.getTime(), d1);
         d1 = DateUtilities.parseDate("2014/1/18 16:43:27.123");
@@ -300,7 +303,7 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testParseWithNull()
+    void testParseWithNull()
     {
         assertNull(DateUtilities.parseDate(null));
         assertNull(DateUtilities.parseDate(""));
@@ -308,7 +311,7 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDayOfWeek()
+    void testDayOfWeek()
     {
         DateUtilities.parseDate("thu, Dec 25, 2014");
         DateUtilities.parseDate("thur, Dec 25, 2014");
@@ -334,25 +337,19 @@ public class TestDateUtilities
         DateUtilities.parseDate(" Dec 25, 2014, thur ");
         DateUtilities.parseDate(" Dec 25, 2014, thursday ");
 
-        try
-        {
+        try {
             DateUtilities.parseDate("text Dec 25, 2014");
             fail();
-        }
-        catch (Exception ignored)
-        { }
+        } catch (Exception ignored) { }
 
-        try
-        {
+        try {
             DateUtilities.parseDate("Dec 25, 2014 text");
             fail();
-        }
-        catch (Exception ignored)
-        { }
+        } catch (Exception ignored) { }
     }
 
     @Test
-    public void testDaySuffixesLower()
+    void testDaySuffixesLower()
     {
         Date x = DateUtilities.parseDate("January 21st, 1994");
         Calendar c = Calendar.getInstance();
@@ -402,7 +399,7 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDaySuffixesUpper()
+    void testDaySuffixesUpper()
     {
         Date x = DateUtilities.parseDate("January 21ST, 1994");
         Calendar c = Calendar.getInstance();
@@ -452,7 +449,7 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testWeirdSpacing()
+    void testWeirdSpacing()
     {
         Date x = DateUtilities.parseDate("January    21ST  ,   1994");
         Calendar c = Calendar.getInstance();
@@ -512,20 +509,16 @@ public class TestDateUtilities
     }
 
     @Test
-    public void test2DigitYear()
+    void test2DigitYear()
     {
-        try
-        {
+        try {
             DateUtilities.parseDate("07/04/19");
             fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        {
-        }
+        } catch (IllegalArgumentException ignored) {}
     }
 
     @Test
-    public void testDateToStringFormat()
+    void testDateToStringFormat()
     {
         Date x = new Date();
         Date y = DateUtilities.parseDate(x.toString());
@@ -533,7 +526,7 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testDatePrecision()
+    void testDatePrecision()
     {
         Date x = DateUtilities.parseDate("2021-01-13T13:01:54.6747552-05:00");
         Date y = DateUtilities.parseDate("2021-01-13T13:01:55.2589242-05:00");
@@ -541,87 +534,177 @@ public class TestDateUtilities
     }
 
     @Test
-    public void testParseErrors()
+    void testTimeZoneValidShortNames() {
+        // Support for some of the oldie but goodies (when the TimeZone returned does not have a 0 offset)
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 JST"); // Japan
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 IST"); // India
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 CET"); // France
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 BST"); // British Summer Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 EST"); // Eastern Standard
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 CST"); // Central Standard
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 MST"); // Mountain Standard
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 PST"); // Pacific Standard
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 CAT"); // Central Africa Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 EAT"); // Eastern Africa Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 ART"); // Argentina Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 ECT"); // Ecuador Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 NST"); // Newfoundland Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 AST"); // Atlantic Standard Time
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 HST"); // Hawaii Standard Time
+    }
+
+    @Test
+    void testTimeZoneLongName()
     {
-        try
-        {
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 Asia/Saigon");
+        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 America/New_York");
+
+        assertThatThrownBy(() -> DateUtilities.parseDate("2021-01-13T13:01:54 Mumbo/Jumbo"))
+                .isInstanceOf(java.time.zone.ZoneRulesException.class)
+                .hasMessageContaining("Unknown time-zone ID: Mumbo/Jumbo");
+    }
+
+    @Test
+    void testOffsetTimezone()
+    {
+        Date london = DateUtilities.parseDate("2024-01-06T00:00:01 GMT");
+        Date london_pos_short_offset = DateUtilities.parseDate("2024-01-6T00:00:01+00");
+        Date london_pos_med_offset = DateUtilities.parseDate("2024-01-6T00:00:01+0000");
+        Date london_pos_offset = DateUtilities.parseDate("2024-01-6T00:00:01+00:00");
+        Date london_neg_short_offset = DateUtilities.parseDate("2024-01-6T00:00:01-00");
+        Date london_neg_med_offset = DateUtilities.parseDate("2024-01-6T00:00:01-0000");
+        Date london_neg_offset = DateUtilities.parseDate("2024-01-6T00:00:01-00:00");
+        Date london_z = DateUtilities.parseDate("2024-01-6T00:00:01Z");
+        Date london_utc = DateUtilities.parseDate("2024-01-06T00:00:01 UTC");
+        
+        assertEquals(london, london_pos_short_offset);
+        assertEquals(london_pos_short_offset, london_pos_med_offset);
+        assertEquals(london_pos_med_offset, london_pos_short_offset);
+        assertEquals(london_pos_short_offset, london_pos_offset);
+        assertEquals(london_pos_offset, london_neg_short_offset);
+        assertEquals(london_neg_short_offset, london_neg_med_offset);
+        assertEquals(london_neg_med_offset, london_neg_offset);
+        assertEquals(london_neg_offset, london_z);
+        assertEquals(london_z, london_utc);
+
+        Date ny = DateUtilities.parseDate("2024-01-06T00:00:01 America/New_York");
+        assert ny.getTime() - london.getTime() == 5*60*60*1000;
+
+        Date ny_offset = DateUtilities.parseDate("2024-01-6T00:00:01-5");
+        assert ny_offset.getTime() - london.getTime() == 5*60*60*1000;
+
+        Date la_offset = DateUtilities.parseDate("2024-01-6T00:00:01-08:00");
+        assert la_offset.getTime() - london.getTime() == 8*60*60*1000;
+    }
+
+    @Test
+    void testTimeBeforeDate()
+    {
+        Date x = DateUtilities.parseDate("13:01:54 2021-01-14");
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(2021, Calendar.JANUARY, 14, 13, 1, 54);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("13:01:54T2021-01-14");
+        c.clear();
+        c.set(2021, Calendar.JANUARY, 14, 13, 1, 54);
+        assertEquals(x, c.getTime());
+
+        x = DateUtilities.parseDate("13:01:54.1234567T2021-01-14");
+        c.clear();
+        c.set(2021, Calendar.JANUARY, 14, 13, 1, 54);
+        c.set(Calendar.MILLISECOND, 123);
+        assertEquals(x, c.getTime());
+
+        DateUtilities.parseDate("13:01:54.1234567ZT2021-01-14");
+        DateUtilities.parseDate("13:01:54.1234567-10T2021-01-14");
+        DateUtilities.parseDate("13:01:54.1234567-10:00T2021-01-14");
+        x = DateUtilities.parseDate("13:01:54.1234567 America/New_York T2021-01-14");
+        Date y = DateUtilities.parseDate("13:01:54.1234567-0500T2021-01-14");
+        assertEquals(x, y);
+    }
+
+    @Test
+    void testParseErrors()
+    {
+        try {
             DateUtilities.parseDate("2014-11-j 16:43:27.123");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("2014-6-10 24:43:27.123");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("2014-6-10 23:61:27.123");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("2014-6-10 23:00:75.123");
             fail("should not make it here");
-        }
-        catch (Exception igored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("27 Jume 2014");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("13/01/2014");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("00/01/2014");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("12/32/2014");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
 
-        try
-        {
+        try {
             DateUtilities.parseDate("12/00/2014");
             fail("should not make it here");
-        }
-        catch (Exception ignored)
-        {
-        }
+        } catch (Exception ignored) {}
+    }
+
+    @Test
+    void testMacUnixDateFormat()
+    {
+        Date date = DateUtilities.parseDate("Sat Jan  6 20:06:58 EST 2024");
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2024, Calendar.JANUARY, 6, 20, 6, 58);
+        assertEquals(calendar.getTime(), date);
+        Date date2 = DateUtilities.parseDate("Sat Jan  6 20:06:58 PST 2024");
+        assertEquals(date2.getTime(), date.getTime() + 3*60*60*1000);
+    }
+
+    @Test
+    void testUnixDateFormat()
+    {
+        Date date = DateUtilities.parseDate("Sat Jan  6 20:06:58 2024");
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2024, Calendar.JANUARY, 6, 20, 6, 58);
+        assertEquals(calendar.getTime(), date);
+    }
+
+    @Test
+    void testInconsistentDateSeparators()
+    {
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24-1996"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to parse: 12/24-1996 as a date");
+        
+        assertThatThrownBy(() -> DateUtilities.parseDate("1996-12/24"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to parse: 1996-12/24 as a date");
     }
 }

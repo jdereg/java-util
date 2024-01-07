@@ -69,7 +69,7 @@ public class TestExceptionUtilities
         {
             Throwable t = ExceptionUtilities.getDeepestException(e);
             assert t != e;
-            assert t.getMessage().equals("Unable to parse: foo");
+            assert t.getMessage().contains("Unable to parse: foo");
         }
     }
 }

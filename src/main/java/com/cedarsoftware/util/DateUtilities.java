@@ -1,5 +1,8 @@
 package com.cedarsoftware.util;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
@@ -9,7 +12,62 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Handy utilities for working with Java Dates.
+ * Utility for parsing String dates with optional times, especially when the input String formats
+ * may be inconsistent.  This will parse the following formats (constrained only by java.util.Date limitations...best
+ * time resolution is milliseconds):<br/>
+ * <pre>
+ * 12-31-2023  -or-  12/31/2023     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
+ *                                  
+ * 2023-12-31  -or-  2023/12/31     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
+ *                                  
+ * January 6th, 2024                Month (3-4 digit abbreviation or full English name), white-space and optional comma,
+ *                                  day of month (1-31 or 0-31) with optional suffixes 1st, 3rd, 22nd, whitespace and
+ *                                  optional comma, and yyyy (0000-9999)
+ *
+ * 17th January 2024                day of month (1-31 or 0-31) with optional suffixes (e.g. 1st, 3rd, 22nd),
+ *                                  Month (3-4 digit abbreviation or full English name), whites space and optional comma,
+ *                                  and yyyy (0000-9999)
+ *
+ * 2024 January 31st                4 digit year, white space and optional comma, Month (3-4 digit abbreviation or full
+ *                                  English name), white space and optional command, and day of month with optional
+ *                                  suffixes (1st, 3rd, 22nd)
+ *
+ * Sat Jan 6 11:06:10 EST 2024      Unix/Linux style.  Day of week (3-letter or full name), Month (3-4 digit or full
+ *                                  English name), time hh:mm:ss, TimeZone (Java supported Timezone names), Year
+ * </pre>
+ *  All dates can be followed by a Time, or the time can precede the Date. Whitespace or a single letter T must separate the
+ *  date and the time for the non-Unix time formats.  The Time formats supported:<br/>
+ * <pre>
+ * hh:mm                            hours (00-23), minutes (00-59).  24 hour format.
+ * 
+ * hh:mm:ss                         hours (00-23), minutes (00-59), seconds (00-59).  24 hour format.
+ *
+ * hh:mm:ss.sssss                   hh:mm:ss and fractional seconds. Variable fractional seconds supported. Date only
+ *                                  supports up to millisecond precision, so anything after 3 decimal places is
+ *                                  effectively ignored.
+ *
+ * hh:mm:offset -or-                offset can be specified as +HH:mm, +HHmm, +HH, -HH:mm, -HHmm, -HH, or Z (GMT)
+ * hh:mm:ss.sss:offset              which will match: "12:34", "12:34:56", "12:34.789", "12:34:56.789", "12:34+01:00",
+ *                                  "12:34:56+1:00", "12:34-01", "12:34:56-1", "12:34Z", "12:34:56Z"
+ *
+ * hh:mm:zone -or-                  Zone can be specified as Z (Zooloo = UTC), older short forms: GMT, EST, CST, MST,
+ * hh:mm:ss.sss:zone                PST, IST, JST, BST etc. as well as the long forms: "America/New York", "Asia/Saigon",
+ *                                  etc. See ZoneId.getAvailableZoneIds().
+ * </pre>
+ * DateUtilities will parse Epoch-based integer-based values. It supports the following 3 types:
+ * <pre>
+ * "0" through "999999"              A string of digits in this range will be parsed and returned as the number of days
+ *                                   since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ *
+ * "1000000" through "999999999999"  A string of digits in this range will be parsed and returned as the number of seconds
+ *                                   since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ *
+ * "1000000000000" or larger         A string of digits in this range will be parsed and returned as the number of milli-
+ *                                   seconds since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ * </pre>
+ * On all patterns above, if a day-of-week (e.g. Thu, Sunday, etc.) is included (front, back, or between date and time),
+ * it will be ignored, allowing for even more formats than what is listed here.  The day-of-week is not be used to
+ * influence the Date calculation.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -27,24 +85,20 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class DateUtilities
-{
+public final class DateUtilities {
+    private static final Pattern allDigits = Pattern.compile("^\\d+$");
     private static final String days = "(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)"; // longer before shorter matters
-    private static final String mos = "(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)";
-    private static final Pattern datePattern1 = Pattern.compile("(\\d{4})[./-](\\d{1,2})[./-](\\d{1,2})");
-    private static final Pattern datePattern2 = Pattern.compile("(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4})");
-    private static final Pattern datePattern3 = Pattern.compile(mos + "[ ]*+[,]?+[ ]*+(\\d{1,2}+)(st|nd|rd|th|)[ ]*+[,]?+[ ]*+(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern4 = Pattern.compile("(\\d{1,2}+)(st|nd|rd|th|)[ ]*+[,]?+[ ]*+" + mos + "[ ]*+[,]?+[ ]*+(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern5 = Pattern.compile("(\\d{4})[ ]*+[,]?+[ ]*+" + mos + "[ ]*+[,]?+[ ]*(\\d{1,2}+)(st|nd|rd|th|)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern datePattern6 = Pattern.compile(days+"[ ]++" + mos + "[ ]++(\\d{1,2}+)[ ]++(\\d{2}:\\d{2}:\\d{2})[ ]++[A-Z]{1,3}+\\s++(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern timePattern1 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})[.](\\d{1,10}+)([+-]\\d{2}[:]?+\\d{2}|Z)?");
-    private static final Pattern timePattern2 = Pattern.compile("(\\d{2})[:.](\\d{2})[:.](\\d{2})([+-]\\d{2}[:]?\\d{2}|Z)?");
-    private static final Pattern timePattern3 = Pattern.compile("(\\d{2})[:.](\\d{2})([+-]\\d{2}[:]?+\\d{2}|Z)?");
+    private static final String mos = "(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)";
+    private static final Pattern datePattern1 = Pattern.compile("(\\d{4})([./-])(\\d{1,2})\\2(\\d{1,2})|(\\d{1,2})([./-])(\\d{1,2})\\6(\\d{4})");  // \2 and \6 references the separator, enforcing same
+    private static final Pattern datePattern2 = Pattern.compile(mos + "[ ,]*(\\d{1,2})(st|nd|rd|th)?[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern3 = Pattern.compile("(\\d{1,2})(st|nd|rd|th)?[ ,]*" + mos + "[ ,]*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern datePattern4 = Pattern.compile("(\\d{4})[ ,]*" + mos + "[ ,]*(\\d{1,2})(st|nd|rd|th)?", Pattern.CASE_INSENSITIVE);
+    private static final Pattern unixDatePattern = Pattern.compile(days + "\\s+" + mos + "\\s+(\\d{1,2})\\s+(\\d{2}:\\d{2}:\\d{2})\\s*([A-Z]{1,3})?\\s*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern timePattern = Pattern.compile("(\\d{2}):(\\d{2})(?::(\\d{2}))?(\\.\\d+)?([+-]\\d{1,2}:\\d{2}|[+-]\\d{4}|[+-]\\d{1,2}|Z|\\s+[A-Za-z][A-Za-z0-9~/._+-]+)?", Pattern.CASE_INSENSITIVE);
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
     private static final Map<String, String> months = new ConcurrentHashMap<>();
-
-    static
-    {
+    // Sat Jan  6 22:06:58 EST 2024
+    static {
         // Month name to number map
         months.put("jan", "1");
         months.put("january", "1");
@@ -73,216 +127,169 @@ public final class DateUtilities
     }
 
     private DateUtilities() {
-        super();
     }
 
-    public static Date parseDate(String dateStr)
-    {
-        if (dateStr == null)
-        {
+    public static Date parseDate(String dateStr) {
+        if (dateStr == null) {
             return null;
         }
+
         dateStr = dateStr.trim();
-        if ("".equals(dateStr))
-        {
+        if (dateStr.isEmpty()) {
             return null;
+        }
+
+        if (allDigits.matcher(dateStr).matches()) {
+            return parseEpochString(dateStr);
         }
 
         // Determine which date pattern (Matcher) to use
         Matcher matcher = datePattern1.matcher(dateStr);
 
-        String year, month = null, day, mon = null, remains;
+        String year = null, month = null, day = null, mon = null, remains = "", sep, tz = null;
 
-        if (matcher.find())
-        {
-            year = matcher.group(1);
-            month = matcher.group(2);
-            day = matcher.group(3);
-            remains = matcher.replaceFirst("");
-        }
-        else
-        {
-            matcher = datePattern2.matcher(dateStr);
-            if (matcher.find())
-            {
-                month = matcher.group(1);
-                day = matcher.group(2);
-                year = matcher.group(3);
-                remains = matcher.replaceFirst("");
+        if (matcher.find()) {
+            if (matcher.group(1) != null) {
+                year = matcher.group(1);
+                month = matcher.group(3);
+                day = matcher.group(4);
+            } else {
+                year = matcher.group(8);
+                month = matcher.group(5);
+                day = matcher.group(7);
             }
-            else
-            {
+            remains = matcher.replaceFirst("");
+        } else {
+            matcher = datePattern2.matcher(dateStr);
+            if (matcher.find()) {
+                mon = matcher.group(1);
+                day = matcher.group(2);
+                year = matcher.group(4);
+                remains = matcher.replaceFirst("");
+            } else {
                 matcher = datePattern3.matcher(dateStr);
-                if (matcher.find())
-                {
-                    mon = matcher.group(1);
-                    day = matcher.group(2);
+                if (matcher.find()) {
+                    day = matcher.group(1);
+                    mon = matcher.group(3);
                     year = matcher.group(4);
                     remains = matcher.replaceFirst("");
-                }
-                else
-                {
+                } else {
                     matcher = datePattern4.matcher(dateStr);
-                    if (matcher.find())
-                    {
-                        day = matcher.group(1);
-                        mon = matcher.group(3);
-                        year = matcher.group(4);
+                    if (matcher.find()) {
+                        year = matcher.group(1);
+                        mon = matcher.group(2);
+                        day = matcher.group(3);
                         remains = matcher.replaceFirst("");
-                    }
-                    else
-                    {
-                        matcher = datePattern5.matcher(dateStr);
-                        if (matcher.find())
-                        {
-                            year = matcher.group(1);
-                            mon = matcher.group(2);
-                            day = matcher.group(3);
-                            remains = matcher.replaceFirst("");
+                    } else {
+                        matcher = unixDatePattern.matcher(dateStr);
+                        if (!matcher.find()) {
+                            throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
                         }
-                        else
-                        {
-                            matcher = datePattern6.matcher(dateStr);
-                            if (!matcher.find())
-                            {
-                                error("Unable to parse: " + dateStr);
-                            }
-                            year = matcher.group(5);
-                            mon = matcher.group(2);
-                            day = matcher.group(3);
-                            remains = matcher.group(4);
-                        }
+                        year = matcher.group(6);
+                        mon = matcher.group(2);
+                        day = matcher.group(3);
+                        tz = matcher.group(5);
+                        remains = matcher.group(4);
                     }
                 }
             }
         }
 
-        if (mon != null)
-        {   // Month will always be in Map, because regex forces this.
+        if (mon != null) {   // Month will always be in Map, because regex forces this.
             month = months.get(mon.trim().toLowerCase());
         }
 
         // Determine which date pattern (Matcher) to use
-        String hour = null, min = null, sec = "00", milli = "0", tz = null;
+        String hour = null, min = null, sec = "00", milli = "0";
         remains = remains.trim();
-        matcher = timePattern1.matcher(remains);
-        if (matcher.find())
-        {
+        matcher = timePattern.matcher(remains);
+        if (matcher.find()) {
             hour = matcher.group(1);
             min = matcher.group(2);
-            sec = matcher.group(3);
-            milli = matcher.group(4);
-            if (matcher.groupCount() > 4)
-            {
-                tz = matcher.group(5);
-            }
-        }
-        else
-        {
-            matcher = timePattern2.matcher(remains);
-            if (matcher.find())
-            {
-                hour = matcher.group(1);
-                min = matcher.group(2);
+            if (matcher.group(3) != null) {
                 sec = matcher.group(3);
-                if (matcher.groupCount() > 3)
-                {
-                    tz = matcher.group(4);
-                }
             }
-            else
-            {
-                matcher = timePattern3.matcher(remains);
-                if (matcher.find())
-                {
-                    hour = matcher.group(1);
-                    min = matcher.group(2);
-                    if (matcher.groupCount() > 2)
-                    {
-                        tz = matcher.group(3);
-                    }
-                }
-                else
-                {
-                    matcher = null;
-                }
+            if (matcher.group(4) != null) {
+                milli = matcher.group(4).substring(1);
             }
+            if (matcher.group(5) != null) {
+                tz = matcher.group(5).trim();
+            }
+        } else {
+            matcher = null;
         }
 
-        if (matcher != null)
-        {
+        if (matcher != null) {
             remains = matcher.replaceFirst("");
         }
 
         // Clear out day of week (mon, tue, wed, ...)
-        if (StringUtilities.length(remains) > 0)
-        {
+        if (StringUtilities.length(remains) > 0) {
             Matcher dayMatcher = dayPattern.matcher(remains);
-            if (dayMatcher.find())
-            {
+            if (dayMatcher.find()) {
                 remains = dayMatcher.replaceFirst("").trim();
             }
         }
-        if (StringUtilities.length(remains) > 0)
-        {
+        if (StringUtilities.length(remains) > 0) {
             remains = remains.trim();
-            if (!remains.equals(",") && (!remains.equals("T")))
-            {
-                error("Issue parsing data/time, other characters present: " + remains);
+            if (!remains.equals(",") && (!remains.equals("T"))) {
+                throw new IllegalArgumentException("Issue parsing data/time, other characters present: " + remains);
             }
         }
 
         Calendar c = Calendar.getInstance();
-        c.clear();
-        if (tz != null)
-        {
-            if ("z".equalsIgnoreCase(tz))
-            {
-                c.setTimeZone(TimeZone.getTimeZone("GMT"));
-            }
-            else
-            {
-                c.setTimeZone(TimeZone.getTimeZone("GMT" + tz));
+        if (tz != null) {
+            if (tz.startsWith("-") || tz.startsWith("+")) {
+                ZoneOffset offset = ZoneOffset.of(tz);
+                ZoneId zoneId = ZoneId.ofOffset("UTC", offset);
+                TimeZone timeZone = TimeZone.getTimeZone(zoneId);
+                c.setTimeZone(timeZone);
+            } else {
+                try {
+                    ZoneId zoneId = ZoneId.of(tz);
+                    TimeZone timeZone = TimeZone.getTimeZone(zoneId);
+                    c.setTimeZone(timeZone);
+                } catch (Exception e) {
+                    TimeZone timeZone = TimeZone.getTimeZone(tz);
+                    if (timeZone.getRawOffset() != 0) {
+                        c.setTimeZone(timeZone);
+                    } else {
+                        throw e;
+                    }
+                }
             }
         }
+        c.clear();
 
         // Regex prevents these from ever failing to parse
         int y = Integer.parseInt(year);
         int m = Integer.parseInt(month) - 1;    // months are 0-based
         int d = Integer.parseInt(day);
 
-        if (m < 0 || m > 11)
-        {
-            error("Month must be between 1 and 12 inclusive, date: " + dateStr);
+        if (m < 0 || m > 11) {
+            throw new IllegalArgumentException("Month must be between 1 and 12 inclusive, date: " + dateStr);
         }
-        if (d < 1 || d > 31)
-        {
-            error("Day must be between 1 and 31 inclusive, date: " + dateStr);
+        if (d < 1 || d > 31) {
+            throw new IllegalArgumentException("Day must be between 1 and 31 inclusive, date: " + dateStr);
         }
 
-        if (matcher == null)
-        {   // no [valid] time portion
+        if (matcher == null) {   // no [valid] time portion
             c.set(y, m, d);
-        }
-        else
-        {
+        } else {
             // Regex prevents these from ever failing to parse.
             int h = Integer.parseInt(hour);
             int mn = Integer.parseInt(min);
             int s = Integer.parseInt(sec);
-            int ms = Integer.parseInt(prepareMillis(milli));
+            int ms = Integer.parseInt(prepareMillis(milli));   // Must be between 0 and 999.
 
-            if (h > 23)
-            {
-                error("Hour must be between 0 and 23 inclusive, time: " + dateStr);
+            if (h > 23) {
+                throw new IllegalArgumentException("Hour must be between 0 and 23 inclusive, time: " + dateStr);
             }
-            if (mn > 59)
-            {
-                error("Minute must be between 0 and 59 inclusive, time: " + dateStr);
+            if (mn > 59) {
+                throw new IllegalArgumentException("Minute must be between 0 and 59 inclusive, time: " + dateStr);
             }
-            if (s > 59)
-            {
-                error("Second must be between 0 and 59 inclusive, time: " + dateStr);
+            if (s > 59) {
+                throw new IllegalArgumentException("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
             // regex enforces millis to number
@@ -292,29 +299,31 @@ public final class DateUtilities
         return c.getTime();
     }
 
-    private static String prepareMillis(String milli)
-    {
-        if (StringUtilities.isEmpty(milli))
-        {
+    /**
+     * Calendar & Date are only accurate to milliseconds.
+     */
+    private static String prepareMillis(String milli) {
+        if (StringUtilities.isEmpty(milli)) {
             return "000";
         }
         final int len = milli.length();
-        if (len == 1)
-        {
+        if (len == 1) {
             return milli + "00";
-        }
-        else if (len == 2)
-        {
+        } else if (len == 2) {
             return milli + "0";
-        }
-        else
-        {
+        } else {
             return milli.substring(0, 3);
         }
     }
 
-    private static void error(String msg)
-    {
-        throw new IllegalArgumentException(msg);
+    private static Date parseEpochString(String dateStr) {
+        long num = Long.parseLong(dateStr);
+        if (dateStr.length() < 7) {         // days since epoch
+            return new Date(LocalDate.ofEpochDay(num).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        } else if (dateStr.length() < 12) { // seconds since epoch
+            return new Date(num * 1000);
+        } else {                            // millis since epoch
+            return new Date(num);
+        }
     }
 }

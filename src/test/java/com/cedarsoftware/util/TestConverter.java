@@ -12,7 +12,9 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,8 +42,10 @@ import static com.cedarsoftware.util.Converter.convertToAtomicBoolean;
 import static com.cedarsoftware.util.Converter.convertToAtomicInteger;
 import static com.cedarsoftware.util.Converter.convertToAtomicLong;
 import static com.cedarsoftware.util.Converter.convertToBigDecimal;
+import static com.cedarsoftware.util.Converter.convertToBigInteger;
 import static com.cedarsoftware.util.Converter.convertToByte;
 import static com.cedarsoftware.util.Converter.convertToCharacter;
+import static com.cedarsoftware.util.Converter.convertToClass;
 import static com.cedarsoftware.util.Converter.convertToDate;
 import static com.cedarsoftware.util.Converter.convertToDouble;
 import static com.cedarsoftware.util.Converter.convertToFloat;
@@ -53,12 +57,14 @@ import static com.cedarsoftware.util.Converter.convertToShort;
 import static com.cedarsoftware.util.Converter.convertToSqlDate;
 import static com.cedarsoftware.util.Converter.convertToString;
 import static com.cedarsoftware.util.Converter.convertToTimestamp;
+import static com.cedarsoftware.util.Converter.convertToUUID;
 import static com.cedarsoftware.util.Converter.convertToZonedDateTime;
 import static com.cedarsoftware.util.Converter.localDateTimeToMillis;
 import static com.cedarsoftware.util.Converter.localDateToMillis;
 import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
 import static com.cedarsoftware.util.TestConverter.fubar.bar;
 import static com.cedarsoftware.util.TestConverter.fubar.foo;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -1175,7 +1181,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "local");
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "zoned");
         }
 
         assert convertToZonedDateTime(null) == null;
@@ -1677,5 +1683,122 @@ public class TestConverter
 
         AtomicLong atomicLong = convertToAtomicLong(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()));
         assert atomicLong.get() == cal.getTime().getTime();
+    }
+    
+    @Test
+    public void testStringToClass()
+    {
+        Class<?> clazz = convertToClass("java.math.BigInteger");
+        assert clazz.getName().equals("java.math.BigInteger");
+
+        assertThatThrownBy(() -> convertToClass("foo.bar.baz.Qux"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("value [java.lang.String (foo.bar.baz.Qux)] could not be converted to a 'Class'");
+
+        assertThatThrownBy(() -> convertToClass(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("value [null] could not be converted to a 'Class'");
+
+        assertThatThrownBy(() -> convertToClass(16.0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("value [java.lang.Double (16.0)] could not be converted to a 'Class'");
+    }
+
+    @Test
+    void testClassToClass()
+    {
+        Class<?> clazz = convertToClass(TestConverter.class);
+        assert clazz.getName() == TestConverter.class.getName();
+    }
+
+    @Test
+    public void testStringToUUID()
+    {
+        UUID uuid = Converter.convertToUUID("00000000-0000-0000-0000-000000000064");
+        BigInteger bigInt = Converter.convertToBigInteger(uuid);
+        assert bigInt.intValue() == 100;
+
+        assertThatThrownBy(() -> Converter.convertToUUID("00000000"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("value [java.lang.String (00000000)] could not be converted to a 'UUID'");
+    }
+
+    @Test
+    public void testUUIDToUUID()
+    {
+        UUID uuid = Converter.convertToUUID("00000007-0000-0000-0000-000000000064");
+        UUID uuid2 = Converter.convertToUUID(uuid);
+        assert uuid.equals(uuid2);
+    }
+
+    @Test
+    public void testBogusToUUID()
+    {
+        assertThatThrownBy(() -> Converter.convertToUUID((short)77))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported value type [java.lang.Short (77)] attempting to convert to 'UUID'");
+    }
+
+    @Test
+    public void testBigIntegerToUUID()
+    {
+        UUID uuid = convertToUUID(new BigInteger("100"));
+        BigInteger hundred = convertToBigInteger(uuid);
+        assert hundred.intValue() == 100;
+    }
+
+    @Test
+    public void testMapToUUID()
+    {
+        UUID uuid = convertToUUID(new BigInteger("100"));
+        Map<String, Object> map = new HashMap<>();
+        map.put("mostSigBits", uuid.getMostSignificantBits());
+        map.put("leastSigBits", uuid.getLeastSignificantBits());
+        UUID hundred = convertToUUID(map);
+        assertEquals("00000000-0000-0000-0000-000000000064", hundred.toString());
+    }
+
+    @Test
+    public void testBadMapToUUID()
+    {
+        UUID uuid = convertToUUID(new BigInteger("100"));
+        Map<String, Object> map = new HashMap<>();
+        map.put("leastSigBits", uuid.getLeastSignificantBits());
+        assertThatThrownBy(() -> convertToUUID(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("value [java.util.HashMap ({leastSigBits=100})] could not be converted to a 'UUID'");
+    }
+
+    @Test
+    public void testUUIDToBigInteger()
+    {
+        BigInteger bigInt = Converter.convertToBigInteger(UUID.fromString("00000000-0000-0000-0000-000000000064"));
+        assert bigInt.intValue() == 100;
+
+        bigInt = Converter.convertToBigInteger(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
+        assert bigInt.toString().equals("-18446744073709551617");
+
+        bigInt = Converter.convertToBigInteger(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+        assert bigInt.intValue() == 0;
+
+        assertThatThrownBy(() -> convertToClass(16.0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("value [java.lang.Double (16.0)] could not be converted to a 'Class'");
+    }
+
+    @Test
+    public void testClassToString()
+    {
+        String str = Converter.convertToString(BigInteger.class);
+        assert str.equals("java.math.BigInteger");
+
+        str = Converter.convert2String(BigInteger.class);
+        assert str.equals("java.math.BigInteger");
+
+        str = Converter.convert2String(null);
+        assert "".equals(str);
+
+        str = Converter.convertToString(null);
+        assert str == null;
     }
 }

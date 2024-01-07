@@ -18,7 +18,7 @@ import java.util.SortedMap;
  * Many developers do not realize than they may have thousands or hundreds of thousands of Maps in memory, often
  * representing small JSON objects.  These maps (often HashMaps) usually have a table of 16/32/64... elements in them,
  * with many empty elements.  HashMap doubles it's internal storage each time it expands, so often these Maps have
- * fewer than 50% of these arrays filled.<p></p>
+ * barely 50% of these arrays filled.<p></p>
  *
  * CompactMap is a Map that strives to reduce memory at all costs while retaining speed that is close to HashMap's speed.
  * It does this by using only one (1) member variable (of type Object) and changing it as the Map grows.  It goes from
@@ -35,7 +35,7 @@ import java.util.SortedMap;
  *     // Map you would like it to use when size() {@literal >} compactSize().  HashMap is default
  *     protected abstract Map{@literal <}K, V{@literal >} getNewMap();
  *
- *     // If you want case insensitivity, return true and return new CaseInsensitiveMap or TreeMap(String.CASE_INSENSITIVE_PRDER) from getNewMap()
+ *     // If you want case insensitivity, return true and return new CaseInsensitiveMap or TreeMap(String.CASE_INSENSITIVE_ORDER) from getNewMap()
  *     protected boolean isCaseInsensitive() { return false; }
  *
  *     // When size() {@literal >} than this amount, the Map returned from getNewMap() is used to store elements.

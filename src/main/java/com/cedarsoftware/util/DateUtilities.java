@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -56,18 +57,18 @@ import java.util.regex.Pattern;
  * </pre>
  * DateUtilities will parse Epoch-based integer-based values. It supports the following 3 types:
  * <pre>
- * "0" through "999999"              A string of digits in this range will be parsed and returned as the number of days
- *                                   since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ * "0" to "999999"                   A string of numeric digits from 0 to 6 in length will be parsed and returned as
+ *                                   the number of days since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
  *
- * "1000000" through "999999999999"  A string of digits in this range will be parsed and returned as the number of seconds
- *                                   since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ * "0000000" to "99999999999"        A string of numeric digits from 7 to 11 in length will be parsed and returned as
+ *                                   the number of seconds since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
  *
- * "1000000000000" or larger         A string of digits in this range will be parsed and returned as the number of milli-
- *                                   seconds since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ * "000000000000" to                 A string of numeric digits from 12 to 18 in length will be parsed and returned as
+ * "999999999999999999"              the number of milli-seconds since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
  * </pre>
- * On all patterns above, if a day-of-week (e.g. Thu, Sunday, etc.) is included (front, back, or between date and time),
- * it will be ignored, allowing for even more formats than what is listed here.  The day-of-week is not be used to
- * influence the Date calculation.
+ * On all patterns above (excluding the numeric epoch days, seconds, millis), if a day-of-week (e.g. Thu, Sunday, etc.)
+ * is included (front, back, or between date and time), it will be ignored, allowing for even more formats than what is
+ * listed here.  The day-of-week is not be used to influence the Date calculation.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -349,11 +350,13 @@ public final class DateUtilities {
 
     private static Date parseEpochString(String dateStr) {
         long num = Long.parseLong(dateStr);
-        if (dateStr.length() < 8) {         // days since epoch (good until 1970 +/- 27,397 years)
-            return new Date(LocalDate.ofEpochDay(num).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
-        } else if (dateStr.length() < 13) { // seconds since epoch (good until 1970 +/- 31,709 years)
-            return new Date(num * 1000);
-        } else {                            // millis since epoch (good until 1970 +/- 31,709,791 years)
+        if (dateStr.length() < 7) {         // days since epoch (good until 4707-11-28 00:00:00)
+            Instant instant = LocalDate.ofEpochDay(num).atStartOfDay(ZoneId.of("GMT")).toInstant();
+            return new Date(instant.toEpochMilli());
+        } else if (dateStr.length() < 12) { // seconds since epoch (good until 5138-11-16 09:46:39)
+            Instant instant = Instant.ofEpochSecond(num);
+            return new Date(instant.toEpochMilli());
+        } else {                            // millis since epoch (good until 31690708-07-05 01:46:39.999)
             return new Date(num);
         }
     }

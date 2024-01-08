@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -728,5 +729,82 @@ class TestDateUtilities
         assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing data/time, other characters present: 12-49-58");
+    }
+
+    @Test
+    void testEpochDays()
+    {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+        // 6 digits - 0 case
+        Date date = DateUtilities.parseDate("000000");
+        String gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:00", gmtDateString);
+
+        // 6 digits - 1 past zero case (increments by a day)
+        date = DateUtilities.parseDate("000001");
+        gmtDateString = sdf.format(date);
+        assertEquals("1970-01-02 00:00:00", gmtDateString);
+
+        // 6-digits - max case - all 9's
+        date = DateUtilities.parseDate("999999");
+        gmtDateString = sdf.format(date);
+        System.out.println("gmtDateString = " + gmtDateString);
+        assertEquals("4707-11-28 00:00:00", gmtDateString);
+    }
+
+    @Test
+    void testEpochSeconds()
+    {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+        // Strings 7 digits to 12 digits are treated as seconds since unix epoch
+        Date date = DateUtilities.parseDate("0000000");
+        String gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:00", gmtDateString);
+
+        // 7 digits, 1 past the 0 case
+        date = DateUtilities.parseDate("0000001");
+        gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:01", gmtDateString);
+
+        // 11 digits, 1 past the 0 case
+        date = DateUtilities.parseDate("00000000001");
+        gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:01", gmtDateString);
+
+        // 11 digits, max case - all 9's
+        date = DateUtilities.parseDate("99999999999");
+        gmtDateString = sdf.format(date);
+        assertEquals("5138-11-16 09:46:39", gmtDateString);
+    }
+
+    @Test
+    void testEpochMillis()
+    {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+        // 12 digits - 0 case
+        Date date = DateUtilities.parseDate("000000000000");
+        String gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:00.000", gmtDateString);
+
+        // 12 digits - 1 case
+        date = DateUtilities.parseDate("000000000001");
+        gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:00.001", gmtDateString);
+
+        // 18 digits - 1 case
+        date = DateUtilities.parseDate("000000000000000001");
+        gmtDateString = sdf.format(date);
+        assertEquals("1970-01-01 00:00:00.001", gmtDateString);
+
+        // 18 digits - max case
+        date = DateUtilities.parseDate("999999999999999999");
+        gmtDateString = sdf.format(date);
+        assertEquals("31690708-07-05 01:46:39.999", gmtDateString);
     }
 }

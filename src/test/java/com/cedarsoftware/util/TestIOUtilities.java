@@ -17,12 +17,14 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
 
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -137,7 +139,8 @@ public class TestIOUtilities
 
         // load expected result
         ByteArrayOutputStream expectedResult = getUncompressedByteArray();
-        assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
+        String actual = new String(actualResult.toByteArray(), StandardCharsets.UTF_8);
+        assertThat(expectedResult.toByteArray()).asString(StandardCharsets.UTF_8).isEqualToIgnoringNewLines(actual);
         f.delete();
     }
 

@@ -38,8 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class TestUniqueIdGenerator
 {
-    private static int bucketSize = 200000;
-    private static int maxIdGen = 100000;
+    private static final int bucketSize = 200000;
 
     @Test
     public void testIdLengths()
@@ -66,6 +65,7 @@ public class TestUniqueIdGenerator
     @Test
     public void testUniqueIdGeneration()
     {
+        int maxIdGen = 100000;
         int testSize = maxIdGen;
         Long[] keep = new Long[testSize];
         Long[] keep19 = new Long[testSize];
@@ -131,44 +131,32 @@ public class TestUniqueIdGenerator
         final Set<Long> bucketC = new LinkedHashSet<>();
         final Set<Long> bucketD = new LinkedHashSet<>();
 
-        Runnable test1 = new Runnable() {
-            public void run()
-            {
-                await(startLatch);
-                fillBucket(bucket1);
-                fillBucket19(bucketA);
-                finishedLatch.countDown();
-            }
+        Runnable test1 = () -> {
+            await(startLatch);
+            fillBucket(bucket1);
+            fillBucket19(bucketA);
+            finishedLatch.countDown();
         };
 
-        Runnable test2 = new Runnable() {
-            public void run()
-            {
-                await(startLatch);
-                fillBucket(bucket2);
-                fillBucket19(bucketB);
-                finishedLatch.countDown();
-            }
+        Runnable test2 = () -> {
+            await(startLatch);
+            fillBucket(bucket2);
+            fillBucket19(bucketB);
+            finishedLatch.countDown();
         };
 
-        Runnable test3 = new Runnable() {
-            public void run()
-            {
-                await(startLatch);
-                fillBucket(bucket3);
-                fillBucket19(bucketC);
-                finishedLatch.countDown();
-            }
+        Runnable test3 = () -> {
+            await(startLatch);
+            fillBucket(bucket3);
+            fillBucket19(bucketC);
+            finishedLatch.countDown();
         };
 
-        Runnable test4 = new Runnable() {
-            public void run()
-            {
-                await(startLatch);
-                fillBucket(bucket4);
-                fillBucket19(bucketD);
-                finishedLatch.countDown();
-            }
+        Runnable test4 = () -> {
+            await(startLatch);
+            fillBucket(bucket4);
+            fillBucket19(bucketD);
+            finishedLatch.countDown();
         };
 
         long start = System.nanoTime();

@@ -4,8 +4,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.TimeZone;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -538,24 +541,16 @@ class TestDateUtilities
         assertTrue(x.compareTo(y) < 0);
     }
 
-    @Test
-    void testTimeZoneValidShortNames() {
+    @ParameterizedTest
+    @ValueSource(strings = {"JST", "IST", "CET", "BST", "EST", "CST", "MST", "PST", "CAT", "EAT", "ART", "ECT", "NST", "AST", "HST"})
+    void testTimeZoneValidShortNames(String timeZoneId) {
         // Support for some of the oldie but goodies (when the TimeZone returned does not have a 0 offset)
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 JST"); // Japan
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 IST"); // India
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 CET"); // France
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 BST"); // British Summer Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 EST"); // Eastern Standard
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 CST"); // Central Standard
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 MST"); // Mountain Standard
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 PST"); // Pacific Standard
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 CAT"); // Central Africa Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 EAT"); // Eastern Africa Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 ART"); // Argentina Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 ECT"); // Ecuador Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 NST"); // Newfoundland Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 AST"); // Atlantic Standard Time
-        DateUtilities.parseDate("2021-01-13T13:01:54.6747552 HST"); // Hawaii Standard Time
+        Date date = DateUtilities.parseDate("2021-01-13T13:01:54.6747552 " + timeZoneId);
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeZone(TimeZone.getTimeZone(timeZoneId));
+        calendar.clear();
+        calendar.set(2021, Calendar.JANUARY, 13, 13, 1, 54);
+        assert date.getTime() - calendar.getTime().getTime() == 674;    // less than 1000 millis
     }
 
     @Test
@@ -679,16 +674,16 @@ class TestDateUtilities
         } catch (Exception ignored) {}
     }
 
-    @Test
-    void testMacUnixDateFormat()
+    @ParameterizedTest
+    @ValueSource(strings = {"JST", "IST", "CET", "BST", "EST", "CST", "MST", "PST", "CAT", "EAT", "ART", "ECT", "NST", "AST", "HST"})
+    void testMacUnixDateFormat(String timeZoneId)
     {
-        Date date = DateUtilities.parseDate("Sat Jan  6 20:06:58 EST 2024");
+        Date date = DateUtilities.parseDate("Sat Jan  6 20:06:58 " + timeZoneId + " 2024");
         Calendar calendar = Calendar.getInstance();
+        calendar.setTimeZone(TimeZone.getTimeZone(timeZoneId));
         calendar.clear();
         calendar.set(2024, Calendar.JANUARY, 6, 20, 6, 58);
         assertEquals(calendar.getTime(), date);
-        Date date2 = DateUtilities.parseDate("Sat Jan  6 20:06:58 PST 2024");
-        assertEquals(date2.getTime(), date.getTime() + 3*60*60*1000);
     }
 
     @Test
@@ -711,5 +706,27 @@ class TestDateUtilities
         assertThatThrownBy(() -> DateUtilities.parseDate("1996-12/24"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unable to parse: 1996-12/24 as a date");
+    }
+
+    @Test
+    void testBadTimeSeparators()
+    {
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12.49.58"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Issue parsing data/time, other characters present: 12.49.58");
+
+        assertThatThrownBy(() -> DateUtilities.parseDate("12.49.58 12/24/1996"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Issue parsing data/time, other characters present: 12.49.58");
+
+        Date date = DateUtilities.parseDate("12:49:58 12/24/1996"); // time with valid separators before date
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(1996, Calendar.DECEMBER, 24, 12, 49, 58);
+        assertEquals(calendar.getTime(), date);
+
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Issue parsing data/time, other characters present: 12-49-58");
     }
 }

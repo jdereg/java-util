@@ -1,6 +1,12 @@
 package com.cedarsoftware.util;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Usefule utilities for Maps
@@ -84,5 +90,64 @@ public class MapUtilities
      */
     public static boolean isEmpty(Map map) {
         return map == null || map.isEmpty();
+    }
+
+    /**
+     * Duplicate a map of Set to Class, possibly as unmodifiable
+     *
+     * @param other        map to duplicate
+     * @param unmodifiable will the result be unmodifiable
+     * @return duplicated map
+     */
+    public static <T> Map<Class<?>, Set<T>> dupe(Map<Class<?>, Set<T>> other, boolean unmodifiable) {
+        final Map<Class<?>, Set<T>> newItemsAssocToClass = new LinkedHashMap<>();
+        for (Map.Entry<Class<?>, Set<T>> entry : other.entrySet()) {
+            final Set<T> itemsAssocToClass = new LinkedHashSet<>(entry.getValue());
+            if (unmodifiable) {
+                newItemsAssocToClass.computeIfAbsent(entry.getKey(), k -> Collections.unmodifiableSet(itemsAssocToClass));
+            } else {
+                newItemsAssocToClass.computeIfAbsent(entry.getKey(), k -> itemsAssocToClass);
+            }
+        }
+        if (unmodifiable) {
+            return Collections.unmodifiableMap(newItemsAssocToClass);
+        } else {
+            return newItemsAssocToClass;
+        }
+    }
+
+    //  Keeping next two methods in case we need to make certain sets unmodifiable still.
+    public static <T, V> Map<T, Set<V>> cloneMapOfSets(final Map<T, Set<V>> original, final boolean immutable) {
+        final Map<T, Set<V>> result = new HashMap<>();
+
+        for (Map.Entry<T, Set<V>> entry : original.entrySet()) {
+            final T key = entry.getKey();
+            final Set<V> value = entry.getValue();
+
+            final Set<V> clonedSet = immutable
+                    ? Collections.unmodifiableSet(value)
+                    : new HashSet<>(value);
+
+            result.put(key, clonedSet);
+        }
+
+        return immutable ? Collections.unmodifiableMap(result) : result;
+    }
+
+    public static <T, U, V> Map<T, Map<U, V>> cloneMapOfMaps(final Map<T, Map<U, V>> original, final boolean immutable) {
+        final Map<T, Map<U, V>> result = new LinkedHashMap<>();
+
+        for (Map.Entry<T, Map<U, V>> entry : original.entrySet()) {
+            final T key = entry.getKey();
+            final Map<U, V> value = entry.getValue();
+
+            final Map<U, V> clonedMap = immutable
+                    ? Collections.unmodifiableMap(value)
+                    : new LinkedHashMap<>(value);
+
+            result.put(key, clonedMap);
+        }
+
+        return immutable ? Collections.unmodifiableMap(result) : result;
     }
 }

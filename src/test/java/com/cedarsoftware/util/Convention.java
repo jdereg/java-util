@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.io.JsonIoException;
 import com.cedarsoftware.util.io.MetaUtils;
 
 import java.util.Map;

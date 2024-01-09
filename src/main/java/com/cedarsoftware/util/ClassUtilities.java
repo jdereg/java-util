@@ -142,4 +142,18 @@ public class ClassUtilities
             return -1;
         }
     }
+
+    /**
+     * Returns a class if exists, else returns null.
+     * @param name - name of class to load
+     * @param loader - class loader to use.
+     * @return Class loaded and initialized.
+     */
+    public static Class forName(String name, ClassLoader loader) {
+        try {
+            return Class.forName(name, true, loader);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

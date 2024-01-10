@@ -127,13 +127,15 @@ public class UniqueIdGenerator
      * number. This number is chosen when the JVM is started and then stays fixed until next restart.  This is to
      * ensure cluster uniqueness.<br>
      * <br>
-     * There is the possibility two machines could choose the same random number at start. Even still, collisions would
-     * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond
-     * <b>with</b> the count at the same position.<br>
+     * Because there is the possibility two machines could choose the same random number and be at the same cound, at the
+     * same time, a unique machine index is chosen to provide a 00 to 99 value for machine instance within a cluster.
+     * To set the unique machine index value, set the environment variable JAVA_UTIL_CLUSTERID to a unique two-digit
+     * number on each machine in the cluster.  If the machines are managed by CloundFoundry, the uniqueId will use the
+     * CF_INSTANCE_INDEX to provide unique machine ID.  Only if neither of these environment variables are set, will it
+     * resort to using a random number from 00 to 99 for the machine instance number portion of the unique ID.<br>
      * <br>
      * This API is slower than the 19 digit API.  Grabbing a bunch of IDs in a tight loop for example, could cause
-     * delays while it waits for the millisecond to tick over.  This API can return 1,000 unique IDs per millisecond
-     * max.<br>
+     * delays while it waits for the millisecond to tick over. This API can return up to 1,000 unique IDs per millisecond.<br>
      * <br>
      * The IDs returned are guaranteed to be strictly increasing.
      *
@@ -178,14 +180,17 @@ public class UniqueIdGenerator
      * This is followed by a random 2 digit number. This number is chosen when the JVM is started and then stays fixed
      * until next restart.  This is to ensure cluster uniqueness.<br>
      * <br>
-     * There is the possibility two machines could choose the same random number at start. Even still, collisions would
-     * be highly unlikely because for a collision to occur, a number would have to be chosen at the same millisecond
-     * <b>with</b> the count at the same position.<br>
+     * Because there is the possibility two machines could choose the same random number and be at the same cound, at the
+     * same time, a unique machine index is chosen to provide a 00 to 99 value for machine instance within a cluster.
+     * To set the unique machine index value, set the environment variable JAVA_UTIL_CLUSTERID to a unique two-digit
+     * number on each machine in the cluster.  If the machines are managed by CloundFoundry, the uniqueId will use the
+     * CF_INSTANCE_INDEX to provide unique machine ID.  Only if neither of these environment variables are set, will it
+     * resort to using a random number from 00 to 99 for the machine instance number portion of the unique ID.<br>
      * <br>
      * The returned ID will be 19 digits and this API will work through 2286.  After then, it would likely return
      * negative numbers (still unique).<br>
      * <br>
-     * This API is faster than the 18 digit API.  This API can return 10,000 unique IDs per millisecond max.<br>
+     * This API is faster than the 18 digit API. This API can return up to 10,000 unique IDs per millisecond.<br>
      * <br>
      * The IDs returned are guaranteed to be strictly increasing.
      *

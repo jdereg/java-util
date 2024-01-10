@@ -3,14 +3,12 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -88,7 +86,7 @@ public final class Converter
         {
             return "";
         }
-        return convertToString(fromInstance);
+        return instance.convert(fromInstance, String.class);
     }
 
     /**
@@ -100,11 +98,6 @@ public final class Converter
     @SuppressWarnings("unchecked")
     public static String convertToString(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
-            return null;
-        }
-
         return instance.convert(fromInstance, String.class);
     }
 
@@ -121,7 +114,7 @@ public final class Converter
         {
             return BigDecimal.ZERO;
         }
-        return convertToBigDecimal(fromInstance);
+        return instance.convert(fromInstance, BigDecimal.class);
     }
 
     /**
@@ -133,75 +126,7 @@ public final class Converter
      */
     public static BigDecimal convertToBigDecimal(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return BigDecimal.ZERO;
-                }
-                return new BigDecimal(((String) fromInstance).trim());
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                return (BigDecimal)fromInstance;
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                return new BigDecimal((BigInteger) fromInstance);
-            }
-            else if (fromInstance instanceof Long)
-            {
-                return new BigDecimal((Long)fromInstance);
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                return new BigDecimal(((AtomicLong) fromInstance).get());
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return new BigDecimal(String.valueOf(fromInstance));
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? BigDecimal.ONE : BigDecimal.ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? BigDecimal.ONE : BigDecimal.ZERO;
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return new BigDecimal(((Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return new BigDecimal(localDateToMillis((LocalDate)fromInstance));
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return new BigDecimal(localDateTimeToMillis((LocalDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return new BigDecimal(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return new BigDecimal(((Calendar)fromInstance).getTime().getTime());
-            }
-            else if (fromInstance instanceof Character)
-            {
-                return new BigDecimal(((Character)fromInstance));
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigDecimal'", e);
-        }
-        nope(fromInstance, "BigDecimal");
-        return null;
+        return instance.convert(fromInstance, BigDecimal.class);
     }
 
     /**
@@ -217,7 +142,7 @@ public final class Converter
         {
             return BigInteger.ZERO;
         }
-        return convertToBigInteger(fromInstance);
+        return instance.convert(fromInstance, BigInteger.class);
     }
 
     /**
@@ -229,73 +154,7 @@ public final class Converter
      */
     public static BigInteger convertToBigInteger(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return BigInteger.ZERO;
-                }
-                return new BigInteger(((String) fromInstance).trim());
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                return (BigInteger) fromInstance;
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                return ((BigDecimal) fromInstance).toBigInteger();
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return new BigInteger(Long.toString(((Number) fromInstance).longValue()));
-            } else if (fromInstance instanceof UUID) {
-                UUID uuid = (UUID) fromInstance;
-                BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
-                BigInteger leastSignificant = BigInteger.valueOf(uuid.getLeastSignificantBits());
-                // Shift the most significant bits to the left and add the least significant bits
-                return mostSignificant.shiftLeft(64).add(leastSignificant);
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? BigInteger.ONE : BigInteger.ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? BigInteger.ONE : BigInteger.ZERO;
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return new BigInteger(Long.toString(((Date) fromInstance).getTime()));
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return BigInteger.valueOf(localDateToMillis((LocalDate)fromInstance));
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return BigInteger.valueOf(localDateTimeToMillis((LocalDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return BigInteger.valueOf(zonedDateTimeToMillis((ZonedDateTime) fromInstance));
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return new BigInteger(Long.toString(((Calendar) fromInstance).getTime().getTime()));
-            }
-            else if (fromInstance instanceof Character)
-            {
-                return new BigInteger(Long.toString(((Character)fromInstance)));
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'BigInteger'", e);
-        }
-        nope(fromInstance, "BigInteger");
-        return null;
+        return instance.convert(fromInstance, BigInteger.class);
     }
 
     /**
@@ -307,69 +166,7 @@ public final class Converter
      */
     public static java.sql.Date convertToSqlDate(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof java.sql.Date)
-            {   // Return a clone of the current date time because java.sql.Date is mutable.
-                return new java.sql.Date(((java.sql.Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof Timestamp)
-            {
-                Timestamp timestamp = (Timestamp) fromInstance;
-                return new java.sql.Date(timestamp.getTime());
-            }
-            else if (fromInstance instanceof Date)
-            {   // convert from java.util.Date to java.sql.Date
-                return new java.sql.Date(((Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof String)
-            {
-                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                if (date == null)
-                {
-                    return null;
-                }
-                return new java.sql.Date(date.getTime());
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return new java.sql.Date(localDateToMillis((LocalDate)fromInstance));
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return new java.sql.Date(localDateTimeToMillis((LocalDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return new java.sql.Date(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return new java.sql.Date(((Calendar) fromInstance).getTime().getTime());
-            }
-            else if (fromInstance instanceof Long)
-            {
-                return new java.sql.Date((Long) fromInstance);
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                return new java.sql.Date(((BigInteger)fromInstance).longValue());
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                return new java.sql.Date(((BigDecimal)fromInstance).longValue());
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                return new java.sql.Date(((AtomicLong) fromInstance).get());
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'java.sql.Date'", e);
-        }
-        nope(fromInstance, "java.sql.Date");
-        return null;
+        return instance.convert(fromInstance, java.sql.Date.class);
     }
 
     /**
@@ -381,68 +178,7 @@ public final class Converter
      */
     public static Timestamp convertToTimestamp(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof java.sql.Date)
-            {   // convert from java.sql.Date to java.util.Date
-                return new Timestamp(((java.sql.Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof Timestamp)
-            {   // return a clone of the Timestamp because it is mutable
-                return new Timestamp(((Timestamp)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return new Timestamp(((Date) fromInstance).getTime());
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return new Timestamp(localDateToMillis((LocalDate)fromInstance));
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return new Timestamp(localDateTimeToMillis((LocalDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return new Timestamp(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof String)
-            {
-                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                if (date == null)
-                {
-                    return null;
-                }
-                return new Timestamp(date.getTime());
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return new Timestamp(((Calendar) fromInstance).getTime().getTime());
-            }
-            else if (fromInstance instanceof Long)
-            {
-                return new Timestamp((Long) fromInstance);
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                return new Timestamp(((BigInteger) fromInstance).longValue());
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                return new Timestamp(((BigDecimal) fromInstance).longValue());
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                return new Timestamp(((AtomicLong) fromInstance).get());
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Timestamp'", e);
-        }
-        nope(fromInstance, "Timestamp");
-        return null;
+        return instance.convert(fromInstance, Timestamp.class);
     }
 
     /**
@@ -453,262 +189,22 @@ public final class Converter
      */
     public static Date convertToDate(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                return DateUtilities.parseDate(((String) fromInstance).trim());
-            }
-            else if (fromInstance instanceof java.sql.Date)
-            {   // convert from java.sql.Date to java.util.Date
-                return new Date(((java.sql.Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof Timestamp)
-            {
-                Timestamp timestamp = (Timestamp) fromInstance;
-                return new Date(timestamp.getTime());
-            }
-            else if (fromInstance instanceof Date)
-            {   // Return a clone, not the same instance because Dates are not immutable
-                return new Date(((Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return new Date(localDateToMillis((LocalDate)fromInstance));
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return new Date(localDateTimeToMillis((LocalDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return new Date(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return ((Calendar) fromInstance).getTime();
-            }
-            else if (fromInstance instanceof Long)
-            {
-                return new Date((Long) fromInstance);
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                return new Date(((BigInteger)fromInstance).longValue());
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                return new Date(((BigDecimal)fromInstance).longValue());
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                return new Date(((AtomicLong) fromInstance).get());
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Date'", e);
-        }
-        nope(fromInstance, "Date");
-        return null;
+        return instance.convert(fromInstance, Date.class);
     }
 
     public static LocalDate convertToLocalDate(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-            else if (fromInstance instanceof LocalDate)
-            {   // return passed in instance (no need to copy, LocalDate is immutable)
-                return (LocalDate) fromInstance;
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return ((LocalDateTime) fromInstance).toLocalDate();
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return ((ZonedDateTime) fromInstance).toLocalDate();
-            }
-            else if (fromInstance instanceof java.sql.Date)
-            {   
-                return ((java.sql.Date) fromInstance).toLocalDate();
-            }
-            else if (fromInstance instanceof Timestamp)
-            {
-                return ((Timestamp) fromInstance).toLocalDateTime().toLocalDate();
-            }
-            else if (fromInstance instanceof Date)
-            {   
-                return ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-            else if (fromInstance instanceof Long)
-            {
-                Long dateInMillis = (Long) fromInstance;
-                return Instant.ofEpochMilli(dateInMillis).atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                BigInteger big = (BigInteger) fromInstance;
-                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                BigDecimal big = (BigDecimal) fromInstance;
-                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                AtomicLong atomicLong = (AtomicLong) fromInstance;
-                return Instant.ofEpochMilli(atomicLong.longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'LocalDate'", e);
-        }
-        nope(fromInstance, "LocalDate");
-        return null;
+        return instance.convert(fromInstance, LocalDate.class);
     }
 
     public static LocalDateTime convertToLocalDateTime(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return ((LocalDate) fromInstance).atStartOfDay();
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {   // return passed in instance (no need to copy, LocalDateTime is immutable)
-                return ((LocalDateTime) fromInstance);
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return ((ZonedDateTime) fromInstance).toLocalDateTime();
-            }
-            else if (fromInstance instanceof java.sql.Date)
-            {
-                return ((java.sql.Date) fromInstance).toLocalDate().atStartOfDay();
-            }
-            else if (fromInstance instanceof Timestamp)
-            {
-                return ((Timestamp) fromInstance).toLocalDateTime();
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-            else if (fromInstance instanceof Long)
-            {
-                Long dateInMillis = (Long) fromInstance;
-                return Instant.ofEpochMilli(dateInMillis).atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                BigInteger big = (BigInteger) fromInstance;
-                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                BigDecimal big = (BigDecimal) fromInstance;
-                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                AtomicLong atomicLong = (AtomicLong) fromInstance;
-                return Instant.ofEpochMilli(atomicLong.longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'LocalDateTime'", e);
-        }
-        nope(fromInstance, "LocalDateTime");
-        return null;
+        return instance.convert(fromInstance, LocalDateTime.class);
     }
 
     public static ZonedDateTime convertToZonedDateTime(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                Date date = DateUtilities.parseDate(((String) fromInstance).trim());
-                return date.toInstant().atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return ((LocalDate)fromInstance).atStartOfDay(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {   // return passed in instance (no need to copy, LocalDateTime is immutable)
-                return ((LocalDateTime) fromInstance).atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {   // return passed in instance (no need to copy, ZonedDateTime is immutable)
-                return ((ZonedDateTime) fromInstance);
-            }
-            else if (fromInstance instanceof java.sql.Date)
-            {
-                return ((java.sql.Date) fromInstance).toLocalDate().atStartOfDay(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof Timestamp)
-            {
-                return ((Timestamp) fromInstance).toInstant().atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof Long)
-            {
-                Long dateInMillis = (Long) fromInstance;
-                return Instant.ofEpochMilli(dateInMillis).atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof BigInteger)
-            {
-                BigInteger big = (BigInteger) fromInstance;
-                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof BigDecimal)
-            {
-                BigDecimal big = (BigDecimal) fromInstance;
-                return Instant.ofEpochMilli(big.longValue()).atZone(ZoneId.systemDefault());
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {
-                AtomicLong atomicLong = (AtomicLong) fromInstance;
-                return Instant.ofEpochMilli(atomicLong.longValue()).atZone(ZoneId.systemDefault());
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'ZonedDateTime'", e);
-        }
-        nope(fromInstance, "LocalDateTime");
-        return null;
+        return instance.convert(fromInstance, ZonedDateTime.class);
     }
 
     /**
@@ -719,13 +215,7 @@ public final class Converter
      */
     public static Calendar convertToCalendar(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
-            return null;
-        }
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(convertToDate(fromInstance));
-        return calendar;
+        return convert(fromInstance, Calendar.class);
     }
 
     /**
@@ -738,7 +228,7 @@ public final class Converter
         {
             return 0;
         }
-        return convertToCharacter(fromInstance);
+        return instance.convert(fromInstance, char.class);
     }
 
     /**
@@ -747,39 +237,7 @@ public final class Converter
      */
     public static Character convertToCharacter(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if ("".equals(fromInstance))
-                {
-                    return 0;
-                }
-                return (char)Integer.parseInt(((String) fromInstance).trim());
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return (char)((Number)fromInstance).shortValue();
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (boolean)fromInstance ? '1' : '0';
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? '1' : '0';
-            }
-            else if (fromInstance instanceof Character)
-            {
-                return (Character)fromInstance;
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Character'", e);
-        }
-        nope(fromInstance, "Character");
-        return null;
+        return instance.convert(fromInstance, Character.class);
     }
 
     /**
@@ -792,7 +250,7 @@ public final class Converter
         {
             return 0;
         }
-        return convertToByte(fromInstance);
+        return instance.convert(fromInstance, byte.class);
     }
 
     /**
@@ -801,51 +259,7 @@ public final class Converter
      */
     public static Byte convertToByte(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return CommonValues.BYTE_ZERO;
-                }
-                try
-                {
-                    return Byte.valueOf(((String) fromInstance).trim());
-                }
-                catch (NumberFormatException e)
-                {
-                    long value = convertToBigDecimal(fromInstance).longValue();
-                    if (value < -128 || value > 127)
-                    {
-                        throw new NumberFormatException("Value: " + fromInstance + " outside -128 to 127");
-                    }
-                    return (byte)value;
-                }
-            }
-            else if (fromInstance instanceof Byte)
-            {
-                return (Byte)fromInstance;
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return ((Number)fromInstance).byteValue();
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean)fromInstance).get() ?CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Byte'", e);
-        }
-        nope(fromInstance, "Byte");
-        return null;
+        return instance.convert(fromInstance, Byte.class);
     }
 
     /**
@@ -858,7 +272,7 @@ public final class Converter
         {
             return 0;
         }
-        return convertToShort(fromInstance);
+        return instance.convert(fromInstance, short.class);
     }
 
     /**
@@ -867,55 +281,7 @@ public final class Converter
      */
     public static Short convertToShort(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return CommonValues.SHORT_ZERO;
-                }
-                try
-                {
-                    return Short.valueOf(((String) fromInstance).trim());
-                }
-                catch (NumberFormatException e)
-                {
-                    long value = convertToBigDecimal(fromInstance).longValue();
-                    if (value < -32768 || value > 32767)
-                    {
-                        throw new NumberFormatException("Value: " + fromInstance + " outside -32768 to 32767");
-                    }
-                    return (short) value;
-                }
-            }
-            else if (fromInstance instanceof Short)
-            {
-                return (Short)fromInstance;
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return ((Number)fromInstance).shortValue();
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
-            }
-            else if (fromInstance instanceof Character)
-            {
-                return (short)((char)fromInstance);
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Short'", e);
-        }
-        nope(fromInstance, "Short");
-        return null;
+        return instance.convert(fromInstance, Short.class);
     }
 
     /**
@@ -928,7 +294,7 @@ public final class Converter
         {
             return 0;
         }
-        return convertToInteger(fromInstance);
+        return instance.convert(fromInstance, int.class);
     }
 
     /**
@@ -937,55 +303,7 @@ public final class Converter
      */
     public static Integer convertToInteger(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof Integer)
-            {
-                return (Integer)fromInstance;
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return ((Number)fromInstance).intValue();
-            }
-            else if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return CommonValues.INTEGER_ZERO;
-                }
-                try
-                {
-                    return Integer.valueOf(((String) fromInstance).trim());
-                }
-                catch (NumberFormatException e)
-                {
-                    long value = convertToBigDecimal(fromInstance).longValue();
-                    if (value < -2147483648 || value > 2147483647)
-                    {
-                        throw new NumberFormatException("Value: " + fromInstance + " outside -2147483648 to 2147483647");
-                    }
-                    return (int) value;
-                }
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
-            }
-            else if (fromInstance instanceof Character)
-            {
-                return (int)((char)fromInstance);
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'Integer'", e);
-        }
-        nope(fromInstance, "Integer");
-        return null;
+        return instance.convert(fromInstance, Integer.class);
     }
 
     /**
@@ -1000,7 +318,7 @@ public final class Converter
         {
             return CommonValues.LONG_ZERO;
         }
-        return convertToLong(fromInstance);
+        return instance.convert(fromInstance, long.class);
     }
 
     /**
@@ -1011,70 +329,7 @@ public final class Converter
      */
     public static Long convertToLong(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof Long)
-            {
-                return (Long) fromInstance;
-            }
-            else if (fromInstance instanceof String)
-            {
-                if ("".equals(fromInstance))
-                {
-                    return CommonValues.LONG_ZERO;
-                }
-                try
-                {
-                    return Long.valueOf(((String) fromInstance).trim());
-                }
-                catch (NumberFormatException e)
-                {
-                    return convertToBigDecimal(fromInstance).longValue();
-                }
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return ((Number)fromInstance).longValue();
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return ((Date)fromInstance).getTime();
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return localDateToMillis((LocalDate)fromInstance);
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return localDateTimeToMillis((LocalDateTime)fromInstance);
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return zonedDateTimeToMillis((ZonedDateTime)fromInstance);
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return ((Calendar)fromInstance).getTime().getTime();
-            }
-            else if (fromInstance instanceof Character)
-            {
-                return (long)((char)fromInstance);
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Long'", e);
-        }
-        nope(fromInstance, "Long");
-        return null;
+        return instance.convert(fromInstance, Long.class);
     }
 
     /**
@@ -1087,7 +342,7 @@ public final class Converter
         {
             return CommonValues.FLOAT_ZERO;
         }
-        return convertToFloat(fromInstance);
+        return instance.convert(fromInstance, float.class);
     }
 
     /**
@@ -1096,39 +351,7 @@ public final class Converter
      */
     public static Float convertToFloat(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return CommonValues.FLOAT_ZERO;
-                }
-                return Float.valueOf(((String) fromInstance).trim());
-            }
-            else if (fromInstance instanceof Float)
-            {
-                return (Float)fromInstance;
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return ((Number)fromInstance).floatValue();
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Float'", e);
-        }
-        nope(fromInstance, "Float");
-        return null;
+        return instance.convert(fromInstance, Float.class);
     }
 
     /**
@@ -1141,7 +364,7 @@ public final class Converter
         {
             return CommonValues.DOUBLE_ZERO;
         }
-        return convertToDouble(fromInstance);
+        return instance.convert(fromInstance, double.class);
     }
 
     /**
@@ -1150,39 +373,7 @@ public final class Converter
      */
     public static Double convertToDouble(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return CommonValues.DOUBLE_ZERO;
-                }
-                return Double.valueOf(((String) fromInstance).trim());
-            }
-            else if (fromInstance instanceof Double)
-            {
-                return (Double)fromInstance;
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return ((Number)fromInstance).doubleValue();
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Double'", e);
-        }
-        nope(fromInstance, "Double");
-        return null;
+        return instance.convert(fromInstance, Double.class);
     }
 
     /**
@@ -1195,7 +386,7 @@ public final class Converter
         {
             return false;
         }
-        return convertToBoolean(fromInstance);
+        return instance.convert(fromInstance, boolean.class);
     }
 
     /**
@@ -1204,34 +395,7 @@ public final class Converter
      */
     public static Boolean convertToBoolean(Object fromInstance)
     {
-        if (fromInstance instanceof Boolean)
-        {
-            return (Boolean)fromInstance;
-        }
-        else if (fromInstance instanceof String)
-        {
-            // faster equals check "true" and "false"
-            if ("true".equals(fromInstance))
-            {
-                return true;
-            }
-            else if ("false".equals(fromInstance))
-            {
-                return false;
-            }
-
-            return "true".equalsIgnoreCase((String)fromInstance);
-        }
-        else if (fromInstance instanceof Number)
-        {
-            return ((Number)fromInstance).longValue() != 0;
-        }
-        else if (fromInstance instanceof AtomicBoolean)
-        {
-            return ((AtomicBoolean) fromInstance).get();
-        }
-        nope(fromInstance, "Boolean");
-        return null;
+        return instance.convert(fromInstance, Boolean.class);
     }
 
     /**
@@ -1245,7 +409,7 @@ public final class Converter
         {
             return new AtomicInteger(0);
         }
-        return convertToAtomicInteger(fromInstance);
+        return instance.convert(fromInstance, AtomicInteger.class);
     }
 
     /**
@@ -1254,39 +418,7 @@ public final class Converter
      */
     public static AtomicInteger convertToAtomicInteger(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof AtomicInteger)
-            {   // return a new instance because AtomicInteger is mutable
-                return new AtomicInteger(((AtomicInteger)fromInstance).get());
-            }
-            else if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return new AtomicInteger(0);
-                }
-                return new AtomicInteger(Integer.parseInt(((String) fromInstance).trim()));
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return new AtomicInteger(((Number)fromInstance).intValue());
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? new AtomicInteger(1) : new AtomicInteger(0);
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? new AtomicInteger(1) : new AtomicInteger(0);
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicInteger'", e);
-        }
-        nope(fromInstance, "AtomicInteger");
-        return null;
+        return instance.convert(fromInstance, AtomicInteger.class);
     }
 
     /**
@@ -1301,7 +433,7 @@ public final class Converter
         {
             return new AtomicLong(0);
         }
-        return convertToAtomicLong(fromInstance);
+        return instance.convert(fromInstance, AtomicLong.class);
     }
 
     /**
@@ -1312,59 +444,7 @@ public final class Converter
      */
     public static AtomicLong convertToAtomicLong(Object fromInstance)
     {
-        try
-        {
-            if (fromInstance instanceof String)
-            {
-                if (StringUtilities.isEmpty((String)fromInstance))
-                {
-                    return new AtomicLong(0);
-                }
-                return new AtomicLong(Long.parseLong(((String) fromInstance).trim()));
-            }
-            else if (fromInstance instanceof AtomicLong)
-            {   // return a clone of the AtomicLong because it is mutable
-                return new AtomicLong(((AtomicLong)fromInstance).get());
-            }
-            else if (fromInstance instanceof Number)
-            {
-                return new AtomicLong(((Number)fromInstance).longValue());
-            }
-            else if (fromInstance instanceof Date)
-            {
-                return new AtomicLong(((Date)fromInstance).getTime());
-            }
-            else if (fromInstance instanceof LocalDate)
-            {
-                return new AtomicLong(localDateToMillis((LocalDate)fromInstance));
-            }
-            else if (fromInstance instanceof LocalDateTime)
-            {
-                return new AtomicLong(localDateTimeToMillis((LocalDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof ZonedDateTime)
-            {
-                return new AtomicLong(zonedDateTimeToMillis((ZonedDateTime)fromInstance));
-            }
-            else if (fromInstance instanceof Boolean)
-            {
-                return (Boolean) fromInstance ? new AtomicLong(1L) : new AtomicLong(0L);
-            }
-            else if (fromInstance instanceof AtomicBoolean)
-            {
-                return ((AtomicBoolean) fromInstance).get() ? new AtomicLong(1L) : new AtomicLong(0L);
-            }
-            else if (fromInstance instanceof Calendar)
-            {
-                return new AtomicLong(((Calendar)fromInstance).getTime().getTime());
-            }
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to an 'AtomicLong'", e);
-        }
-        nope(fromInstance, "AtomicLong");
-        return null;
+        return instance.convert(fromInstance, AtomicLong.class);
     }
 
     /**
@@ -1378,7 +458,7 @@ public final class Converter
         {
             return new AtomicBoolean(false);
         }
-        return convertToAtomicBoolean(fromInstance);
+        return instance.convert(fromInstance, AtomicBoolean.class);
     }
 
     /**
@@ -1387,48 +467,9 @@ public final class Converter
      */
     public static AtomicBoolean convertToAtomicBoolean(Object fromInstance)
     {
-        if (fromInstance instanceof String)
-        {
-            if (StringUtilities.isEmpty((String)fromInstance))
-            {
-                return new AtomicBoolean(false);
-            }
-            String value = (String)  fromInstance;
-            return new AtomicBoolean("true".equalsIgnoreCase(value));
-        }
-        else if (fromInstance instanceof AtomicBoolean)
-        {   // return a clone of the AtomicBoolean because it is mutable
-            return new AtomicBoolean(((AtomicBoolean)fromInstance).get());
-        }
-        else if (fromInstance instanceof Boolean)
-        {
-            return new AtomicBoolean((Boolean) fromInstance);
-        }
-        else if (fromInstance instanceof Number)
-        {
-            return new AtomicBoolean(((Number)fromInstance).longValue() != 0);
-        }
-        nope(fromInstance, "AtomicBoolean");
-        return null;
+        return instance.convert(fromInstance, AtomicBoolean.class);
     }
-
-    private static String nope(Object fromInstance, String targetType)
-    {
-        if (fromInstance == null)
-        {
-            return null;
-        }
-        throw new IllegalArgumentException("Unsupported value type [" + name(fromInstance) + "] attempting to convert to '" + targetType + "'");
-    }
-
-    private static String name(Object fromInstance)
-    {
-        if (fromInstance == null) {
-            return "null";
-        }
-        return fromInstance.getClass().getName() + " (" + fromInstance.toString() + ")";
-    }
-
+    
     /**
      * @param localDate A Java LocalDate
      * @return a long representing the localDate as the number of milliseconds since the

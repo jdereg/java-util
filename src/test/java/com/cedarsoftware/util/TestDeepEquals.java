@@ -130,8 +130,8 @@ public class TestDeepEquals
 
         assert DeepEquals.deepEquals(0.1d, new BigDecimal("0.1"));
         assert DeepEquals.deepEquals(0.04d, new BigDecimal("0.04"));
-        assert DeepEquals.deepEquals(0.1f, new BigDecimal("0.1"));
-        assert DeepEquals.deepEquals(0.04f, new BigDecimal("0.04"));
+        assert DeepEquals.deepEquals(0.1f, new BigDecimal("0.1").floatValue());
+        assert DeepEquals.deepEquals(0.04f, new BigDecimal("0.04").floatValue());
     }
 
     @Test

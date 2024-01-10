@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.TestUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -474,8 +475,7 @@ class ConverterTest
         int x = 8;
         String s = this.converter.convert(x, String.class);
         assert s.equals("8");
-        // TODO: Add following test once we have preferred method of removing exponential notation, yet retain decimal separator
-//        assertEquals("123456789.12345", this.converter.convert(123456789.12345, String.class));
+        assertEquals("123456789.12345", this.converter.convert(123456789.12345, String.class));
 
         try
         {
@@ -489,20 +489,22 @@ class ConverterTest
 
         assert this.converter.convert(new HashMap<>(), HashMap.class) instanceof Map;
 
-//        try
-//        {
-//            this.converter.convert(ZoneId.systemDefault(), String.class);
-//            fail();
-//        }
-//        catch (Exception e)
-//        {
-//            TestUtil.assertContainsIgnoreCase(e.getMessage(), "unsupported conversion, source type [zoneregion");
-//        }
+        try
+        {
+            this.converter.convert(ZoneId.systemDefault(), String.class);
+            fail();
+        }
+        catch (Exception e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "unsupported conversion, source type [zoneregion");
+        }
     }
 
     @Test
     void testBigDecimal()
     {
+        Object o = converter.convert("", BigDecimal.class);
+        assertEquals(o, BigDecimal.ZERO);
         BigDecimal x = this.converter.convert("-450000", BigDecimal.class);
         assertEquals(new BigDecimal("-450000"), x);
 
@@ -1537,7 +1539,7 @@ class ConverterTest
         map.clear();
         map.put("value", "");
         ab = this.converter.convert(map, AtomicBoolean.class);
-        assert null == ab;
+        assertFalse(ab.get());
 
         map.clear();
         map.put("value", null);
@@ -1560,7 +1562,7 @@ class ConverterTest
         map.clear();
         map.put("value", "");
         ai = this.converter.convert(map, AtomicInteger.class);
-        assert null == ai;
+        assertEquals(new AtomicInteger(0).get(), ai.get());
 
         map.clear();
         map.put("value", null);
@@ -1583,7 +1585,7 @@ class ConverterTest
         map.clear();
         map.put("value", "");
         al = this.converter.convert(map, AtomicLong.class);
-        assert null == al;
+        assert 0L == al.longValue();
 
         map.clear();
         map.put("value", null);
@@ -1932,11 +1934,11 @@ class ConverterTest
         assert (long) 0 == this.converter.convert("", long.class);
         assert 0.0f == this.converter.convert("", float.class);
         assert 0.0d == this.converter.convert("", double.class);
-        assertEquals(null, this.converter.convert("", BigDecimal.class));
-        assertEquals(null, this.converter.convert("", BigInteger.class));
-        assertEquals(null, this.converter.convert("", AtomicBoolean.class));
-        assertEquals(null, this.converter.convert("", AtomicInteger.class));
-        assertEquals(null, this.converter.convert("", AtomicLong.class));
+        assertEquals(BigDecimal.ZERO, this.converter.convert("", BigDecimal.class));
+        assertEquals(BigInteger.ZERO, this.converter.convert("", BigInteger.class));
+        assertEquals(false, this.converter.convert("", AtomicBoolean.class).get());
+        assertEquals(0, this.converter.convert("", AtomicInteger.class).get());
+        assertEquals(0L, this.converter.convert("", AtomicLong.class).get());
     }
 
     @Test

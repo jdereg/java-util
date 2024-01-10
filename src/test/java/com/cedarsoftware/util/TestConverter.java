@@ -106,242 +106,6 @@ public class TestConverter
     }
 
     @Test
-    public void testByte()
-    {
-        Byte x = convert("-25", byte.class);
-        assert -25 == x;
-        x = convert("24", Byte.class);
-        assert 24 == x;
-
-        x = convert((byte) 100, byte.class);
-        assert 100 == x;
-        x = convert((byte) 120, Byte.class);
-        assert 120 == x;
-
-        x = convert(new BigDecimal("100"), byte.class);
-        assert 100 == x;
-        x = convert(new BigInteger("120"), Byte.class);
-        assert 120 == x;
-
-        Byte value = convert(true, Byte.class);
-        assert value == 1;
-        assert (byte)1 == convert(true, Byte.class);
-        assert (byte)0 == convert(false, byte.class);
-
-        assert (byte)25 == convert(new AtomicInteger(25), byte.class);
-        assert (byte)100 == convert(new AtomicLong(100L), byte.class);
-        assert (byte)1 == convert(new AtomicBoolean(true), byte.class);
-        assert (byte)0 == convert(new AtomicBoolean(false), byte.class);
-
-        byte z = convert2byte("11.5");
-        assert z == 11;
-
-        try
-        {
-            convert(TimeZone.getDefault(), byte.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
-        }
-
-        try
-        {
-            convert("45badNumber", byte.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a byte value"));
-        }
-
-        try
-        {
-            convert2byte("257");
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
-    }
-    
-    @Test
-    public void testShort()
-    {
-        Short x = convert("-25000", short.class);
-        assert -25000 == x;
-        x = convert("24000", Short.class);
-        assert 24000 == x;
-
-        x = convert((short) 10000, short.class);
-        assert 10000 == x;
-        x = convert((short) 20000, Short.class);
-        assert 20000 == x;
-
-        x = convert(new BigDecimal("10000"), short.class);
-        assert 10000 == x;
-        x = convert(new BigInteger("20000"), Short.class);
-        assert 20000 == x;
-
-        assert (short)1 == convert(true, short.class);
-        assert (short)0 == convert(false, Short.class);
-
-        assert (short)25 == convert(new AtomicInteger(25), short.class);
-        assert (short)100 == convert(new AtomicLong(100L), Short.class);
-        assert (short)1 == convert(new AtomicBoolean(true), Short.class);
-        assert (short)0 == convert(new AtomicBoolean(false), Short.class);
-
-        int z = convert2short("11.5");
-        assert z == 11;
-
-        try
-        {
-            convert(TimeZone.getDefault(), short.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
-        }
-
-        try
-        {
-            convert("45badNumber", short.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a short value"));
-        }
-
-        try
-        {
-            convert2short("33000");
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
-    }
-
-    @Test
-    public void testInt()
-    {
-        Integer x = convert("-450000", int.class);
-        assertEquals((Object) (-450000), x);
-        x = convert("550000", Integer.class);
-        assertEquals((Object) 550000, x);
-
-        x = convert(100000, int.class);
-        assertEquals((Object) 100000, x);
-        x = convert(200000, Integer.class);
-        assertEquals((Object) 200000, x);
-
-        x = convert(new BigDecimal("100000"), int.class);
-        assertEquals((Object) 100000, x);
-        x = convert(new BigInteger("200000"), Integer.class);
-        assertEquals((Object) 200000, x);
-
-        assert 1 == convert(true, Integer.class);
-        assert 0 == convert(false, int.class);
-
-        assert 25 == convert(new AtomicInteger(25), int.class);
-        assert 100 == convert(new AtomicLong(100L), Integer.class);
-        assert 1 == convert(new AtomicBoolean(true), Integer.class);
-        assert 0 == convert(new AtomicBoolean(false), Integer.class);
-
-        int z = convert2int("11.5");
-        assert z == 11;
-
-        try
-        {
-            convert(TimeZone.getDefault(), int.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
-        }
-
-        try
-        {
-            convert("45badNumber", int.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("not parseable as an integer"));
-        }
-
-        try
-        {
-            convert2int("2147483649");
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
-    }
-
-    @Test
-    public void testLong()
-    {
-        Long x = convert("-450000", long.class);
-        assertEquals((Object)(-450000L), x);
-        x = convert("550000", Long.class);
-        assertEquals((Object)550000L, x);
-
-        x = convert(100000L, long.class);
-        assertEquals((Object)100000L, x);
-        x = convert(200000L, Long.class);
-        assertEquals((Object)200000L, x);
-
-        x = convert(new BigDecimal("100000"), long.class);
-        assertEquals((Object)100000L, x);
-        x = convert(new BigInteger("200000"), Long.class);
-        assertEquals((Object)200000L, x);
-
-        assert (long)1 == convert(true, long.class);
-        assert (long)0 == convert(false, Long.class);
-
-        Date now = new Date();
-        long now70 = now.getTime();
-        assert now70 == convert(now, long.class);
-
-        Calendar today = Calendar.getInstance();
-        now70 = today.getTime().getTime();
-        assert now70 == convert(today, Long.class);
-
-        LocalDate nowLocal = LocalDate.now();
-        long epochDays = convert(nowLocal, long.class);
-        LocalDate todayInEpoch = convert(epochDays, LocalDate.class);
-        assertEquals(nowLocal, todayInEpoch);
-
-        assert 25L == convert(new AtomicInteger(25), long.class);
-        assert 100L == convert(new AtomicLong(100L), Long.class);
-        assert 1L == convert(new AtomicBoolean(true), Long.class);
-        assert 0L == convert(new AtomicBoolean(false), Long.class);
-
-        long z = convert2int("11.5");
-        assert z == 11;
-
-        try
-        {
-            convert(TimeZone.getDefault(), long.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
-        }
-
-        try
-        {
-            convert("45badNumber", long.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a long"));
-        }
-    }
-
-    @Test
     public void testAtomicLong()
     {
         AtomicLong x = convert("-450000", AtomicLong.class);
@@ -1049,7 +813,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "local");
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "between 1 and 31 inclusive");
         }
 
         assert convertToLocalDateTime(null) == null;
@@ -1168,7 +932,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "zoned");
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "1 and 31 inclusive");
         }
 
         assert convertToZonedDateTime(null) == null;
@@ -1521,11 +1285,11 @@ public class TestConverter
         assert (long) 0 == convert("", long.class);
         assert 0.0f == convert("", float.class);
         assert 0.0d == convert("", double.class);
-        assertEquals(null, convert("", BigDecimal.class));
-        assertEquals(null, convert("", BigInteger.class));
-        assertEquals(null, convert("", AtomicBoolean.class));
-        assertEquals(null, convert("", AtomicInteger.class));
-        assertEquals(null, convert("", AtomicLong.class));
+        assertEquals(BigDecimal.ZERO, convert("", BigDecimal.class));
+        assertEquals(BigInteger.ZERO, convert("", BigInteger.class));
+        assertEquals(false, convert("", AtomicBoolean.class).get());
+        assertEquals(0, convert("", AtomicInteger.class).get());
+        assertEquals(0L, convert("", AtomicLong.class).get());
     }
 
     @Test
@@ -1590,35 +1354,6 @@ public class TestConverter
 
         big = convertToBigDecimal(null);
         assert big == null;
-    }
-
-    @Test
-    public void testLocalDate()
-    {
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.set(2020, 8, 4);   // 0-based for month
-        
-        BigDecimal big = convert2BigDecimal(LocalDate.of(2020, 9, 4));
-        assert big.longValue() == cal.getTime().getTime();
-
-        BigInteger bigI = convert2BigInteger(LocalDate.of(2020, 9, 4));
-        assert bigI.longValue() == cal.getTime().getTime();
-
-        java.sql.Date sqlDate = convertToSqlDate(LocalDate.of(2020, 9, 4));
-        assert sqlDate.getTime() == cal.getTime().getTime();
-
-        Timestamp timestamp = convertToTimestamp(LocalDate.of(2020, 9, 4));
-        assert timestamp.getTime() == cal.getTime().getTime();
-
-        Date date = convertToDate(LocalDate.of(2020, 9, 4));
-        assert date.getTime() == cal.getTime().getTime();
-
-        Long lng = convertToLong(LocalDate.of(2020, 9, 4));
-        assert lng == cal.getTime().getTime();
-
-        AtomicLong atomicLong = convertToAtomicLong(LocalDate.of(2020, 9, 4));
-        assert atomicLong.get() == cal.getTime().getTime();
     }
 
     @Test

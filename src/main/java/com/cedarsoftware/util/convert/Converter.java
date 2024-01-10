@@ -399,7 +399,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, BigInteger.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             if (str.isEmpty()) {
-                return null;
+                return BigInteger.ZERO;
             }
             try {
                 return new BigInteger(str);
@@ -442,7 +442,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, BigDecimal.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             if (str.isEmpty()) {
-                return null;
+                return BigDecimal.ZERO;
             }
             try {
                 return new BigDecimal(str);
@@ -471,7 +471,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, AtomicBoolean.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             if (str.isEmpty()) {
-                return null;
+                return new AtomicBoolean(false);
             }
             return new AtomicBoolean("true".equalsIgnoreCase(str));
         });
@@ -497,7 +497,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, AtomicInteger.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             if (str.isEmpty()) {
-                return null;
+                return new AtomicInteger(0);
             }
             try {
                 return new AtomicInteger(Integer.parseInt(str));
@@ -533,7 +533,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, AtomicLong.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             if (str.isEmpty()) {
-                return null;
+                return new AtomicLong(0L);
             }
             try {
                 return new AtomicLong(Long.parseLong(str));

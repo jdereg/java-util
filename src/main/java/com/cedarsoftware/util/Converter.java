@@ -1,9 +1,5 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.convert.CommonValues;
-import com.cedarsoftware.util.convert.ConverterOptions;
-import com.cedarsoftware.util.convert.DefaultConverterOptions;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -12,15 +8,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.convert.CommonValues;
+import com.cedarsoftware.util.convert.ConverterOptions;
+import com.cedarsoftware.util.convert.DefaultConverterOptions;
 
 /**
  * Handy conversion utilities.  Convert from primitive to other primitives, plus support for Date, TimeStamp SQL Date,
@@ -109,50 +106,6 @@ public final class Converter
         }
 
         return instance.convert(fromInstance, String.class);
-    }
-
-    public static Class<?> convertToClass(Object fromInstance) {
-        if (fromInstance instanceof Class) {
-            return (Class<?>)fromInstance;
-        } else if (fromInstance instanceof String) {
-            try {
-                Class<?> clazz = Class.forName((String)fromInstance);
-                return clazz;
-            }
-            catch (ClassNotFoundException ignore) {
-            }
-        }
-        throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'Class'");
-    }
-
-    public static UUID convertToUUID(Object fromInstance) {
-        try {
-            if (fromInstance instanceof UUID) {
-                return (UUID)fromInstance;
-            } else if (fromInstance instanceof String) {
-                return UUID.fromString((String)fromInstance);
-            } else if (fromInstance instanceof BigInteger) {
-                BigInteger bigInteger = (BigInteger) fromInstance;
-                BigInteger mask = BigInteger.valueOf(Long.MAX_VALUE);
-                long mostSignificantBits = bigInteger.shiftRight(64).and(mask).longValue();
-                long leastSignificantBits = bigInteger.and(mask).longValue();
-                return new UUID(mostSignificantBits, leastSignificantBits);
-            }
-            else if (fromInstance instanceof Map) {
-                Map<?, ?> map = (Map<?, ?>) fromInstance;
-                if (map.containsKey("mostSigBits") && map.containsKey("leastSigBits")) {
-                    long mostSigBits = convert2long(map.get("mostSigBits"));
-                    long leastSigBits = convert2long(map.get("leastSigBits"));
-                    return new UUID(mostSigBits, leastSigBits);
-                } else {
-                    throw new IllegalArgumentException("To convert Map to UUID, the Map must contain both a 'mostSigBits' and 'leastSigBits' key.");
-                }
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("value [" + name(fromInstance) + "] could not be converted to a 'UUID'", e);
-        }
-        nope(fromInstance, "UUID");
-        return null;
     }
 
     /**

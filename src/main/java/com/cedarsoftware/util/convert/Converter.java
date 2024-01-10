@@ -1,10 +1,6 @@
 package com.cedarsoftware.util.convert;
 
 
-import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CollectionUtilities;
-import com.cedarsoftware.util.DateUtilities;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -36,6 +32,10 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.CollectionUtilities;
+import com.cedarsoftware.util.DateUtilities;
 
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
@@ -538,7 +538,7 @@ public final class Converter {
             try {
                 return new AtomicLong(Long.parseLong(str));
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
             }
         });
 

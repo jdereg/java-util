@@ -43,19 +43,16 @@ import static com.cedarsoftware.util.Converter.convertToBigDecimal;
 import static com.cedarsoftware.util.Converter.convertToBigInteger;
 import static com.cedarsoftware.util.Converter.convertToByte;
 import static com.cedarsoftware.util.Converter.convertToCharacter;
-import static com.cedarsoftware.util.Converter.convertToClass;
 import static com.cedarsoftware.util.Converter.convertToDate;
 import static com.cedarsoftware.util.Converter.convertToDouble;
 import static com.cedarsoftware.util.Converter.convertToFloat;
 import static com.cedarsoftware.util.Converter.convertToInteger;
-import static com.cedarsoftware.util.Converter.convertToLocalDate;
 import static com.cedarsoftware.util.Converter.convertToLocalDateTime;
 import static com.cedarsoftware.util.Converter.convertToLong;
 import static com.cedarsoftware.util.Converter.convertToShort;
 import static com.cedarsoftware.util.Converter.convertToSqlDate;
 import static com.cedarsoftware.util.Converter.convertToString;
 import static com.cedarsoftware.util.Converter.convertToTimestamp;
-import static com.cedarsoftware.util.Converter.convertToUUID;
 import static com.cedarsoftware.util.Converter.convertToZonedDateTime;
 import static com.cedarsoftware.util.Converter.localDateTimeToMillis;
 import static com.cedarsoftware.util.Converter.localDateToMillis;
@@ -139,7 +136,6 @@ public class TestConverter
         byte z = convert2byte("11.5");
         assert z == 11;
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), byte.class);
@@ -147,7 +143,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -157,7 +153,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a byte value"));
         }
 
         try
@@ -166,8 +162,6 @@ public class TestConverter
             fail();
         }
         catch (IllegalArgumentException e) { }
-
-         */
     }
     
     @Test
@@ -199,7 +193,6 @@ public class TestConverter
         int z = convert2short("11.5");
         assert z == 11;
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), short.class);
@@ -207,7 +200,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -217,7 +210,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a short value"));
         }
 
         try
@@ -226,9 +219,6 @@ public class TestConverter
             fail();
         }
         catch (IllegalArgumentException e) { }
-
-         */
-
     }
 
     @Test
@@ -260,7 +250,6 @@ public class TestConverter
         int z = convert2int("11.5");
         assert z == 11;
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), int.class);
@@ -268,7 +257,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -278,7 +267,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as an integer"));
         }
 
         try
@@ -287,9 +276,6 @@ public class TestConverter
             fail();
         }
         catch (IllegalArgumentException e) { }
-        */
-
-
     }
 
     @Test
@@ -321,9 +307,10 @@ public class TestConverter
         now70 = today.getTime().getTime();
         assert now70 == convert(today, Long.class);
 
-        LocalDate localDate = LocalDate.now();
-        now70 = Converter.localDateToMillis(localDate);
-//        assert now70 == convert(localDate, long.class);
+        LocalDate nowLocal = LocalDate.now();
+        long epochDays = convert(nowLocal, long.class);
+        LocalDate todayInEpoch = convert(epochDays, LocalDate.class);
+        assertEquals(nowLocal, todayInEpoch);
 
         assert 25L == convert(new AtomicInteger(25), long.class);
         assert 100L == convert(new AtomicLong(100L), Long.class);
@@ -333,7 +320,6 @@ public class TestConverter
         long z = convert2int("11.5");
         assert z == 11;
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), long.class);
@@ -341,7 +327,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -351,10 +337,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a long"));
         }
-
-         */
     }
 
     @Test
@@ -399,7 +383,6 @@ public class TestConverter
         x = convert(new AtomicBoolean(false), AtomicLong.class);
         assertEquals(0L, x.get());
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), AtomicLong.class);
@@ -407,7 +390,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -417,17 +400,15 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as an atomiclong"));
         }
-
-         */
     }
 
     @Test
     public void testString()
     {
         assertEquals("Hello", convert("Hello", String.class));
-//        assertEquals("25.0", convert(25.0, String.class));
+        assertEquals("25", convert(25.0, String.class));
         assertEquals("true", convert(true, String.class));
         assertEquals("J", convert('J', String.class));
         assertEquals("3.1415926535897932384626433", convert(new BigDecimal("3.1415926535897932384626433"), String.class));
@@ -447,10 +428,8 @@ public class TestConverter
         int x = 8;
         String s = convertToString(x);
         assert s.equals("8");
-        // TODO: Add following test once we have preferred method of removing exponential notation, yet retain decimal separator
-//        assertEquals("123456789.12345", convert(123456789.12345, String.class));
+        assertEquals("123456789.12345", convert(123456789.12345, String.class));
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), String.class);
@@ -458,18 +437,11 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
-        try
-        {
-            convert(new HashMap<>(), HashMap.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported type"));
-        }
+        Map<?, ?> map = convert(new HashMap<>(), HashMap.class);
+        assert map.isEmpty();
 
         try
         {
@@ -480,8 +452,6 @@ public class TestConverter
         {
             TestUtil.assertContainsIgnoreCase(e.getMessage(), "unsupported", "type", "zone");
         }
-
-         */
     }
 
     @Test
@@ -511,7 +481,6 @@ public class TestConverter
         assertEquals(BigDecimal.ONE, convert(new AtomicBoolean(true), BigDecimal.class));
         assertEquals(BigDecimal.ZERO, convert(new AtomicBoolean(false), BigDecimal.class));
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), BigDecimal.class);
@@ -519,7 +488,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -529,10 +498,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a bigdecimal"));
         }
-
-         */
     }
 
     @Test
@@ -562,7 +529,6 @@ public class TestConverter
         assertEquals(BigInteger.ONE, convert(new AtomicBoolean(true), BigInteger.class));
         assertEquals(BigInteger.ZERO, convert(new AtomicBoolean(false), BigInteger.class));
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), BigInteger.class);
@@ -570,7 +536,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -580,10 +546,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a biginteger"));
         }
-
-         */
     }
 
     @Test
@@ -603,7 +567,6 @@ public class TestConverter
         assertEquals(1, (convert(new AtomicBoolean(true), AtomicInteger.class)).get());
         assertEquals(0, (convert(new AtomicBoolean(false), AtomicInteger.class)).get());
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), AtomicInteger.class);
@@ -611,7 +574,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -621,10 +584,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as an atomicinteger"));
         }
-
-         */
     }
 
     @Test
@@ -741,7 +702,6 @@ public class TestConverter
         assert tstamp.getTime() == now;
 
         // Invalid source type for Date
-        /*
         try
         {
             convert(TimeZone.getDefault(), Date.class);
@@ -749,7 +709,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value type"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         // Invalid source type for java.sql.Date
@@ -760,7 +720,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value type"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         // Invalid source date for Date
@@ -771,7 +731,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("between 1 and 31"));
         }
 
         // Invalid source date for java.sql.Date
@@ -782,10 +742,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("between 1 and 31"));
         }
-
-         */
     }
 
     @Test
@@ -869,7 +827,7 @@ public class TestConverter
     }
 
     @Test
-    public void testLocalDateToOthers()
+    void testLocalDateToOthers()
     {
         // Date to LocalDate
         Calendar calendar = Calendar.getInstance();
@@ -877,44 +835,45 @@ public class TestConverter
         calendar.set(2020, 8, 30, 0, 0, 0);
         Date now = calendar.getTime();
         LocalDate localDate = convert(now, LocalDate.class);
-        assertEquals(localDateToMillis(localDate), now.getTime());
+        assertEquals(com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()), now.getTime());
 
         // LocalDate to LocalDate - identity check
-        LocalDate x = convertToLocalDate(localDate);
+        LocalDate x = convert(localDate, LocalDate.class);
         assert localDate == x;
 
         // LocalDateTime to LocalDate
         LocalDateTime ldt = LocalDateTime.of(2020, 8, 30, 0, 0, 0);
-        x = convertToLocalDate(ldt);
-        assert localDateTimeToMillis(ldt) == localDateToMillis(x);
+        x = convert(ldt, LocalDate.class);
+        assert com.cedarsoftware.util.convert.Converter.localDateTimeToMillis(ldt, ZoneId.systemDefault()) == com.cedarsoftware.util.convert.Converter.localDateToMillis(x, ZoneId.systemDefault());
 
         // ZonedDateTime to LocalDate
         ZonedDateTime zdt = ZonedDateTime.of(2020, 8, 30, 0, 0, 0, 0, ZoneId.systemDefault());
-        x = convertToLocalDate(zdt);
-        assert zonedDateTimeToMillis(zdt) == localDateToMillis(x);
+        x = convert(zdt, LocalDate.class);
+        assert com.cedarsoftware.util.convert.Converter.zonedDateTimeToMillis(zdt) == com.cedarsoftware.util.convert.Converter.localDateToMillis(x, ZoneId.systemDefault());
 
         // Calendar to LocalDate
-        x = convertToLocalDate(calendar);
-        assert localDateToMillis(localDate) == calendar.getTime().getTime();
+        x = convert(calendar, LocalDate.class);
+        assert com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()) == calendar.getTime().getTime();
 
         // SqlDate to LocalDate
         java.sql.Date sqlDate = convert(now, java.sql.Date.class);
         localDate = convert(sqlDate, LocalDate.class);
-        assertEquals(localDateToMillis(localDate), sqlDate.getTime());
+        assertEquals(com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()), sqlDate.getTime());
 
         // Timestamp to LocalDate
         Timestamp timestamp = convert(now, Timestamp.class);
         localDate = convert(timestamp, LocalDate.class);
-        assertEquals(localDateToMillis(localDate), timestamp.getTime());
+        assertEquals(com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()), timestamp.getTime());
 
+        LocalDate nowDate = LocalDate.now();
         // Long to LocalDate
-//        localDate = convert(now.getTime(), LocalDate.class);
- //       assertEquals(localDateToMillis(localDate), now.getTime());
+        localDate = convert(nowDate.toEpochDay(), LocalDate.class);
+        assertEquals(localDate, nowDate);
 
         // AtomicLong to LocalDate
-        AtomicLong atomicLong = new AtomicLong(now.getTime());
-//        localDate = convert(atomicLong, LocalDate.class);
-//        assertEquals(localDateToMillis(localDate), now.getTime());
+        AtomicLong atomicLong = new AtomicLong(nowDate.toEpochDay());
+        localDate = convert(atomicLong, LocalDate.class);
+        assertEquals(localDate, nowDate);
 
         // String to LocalDate
         String strDate = convert(now, String.class);
@@ -923,65 +882,63 @@ public class TestConverter
         assert strDate.startsWith(strDate2);
 
         // BigInteger to LocalDate
-        BigInteger bigInt = new BigInteger("" + now.getTime());
-//        localDate = convert(bigInt, LocalDate.class);
-//        assertEquals(localDateToMillis(localDate), now.getTime());
+        BigInteger bigInt = new BigInteger("" + nowDate.toEpochDay());
+        localDate = convert(bigInt, LocalDate.class);
+        assertEquals(localDate, nowDate);
 
         // BigDecimal to LocalDate
-        BigDecimal bigDec = new BigDecimal(now.getTime());
-//        localDate = convert(bigDec, LocalDate.class);
-//        assertEquals(localDateToMillis(localDate), now.getTime());
+        BigDecimal bigDec = new BigDecimal(nowDate.toEpochDay());
+        localDate = convert(bigDec, LocalDate.class);
+        assertEquals(localDate, nowDate);
 
         // Other direction --> LocalDate to other date types
 
         // LocalDate to Date
         localDate = convert(now, LocalDate.class);
         Date date = convert(localDate, Date.class);
-//        assertEquals(localDateToMillis(localDate), date.getTime());
+        assertEquals(com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()), date.getTime());
 
         // LocalDate to SqlDate
         sqlDate = convert(localDate, java.sql.Date.class);
-//        assertEquals(localDateToMillis(localDate), sqlDate.getTime());
+        assertEquals(com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()), sqlDate.getTime());
 
         // LocalDate to Timestamp
         timestamp = convert(localDate, Timestamp.class);
-//        assertEquals(localDateToMillis(localDate), timestamp.getTime());
+        assertEquals(com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, ZoneId.systemDefault()), timestamp.getTime());
 
         // LocalDate to Long
         long tnow = convert(localDate, long.class);
-  //      assertEquals(localDateToMillis(localDate), tnow);
+        assertEquals(localDate.toEpochDay(), tnow);
 
         // LocalDate to AtomicLong
         atomicLong = convert(localDate, AtomicLong.class);
-//        assertEquals(localDateToMillis(localDate), atomicLong.get());
+        assertEquals(localDate.toEpochDay(), atomicLong.get());
 
         // LocalDate to String
         strDate = convert(localDate, String.class);
         strDate2 = convert(now, String.class);
-//        assert strDate2.startsWith(strDate);
+        assert strDate2.startsWith(strDate);
 
         // LocalDate to BigInteger
         bigInt = convert(localDate, BigInteger.class);
-//        assertEquals(now.getTime(), bigInt.longValue());
+        LocalDate nd = LocalDate.ofEpochDay(bigInt.longValue());
+        assertEquals(localDate, nd);
 
         // LocalDate to BigDecimal
         bigDec = convert(localDate, BigDecimal.class);
-//        assertEquals(now.getTime(), bigDec.longValue());
+        nd = LocalDate.ofEpochDay(bigDec.longValue());
+        assertEquals(localDate, nd);
 
         // Error handling
-        /*
-        try
-        {
-            convertToLocalDate("2020-12-40");
+        try {
+            convert("2020-12-40", LocalDate.class);
             fail();
         }
-        catch (IllegalArgumentException e)
-        {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "value", "not", "convert", "local");
+        catch (IllegalArgumentException e) {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
         }
 
-         */
-        assert convertToLocalDate(null) == null;
+        assert convert(null, LocalDate.class) == null;
     }
 
     @Test
@@ -1270,7 +1227,6 @@ public class TestConverter
         Timestamp alexaBirthday = convertToTimestamp(zdt);
         assert alexaBirthday.getTime() == zonedDateTimeToMillis(zdt);
 
-        /*
         try
         {
             convert(Boolean.TRUE, Timestamp.class);
@@ -1278,7 +1234,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assert e.getMessage().toLowerCase().contains("unsupported value type");
+            assert e.getMessage().toLowerCase().contains("unsupported conversion");
         }
 
         try
@@ -1288,10 +1244,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assert e.getMessage().toLowerCase().contains("could not be converted");
+            assert e.getMessage().toLowerCase().contains("unable to parse");
         }
-
-         */
     }
 
     @Test
@@ -1313,7 +1267,6 @@ public class TestConverter
         assert 0.0f == convert(new AtomicBoolean(false), Float.class);
         assert 1.0f == convert(new AtomicBoolean(true), Float.class);
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), float.class);
@@ -1321,7 +1274,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -1331,10 +1284,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a float"));
         }
-
-         */
     }
 
     @Test
@@ -1356,7 +1307,6 @@ public class TestConverter
         assert 0.0d == convert(new AtomicBoolean(false), Double.class);
         assert 1.0d == convert(new AtomicBoolean(true), Double.class);
 
-        /*
         try
         {
             convert(TimeZone.getDefault(), double.class);
@@ -1364,7 +1314,7 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
 
         try
@@ -1374,10 +1324,8 @@ public class TestConverter
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("could not be converted"));
+            assertTrue(e.getMessage().toLowerCase().contains("not parseable as a double"));
         }
-
-         */
     }
 
     @Test
@@ -1404,8 +1352,6 @@ public class TestConverter
         assertEquals(false, convert(false, Boolean.class));
         assertEquals(false, convert(Boolean.FALSE, Boolean.class));
 
-        /*
-
         try
         {
             convert(new Date(), Boolean.class);
@@ -1413,10 +1359,8 @@ public class TestConverter
         }
         catch (Exception e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
-
-         */
     }
 
     @Test
@@ -1446,7 +1390,6 @@ public class TestConverter
         assert b1 != b2; // ensure that it returns a different but equivalent instance
         assert b1.get() == b2.get();
 
-        /*
         try
         {
             convert(new Date(), AtomicBoolean.class);
@@ -1454,16 +1397,13 @@ public class TestConverter
         }
         catch (Exception e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported value"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
-
-         */
     }
 
     @Test
     public void testUnsupportedType()
     {
-        /*
         try
         {
             convert("Lamb", TimeZone.class);
@@ -1471,10 +1411,8 @@ public class TestConverter
         }
         catch (Exception e)
         {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported type"));
+            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion"));
         }
-
-         */
     }
 
     @Test
@@ -1531,12 +1469,12 @@ public class TestConverter
         assert 0.0f == convert2float(null);
         assert 0.0d == convert2double(null);
         assert (char)0 == convert2char(null);
-        assert BigInteger.ZERO == convert2BigInteger(null);
-        assert BigDecimal.ZERO == convert2BigDecimal(null);
+        assert BigInteger.ZERO.equals(convert2BigInteger(null));
+        assert BigDecimal.ZERO.equals(convert2BigDecimal(null));
         assert false == convert2AtomicBoolean(null).get();
         assert 0 == convert2AtomicInteger(null).get();
         assert 0L == convert2AtomicLong(null).get();
-        assert "".equals(convert2String(null));
+        assert convert2String(null).isEmpty();
     }
 
     @Test
@@ -1577,17 +1515,17 @@ public class TestConverter
     {
         assertEquals(false, convert("", boolean.class));
         assertEquals(false, convert("", boolean.class));
-//        assert (byte) 0 == convert("", byte.class);
-//        assert (short) 0 == convert("", short.class);
-//        assert 0 == convert("", int.class);
-//        assert (long) 0 == convert("", long.class);
- //       assert 0.0f == convert("", float.class);
-//        assert 0.0d == convert("", double.class);
- //       assertEquals(BigDecimal.ZERO, convert("", BigDecimal.class));
-//        assertEquals(BigInteger.ZERO, convert("", BigInteger.class));
-//        assertEquals(new AtomicBoolean(false).get(), convert("", AtomicBoolean.class).get());
-//        assertEquals(new AtomicInteger(0).get(), convert("", AtomicInteger.class).get());
-//        assertEquals(new AtomicLong(0L).get(), convert("", AtomicLong.class).get());
+        assert (byte) 0 == convert("", byte.class);
+        assert (short) 0 == convert("", short.class);
+        assert 0 == convert("", int.class);
+        assert (long) 0 == convert("", long.class);
+        assert 0.0f == convert("", float.class);
+        assert 0.0d == convert("", double.class);
+        assertEquals(null, convert("", BigDecimal.class));
+        assertEquals(null, convert("", BigInteger.class));
+        assertEquals(null, convert("", AtomicBoolean.class));
+        assertEquals(null, convert("", AtomicInteger.class));
+        assertEquals(null, convert("", AtomicLong.class));
     }
 
     @Test
@@ -1738,61 +1676,59 @@ public class TestConverter
     @Test
     public void testStringToClass()
     {
-        Class<?> clazz = convertToClass("java.math.BigInteger");
+        Class<?> clazz = convert("java.math.BigInteger", Class.class);
         assert clazz.getName().equals("java.math.BigInteger");
 
-        assertThatThrownBy(() -> convertToClass("foo.bar.baz.Qux"))
+        assertThatThrownBy(() -> convert("foo.bar.baz.Qux", Class.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value [java.lang.String (foo.bar.baz.Qux)] could not be converted to a 'Class'");
+                .hasMessageContaining("Cannot convert String 'foo.bar.baz.Qux' to class.  Class not found.");
 
-        assertThatThrownBy(() -> convertToClass(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value [null] could not be converted to a 'Class'");
+        assertNull(convert(null, Class.class));
 
-        assertThatThrownBy(() -> convertToClass(16.0))
+        assertThatThrownBy(() -> convert(16.0, Class.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value [java.lang.Double (16.0)] could not be converted to a 'Class'");
+                .hasMessageContaining("Unsupported conversion, source type [Double (16.0)] target type 'Class'");
     }
 
     @Test
     void testClassToClass()
     {
-        Class<?> clazz = convertToClass(TestConverter.class);
+        Class<?> clazz = convert(TestConverter.class, Class.class);
         assert clazz.getName() == TestConverter.class.getName();
     }
 
     @Test
     public void testStringToUUID()
     {
-        UUID uuid = Converter.convertToUUID("00000000-0000-0000-0000-000000000064");
+        UUID uuid = Converter.convert("00000000-0000-0000-0000-000000000064", UUID.class);
         BigInteger bigInt = Converter.convertToBigInteger(uuid);
         assert bigInt.intValue() == 100;
 
-        assertThatThrownBy(() -> Converter.convertToUUID("00000000"))
+        assertThatThrownBy(() -> Converter.convert("00000000", UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value [java.lang.String (00000000)] could not be converted to a 'UUID'");
+                .hasMessageContaining("Invalid UUID string: 00000000");
     }
 
     @Test
     public void testUUIDToUUID()
     {
-        UUID uuid = Converter.convertToUUID("00000007-0000-0000-0000-000000000064");
-        UUID uuid2 = Converter.convertToUUID(uuid);
+        UUID uuid = Converter.convert("00000007-0000-0000-0000-000000000064", UUID.class);
+        UUID uuid2 = Converter.convert(uuid, UUID.class);
         assert uuid.equals(uuid2);
     }
 
     @Test
     public void testBogusToUUID()
     {
-        assertThatThrownBy(() -> Converter.convertToUUID((short)77))
+        assertThatThrownBy(() -> Converter.convert((short)77, UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported value type [java.lang.Short (77)] attempting to convert to 'UUID'");
+                .hasMessageContaining("Unsupported conversion, source type [Short (77)] target type 'UUID'");
     }
 
     @Test
     public void testBigIntegerToUUID()
     {
-        UUID uuid = convertToUUID(new BigInteger("100"));
+        UUID uuid = convert(new BigInteger("100"), UUID.class);
         BigInteger hundred = convertToBigInteger(uuid);
         assert hundred.intValue() == 100;
     }
@@ -1800,23 +1736,23 @@ public class TestConverter
     @Test
     public void testMapToUUID()
     {
-        UUID uuid = convertToUUID(new BigInteger("100"));
+        UUID uuid = convert(new BigInteger("100"), UUID.class);
         Map<String, Object> map = new HashMap<>();
         map.put("mostSigBits", uuid.getMostSignificantBits());
         map.put("leastSigBits", uuid.getLeastSignificantBits());
-        UUID hundred = convertToUUID(map);
+        UUID hundred = convert(map, UUID.class);
         assertEquals("00000000-0000-0000-0000-000000000064", hundred.toString());
     }
 
     @Test
     public void testBadMapToUUID()
     {
-        UUID uuid = convertToUUID(new BigInteger("100"));
+        UUID uuid = convert(new BigInteger("100"), UUID.class);
         Map<String, Object> map = new HashMap<>();
         map.put("leastSigBits", uuid.getLeastSignificantBits());
-        assertThatThrownBy(() -> convertToUUID(map))
+        assertThatThrownBy(() -> convert(map, UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value [java.util.HashMap ({leastSigBits=100})] could not be converted to a 'UUID'");
+                .hasMessageContaining("To convert Map to UUID, the Map must contain both 'mostSigBits' and 'leastSigBits' keys");
     }
 
     @Test
@@ -1831,9 +1767,9 @@ public class TestConverter
         bigInt = Converter.convertToBigInteger(UUID.fromString("00000000-0000-0000-0000-000000000000"));
         assert bigInt.intValue() == 0;
 
-        assertThatThrownBy(() -> convertToClass(16.0))
+        assertThatThrownBy(() -> convert(16.0, UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value [java.lang.Double (16.0)] could not be converted to a 'Class'");
+                .hasMessageContaining("Unsupported conversion, source type [Double (16.0)] target type 'UUID'");
     }
 
     @Test

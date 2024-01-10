@@ -1,12 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.DeepEquals;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -26,6 +19,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
+
+import com.cedarsoftware.util.DeepEquals;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static com.cedarsoftware.util.convert.Converter.localDateTimeToMillis;
 import static com.cedarsoftware.util.convert.Converter.localDateToMillis;
@@ -445,7 +445,7 @@ class ConverterTest
         }
         catch (IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().contains("Value: 45badNumber not parseable as a AtomicLong value or outside -922"));
+            assertTrue(e.getMessage().contains("Value: 45badNumber not parseable as an AtomicLong value or outside -922"));
         }
     }
 

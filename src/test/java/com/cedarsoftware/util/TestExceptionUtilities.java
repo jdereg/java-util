@@ -7,6 +7,8 @@ import java.util.Date;
 
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -40,30 +42,24 @@ public class TestExceptionUtilities
     }
 
     
-    public void testOutOfMemoryErrorThrown()
-    {
-        try
-        {
-            ExceptionUtilities.safelyIgnoreException(new OutOfMemoryError());
-            fail("should not make it here");
-        }
-        catch (OutOfMemoryError e)
-        {
-        }
+    @Test
+    void testOutOfMemoryErrorThrown() {
+        assertThatExceptionOfType(OutOfMemoryError.class)
+                .isThrownBy(() -> ExceptionUtilities.safelyIgnoreException(new OutOfMemoryError()));
     }
 
     @Test
-    public void testIgnoredExceptions() {
-        ExceptionUtilities.safelyIgnoreException(new IllegalArgumentException());
+    void testIgnoredExceptions() {
+        assertThatNoException()
+                .isThrownBy(() -> ExceptionUtilities.safelyIgnoreException(new IllegalArgumentException()));
     }
 
     @Test
-    public void testGetDeepestException()
+    void testGetDeepestException()
     {
         try
         {
-            Converter.convert("foo", Date.class);
-            fail();
+            throw new Exception(new IllegalArgumentException("Unable to parse: foo"));
         }
         catch (Exception e)
         {

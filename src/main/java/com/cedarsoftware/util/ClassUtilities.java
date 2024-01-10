@@ -1,7 +1,14 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
@@ -31,6 +38,9 @@ import java.util.Set;
 public class ClassUtilities
 {
     private static final Set<Class<?>> prims = new HashSet<>();
+
+    private static final Map<String, Class<?>> nameToClass = new HashMap();
+
     static
     {
         prims.add(Byte.class);
@@ -41,8 +51,21 @@ public class ClassUtilities
         prims.add(Double.class);
         prims.add(Character.class);
         prims.add(Boolean.class);
+
+        nameToClass.put("boolean", Boolean.TYPE);
+        nameToClass.put("char", Character.TYPE);
+        nameToClass.put("byte", Byte.TYPE);
+        nameToClass.put("short", Short.TYPE);
+        nameToClass.put("int", Integer.TYPE);
+        nameToClass.put("long", Long.TYPE);
+        nameToClass.put("float", Float.TYPE);
+        nameToClass.put("double", Double.TYPE);
+        nameToClass.put("string", String.class);
+        nameToClass.put("date", Date.class);
+        nameToClass.put("class", Class.class);
+
     }
-    
+
     /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
      * @param source      The source class, interface, or primitive type.
@@ -141,5 +164,130 @@ public class ClassUtilities
         {
             return -1;
         }
+    }
+
+
+    /**
+     * Given the passed in String class name, return the named JVM class.
+     * @param name String name of a JVM class.
+     * @param classLoader ClassLoader to use when searching for JVM classes.
+     * @return Class instance of the named JVM class or null if not found.
+     */
+    public static Class<?> forName(String name, ClassLoader classLoader)
+    {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return internalClassForName(name, classLoader);
+        } catch(SecurityException e) {
+            throw new IllegalArgumentException("Security exception, classForName() call on: " + name, e);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Used internally to load a class by name, and takes care of caching name mappings for speed.
+     *
+     * @param name        String name of a JVM class.
+     * @param classLoader ClassLoader to use when searching for JVM classes.
+     * @return Class instance of the named JVM class
+     */
+    private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
+        Class<?> c = nameToClass.get(name);
+        if (c != null) {
+            return c;
+        }
+        c = loadClass(name, classLoader);
+
+        if (ClassLoader.class.isAssignableFrom(c) ||
+                ProcessBuilder.class.isAssignableFrom(c) ||
+                Process.class.isAssignableFrom(c) ||
+                Constructor.class.isAssignableFrom(c) ||
+                Method.class.isAssignableFrom(c) ||
+                Field.class.isAssignableFrom(c)) {
+            throw new SecurityException("For security reasons, cannot instantiate: " + c.getName() + " when loading JSON.");
+        }
+
+        nameToClass.put(name, c);
+        return c;
+    }
+
+    /**
+     * loadClass() provided by: Thomas Margreiter
+     */
+    private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException
+    {
+        String className = name;
+        boolean arrayType = false;
+        Class<?> primitiveArray = null;
+
+        while (className.startsWith("["))
+        {
+            arrayType = true;
+            if (className.endsWith(";"))
+            {
+                className = className.substring(0, className.length() - 1);
+            }
+            if (className.equals("[B"))
+            {
+                primitiveArray = byte[].class;
+            }
+            else if (className.equals("[S"))
+            {
+                primitiveArray = short[].class;
+            }
+            else if (className.equals("[I"))
+            {
+                primitiveArray = int[].class;
+            }
+            else if (className.equals("[J"))
+            {
+                primitiveArray = long[].class;
+            }
+            else if (className.equals("[F"))
+            {
+                primitiveArray = float[].class;
+            }
+            else if (className.equals("[D"))
+            {
+                primitiveArray = double[].class;
+            }
+            else if (className.equals("[Z"))
+            {
+                primitiveArray = boolean[].class;
+            }
+            else if (className.equals("[C"))
+            {
+                primitiveArray = char[].class;
+            }
+            int startpos = className.startsWith("[L") ? 2 : 1;
+            className = className.substring(startpos);
+        }
+        Class<?> currentClass = null;
+        if (null == primitiveArray)
+        {
+            try
+            {
+                currentClass = classLoader.loadClass(className);
+            }
+            catch (ClassNotFoundException e)
+            {
+                currentClass = Thread.currentThread().getContextClassLoader().loadClass(className);
+            }
+        }
+
+        if (arrayType)
+        {
+            currentClass = (null != primitiveArray) ? primitiveArray : Array.newInstance(currentClass, 0).getClass();
+            while (name.startsWith("[["))
+            {
+                currentClass = Array.newInstance(currentClass, 0).getClass();
+                name = name.substring(1);
+            }
+        }
+        return currentClass;
     }
 }

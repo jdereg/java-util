@@ -1,5 +1,9 @@
 package com.cedarsoftware.util;
 
+import com.cedarsoftware.util.convert.CommonValues;
+import com.cedarsoftware.util.convert.ConverterOptions;
+import com.cedarsoftware.util.convert.DefaultConverterOptions;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -49,149 +53,30 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class Converter
 {
-    public static final Byte BYTE_ZERO = (byte)0;
-    public static final Byte BYTE_ONE = (byte)1;
-    public static final Short SHORT_ZERO = (short)0;
-    public static final Short SHORT_ONE = (short)1;
-    public static final Integer INTEGER_ZERO = 0;
-    public static final Integer INTEGER_ONE = 1;
-    public static final Long LONG_ZERO = 0L;
-    public static final Long LONG_ONE = 1L;
-    public static final Float FLOAT_ZERO = 0.0f;
-    public static final Float FLOAT_ONE = 1.0f;
-    public static final Double DOUBLE_ZERO = 0.0d;
-    public static final Double DOUBLE_ONE = 1.0d;
-    public static final BigDecimal BIG_DECIMAL_ZERO = BigDecimal.ZERO;
-    public static final BigInteger BIG_INTEGER_ZERO = BigInteger.ZERO;
-    private static final Map<Class<?>, Work<?>> conversion = new HashMap<>();
-    private static final Map<Class<?>, Work<?>> conversionToString = new HashMap<>();
-    
-    protected interface Work<T>
-    {
-        Object convert(T fromInstance);
-    }
-    
-    static
-    {
-        conversion.put(String.class, Converter::convertToString);
-        conversion.put(long.class, Converter::convert2long);
-        conversion.put(Long.class, Converter::convertToLong);
-        conversion.put(int.class, Converter::convert2int);
-        conversion.put(Integer.class, Converter::convertToInteger);
-        conversion.put(short.class, Converter::convert2short);
-        conversion.put(Short.class, Converter::convertToShort);
-        conversion.put(byte.class, Converter::convert2byte);
-        conversion.put(Byte.class, Converter::convertToByte);
-        conversion.put(char.class, Converter::convert2char);
-        conversion.put(boolean.class, Converter::convert2boolean);
-        conversion.put(Boolean.class, Converter::convertToBoolean);
-        conversion.put(double.class, Converter::convert2double);
-        conversion.put(Double.class, Converter::convertToDouble);
-        conversion.put(float.class, Converter::convert2float);
-        conversion.put(Float.class, Converter::convertToFloat);
-        conversion.put(Character.class, Converter::convertToCharacter);
-        conversion.put(Calendar.class, Converter::convertToCalendar);
-        conversion.put(Date.class, Converter::convertToDate);
-        conversion.put(LocalDate.class, Converter::convertToLocalDate);
-        conversion.put(LocalDateTime.class, Converter::convertToLocalDateTime);
-        conversion.put(ZonedDateTime.class, Converter::convertToZonedDateTime);
-        conversion.put(BigDecimal.class, Converter::convertToBigDecimal);
-        conversion.put(BigInteger.class, Converter::convertToBigInteger);
-        conversion.put(java.sql.Date.class, Converter::convertToSqlDate);
-        conversion.put(Timestamp.class, Converter::convertToTimestamp);
-        conversion.put(AtomicInteger.class, Converter::convertToAtomicInteger);
-        conversion.put(AtomicLong.class, Converter::convertToAtomicLong);
-        conversion.put(AtomicBoolean.class, Converter::convertToAtomicBoolean);
-        conversion.put(Class.class, Converter::convertToClass);
-        conversion.put(UUID.class, Converter::convertToUUID);
-
-        conversionToString.put(String.class, fromInstance -> fromInstance);
-        conversionToString.put(BigDecimal.class, fromInstance -> {
-            BigDecimal bd = convertToBigDecimal(fromInstance);
-            return bd.stripTrailingZeros().toPlainString();
-        });
-        conversionToString.put(BigInteger.class, fromInstance -> {
-            BigInteger bi = convertToBigInteger(fromInstance);
-            return bi.toString();
-        });
-        Work<?> toString = Object::toString;
-        conversionToString.put(Boolean.class, toString);
-        conversionToString.put(AtomicBoolean.class, toString);
-        conversionToString.put(Byte.class, toString);
-        conversionToString.put(Short.class, toString);
-        conversionToString.put(Integer.class, toString);
-        conversionToString.put(AtomicInteger.class, toString);
-        conversionToString.put(Long.class, toString);
-        conversionToString.put(AtomicLong.class, toString);
-
-        // Should eliminate possibility of 'e' (exponential) notation
-        Work<?> toNoExpString = Object::toString;
-        conversionToString.put(Double.class, toNoExpString);
-        conversionToString.put(Float.class, toNoExpString);
-        conversionToString.put(Class.class, fromInstance -> {
-            Class<?> clazz = (Class<?>) fromInstance;
-            return clazz.getName();
-        });
-        conversionToString.put(UUID.class, Object::toString);
-        conversionToString.put(Date.class, fromInstance -> SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromInstance));
-        conversionToString.put(Character.class, fromInstance -> "" + fromInstance);
-        conversionToString.put(LocalDate.class, fromInstance -> {
-            LocalDate localDate = (LocalDate) fromInstance;
-            return String.format("%04d-%02d-%02d", localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
-        });
-        conversionToString.put(LocalDateTime.class, fromInstance -> {
-            LocalDateTime localDateTime = (LocalDateTime) fromInstance;
-            return String.format("%04d-%02d-%02dT%02d:%02d:%02d", localDateTime.getYear(), localDateTime.getMonthValue(), localDateTime.getDayOfMonth(), localDateTime.getHour(), localDateTime.getMinute(), localDateTime.getSecond());
-        });
-        conversionToString.put(ZonedDateTime.class, fromInstance -> {
-            ZonedDateTime zonedDateTime = (ZonedDateTime) fromInstance;
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
-            return zonedDateTime.format(formatter);
-        });
-    }
+    public static com.cedarsoftware.util.convert.Converter instance =
+            new com.cedarsoftware.util.convert.Converter(new DefaultConverterOptions());
 
     /**
      * Static utility class.
      */
     private Converter() { }
 
-    /**
-     * Turn the passed in value to the class indicated.  This will allow, for
-     * example, a String value to be passed in and have it coerced to a Long.
-     * <pre>
-     *     Examples:
-     *     Long x = convert("35", Long.class);
-     *     Date d = convert("2015/01/01", Date.class)
-     *     int y = convert(45.0, int.class)
-     *     String date = convert(date, String.class)
-     *     String date = convert(calendar, String.class)
-     *     Short t = convert(true, short.class);     // returns (short) 1 or  (short) 0
-     *     Long date = convert(calendar, long.class); // get calendar's time into long
-     * </pre>
-     * @param fromInstance A value used to create the targetType, even though it may
-     * not (most likely will not) be the same data type as the targetType
-     * @param toType Class which indicates the targeted (final) data type.
-     * Please note that in addition to the 8 Java primitives, the targeted class
-     * can also be Date.class, String.class, BigInteger.class, BigDecimal.class, and
-     * the Atomic classes.  The primitive class can be either primitive class or primitive
-     * wrapper class, however, the returned value will always [obviously] be a primitive
-     * wrapper.
-     * @return An instanceof targetType class, based upon the value passed in.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T convert(Object fromInstance, Class<T> toType)
-    {
-        if (toType == null)
-        {
-            throw new IllegalArgumentException("Type cannot be null in Converter.convert(value, type)");
-        }
 
-        Work work = conversion.get(toType);
-        if (work != null)
-        {
-            return (T) work.convert(fromInstance);
-        }
-        throw new IllegalArgumentException("Unsupported type '" + toType.getName() + "' for conversion");
+    @SuppressWarnings("unchecked")
+    /**
+     * Uses the default configuration options for you system.
+     */
+    public static <T> T convert(Object fromInstance, Class<T> toType) {
+        return instance.convert(fromInstance, toType);
+    }
+
+    /**
+     * Allows you to specify (each call) a different conversion options.  Useful so you don't have
+     * to recreate the instance of Converter that is out there for every configuration option.  Just
+     * provide a different set of CovnerterOptions on the call itself.
+     */
+    public static <T> T convert(Object fromInstance, Class<T> toType, ConverterOptions options) {
+        return instance.convert(fromInstance, toType, options);
     }
 
     /**
@@ -222,21 +107,8 @@ public final class Converter
         {
             return null;
         }
-        Class<?> clazz = fromInstance.getClass();
-        Work work = conversionToString.get(clazz);
-        if (work != null)
-        {
-            return (String) work.convert(fromInstance);
-        }
-        else if (fromInstance instanceof Calendar)
-        {   // Done this way (as opposed to putting a closure in conversionToString) because Calendar.class is not == to GregorianCalendar.class
-            return SafeSimpleDateFormat.getDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(((Calendar)fromInstance).getTime());
-        }
-        else if (fromInstance instanceof Enum)
-        {
-            return ((Enum)fromInstance).name();
-        }
-        return nope(fromInstance, "String");
+
+        return instance.convert(fromInstance, String.class);
     }
 
     public static Class<?> convertToClass(Object fromInstance) {
@@ -294,7 +166,7 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return BIG_DECIMAL_ZERO;
+            return BigDecimal.ZERO;
         }
         return convertToBigDecimal(fromInstance);
     }
@@ -390,7 +262,7 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return BIG_INTEGER_ZERO;
+            return BigInteger.ZERO;
         }
         return convertToBigInteger(fromInstance);
     }
@@ -982,7 +854,7 @@ public final class Converter
             {
                 if (StringUtilities.isEmpty((String)fromInstance))
                 {
-                    return BYTE_ZERO;
+                    return CommonValues.BYTE_ZERO;
                 }
                 try
                 {
@@ -1008,11 +880,11 @@ public final class Converter
             }
             else if (fromInstance instanceof Boolean)
             {
-                return (Boolean) fromInstance ? BYTE_ONE : BYTE_ZERO;
+                return (Boolean) fromInstance ? CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
-                return ((AtomicBoolean)fromInstance).get() ? BYTE_ONE : BYTE_ZERO;
+                return ((AtomicBoolean)fromInstance).get() ?CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
             }
         }
         catch (Exception e)
@@ -1048,7 +920,7 @@ public final class Converter
             {
                 if (StringUtilities.isEmpty((String)fromInstance))
                 {
-                    return SHORT_ZERO;
+                    return CommonValues.SHORT_ZERO;
                 }
                 try
                 {
@@ -1074,11 +946,11 @@ public final class Converter
             }
             else if (fromInstance instanceof Boolean)
             {
-                return (Boolean) fromInstance ? SHORT_ONE : SHORT_ZERO;
+                return (Boolean) fromInstance ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
-                return ((AtomicBoolean) fromInstance).get() ? SHORT_ONE : SHORT_ZERO;
+                return ((AtomicBoolean) fromInstance).get() ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
             }
             else if (fromInstance instanceof Character)
             {
@@ -1126,7 +998,7 @@ public final class Converter
             {
                 if (StringUtilities.isEmpty((String)fromInstance))
                 {
-                    return INTEGER_ZERO;
+                    return CommonValues.INTEGER_ZERO;
                 }
                 try
                 {
@@ -1144,11 +1016,11 @@ public final class Converter
             }
             else if (fromInstance instanceof Boolean)
             {
-                return (Boolean) fromInstance ? INTEGER_ONE : INTEGER_ZERO;
+                return (Boolean) fromInstance ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
-                return ((AtomicBoolean) fromInstance).get() ? INTEGER_ONE : INTEGER_ZERO;
+                return ((AtomicBoolean) fromInstance).get() ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
             }
             else if (fromInstance instanceof Character)
             {
@@ -1173,7 +1045,7 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return LONG_ZERO;
+            return CommonValues.LONG_ZERO;
         }
         return convertToLong(fromInstance);
     }
@@ -1196,7 +1068,7 @@ public final class Converter
             {
                 if ("".equals(fromInstance))
                 {
-                    return LONG_ZERO;
+                    return CommonValues.LONG_ZERO;
                 }
                 try
                 {
@@ -1213,7 +1085,7 @@ public final class Converter
             }
             else if (fromInstance instanceof Boolean)
             {
-                return (Boolean) fromInstance ? LONG_ONE : LONG_ZERO;
+                return (Boolean) fromInstance ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
             }
             else if (fromInstance instanceof Date)
             {
@@ -1233,7 +1105,7 @@ public final class Converter
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
-                return ((AtomicBoolean) fromInstance).get() ? LONG_ONE : LONG_ZERO;
+                return ((AtomicBoolean) fromInstance).get() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
             }
             else if (fromInstance instanceof Calendar)
             {
@@ -1260,7 +1132,7 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return FLOAT_ZERO;
+            return CommonValues.FLOAT_ZERO;
         }
         return convertToFloat(fromInstance);
     }
@@ -1277,7 +1149,7 @@ public final class Converter
             {
                 if (StringUtilities.isEmpty((String)fromInstance))
                 {
-                    return FLOAT_ZERO;
+                    return CommonValues.FLOAT_ZERO;
                 }
                 return Float.valueOf(((String) fromInstance).trim());
             }
@@ -1291,11 +1163,11 @@ public final class Converter
             }
             else if (fromInstance instanceof Boolean)
             {
-                return (Boolean) fromInstance ? FLOAT_ONE : FLOAT_ZERO;
+                return (Boolean) fromInstance ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
-                return ((AtomicBoolean) fromInstance).get() ? FLOAT_ONE : FLOAT_ZERO;
+                return ((AtomicBoolean) fromInstance).get() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
             }
         }
         catch (Exception e)
@@ -1314,7 +1186,7 @@ public final class Converter
     {
         if (fromInstance == null)
         {
-            return DOUBLE_ZERO;
+            return CommonValues.DOUBLE_ZERO;
         }
         return convertToDouble(fromInstance);
     }
@@ -1331,7 +1203,7 @@ public final class Converter
             {
                 if (StringUtilities.isEmpty((String)fromInstance))
                 {
-                    return DOUBLE_ZERO;
+                    return CommonValues.DOUBLE_ZERO;
                 }
                 return Double.valueOf(((String) fromInstance).trim());
             }
@@ -1345,11 +1217,11 @@ public final class Converter
             }
             else if (fromInstance instanceof Boolean)
             {
-                return (Boolean) fromInstance ? DOUBLE_ONE : DOUBLE_ZERO;
+                return (Boolean) fromInstance ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
             }
             else if (fromInstance instanceof AtomicBoolean)
             {
-                return ((AtomicBoolean) fromInstance).get() ? DOUBLE_ONE : DOUBLE_ZERO;
+                return ((AtomicBoolean) fromInstance).get() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
             }
         }
         catch (Exception e)

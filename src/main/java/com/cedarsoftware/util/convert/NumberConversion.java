@@ -32,7 +32,7 @@ public class NumberConversion {
         return 0.0d;
     }
 
-    public static BigDecimal numberToBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    public static BigDecimal longToBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(((Number) from).longValue());
     }
 

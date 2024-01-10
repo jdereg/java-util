@@ -410,10 +410,10 @@ public final class Converter {
 
         // BigDecimal conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, BigDecimal.class), VoidConversion::toNull);
-        DEFAULT_FACTORY.put(pair(Byte.class, BigDecimal.class), NumberConversion::numberToBigDecimal);
-        DEFAULT_FACTORY.put(pair(Short.class, BigDecimal.class), NumberConversion::numberToBigDecimal);
-        DEFAULT_FACTORY.put(pair(Integer.class, BigDecimal.class), NumberConversion::numberToBigDecimal);
-        DEFAULT_FACTORY.put(pair(Long.class, BigDecimal.class), NumberConversion::numberToBigDecimal);
+        DEFAULT_FACTORY.put(pair(Byte.class, BigDecimal.class), NumberConversion::longToBigDecimal);
+        DEFAULT_FACTORY.put(pair(Short.class, BigDecimal.class), NumberConversion::longToBigDecimal);
+        DEFAULT_FACTORY.put(pair(Integer.class, BigDecimal.class), NumberConversion::longToBigDecimal);
+        DEFAULT_FACTORY.put(pair(Long.class, BigDecimal.class), NumberConversion::longToBigDecimal);
         DEFAULT_FACTORY.put(pair(Float.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf((Float) fromInstance));
         DEFAULT_FACTORY.put(pair(Double.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf((Double) fromInstance));
         DEFAULT_FACTORY.put(pair(Boolean.class, BigDecimal.class), (fromInstance, converter, options) -> (Boolean) fromInstance ? BigDecimal.ONE : BigDecimal.ZERO);
@@ -421,8 +421,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigDecimal.class, BigDecimal.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(BigInteger.class, BigDecimal.class), (fromInstance, converter, options) -> new BigDecimal((BigInteger) fromInstance));
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, BigDecimal.class), (fromInstance, converter, options) -> ((AtomicBoolean) fromInstance).get() ? BigDecimal.ONE : BigDecimal.ZERO);
-        DEFAULT_FACTORY.put(pair(AtomicInteger.class, BigDecimal.class), NumberConversion::numberToBigDecimal);
-        DEFAULT_FACTORY.put(pair(AtomicLong.class, BigDecimal.class), NumberConversion::numberToBigDecimal);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, BigDecimal.class), NumberConversion::longToBigDecimal);
+        DEFAULT_FACTORY.put(pair(AtomicLong.class, BigDecimal.class), NumberConversion::longToBigDecimal);
         DEFAULT_FACTORY.put(pair(Date.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(((Date) fromInstance).getTime()));
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(((Date) fromInstance).getTime()));
         DEFAULT_FACTORY.put(pair(Timestamp.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(((Date) fromInstance).getTime()));

@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -26,7 +27,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 
 import static com.cedarsoftware.util.convert.Converter.localDateTimeToMillis;
 import static com.cedarsoftware.util.convert.Converter.localDateToMillis;
@@ -181,6 +185,30 @@ class ConverterTest
                 .withMessageContaining(partialMessage);
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testConvertToPrimitiveByte_whenEmptyOrNullString(String s)
+    {
+        byte converted = this.converter.convert(s, byte.class);
+        assertThat(converted).isZero();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    void testConvertToByte_whenNullString(String s)
+    {
+        Byte converted = this.converter.convert(s, Byte.class);
+        assertThat(converted).isNull();
+    }
+
+    @ParameterizedTest
+    @EmptySource
+    void testConvertToByte_whenEmptyString(String s)
+    {
+        Byte converted = this.converter.convert(s, Byte.class);
+        assertThat(converted).isZero();
+    }
+
     private static Stream<Arguments> testShortParams() {
         return Stream.of(
                 Arguments.of("-32768", (short)-32768),
@@ -215,8 +243,7 @@ class ConverterTest
 
     @ParameterizedTest
     @MethodSource("testShortParams")
-    void testShort_usingPrimitive(Object value, short expectedResult)
-    {
+    void testShort_usingPrimitive(Object value, short expectedResult) {
         short converted = this.converter.convert(value, short.class);
         assertThat(converted).isEqualTo(expectedResult);
     }
@@ -264,241 +291,456 @@ class ConverterTest
                 .withMessageContaining(partialMessage);
     }
 
-
-    @Test
-    void testInt()
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testConvertToPrimitiveShort_whenEmptyOrNullString(String s)
     {
-        Integer x = this.converter.convert("-450000", int.class);
-        assertEquals((Object) (-450000), x);
-        x = this.converter.convert("550000", Integer.class);
-        assertEquals((Object) 550000, x);
+        short converted = this.converter.convert(s, short.class);
+        assertThat(converted).isZero();
+    }
 
-        x = this.converter.convert(100000, int.class);
-        assertEquals((Object) 100000, x);
-        x = this.converter.convert(200000, Integer.class);
-        assertEquals((Object) 200000, x);
+    @ParameterizedTest
+    @NullSource
+    void testConvertToShort_whenNullString(String s)
+    {
+        Short converted = this.converter.convert(s, Short.class);
+        assertThat(converted).isNull();
+    }
 
-        x = this.converter.convert(new BigDecimal("100000"), int.class);
-        assertEquals((Object) 100000, x);
-        x = this.converter.convert(new BigInteger("200000"), Integer.class);
-        assertEquals((Object) 200000, x);
+    @ParameterizedTest
+    @EmptySource
+    void testConvertToShort_whenEmptyString(String s)
+    {
+        Short converted = this.converter.convert(s, Short.class);
+        assertThat(converted).isZero();
+    }
 
-        assert 1 == this.converter.convert(true, Integer.class);
-        assert 0 == this.converter.convert(false, int.class);
 
-        assert 25 == this.converter.convert(new AtomicInteger(25), int.class);
-        assert 100 == this.converter.convert(new AtomicLong(100L), Integer.class);
-        assert 1 == this.converter.convert(new AtomicBoolean(true), Integer.class);
-        assert 0 == this.converter.convert(new AtomicBoolean(false), Integer.class);
+    private static Stream<Arguments> testIntParams() {
+        return Stream.of(
+                Arguments.of("-32768", -32768),
+                Arguments.of("32767", 32767),
+                Arguments.of(Byte.MIN_VALUE,-128),
+                Arguments.of(Byte.MAX_VALUE, 127),
+                Arguments.of(Short.MIN_VALUE, -32768),
+                Arguments.of(Short.MAX_VALUE, 32767),
+                Arguments.of(Integer.MIN_VALUE, Integer.MIN_VALUE),
+                Arguments.of(Integer.MAX_VALUE, Integer.MAX_VALUE),
+                Arguments.of(-128L, -128),
+                Arguments.of(127L, 127),
+                Arguments.of(-128.0f, -128),
+                Arguments.of(127.0f, 127),
+                Arguments.of(-128.0d, -128),
+                Arguments.of(127.0d, 127),
+                Arguments.of( new BigDecimal("100"),100),
+                Arguments.of( new BigInteger("120"), 120),
+                Arguments.of( new AtomicInteger(25), 25),
+                Arguments.of( new AtomicLong(100L), 100)
+        );
+    }
 
-        assertThatThrownBy(() -> this.converter.convert("11.5", int.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Value: 11.5 not parseable as an integer value or outside -214");
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), int.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
+    @ParameterizedTest
+    @MethodSource("testIntParams")
+    void testInt(Object value, Integer expectedResult)
+    {
+        Integer converted = this.converter.convert(value, Integer.class);
+        assertThat(converted).isEqualTo(expectedResult);
+    }
 
-        try
-        {
-            this.converter.convert("45badNumber", int.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("value: 45badnumber not parseable as an integer value or outside -214"));
-        }
+    @ParameterizedTest
+    @MethodSource("testShortParams")
+    void testInt_usingPrimitive(Object value, int expectedResult)
+    {
+        int converted = this.converter.convert(value, int.class);
+        assertThat(converted).isEqualTo(expectedResult);
+    }
 
-        try
-        {
-            this.converter.convert("2147483649", int.class);
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
+
+    private static Stream<Arguments> testInt_booleanParams() {
+        return Stream.of(
+                Arguments.of( true, CommonValues.INTEGER_ONE),
+                Arguments.of( false, CommonValues.INTEGER_ZERO),
+                Arguments.of( Boolean.TRUE, CommonValues.INTEGER_ONE),
+                Arguments.of( Boolean.FALSE, CommonValues.INTEGER_ZERO),
+                Arguments.of( new AtomicBoolean(true), CommonValues.INTEGER_ONE),
+                Arguments.of( new AtomicBoolean(false), CommonValues.INTEGER_ZERO));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testInt_booleanParams")
+    void testInt_fromBoolean(Object value, Integer expectedResult)
+    {
+        Integer converted = this.converter.convert(value, Integer.class);
+        assertThat(converted).isSameAs(expectedResult);
+    }
+
+
+    private static Stream<Arguments> testIntegerParams_withIllegalArguments() {
+        return Stream.of(
+                Arguments.of("11.5", "not parseable as an integer"),
+                Arguments.of("45badNumber", "not parseable as an integer"),
+                Arguments.of( "12147483648", "not parseable as an integer"),
+                Arguments.of("2147483649", "not parseable as an integer"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testIntegerParams_withIllegalArguments")
+    void testInteger_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, Integer.class))
+                .withMessageContaining(partialMessage);
+    }
+
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testConvertToPrimitiveInteger_whenEmptyOrNullString(String s)
+    {
+        int converted = this.converter.convert(s, int.class);
+        assertThat(converted).isZero();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    void testConvertToInteger_whenNullString(String s)
+    {
+        Integer converted = this.converter.convert(s, Integer.class);
+        assertThat(converted).isNull();
+    }
+
+    @ParameterizedTest
+    @EmptySource
+    void testConvertToInteger_whenEmptyString(String s)
+    {
+        Integer converted = this.converter.convert(s, Integer.class);
+        assertThat(converted).isZero();
+    }
+
+    private static Stream<Arguments> testLongParams() {
+        return Stream.of(
+                Arguments.of("-32768", -32768L),
+                Arguments.of("32767", 32767L),
+                Arguments.of(Byte.MIN_VALUE,-128L),
+                Arguments.of(Byte.MAX_VALUE, 127L),
+                Arguments.of(Short.MIN_VALUE, -32768L),
+                Arguments.of(Short.MAX_VALUE, 32767L),
+                Arguments.of(Integer.MIN_VALUE, -2147483648L),
+                Arguments.of(Integer.MAX_VALUE, 2147483647L),
+                Arguments.of(Long.MIN_VALUE, -9223372036854775808L),
+                Arguments.of(Long.MAX_VALUE, 9223372036854775807L),
+                Arguments.of(-128.0f, -128L),
+                Arguments.of(127.0f, 127L),
+                Arguments.of(-128.0d, -128L),
+                Arguments.of(127.0d, 127L),
+                Arguments.of( new BigDecimal("100"), 100L),
+                Arguments.of( new BigInteger("120"), 120L),
+                Arguments.of( new AtomicInteger(25), 25L),
+                Arguments.of( new AtomicLong(100L), 100L)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("testLongParams")
+    void testLong(Object value, Long expectedResult)
+    {
+        Long converted = this.converter.convert(value, Long.class);
+        assertThat(converted).isEqualTo(expectedResult);
+    }
+
+    @ParameterizedTest
+    @MethodSource("testLongParams")
+    void testLong_withPrimitives(Object value, long expectedResult)
+    {
+        long converted = this.converter.convert(value, long.class);
+        assertThat(converted).isEqualTo(expectedResult);
+    }
+
+    private static Stream<Arguments> testLong_booleanParams() {
+        return Stream.of(
+                Arguments.of( true, CommonValues.LONG_ONE),
+                Arguments.of( false, CommonValues.LONG_ZERO),
+                Arguments.of( Boolean.TRUE, CommonValues.LONG_ONE),
+                Arguments.of( Boolean.FALSE, CommonValues.LONG_ZERO),
+                Arguments.of( new AtomicBoolean(true), CommonValues.LONG_ONE),
+                Arguments.of( new AtomicBoolean(false), CommonValues.LONG_ZERO));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testLong_booleanParams")
+    void testLong_fromBoolean(Object value, Long expectedResult)
+    {
+        Long converted = this.converter.convert(value, Long.class);
+        assertThat(converted).isSameAs(expectedResult);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testConvertToPrimitiveLong_whenEmptyOrNullString(String s)
+    {
+        long converted = this.converter.convert(s, long.class);
+        assertThat(converted).isZero();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    void testConvertToLong_whenNullString(String s)
+    {
+        Long converted = this.converter.convert(s, Long.class);
+        assertThat(converted).isNull();
+    }
+
+    @ParameterizedTest
+    @EmptySource
+    void testConvertTLong_whenEmptyString(String s)
+    {
+        Long converted = this.converter.convert(s, Long.class);
+        assertThat(converted).isZero();
     }
 
     @Test
-    void testLong()
+    void testLong_fromDate()
     {
-        assert 0L == this.converter.convert(null, long.class);
+        Date date = Date.from(Instant.now());
+        Long converted = this.converter.convert(date, Long.class);
+        assertThat(converted).isEqualTo(date.getTime());
+    }
 
-        Long x = this.converter.convert("-450000", long.class);
-        assertEquals((Object)(-450000L), x);
-        x = this.converter.convert("550000", Long.class);
-        assertEquals((Object)550000L, x);
+    @Test
+    void testLong_fromCalendar()
+    {
+        Calendar date = Calendar.getInstance();
+        Long converted = this.converter.convert(date, Long.class);
+        assertThat(converted).isEqualTo(date.getTime().getTime());
+    }
 
-        x = this.converter.convert(100000L, long.class);
-        assertEquals((Object)100000L, x);
-        x = this.converter.convert(200000L, Long.class);
-        assertEquals((Object)200000L, x);
-
-        x = this.converter.convert(new BigDecimal("100000"), long.class);
-        assertEquals((Object)100000L, x);
-        x = this.converter.convert(new BigInteger("200000"), Long.class);
-        assertEquals((Object)200000L, x);
-
-        assert (long) 1 == this.converter.convert(true, long.class);
-        assert (long) 0 == this.converter.convert(false, Long.class);
-
-        Date now = new Date();
-        long now70 = now.getTime();
-        assert now70 == this.converter.convert(now, long.class);
-
-        Calendar today = Calendar.getInstance();
-        now70 = today.getTime().getTime();
-        assert now70 == this.converter.convert(today, Long.class);
-
+    @Test
+    void testLong_fromLocalDate()
+    {
         LocalDate localDate = LocalDate.now();
-        now70 = localDate.toEpochDay();
-        assert now70 == this.converter.convert(localDate, long.class);
+        Long converted = this.converter.convert(localDate, Long.class);
+        assertThat(converted).isEqualTo(localDate.toEpochDay());
+    }
 
-        assert 25L == this.converter.convert(new AtomicInteger(25), long.class);
-        assert 100L == this.converter.convert(new AtomicLong(100L), Long.class);
-        assert 1L == this.converter.convert(new AtomicBoolean(true), Long.class);
-        assert 0L == this.converter.convert(new AtomicBoolean(false), Long.class);
 
-        assertThatThrownBy(() -> this.converter.convert("11.5", long.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Value: 11.5 not parseable as a long value or outside -922");
+    private static Stream<Arguments> testLongParams_withIllegalArguments() {
+        return Stream.of(
+                Arguments.of("11.5", "not parseable as a long value"),
+                Arguments.of("45badNumber", "not parseable as a long value"),
+                Arguments.of( "-9223372036854775809", "not parseable as a long value"),
+                Arguments.of("9223372036854775808", "not parseable as a long value"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
 
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), long.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
+    @ParameterizedTest
+    @MethodSource("testLongParams_withIllegalArguments")
+    void testLong_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, Long.class))
+                .withMessageContaining(partialMessage);
+    }
 
-        try
-        {
-            this.converter.convert("45badNumber", long.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("value: 45badnumber not parseable as a long value or outside -922"));
-        }
+    private static Stream<Arguments> testAtomicLongParams() {
+        return Stream.of(
+                Arguments.of("-32768", new AtomicLong(-32768L)),
+                Arguments.of("32767", new AtomicLong(32767L)),
+                Arguments.of(Byte.MIN_VALUE, new AtomicLong(-128L)),
+                Arguments.of(Byte.MAX_VALUE, new AtomicLong(127L)),
+                Arguments.of(Short.MIN_VALUE, new AtomicLong(-32768L)),
+                Arguments.of(Short.MAX_VALUE, new AtomicLong(32767L)),
+                Arguments.of(Integer.MIN_VALUE, new AtomicLong(-2147483648L)),
+                Arguments.of(Integer.MAX_VALUE, new AtomicLong(2147483647L)),
+                Arguments.of(Long.MIN_VALUE, new AtomicLong(-9223372036854775808L)),
+                Arguments.of(Long.MAX_VALUE, new AtomicLong(9223372036854775807L)),
+                Arguments.of(-128.0f, new AtomicLong(-128L)),
+                Arguments.of(127.0f, new AtomicLong(127L)),
+                Arguments.of(-128.0d, new AtomicLong(-128L)),
+                Arguments.of(127.0d, new AtomicLong(127L)),
+                Arguments.of( new BigDecimal("100"), new AtomicLong(100L)),
+                Arguments.of( new BigInteger("120"), new AtomicLong(120L)),
+                Arguments.of( new AtomicInteger(25), new AtomicLong(25L)),
+                Arguments.of( new AtomicLong(100L), new AtomicLong(100L))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("testAtomicLongParams")
+    void testAtomicLong(Object value, AtomicLong expectedResult)
+    {
+        AtomicLong converted = this.converter.convert(value, AtomicLong.class);
+        assertThat(converted.get()).isEqualTo(expectedResult.get());
+    }
+
+    private static Stream<Arguments> testAtomicLong_fromBooleanParams() {
+        return Stream.of(
+                Arguments.of( true, new AtomicLong(CommonValues.LONG_ONE)),
+                Arguments.of( false, new AtomicLong(CommonValues.LONG_ZERO)),
+                Arguments.of( Boolean.TRUE,  new AtomicLong(CommonValues.LONG_ONE)),
+                Arguments.of( Boolean.FALSE, new AtomicLong(CommonValues.LONG_ZERO)),
+                Arguments.of( new AtomicBoolean(true), new AtomicLong(CommonValues.LONG_ONE)),
+                Arguments.of( new AtomicBoolean(false), new AtomicLong(CommonValues.LONG_ZERO)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testAtomicLong_fromBooleanParams")
+    void testAtomicLong_fromBoolean(Object value, AtomicLong expectedResult)
+    {
+        AtomicLong converted = this.converter.convert(value, AtomicLong.class);
+        assertThat(converted.get()).isEqualTo(expectedResult.get());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    void testConvertToAtomicLong_whenNullString(String s)
+    {
+        AtomicLong converted = this.converter.convert(s, AtomicLong.class);
+        assertThat(converted).isNull();
+    }
+
+    @ParameterizedTest
+    @EmptySource
+    void testConvertToAtomicLong_whenEmptyString(String s)
+    {
+        AtomicLong converted = this.converter.convert(s, AtomicLong.class);
+        assertThat(converted.get()).isZero();
     }
 
     @Test
-    void testAtomicLong()
+    void testAtomicLong_fromDate()
     {
-        AtomicLong x = this.converter.convert("-450000", AtomicLong.class);
-        assertEquals(-450000L, x.get());
-        x = this.converter.convert("550000", AtomicLong.class);
-        assertEquals(550000L, x.get());
-
-        x = this.converter.convert(100000L, AtomicLong.class);
-        assertEquals(100000L, x.get());
-        x = this.converter.convert(200000L, AtomicLong.class);
-        assertEquals(200000L, x.get());
-
-        x = this.converter.convert(new BigDecimal("100000"), AtomicLong.class);
-        assertEquals(100000L, x.get());
-        x = this.converter.convert(new BigInteger("200000"), AtomicLong.class);
-        assertEquals(200000L, x.get());
-
-        x = this.converter.convert(true, AtomicLong.class);
-        assertEquals((long)1, x.get());
-        x = this.converter.convert(false, AtomicLong.class);
-        assertEquals((long)0, x.get());
-
-        Date now = new Date();
-        long now70 = now.getTime();
-        x = this.converter.convert(now, AtomicLong.class);
-        assertEquals(now70, x.get());
-
-        Calendar today = Calendar.getInstance();
-        now70 = today.getTime().getTime();
-        x = this.converter.convert(today, AtomicLong.class);
-        assertEquals(now70, x.get());
-
-        x = this.converter.convert(new AtomicInteger(25), AtomicLong.class);
-        assertEquals(25L, x.get());
-        x = this.converter.convert(new AtomicLong(100L), AtomicLong.class);
-        assertEquals(100L, x.get());
-        x = this.converter.convert(new AtomicBoolean(true), AtomicLong.class);
-        assertEquals(1L, x.get());
-        x = this.converter.convert(new AtomicBoolean(false), AtomicLong.class);
-        assertEquals(0L, x.get());
-
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), AtomicLong.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        try
-        {
-            this.converter.convert("45badNumber", AtomicLong.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().contains("Value: 45badNumber not parseable as an AtomicLong value or outside -922"));
-        }
+        Date date = Date.from(Instant.now());
+        AtomicLong converted = this.converter.convert(date, AtomicLong.class);
+        assertThat(converted.get()).isEqualTo(date.getTime());
     }
 
     @Test
-    void testString()
+    void testAtomicLong_fromCalendar()
     {
-        assertEquals("Hello", this.converter.convert("Hello", String.class));
-        assertEquals("25", this.converter.convert(25.0d, String.class));
-        assertEquals("3141592653589793300", this.converter.convert(3.1415926535897932384626433e18, String.class));
-        assertEquals("true", this.converter.convert(true, String.class));
-        assertEquals("J", this.converter.convert('J', String.class));
-        assertEquals("3.1415926535897932384626433", this.converter.convert(new BigDecimal("3.1415926535897932384626433"), String.class));
-        assertEquals("123456789012345678901234567890", this.converter.convert(new BigInteger("123456789012345678901234567890"), String.class));
+        Calendar date = Calendar.getInstance();
+        AtomicLong converted = this.converter.convert(date, AtomicLong.class);
+        assertThat(converted.get()).isEqualTo(date.getTime().getTime());
+    }
+
+    @Test
+    void testAtomicLong_fromLocalDate()
+    {
+        LocalDate localDate = LocalDate.now();
+        Long converted = this.converter.convert(localDate, Long.class);
+        assertThat(converted).isEqualTo(localDate.toEpochDay());
+    }
+
+
+    private static Stream<Arguments> testAtomicLongParams_withIllegalArguments() {
+        return Stream.of(
+                Arguments.of("11.5", "not parseable as an AtomicLong"),
+                Arguments.of("45badNumber", "not parseable as an AtomicLong"),
+                Arguments.of( "-9223372036854775809", "not parseable as an AtomicLong"),
+                Arguments.of("9223372036854775808", "not parseable as an AtomicLong"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testAtomicLongParams_withIllegalArguments")
+    void testAtomicLong_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, AtomicLong.class))
+                .withMessageContaining(partialMessage);
+    }
+
+
+    private static Stream<Arguments> testStringParams() {
+        return Stream.of(
+                Arguments.of("-32768", "-32768"),
+                Arguments.of("Hello", "Hello"),
+                Arguments.of(Byte.MIN_VALUE, "-128"),
+                Arguments.of(Byte.MAX_VALUE, "127"),
+                Arguments.of(Short.MIN_VALUE, "-32768"),
+                Arguments.of(Short.MAX_VALUE, "32767L"),
+                Arguments.of(Integer.MIN_VALUE, "-2147483648L"),
+                Arguments.of(Integer.MAX_VALUE, "2147483647L"),
+                Arguments.of(Long.MIN_VALUE, "-9223372036854775808L"),
+                Arguments.of(Long.MAX_VALUE, "9223372036854775807L"),
+                Arguments.of(-128.0f, "-128"),
+                Arguments.of(127.56f, "127.56"),
+                Arguments.of(-128.0d, "-128"),
+                Arguments.of(1.23456789d, "1.23456789"),
+                Arguments.of(123456789.12345, "123456789.12345"),
+                Arguments.of( new BigDecimal("9999999999999999999999999.99999999"), "9999999999999999999999999.99999999"),
+                Arguments.of( new BigInteger("999999999999999999999999999999999999999999"), "999999999999999999999999999999999999999999"),
+                Arguments.of( new AtomicInteger(25), "25"),
+                Arguments.of( new AtomicLong(Long.MAX_VALUE), "9223372036854775807L"),
+                Arguments.of(3.1415926535897932384626433e18, "3141592653589793300"),
+                Arguments.of(true, "true"),
+                Arguments.of(false, "false"),
+                Arguments.of(Boolean.TRUE, "true"),
+                Arguments.of(Boolean.FALSE, "false"),
+                Arguments.of(new AtomicBoolean(true), "true"),
+                Arguments.of(new AtomicBoolean(false), "false"),
+                Arguments.of('J', "J"),
+                Arguments.of(new BigDecimal("3.1415926535897932384626433"), "3.1415926535897932384626433"),
+                Arguments.of(new BigInteger("123456789012345678901234567890"), "123456789012345678901234567890"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testAtomicLongParams")
+    void testStringParams(Object value, AtomicLong expectedResult)
+    {
+        AtomicLong converted = this.converter.convert(value, AtomicLong.class);
+        assertThat(converted.get()).isEqualTo(expectedResult.get());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testStringNullAndEmpty(String value) {
+        String converted = this.converter.convert(value, String.class);
+        assertThat(converted).isSameAs(value);
+    }
+
+    private static Stream<Arguments> testConvertStringParams_withIllegalArguments() {
+        return Stream.of(
+                Arguments.of(ZoneId.systemDefault(), "Unsupported conversion"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testConvertStringParams_withIllegalArguments")
+    void testConvertString_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, AtomicLong.class))
+                .withMessageContaining(partialMessage);
+    }
+
+    @Test
+    void testString_fromDate()
+    {
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(2015, 0, 17, 8, 34, 49);
+
+        Date date = cal.getTime();
+
+        String converted = this.converter.convert(date, String.class);
+        assertThat(converted).isEqualTo("2015-01-17T08:34:49");
+    }
+
+    @Test
+    void testString_fromCalendar()
+    {
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.set(2015, 0, 17, 8, 34, 49);
         assertEquals("2015-01-17T08:34:49", this.converter.convert(cal.getTime(), String.class));
         assertEquals("2015-01-17T08:34:49", this.converter.convert(cal, String.class));
-
-        assertEquals("25", this.converter.convert(new AtomicInteger(25), String.class));
-        assertEquals("100", this.converter.convert(new AtomicLong(100L), String.class));
-        assertEquals("true", this.converter.convert(new AtomicBoolean(true), String.class));
-
-        assertEquals("1.23456789", this.converter.convert(1.23456789d, String.class));
-
-        int x = 8;
-        String s = this.converter.convert(x, String.class);
-        assert s.equals("8");
-        assertEquals("123456789.12345", this.converter.convert(123456789.12345, String.class));
-
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), String.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        assert this.converter.convert(new HashMap<>(), HashMap.class) instanceof Map;
-
-        try
-        {
-            this.converter.convert(ZoneId.systemDefault(), String.class);
-            fail();
-        }
-        catch (Exception e)
-        {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "unsupported conversion, source type [zoneregion");
-        }
     }
+
+    @Test
+    void testString_fromLocalDate()
+    {
+        LocalDate localDate = LocalDate.of(2015, 9, 3);
+        String converted = this.converter.convert(localDate, String.class);
+        assertThat(converted).isEqualTo("2015-09-03");
+    }
+
 
     @Test
     void testBigDecimal()

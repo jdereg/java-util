@@ -66,12 +66,12 @@ public interface ConverterOptions {
     <T> T getCustomOption(String name);
 
     /**
-     * @return zoneId to use for source conversion when on is not provided on the source (Date, Instant, etc.)
+     * @return TimeZone to use for source conversion when on is not provided on the source (Date, Instant, etc.)
      */
     default TimeZone getSourceTimeZone() { return TimeZone.getTimeZone(this.getSourceZoneId()); }
 
     /**
-     * @return zoneId expected on the target when finished (only for types that support ZoneId or TimeZone)
+     * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone)
      */
     default TimeZone getTargetTimeZone() { return TimeZone.getTimeZone(this.getTargetZoneId()); }
 }

@@ -1,6 +1,10 @@
 package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -8,8 +12,6 @@ import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -34,28 +36,80 @@ public class NumberConversion {
         return ((Number) from).byteValue();
     }
 
+    public static Byte toByteZero(Object from, Converter converter, ConverterOptions options) {
+        return CommonValues.BYTE_ZERO;
+    }
+
+
     public static short toShort(Object from, Converter converter, ConverterOptions options) {
         return ((Number) from).shortValue();
+    }
+
+    public static Short toShortZero(Object from, Converter converter, ConverterOptions options) {
+        return CommonValues.SHORT_ZERO;
     }
 
     public static int toInt(Object from, Converter converter, ConverterOptions options) {
         return ((Number) from).intValue();
     }
 
+    public static Integer toIntZero(Object from, Converter converter, ConverterOptions options) {
+        return CommonValues.INTEGER_ZERO;
+    }
+
+
     public static long toLong(Object from, Converter converter, ConverterOptions options) {
         return ((Number) from).longValue();
     }
+
+    public static Long toLongZero(Object from, Converter converter, ConverterOptions options) {
+        return CommonValues.LONG_ZERO;
+    }
+
 
     public static float toFloat(Object from, Converter converter, ConverterOptions options) {
         return ((Number) from).floatValue();
     }
 
+    public static Float toFloatZero(Object from, Converter converter, ConverterOptions options) {
+        return CommonValues.FLOAT_ZERO;
+    }
+
+
     public static double toDouble(Object from, Converter converter, ConverterOptions options) {
         return ((Number) from).doubleValue();
     }
 
-    public static BigDecimal longToBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    public static Double toDoubleZero(Object from, Converter converter, ConverterOptions options) {
+        return CommonValues.DOUBLE_ZERO;
+    }
+
+    public static BigDecimal integerTypeToBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(((Number) from).longValue());
+    }
+
+    public static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
+        Number n = (Number)from;
+        return new AtomicLong(n.longValue());
+    }
+
+    public static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
+        Number n = (Number)from;
+        return new AtomicInteger(n.intValue());
+    }
+
+    public static BigDecimal bigIntegerToBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        return new BigDecimal((BigInteger)from);
+    }
+
+    public static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
+        Number number = (Number) from;
+        return new AtomicBoolean(number.longValue() != 0);
+    }
+
+    public static BigDecimal floatingPointToBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        Number n = (Number)from;
+        return BigDecimal.valueOf(n.doubleValue());
     }
 
     public static boolean isIntTypeNotZero(Object from, Converter converter, ConverterOptions options) {
@@ -90,16 +144,6 @@ public class NumberConversion {
      */
     public static char numberToCharacter(Object from, Converter converter, ConverterOptions options) {
         return numberToCharacter((Number) from);
-    }
-
-    public static AtomicInteger numberToAtomicInteger(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new AtomicInteger(number.intValue());
-    }
-
-    public static AtomicLong numberToAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new AtomicLong(number.longValue());
     }
 
     public static Date numberToDate(Object from, Converter converter, ConverterOptions options) {

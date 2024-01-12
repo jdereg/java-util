@@ -1,6 +1,8 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -36,14 +38,39 @@ public class BooleanConversion {
         return b.booleanValue() ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
     }
 
+    public static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
+        Boolean b = (Boolean) from;
+        return new AtomicLong(b.booleanValue() ? 1 : 0);
+    }
+
     public static Long toLong(Object from, Converter converter, ConverterOptions options) {
         Boolean b = (Boolean) from;
         return b.booleanValue() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
     }
 
-    public static AtomicBoolean numberToAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new AtomicBoolean(number.longValue() != 0);
+    public static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        Boolean b = (Boolean)from;
+        return b ? BigDecimal.ONE : BigDecimal.ZERO;
+    }
+
+    public static Float toFloat(Object from, Converter converter, ConverterOptions options) {
+        Boolean b = (Boolean) from;
+        return b.booleanValue() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
+    }
+
+    public static Double toDouble(Object from, Converter converter, ConverterOptions options) {
+        Boolean b = (Boolean) from;
+        return b.booleanValue() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
+    }
+
+    public static Float atomicToFloat(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return b.get() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
+    }
+
+    public static Double atomicToDouble(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return b.get() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
     }
 
     public static Byte atomicToByte(Object from, Converter converter, ConverterOptions options) {
@@ -69,25 +96,5 @@ public class BooleanConversion {
     public static Long atomicToCharacter(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
-    }
-
-    public static Float toFloat(Object from, Converter converter, ConverterOptions options) {
-        Boolean b = (Boolean) from;
-        return b.booleanValue() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
-    }
-
-    public static Double toDouble(Object from, Converter converter, ConverterOptions options) {
-        Boolean b = (Boolean) from;
-        return b.booleanValue() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
-    }
-
-    public static Float atomicToFloat(Object from, Converter converter, ConverterOptions options) {
-        AtomicBoolean b = (AtomicBoolean) from;
-        return b.get() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
-    }
-
-    public static Double atomicToDouble(Object from, Converter converter, ConverterOptions options) {
-        AtomicBoolean b = (AtomicBoolean) from;
-        return b.get() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
     }
 }

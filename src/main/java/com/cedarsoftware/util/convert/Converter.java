@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -246,7 +247,7 @@ public final class Converter {
             try {
                 return Long.valueOf(str);
             } catch (NumberFormatException e) {
-                Long value = strToLong(str, Long.MIN_VALUE, Long.MAX_VALUE);
+                Long value = strToLong(str, bigDecimalMinLong, bigDecimalMaxLong);
                 if (value == null) {
                     throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
                 }
@@ -556,7 +557,7 @@ public final class Converter {
             if (str.isEmpty()) {
                 return new AtomicLong(0L);
             }
-            Long value = strToLong(str, Long.MIN_VALUE, Long.MAX_VALUE);
+            Long value = strToLong(str, bigDecimalMinLong, bigDecimalMaxLong);
             if (value == null) {
                 throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
             }
@@ -1348,9 +1349,18 @@ public final class Converter {
         return zonedDateTime.toInstant().toEpochMilli();
     }
 
+    private static final BigDecimal bigDecimalMinByte = BigDecimal.valueOf(Byte.MIN_VALUE);
+    private static final BigDecimal bigDecimalMaxByte = BigDecimal.valueOf(Byte.MAX_VALUE);
+    private static final BigDecimal bigDecimalMinShort = BigDecimal.valueOf(Short.MIN_VALUE);
+    private static final BigDecimal bigDecimalMaxShort = BigDecimal.valueOf(Short.MAX_VALUE);
+    private static final BigDecimal bigDecimalMinInteger = BigDecimal.valueOf(Integer.MIN_VALUE);
+    private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
+    private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
+    private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
+
     private static Byte strToByte(String s)
     {
-        Long value = strToLong(s, Byte.MIN_VALUE, Byte.MAX_VALUE);
+        Long value = strToLong(s, bigDecimalMinByte, bigDecimalMaxByte);
         if (value == null) {
             return null;
         }
@@ -1359,7 +1369,7 @@ public final class Converter {
 
     private static Short strToShort(String s)
     {
-        Long value = strToLong(s, Short.MIN_VALUE, Short.MAX_VALUE);
+        Long value = strToLong(s, bigDecimalMinShort, bigDecimalMaxShort);
         if (value == null) {
             return null;
         }
@@ -1368,19 +1378,19 @@ public final class Converter {
 
     private static Integer strToInteger(String s)
     {
-        Long value = strToLong(s, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        Long value = strToLong(s, bigDecimalMinInteger, bigDecimalMaxInteger);
         if (value == null) {
             return null;
         }
         return value.intValue();
     }
-    
-    private static Long strToLong(String s, long low, long high)
+
+    private static Long strToLong(String s, BigDecimal low, BigDecimal high)
     {
         try {
             BigDecimal big = new BigDecimal(s);
-            long value = big.longValue();
-            if (value < low || value > high) {
+            big = big.setScale(0, RoundingMode.DOWN);
+            if (big.compareTo(low) == -1 || big.compareTo(high) == 1) {
                 return null;
             }
             return big.longValue();

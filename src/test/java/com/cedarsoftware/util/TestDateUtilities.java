@@ -750,7 +750,6 @@ class TestDateUtilities
         // 6-digits - max case - all 9's
         date = DateUtilities.parseDate("999999");
         gmtDateString = sdf.format(date);
-        System.out.println("gmtDateString = " + gmtDateString);
         assertEquals("4707-11-28 00:00:00", gmtDateString);
     }
 

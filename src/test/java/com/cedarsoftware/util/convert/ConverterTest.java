@@ -380,7 +380,6 @@ class ConverterTest
 
     private static Stream<Arguments> testIntegerParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("11.5", "not parseable as an integer"),
                 Arguments.of("45badNumber", "not parseable as an integer"),
                 Arguments.of( "12147483648", "not parseable as an integer"),
                 Arguments.of("2147483649", "not parseable as an integer"),
@@ -528,7 +527,6 @@ class ConverterTest
 
     private static Stream<Arguments> testLongParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("11.5", "not parseable as a long value"),
                 Arguments.of("45badNumber", "not parseable as a long value"),
                 Arguments.of( "-9223372036854775809", "not parseable as a long value"),
                 Arguments.of("9223372036854775808", "not parseable as a long value"),
@@ -635,7 +633,6 @@ class ConverterTest
 
     private static Stream<Arguments> testAtomicLongParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("11.5", "not parseable as an AtomicLong"),
                 Arguments.of("45badNumber", "not parseable as an AtomicLong"),
                 Arguments.of( "-9223372036854775809", "not parseable as an AtomicLong"),
                 Arguments.of("9223372036854775808", "not parseable as an AtomicLong"),

@@ -86,6 +86,7 @@ class ConverterTest
                 Arguments.of(-128.0f),
                 Arguments.of(-128.0d),
                 Arguments.of( new BigDecimal("-128.0")),
+                Arguments.of( new BigDecimal("-128.9")),
                 Arguments.of( new BigInteger("-128")),
                 Arguments.of( new AtomicInteger(-128)),
                 Arguments.of( new AtomicLong(-128L)));
@@ -110,6 +111,7 @@ class ConverterTest
 
     private static Stream<Arguments> testByte_maxValue_params() {
         return Stream.of(
+                Arguments.of("127.9"),
                 Arguments.of("127"),
                 Arguments.of(Byte.MAX_VALUE),
                 Arguments.of((short)Byte.MAX_VALUE),
@@ -138,6 +140,7 @@ class ConverterTest
         byte converted = this.converter.convert(value, byte.class);
         assertThat(converted).isEqualTo(Byte.MAX_VALUE);
     }
+    
     private static Stream<Arguments> testByte_booleanParams() {
         return Stream.of(
                 Arguments.of( true, CommonValues.BYTE_ONE),
@@ -166,7 +169,6 @@ class ConverterTest
 
     private static Stream<Arguments> testByteParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("11.5", "not parseable as a byte"),
                 Arguments.of("45badNumber", "not parseable as a byte"),
                 Arguments.of("-129", "not parseable as a byte"),
                 Arguments.of("128", "not parseable as a byte"),
@@ -183,8 +185,10 @@ class ConverterTest
 
     private static Stream<Arguments> testShortParams() {
         return Stream.of(
+                Arguments.of("-32768.9", (short)-32768),
                 Arguments.of("-32768", (short)-32768),
                 Arguments.of("32767", (short)32767),
+                Arguments.of("32767.9", (short)32767),
                 Arguments.of(Byte.MIN_VALUE, (short)-128),
                 Arguments.of(Byte.MAX_VALUE, (short)127),
                 Arguments.of(Short.MIN_VALUE, (short)-32768),
@@ -249,7 +253,6 @@ class ConverterTest
 
     private static Stream<Arguments> testShortParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("11.5", "not parseable as a short value or outside -32768 to 32767"),
                 Arguments.of("45badNumber", "not parseable as a short value or outside -32768 to 32767"),
                 Arguments.of("-32769", "not parseable as a short value or outside -32768 to 32767"),
                 Arguments.of("32768", "not parseable as a short value or outside -32768 to 32767"),
@@ -290,10 +293,9 @@ class ConverterTest
         assert 100 == this.converter.convert(new AtomicLong(100L), Integer.class);
         assert 1 == this.converter.convert(new AtomicBoolean(true), Integer.class);
         assert 0 == this.converter.convert(new AtomicBoolean(false), Integer.class);
+        assert 11 == converter.convert("11.5", int.class);
+        assert 11 == converter.convert("11.5", Integer.class);
 
-        assertThatThrownBy(() -> this.converter.convert("11.5", int.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Value: 11.5 not parseable as an integer value or outside -214");
         try
         {
             this.converter.convert(TimeZone.getDefault(), int.class);
@@ -361,10 +363,8 @@ class ConverterTest
         assert 100L == this.converter.convert(new AtomicLong(100L), Long.class);
         assert 1L == this.converter.convert(new AtomicBoolean(true), Long.class);
         assert 0L == this.converter.convert(new AtomicBoolean(false), Long.class);
-
-        assertThatThrownBy(() -> this.converter.convert("11.5", long.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Value: 11.5 not parseable as a long value or outside -922");
+        assert 11L == converter.convert("11.5", long.class);
+        assert 11L == converter.convert("11.5", Long.class);
 
         try
         {
@@ -428,6 +428,7 @@ class ConverterTest
         assertEquals(1L, x.get());
         x = this.converter.convert(new AtomicBoolean(false), AtomicLong.class);
         assertEquals(0L, x.get());
+        assertEquals(new AtomicLong(11).get(), converter.convert("11.5", AtomicLong.class).get());
 
         try
         {
@@ -563,7 +564,8 @@ class ConverterTest
         assertSame(BigInteger.ONE, this.converter.convert(true, BigInteger.class));
         assertEquals(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
         assertSame(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
-
+        assertEquals(new BigInteger("11"), converter.convert("11.5", BigInteger.class));
+        
         Date now = new Date();
         BigInteger now70 = new BigInteger(Long.toString(now.getTime()));
         assertEquals(now70, this.converter.convert(now, BigInteger.class));
@@ -603,6 +605,7 @@ class ConverterTest
         assertEquals(75, (this.converter.convert((short) 75, AtomicInteger.class)).get());
         assertEquals(1, (this.converter.convert(true, AtomicInteger.class)).get());
         assertEquals(0, (this.converter.convert(false, AtomicInteger.class)).get());
+        assertEquals(new AtomicInteger(11).get(), converter.convert("11.5", AtomicInteger.class).get());
 
         assertEquals(25, (this.converter.convert(new AtomicInteger(25), AtomicInteger.class)).get());
         assertEquals(100, (this.converter.convert(new AtomicLong(100L), AtomicInteger.class)).get());
@@ -1175,15 +1178,15 @@ class ConverterTest
         assertEquals(now.getTime(), bigDec.longValue());
 
         // Error handling
-//        try
-//        {
-//            this.converter.convert("2020-12-40", LocalDateTime.class);
-//            fail();
-//        }
-//        catch (IllegalArgumentException e)
-//        {
-//            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
-//        }
+        try
+        {
+            this.converter.convert("2020-12-40", LocalDateTime.class);
+            fail();
+        }
+        catch (IllegalArgumentException e)
+        {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
+        }
 
         assert this.converter.convert(null, LocalDateTime.class) == null;
     }
@@ -1294,13 +1297,13 @@ class ConverterTest
         assertEquals(now.getTime(), bigDec.longValue());
 
         // Error handling
-//        try {
-//            this.converter.convert("2020-12-40", ZonedDateTime.class);
-//            fail();
-//        }
-//        catch (IllegalArgumentException e) {
-//            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
-//        }
+        try {
+            this.converter.convert("2020-12-40", ZonedDateTime.class);
+            fail();
+        }
+        catch (IllegalArgumentException e) {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
+        }
 
         assert this.converter.convert(null, ZonedDateTime.class) == null;
     }

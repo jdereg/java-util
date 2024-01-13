@@ -40,33 +40,36 @@ import com.cedarsoftware.util.DateUtilities;
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
  * TimeStamp, SQL Date, LocalDate, LocalDateTime, ZonedDateTime, Calendar, Big*, Atomic*, Class, UUID,
- * String, ...<br/>
- * <br/>
- * Converter.convert(value, class) if null passed in, null is returned for most types, which allows "tri-state"
- * Boolean, for example, however, for primitive types, it chooses zero for the numeric ones, `false` for boolean,
- * and 0 for char.<br/>
- * <br/>
- * A Map can be converted to almost all data types.  For some, like UUID, it is expected for the Map to have
- * certain keys ("mostSigBits", "leastSigBits").  For the older Java Date/Time related classes, it expects
- * "time" or "nanos", and for all others, a Map as the source, the "value" key will be used to source the value
- * for the conversion.<br/>
- * <br/>
- *
- * @author John DeRegnaucourt (jdereg@gmail.com)
+ * String, ... Additional conversions can be added by specifying source class, destination class, and
+ * a lambda function that performs the conversion.<br>
  * <br>
- * Copyright (c) Cedar Software LLC
- * <br><br>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <br><br>
- * <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- * <br><br>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Currently, there are nearly 500 built-in conversions.  Use the getSupportedConversions() API to see all
+ * source to target conversions.<br>
+ * <br>
+ * The main API is convert(value, class). if null passed in, null is returned for most types, which allows "tri-state"
+ * Boolean, for example, however, for primitive types, it chooses zero for the numeric ones, `false` for boolean,
+ * and 0 for char.<br>
+ * <br>
+ * A Map can be converted to almost all JDL "data" classes.  For example, UUID can be converted to/from a Map.
+ * It is expected for the Map to have certain keys ("mostSigBits", "leastSigBits").  For the older Java Date/Time
+ * related classes, it expects "time" or "nanos", and for all others, a Map as the source, the "value" key will be
+ * used to source the value for the conversion.<br>
+ * <br>
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 
 public final class Converter {
@@ -132,7 +135,11 @@ public final class Converter {
             try {
                 return Byte.valueOf(str);
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+                Byte value = strToByte(str);
+                if (value == null) {
+                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+                }
+                return value;
             }
         });
 
@@ -163,7 +170,11 @@ public final class Converter {
             try {
                 return Short.valueOf(str);
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+                Short value = strToShort(str);
+                if (value == null) {
+                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+                }
+                return value;
             }
         });
 
@@ -194,7 +205,11 @@ public final class Converter {
             try {
                 return Integer.valueOf(str);
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an integer value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
+                Integer value = strToInteger(str);
+                if (value == null) {
+                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an integer value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
+                }
+                return value;
             }
         });
 
@@ -231,7 +246,11 @@ public final class Converter {
             try {
                 return Long.valueOf(str);
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+                Long value = strToLong(str, Long.MIN_VALUE, Long.MAX_VALUE);
+                if (value == null) {
+                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+                }
+                return value;
             }
         });
 
@@ -402,7 +421,8 @@ public final class Converter {
                 return BigInteger.ZERO;
             }
             try {
-                return new BigInteger(str);
+                BigDecimal bigDec = new BigDecimal(str);
+                return bigDec.toBigInteger();
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a BigInteger value.");
             }
@@ -499,11 +519,12 @@ public final class Converter {
             if (str.isEmpty()) {
                 return new AtomicInteger(0);
             }
-            try {
-                return new AtomicInteger(Integer.parseInt(str));
-            } catch (NumberFormatException e) {
+
+            Integer integer = strToInteger(str);
+            if (integer == null) {
                 throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an AtomicInteger value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
             }
+            return new AtomicInteger(integer);
         });
 
         // AtomicLong conversions supported
@@ -535,11 +556,11 @@ public final class Converter {
             if (str.isEmpty()) {
                 return new AtomicLong(0L);
             }
-            try {
-                return new AtomicLong(Long.parseLong(str));
-            } catch (NumberFormatException e) {
+            Long value = strToLong(str, Long.MIN_VALUE, Long.MAX_VALUE);
+            if (value == null) {
                 throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
             }
+            return new AtomicLong(value);
         });
 
         // Date conversions supported
@@ -1325,6 +1346,47 @@ public final class Converter {
 
     public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime) {
         return zonedDateTime.toInstant().toEpochMilli();
+    }
+
+    private static Byte strToByte(String s)
+    {
+        Long value = strToLong(s, Byte.MIN_VALUE, Byte.MAX_VALUE);
+        if (value == null) {
+            return null;
+        }
+        return value.byteValue();
+    }
+
+    private static Short strToShort(String s)
+    {
+        Long value = strToLong(s, Short.MIN_VALUE, Short.MAX_VALUE);
+        if (value == null) {
+            return null;
+        }
+        return value.shortValue();
+    }
+
+    private static Integer strToInteger(String s)
+    {
+        Long value = strToLong(s, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        if (value == null) {
+            return null;
+        }
+        return value.intValue();
+    }
+    
+    private static Long strToLong(String s, long low, long high)
+    {
+        try {
+            BigDecimal big = new BigDecimal(s);
+            long value = big.longValue();
+            if (value < low || value > high) {
+                return null;
+            }
+            return big.longValue();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

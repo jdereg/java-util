@@ -18,18 +18,29 @@ import com.cedarsoftware.util.convert.ConverterOptions;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
 
 /**
- * Handy conversion utilities.  Convert from primitive to other primitives, plus support for Date, TimeStamp SQL Date,
- * and the Atomic's.
- * <p>
+ * Useful conversion utilities.  Convert from primitive to other primitives, primitives to java.time and the older
+ * java.util.Date, TimeStamp SQL Date, and Calendar classes.  Support is there for the Atomics, BigInteger, BigDecimal,
+ * String, Map, all the Java temporal (java.time) classes, and Object[] to Collection types. In addition, you can add
+ * your own source/target pairings, and supply the lambda that performs the conversion.<br>
+ * <br>
+ * Use the 'getSupportedConversions()' API to see all conversion supported - from all sources
+ * to all destinations per each source.  Close to 500 "out-of-the-box" conversions ship with the library.<br>
+ * <br>
+ * The Converter can be used as statically or as an instance.  See the public static methods on this Converter class
+ * to use statically.  Any added conversions will added to a singleton instance maintained inside this class.
+ * Alternatively, you can instantiate the Converter class to get an instance, and the conversions you add, remove, or
+ * change will be scoped to just that instance. <br>
+ * <br>
+ * On this static Convert class:<br>
  * `Converter.convert2*()` methods: If `null` passed in, primitive 'logical zero' is returned.
- *      Example: `Converter.convert(null, boolean.class)` returns `false`.
- * <p>
- * `Converter.convertTo*()` methods: if `null` passed in, `null` is returned.  Allows "tri-state" Boolean.
- *      Example: `Converter.convert(null, Boolean.class)` returns `null`.
- * <p>
+ *      Example: `Converter.convert(null, boolean.class)` returns `false`.<br>
+ * <br>
+ * `Converter.convertTo*()` methods: if `null` passed in, `null` is returned.  Allows "tri-state" Boolean, for example.
+ *      Example: `Converter.convert(null, Boolean.class)` returns `null`.<br>
+ * <br>
  * `Converter.convert()` converts using `convertTo*()` methods for primitive wrappers, and
- *      `convert2*()` methods for primitives.
- * <p>
+ *      `convert2*()` methods for primitives. <br>
+ * <br>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -56,19 +67,19 @@ public final class Converter
      */
     private Converter() { }
 
+    // TODO: Find out if we want to continue with LocalDate in terms of Epoch Days.
 
-    @SuppressWarnings("unchecked")
     /**
-     * Uses the default configuration options for you system.
+     * Uses the default configuration options for your system.
      */
     public static <T> T convert(Object fromInstance, Class<T> toType) {
         return instance.convert(fromInstance, toType);
     }
 
     /**
-     * Allows you to specify (each call) a different conversion options.  Useful so you don't have
+     * Allows you to specify (per each call) different conversion options.  Useful so you don't have
      * to recreate the instance of Converter that is out there for every configuration option.  Just
-     * provide a different set of CovnerterOptions on the call itself.
+     * provide a different set of ConverterOptions on the call itself.
      */
     public static <T> T convert(Object fromInstance, Class<T> toType, ConverterOptions options) {
         return instance.convert(fromInstance, toType, options);
@@ -76,14 +87,11 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a String.  If null is passed in, this method will return "".
-     * Possible inputs are any primitive or primitive wrapper, Date (returns ISO-DATE format: 2020-04-10T12:15:47),
-     * Calendar (returns ISO-DATE format: 2020-04-10T12:15:47), any Enum (returns Enum's name()), BigDecimal,
-     * BigInteger, AtomicBoolean, AtomicInteger, AtomicLong, and Character.
+     * Call 'getSupportedConversions()' to see all conversion options for all Classes (all sources to all destinations).
      */
     public static String convert2String(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return "";
         }
         return instance.convert(fromInstance, String.class);
@@ -91,11 +99,7 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a String.  If null is passed in, this method will return null.
-     * Possible inputs are any primitive/primitive wrapper, Date (returns ISO-DATE format: 2020-04-10T12:15:47),
-     * Calendar (returns ISO-DATE format: 2020-04-10T12:15:47), any Enum (returns Enum's name()), BigDecimal,
-     * BigInteger, AtomicBoolean, AtomicInteger, AtomicLong, and Character.
      */
-    @SuppressWarnings("unchecked")
     public static String convertToString(Object fromInstance)
     {
         return instance.convert(fromInstance, String.class);
@@ -103,15 +107,11 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a BigDecimal.  If null or "" is passed in, this method will return a
-     * BigDecimal with the value of 0.  Possible inputs are String (base10 numeric values in string), BigInteger,
-     * any primitive/primitive wrapper, Boolean/AtomicBoolean (returns BigDecimal of 0 or 1), Date/Calendar
-     * (returns BigDecimal with the value of number of milliseconds since Jan 1, 1970), and Character (returns integer
-     * value of character).
+     * BigDecimal with the value of 0.
      */
     public static BigDecimal convert2BigDecimal(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return BigDecimal.ZERO;
         }
         return instance.convert(fromInstance, BigDecimal.class);
@@ -119,10 +119,7 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a BigDecimal.  If null is passed in, this method will return null.  If ""
-     * is passed in, this method will return a BigDecimal with the value of 0.  Possible inputs are String (base10
-     * numeric values in string), BigInteger, any primitive/primitive wrapper, Boolean/AtomicBoolean (returns
-     * BigDecimal of 0 or 1), Date, Calendar, LocalDate, LocalDateTime, ZonedDateTime (returns BigDecimal with the
-     * value of number of milliseconds since Jan 1, 1970), and Character (returns integer value of character).
+     * is passed in, this method will return a BigDecimal with the value of 0. 
      */
     public static BigDecimal convertToBigDecimal(Object fromInstance)
     {
@@ -131,15 +128,11 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a BigInteger.  If null or "" is passed in, this method will return a
-     * BigInteger with the value of 0.  Possible inputs are String (base10 numeric values in string), BigDecimal,
-     * any primitive/primitive wrapper, Boolean/AtomicBoolean (returns BigDecimal of 0 or 1), Date/Calendar
-     * (returns BigDecimal with the value of number of milliseconds since Jan 1, 1970), and Character (returns integer
-     * value of character).
+     * BigInteger with the value of 0.
      */
     public static BigInteger convert2BigInteger(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return BigInteger.ZERO;
         }
         return instance.convert(fromInstance, BigInteger.class);
@@ -147,10 +140,7 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a BigInteger.  If null is passed in, this method will return null.  If ""
-     * is passed in, this method will return a BigInteger with the value of 0.  Possible inputs are String (base10
-     * numeric values in string), BigDecimal, any primitive/primitive wrapper, Boolean/AtomicBoolean (returns
-     * BigInteger of 0 or 1), Date, Calendar, LocalDate, LocalDateTime, ZonedDateTime (returns BigInteger with the value
-     * of number of milliseconds since Jan 1, 1970), and Character (returns integer value of character).
+     * is passed in, this method will return a BigInteger with the value of 0.
      */
     public static BigInteger convertToBigInteger(Object fromInstance)
     {
@@ -159,10 +149,6 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a java.sql.Date.  If null is passed in, this method will return null.
-     * Possible inputs are TimeStamp, Date, Calendar, java.sql.Date (will return a copy), LocalDate, LocalDateTime,
-     * ZonedDateTime, String (which will be parsed by DateUtilities into a Date and a java.sql.Date will created from that),
-     * Long, BigInteger, BigDecimal, and AtomicLong (all of which the java.sql.Date will be created directly from
-     * [number of milliseconds since Jan 1, 1970]).
      */
     public static java.sql.Date convertToSqlDate(Object fromInstance)
     {
@@ -171,10 +157,6 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a Timestamp.  If null is passed in, this method will return null.
-     * Possible inputs are java.sql.Date, Date, Calendar, LocalDate, LocalDateTime, ZonedDateTime, TimeStamp
-     * (will return a copy), String (which will be parsed by DateUtilities into a Date and a Timestamp will created
-     * from that), Long, BigInteger, BigDecimal, and AtomicLong (all of which the Timestamp will be created directly
-     * from [number of milliseconds since Jan 1, 1970]).
      */
     public static Timestamp convertToTimestamp(Object fromInstance)
     {
@@ -183,25 +165,31 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a Date.  If null is passed in, this method will return null.
-     * Possible inputs are java.sql.Date, Timestamp, Calendar, Date (will return a copy), String (which will be parsed
-     * by DateUtilities and returned as a new Date instance), Long, BigInteger, BigDecimal, and AtomicLong (all of
-     * which the Date will be created directly from [number of milliseconds since Jan 1, 1970]).
      */
     public static Date convertToDate(Object fromInstance)
     {
         return instance.convert(fromInstance, Date.class);
     }
 
+    /**
+     * Convert from the passed in instance to a LocalDate.  If null is passed in, this method will return null.
+     */
     public static LocalDate convertToLocalDate(Object fromInstance)
     {
         return instance.convert(fromInstance, LocalDate.class);
     }
 
+    /**
+     * Convert from the passed in instance to a LocalDateTime.  If null is passed in, this method will return null.
+     */
     public static LocalDateTime convertToLocalDateTime(Object fromInstance)
     {
         return instance.convert(fromInstance, LocalDateTime.class);
     }
 
+    /**
+     * Convert from the passed in instance to a Date.  If null is passed in, this method will return null.
+     */
     public static ZonedDateTime convertToZonedDateTime(Object fromInstance)
     {
         return instance.convert(fromInstance, ZonedDateTime.class);
@@ -209,9 +197,6 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to a Calendar.  If null is passed in, this method will return null.
-     * Possible inputs are java.sql.Date, Timestamp, Date, Calendar (will return a copy), String (which will be parsed
-     * by DateUtilities and returned as a new Date instance), Long, BigInteger, BigDecimal, and AtomicLong (all of
-     * which the Date will be created directly from [number of milliseconds since Jan 1, 1970]).
      */
     public static Calendar convertToCalendar(Object fromInstance)
     {
@@ -219,21 +204,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a char.  If null is passed in, (char) 0 is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a char.  If null is passed in, (char) 0 is returned.
      */
     public static char convert2char(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return 0;
         }
         return instance.convert(fromInstance, char.class);
     }
 
     /**
-     * Convert from the passed in instance to a Character.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a Character.  If null is passed in, null is returned.
      */
     public static Character convertToCharacter(Object fromInstance)
     {
@@ -241,21 +223,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a byte.  If null is passed in, (byte) 0 is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a byte.  If null is passed in, (byte) 0 is returned.
      */
     public static byte convert2byte(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return 0;
         }
         return instance.convert(fromInstance, byte.class);
     }
 
     /**
-     * Convert from the passed in instance to a Byte.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a Byte.  If null is passed in, null is returned.
      */
     public static Byte convertToByte(Object fromInstance)
     {
@@ -263,21 +242,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a short.  If null is passed in, (short) 0 is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a short.  If null is passed in, (short) 0 is returned.
      */
     public static short convert2short(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return 0;
         }
         return instance.convert(fromInstance, short.class);
     }
 
     /**
-     * Convert from the passed in instance to a Short.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a Short.  If null is passed in, null is returned.
      */
     public static Short convertToShort(Object fromInstance)
     {
@@ -285,21 +261,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to an int.  If null is passed in, (int) 0 is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to an int.  If null is passed in, (int) 0 is returned.
      */
     public static int convert2int(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return 0;
         }
         return instance.convert(fromInstance, int.class);
     }
 
     /**
-     * Convert from the passed in instance to an Integer.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to an Integer.  If null is passed in, null is returned.
      */
     public static Integer convertToInteger(Object fromInstance)
     {
@@ -307,25 +280,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to an long.  If null is passed in, (long) 0 is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  In
-     * addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar can be passed in,
-     * in which case the long returned is the number of milliseconds since Jan 1, 1970.
+     * Convert from the passed in instance to an long.  If null is passed in, (long) 0 is returned.
      */
     public static long convert2long(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return CommonValues.LONG_ZERO;
         }
         return instance.convert(fromInstance, long.class);
     }
 
     /**
-     * Convert from the passed in instance to a Long.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  In
-     * addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar can be passed in,
-     * in which case the long returned is the number of milliseconds since Jan 1, 1970.
+     * Convert from the passed in instance to a Long.  If null is passed in, null is returned.
      */
     public static Long convertToLong(Object fromInstance)
     {
@@ -333,21 +299,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a float.  If null is passed in, 0.0f is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a float.  If null is passed in, 0.0f is returned.
      */
     public static float convert2float(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return CommonValues.FLOAT_ZERO;
         }
         return instance.convert(fromInstance, float.class);
     }
 
     /**
-     * Convert from the passed in instance to a Float.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  
+     * Convert from the passed in instance to a Float.  If null is passed in, null is returned.
      */
     public static Float convertToFloat(Object fromInstance)
     {
@@ -355,21 +318,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a double.  If null is passed in, 0.0d is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a double.  If null is passed in, 0.0d is returned.
      */
     public static double convert2double(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return CommonValues.DOUBLE_ZERO;
         }
         return instance.convert(fromInstance, double.class);
     }
 
     /**
-     * Convert from the passed in instance to a Double.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a Double.  If null is passed in, null is returned.
      */
     public static Double convertToDouble(Object fromInstance)
     {
@@ -377,21 +337,18 @@ public final class Converter
     }
 
     /**
-     * Convert from the passed in instance to a boolean.  If null is passed in, false is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a boolean.  If null is passed in, false is returned.
      */
     public static boolean convert2boolean(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return false;
         }
         return instance.convert(fromInstance, boolean.class);
     }
 
     /**
-     * Convert from the passed in instance to a Boolean.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to a Boolean.  If null is passed in, null is returned.
      */
     public static Boolean convertToBoolean(Object fromInstance)
     {
@@ -400,21 +357,18 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to an AtomicInteger.  If null is passed in, a new AtomicInteger(0) is
-     * returned. Possible inputs are String, all primitive/primitive wrappers, boolean, AtomicBoolean,
-     * (false=0, true=1), and all Atomic*s.
+     * returned.
      */
     public static AtomicInteger convert2AtomicInteger(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return new AtomicInteger(0);
         }
         return instance.convert(fromInstance, AtomicInteger.class);
     }
 
     /**
-     * Convert from the passed in instance to an AtomicInteger.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to an AtomicInteger.  If null is passed in, null is returned.
      */
     public static AtomicInteger convertToAtomicInteger(Object fromInstance)
     {
@@ -423,24 +377,17 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to an AtomicLong.  If null is passed in, new AtomicLong(0L) is returned.
-     * Possible inputs are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and
-     * all Atomic*s.  In addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar
-     * can be passed in, in which case the AtomicLong returned is the number of milliseconds since Jan 1, 1970.
      */
     public static AtomicLong convert2AtomicLong(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return new AtomicLong(0);
         }
         return instance.convert(fromInstance, AtomicLong.class);
     }
 
     /**
-     * Convert from the passed in instance to an AtomicLong.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.  In
-     * addition, Date, LocalDate, LocalDateTime, ZonedDateTime, java.sql.Date, Timestamp, and Calendar can be passed in,
-     * in which case the AtomicLong returned is the number of milliseconds since Jan 1, 1970.
+     * Convert from the passed in instance to an AtomicLong.  If null is passed in, null is returned.
      */
     public static AtomicLong convertToAtomicLong(Object fromInstance)
     {
@@ -449,21 +396,18 @@ public final class Converter
 
     /**
      * Convert from the passed in instance to an AtomicBoolean.  If null is passed in, new AtomicBoolean(false) is
-     * returned. Possible inputs are String, all primitive/primitive wrappers, boolean, AtomicBoolean,
-     * (false=0, true=1), and all Atomic*s.
+     * returned.
      */
     public static AtomicBoolean convert2AtomicBoolean(Object fromInstance)
     {
-        if (fromInstance == null)
-        {
+        if (fromInstance == null) {
             return new AtomicBoolean(false);
         }
         return instance.convert(fromInstance, AtomicBoolean.class);
     }
 
     /**
-     * Convert from the passed in instance to an AtomicBoolean.  If null is passed in, null is returned. Possible inputs
-     * are String, all primitive/primitive wrappers, boolean, AtomicBoolean, (false=0, true=1), and all Atomic*s.
+     * Convert from the passed in instance to an AtomicBoolean.  If null is passed in, null is returned.
      */
     public static AtomicBoolean convertToAtomicBoolean(Object fromInstance)
     {

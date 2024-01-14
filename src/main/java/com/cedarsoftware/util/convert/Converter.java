@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -18,7 +19,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.AbstractMap;
 import java.util.Calendar;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -79,14 +79,22 @@ public final class Converter {
     private static final String VALUE2 = "value";
 
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;
-
     private final ConverterOptions options;
 
-    private static final Map<Class<?>, Set<Class<?>>> cacheParentTypes = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Set<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
-
     private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> DEFAULT_FACTORY = new HashMap<>(500, .8f);
 
+    private static final BigDecimal bigDecimalMinByte = BigDecimal.valueOf(Byte.MIN_VALUE);
+    private static final BigDecimal bigDecimalMaxByte = BigDecimal.valueOf(Byte.MAX_VALUE);
+    private static final BigDecimal bigDecimalMinShort = BigDecimal.valueOf(Short.MIN_VALUE);
+    private static final BigDecimal bigDecimalMaxShort = BigDecimal.valueOf(Short.MAX_VALUE);
+    private static final BigDecimal bigDecimalMinInteger = BigDecimal.valueOf(Integer.MIN_VALUE);
+    private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
+    private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
+    private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
+
+    // Create a Map.Entry (pair) of source class to target class.
     private static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
         return new AbstractMap.SimpleImmutableEntry<>(source, target);
     }
@@ -1056,6 +1064,11 @@ public final class Converter {
         this.factory = new ConcurrentHashMap<>(DEFAULT_FACTORY);
     }
 
+    public ConverterOptions getOptions()
+    {
+        return options;
+    }
+
     /**
      * Turn the passed in value to the class indicated.  This will allow, for
      * example, a String to be passed in and be converted to a Long.
@@ -1141,6 +1154,10 @@ public final class Converter {
         // Try inheritance
         converter = getInheritedConverter(sourceType, toType);
         if (converter != null) {
+            // Fast lookup next time.
+            if (!isDirectConversionSupportedFor(sourceType, toType)) {
+                addConversion(sourceType, toType, converter);
+            }
             return (T) converter.convert(fromInstance, this, options);
         }
 
@@ -1151,25 +1168,22 @@ public final class Converter {
      * Expected that source and target classes, if primitive, have already been shifted to primitive wrapper classes.
      */
     private <T> Convert<?> getInheritedConverter(Class<?> sourceType, Class<T> toType) {
-        Set<Class<?>> sourceTypes = new TreeSet<>(getClassComparator());
-        Set<Class<?>> targetTypes = new TreeSet<>(getClassComparator());
-
-        sourceTypes.addAll(getSuperClassesAndInterfaces(sourceType));
-        sourceTypes.add(sourceType);
-        targetTypes.addAll(getSuperClassesAndInterfaces(toType));
-        targetTypes.add(toType);
+        Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
+        sourceTypes.add(new ClassLevel(sourceType, 0));
+        Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
+        targetTypes.add(new ClassLevel(toType, 0));
 
         Class<?> sourceClass = sourceType;
         Class<?> targetClass = toType;
 
-        for (Class<?> toClass : targetTypes) {
+        for (ClassLevel toClassLevel : targetTypes) {
             sourceClass = null;
             targetClass = null;
 
-            for (Class<?> fromClass : sourceTypes) {
-                if (factory.containsKey(pair(fromClass, toClass))) {
-                    sourceClass = fromClass;
-                    targetClass = toClass;
+            for (ClassLevel fromClassLevel : sourceTypes) {
+                if (factory.containsKey(pair(fromClassLevel.clazz, toClassLevel.clazz))) {
+                    sourceClass = fromClassLevel.clazz;
+                    targetClass = toClassLevel.clazz;
                     break;
                 }
             }
@@ -1183,40 +1197,78 @@ public final class Converter {
         return converter;
     }
 
-    private static Comparator<Class<?>> getClassComparator() {
-        return (c1, c2) -> {
-            if (c1.isInterface() == c2.isInterface()) {
-                // By name
-                return c1.getName().compareToIgnoreCase(c2.getName());
-            }
-            return c1.isInterface() ? 1 : -1;
-        };
-    }
-
-    private static Set<Class<?>> getSuperClassesAndInterfaces(Class<?> clazz) {
-
-        Set<Class<?>> parentTypes = cacheParentTypes.get(clazz);
+    private static Set<ClassLevel> getSuperClassesAndInterfaces(Class<?> clazz) {
+        Set<ClassLevel> parentTypes = cacheParentTypes.get(clazz);
         if (parentTypes != null) {
             return parentTypes;
         }
-        parentTypes = new ConcurrentSkipListSet<>(getClassComparator());
-        addSuperClassesAndInterfaces(clazz, parentTypes);
+        parentTypes = new ConcurrentSkipListSet<>();
+        addSuperClassesAndInterfaces(clazz, parentTypes, 1);
         cacheParentTypes.put(clazz, parentTypes);
         return parentTypes;
     }
 
-    private static void addSuperClassesAndInterfaces(Class<?> clazz, Set<Class<?>> result) {
+    static class ClassLevel implements Comparable {
+        private final Class<?> clazz;
+        private final int level;
+
+        ClassLevel(Class<?> c, int level) {
+            clazz = c;
+            this.level = level;
+        }
+
+        public int hashCode() {
+            return clazz.hashCode();
+        }
+
+        public boolean equals(Object o)
+        {
+            if (!(o instanceof ClassLevel)) {
+                return false;
+            }
+
+            return clazz.equals(((ClassLevel) o).clazz);
+        }
+
+        public int compareTo(Object o) {
+            if (!(o instanceof ClassLevel)) {
+                throw new IllegalArgumentException("Object must be of type ClassLevel");
+            }
+            ClassLevel other = (ClassLevel) o;
+
+            // Primary sort key: level
+            int levelComparison = Integer.compare(this.level, other.level);
+            if (levelComparison != 0) {
+                return levelComparison;
+            }
+
+            // Secondary sort key: clazz type (class vs interface)
+            boolean thisIsInterface = this.clazz.isInterface();
+            boolean otherIsInterface = other.clazz.isInterface();
+            if (thisIsInterface != otherIsInterface) {
+                return thisIsInterface ? 1 : -1;
+            }
+
+            // Tertiary sort key: class name
+            return this.clazz.getName().compareTo(other.clazz.getName());
+        }
+    }
+
+    private static void addSuperClassesAndInterfaces(Class<?> clazz, Set<ClassLevel> result, int level) {
         // Add all superinterfaces
         for (Class<?> iface : clazz.getInterfaces()) {
-            result.add(iface);
-            addSuperClassesAndInterfaces(iface, result);
+            // Performance speed up, skip interfaces that are too general
+            if (iface != Serializable.class && iface != Cloneable.class && iface != Comparable.class) {
+                result.add(new ClassLevel(iface, level));
+                addSuperClassesAndInterfaces(iface, result, level + 1);
+            }
         }
 
         // Add superclass
         Class<?> superClass = clazz.getSuperclass();
         if (superClass != null && superClass != Object.class) {
-            result.add(superClass);
-            addSuperClassesAndInterfaces(superClass, result);
+            result.add(new ClassLevel(superClass, level));
+            addSuperClassesAndInterfaces(superClass, result, level + 1);
         }
     }
 
@@ -1336,7 +1388,7 @@ public final class Converter {
         target = toPrimitiveWrapperClass(target);
         return factory.put(pair(source, target), conversionFunction);
     }
-
+    
     public static long localDateToMillis(LocalDate localDate, ZoneId zoneId) {
         return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli();
     }
@@ -1348,15 +1400,6 @@ public final class Converter {
     public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime) {
         return zonedDateTime.toInstant().toEpochMilli();
     }
-
-    private static final BigDecimal bigDecimalMinByte = BigDecimal.valueOf(Byte.MIN_VALUE);
-    private static final BigDecimal bigDecimalMaxByte = BigDecimal.valueOf(Byte.MAX_VALUE);
-    private static final BigDecimal bigDecimalMinShort = BigDecimal.valueOf(Short.MIN_VALUE);
-    private static final BigDecimal bigDecimalMaxShort = BigDecimal.valueOf(Short.MAX_VALUE);
-    private static final BigDecimal bigDecimalMinInteger = BigDecimal.valueOf(Integer.MIN_VALUE);
-    private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
-    private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
-    private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
 
     private static Byte strToByte(String s)
     {
@@ -1423,6 +1466,4 @@ public final class Converter {
     private static String toString(Object one, Converter converter, ConverterOptions options) {
         return one.toString();
     }
-
-
 }

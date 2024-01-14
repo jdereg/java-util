@@ -421,7 +421,8 @@ public final class Converter
      */
     public static long localDateToMillis(LocalDate localDate)
     {
-        return localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        ZoneId zoneId = instance.getOptions().getSourceZoneId();
+        return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli();
     }
 
     /**
@@ -431,7 +432,8 @@ public final class Converter
      */
     public static long localDateTimeToMillis(LocalDateTime localDateTime)
     {
-        return localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        ZoneId zoneId = instance.getOptions().getSourceZoneId();
+        return localDateTime.atZone(zoneId).toInstant().toEpochMilli();
     }
 
     /**

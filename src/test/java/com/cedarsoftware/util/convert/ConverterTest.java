@@ -318,11 +318,12 @@ class ConverterTest
         assertThat(converted).isZero();
     }
 
-
     private static Stream<Arguments> testIntParams() {
         return Stream.of(
                 Arguments.of("-32768", -32768),
+                Arguments.of("-45000", -45000),
                 Arguments.of("32767", 32767),
+                Arguments.of(new BigInteger("8675309"), 8675309),
                 Arguments.of(Byte.MIN_VALUE,-128),
                 Arguments.of(Byte.MAX_VALUE, 127),
                 Arguments.of(Short.MIN_VALUE, -32768),
@@ -331,14 +332,17 @@ class ConverterTest
                 Arguments.of(Integer.MAX_VALUE, Integer.MAX_VALUE),
                 Arguments.of(-128L, -128),
                 Arguments.of(127L, 127),
+                Arguments.of(3.14, 3),
                 Arguments.of(-128.0f, -128),
                 Arguments.of(127.0f, 127),
                 Arguments.of(-128.0d, -128),
                 Arguments.of(127.0d, 127),
                 Arguments.of( new BigDecimal("100"),100),
                 Arguments.of( new BigInteger("120"), 120),
-                Arguments.of( new AtomicInteger(25), 25),
-                Arguments.of( new AtomicLong(100L), 100)
+                Arguments.of( new AtomicInteger(75), 75),
+                Arguments.of( new AtomicInteger(1), 1),
+                Arguments.of( new AtomicInteger(0), 0),
+                Arguments.of( new AtomicLong(Integer.MAX_VALUE), Integer.MAX_VALUE)
         );
     }
 
@@ -741,141 +745,234 @@ class ConverterTest
         assertThat(converted).isEqualTo("2015-09-03");
     }
 
-    @Test
-    void testBigDecimal()
+
+    private static Stream<Arguments> testBigDecimalParams() {
+        return Stream.of(
+                Arguments.of("-45000", BigDecimal.valueOf(-45000L)),
+                Arguments.of("-32768", BigDecimal.valueOf(-32768L)),
+                Arguments.of("32767", BigDecimal.valueOf(32767L)),
+                Arguments.of(Byte.MIN_VALUE, BigDecimal.valueOf((-128L)),
+                Arguments.of(Byte.MAX_VALUE, BigDecimal.valueOf(127L)),
+                Arguments.of(Short.MIN_VALUE, BigDecimal.valueOf(-32768L)),
+                Arguments.of(Short.MAX_VALUE, BigDecimal.valueOf(32767L)),
+                Arguments.of(Integer.MIN_VALUE, BigDecimal.valueOf(-2147483648L)),
+                Arguments.of(Integer.MAX_VALUE, BigDecimal.valueOf(2147483647L)),
+                Arguments.of(Long.MIN_VALUE, BigDecimal.valueOf(-9223372036854775808L)),
+                Arguments.of(Long.MAX_VALUE, BigDecimal.valueOf(9223372036854775807L)),
+                        Arguments.of(3.14, BigDecimal.valueOf(3.14)),
+                        Arguments.of(-128.0f, BigDecimal.valueOf(-128.0f)),
+                Arguments.of(127.0f, BigDecimal.valueOf(127.0f)),
+                Arguments.of(-128.0d, BigDecimal.valueOf(-128.0d))),
+                Arguments.of(127.0d, BigDecimal.valueOf(127.0d)),
+                Arguments.of( new BigDecimal("100"), new BigDecimal("100")),
+                Arguments.of( new BigInteger("8675309"), new BigDecimal("8675309")),
+                Arguments.of( new BigInteger("120"), new BigDecimal("120")),
+                Arguments.of( new AtomicInteger(25), new BigDecimal(25)),
+                Arguments.of( new AtomicLong(100L), new BigDecimal(100))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("testBigDecimalParams")
+    void testBigDecimal(Object value, BigDecimal expectedResult)
     {
-        Object o = converter.convert("", BigDecimal.class);
-        assertEquals(o, BigDecimal.ZERO);
-        BigDecimal x = this.converter.convert("-450000", BigDecimal.class);
-        assertEquals(new BigDecimal("-450000"), x);
+        BigDecimal converted = this.converter.convert(value, BigDecimal.class);
+        assertThat(converted).isEqualTo(expectedResult);
+    }
 
-        assertEquals(new BigDecimal("3.14"), this.converter.convert(new BigDecimal("3.14"), BigDecimal.class));
-        assertEquals(new BigDecimal("8675309"), this.converter.convert(new BigInteger("8675309"), BigDecimal.class));
-        assertEquals(new BigDecimal("75"), this.converter.convert((short) 75, BigDecimal.class));
-        assertEquals(BigDecimal.ONE, this.converter.convert(true, BigDecimal.class));
-        assertSame(BigDecimal.ONE, this.converter.convert(true, BigDecimal.class));
-        assertEquals(BigDecimal.ZERO, this.converter.convert(false, BigDecimal.class));
-        assertSame(BigDecimal.ZERO, this.converter.convert(false, BigDecimal.class));
 
-        Date now = new Date();
-        BigDecimal now70 = new BigDecimal(now.getTime());
-        assertEquals(now70, this.converter.convert(now, BigDecimal.class));
-
-        Calendar today = Calendar.getInstance();
-        now70 = new BigDecimal(today.getTime().getTime());
-        assertEquals(now70, this.converter.convert(today, BigDecimal.class));
-
-        assertEquals(new BigDecimal(25), this.converter.convert(new AtomicInteger(25), BigDecimal.class));
-        assertEquals(new BigDecimal(100), this.converter.convert(new AtomicLong(100L), BigDecimal.class));
-        assertEquals(BigDecimal.ONE, this.converter.convert(new AtomicBoolean(true), BigDecimal.class));
-        assertEquals(BigDecimal.ZERO, this.converter.convert(new AtomicBoolean(false), BigDecimal.class));
-
-        assertEquals(converter.convert(BigDecimal.ZERO, Boolean.class), false);
-        assertEquals(converter.convert(BigDecimal.ONE, Boolean.class), true);
-        assertEquals(converter.convert(new BigDecimal("3.14159"), Boolean.class), true);
-
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), BigDecimal.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        try
-        {
-            this.converter.convert("45badNumber", BigDecimal.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("value: 45badnumber not parseable as a bigdecimal value"));
-        }
+    private static Stream<Arguments> testBigDecimalParams_withObjectsShouldBeSame() {
+        return Stream.of(
+                Arguments.of(new AtomicBoolean(true), BigDecimal.ONE),
+                Arguments.of(new AtomicBoolean(false), BigDecimal.ZERO),
+                Arguments.of(true, BigDecimal.ONE),
+                Arguments.of(false, BigDecimal.ZERO),
+                Arguments.of(Boolean.TRUE, BigDecimal.ONE),
+                Arguments.of(Boolean.FALSE, BigDecimal.ZERO),
+                Arguments.of("", BigDecimal.ZERO)
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("testBigDecimalParams_withObjectsShouldBeSame")
+    void testBigDecimal_withObjectsThatShouldBeSameAs(Object value, BigDecimal expected) {
+        BigDecimal converted = this.converter.convert(value, BigDecimal.class);
+        assertThat(converted).isSameAs(expected);
     }
 
     @Test
-    void testBigInteger()
-    {
-        BigInteger x = this.converter.convert("-450000", BigInteger.class);
-        assertEquals(new BigInteger("-450000"), x);
-
-        assertEquals(new BigInteger("3"), this.converter.convert(new BigDecimal("3.14"), BigInteger.class));
-        assertEquals(new BigInteger("8675309"), this.converter.convert(new BigInteger("8675309"), BigInteger.class));
-        assertEquals(new BigInteger("75"), this.converter.convert((short) 75, BigInteger.class));
-        assertEquals(BigInteger.ONE, this.converter.convert(true, BigInteger.class));
-        assertSame(BigInteger.ONE, this.converter.convert(true, BigInteger.class));
-        assertEquals(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
-        assertSame(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
-        assertEquals(converter.convert(new BigInteger("314159"), Boolean.class), true);
-        assertEquals(new BigInteger("11"), converter.convert("11.5", BigInteger.class));
-
+    void testBigDecimal_withDate() {
         Date now = new Date();
-        BigInteger now70 = new BigInteger(Long.toString(now.getTime()));
-        assertEquals(now70, this.converter.convert(now, BigInteger.class));
-
-        Calendar today = Calendar.getInstance();
-        now70 = new BigInteger(Long.toString(today.getTime().getTime()));
-        assertEquals(now70, this.converter.convert(today, BigInteger.class));
-
-        assertEquals(new BigInteger("25"), this.converter.convert(new AtomicInteger(25), BigInteger.class));
-        assertEquals(new BigInteger("100"), this.converter.convert(new AtomicLong(100L), BigInteger.class));
-        assertEquals(BigInteger.ONE, this.converter.convert(new AtomicBoolean(true), BigInteger.class));
-        assertEquals(BigInteger.ZERO, this.converter.convert(new AtomicBoolean(false), BigInteger.class));
-
-        try {
-            this.converter.convert(TimeZone.getDefault(), BigInteger.class);
-            fail();
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        try {
-            this.converter.convert("45badNumber", BigInteger.class);
-            fail();
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().toLowerCase().contains("value: 45badnumber not parseable as a biginteger value"));
-        }
+        BigDecimal bd = new BigDecimal(now.getTime());
+        assertEquals(bd, this.converter.convert(now, BigDecimal.class));
     }
 
     @Test
-    void testAtomicInteger()
+    void testBigDecimal_witCalendar() {
+        Calendar today = Calendar.getInstance();
+        BigDecimal bd = new BigDecimal(today.getTime().getTime());
+        assertEquals(bd, this.converter.convert(today, BigDecimal.class));
+    }
+
+
+    private static Stream<Arguments> testConvertToBigDecimalParams_withIllegalArguments() {
+        return Stream.of(
+                Arguments.of("45badNumber", "not parseable"),
+                Arguments.of(ZoneId.systemDefault(), "Unsupported conversion"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testConvertToBigDecimalParams_withIllegalArguments")
+    void testConvertToBigDecimal_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, BigDecimal.class))
+                .withMessageContaining(partialMessage);
+    }
+
+    /**
+     *
+     *         assertEquals(new BigInteger("3"), this.converter.convert(new BigDecimal("3.14"), BigInteger.class));
+     *         assertEquals(new BigInteger("8675309"), this.converter.convert(new BigInteger("8675309"), BigInteger.class));
+     *         assertEquals(new BigInteger("75"), this.converter.convert((short) 75, BigInteger.class));
+     *         assertEquals(BigInteger.ONE, this.converter.convert(true, BigInteger.class));
+     *         assertSame(BigInteger.ONE, this.converter.convert(true, BigInteger.class));
+     *         assertEquals(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
+     *         assertSame(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
+     *         assertEquals(converter.convert(new BigInteger("314159"), Boolean.class), true);
+     *         assertEquals(new BigInteger("11"), converter.convert("11.5", BigInteger.class));
+     */
+    private static Stream<Arguments> testBigIntegerParams() {
+        return Stream.of(
+                Arguments.of("-32768", BigInteger.valueOf(-32768L)),
+                Arguments.of("32767", BigInteger.valueOf(32767L)),
+                Arguments.of(Byte.MIN_VALUE, BigInteger.valueOf((-128L)),
+                        Arguments.of(Byte.MAX_VALUE, BigInteger.valueOf(127L)),
+                        Arguments.of(Short.MIN_VALUE, BigInteger.valueOf(-32768L)),
+                        Arguments.of(Short.MAX_VALUE, BigInteger.valueOf(32767L)),
+                        Arguments.of(Integer.MIN_VALUE, BigInteger.valueOf(-2147483648L)),
+                        Arguments.of(Integer.MAX_VALUE, BigInteger.valueOf(2147483647L)),
+                        Arguments.of(Long.MIN_VALUE, BigInteger.valueOf(-9223372036854775808L)),
+                        Arguments.of(Long.MAX_VALUE, BigInteger.valueOf(9223372036854775807L)),
+                        Arguments.of(-128.0f, BigInteger.valueOf(-128)),
+                        Arguments.of(127.0f, BigInteger.valueOf(127)),
+                        Arguments.of(-128.0d, BigInteger.valueOf(-128))),
+                Arguments.of(127.0d, BigInteger.valueOf(127)),
+                Arguments.of( new BigDecimal("100"), new BigInteger("100")),
+                Arguments.of( new BigInteger("120"), new BigInteger("120")),
+                Arguments.of( new AtomicInteger(25), BigInteger.valueOf(25)),
+                Arguments.of( new AtomicLong(100L), BigInteger.valueOf(100))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("testBigIntegerParams")
+    void testBigInteger(Object value, BigInteger expectedResult)
     {
-        AtomicInteger x = this.converter.convert("-450000", AtomicInteger.class);
-        assertEquals(-450000, x.get());
+        BigInteger converted = this.converter.convert(value, BigInteger.class);
+        assertThat(converted).isEqualTo(expectedResult);
+    }
 
-        assertEquals(3, (this.converter.convert(new BigDecimal("3.14"), AtomicInteger.class)).get());
-        assertEquals(8675309, (this.converter.convert(new BigInteger("8675309"), AtomicInteger.class)).get());
-        assertEquals(75, (this.converter.convert((short) 75, AtomicInteger.class)).get());
-        assertEquals(1, (this.converter.convert(true, AtomicInteger.class)).get());
-        assertEquals(0, (this.converter.convert(false, AtomicInteger.class)).get());
-        assertEquals(new AtomicInteger(11).get(), converter.convert("11.5", AtomicInteger.class).get());
 
-        assertEquals(25, (this.converter.convert(new AtomicInteger(25), AtomicInteger.class)).get());
-        assertEquals(100, (this.converter.convert(new AtomicLong(100L), AtomicInteger.class)).get());
-        assertEquals(1, (this.converter.convert(new AtomicBoolean(true), AtomicInteger.class)).get());
-        assertEquals(0, (this.converter.convert(new AtomicBoolean(false), AtomicInteger.class)).get());
+    private static Stream<Arguments> testBigIntegerParams_withObjectsShouldBeSameAs() {
+        return Stream.of(
+                Arguments.of(CommonValues.INTEGER_ZERO, BigInteger.ZERO),
+                Arguments.of(CommonValues.INTEGER_ONE, BigInteger.ONE),
+                Arguments.of(CommonValues.LONG_ZERO, BigInteger.ZERO),
+                Arguments.of(CommonValues.LONG_ONE, BigInteger.ONE),
+                Arguments.of(new AtomicBoolean(true), BigInteger.ONE),
+                Arguments.of(new AtomicBoolean(false), BigInteger.ZERO),
+                Arguments.of(true, BigInteger.ONE),
+                Arguments.of(false, BigInteger.ZERO),
+                Arguments.of(Boolean.TRUE, BigInteger.ONE),
+                Arguments.of(Boolean.FALSE, BigInteger.ZERO),
+                Arguments.of("", BigInteger.ZERO),
+                Arguments.of(BigInteger.ZERO, BigInteger.ZERO),
+                Arguments.of(BigInteger.ONE, BigInteger.ONE),
+               Arguments.of(BigInteger.TEN, BigInteger.TEN)
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("testBigIntegerParams_withObjectsShouldBeSameAs")
+    void testBigInteger_withObjectsShouldBeSameAs(Object value, BigInteger expected) {
+        BigInteger converted = this.converter.convert(value, BigInteger.class);
+        assertThat(converted).isSameAs(expected);
+    }
 
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), AtomicInteger.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
+    @Test
+    void testBigInteger_withDate() {
+        Date now = new Date();
+        BigInteger bd = BigInteger.valueOf(now.getTime());
+        assertEquals(bd, this.converter.convert(now, BigInteger.class));
+    }
 
-        try
-        {
-            this.converter.convert("45badNumber", AtomicInteger.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("45badnumber"));
-        }
+    @Test
+    void testBigInteger_withCalendar() {
+        Calendar today = Calendar.getInstance();
+        BigInteger bd = BigInteger.valueOf(today.getTime().getTime());
+        assertEquals(bd, this.converter.convert(today, BigInteger.class));
+    }
+
+    private static Stream<Arguments> testConvertToBigIntegerParams_withIllegalArguments() {
+        return Stream.of(
+                Arguments.of("45badNumber", "not parseable"),
+                Arguments.of(ZoneId.systemDefault(), "Unsupported conversion"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testConvertToBigIntegerParams_withIllegalArguments")
+    void testConvertToBigInteger_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, BigInteger.class))
+                .withMessageContaining(partialMessage);
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("testIntParams")
+    void testAtomicInteger(Object value, int expectedResult)
+    {
+        AtomicInteger converted = this.converter.convert(value, AtomicInteger.class);
+        assertThat(converted.get()).isEqualTo(new AtomicInteger(expectedResult).get());
+    }
+
+    @Test
+    void testAtomicInteger_withEmptyString() {
+        AtomicInteger converted = this.converter.convert("", AtomicInteger.class);
+        //TODO:  Do we want nullable types to default to zero
+        assertThat(converted.get()).isEqualTo(0);
+    }
+
+    private static Stream<Arguments> testAtomicIntegerParams_withBooleanTypes() {
+        return Stream.of(
+                Arguments.of(new AtomicBoolean(true), new AtomicInteger(1)),
+                Arguments.of(new AtomicBoolean(false), new AtomicInteger(0)),
+                Arguments.of(true,  new AtomicInteger(1)),
+                Arguments.of(false, new AtomicInteger(0)),
+                Arguments.of(Boolean.TRUE,  new AtomicInteger(1)),
+                Arguments.of(Boolean.FALSE, new AtomicInteger(0))
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("testAtomicIntegerParams_withBooleanTypes")
+    void testAtomicInteger_withBooleanTypes(Object value, AtomicInteger expected) {
+        AtomicInteger converted = this.converter.convert(value, AtomicInteger.class);
+        assertThat(converted.get()).isEqualTo(expected.get());
+    }
+
+    private static Stream<Arguments> testAtomicinteger_withIllegalArguments_params() {
+        return Stream.of(
+                Arguments.of("45badNumber", "not parseable"),
+                Arguments.of(ZoneId.systemDefault(), "Unsupported conversion"),
+                Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("testAtomicinteger_withIllegalArguments_params")
+    void testAtomicinteger_withIllegalArguments(Object value, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(value, BigInteger.class))
+                .withMessageContaining(partialMessage);
     }
 
     @Test
@@ -2167,7 +2264,7 @@ class ConverterTest
     void testNullType()
     {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> this.converter.convert("123", null))
-                // No Message was coming through here and receiving NullPointerException -- changed to convention over in convert -- hopefully that's what you had in mind.
+                // TOTO:  in case you didn't see, No Message was coming through here and receiving NullPointerException -- changed to convention over in convert -- hopefully that's what you had in mind.
                 .withMessageContaining("toType cannot be null");
     }
 
@@ -2210,10 +2307,10 @@ class ConverterTest
         assert 65 == this.converter.convert('A', BigInteger.class).longValue();
         assert 65 == this.converter.convert('A', BigDecimal.class).longValue();
 
-        assert '1' == this.converter.convert(true, char.class);
-        assert '0' == this.converter.convert(false, char.class);
-        assert '1' == this.converter.convert(new AtomicBoolean(true), char.class);
-        assert '0' == this.converter.convert(new AtomicBoolean(false), char.class);
+        assert 1 == this.converter.convert(true, char.class);
+        assert 0 == this.converter.convert(false, char.class);
+        assert 1 == this.converter.convert(new AtomicBoolean(true), char.class);
+        assert 0 == this.converter.convert(new AtomicBoolean(false), char.class);
         assert 'z' == this.converter.convert('z', char.class);
         assert 0 == this.converter.convert("", char.class);
         assert 0 == this.converter.convert("", Character.class);
@@ -3100,5 +3197,29 @@ class ConverterTest
 
         assert this.converter.isConversionSupportedFor(Normie.class, Weirdo.class);
         assert this.converter.isConversionSupportedFor(Weirdo.class, Normie.class);
+    }
+
+    private static Stream<Arguments> emptyStringToType_params() {
+        return Stream.of(
+                Arguments.of("", byte.class, (byte)0),
+                Arguments.of("", Byte.class, (byte)0),
+                Arguments.of("", short.class, (short)0),
+                Arguments.of("", Short.class, (short)0),
+                Arguments.of("", int.class, 0),
+                Arguments.of("", Integer.class, 0),
+                Arguments.of("", long.class, 0L),
+                Arguments.of("", Long.class, 0L),
+                Arguments.of("", float.class, 0.0f),
+                Arguments.of("", Float.class, 0.0f),
+                Arguments.of("", double.class, 0.0d),
+                Arguments.of("", Double.class, 0.0d));
+    }
+
+    @ParameterizedTest
+    @MethodSource("emptyStringToType_params")
+    void emptyStringToType(Object value, Class<?> type, Object expected)
+    {
+        Object converted = this.converter.convert(value, type);
+        assertThat(converted).isEqualTo(expected);
     }
 }

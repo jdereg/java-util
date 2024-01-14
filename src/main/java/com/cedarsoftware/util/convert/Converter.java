@@ -4,7 +4,6 @@ package com.cedarsoftware.util.convert;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -84,16 +83,7 @@ public final class Converter {
     private static final Map<Class<?>, Set<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> DEFAULT_FACTORY = new ConcurrentHashMap<>(500, .8f);
-
-    private static final BigDecimal bigDecimalMinByte = BigDecimal.valueOf(Byte.MIN_VALUE);
-    private static final BigDecimal bigDecimalMaxByte = BigDecimal.valueOf(Byte.MAX_VALUE);
-    private static final BigDecimal bigDecimalMinShort = BigDecimal.valueOf(Short.MIN_VALUE);
-    private static final BigDecimal bigDecimalMaxShort = BigDecimal.valueOf(Short.MAX_VALUE);
-    private static final BigDecimal bigDecimalMinInteger = BigDecimal.valueOf(Integer.MIN_VALUE);
-    private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
-    private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
-    private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
-
+    
     // Create a Map.Entry (pair) of source class to target class.
     private static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
         return new AbstractMap.SimpleImmutableEntry<>(source, target);
@@ -136,21 +126,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Byte.class), NumberConversion::toByte);
         DEFAULT_FACTORY.put(pair(Number.class, Byte.class), NumberConversion::toByte);
         DEFAULT_FACTORY.put(pair(Map.class, Byte.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, byte.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, Byte.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return CommonValues.BYTE_ZERO;
-            }
-            try {
-                return Byte.valueOf(str);
-            } catch (NumberFormatException e) {
-                Byte value = strToByte(str);
-                if (value == null) {
-                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
-                }
-                return value;
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Byte.class), StringConversion::stringToByte);
 
         // Short/short conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, short.class), (fromInstance, converter, options) -> (short) 0);
@@ -171,21 +147,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(LocalDate.class, Short.class), (fromInstance, converter, options) -> ((LocalDate) fromInstance).toEpochDay());
         DEFAULT_FACTORY.put(pair(Number.class, Short.class), NumberConversion::toShort);
         DEFAULT_FACTORY.put(pair(Map.class, Short.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, short.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, Short.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return CommonValues.SHORT_ZERO;
-            }
-            try {
-                return Short.valueOf(str);
-            } catch (NumberFormatException e) {
-                Short value = strToShort(str);
-                if (value == null) {
-                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
-                }
-                return value;
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Short.class), StringConversion::stringToShort);
 
         // Integer/int conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, int.class), (fromInstance, converter, options) -> 0);
@@ -206,21 +168,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(LocalDate.class, Integer.class), (fromInstance, converter, options) -> (int) ((LocalDate) fromInstance).toEpochDay());
         DEFAULT_FACTORY.put(pair(Number.class, Integer.class), NumberConversion::toInt);
         DEFAULT_FACTORY.put(pair(Map.class, Integer.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, int.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, Integer.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return CommonValues.INTEGER_ZERO;
-            }
-            try {
-                return Integer.valueOf(str);
-            } catch (NumberFormatException e) {
-                Integer value = strToInteger(str);
-                if (value == null) {
-                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an integer value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
-                }
-                return value;
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Integer.class), StringConversion::stringToInteger);
 
         // Long/long conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, long.class), (fromInstance, converter, options) -> 0L);
@@ -247,21 +195,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, Long.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).getTime().getTime());
         DEFAULT_FACTORY.put(pair(Number.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(Map.class, Long.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, long.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, Long.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return CommonValues.LONG_ZERO;
-            }
-            try {
-                return Long.valueOf(str);
-            } catch (NumberFormatException e) {
-                Long value = strToLong(str, bigDecimalMinLong, bigDecimalMaxLong);
-                if (value == null) {
-                    throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
-                }
-                return value;
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Long.class), StringConversion::stringToLong);
 
         // Float/float conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, float.class), (fromInstance, converter, options) -> 0.0f);
@@ -282,17 +216,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Float.class), NumberConversion::toFloat);
         DEFAULT_FACTORY.put(pair(Number.class, Float.class), NumberConversion::toFloat);
         DEFAULT_FACTORY.put(pair(Map.class, Float.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, float.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, Float.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return CommonValues.FLOAT_ZERO;
-            }
-            try {
-                return Float.valueOf(str);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a float value");
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Float.class), StringConversion::stringToFloat);
 
         // Double/double conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, double.class), (fromInstance, converter, options) -> 0.0d);
@@ -319,17 +243,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, Double.class), (fromInstance, converter, options) -> (double) ((Calendar) fromInstance).getTime().getTime());
         DEFAULT_FACTORY.put(pair(Number.class, Double.class), NumberConversion::toDouble);
         DEFAULT_FACTORY.put(pair(Map.class, Double.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, double.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, Double.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return CommonValues.DOUBLE_ZERO;
-            }
-            try {
-                return Double.valueOf(str);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a double value");
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Double.class), StringConversion::stringToDouble);
 
         // Boolean/boolean conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, boolean.class), (fromInstance, converter, options) -> false);
@@ -345,7 +259,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Boolean.class), (fromInstance, converter, options) -> ((AtomicBoolean) fromInstance).get());
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Boolean.class), NumberConversion::isIntTypeNotZero);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Boolean.class), NumberConversion::isIntTypeNotZero);
-        DEFAULT_FACTORY.put(pair(BigInteger.class, Boolean.class), NumberConversion::isIntTypeNotZero);
+        DEFAULT_FACTORY.put(pair(BigInteger.class, Boolean.class), (fromInstance, converter, options) -> ((BigInteger)fromInstance).compareTo(BigInteger.ZERO) != 0);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Boolean.class), (fromInstance, converter, options) -> ((BigDecimal)fromInstance).compareTo(BigDecimal.ZERO) != 0);
         DEFAULT_FACTORY.put(pair(Number.class, Boolean.class), NumberConversion::isIntTypeNotZero);
         DEFAULT_FACTORY.put(pair(Map.class, Boolean.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, boolean.class, null, options));
@@ -523,18 +437,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(LocalDate.class, AtomicInteger.class), (fromInstance, converter, options) -> new AtomicInteger((int) ((LocalDate) fromInstance).toEpochDay()));
         DEFAULT_FACTORY.put(pair(Number.class, AtomicBoolean.class), NumberConversion::numberToAtomicInteger);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicInteger.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, AtomicInteger.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, AtomicInteger.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return new AtomicInteger(0);
-            }
-
-            Integer integer = strToInteger(str);
-            if (integer == null) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an AtomicInteger value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
-            }
-            return new AtomicInteger(integer);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, AtomicInteger.class), StringConversion::stringToAtomicInteger);
 
         // AtomicLong conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, AtomicLong.class), VoidConversion::toNull);
@@ -560,17 +463,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, AtomicLong.class), (fromInstance, converter, options) -> new AtomicLong(((Calendar) fromInstance).getTime().getTime()));
         DEFAULT_FACTORY.put(pair(Number.class, AtomicLong.class), NumberConversion::numberToAtomicLong);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicLong.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, AtomicLong.class, null, options));
-        DEFAULT_FACTORY.put(pair(String.class, AtomicLong.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return new AtomicLong(0L);
-            }
-            Long value = strToLong(str, bigDecimalMinLong, bigDecimalMaxLong);
-            if (value == null) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as an AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
-            }
-            return new AtomicLong(value);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, AtomicLong.class), StringConversion::stringToAtomicLong);
 
         // Date conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Date.class), VoidConversion::toNull);
@@ -1386,48 +1279,7 @@ public final class Converter {
     public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime) {
         return zonedDateTime.toInstant().toEpochMilli();
     }
-
-    private static Byte strToByte(String s)
-    {
-        Long value = strToLong(s, bigDecimalMinByte, bigDecimalMaxByte);
-        if (value == null) {
-            return null;
-        }
-        return value.byteValue();
-    }
-
-    private static Short strToShort(String s)
-    {
-        Long value = strToLong(s, bigDecimalMinShort, bigDecimalMaxShort);
-        if (value == null) {
-            return null;
-        }
-        return value.shortValue();
-    }
-
-    private static Integer strToInteger(String s)
-    {
-        Long value = strToLong(s, bigDecimalMinInteger, bigDecimalMaxInteger);
-        if (value == null) {
-            return null;
-        }
-        return value.intValue();
-    }
-
-    private static Long strToLong(String s, BigDecimal low, BigDecimal high)
-    {
-        try {
-            BigDecimal big = new BigDecimal(s);
-            big = big.setScale(0, RoundingMode.DOWN);
-            if (big.compareTo(low) == -1 || big.compareTo(high) == 1) {
-                return null;
-            }
-            return big.longValue();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
+    
     /**
      * Given a primitive class, return the Wrapper class equivalent.
      */

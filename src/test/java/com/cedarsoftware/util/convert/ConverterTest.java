@@ -380,9 +380,9 @@ class ConverterTest
 
     private static Stream<Arguments> testIntegerParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("45badNumber", "not parseable as an integer"),
-                Arguments.of( "12147483648", "not parseable as an integer"),
-                Arguments.of("2147483649", "not parseable as an integer"),
+                Arguments.of("45badNumber", "Value: 45badNumber not parseable as an int value or outside -2147483648 to 2147483647"),
+                Arguments.of( "12147483648", "Value: 12147483648 not parseable as an int value or outside -2147483648 to 2147483647"),
+                Arguments.of("2147483649", "Value: 2147483649 not parseable as an int value or outside -2147483648 to 2147483647"),
                 Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
     }
 
@@ -741,7 +741,6 @@ class ConverterTest
         assertThat(converted).isEqualTo("2015-09-03");
     }
 
-
     @Test
     void testBigDecimal()
     {
@@ -809,6 +808,7 @@ class ConverterTest
         assertSame(BigInteger.ONE, this.converter.convert(true, BigInteger.class));
         assertEquals(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
         assertSame(BigInteger.ZERO, this.converter.convert(false, BigInteger.class));
+        assertEquals(converter.convert(new BigInteger("314159"), Boolean.class), true);
         assertEquals(new BigInteger("11"), converter.convert("11.5", BigInteger.class));
 
         Date now = new Date();

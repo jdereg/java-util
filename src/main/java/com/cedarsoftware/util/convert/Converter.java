@@ -346,7 +346,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Boolean.class), NumberConversion::isIntTypeNotZero);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Boolean.class), NumberConversion::isIntTypeNotZero);
         DEFAULT_FACTORY.put(pair(BigInteger.class, Boolean.class), NumberConversion::isIntTypeNotZero);
-        DEFAULT_FACTORY.put(pair(BigDecimal.class, Boolean.class), NumberConversion::isFloatTypeNotZero);
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, Boolean.class), (fromInstance, converter, options) -> ((BigDecimal)fromInstance).compareTo(BigDecimal.ZERO) != 0);
         DEFAULT_FACTORY.put(pair(Number.class, Boolean.class), NumberConversion::isIntTypeNotZero);
         DEFAULT_FACTORY.put(pair(Map.class, Boolean.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, boolean.class, null, options));
         DEFAULT_FACTORY.put(pair(String.class, Boolean.class), (fromInstance, converter, options) -> {

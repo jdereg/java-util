@@ -771,6 +771,10 @@ class ConverterTest
         assertEquals(BigDecimal.ONE, this.converter.convert(new AtomicBoolean(true), BigDecimal.class));
         assertEquals(BigDecimal.ZERO, this.converter.convert(new AtomicBoolean(false), BigDecimal.class));
 
+        assertEquals(converter.convert(BigDecimal.ZERO, Boolean.class), false);
+        assertEquals(converter.convert(BigDecimal.ONE, Boolean.class), true);
+        assertEquals(converter.convert(new BigDecimal("3.14159"), Boolean.class), true);
+
         try
         {
             this.converter.convert(TimeZone.getDefault(), BigDecimal.class);

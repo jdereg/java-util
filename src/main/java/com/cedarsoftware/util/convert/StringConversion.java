@@ -32,7 +32,7 @@ public class StringConversion {
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
 
-    static Byte stringToByte(Object from, Converter converter, ConverterOptions options) {
+    static Byte toByte(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return CommonValues.BYTE_ZERO;
@@ -40,7 +40,7 @@ public class StringConversion {
         try {
             return Byte.valueOf(str);
         } catch (NumberFormatException e) {
-            Byte value = stringToByte(str);
+            Byte value = toByte(str);
             if (value == null) {
                 throw new IllegalArgumentException("Value: " + from + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
             }
@@ -48,15 +48,15 @@ public class StringConversion {
         }
     }
 
-    private static Byte stringToByte(String s) {
-        Long value = stringToLong(s, bigDecimalMinByte, bigDecimalMaxByte);
+    private static Byte toByte(String s) {
+        Long value = toLong(s, bigDecimalMinByte, bigDecimalMaxByte);
         if (value == null) {
             return null;
         }
         return value.byteValue();
     }
 
-    static Short stringToShort(Object from, Converter converter, ConverterOptions options) {
+    static Short toShort(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return CommonValues.SHORT_ZERO;
@@ -64,7 +64,7 @@ public class StringConversion {
         try {
             return Short.valueOf(str);
         } catch (NumberFormatException e) {
-            Short value = stringToShort(str);
+            Short value = toShort(str);
             if (value == null) {
                 throw new IllegalArgumentException("Value: " + from + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
             }
@@ -72,15 +72,15 @@ public class StringConversion {
         }
     }
 
-    private static Short stringToShort(String s) {
-        Long value = stringToLong(s, bigDecimalMinShort, bigDecimalMaxShort);
+    private static Short toShort(String s) {
+        Long value = toLong(s, bigDecimalMinShort, bigDecimalMaxShort);
         if (value == null) {
             return null;
         }
         return value.shortValue();
     }
 
-    static Integer stringToInteger(Object from, Converter converter, ConverterOptions options) {
+    static Integer toInt(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return CommonValues.INTEGER_ZERO;
@@ -88,7 +88,7 @@ public class StringConversion {
         try {
             return Integer.valueOf(str);
         } catch (NumberFormatException e) {
-            Integer value = stringToInteger(str);
+            Integer value = toInt(str);
             if (value == null) {
                 throw new IllegalArgumentException("Value: " + from + " not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
             }
@@ -96,15 +96,15 @@ public class StringConversion {
         }
     }
 
-    private static Integer stringToInteger(String s) {
-        Long value = stringToLong(s, bigDecimalMinInteger, bigDecimalMaxInteger);
+    private static Integer toInt(String s) {
+        Long value = toLong(s, bigDecimalMinInteger, bigDecimalMaxInteger);
         if (value == null) {
             return null;
         }
         return value.intValue();
     }
 
-    static Long stringToLong(Object from, Converter converter, ConverterOptions options) {
+    static Long toLong(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return CommonValues.LONG_ZERO;
@@ -112,7 +112,7 @@ public class StringConversion {
         try {
             return Long.valueOf(str);
         } catch (NumberFormatException e) {
-            Long value = stringToLong(str, bigDecimalMinLong, bigDecimalMaxLong);
+            Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
             if (value == null) {
                 throw new IllegalArgumentException("Value: " + from + " not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
             }
@@ -120,7 +120,7 @@ public class StringConversion {
         }
     }
 
-    private static Long stringToLong(String s, BigDecimal low, BigDecimal high) {
+    private static Long toLong(String s, BigDecimal low, BigDecimal high) {
         try {
             BigDecimal big = new BigDecimal(s);
             big = big.setScale(0, RoundingMode.DOWN);
@@ -133,7 +133,7 @@ public class StringConversion {
         }
     }
 
-    static Float stringToFloat(Object from, Converter converter, ConverterOptions options) {
+    static Float toFloat(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return CommonValues.FLOAT_ZERO;
@@ -145,7 +145,7 @@ public class StringConversion {
         }
     }
 
-    static Double stringToDouble(Object from, Converter converter, ConverterOptions options) {
+    static Double toDouble(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return CommonValues.DOUBLE_ZERO;
@@ -157,28 +157,66 @@ public class StringConversion {
         }
     }
 
-    static AtomicInteger stringToAtomicInteger(Object from, Converter converter, ConverterOptions options) {
+    static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return new AtomicInteger(0);
         }
 
-        Integer integer = stringToInteger(str);
+        Integer integer = toInt(str);
         if (integer == null) {
             throw new IllegalArgumentException("Value: " + from + " not parseable as an AtomicInteger value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
         }
         return new AtomicInteger(integer);
     }
 
-    static AtomicLong stringToAtomicLong(Object from, Converter converter, ConverterOptions options) {
+    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return new AtomicLong(0L);
         }
-        Long value = stringToLong(str, bigDecimalMinLong, bigDecimalMaxLong);
+        Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
         if (value == null) {
             throw new IllegalArgumentException("Value: " + from + " not parseable as an AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
         }
         return new AtomicLong(value);
+    }
+
+    public static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return false;
+        }
+        // faster equals check "true" and "false"
+        if ("true".equals(str)) {
+            return true;
+        } else if ("false".equals(str)) {
+            return false;
+        }
+        return "true".equalsIgnoreCase(str);
+    }
+
+    public static char toCharacter(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from);
+        if (str.isEmpty()) {
+            return (char) 0;
+        }
+        if (str.length() == 1) {
+            return str.charAt(0);
+        }
+        // Treat as a String number, like "65" = 'A'
+        return (char) Integer.parseInt(str.trim());
+    }
+
+    public static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(str);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Value: " + from + " not parseable as a BigDecimal value.");
+        }
     }
 }

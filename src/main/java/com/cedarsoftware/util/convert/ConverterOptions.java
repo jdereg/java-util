@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -27,32 +28,32 @@ public interface ConverterOptions {
     /**
      * @return zoneId to use for source conversion when on is not provided on the source (Date, Instant, etc.)
      */
-    ZoneId getSourceZoneId();
+    default ZoneId getSourceZoneId() { return ZoneId.systemDefault(); }
 
     /**
      * @return zoneId expected on the target when finished (only for types that support ZoneId or TimeZone)
      */
-    ZoneId getTargetZoneId();
+    default ZoneId getTargetZoneId() { return ZoneId.systemDefault(); }
 
     /**
      * @return Locale to use as source locale when converting between types that require a Locale
      */
-    Locale getSourceLocale();
+    default Locale getSourceLocale() { return Locale.getDefault(); }
 
     /**
      * @return Locale to use as target when converting between types that require a Locale.
      */
-    Locale getTargetLocale();
+    default Locale getTargetLocale() { return Locale.getDefault(); }
 
     /**
      * @return Charset to use as source CharSet on types that require a Charset during conversion (if required).
      */
-    Charset getSourceCharset();
+    default Charset getSourceCharset() { return StandardCharsets.UTF_8; }
 
     /**
      * @return Charset to use os target Charset on types that require a Charset during conversion (if required).
      */
-    Charset getTargetCharset();
+    default Charset getTargetCharset() { return StandardCharsets.UTF_8; }
 
 
     /**

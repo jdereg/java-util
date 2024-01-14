@@ -939,7 +939,8 @@ class ConverterTest
     @Test
     void testAtomicInteger_withEmptyString() {
         AtomicInteger converted = this.converter.convert("", AtomicInteger.class);
-        assertThat(converted).isNull();
+        //TODO:  Do we want nullable types to default to zero
+        assertThat(converted.get()).isEqualTo(0);
     }
 
     private static Stream<Arguments> testAtomicIntegerParams_withBooleanTypes() {
@@ -2306,10 +2307,10 @@ class ConverterTest
         assert 65 == this.converter.convert('A', BigInteger.class).longValue();
         assert 65 == this.converter.convert('A', BigDecimal.class).longValue();
 
-        assert '1' == this.converter.convert(true, char.class);
-        assert '0' == this.converter.convert(false, char.class);
-        assert '1' == this.converter.convert(new AtomicBoolean(true), char.class);
-        assert '0' == this.converter.convert(new AtomicBoolean(false), char.class);
+        assert 1 == this.converter.convert(true, char.class);
+        assert 0 == this.converter.convert(false, char.class);
+        assert 1 == this.converter.convert(new AtomicBoolean(true), char.class);
+        assert 0 == this.converter.convert(new AtomicBoolean(false), char.class);
         assert 'z' == this.converter.convert('z', char.class);
         assert 0 == this.converter.convert("", char.class);
         assert 0 == this.converter.convert("", Character.class);

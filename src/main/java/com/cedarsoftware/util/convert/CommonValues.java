@@ -31,7 +31,7 @@ public class CommonValues {
     public static final Double DOUBLE_ZERO = 0.0d;
     public static final Double DOUBLE_ONE = 1.0d;
 
-    public static final Character CHARACTER_ZERO = '0';
+    public static final Character CHARACTER_ZERO = (char)0;
 
-    public static final Character CHARACTER_ONE = '1';
+    public static final Character CHARACTER_ONE = (char)1;
 }

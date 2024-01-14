@@ -27,6 +27,21 @@ public class AtomicBooleanConversion {
         return b.get() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
     }
 
+    public static Float toFloat(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return b.get() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
+    }
+
+    public static Double toDouble(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return b.get() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
+    }
+
+    public static boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return b.get();
+    }
+
     public static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? new AtomicInteger(1) : new AtomicInteger (0);

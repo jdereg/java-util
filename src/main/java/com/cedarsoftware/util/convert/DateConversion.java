@@ -6,6 +6,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DateConversion {
+    public static Date toSqlDate(Object fromInstance, Converter converter, ConverterOptions options) {
+        Date from = (Date)fromInstance;
+        return new java.sql.Date(from.getTime());
+    }
+
     public static BigDecimal toBigDecimal(Object fromInstance, Converter converter, ConverterOptions options) {
         Date from = (Date)fromInstance;
         return BigDecimal.valueOf(from.getTime());

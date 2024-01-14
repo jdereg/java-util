@@ -1,9 +1,15 @@
 package com.cedarsoftware.util.convert;
 
+import com.cedarsoftware.util.CollectionUtilities;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MapConversion {
 
@@ -63,6 +69,18 @@ public class MapConversion {
         return fromMapValue(fromInstance, converter, options, String.class);
     }
 
+
+    public static AtomicInteger toAtomicInteger(Object fromInstance, Converter converter, ConverterOptions options) {
+        return fromMapValue(fromInstance, converter, options, AtomicInteger.class);
+    }
+
+    public static AtomicLong toAtomicLong(Object fromInstance, Converter converter, ConverterOptions options) {
+        return fromMapValue(fromInstance, converter, options, AtomicLong.class);
+    }
+
+    public static AtomicBoolean toAtomicBoolean(Object fromInstance, Converter converter, ConverterOptions options) {
+        return fromMapValue(fromInstance, converter, options, AtomicBoolean.class);
+    }
 
     public static <T> T fromMapValue(Object fromInstance, Converter converter, ConverterOptions options, Class<T> type) {
         Map<?, ?> map = (Map<?, ?>) fromInstance;

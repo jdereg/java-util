@@ -120,13 +120,23 @@ public class NumberConversion {
         return ((Number) from).doubleValue() != 0;
     }
 
+    public static boolean isBigIntegerNotZero(Object from, Converter converter, ConverterOptions options) {
+        BigInteger bi = (BigInteger) from;
+        return bi.compareTo(BigInteger.ZERO) != 0;
+    }
+
+    public static boolean isBigDecimalNotZero(Object from, Converter converter, ConverterOptions options) {
+        BigDecimal bd = (BigDecimal) from;
+        return bd.compareTo(BigDecimal.ZERO) != 0;
+    }
+
     /**
      * @param number Number instance to convert to char.
      * @return char that best represents the Number.  The result will always be a value between
      * 0 and Character.MAX_VALUE.
      * @throws IllegalArgumentException if the value exceeds the range of a char.
      */
-    public static char numberToCharacter(Number number) {
+    public static char toCharacter(Number number) {
         long value = number.longValue();
         if (value >= 0 && value <= Character.MAX_VALUE) {
             return (char) value;
@@ -142,41 +152,41 @@ public class NumberConversion {
      * 0 and Character.MAX_VALUE.
      * @throws IllegalArgumentException if the value exceeds the range of a char.
      */
-    public static char numberToCharacter(Object from, Converter converter, ConverterOptions options) {
-        return numberToCharacter((Number) from);
+    public static char toCharacter(Object from, Converter converter, ConverterOptions options) {
+        return toCharacter((Number) from);
     }
 
-    public static Date numberToDate(Object from, Converter converter, ConverterOptions options) {
+    public static Date toDate(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return new Date(number.longValue());
     }
 
-    public static java.sql.Date numberToSqlDate(Object from, Converter converter, ConverterOptions options) {
+    public static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return new java.sql.Date(number.longValue());
     }
 
-    public static Timestamp numberToTimestamp(Object from, Converter converter, ConverterOptions options) {
+    public static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return new Timestamp(number.longValue());
     }
 
-    public static Calendar numberToCalendar(Object from, Converter converter, ConverterOptions options) {
+    public static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return Converter.initCal(number.longValue());
     }
 
-    public static LocalDate numberToLocalDate(Object from, Converter converter, ConverterOptions options) {
+    public static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return LocalDate.ofEpochDay(number.longValue());
     }
 
-    public static LocalDateTime numberToLocalDateTime(Object from, Converter converter, ConverterOptions options) {
+    public static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return Instant.ofEpochMilli(number.longValue()).atZone(options.getSourceZoneId()).toLocalDateTime();
     }
 
-    public static ZonedDateTime numberToZonedDateTime(Object from, Converter converter, ConverterOptions options) {
+    public static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
         Number number = (Number) from;
         return Instant.ofEpochMilli(number.longValue()).atZone(options.getSourceZoneId());
     }

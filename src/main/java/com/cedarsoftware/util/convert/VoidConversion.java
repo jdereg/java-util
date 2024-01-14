@@ -19,15 +19,15 @@ package com.cedarsoftware.util.convert;
  */
 public class VoidConversion {
 
-    public static Object toNull(Object from, Converter converter, ConverterOptions options) {
+    static Object toNull(Object from, Converter converter, ConverterOptions options) {
         return null;
     }
 
-    public static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+    static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
         return Boolean.FALSE;
     }
 
-    public static Character toChar(Object from, Converter converter, ConverterOptions options) {
+    static Character toChar(Object from, Converter converter, ConverterOptions options) {
         return Character.MIN_VALUE;
     }
 }

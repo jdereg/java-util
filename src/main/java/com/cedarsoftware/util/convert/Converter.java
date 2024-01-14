@@ -316,18 +316,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, BigInteger.class), CalendarConversion::toBigInteger);
         DEFAULT_FACTORY.put(pair(Number.class, BigInteger.class), (fromInstance, converter, options) -> new BigInteger(fromInstance.toString()));
         DEFAULT_FACTORY.put(pair(Map.class, BigInteger.class), MapConversion::toBigInteger);
-        DEFAULT_FACTORY.put(pair(String.class, BigInteger.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return BigInteger.ZERO;
-            }
-            try {
-                BigDecimal bigDec = new BigDecimal(str);
-                return bigDec.toBigInteger();
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Value: " + fromInstance + " not parseable as a BigInteger value.");
-            }
-        });
+        DEFAULT_FACTORY.put(pair(String.class, BigInteger.class), StringConversion::toBigInteger);
 
 
 
@@ -381,13 +370,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(AtomicLong.class, AtomicBoolean.class), NumberConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(Number.class, AtomicBoolean.class), NumberConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicBoolean.class), MapConversion::toAtomicBoolean);
-        DEFAULT_FACTORY.put(pair(String.class, AtomicBoolean.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            if (str.isEmpty()) {
-                return new AtomicBoolean(false);
-            }
-            return new AtomicBoolean("true".equalsIgnoreCase(str));
-        });
+        DEFAULT_FACTORY.put(pair(String.class, AtomicBoolean.class), StringConversion::toAtomicBoolean);
 
         // AtomicInteger conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, AtomicInteger.class), VoidConversion::toNull);
@@ -484,14 +467,7 @@ public final class Converter {
                 return converter.fromValueMap((Map<?, ?>) fromInstance, java.sql.Date.class, CollectionUtilities.setOf("time"), options);
             }
         });
-        DEFAULT_FACTORY.put(pair(String.class, java.sql.Date.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
-                return null;
-            }
-            return new java.sql.Date(date.getTime());
-        });
+        DEFAULT_FACTORY.put(pair(String.class, java.sql.Date.class), StringConversion::toSqlDate);
 
         // Timestamp conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Timestamp.class), VoidConversion::toNull);

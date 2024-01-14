@@ -1,9 +1,14 @@
 package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.DateUtilities;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -157,6 +162,14 @@ public class StringConversion {
         }
     }
 
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return new AtomicBoolean(false);
+        }
+        return new AtomicBoolean("true".equalsIgnoreCase(str));
+    }
+
     static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
@@ -208,7 +221,20 @@ public class StringConversion {
         return (char) Integer.parseInt(str.trim());
     }
 
-    public static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return BigInteger.ZERO;
+        }
+        try {
+            BigDecimal bigDec = new BigDecimal(str);
+            return bigDec.toBigInteger();
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Value: " + from + " not parseable as a BigInteger value.");
+        }
+    }
+
+    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return BigDecimal.ZERO;
@@ -218,5 +244,14 @@ public class StringConversion {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value: " + from + " not parseable as a BigDecimal value.");
         }
+    }
+
+    static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from).trim();
+        Date date = DateUtilities.parseDate(str);
+        if (date == null) {
+            return null;
+        }
+        return new java.sql.Date(date.getTime());
     }
 }

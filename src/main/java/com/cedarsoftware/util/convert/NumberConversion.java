@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class NumberConversion {
 
     static byte toByte(Object from, Converter converter, ConverterOptions options) {
-        return ((Number) from).byteValue();
+        return ((Number)from).byteValue();
     }
 
     static Byte toByteZero(Object from, Converter converter, ConverterOptions options) {
@@ -42,7 +42,7 @@ public class NumberConversion {
 
 
     static short toShort(Object from, Converter converter, ConverterOptions options) {
-        return ((Number) from).shortValue();
+        return ((Number)from).shortValue();
     }
 
     static Short toShortZero(Object from, Converter converter, ConverterOptions options) {
@@ -50,7 +50,7 @@ public class NumberConversion {
     }
 
     static int toInt(Object from, Converter converter, ConverterOptions options) {
-        return ((Number) from).intValue();
+        return ((Number)from).intValue();
     }
 
     static Integer toIntZero(Object from, Converter converter, ConverterOptions options) {
@@ -59,7 +59,15 @@ public class NumberConversion {
 
 
     static long toLong(Object from, Converter converter, ConverterOptions options) {
+        return toLong(from);
+    }
+
+    static long toLong(Object from) {
         return ((Number) from).longValue();
+    }
+
+    static int toInt(Object from) {
+        return ((Number)from).intValue();
     }
 
     static Long toLongZero(Object from, Converter converter, ConverterOptions options) {
@@ -77,67 +85,74 @@ public class NumberConversion {
 
 
     static double toDouble(Object from, Converter converter, ConverterOptions options) {
+        return toDouble(from);
+    }
+
+    static double toDouble(Object from) {
         return ((Number) from).doubleValue();
     }
+
 
     static Double toDoubleZero(Object from, Converter converter, ConverterOptions options) {
         return CommonValues.DOUBLE_ZERO;
     }
 
     static BigDecimal integerTypeToBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        return BigDecimal.valueOf(((Number) from).longValue());
+        return BigDecimal.valueOf(toLong(from));
+    }
+
+    static BigInteger integerTypeToBigInteger(Object from, Converter converter, ConverterOptions options) {
+        return BigInteger.valueOf(toLong(from));
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        Number n = (Number)from;
-        return new AtomicLong(n.longValue());
+        return new AtomicLong(toLong(from));
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
-        Number n = (Number)from;
-        return new AtomicInteger(n.intValue());
+        return new AtomicInteger(toInt(from));
     }
 
     static BigDecimal bigIntegerToBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return new BigDecimal((BigInteger)from);
     }
 
+    static BigInteger bigDecimalToBigInteger(Object from, Converter converter, ConverterOptions options) {
+        return ((BigDecimal)from).toBigInteger();
+    }
+
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new AtomicBoolean(number.longValue() != 0);
+        return new AtomicBoolean(toLong(from) != 0);
     }
 
     static BigDecimal floatingPointToBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        Number n = (Number)from;
-        return BigDecimal.valueOf(n.doubleValue());
+        return BigDecimal.valueOf(toDouble(from));
     }
 
     static boolean isIntTypeNotZero(Object from, Converter converter, ConverterOptions options) {
-        return ((Number) from).longValue() != 0;
+        return toLong(from) != 0;
     }
 
     static boolean isFloatTypeNotZero(Object from, Converter converter, ConverterOptions options) {
-        return ((Number) from).doubleValue() != 0;
+        return toDouble(from) != 0;
     }
 
     static boolean isBigIntegerNotZero(Object from, Converter converter, ConverterOptions options) {
-        BigInteger bi = (BigInteger) from;
-        return bi.compareTo(BigInteger.ZERO) != 0;
+        return ((BigInteger)from).compareTo(BigInteger.ZERO) != 0;
     }
 
     static boolean isBigDecimalNotZero(Object from, Converter converter, ConverterOptions options) {
-        BigDecimal bd = (BigDecimal) from;
-        return bd.compareTo(BigDecimal.ZERO) != 0;
+        return ((BigDecimal)from).compareTo(BigDecimal.ZERO) != 0;
     }
 
     /**
-     * @param number Number instance to convert to char.
+     * @param from Number instance to convert to char.
      * @return char that best represents the Number.  The result will always be a value between
      * 0 and Character.MAX_VALUE.
      * @throws IllegalArgumentException if the value exceeds the range of a char.
      */
-    static char toCharacter(Number number) {
-        long value = number.longValue();
+    static char toCharacter(Object from) {
+        long value = toLong(from);
         if (value >= 0 && value <= Character.MAX_VALUE) {
             return (char) value;
         }
@@ -153,41 +168,38 @@ public class NumberConversion {
      * @throws IllegalArgumentException if the value exceeds the range of a char.
      */
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {
-        return toCharacter((Number) from);
+        return toCharacter(from);
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new Date(number.longValue());
+        return new Date(toLong(from));
+    }
+
+    static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
+        return Instant.ofEpochMilli(toLong(from));
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new java.sql.Date(number.longValue());
+        return new java.sql.Date(toLong(from));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return new Timestamp(number.longValue());
+        return new Timestamp(toLong(from));
     }
 
     static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return Converter.initCal(number.longValue());
+        return CalendarConversion.create(toLong(from), options);
     }
 
     static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return LocalDate.ofEpochDay(number.longValue());
+        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId()).toLocalDate();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return Instant.ofEpochMilli(number.longValue()).atZone(options.getSourceZoneId()).toLocalDateTime();
+        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId()).toLocalDateTime();
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
-        Number number = (Number) from;
-        return Instant.ofEpochMilli(number.longValue()).atZone(options.getSourceZoneId());
+        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId());
     }
 }

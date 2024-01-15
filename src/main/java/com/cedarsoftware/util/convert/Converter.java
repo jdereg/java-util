@@ -117,7 +117,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Float.class, Byte.class), NumberConversion::toByte);
         DEFAULT_FACTORY.put(pair(Double.class, Byte.class), NumberConversion::toByte);
         DEFAULT_FACTORY.put(pair(Boolean.class, Byte.class), BooleanConversion::toByte);
-        DEFAULT_FACTORY.put(pair(Character.class, Byte.class), (fromInstance, converter, options) -> (byte) ((Character) fromInstance).charValue());
+        DEFAULT_FACTORY.put(pair(Character.class, Byte.class), CharacterConversion::toByte);
         DEFAULT_FACTORY.put(pair(Calendar.class, Byte.class), NumberConversion::toByte);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Byte.class), AtomicBooleanConversion::toByte);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Byte.class), NumberConversion::toByte);
@@ -138,7 +138,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Float.class, Short.class), NumberConversion::toShort);
         DEFAULT_FACTORY.put(pair(Double.class, Short.class), NumberConversion::toShort);
         DEFAULT_FACTORY.put(pair(Boolean.class, Short.class), BooleanConversion::toShort);
-        DEFAULT_FACTORY.put(pair(Character.class, Short.class), (fromInstance, converter, options) -> (short) ((Character) fromInstance).charValue());
+        DEFAULT_FACTORY.put(pair(Character.class, Short.class), CharacterConversion::toShort);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Short.class), AtomicBooleanConversion::toShort);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Short.class), NumberConversion::toShort);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Short.class), NumberConversion::toShort);
@@ -159,7 +159,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Float.class, Integer.class), NumberConversion::toInt);
         DEFAULT_FACTORY.put(pair(Double.class, Integer.class), NumberConversion::toInt);
         DEFAULT_FACTORY.put(pair(Boolean.class, Integer.class), BooleanConversion::toInteger);
-        DEFAULT_FACTORY.put(pair(Character.class, Integer.class), (fromInstance, converter, options) -> (int) (Character) fromInstance);
+        DEFAULT_FACTORY.put(pair(Character.class, Integer.class), CharacterConversion::toInt);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Integer.class), AtomicBooleanConversion::toInteger);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Integer.class), NumberConversion::toInt);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Integer.class), NumberConversion::toInt);
@@ -180,19 +180,20 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Float.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(Double.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(Boolean.class, Long.class), BooleanConversion::toLong);
-        DEFAULT_FACTORY.put(pair(Character.class, Long.class), (fromInstance, converter, options) -> (long) ((char) fromInstance));
+        DEFAULT_FACTORY.put(pair(Character.class, Long.class), CharacterConversion::toLong);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Long.class), AtomicBooleanConversion::toLong);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(BigInteger.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Long.class), NumberConversion::toLong);
-        DEFAULT_FACTORY.put(pair(Date.class, Long.class), (fromInstance, converter, options) -> ((Date) fromInstance).getTime());
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Long.class), (fromInstance, converter, options) -> ((Date) fromInstance).getTime());
-        DEFAULT_FACTORY.put(pair(Timestamp.class, Long.class), (fromInstance, converter, options) -> ((Date) fromInstance).getTime());
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Long.class), (fromInstance, converter, options) -> ((LocalDate) fromInstance).toEpochDay());
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Long.class), (fromInstance, converter, options) -> localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId()));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Long.class), (fromInstance, converter, options) -> zonedDateTimeToMillis((ZonedDateTime) fromInstance));
-        DEFAULT_FACTORY.put(pair(Calendar.class, Long.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).getTime().getTime());
+        DEFAULT_FACTORY.put(pair(Date.class, Long.class), DateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Long.class), DateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, Long.class), DateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(Instant.class, Long.class), InstantConversion::toLong);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Long.class), LocalDateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Long.class), LocalDateTimeConversion::toLong);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Long.class), ZonedDateTimeConversion::toLong);
+        DEFAULT_FACTORY.put(pair(Calendar.class, Long.class), CalendarConversion::toLong);
         DEFAULT_FACTORY.put(pair(Number.class, Long.class), NumberConversion::toLong);
         DEFAULT_FACTORY.put(pair(Map.class, Long.class), MapConversion::toLong);
         DEFAULT_FACTORY.put(pair(String.class, Long.class), StringConversion::toLong);
@@ -208,7 +209,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Double.class, Float.class), NumberConversion::toFloat);
         DEFAULT_FACTORY.put(pair(Boolean.class, Float.class), BooleanConversion::toFloat);
         DEFAULT_FACTORY.put(pair(Character.class, Float.class), CharacterConversion::toFloat);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Float.class), (fromInstance, converter, options) -> ((LocalDate) fromInstance).toEpochDay());
+        DEFAULT_FACTORY.put(pair(Instant.class, Float.class), InstantConversion::toFloat);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Float.class), LocalDateConversion::toLong);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Float.class), AtomicBooleanConversion::toFloat);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Float.class), NumberConversion::toFloat);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Float.class), NumberConversion::toFloat);
@@ -219,7 +221,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, Float.class), StringConversion::toFloat);
 
         // Double/double conversions supported
-        DEFAULT_FACTORY.put(pair(Void.class, double.class), (fromInstance, converter, options) -> 0.0d);
+        DEFAULT_FACTORY.put(pair(Void.class, double.class), NumberConversion::toDoubleZero);
         DEFAULT_FACTORY.put(pair(Void.class, Double.class), VoidConversion::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Double.class), NumberConversion::toDouble);
         DEFAULT_FACTORY.put(pair(Short.class, Double.class), NumberConversion::toDouble);
@@ -229,12 +231,13 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Double.class, Double.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(Boolean.class, Double.class), BooleanConversion::toDouble);
         DEFAULT_FACTORY.put(pair(Character.class, Double.class), CharacterConversion::toDouble);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Double.class), (fromInstance, converter, options) -> (double) ((LocalDate) fromInstance).toEpochDay());
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Double.class), (fromInstance, converter, options) -> (double) localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId()));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Double.class), (fromInstance, converter, options) -> (double) zonedDateTimeToMillis((ZonedDateTime) fromInstance));
-        DEFAULT_FACTORY.put(pair(Date.class, Double.class), (fromInstance, converter, options) -> (double) ((Date) fromInstance).getTime());
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Double.class), (fromInstance, converter, options) -> (double) ((Date) fromInstance).getTime());
-        DEFAULT_FACTORY.put(pair(Timestamp.class, Double.class), (fromInstance, converter, options) -> (double) ((Date) fromInstance).getTime());
+        DEFAULT_FACTORY.put(pair(Instant.class, Double.class), InstantConversion::toLong);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Double.class), LocalDateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversion::toLong);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversion::toLong);
+        DEFAULT_FACTORY.put(pair(Date.class, Double.class), DateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Double.class), DateConversion::toLong);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, Double.class), DateConversion::toLong);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Double.class), AtomicBooleanConversion::toDouble);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Double.class), NumberConversion::toDouble);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Double.class), NumberConversion::toDouble);
@@ -287,25 +290,26 @@ public final class Converter {
 
         // BigInteger versions supported
         DEFAULT_FACTORY.put(pair(Void.class, BigInteger.class), VoidConversion::toNull);
-        DEFAULT_FACTORY.put(pair(Byte.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf((byte) fromInstance));
-        DEFAULT_FACTORY.put(pair(Short.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf((short) fromInstance));
-        DEFAULT_FACTORY.put(pair(Integer.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf((int) fromInstance));
-        DEFAULT_FACTORY.put(pair(Long.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf((long) fromInstance));
+        DEFAULT_FACTORY.put(pair(Byte.class, BigInteger.class),  NumberConversion::integerTypeToBigInteger);
+        DEFAULT_FACTORY.put(pair(Short.class, BigInteger.class),  NumberConversion::integerTypeToBigInteger);
+        DEFAULT_FACTORY.put(pair(Integer.class, BigInteger.class),  NumberConversion::integerTypeToBigInteger);
+        DEFAULT_FACTORY.put(pair(Long.class, BigInteger.class), NumberConversion::integerTypeToBigInteger);
         DEFAULT_FACTORY.put(pair(Float.class, BigInteger.class), (fromInstance, converter, options) -> new BigInteger(String.format("%.0f", (float) fromInstance)));
         DEFAULT_FACTORY.put(pair(Double.class, BigInteger.class), (fromInstance, converter, options) -> new BigInteger(String.format("%.0f", (double) fromInstance)));
-        DEFAULT_FACTORY.put(pair(Boolean.class, BigInteger.class), (fromInstance, converter, options) -> (Boolean) fromInstance ? BigInteger.ONE : BigInteger.ZERO);
-        DEFAULT_FACTORY.put(pair(Character.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((char) fromInstance)));
+        DEFAULT_FACTORY.put(pair(Boolean.class, BigInteger.class), BooleanConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(Character.class, BigInteger.class), CharacterConversion::toBigInteger);
         DEFAULT_FACTORY.put(pair(BigInteger.class, BigInteger.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(BigDecimal.class, BigInteger.class), (fromInstance, converter, options) -> ((BigDecimal) fromInstance).toBigInteger());
-        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, BigInteger.class), (fromInstance, converter, options) -> ((AtomicBoolean) fromInstance).get() ? BigInteger.ONE : BigInteger.ZERO);
-        DEFAULT_FACTORY.put(pair(AtomicInteger.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((Number) fromInstance).intValue()));
-        DEFAULT_FACTORY.put(pair(AtomicLong.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((Number) fromInstance).longValue()));
-        DEFAULT_FACTORY.put(pair(Date.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(Timestamp.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(LocalDate.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(((LocalDate) fromInstance).toEpochDay()));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, BigInteger.class), (fromInstance, converter, options) -> BigInteger.valueOf(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, BigInteger.class), NumberConversion::bigDecimalToBigInteger);
+        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, BigInteger.class), AtomicBooleanConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, BigInteger.class),  NumberConversion::integerTypeToBigInteger);
+        DEFAULT_FACTORY.put(pair(AtomicLong.class, BigInteger.class),  NumberConversion::integerTypeToBigInteger);
+        DEFAULT_FACTORY.put(pair(Date.class, BigInteger.class), DateConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, BigInteger.class), DateConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, BigInteger.class), DateConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(Instant.class, BigInteger.class), InstantConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, BigInteger.class), LocalDateConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, BigInteger.class), LocalDateTimeConversion::toBigInteger);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, BigInteger.class), ZonedDateTimeConversion::toBigInteger);
         DEFAULT_FACTORY.put(pair(UUID.class, BigInteger.class), (fromInstance, converter, options) -> {
             UUID uuid = (UUID) fromInstance;
             BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
@@ -329,7 +333,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Float.class, BigDecimal.class), NumberConversion::floatingPointToBigDecimal);
         DEFAULT_FACTORY.put(pair(Double.class, BigDecimal.class), NumberConversion::floatingPointToBigDecimal);
         DEFAULT_FACTORY.put(pair(Boolean.class, BigDecimal.class), BooleanConversion::toBigDecimal);
-        DEFAULT_FACTORY.put(pair(Character.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(((char) fromInstance)));
+        DEFAULT_FACTORY.put(pair(Character.class, BigDecimal.class), CharacterConversion::toBigDecimal);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, BigDecimal.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(BigInteger.class, BigDecimal.class), NumberConversion::bigIntegerToBigDecimal);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, BigDecimal.class), AtomicBooleanConversion::toBigDecimal);
@@ -338,9 +342,10 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Date.class, BigDecimal.class), DateConversion::toBigDecimal);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, BigDecimal.class), DateConversion::toBigDecimal);
         DEFAULT_FACTORY.put(pair(Timestamp.class, BigDecimal.class), DateConversion::toBigDecimal);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(((LocalDate) fromInstance).toEpochDay()));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, BigDecimal.class), (fromInstance, converter, options) -> BigDecimal.valueOf(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
+        DEFAULT_FACTORY.put(pair(Instant.class, BigDecimal.class), InstantConversion::toBigDecimal);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, BigDecimal.class), LocalDateConversion::toBigDecimal);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, BigDecimal.class), LocalDateTimeConversion::toBigDecimal);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, BigDecimal.class), ZonedDateTimeConversion::toBigDecimal);
         DEFAULT_FACTORY.put(pair(UUID.class, BigDecimal.class), (fromInstance, converter, options) -> {
             UUID uuid = (UUID) fromInstance;
             BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
@@ -362,7 +367,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Float.class, AtomicBoolean.class), NumberConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(Double.class, AtomicBoolean.class), NumberConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(Boolean.class, AtomicBoolean.class), BooleanConversion::toAtomicBoolean);
-        DEFAULT_FACTORY.put(pair(Character.class, AtomicBoolean.class), (fromInstance, converter, options) -> new AtomicBoolean((char) fromInstance > 0));
+        DEFAULT_FACTORY.put(pair(Character.class, AtomicBoolean.class), CharacterConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(BigInteger.class, AtomicBoolean.class), NumberConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, AtomicBoolean.class), NumberConversion::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, AtomicBoolean.class), (fromInstance, converter, options) -> new AtomicBoolean(((AtomicBoolean) fromInstance).get()));  // mutable, so dupe
@@ -380,14 +385,14 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Long.class, AtomicInteger.class), NumberConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(Float.class, AtomicInteger.class), NumberConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(Double.class, AtomicInteger.class), NumberConversion::toAtomicInteger);
-        DEFAULT_FACTORY.put(pair(Boolean.class, AtomicInteger.class), (fromInstance, converter, options) -> ((Boolean) fromInstance) ? new AtomicInteger(1) : new AtomicInteger(0));
-        DEFAULT_FACTORY.put(pair(Character.class, AtomicInteger.class), (fromInstance, converter, options) -> new AtomicInteger(((char) fromInstance)));
+        DEFAULT_FACTORY.put(pair(Boolean.class, AtomicInteger.class), BooleanConversion::toAtomicInteger);
+        DEFAULT_FACTORY.put(pair(Character.class, AtomicInteger.class), CharacterConversion::toBigInteger);
         DEFAULT_FACTORY.put(pair(BigInteger.class, AtomicInteger.class), NumberConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, AtomicInteger.class), NumberConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, AtomicInteger.class), NumberConversion::toAtomicInteger); // mutable, so dupe
-        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, AtomicInteger.class), (fromInstance, converter, options) -> ((AtomicBoolean) fromInstance).get() ? new AtomicInteger(1) : new AtomicInteger(0));
+        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, AtomicInteger.class), AtomicBooleanConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, AtomicInteger.class), NumberConversion::toAtomicInteger);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, AtomicInteger.class), (fromInstance, converter, options) -> new AtomicInteger((int) ((LocalDate) fromInstance).toEpochDay()));
+        DEFAULT_FACTORY.put(pair(LocalDate.class, AtomicInteger.class), LocalDateConversion::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Number.class, AtomicBoolean.class), NumberConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicInteger.class), MapConversion::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(String.class, AtomicInteger.class), StringConversion::toAtomicInteger);
@@ -410,9 +415,10 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Date.class, AtomicLong.class), DateConversion::toAtomicLong);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, AtomicLong.class), DateConversion::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Timestamp.class, AtomicLong.class), DateConversion::toAtomicLong);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, AtomicLong.class), (fromInstance, converter, options) -> new AtomicLong(((LocalDate) fromInstance).toEpochDay()));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, AtomicLong.class), (fromInstance, converter, options) -> new AtomicLong(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, AtomicLong.class), (fromInstance, converter, options) -> new AtomicLong(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
+        DEFAULT_FACTORY.put(pair(Instant.class, AtomicLong.class), InstantConversion::toAtomicLong);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, AtomicLong.class), LocalDateConversion::toAtomicLong);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, AtomicLong.class), LocalDateTimeConversion::toAtomicLong);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, AtomicLong.class), ZonedDateTimeConversion::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Calendar.class, AtomicLong.class), CalendarConversion::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Number.class, AtomicLong.class), NumberConversion::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicLong.class), MapConversion::toAtomicLong);
@@ -428,9 +434,10 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Date.class, Date.class), (fromInstance, converter, options) -> new Date(((Date) fromInstance).getTime()));
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, Date.class), (fromInstance, converter, options) -> new Date(((Date) fromInstance).getTime()));
         DEFAULT_FACTORY.put(pair(Timestamp.class, Date.class), (fromInstance, converter, options) -> new Date(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Date.class), (fromInstance, converter, options) -> new Date(localDateToMillis((LocalDate) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Date.class), (fromInstance, converter, options) -> new Date(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Date.class), (fromInstance, converter, options) -> new Date(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
+        DEFAULT_FACTORY.put(pair(Instant.class, Date.class), InstantConversion::toDate);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Date.class), LocalDateConversion::toDate);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Date.class), LocalDateTimeConversion::toDate);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Date.class), ZonedDateTimeConversion::toDate);
         DEFAULT_FACTORY.put(pair(Calendar.class, Date.class), CalendarConversion::toDate);
         DEFAULT_FACTORY.put(pair(Number.class, Date.class), NumberConversion::toDate);
         DEFAULT_FACTORY.put(pair(Map.class, Date.class), (fromInstance, converter, options) -> {
@@ -450,23 +457,15 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigInteger.class, java.sql.Date.class), NumberConversion::toSqlDate);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, java.sql.Date.class), NumberConversion::toSqlDate);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, java.sql.Date.class), NumberConversion::toSqlDate);
-        // why not use identity? (no conversion needed)
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, java.sql.Date.class), (fromInstance, converter, options) -> new java.sql.Date(((java.sql.Date) fromInstance).getTime()));  // java.sql.Date is mutable
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, java.sql.Date.class), DateConversion::toSqlDate); // mutable type (creates new)
         DEFAULT_FACTORY.put(pair(Date.class, java.sql.Date.class), DateConversion::toSqlDate);
-        DEFAULT_FACTORY.put(pair(Timestamp.class, java.sql.Date.class), (fromInstance, converter, options) -> new java.sql.Date(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(LocalDate.class, java.sql.Date.class), (fromInstance, converter, options) -> new java.sql.Date(localDateToMillis((LocalDate) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, java.sql.Date.class), (fromInstance, converter, options) -> new java.sql.Date(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, java.sql.Date.class), (fromInstance, converter, options) -> new java.sql.Date(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
-        DEFAULT_FACTORY.put(pair(Calendar.class, java.sql.Date.class), (fromInstance, converter, options) -> new java.sql.Date(((Calendar) fromInstance).getTime().getTime()));
+        DEFAULT_FACTORY.put(pair(Timestamp.class, java.sql.Date.class), DateConversion::toSqlDate);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, java.sql.Date.class), LocalDateConversion::toSqlDate);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, java.sql.Date.class), LocalDateTimeConversion::toSqlDate);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, java.sql.Date.class), ZonedDateTimeConversion::toSqlDate);
+        DEFAULT_FACTORY.put(pair(Calendar.class, java.sql.Date.class), CalendarConversion::toSqlDate);
         DEFAULT_FACTORY.put(pair(Number.class, java.sql.Date.class), NumberConversion::toSqlDate);
-        DEFAULT_FACTORY.put(pair(Map.class, java.sql.Date.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            if (map.containsKey("time")) {
-                return converter.convert(map.get("time"), java.sql.Date.class, options);
-            } else {
-                return converter.fromValueMap((Map<?, ?>) fromInstance, java.sql.Date.class, CollectionUtilities.setOf("time"), options);
-            }
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, java.sql.Date.class), MapConversion::toSqlDate);
         DEFAULT_FACTORY.put(pair(String.class, java.sql.Date.class), StringConversion::toSqlDate);
 
         // Timestamp conversions supported
@@ -476,13 +475,13 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigInteger.class, Timestamp.class), NumberConversion::toTimestamp);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Timestamp.class), NumberConversion::toTimestamp);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Timestamp.class), NumberConversion::toTimestamp);
-        DEFAULT_FACTORY.put(pair(Timestamp.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(((Timestamp) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(Date.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(localDateToMillis((LocalDate) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
-        DEFAULT_FACTORY.put(pair(Calendar.class, Timestamp.class), (fromInstance, converter, options) -> new Timestamp(((Calendar) fromInstance).getTime().getTime()));
+        DEFAULT_FACTORY.put(pair(Timestamp.class, Timestamp.class), DateConversion::toTimestamp);  //mutable type (creates new)
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Timestamp.class), DateConversion::toTimestamp);
+        DEFAULT_FACTORY.put(pair(Date.class, Timestamp.class), DateConversion::toTimestamp);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Timestamp.class), LocalDateConversion::toTimestamp);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Timestamp.class), LocalDateTimeConversion::toTimestamp);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Timestamp.class), ZonedDateTimeConversion::toTimestamp);
+        DEFAULT_FACTORY.put(pair(Calendar.class, Timestamp.class), CalendarConversion::toTimestamp);
         DEFAULT_FACTORY.put(pair(Number.class, Timestamp.class), NumberConversion::toTimestamp);
         DEFAULT_FACTORY.put(pair(Map.class, Timestamp.class), (fromInstance, converter, options) -> {
             Map<?, ?> map = (Map<?, ?>) fromInstance;
@@ -512,13 +511,13 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigInteger.class, Calendar.class), NumberConversion::toCalendar);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Calendar.class), NumberConversion::toCalendar);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Calendar.class), NumberConversion::toCalendar);
-        DEFAULT_FACTORY.put(pair(Date.class, Calendar.class), (fromInstance, converter, options) -> initCal(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Calendar.class), (fromInstance, converter, options) -> initCal(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(Timestamp.class, Calendar.class), (fromInstance, converter, options) -> initCal(((Date) fromInstance).getTime()));
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Calendar.class), (fromInstance, converter, options) -> initCal(localDateToMillis((LocalDate) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Calendar.class), (fromInstance, converter, options) -> initCal(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Calendar.class), (fromInstance, converter, options) -> initCal(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
-        DEFAULT_FACTORY.put(pair(Calendar.class, Calendar.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).clone());
+        DEFAULT_FACTORY.put(pair(Date.class, Calendar.class), DateConversion::toCalendar);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Calendar.class), DateConversion::toCalendar);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, Calendar.class), DateConversion::toCalendar);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Calendar.class), LocalDateConversion::toCalendar);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Calendar.class), LocalDateTimeConversion::toCalendar);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Calendar.class), ZonedDateTimeConversion::toCalendar);
+        DEFAULT_FACTORY.put(pair(Calendar.class, Calendar.class), CalendarConversion::clone);
         DEFAULT_FACTORY.put(pair(Number.class, Calendar.class), NumberConversion::toCalendar);
         DEFAULT_FACTORY.put(pair(Map.class, Calendar.class), (fromInstance, converter, options) -> {
             Map<?, ?> map = (Map<?, ?>) fromInstance;
@@ -529,7 +528,7 @@ public final class Converter {
                     String zone = (String) zoneRaw;
                     tz = TimeZone.getTimeZone(zone);
                 } else {
-                    tz = TimeZone.getTimeZone(options.getTargetZoneId());
+                    tz = TimeZone.getTimeZone(options.getZoneId());
                 }
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeZone(tz);
@@ -546,7 +545,7 @@ public final class Converter {
             if (date == null) {
                 return null;
             }
-            return initCal(date.getTime());
+            return CalendarConversion.create(date.getTime(), options);
         });
 
         // LocalTime conversions supported
@@ -575,22 +574,19 @@ public final class Converter {
 
         // LocalDate conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDate.class), VoidConversion::toNull);
-        DEFAULT_FACTORY.put(pair(Short.class, LocalDate.class), NumberConversion::toLocalDate);
-        DEFAULT_FACTORY.put(pair(Integer.class, LocalDate.class), NumberConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(Long.class, LocalDate.class), NumberConversion::toLocalDate);
-        DEFAULT_FACTORY.put(pair(Float.class, LocalDate.class), NumberConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(Double.class, LocalDate.class), NumberConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(BigInteger.class, LocalDate.class), NumberConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, LocalDate.class), NumberConversion::toLocalDate);
-        DEFAULT_FACTORY.put(pair(AtomicInteger.class, LocalDate.class), NumberConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, LocalDate.class), NumberConversion::toLocalDate);
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalDate.class), (fromInstance, converter, options) -> ((java.sql.Date) fromInstance).toLocalDate());
-        DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDate.class), (fromInstance, converter, options) -> ((Timestamp) fromInstance).toLocalDateTime().toLocalDate());
-        DEFAULT_FACTORY.put(pair(Date.class, LocalDate.class), (fromInstance, converter, options) -> ((Date) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalDate.class), DateConversion::toLocalDate);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDate.class), DateConversion::toLocalDate);
+        DEFAULT_FACTORY.put(pair(Date.class, LocalDate.class), DateConversion::toLocalDate);
+        DEFAULT_FACTORY.put(pair(Instant.class, LocalDate.class), InstantConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(LocalDate.class, LocalDate.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalDate.class), (fromInstance, converter, options) -> ((LocalDateTime) fromInstance).toLocalDate());
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDate.class), (fromInstance, converter, options) -> ((ZonedDateTime) fromInstance).toLocalDate());
-        DEFAULT_FACTORY.put(pair(Calendar.class, LocalDate.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDate.class), ZonedDateTimeConversion::toLocalDate);
+        DEFAULT_FACTORY.put(pair(Calendar.class, LocalDate.class), CalendarConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDate.class), NumberConversion::toLocalDate);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDate.class), (fromInstance, converter, options) -> {
             Map<?, ?> map = (Map<?, ?>) fromInstance;
@@ -609,7 +605,7 @@ public final class Converter {
             if (date == null) {
                 return null;
             }
-            return date.toInstant().atZone(options.getTargetZoneId()).toLocalDate();
+            return date.toInstant().atZone(options.getZoneId()).toLocalDate();
         });
 
         // LocalDateTime conversions supported
@@ -619,13 +615,14 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigInteger.class, LocalDateTime.class), NumberConversion::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, LocalDateTime.class), NumberConversion::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, LocalDateTime.class), NumberConversion::toLocalDateTime);
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalDateTime.class), (fromInstance, converter, options) -> ((java.sql.Date) fromInstance).toLocalDate().atStartOfDay());
-        DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDateTime.class), (fromInstance, converter, options) -> ((Timestamp) fromInstance).toLocalDateTime());
-        DEFAULT_FACTORY.put(pair(Date.class, LocalDateTime.class), (fromInstance, converter, options) -> ((Date) fromInstance).toInstant().atZone(options.getSourceZoneId()).toLocalDateTime());
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalDateTime.class), DateConversion::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDateTime.class), DateConversion::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(Date.class, LocalDateTime.class), DateConversion::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(Instant.class, LocalDateTime.class), InstantConversion::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalDateTime.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, LocalDateTime.class), (fromInstance, converter, options) -> ((LocalDate) fromInstance).atStartOfDay());
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDateTime.class), (fromInstance, converter, options) -> ((ZonedDateTime) fromInstance).toLocalDateTime());
-        DEFAULT_FACTORY.put(pair(Calendar.class, LocalDateTime.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).toInstant().atZone(options.getSourceZoneId()).toLocalDateTime());
+        DEFAULT_FACTORY.put(pair(LocalDate.class, LocalDateTime.class), LocalDateConversion::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDateTime.class), ZonedDateTimeConversion::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(Calendar.class, LocalDateTime.class), CalendarConversion::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDateTime.class), NumberConversion::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), (fromInstance, converter, options) -> {
             Map<?, ?> map = (Map<?, ?>) fromInstance;
@@ -637,7 +634,7 @@ public final class Converter {
             if (date == null) {
                 return null;
             }
-            return date.toInstant().atZone(options.getSourceZoneId()).toLocalDateTime();
+            return date.toInstant().atZone(options.getZoneId()).toLocalDateTime();
         });
 
         // ZonedDateTime conversions supported
@@ -647,13 +644,13 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigInteger.class, ZonedDateTime.class), NumberConversion::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, ZonedDateTime.class), NumberConversion::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, ZonedDateTime.class), NumberConversion::toZonedDateTime);
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, ZonedDateTime.class), (fromInstance, converter, options) -> ((java.sql.Date) fromInstance).toLocalDate().atStartOfDay(options.getSourceZoneId()));
-        DEFAULT_FACTORY.put(pair(Timestamp.class, ZonedDateTime.class), (fromInstance, converter, options) -> ((Timestamp) fromInstance).toInstant().atZone(options.getSourceZoneId()));
-        DEFAULT_FACTORY.put(pair(Date.class, ZonedDateTime.class), (fromInstance, converter, options) -> ((Date) fromInstance).toInstant().atZone(options.getSourceZoneId()));
-        DEFAULT_FACTORY.put(pair(LocalDate.class, ZonedDateTime.class), (fromInstance, converter, options) -> ((LocalDate) fromInstance).atStartOfDay(options.getSourceZoneId()));
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, ZonedDateTime.class), (fromInstance, converter, options) -> ((LocalDateTime) fromInstance).atZone(options.getSourceZoneId()));
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, ZonedDateTime.class), DateConversion::toZonedDateTime);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, ZonedDateTime.class), DateConversion::toZonedDateTime);
+        DEFAULT_FACTORY.put(pair(Date.class, ZonedDateTime.class), DateConversion::toZonedDateTime);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, ZonedDateTime.class), LocalDateConversion::toZonedDateTime);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, ZonedDateTime.class), LocalDateTimeConversion::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, ZonedDateTime.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(Calendar.class, ZonedDateTime.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).toInstant().atZone(options.getSourceZoneId()));
+        DEFAULT_FACTORY.put(pair(Calendar.class, ZonedDateTime.class), CalendarConversion::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Number.class, ZonedDateTime.class), NumberConversion::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, ZonedDateTime.class), (fromInstance, converter, options) -> {
             Map<?, ?> map = (Map<?, ?>) fromInstance;
@@ -665,7 +662,7 @@ public final class Converter {
             if (date == null) {
                 return null;
             }
-            return date.toInstant().atZone(options.getSourceZoneId());
+            return date.toInstant().atZone(options.getZoneId());
         });
 
         // UUID conversions supported
@@ -773,6 +770,25 @@ public final class Converter {
         // Instant conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Instant.class), VoidConversion::toNull);
         DEFAULT_FACTORY.put(pair(Instant.class, Instant.class), Converter::identity);
+
+        DEFAULT_FACTORY.put(pair(Long.class, Instant.class), NumberConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(Double.class, Instant.class), NumberConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(BigInteger.class, Instant.class), NumberConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, Instant.class), NumberConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(AtomicLong.class, Instant.class), NumberConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Instant.class), DateConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, Instant.class), DateConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(Date.class, Instant.class), DateConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Instant.class), LocalDateConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Instant.class), LocalDateTimeConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Instant.class), ZonedDateTimeConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(Calendar.class, Instant.class), CalendarConversion::toInstant);
+        DEFAULT_FACTORY.put(pair(Number.class, Instant.class), NumberConversion::toInstant);
+
+
+
+
+
         DEFAULT_FACTORY.put(pair(String.class, Instant.class), (fromInstance, converter, options) -> {
             try {
                 return Instant.parse((String) fromInstance);
@@ -892,11 +908,6 @@ public final class Converter {
     public Converter(ConverterOptions options) {
         this.options = options;
         this.factory = new ConcurrentHashMap<>(DEFAULT_FACTORY);
-    }
-
-    public ConverterOptions getOptions()
-    {
-        return options;
     }
 
     /**
@@ -1099,13 +1110,6 @@ public final class Converter {
         return getShortName(fromInstance.getClass()) + " (" + fromInstance + ")";
     }
 
-    static Calendar initCal(long epochMs) {
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.setTimeInMillis(epochMs);
-        return cal;
-    }
-
     private static Map<String, ?> initMap(Object from, Converter converter, ConverterOptions options) {
         Map<String, Object> map = new HashMap<>();
         map.put(VALUE, from);
@@ -1205,15 +1209,19 @@ public final class Converter {
         return factory.put(pair(source, target), conversionFunction);
     }
 
-    public static long localDateToMillis(LocalDate localDate, ZoneId zoneId) {
+    public long localDateToMillis(LocalDate localDate, ZoneId zoneId) {
         return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli();
     }
 
-    public static long localDateTimeToMillis(LocalDateTime localDateTime, ZoneId zoneId) {
+    public long localDateToMillis(LocalDate localDate) {
+        return localDateToMillis(localDate, options.getZoneId());
+    }
+
+    public long localDateTimeToMillis(LocalDateTime localDateTime, ZoneId zoneId) {
         return localDateTime.atZone(zoneId).toInstant().toEpochMilli();
     }
 
-    public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime) {
+    public long zonedDateTimeToMillis(ZonedDateTime zonedDateTime) {
         return zonedDateTime.toInstant().toEpochMilli();
     }
 

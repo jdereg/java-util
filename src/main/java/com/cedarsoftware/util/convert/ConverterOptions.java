@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -25,35 +26,29 @@ import java.util.TimeZone;
  */
 public interface ConverterOptions {
 
+
+    ConcurrentHashMap<String, Object> customOptions = new ConcurrentHashMap();
+
     /**
      * @return zoneId to use for source conversion when on is not provided on the source (Date, Instant, etc.)
      */
-    default ZoneId getSourceZoneId() { return ZoneId.systemDefault(); }
+    //TODO:  should we just throw an exception here if they don't override?
+    default ZoneId getSourceZoneIdForLocalDates() { return ZoneId.systemDefault(); }
 
     /**
      * @return zoneId expected on the target when finished (only for types that support ZoneId or TimeZone)
      */
-    default ZoneId getTargetZoneId() { return ZoneId.systemDefault(); }
-
-    /**
-     * @return Locale to use as source locale when converting between types that require a Locale
-     */
-    default Locale getSourceLocale() { return Locale.getDefault(); }
+    default ZoneId getZoneId() { return ZoneId.systemDefault(); }
 
     /**
      * @return Locale to use as target when converting between types that require a Locale.
      */
-    default Locale getTargetLocale() { return Locale.getDefault(); }
-
-    /**
-     * @return Charset to use as source CharSet on types that require a Charset during conversion (if required).
-     */
-    default Charset getSourceCharset() { return StandardCharsets.UTF_8; }
+    default Locale getLocale() { return Locale.getDefault(); }
 
     /**
      * @return Charset to use os target Charset on types that require a Charset during conversion (if required).
      */
-    default Charset getTargetCharset() { return StandardCharsets.UTF_8; }
+    default Charset getCharset() { return StandardCharsets.UTF_8; }
 
 
     /**
@@ -64,15 +59,10 @@ public interface ConverterOptions {
     /**
      * @return custom option
      */
-    <T> T getCustomOption(String name);
-
-    /**
-     * @return TimeZone to use for source conversion when on is not provided on the source (Date, Instant, etc.)
-     */
-    default TimeZone getSourceTimeZone() { return TimeZone.getTimeZone(this.getSourceZoneId()); }
+    default <T> T getCustomOption(String name) { return (T)customOptions.get(name); }
 
     /**
      * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone)
      */
-    default TimeZone getTargetTimeZone() { return TimeZone.getTimeZone(this.getTargetZoneId()); }
+    default TimeZone getTimeZone() { return TimeZone.getTimeZone(this.getZoneId()); }
 }

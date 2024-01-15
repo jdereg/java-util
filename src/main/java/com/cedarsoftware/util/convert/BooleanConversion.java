@@ -1,7 +1,9 @@
 package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -38,6 +40,11 @@ public class BooleanConversion {
         return b ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
     }
 
+    static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
+        Boolean b = (Boolean) from;
+        return new AtomicInteger(b ? 1 : 0);
+    }
+
     static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
         Boolean b = (Boolean) from;
         return new AtomicLong(b ? 1 : 0);
@@ -56,6 +63,10 @@ public class BooleanConversion {
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
         Boolean b = (Boolean)from;
         return b ? BigDecimal.ONE : BigDecimal.ZERO;
+    }
+
+    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+        return ((Boolean)from) ? BigInteger.ONE : BigInteger.ZERO;
     }
 
     static Float toFloat(Object from, Converter converter, ConverterOptions options) {

@@ -167,7 +167,7 @@ public class StringConversion {
         if (str.isEmpty()) {
             return new AtomicBoolean(false);
         }
-        return new AtomicBoolean("true".equalsIgnoreCase(str));
+        return new AtomicBoolean("true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str));
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
@@ -195,7 +195,7 @@ public class StringConversion {
         return new AtomicLong(value);
     }
 
-    public static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+    static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from).trim();
         if (str.isEmpty()) {
             return false;
@@ -206,10 +206,10 @@ public class StringConversion {
         } else if ("false".equals(str)) {
             return false;
         }
-        return "true".equalsIgnoreCase(str);
+        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str);
     }
 
-    public static char toCharacter(Object from, Converter converter, ConverterOptions options) {
+    static char toCharacter(Object from, Converter converter, ConverterOptions options) {
         String str = ((String) from);
         if (str.isEmpty()) {
             return (char) 0;

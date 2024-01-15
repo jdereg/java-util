@@ -5,15 +5,17 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.convert.CommonValues;
+import com.cedarsoftware.util.convert.Convert;
 import com.cedarsoftware.util.convert.ConverterOptions;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
 
@@ -83,6 +85,45 @@ public final class Converter
      */
     public static <T> T convert(Object fromInstance, Class<T> toType, ConverterOptions options) {
         return instance.convert(fromInstance, toType, options);
+    }
+
+    /**
+     * Check to see if a conversion from type to another type is supported (may use inheritance via super classes/interfaces).
+     *
+     * @param source Class of source type.
+     * @param target Class of target type.
+     * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
+     */
+    public static boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
+        return instance.isConversionSupportedFor(source, target);
+    }
+
+    /**
+     * @return Map<Class, Set < Class>> which contains all supported conversions. The key of the Map is a source class,
+     * and the Set contains all the target types (classes) that the source can be converted to.
+     */
+    public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
+        return instance.allSupportedConversions();
+    }
+
+    /**
+     * @return Map<String, Set < String>> which contains all supported conversions. The key of the Map is a source class
+     * name, and the Set contains all the target class names that the source can be converted to.
+     */
+    public static Map<String, Set<String>> getSupportedConversions() {
+        return instance.getSupportedConversions();
+    }
+
+    /**
+     * Add a new conversion.
+     *
+     * @param source             Class to convert from.
+     * @param target             Class to convert to.
+     * @param conversionFunction Convert function that converts from the source type to the destination type.
+     * @return prior conversion function if one existed.
+     */
+    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
+        return instance.addConversion(source, target, conversionFunction);
     }
 
     /**
@@ -421,8 +462,7 @@ public final class Converter
      */
     public static long localDateToMillis(LocalDate localDate)
     {
-        ZoneId zoneId = instance.getOptions().getSourceZoneId();
-        return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli();
+        return com.cedarsoftware.util.convert.Converter.localDateToMillis(localDate, instance.getOptions().getSourceZoneId());
     }
 
     /**
@@ -432,8 +472,7 @@ public final class Converter
      */
     public static long localDateTimeToMillis(LocalDateTime localDateTime)
     {
-        ZoneId zoneId = instance.getOptions().getSourceZoneId();
-        return localDateTime.atZone(zoneId).toInstant().toEpochMilli();
+        return com.cedarsoftware.util.convert.Converter.localDateTimeToMillis(localDateTime, instance.getOptions().getSourceZoneId());
     }
 
     /**
@@ -443,6 +482,6 @@ public final class Converter
      */
     public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime)
     {
-        return zonedDateTime.toInstant().toEpochMilli();
+        return com.cedarsoftware.util.convert.Converter.zonedDateTimeToMillis(zonedDateTime);
     }
 }

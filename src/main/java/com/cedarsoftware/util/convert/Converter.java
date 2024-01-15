@@ -431,7 +431,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(LocalDate.class, Date.class), (fromInstance, converter, options) -> new Date(localDateToMillis((LocalDate) fromInstance, options.getSourceZoneId())));
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, Date.class), (fromInstance, converter, options) -> new Date(localDateTimeToMillis((LocalDateTime) fromInstance, options.getSourceZoneId())));
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Date.class), (fromInstance, converter, options) -> new Date(zonedDateTimeToMillis((ZonedDateTime) fromInstance)));
-        DEFAULT_FACTORY.put(pair(Calendar.class, Date.class), (fromInstance, converter, options) -> ((Calendar) fromInstance).getTime());
+        DEFAULT_FACTORY.put(pair(Calendar.class, Date.class), CalendarConversion::toDate);
         DEFAULT_FACTORY.put(pair(Number.class, Date.class), NumberConversion::toDate);
         DEFAULT_FACTORY.put(pair(Map.class, Date.class), (fromInstance, converter, options) -> {
             Map<?, ?> map = (Map<?, ?>) fromInstance;
@@ -1143,7 +1143,7 @@ public final class Converter {
      * @param target Class of target type.
      * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
      */
-    public boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
+    boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
         source = toPrimitiveWrapperClass(source);
         target = toPrimitiveWrapperClass(target);
         return factory.containsKey(pair(source, target));

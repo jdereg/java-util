@@ -110,4 +110,8 @@ public class SafeSimpleDateFormat extends DateFormat
     {
         getDateFormat(_format).set2DigitYearStart(date);
     }
+
+    public String toString() {
+        return _format.toString();
+    }
 }

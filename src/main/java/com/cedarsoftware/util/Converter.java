@@ -69,8 +69,6 @@ public final class Converter
      */
     private Converter() { }
 
-    // TODO: Find out if we want to continue with LocalDate in terms of Epoch Days.
-
     /**
      * Uses the default configuration options for your system.
      */

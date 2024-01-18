@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class TestSimpleDateFormat
 {
     @Test
-    public void testSimpleDateFormat1() throws Exception
+    void testSimpleDateFormat1() throws Exception
     {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd");
         String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
@@ -57,7 +57,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testSetLenient() throws Exception
+    void testSetLenient() throws Exception
     {
         //February 942, 1996
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("MMM dd, yyyy");
@@ -84,7 +84,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testSetCalendar() throws Exception
+    void testSetCalendar() throws Exception
     {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
         x.setCalendar(Calendar.getInstance());
@@ -143,7 +143,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testSetDateSymbols() throws Exception {
+    void testSetDateSymbols() throws Exception {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
         x.setCalendar(Calendar.getInstance());
 
@@ -185,7 +185,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testTimeZone() throws Exception
+    void testTimeZone() throws Exception
     {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd hh:mm:ss");
         String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
@@ -227,7 +227,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testConcurrencyWillFail() throws Exception
+    void testConcurrencyWillFail() throws Exception
     {
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         final Random random = new Random();
@@ -313,7 +313,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testConcurrencyWontFail() throws Exception
+    void testConcurrencyWontFail() throws Exception
     {
         final SafeSimpleDateFormat format = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         final Random random = new Random();
@@ -399,7 +399,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testParseObject() {
+    void testParseObject() {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd");
         String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
         String d = "date: " + s;
@@ -416,7 +416,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void test2DigitYear() throws Exception {
+    void test2DigitYear() throws Exception {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yy-MM-dd");
         String s = x.format(getDate(13, 9, 7, 16, 15, 31));
         assertEquals("13-09-07", s);
@@ -442,7 +442,7 @@ public class TestSimpleDateFormat
     }
 
     @Test
-    public void testSetSymbols() throws Exception {
+    void testSetSymbols() throws Exception {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yy.MM.dd hh:mm aaa");
         String s = x.format(getDate(13, 9, 7, 16, 15, 31));
         assertEquals("13.09.07 04:15 PM", s);
@@ -456,6 +456,13 @@ public class TestSimpleDateFormat
 
         s = x.format(getDate(13, 9, 7, 16, 15, 31));
         assertEquals("13.09.07 04:15 bar", s);
+    }
+
+    @Test
+    void testToString()
+    {
+        SafeSimpleDateFormat safe = new SafeSimpleDateFormat("yyyy/MM/dd");
+        assertEquals(safe.toString(), "yyyy/MM/dd");
     }
 
     private Date getDate(int year, int month, int day, int hour, int min, int sec)

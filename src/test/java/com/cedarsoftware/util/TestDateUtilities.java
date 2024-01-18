@@ -806,11 +806,4 @@ class TestDateUtilities
         gmtDateString = sdf.format(date);
         assertEquals("31690708-07-05 01:46:39.999", gmtDateString);
     }
-
-    @Test
-    void testSimpleDate()
-    {
-        SafeSimpleDateFormat format = new SafeSimpleDateFormat("yyyy/mm/dd");
-        System.out.println("format = " + format);
-    }
 }

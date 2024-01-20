@@ -1324,13 +1324,13 @@ class ConverterTest
         assertEquals(localDate, nd);
 
         // Error handling
-//        try {
-//            this.converter.convert("2020-12-40", LocalDate.class);
-//            fail();
-//        }
-//        catch (IllegalArgumentException e) {
-//            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
-//        }
+        try {
+            this.converter.convert("2020-12-40", LocalDate.class);
+            fail();
+        }
+        catch (IllegalArgumentException e) {
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
+        }
 
         assert this.converter.convert(null, LocalDate.class) == null;
     }

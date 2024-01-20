@@ -43,7 +43,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -1339,26 +1338,26 @@ class ConverterTest
     @Test
     void testStringToLocalDate()
     {
-        String dec23rd2023 = "19714";
-        LocalDate ld = this.converter.convert(dec23rd2023, LocalDate.class);
-        assert ld.getYear() == 2023;
-        assert ld.getMonthValue() == 12;
-//        assert ld.getDayOfMonth() == 23;
+        String testDate = "1705769204092";
+        LocalDate ld = this.converter.convert(testDate, LocalDate.class);
+        assert ld.getYear() == 2024;
+        assert ld.getMonthValue() == 1;
+        assert ld.getDayOfMonth() == 20;
 
-        dec23rd2023 = "2023-12-23";
-        ld = this.converter.convert(dec23rd2023, LocalDate.class);
-        assert ld.getYear() == 2023;
-        assert ld.getMonthValue() == 12;
-        assert ld.getDayOfMonth() == 23;
-
-        dec23rd2023 = "2023/12/23";
-        ld = this.converter.convert(dec23rd2023, LocalDate.class);
+        testDate = "2023-12-23";
+        ld = this.converter.convert(testDate, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
         assert ld.getDayOfMonth() == 23;
 
-        dec23rd2023 = "12/23/2023";
-        ld = this.converter.convert(dec23rd2023, LocalDate.class);
+        testDate = "2023/12/23";
+        ld = this.converter.convert(testDate, LocalDate.class);
+        assert ld.getYear() == 2023;
+        assert ld.getMonthValue() == 12;
+        assert ld.getDayOfMonth() == 23;
+
+        testDate = "12/23/2023";
+        ld = this.converter.convert(testDate, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
         assert ld.getDayOfMonth() == 23;
@@ -1368,30 +1367,29 @@ class ConverterTest
     void testStringOnMapToLocalDate()
     {
         Map<String, Object> map = new HashMap<>();
-        String dec23Epoch = "19714";
-        map.put("value", dec23Epoch);
+        String testDate = "1705769204092";
+        map.put("value", testDate);
         LocalDate ld = this.converter.convert(map, LocalDate.class);
-        assert ld.getYear() == 2023;
-        assert ld.getMonthValue() == 12;
-//        assert ld.getDayOfMonth() == 23;
+        assert ld.getYear() == 2024;
+        assert ld.getMonthValue() == 1;
+        assert ld.getDayOfMonth() == 20;
 
-
-        dec23Epoch = "2023-12-23";
-        map.put("value", dec23Epoch);
+        testDate = "2023-12-23";
+        map.put("value", testDate);
         ld = this.converter.convert(map, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
         assert ld.getDayOfMonth() == 23;
 
-        dec23Epoch = "2023/12/23";
-        map.put("value", dec23Epoch);
+        testDate = "2023/12/23";
+        map.put("value", testDate);
         ld = this.converter.convert(map, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
         assert ld.getDayOfMonth() == 23;
 
-        dec23Epoch = "12/23/2023";
-        map.put("value", dec23Epoch);
+        testDate = "12/23/2023";
+        map.put("value", testDate);
         ld = this.converter.convert(map, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;

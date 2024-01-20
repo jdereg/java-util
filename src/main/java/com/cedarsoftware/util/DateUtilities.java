@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Calendar;
@@ -17,9 +15,9 @@ import java.util.regex.Pattern;
  * may be inconsistent.  This will parse the following formats (constrained only by java.util.Date limitations...best
  * time resolution is milliseconds):<br/>
  * <pre>
- * 12-31-2023  -or-  12/31/2023     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
+ * 12-31-2023, 12/31/2023, 12.31.2023     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
  *                                  
- * 2023-12-31  -or-  2023/12/31     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
+ * 2023-12-31, 2023/12/31, 2023.12.31     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
  *                                  
  * January 6th, 2024                Month (3-4 digit abbreviation or full English name), white-space and optional comma,
  *                                  day of month (1-31 or 0-31) with optional suffixes 1st, 3rd, 22nd, whitespace and
@@ -44,8 +42,7 @@ import java.util.regex.Pattern;
  * hh:mm:ss                         hours (00-23), minutes (00-59), seconds (00-59).  24 hour format.
  *
  * hh:mm:ss.sssss                   hh:mm:ss and fractional seconds. Variable fractional seconds supported. Date only
- *                                  supports up to millisecond precision, so anything after 3 decimal places is
- *                                  effectively ignored.
+ *                                  supports up to millisecond precision, so anything after 3 decimal places is ignored.
  *
  * hh:mm:offset -or-                offset can be specified as +HH:mm, +HHmm, +HH, -HH:mm, -HHmm, -HH, or Z (GMT)
  * hh:mm:ss.sss:offset              which will match: "12:34", "12:34:56", "12:34.789", "12:34:56.789", "12:34+01:00",
@@ -55,20 +52,14 @@ import java.util.regex.Pattern;
  * hh:mm:ss.sss:zone                PST, IST, JST, BST etc. as well as the long forms: "America/New York", "Asia/Saigon",
  *                                  etc. See ZoneId.getAvailableZoneIds().
  * </pre>
- * DateUtilities will parse Epoch-based integer-based values. It supports the following 3 types:
+ * DateUtilities will parse Epoch-based integer-based value. It is considered number of milliseconds since Jan, 1970 GMT.
  * <pre>
- * "0" to "999999"                   A string of numeric digits from 0 to 6 in length will be parsed and returned as
- *                                   the number of days since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
- *
- * "0000000" to "99999999999"        A string of numeric digits from 7 to 11 in length will be parsed and returned as
- *                                   the number of seconds since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
- *
- * "000000000000" to                 A string of numeric digits from 12 to 18 in length will be parsed and returned as
- * "999999999999999999"              the number of milli-seconds since the Unix Epoch, January 1st, 1970 00:00:00 UTC.
+ * "0" to                           A string of numeric digits will be parsed and returned as the number of milliseconds
+ * "999999999999999999"             the Unix Epoch, January 1st, 1970 00:00:00 UTC.
  * </pre>
- * On all patterns above (excluding the numeric epoch days, seconds, millis), if a day-of-week (e.g. Thu, Sunday, etc.)
- * is included (front, back, or between date and time), it will be ignored, allowing for even more formats than what is
- * listed here.  The day-of-week is not be used to influence the Date calculation.
+ * On all patterns above (excluding the numeric epoch millis), if a day-of-week (e.g. Thu, Sunday, etc.) is included
+ * (front, back, or between date and time), it will be ignored, allowing for even more formats than listed here.
+ * The day-of-week is not be used to influence the Date calculation.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -350,14 +341,6 @@ public final class DateUtilities {
 
     private static Date parseEpochString(String dateStr) {
         long num = Long.parseLong(dateStr);
-        if (dateStr.length() < 7) {         // days since epoch (good until 4707-11-28 00:00:00)
-            Instant instant = LocalDate.ofEpochDay(num).atStartOfDay(ZoneId.of("GMT")).toInstant();
-            return new Date(instant.toEpochMilli());
-        } else if (dateStr.length() < 12) { // seconds since epoch (good until 5138-11-16 09:46:39)
-            Instant instant = Instant.ofEpochSecond(num);
-            return new Date(instant.toEpochMilli());
-        } else {                            // millis since epoch (good until 31690708-07-05 01:46:39.999)
-            return new Date(num);
-        }
+        return new Date(num);
     }
 }

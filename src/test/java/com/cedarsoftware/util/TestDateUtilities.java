@@ -6,9 +6,11 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -343,7 +345,7 @@ class TestDateUtilities
             DateUtilities.parseDate(" Dec 25, 2014, thursday ");
         }
         try {
-            DateUtilities.parseDate("text Dec 25, 2014");
+            Date date = DateUtilities.parseDate("text Dec 25, 2014");
             fail();
         } catch (Exception ignored) { }
 
@@ -714,11 +716,11 @@ class TestDateUtilities
     {
         assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12.49.58"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Issue parsing data/time, other characters present: 12.49.58");
+                .hasMessageContaining("Issue parsing date-time, other characters present: 12.49.58");
 
         assertThatThrownBy(() -> DateUtilities.parseDate("12.49.58 12/24/1996"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Issue parsing data/time, other characters present: 12.49.58");
+                .hasMessageContaining("Issue parsing date-time, other characters present: 12.49.58");
 
         Date date = DateUtilities.parseDate("12:49:58 12/24/1996"); // time with valid separators before date
         Calendar calendar = Calendar.getInstance();
@@ -728,7 +730,7 @@ class TestDateUtilities
 
         assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Issue parsing data/time, other characters present: 12-49-58");
+                .hasMessageContaining("Issue parsing date-time, other characters present: 12-49-58");
     }
     
     @Test
@@ -756,5 +758,44 @@ class TestDateUtilities
         date = DateUtilities.parseDate("999999999999999999");
         gmtDateString = sdf.format(date);
         assertEquals("31690708-07-05 01:46:39.999", gmtDateString);
+    }
+
+    private static Stream<String> provideTimeZones()
+    {
+        return Stream.of(
+                "2024-01-19T15:30:45[Europe/London]",
+                "2024-01-19T10:15:30[Asia/Tokyo]",
+                "2024-01-19T20:45:00[America/New_York]",
+                "2024-01-19T12:00:00-08:00[America/Los_Angeles]",
+                "2024-01-19T22:30:00+01:00[Europe/Paris]",
+                "2024-01-19T18:15:45+10:00[Australia/Sydney]",
+                "2024-01-19T05:00:00-03:00[America/Sao_Paulo]",
+                "2024-01-19T23:59:59Z[UTC]",
+                "2024-01-19T14:30:00+05:30[Asia/Kolkata]",
+                "2024-01-19T21:45:00-05:00[America/Toronto]",
+                "2024-01-19T16:00:00+02:00[Africa/Cairo]",
+                "2024-01-19T07:30:00-07:00[America/Denver]",
+                "2024-01-19T15:30:45 Europe/London",
+                "2024-01-19T10:15:30 Asia/Tokyo",
+                "2024-01-19T20:45:00 America/New_York",
+                "2024-01-19T12:00:00-08:00 America/Los_Angeles",
+                "2024-01-19T22:30:00+01:00 Europe/Paris",
+                "2024-01-19T18:15:45+10:00 Australia/Sydney",
+                "2024-01-19T05:00:00-03:00 America/Sao_Paulo",
+                "2024-01-19T23:59:59Z UTC",
+                "2024-01-19T14:30:00+05:30 Asia/Kolkata",
+                "2024-01-19T21:45:00-05:00 America/Toronto",
+                "2024-01-19T16:00:00+02:00 Africa/Cairo",
+                "2024-01-19T07:30:00-07:00 America/Denver",
+                "2024-01-19T07:30:00 CST",
+                "2024-01-19T07:30:00+10 EST"
+                );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideTimeZones")
+    void testTimeZoneParsing(String exampleZone)
+    {
+        DateUtilities.parseDate(exampleZone);
     }
 }

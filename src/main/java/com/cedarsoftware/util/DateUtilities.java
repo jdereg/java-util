@@ -79,28 +79,24 @@ import java.util.regex.Pattern;
  */
 public final class DateUtilities {
     private static final Pattern allDigits = Pattern.compile("^\\d+$");
-    private static final String days = "(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)"; // longer before shorter matters
-    private static final String mos = "(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)";
+    private static final String days = "\\b(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)\\b"; // longer before shorter matters
+    private static final String mos = "\\b(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)\\b";
     private static final String yr = "(\\d{4})";
     private static final String dig1or2 = "\\d{1,2}";
     private static final String dig1or2grp = "(" + dig1or2 + ")";
     private static final String ord = dig1or2grp + "(st|nd|rd|th)?";
     private static final String dig2 = "\\d{2}";
-    private static final String dig2gr = "(" + dig2 + ")";
     private static final String sep = "([./-])";
     private static final String ws = "\\s+";
     private static final String wsOp = "\\s*";
     private static final String wsOrComma = "[ ,]+";
     private static final String tzUnix = "([A-Z]{1,3})?";
-    private static final String opNano = "(\\.\\d+)?";
+    private static final String nano = "\\.\\d+";
     private static final String dayOfMon = dig1or2grp;
-    private static final String opSec = "(?:" + ":" + dig2gr + ")?";
-    private static final String hh = dig2gr;
-    private static final String mm = dig2gr;
     private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
-    private static final String tzNamed = ws + "[A-Za-z][A-Za-z0-9~/._+-]+";
+    private static final String tzNamed = ws + "\\[?[A-Za-z][A-Za-z0-9~/._+-]+]?";
 
     // Patterns defined in BNF-style using above named elements
     private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
@@ -118,7 +114,7 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern timePattern = Pattern.compile(
-            hh + ":" + mm + opSec + opNano + "(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed +")?",
+            "(" + dig2 + "):(" + dig2 + "):?(" + dig2 + ")?(" + nano + ")?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")?",    // 5 groups
             Pattern.CASE_INSENSITIVE);
     
     private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
@@ -237,27 +233,13 @@ public final class DateUtilities {
                 milli = matcher.group(4).substring(1);
             }
             if (matcher.group(5) != null) {
-                tz = matcher.group(5).trim();
+                tz = stripBrackets(matcher.group(5).trim());
             }
         } else {
             matcher = null;     // indicates no "time" portion
         }
 
-        remains = remnant;
-
-        // Clear out day of week (mon, tue, wed, ...)
-        if (StringUtilities.length(remains) > 0) {
-            Matcher dayMatcher = dayPattern.matcher(remains);
-            remains = dayMatcher.replaceFirst("").trim();
-        }
-
-        // Verify that nothing or , or T is all that remains
-        if (StringUtilities.length(remains) > 0) {
-            remains = remains.trim();
-            if (!remains.equals(",") && (!remains.equals("T"))) {
-                throw new IllegalArgumentException("Issue parsing data/time, other characters present: " + remains);
-            }
-        }
+        verifyNoGarbageLeft(remnant);
 
         // Set Timezone into Calendar if one is supplied
         Calendar c = Calendar.getInstance();
@@ -322,6 +304,40 @@ public final class DateUtilities {
         return c.getTime();
     }
 
+    private static void verifyNoGarbageLeft(String remnant) {
+        // Clear out day of week (mon, tue, wed, ...)
+        if (StringUtilities.length(remnant) > 0) {
+            Matcher dayMatcher = dayPattern.matcher(remnant);
+            remnant = dayMatcher.replaceFirst("").trim();
+            if (remnant.startsWith("T")) {
+                remnant = remnant.substring(1).trim();
+            }
+        }
+
+        // Verify that nothing or "," is all that remains
+        if (StringUtilities.length(remnant) > 0) {
+            remnant = remnant.replaceAll(",|\\[.*?\\]", "").trim();
+            if (!remnant.isEmpty()) {
+                try {
+                    ZoneId.of(remnant);
+                }
+                catch (Exception e) {
+                    TimeZone timeZone = TimeZone.getTimeZone(remnant);
+                    if (timeZone.getRawOffset() == 0) {
+                        throw new IllegalArgumentException("Issue parsing date-time, other characters present: " + remnant);
+                    }
+                }
+            }
+        }
+    }
+
+    private static String stripBrackets(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        return input.replaceAll("^\\[|\\]$", "");
+    }
+    
     /**
      * Calendar & Date are only accurate to milliseconds.
      */

@@ -223,6 +223,8 @@ public final class DateUtilities {
         remains = remains.trim();
         matcher = timePattern.matcher(remains);
         remnant = matcher.replaceFirst("");
+        boolean noTime = false;
+        
         if (remnant.length() < remains.length()) {
             hour = matcher.group(1);
             min = matcher.group(2);
@@ -236,36 +238,27 @@ public final class DateUtilities {
                 tz = stripBrackets(matcher.group(5).trim());
             }
         } else {
-            matcher = null;     // indicates no "time" portion
+            noTime = true;     // indicates no "time" portion
         }
 
         verifyNoGarbageLeft(remnant);
 
-        // Set Timezone into Calendar if one is supplied
-        Calendar c = Calendar.getInstance();
-        if (tz != null) {
-            if (tz.startsWith("-") || tz.startsWith("+")) {
-                ZoneOffset offset = ZoneOffset.of(tz);
-                ZoneId zoneId = ZoneId.ofOffset("GMT", offset);
-                TimeZone timeZone = TimeZone.getTimeZone(zoneId);
-                c.setTimeZone(timeZone);
-            } else {
-                try {
-                    ZoneId zoneId = ZoneId.of(tz);
-                    TimeZone timeZone = TimeZone.getTimeZone(zoneId);
-                    c.setTimeZone(timeZone);
-                } catch (Exception e) {
-                    TimeZone timeZone = TimeZone.getTimeZone(tz);
-                    if (timeZone.getRawOffset() != 0) {
-                        c.setTimeZone(timeZone);
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-        }
-        c.clear();
+        // Set Timezone into Calendar
+        Calendar c = initCalendar(tz);
 
+        return getDate(dateStr, c, noTime, year, month, day, hour, min, sec, milli);
+    }
+
+    private static Date getDate(String dateStr,
+                                Calendar c,
+                                boolean noTime,
+                                String year,
+                                int month,
+                                String day,
+                                String hour,
+                                String min,
+                                String sec,
+                                String milli) {
         // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
         int y = Integer.parseInt(year);
         int m = month - 1;    // months are 0-based
@@ -278,7 +271,7 @@ public final class DateUtilities {
             throw new IllegalArgumentException("Day must be between 1 and 31 inclusive, date: " + dateStr);
         }
 
-        if (matcher == null) {   // no [valid] time portion
+        if (noTime) {   // no [valid] time portion
             c.set(y, m, d);
         } else {
             // Regex prevents these from ever failing to parse.
@@ -302,6 +295,33 @@ public final class DateUtilities {
             c.set(Calendar.MILLISECOND, ms);
         }
         return c.getTime();
+    }
+
+    private static Calendar initCalendar(String tz) {
+        Calendar c = Calendar.getInstance();
+        if (tz != null) {
+            if (tz.startsWith("-") || tz.startsWith("+")) {
+                ZoneOffset offset = ZoneOffset.of(tz);
+                ZoneId zoneId = ZoneId.ofOffset("GMT", offset);
+                TimeZone timeZone = TimeZone.getTimeZone(zoneId);
+                c.setTimeZone(timeZone);
+            } else {
+                try {
+                    ZoneId zoneId = ZoneId.of(tz);
+                    TimeZone timeZone = TimeZone.getTimeZone(zoneId);
+                    c.setTimeZone(timeZone);
+                } catch (Exception e) {
+                    TimeZone timeZone = TimeZone.getTimeZone(tz);
+                    if (timeZone.getRawOffset() != 0) {
+                        c.setTimeZone(timeZone);
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+        }
+        c.clear();
+        return c;
     }
 
     private static void verifyNoGarbageLeft(String remnant) {

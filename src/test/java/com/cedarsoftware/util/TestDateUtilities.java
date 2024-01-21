@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -345,12 +346,12 @@ class TestDateUtilities
             DateUtilities.parseDate(" Dec 25, 2014, thursday ");
         }
         try {
-            Date date = DateUtilities.parseDate("text Dec 25, 2014");
+            Date date = DateUtilities.parseDate("text Dec 25, 2014", true);
             fail();
         } catch (Exception ignored) { }
 
         try {
-            DateUtilities.parseDate("Dec 25, 2014 text");
+            DateUtilities.parseDate("Dec 25, 2014 text", true);
             fail();
         } catch (Exception ignored) { }
     }
@@ -714,11 +715,11 @@ class TestDateUtilities
     @Test
     void testBadTimeSeparators()
     {
-        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12.49.58"))
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12.49.58", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing date-time, other characters present: 12.49.58");
 
-        assertThatThrownBy(() -> DateUtilities.parseDate("12.49.58 12/24/1996"))
+        assertThatThrownBy(() -> DateUtilities.parseDate("12.49.58 12/24/1996", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing date-time, other characters present: 12.49.58");
 
@@ -728,7 +729,7 @@ class TestDateUtilities
         calendar.set(1996, Calendar.DECEMBER, 24, 12, 49, 58);
         assertEquals(calendar.getTime(), date);
 
-        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58"))
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing date-time, other characters present: 12-49-58");
     }
@@ -760,42 +761,128 @@ class TestDateUtilities
         assertEquals("31690708-07-05 01:46:39.999", gmtDateString);
     }
 
-    private static Stream<String> provideTimeZones()
+    private static Stream provideTimeZones()
     {
         return Stream.of(
-                "2024-01-19T15:30:45[Europe/London]",
-                "2024-01-19T10:15:30[Asia/Tokyo]",
-                "2024-01-19T20:45:00[America/New_York]",
-                "2024-01-19T12:00:00-08:00[America/Los_Angeles]",
-                "2024-01-19T22:30:00+01:00[Europe/Paris]",
-                "2024-01-19T18:15:45+10:00[Australia/Sydney]",
-                "2024-01-19T05:00:00-03:00[America/Sao_Paulo]",
-                "2024-01-19T23:59:59Z[UTC]",
-                "2024-01-19T14:30:00+05:30[Asia/Kolkata]",
-                "2024-01-19T21:45:00-05:00[America/Toronto]",
-                "2024-01-19T16:00:00+02:00[Africa/Cairo]",
-                "2024-01-19T07:30:00-07:00[America/Denver]",
-                "2024-01-19T15:30:45 Europe/London",
-                "2024-01-19T10:15:30 Asia/Tokyo",
-                "2024-01-19T20:45:00 America/New_York",
-                "2024-01-19T12:00:00-08:00 America/Los_Angeles",
-                "2024-01-19T22:30:00+01:00 Europe/Paris",
-                "2024-01-19T18:15:45+10:00 Australia/Sydney",
-                "2024-01-19T05:00:00-03:00 America/Sao_Paulo",
-                "2024-01-19T23:59:59Z UTC",
-                "2024-01-19T14:30:00+05:30 Asia/Kolkata",
-                "2024-01-19T21:45:00-05:00 America/Toronto",
-                "2024-01-19T16:00:00+02:00 Africa/Cairo",
-                "2024-01-19T07:30:00-07:00 America/Denver",
-                "2024-01-19T07:30:00 CST",
-                "2024-01-19T07:30:00+10 EST"
+                Arguments.of("2024-01-19T15:30:45[Europe/London]", 1705696245000L),
+                Arguments.of("2024-01-19T10:15:30[Asia/Tokyo]", 1705677330000L),
+                Arguments.of("2024-01-19T20:45:00[America/New_York]", 1705715100000L),
+                Arguments.of("2024-01-19T12:00:00-08:00[America/Los_Angeles]", 1705694400000L),
+                Arguments.of("2024-01-19T22:30:00+01:00[Europe/Paris]", 1705699800000L),
+                Arguments.of("2024-01-19T18:15:45+10:00[Australia/Sydney]", 1705652145000L),
+                Arguments.of("2024-01-19T05:00:00-03:00[America/Sao_Paulo]", 1705651200000L),
+                Arguments.of("2024-01-19T23:59:59Z[UTC]", 1705708799000L),
+                Arguments.of("2024-01-19T14:30:00+05:30[Asia/Kolkata]", 1705654800000L),
+                Arguments.of("2024-01-19T21:45:00-05:00[America/Toronto]", 1705718700000L),
+
+                Arguments.of("2024-01-19T16:00:00+02:00[Africa/Cairo]",  1705672800000L),
+                Arguments.of("2024-01-19T07:30:00-07:00[America/Denver]", 1705674600000L),
+                Arguments.of("2024-01-19T15:30:45 Europe/London", 1705678245000L),
+                Arguments.of("2024-01-19T10:15:30 Asia/Tokyo", 1705626930000L),
+                Arguments.of("2024-01-19T20:45:00 America/New_York", 1705715100000L),
+                Arguments.of("2024-01-19T12:00:00-08:00 America/Los_Angeles", 1705694400000L),
+                Arguments.of("2024-01-19T22:30:00+01:00 Europe/Paris", 1705699800000L),
+                Arguments.of("2024-01-19T18:15:45+10:00 Australia/Sydney", 1705652145000L),
+                Arguments.of("2024-01-19T05:00:00-03:00 America/Sao_Paulo", 1705651200000L),
+                Arguments.of("2024-01-19T23:59:59Z UTC", 1705708799000L),
+
+                Arguments.of("2024-01-19T14:30:00+05:30 Asia/Kolkata",  1705654800000L),
+                Arguments.of("2024-01-19T21:45:00-05:00 America/Toronto", 1705718700000L),
+                Arguments.of("2024-01-19T16:00:00+02:00 Africa/Cairo", 1705672800000L),
+                Arguments.of("2024-01-19T07:30:00-07:00 America/Denver", 1705674600000L),
+                Arguments.of("2024-01-19T07:30GMT", 1705667400000L),
+                Arguments.of("2024-01-19T07:30[GMT]", 1705667400000L),
+                Arguments.of("2024-01-19T07:30 GMT", 1705649400000L),
+                Arguments.of("2024-01-19T07:30 [GMT]", 1705649400000L),
+                Arguments.of("2024-01-19T07:30  GMT", 1705649400000L),
+                Arguments.of("2024-01-19T07:30  [GMT] ", 1705649400000L),
+
+                Arguments.of("2024-01-19T07:30  GMT ", 1705649400000L),
+                Arguments.of("2024-01-19T07:30:01 GMT", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01 [GMT]", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01GMT", 1705667401000L),
+                Arguments.of("2024-01-19T07:30:01[GMT]", 1705667401000L),
+                Arguments.of("2024-01-19T07:30:01.1 GMT", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.1 [GMT]", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.1GMT", 1705667401100L),
+                Arguments.of("2024-01-19T07:30:01.1[GMT]", 1705667401100L),
+                Arguments.of("2024-01-19T07:30:01.12GMT", 1705667401120L),
+
+                Arguments.of("2024-01-19T07:30:01.12[GMT]", 1705667401120L),
+                Arguments.of("2024-01-19T07:30:01.12 GMT", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01.12 [GMT]", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01.123GMT", 1705667401123L),
+                Arguments.of("2024-01-19T07:30:01.123[GMT]", 1705667401123L),
+                Arguments.of("2024-01-19T07:30:01.123 GMT", 1705649401123L),
+                Arguments.of("2024-01-19T07:30:01.123 [GMT]", 1705649401123L),
+                Arguments.of("2024-01-19T07:30:01.1234GMT", 1705667401123L),
+                Arguments.of("2024-01-19T07:30:01.1234[GMT]", 1705667401123L),
+                Arguments.of("2024-01-19T07:30:01.1234 GMT", 1705649401123L),
+
+                Arguments.of("2024-01-19T07:30:01.1234 [GMT]", 1705649401123L),
+                Arguments.of("2024-01-19T07:30:01.123+0100GMT", 1705645801123L),   // intentional redundancy on down because ISO 8601 allows it.
+                Arguments.of("2024-01-19T07:30:01.123+0100[GMT]", 1705645801123L),
+                Arguments.of("2024-01-19T07:30:01.123+0100 GMT", 1705645801123L),
+                Arguments.of("2024-01-19T07:30:01.123+0100 [GMT]", 1705645801123L),
+                Arguments.of("2024-01-19T07:30:01.123-1000GMT", 1705685401123L),
+                Arguments.of("2024-01-19T07:30:01.123-1000[GMT ]", 1705685401123L),
+                Arguments.of("2024-01-19T07:30:01.123-1000[ GMT ]", 1705685401123L),
+                Arguments.of("2024-01-19T07:30:01.123-1000 GMT", 1705685401123L),
+                Arguments.of("2024-01-19T07:30:01.123-1000 [GMT]", 1705685401123L),
+
+                Arguments.of("2024-01-19T07:30:01.123+2 GMT", 1705642201123L),      // 18 is max, anything larger of smaller is a java.time exception
+                Arguments.of("2024-01-19T07:30:01.123+2 [GMT]", 1705642201123L),
+                Arguments.of("2024-01-19T07:30:01.123-2 GMT", 1705656601123L),
+                Arguments.of("2024-01-19T07:30:01.123-2 [GMT]", 1705656601123L),
+                Arguments.of("2024-01-19T07:30:01.123+2GMT", 1705642201123L),
+                Arguments.of("2024-01-19T07:30:01.123+2[GMT]", 1705642201123L),
+                Arguments.of("2024-01-19T07:30:01.123-2GMT", 1705656601123L),
+                Arguments.of("2024-01-19T07:30:01.123-2[GMT]", 1705656601123L),
+                Arguments.of("2024-01-19T07:30:01.123+18 GMT", 1705584601123L),
+                Arguments.of("2024-01-19T07:30:01.123+18 [GMT]", 1705584601123L),
+
+                Arguments.of("2024-01-19T07:30:01.123-18 GMT", 1705714201123L),
+                Arguments.of("2024-01-19T07:30:01.123-18 [GMT]", 1705714201123L),
+                Arguments.of("2024-01-19T07:30:01.123+18:00 GMT", 1705584601123L),
+                Arguments.of("2024-01-19T07:30:01.123+18:00 [GMT]", 1705584601123L),
+                Arguments.of("2024-01-19T07:30:01.123-18:00 GMT", 1705714201123L),
+                Arguments.of("2024-01-19T07:30:01.123-18:00 [GMT]", 1705714201123L),
+                Arguments.of("2024-01-19T07:30:00+10 EST", 1705613400000L),
+                Arguments.of("07:30EST 2024-01-19", 1705667400000L),
+                Arguments.of("07:30[EST] 2024-01-19", 1705667400000L),
+                Arguments.of("07:30 EST 2024-01-19", 1705667400000L),
+
+                Arguments.of("07:30 [EST] 2024-01-19", 1705667400000L),
+                Arguments.of("07:30:01EST 2024-01-19", 1705667401000L),
+                Arguments.of("07:30:01[EST] 2024-01-19", 1705667401000L),
+                Arguments.of("07:30:01 EST 2024-01-19", 1705667401000L),
+                Arguments.of("07:30:01 [EST] 2024-01-19", 1705667401000L),
+                Arguments.of("07:30:01.123 EST 2024-01-19", 1705667401123L),
+                Arguments.of("07:30:01.123 [EST] 2024-01-19", 1705667401123L),
+                Arguments.of("07:30:01.123+1100 EST 2024-01-19", 1705609801123L),
+                Arguments.of("07:30:01.123-1100 [EST] 2024-01-19", 1705689001123L),
+                Arguments.of("07:30:01.123+11:00 [EST] 2024-01-19", 1705609801123L),
+
+                Arguments.of("07:30:01.123-11:00 [EST] 2024-01-19", 1705689001123L),
+                Arguments.of("Wed 07:30:01.123-11:00 [EST] 2024-01-19", 1705689001123L),
+                Arguments.of("07:30:01.123-11:00 [EST] 2024-01-19 Wed", 1705689001123L),
+                Arguments.of("07:30:01.123-11:00 [EST] Sunday, January 21, 2024", 1705861801123L),
+                Arguments.of("07:30:01.123-11:00 [EST] Sunday January 21, 2024", 1705861801123L),
+                Arguments.of("07:30:01.123-11:00 [EST] January 21, 2024 Sunday", 1705861801123L),
+                Arguments.of("07:30:01.123-11:00 [EST] January 21, 2024, Sunday", 1705861801123L),
+                Arguments.of("07:30:01.123-11:00 [America/New_York] January 21, 2024, Sunday", 1705861801123L),
+                Arguments.of("07:30:01.123-11:00 [Africa/Cairo] 21 Jan 2024 Sun", 1705861801123L),
+                Arguments.of("07:30:01.123-11:00 [Africa/Cairo] 2024 Jan 21st Sat", 1705861801123L)   // day of week should be ignored
                 );
     }
 
     @ParameterizedTest
     @MethodSource("provideTimeZones")
-    void testTimeZoneParsing(String exampleZone)
+    void testTimeZoneParsing(String exampleZone, Long epochMilli)
     {
-        DateUtilities.parseDate(exampleZone);
+        for (int i=0; i < 1; i++) {
+            Date date = DateUtilities.parseDate(exampleZone);
+            assertEquals(date.getTime(), epochMilli);
+        }
     }
 }

@@ -151,7 +151,25 @@ public final class DateUtilities {
     private DateUtilities() {
     }
 
+    /**
+     * Main API. Retrieve date-time from passed in String.
+     * @param dateStr String containing a date.  If there is excess content, it will be ignored.
+     * @return Date instance that represents the passed in date.  See comments at top of class for supported
+     * formats.  This API is intended to be super flexible in terms of what it can parse.
+     */
     public static Date parseDate(String dateStr) {
+        return parseDate(dateStr, false);
+    }
+
+    /**
+     * Main API. Retrieve date-time from passed in String.  The boolean enSureSoloDate, if set true, ensures that
+     * no other non-date content existed in the String.  That requires additional time to verify.
+     * @param dateStr String containing a date.
+     * @param ensureSoloDate If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
+     * @return Date instance that represents the passed in date.  See comments at top of class for supported
+     * formats.  This API is intended to be super flexible in terms of what it can parse.
+     */
+    public static Date parseDate(String dateStr, boolean ensureSoloDate) {
         if (dateStr == null) {
             return null;
         }
@@ -241,7 +259,9 @@ public final class DateUtilities {
             noTime = true;     // indicates no "time" portion
         }
 
-        verifyNoGarbageLeft(remnant);
+        if (ensureSoloDate) {
+            verifyNoGarbageLeft(remnant);
+        }
 
         // Set Timezone into Calendar
         Calendar c = initCalendar(tz);
@@ -330,11 +350,11 @@ public final class DateUtilities {
             Matcher dayMatcher = dayPattern.matcher(remnant);
             remnant = dayMatcher.replaceFirst("").trim();
             if (remnant.startsWith("T")) {
-                remnant = remnant.substring(1).trim();
+                remnant = remnant.substring(1);
             }
         }
 
-        // Verify that nothing or "," is all that remains
+        // Verify that nothing or "," or timezone name is all that remains
         if (StringUtilities.length(remnant) > 0) {
             remnant = remnant.replaceAll(",|\\[.*?\\]", "").trim();
             if (!remnant.isEmpty()) {

@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -346,7 +347,7 @@ class TestDateUtilities
             DateUtilities.parseDate(" Dec 25, 2014, thursday ");
         }
         try {
-            Date date = DateUtilities.parseDate("text Dec 25, 2014", true);
+            ZonedDateTime date = DateUtilities.parseDate("text Dec 25, 2014", true);
             fail();
         } catch (Exception ignored) { }
 

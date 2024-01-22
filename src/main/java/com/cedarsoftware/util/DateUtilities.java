@@ -1,8 +1,9 @@
 package com.cedarsoftware.util;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.Calendar;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
@@ -155,32 +156,31 @@ public final class DateUtilities {
      * Main API. Retrieve date-time from passed in String.
      * @param dateStr String containing a date.  If there is excess content, it will be ignored.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
-     * formats.  This API is intended to be super flexible in terms of what it can parse.
+     * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
+     * passed in, null will be returned.
      */
     public static Date parseDate(String dateStr) {
-        return parseDate(dateStr, false);
+        if (StringUtilities.isEmpty(dateStr)) {
+            return null;
+        }
+        ZonedDateTime zonedDateTime = parseDate(dateStr, false);
+        return new Date(zonedDateTime.toInstant().toEpochMilli());
     }
 
     /**
      * Main API. Retrieve date-time from passed in String.  The boolean enSureSoloDate, if set true, ensures that
      * no other non-date content existed in the String.  That requires additional time to verify.
-     * @param dateStr String containing a date.
+     * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.
      * @param ensureSoloDate If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
-     * @return Date instance that represents the passed in date.  See comments at top of class for supported
-     * formats.  This API is intended to be super flexible in terms of what it can parse.
+     * @return ZonedDateTime instance converted from the passed in date String.  See comments at top of class for supported
+     * formats.  This API is intended to be super flexible in terms of what it can parse. 
      */
-    public static Date parseDate(String dateStr, boolean ensureSoloDate) {
-        if (dateStr == null) {
-            return null;
-        }
-
+    public static ZonedDateTime parseDate(String dateStr, boolean ensureSoloDate) {
+        Convention.throwIfNullOrEmpty(dateStr, "dateString must not be null or empty String.");
         dateStr = dateStr.trim();
-        if (dateStr.isEmpty()) {
-            return null;
-        }
 
         if (allDigits.matcher(dateStr).matches()) {
-            return parseEpochString(dateStr);
+            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(ZoneId.of("UTC"));
         }
 
         String year, day, remains, tz = null;
@@ -264,13 +264,13 @@ public final class DateUtilities {
         }
 
         // Set Timezone into Calendar
-        Calendar c = initCalendar(tz);
-
-        return getDate(dateStr, c, noTime, year, month, day, hour, min, sec, milli);
+        ZoneId zoneId = getTimeZone(tz);
+        ZonedDateTime zonedDateTime = getDate(dateStr, zoneId, noTime, year, month, day, hour, min, sec, milli);
+        return zonedDateTime;
     }
 
-    private static Date getDate(String dateStr,
-                                Calendar c,
+    private static ZonedDateTime getDate(String dateStr,
+                                ZoneId zoneId,
                                 boolean noTime,
                                 String year,
                                 int month,
@@ -281,10 +281,9 @@ public final class DateUtilities {
                                 String milli) {
         // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
         int y = Integer.parseInt(year);
-        int m = month - 1;    // months are 0-based
         int d = Integer.parseInt(day);
 
-        if (m < 0 || m > 11) {
+        if (month < 1 || month > 12) {
             throw new IllegalArgumentException("Month must be between 1 and 12 inclusive, date: " + dateStr);
         }
         if (d < 1 || d > 31) {
@@ -292,7 +291,7 @@ public final class DateUtilities {
         }
 
         if (noTime) {   // no [valid] time portion
-            c.set(y, m, d);
+            return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
         } else {
             // Regex prevents these from ever failing to parse.
             int h = Integer.parseInt(hour);
@@ -310,38 +309,28 @@ public final class DateUtilities {
                 throw new IllegalArgumentException("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
-            // regex enforces millis to number
-            c.set(y, m, d, h, mn, s);
-            c.set(Calendar.MILLISECOND, ms);
+            return ZonedDateTime.of(y, month, d, h, mn, s, ms * 1000 * 1000, zoneId);
         }
-        return c.getTime();
     }
 
-    private static Calendar initCalendar(String tz) {
-        Calendar c = Calendar.getInstance();
+    private static ZoneId getTimeZone(String tz) {
         if (tz != null) {
             if (tz.startsWith("-") || tz.startsWith("+")) {
                 ZoneOffset offset = ZoneOffset.of(tz);
-                ZoneId zoneId = ZoneId.ofOffset("GMT", offset);
-                TimeZone timeZone = TimeZone.getTimeZone(zoneId);
-                c.setTimeZone(timeZone);
+                return ZoneId.ofOffset("GMT", offset);
             } else {
                 try {
-                    ZoneId zoneId = ZoneId.of(tz);
-                    TimeZone timeZone = TimeZone.getTimeZone(zoneId);
-                    c.setTimeZone(timeZone);
+                    return ZoneId.of(tz);
                 } catch (Exception e) {
                     TimeZone timeZone = TimeZone.getTimeZone(tz);
-                    if (timeZone.getRawOffset() != 0) {
-                        c.setTimeZone(timeZone);
-                    } else {
+                    if (timeZone.getRawOffset() == 0) {
                         throw e;
                     }
+                    return timeZone.toZoneId();
                 }
             }
         }
-        c.clear();
-        return c;
+        return ZoneId.systemDefault();
     }
 
     private static void verifyNoGarbageLeft(String remnant) {
@@ -393,10 +382,5 @@ public final class DateUtilities {
         } else {
             return milli.substring(0, 3);
         }
-    }
-
-    private static Date parseEpochString(String dateStr) {
-        long num = Long.parseLong(dateStr);
-        return new Date(num);
     }
 }

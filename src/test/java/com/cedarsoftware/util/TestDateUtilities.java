@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -347,12 +348,12 @@ class TestDateUtilities
             DateUtilities.parseDate(" Dec 25, 2014, thursday ");
         }
         try {
-            ZonedDateTime date = DateUtilities.parseDate("text Dec 25, 2014", true);
+            ZonedDateTime date = DateUtilities.parseDate("text Dec 25, 2014", ZoneId.systemDefault(), true);
             fail();
         } catch (Exception ignored) { }
 
         try {
-            DateUtilities.parseDate("Dec 25, 2014 text", true);
+            DateUtilities.parseDate("Dec 25, 2014 text", ZoneId.systemDefault(), true);
             fail();
         } catch (Exception ignored) { }
     }
@@ -716,11 +717,11 @@ class TestDateUtilities
     @Test
     void testBadTimeSeparators()
     {
-        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12.49.58", true))
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12.49.58", ZoneId.systemDefault(), true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing date-time, other characters present: 12.49.58");
 
-        assertThatThrownBy(() -> DateUtilities.parseDate("12.49.58 12/24/1996", true))
+        assertThatThrownBy(() -> DateUtilities.parseDate("12.49.58 12/24/1996", ZoneId.systemDefault(), true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing date-time, other characters present: 12.49.58");
 
@@ -730,7 +731,7 @@ class TestDateUtilities
         calendar.set(1996, Calendar.DECEMBER, 24, 12, 49, 58);
         assertEquals(calendar.getTime(), date);
 
-        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58", true))
+        assertThatThrownBy(() -> DateUtilities.parseDate("12/24/1996 12-49-58", ZoneId.systemDefault(), true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Issue parsing date-time, other characters present: 12-49-58");
     }
@@ -765,8 +766,8 @@ class TestDateUtilities
     private static Stream provideTimeZones()
     {
         return Stream.of(
-                Arguments.of("2024-01-19T15:30:45[Europe/London]", 1705696245000L),
-                Arguments.of("2024-01-19T10:15:30[Asia/Tokyo]", 1705677330000L),
+                Arguments.of("2024-01-19T15:30:45[Europe/London]", 1705678245000L),
+                Arguments.of("2024-01-19T10:15:30[Asia/Tokyo]", 1705626930000L),
                 Arguments.of("2024-01-19T20:45:00[America/New_York]", 1705715100000L),
                 Arguments.of("2024-01-19T12:00:00-08:00[America/Los_Angeles]", 1705694400000L),
                 Arguments.of("2024-01-19T22:30:00+01:00[Europe/Paris]", 1705699800000L),
@@ -791,8 +792,8 @@ class TestDateUtilities
                 Arguments.of("2024-01-19T21:45:00-05:00 America/Toronto", 1705718700000L),
                 Arguments.of("2024-01-19T16:00:00+02:00 Africa/Cairo", 1705672800000L),
                 Arguments.of("2024-01-19T07:30:00-07:00 America/Denver", 1705674600000L),
-                Arguments.of("2024-01-19T07:30GMT", 1705667400000L),
-                Arguments.of("2024-01-19T07:30[GMT]", 1705667400000L),
+                Arguments.of("2024-01-19T07:30GMT", 1705649400000L),
+                Arguments.of("2024-01-19T07:30[GMT]", 1705649400000L),
                 Arguments.of("2024-01-19T07:30 GMT", 1705649400000L),
                 Arguments.of("2024-01-19T07:30 [GMT]", 1705649400000L),
                 Arguments.of("2024-01-19T07:30  GMT", 1705649400000L),
@@ -801,23 +802,23 @@ class TestDateUtilities
                 Arguments.of("2024-01-19T07:30  GMT ", 1705649400000L),
                 Arguments.of("2024-01-19T07:30:01 GMT", 1705649401000L),
                 Arguments.of("2024-01-19T07:30:01 [GMT]", 1705649401000L),
-                Arguments.of("2024-01-19T07:30:01GMT", 1705667401000L),
-                Arguments.of("2024-01-19T07:30:01[GMT]", 1705667401000L),
+                Arguments.of("2024-01-19T07:30:01GMT", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01[GMT]", 1705649401000L),
                 Arguments.of("2024-01-19T07:30:01.1 GMT", 1705649401100L),
                 Arguments.of("2024-01-19T07:30:01.1 [GMT]", 1705649401100L),
-                Arguments.of("2024-01-19T07:30:01.1GMT", 1705667401100L),
-                Arguments.of("2024-01-19T07:30:01.1[GMT]", 1705667401100L),
-                Arguments.of("2024-01-19T07:30:01.12GMT", 1705667401120L),
+                Arguments.of("2024-01-19T07:30:01.1GMT", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.1[GMT]", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12GMT", 1705649401120L),
 
-                Arguments.of("2024-01-19T07:30:01.12[GMT]", 1705667401120L),
+                Arguments.of("2024-01-19T07:30:01.12[GMT]", 1705649401120L),
                 Arguments.of("2024-01-19T07:30:01.12 GMT", 1705649401120L),
                 Arguments.of("2024-01-19T07:30:01.12 [GMT]", 1705649401120L),
-                Arguments.of("2024-01-19T07:30:01.123GMT", 1705667401123L),
-                Arguments.of("2024-01-19T07:30:01.123[GMT]", 1705667401123L),
+                Arguments.of("2024-01-19T07:30:01.123GMT", 1705649401123L),
+                Arguments.of("2024-01-19T07:30:01.123[GMT]", 1705649401123L),
                 Arguments.of("2024-01-19T07:30:01.123 GMT", 1705649401123L),
                 Arguments.of("2024-01-19T07:30:01.123 [GMT]", 1705649401123L),
-                Arguments.of("2024-01-19T07:30:01.1234GMT", 1705667401123L),
-                Arguments.of("2024-01-19T07:30:01.1234[GMT]", 1705667401123L),
+                Arguments.of("2024-01-19T07:30:01.1234GMT", 1705649401123L),
+                Arguments.of("2024-01-19T07:30:01.1234[GMT]", 1705649401123L),
                 Arguments.of("2024-01-19T07:30:01.1234 GMT", 1705649401123L),
 
                 Arguments.of("2024-01-19T07:30:01.1234 [GMT]", 1705649401123L),
@@ -884,6 +885,9 @@ class TestDateUtilities
         for (int i=0; i < 1; i++) {
             Date date = DateUtilities.parseDate(exampleZone);
             assertEquals(date.getTime(), epochMilli);
+
+            ZonedDateTime date2 = DateUtilities.parseDate(exampleZone, ZoneId.systemDefault(), true);
+            assertEquals(date2.toInstant().toEpochMilli(), epochMilli);
         }
     }
 }

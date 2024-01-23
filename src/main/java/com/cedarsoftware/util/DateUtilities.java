@@ -97,7 +97,7 @@ public final class DateUtilities {
     private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
-    private static final String tzNamed = ws + "\\[?[A-Za-z][A-Za-z0-9~/._+-]+]?";
+    private static final String tzNamed = wsOp + "\\[?[A-Za-z][A-Za-z0-9~\\/._+-]+]?";
 
     // Patterns defined in BNF-style using above named elements
     private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
@@ -153,7 +153,8 @@ public final class DateUtilities {
     }
 
     /**
-     * Main API. Retrieve date-time from passed in String.
+     * Main API. Retrieve date-time from passed in String.  If the date-time given does not include a timezone or
+     * timezone offset, then ZoneId.systemDefault() will be used.
      * @param dateStr String containing a date.  If there is excess content, it will be ignored.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
@@ -163,7 +164,7 @@ public final class DateUtilities {
         if (StringUtilities.isEmpty(dateStr)) {
             return null;
         }
-        ZonedDateTime zonedDateTime = parseDate(dateStr, false);
+        ZonedDateTime zonedDateTime = parseDate(dateStr, ZoneId.systemDefault(), false);
         return new Date(zonedDateTime.toInstant().toEpochMilli());
     }
 
@@ -171,12 +172,13 @@ public final class DateUtilities {
      * Main API. Retrieve date-time from passed in String.  The boolean enSureSoloDate, if set true, ensures that
      * no other non-date content existed in the String.  That requires additional time to verify.
      * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.
-     * @param ensureSoloDate If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
+     * @param defaultZoneId ZoneId to use if no timezone or timezone offset is given.
+     * @param ensureDateTimeAlone If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
      * @return ZonedDateTime instance converted from the passed in date String.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse. 
      */
-    public static ZonedDateTime parseDate(String dateStr, boolean ensureSoloDate) {
-        Convention.throwIfNullOrEmpty(dateStr, "dateString must not be null or empty String.");
+    public static ZonedDateTime parseDate(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
+        Convention.throwIfNullOrEmpty(dateStr, "'dateStr' must not be null or empty String.");
         dateStr = dateStr.trim();
 
         if (allDigits.matcher(dateStr).matches()) {
@@ -255,23 +257,19 @@ public final class DateUtilities {
             if (matcher.group(5) != null) {
                 tz = stripBrackets(matcher.group(5).trim());
             }
-        } else {
-            noTime = true;     // indicates no "time" portion
         }
 
-        if (ensureSoloDate) {
+        if (ensureDateTimeAlone) {
             verifyNoGarbageLeft(remnant);
         }
 
-        // Set Timezone into Calendar
-        ZoneId zoneId = getTimeZone(tz);
-        ZonedDateTime zonedDateTime = getDate(dateStr, zoneId, noTime, year, month, day, hour, min, sec, milli);
+        ZoneId zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
+        ZonedDateTime zonedDateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, milli);
         return zonedDateTime;
     }
 
     private static ZonedDateTime getDate(String dateStr,
                                 ZoneId zoneId,
-                                boolean noTime,
                                 String year,
                                 int month,
                                 String day,
@@ -290,7 +288,7 @@ public final class DateUtilities {
             throw new IllegalArgumentException("Day must be between 1 and 31 inclusive, date: " + dateStr);
         }
 
-        if (noTime) {   // no [valid] time portion
+        if (hour == null) {   // no [valid] time portion
             return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
         } else {
             // Regex prevents these from ever failing to parse.

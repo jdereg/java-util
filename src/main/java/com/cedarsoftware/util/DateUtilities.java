@@ -171,14 +171,16 @@ public final class DateUtilities {
     /**
      * Main API. Retrieve date-time from passed in String.  The boolean enSureSoloDate, if set true, ensures that
      * no other non-date content existed in the String.  That requires additional time to verify.
-     * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.
-     * @param defaultZoneId ZoneId to use if no timezone or timezone offset is given.
+     * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.  Cannot
+     *                be null or empty String.
+     * @param defaultZoneId ZoneId to use if no timezone or timezone offset is given.  Cannot be null.
      * @param ensureDateTimeAlone If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
      * @return ZonedDateTime instance converted from the passed in date String.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse. 
      */
     public static ZonedDateTime parseDate(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
         Convention.throwIfNullOrEmpty(dateStr, "'dateStr' must not be null or empty String.");
+        Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
         dateStr = dateStr.trim();
 
         if (allDigits.matcher(dateStr).matches()) {
@@ -276,7 +278,7 @@ public final class DateUtilities {
                                 String hour,
                                 String min,
                                 String sec,
-                                String milli) {
+                                String nanos) {
         // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
         int y = Integer.parseInt(year);
         int d = Integer.parseInt(day);
@@ -295,7 +297,7 @@ public final class DateUtilities {
             int h = Integer.parseInt(hour);
             int mn = Integer.parseInt(min);
             int s = Integer.parseInt(sec);
-            int ms = Integer.parseInt(prepareMillis(milli));   // Must be between 0 and 999.
+            int ns = Integer.parseInt(nanos);
 
             if (h > 23) {
                 throw new IllegalArgumentException("Hour must be between 0 and 23 inclusive, time: " + dateStr);
@@ -307,7 +309,8 @@ public final class DateUtilities {
                 throw new IllegalArgumentException("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
-            return ZonedDateTime.of(y, month, d, h, mn, s, ms * 1000 * 1000, zoneId);
+            ZonedDateTime zdt = ZonedDateTime.of(y, month, d, h, mn, s, ns, zoneId);
+            return zdt;
         }
     }
 
@@ -363,22 +366,5 @@ public final class DateUtilities {
             return input;
         }
         return input.replaceAll("^\\[|\\]$", "");
-    }
-    
-    /**
-     * Calendar & Date are only accurate to milliseconds.
-     */
-    private static String prepareMillis(String milli) {
-        if (StringUtilities.isEmpty(milli)) {
-            return "000";
-        }
-        final int len = milli.length();
-        if (len == 1) {
-            return milli + "00";
-        } else if (len == 2) {
-            return milli + "0";
-        } else {
-            return milli.substring(0, 3);
-        }
     }
 }

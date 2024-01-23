@@ -890,4 +890,20 @@ class TestDateUtilities
             assertEquals(date2.toInstant().toEpochMilli(), epochMilli);
         }
     }
+
+    @Test
+    void testTimeBetterThanMilliResolution()
+    {
+        ZonedDateTime zonedDateTime = DateUtilities.parseDate("Jan 22nd, 2024 21:52:05.123456789-05:00", ZoneId.systemDefault(), true);
+        assertEquals(123456789, zonedDateTime.getNano());
+        assertEquals(2024, zonedDateTime.getYear());
+        assertEquals(1, zonedDateTime.getMonthValue());
+        assertEquals(22, zonedDateTime.getDayOfMonth());
+        assertEquals(21, zonedDateTime.getHour());
+        assertEquals(52, zonedDateTime.getMinute());
+        assertEquals(5, zonedDateTime.getSecond());
+        assertEquals(123456789, zonedDateTime.getNano());
+        assertEquals(ZoneId.of("GMT-0500"), zonedDateTime.getZone());
+        assertEquals(-60*60*5, zonedDateTime.getOffset().getTotalSeconds());
+    }
 }

@@ -4,10 +4,14 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.cedarsoftware.util.CaseInsensitiveSet;
+import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DateUtilities;
 
 /**
@@ -206,7 +210,7 @@ public class StringConversion {
         } else if ("false".equals(str)) {
             return false;
         }
-        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str);
+        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equalsIgnoreCase(str);
     }
 
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {

@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -60,5 +61,10 @@ public class AtomicBooleanConversion {
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? BigDecimal.ONE : BigDecimal.ZERO;
+    }
+
+    public static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return b.get() ? BigInteger.ONE : BigInteger.ZERO;
     }
 }

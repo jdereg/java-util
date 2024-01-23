@@ -13,18 +13,17 @@ import java.util.regex.Pattern;
 
 /**
  * Utility for parsing String dates with optional times, especially when the input String formats
- * may be inconsistent.  This will parse the following formats (constrained only by java.util.Date limitations...best
- * time resolution is milliseconds):<br/>
+ * may be inconsistent.  This will parse the following formats:<br/>
  * <pre>
  * 12-31-2023, 12/31/2023, 12.31.2023     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
  *                                  
  * 2023-12-31, 2023/12/31, 2023.12.31     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
  *                                  
  * January 6th, 2024                Month (3-4 digit abbreviation or full English name), white-space and optional comma,
- *                                  day of month (1-31 or 0-31) with optional suffixes 1st, 3rd, 22nd, whitespace and
+ *                                  day of month (1-31) with optional suffixes 1st, 3rd, 22nd, whitespace and
  *                                  optional comma, and yyyy (0000-9999)
  *
- * 17th January 2024                day of month (1-31 or 0-31) with optional suffixes (e.g. 1st, 3rd, 22nd),
+ * 17th January 2024                day of month (1-31) with optional suffixes (e.g. 1st, 3rd, 22nd),
  *                                  Month (3-4 digit abbreviation or full English name), whites space and optional comma,
  *                                  and yyyy (0000-9999)
  *
@@ -42,15 +41,14 @@ import java.util.regex.Pattern;
  * 
  * hh:mm:ss                         hours (00-23), minutes (00-59), seconds (00-59).  24 hour format.
  *
- * hh:mm:ss.sssss                   hh:mm:ss and fractional seconds. Variable fractional seconds supported. Date only
- *                                  supports up to millisecond precision, so anything after 3 decimal places is ignored.
+ * hh:mm:ss.sssss                   hh:mm:ss and fractional seconds. Variable fractional seconds supported.
  *
  * hh:mm:offset -or-                offset can be specified as +HH:mm, +HHmm, +HH, -HH:mm, -HHmm, -HH, or Z (GMT)
  * hh:mm:ss.sss:offset              which will match: "12:34", "12:34:56", "12:34.789", "12:34:56.789", "12:34+01:00",
  *                                  "12:34:56+1:00", "12:34-01", "12:34:56-1", "12:34Z", "12:34:56Z"
  *
  * hh:mm:zone -or-                  Zone can be specified as Z (Zulu = UTC), older short forms: GMT, EST, CST, MST,
- * hh:mm:ss.sss:zone                PST, IST, JST, BST etc. as well as the long forms: "America/New York", "Asia/Saigon",
+ * hh:mm:ss.sss:zone                PST, IST, JST, BST etc. as well as the long forms: "America/New_York", "Asia/Saigon",
  *                                  etc. See ZoneId.getAvailableZoneIds().
  * </pre>
  * DateUtilities will parse Epoch-based integer-based value. It is considered number of milliseconds since Jan, 1970 GMT.
@@ -80,45 +78,43 @@ import java.util.regex.Pattern;
  */
 public final class DateUtilities {
     private static final Pattern allDigits = Pattern.compile("^\\d+$");
-    private static final String days = "\\b(monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun)\\b"; // longer before shorter matters
-    private static final String mos = "\\b(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)\\b";
-    private static final String yr = "(\\d{4})";
-    private static final String dig1or2 = "\\d{1,2}";
-    private static final String dig1or2grp = "(" + dig1or2 + ")";
-    private static final String ord = dig1or2grp + "(st|nd|rd|th)?";
-    private static final String dig2 = "\\d{2}";
-    private static final String sep = "([./-])";
+    private static final String days = "monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun"; // longer before shorter matters
+    private static final String mos = "January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec";
+    private static final String yr = "\\d{4}";
+    private static final String d1or2 = "\\d{1,2}";
+    private static final String d2 = "\\d{2}";
+    private static final String ord = "st|nd|rd|th";
+    private static final String sep = "[./-]";
     private static final String ws = "\\s+";
     private static final String wsOp = "\\s*";
     private static final String wsOrComma = "[ ,]+";
-    private static final String tzUnix = "([A-Z]{1,3})?";
-    private static final String nano = "\\.\\d+";
-    private static final String dayOfMon = dig1or2grp;
+    private static final String tzUnix = "[A-Z]{1,3}";
     private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
     private static final String tzNamed = wsOp + "\\[?[A-Za-z][A-Za-z0-9~\\/._+-]+]?";
+    private static final String nano = "\\.\\d+";
 
-    // Patterns defined in BNF-style using above named elements
+    // Patterns defined in BNF influenced style using above named elements
     private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
-            yr + sep + dig1or2grp + "\\2" + dig1or2grp + "|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
-            dig1or2grp + sep + dig1or2grp + "\\6" + yr);              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 1st separator (ensures both same)
+            "(" + yr + ")(" + sep + ")(" + d1or2 + ")" + "\\2" + "(" + d1or2 + ")|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
+            "(" + d1or2 + ")(" + sep + ")(" + d1or2 + ")" + "\\6(" + yr + ")");              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 1st separator (ensures both same)
 
     private static final Pattern alphaMonthPattern = Pattern.compile(
-            mos + wsOrComma + ord + wsOrComma + yr + "|" +      // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
-            ord + wsOrComma + mos + wsOrComma + yr + "|" +            // 21st Jan, 2024  (ditto)
-            yr + wsOrComma + mos + wsOrComma + ord,                   // 2024 Jan 21st   (ditto)
+            "\\b(" + mos + ")\\b" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "(" + yr + ")|" +   // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
+            "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "\\b(" + mos + ")\\b" + wsOrComma + "(" + yr + ")|" +         // 21st Jan, 2024  (ditto)
+            "(" + yr + ")" + wsOrComma + "\\b(" + mos + "\\b)" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?",           // 2024 Jan 21st   (ditto)
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern unixDateTimePattern = Pattern.compile(
-            days + ws + mos + ws + dayOfMon + ws + "(" + dig2 + ":" + dig2 + ":" + dig2 + ")" + wsOp + tzUnix + wsOp + yr,
+            "\\b(" + days + ")\\b" + ws + "\\b(" + mos + ")\\b" + ws + "(" + d1or2 + ")" + ws + "(" + d2 + ":" + d2 + ":" + d2 + ")" + wsOp + "(" + tzUnix + ")?" + wsOp + "(" + yr + ")",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern timePattern = Pattern.compile(
-            "(" + dig2 + "):(" + dig2 + "):?(" + dig2 + ")?(" + nano + ")?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")?",    // 5 groups
+            "(" + d2 + "):(" + d2 + "):?(" + d2 + ")?(" + nano + ")?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE);
     
-    private static final Pattern dayPattern = Pattern.compile(days, Pattern.CASE_INSENSITIVE);
+    private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Integer> months = new ConcurrentHashMap<>();
     
     static {
@@ -254,7 +250,7 @@ public final class DateUtilities {
                 sec = matcher.group(3);
             }
             if (matcher.group(4) != null) {
-                fracSec = "0." + matcher.group(4).substring(1);
+                fracSec = "0" + matcher.group(4);
             }
             if (matcher.group(5) != null) {
                 tz = stripBrackets(matcher.group(5).trim());

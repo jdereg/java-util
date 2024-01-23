@@ -241,7 +241,7 @@ public final class DateUtilities {
         }
 
         // For the remaining String, match the time portion (which could have appeared ahead of the date portion)
-        String hour = null, min = null, sec = "00", milli = "0";
+        String hour = null, min = null, sec = "00", fracSec = "0";
         remains = remains.trim();
         matcher = timePattern.matcher(remains);
         remnant = matcher.replaceFirst("");
@@ -254,7 +254,7 @@ public final class DateUtilities {
                 sec = matcher.group(3);
             }
             if (matcher.group(4) != null) {
-                milli = matcher.group(4).substring(1);
+                fracSec = "0." + matcher.group(4).substring(1);
             }
             if (matcher.group(5) != null) {
                 tz = stripBrackets(matcher.group(5).trim());
@@ -266,7 +266,7 @@ public final class DateUtilities {
         }
 
         ZoneId zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
-        ZonedDateTime zonedDateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, milli);
+        ZonedDateTime zonedDateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
         return zonedDateTime;
     }
 
@@ -278,7 +278,7 @@ public final class DateUtilities {
                                 String hour,
                                 String min,
                                 String sec,
-                                String nanos) {
+                                String fracSec) {
         // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
         int y = Integer.parseInt(year);
         int d = Integer.parseInt(day);
@@ -297,7 +297,7 @@ public final class DateUtilities {
             int h = Integer.parseInt(hour);
             int mn = Integer.parseInt(min);
             int s = Integer.parseInt(sec);
-            int ns = Integer.parseInt(nanos);
+            long nanoOfSec = convertFractionToNanos(fracSec);
 
             if (h > 23) {
                 throw new IllegalArgumentException("Hour must be between 0 and 23 inclusive, time: " + dateStr);
@@ -309,9 +309,14 @@ public final class DateUtilities {
                 throw new IllegalArgumentException("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
-            ZonedDateTime zdt = ZonedDateTime.of(y, month, d, h, mn, s, ns, zoneId);
+            ZonedDateTime zdt = ZonedDateTime.of(y, month, d, h, mn, s, (int) nanoOfSec, zoneId);
             return zdt;
         }
+    }
+
+    private static long convertFractionToNanos(String fracSec) {
+        double fractionalSecond = Double.parseDouble(fracSec);
+        return (long) (fractionalSecond * 1_000_000_000);
     }
 
     private static ZoneId getTimeZone(String tz) {

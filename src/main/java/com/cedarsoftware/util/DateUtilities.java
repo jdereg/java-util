@@ -98,7 +98,7 @@ public final class DateUtilities {
     // Patterns defined in BNF influenced style using above named elements
     private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
             "(" + yr + ")(" + sep + ")(" + d1or2 + ")" + "\\2" + "(" + d1or2 + ")|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
-            "(" + d1or2 + ")(" + sep + ")(" + d1or2 + ")" + "\\6(" + yr + ")");              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 1st separator (ensures both same)
+            "(" + d1or2 + ")(" + sep + ")(" + d1or2 + ")" + "\\6(" + yr + ")");              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 2nd 1st separator (ensures both same)
 
     private static final Pattern alphaMonthPattern = Pattern.compile(
             "\\b(" + mos + ")\\b" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "(" + yr + ")|" +   // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
@@ -111,9 +111,9 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern timePattern = Pattern.compile(
-            "(" + d2 + "):(" + d2 + "):?(" + d2 + ")?(" + nano + ")?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")?",
+            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE);
-    
+
     private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Integer> months = new ConcurrentHashMap<>();
     
@@ -151,7 +151,7 @@ public final class DateUtilities {
     /**
      * Main API. Retrieve date-time from passed in String.  If the date-time given does not include a timezone or
      * timezone offset, then ZoneId.systemDefault() will be used.
-     * @param dateStr String containing a date.  If there is excess content, it will be ignored.
+     * @param dateStr String containing a date.  If there is excess content, it will throw an IlllegalArgumentException.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
      * passed in, null will be returned.
@@ -160,7 +160,7 @@ public final class DateUtilities {
         if (StringUtilities.isEmpty(dateStr)) {
             return null;
         }
-        ZonedDateTime zonedDateTime = parseDate(dateStr, ZoneId.systemDefault(), false);
+        ZonedDateTime zonedDateTime = parseDate(dateStr, ZoneId.systemDefault(), true);
         return new Date(zonedDateTime.toInstant().toEpochMilli());
     }
 
@@ -340,24 +340,13 @@ public final class DateUtilities {
         if (StringUtilities.length(remnant) > 0) {
             Matcher dayMatcher = dayPattern.matcher(remnant);
             remnant = dayMatcher.replaceFirst("").trim();
-            if (remnant.startsWith("T")) {
-                remnant = remnant.substring(1);
-            }
         }
 
-        // Verify that nothing or "," or timezone name is all that remains
+        // Verify that nothing, "T" or "," is all that remains
         if (StringUtilities.length(remnant) > 0) {
-            remnant = remnant.replaceAll(",|\\[.*?\\]", "").trim();
+            remnant = remnant.replaceAll("T|,", "").trim();
             if (!remnant.isEmpty()) {
-                try {
-                    ZoneId.of(remnant);
-                }
-                catch (Exception e) {
-                    TimeZone timeZone = TimeZone.getTimeZone(remnant);
-                    if (timeZone.getRawOffset() == 0) {
-                        throw new IllegalArgumentException("Issue parsing date-time, other characters present: " + remnant);
-                    }
-                }
+                    throw new IllegalArgumentException("Issue parsing date-time, other characters present: " + remnant);
             }
         }
     }

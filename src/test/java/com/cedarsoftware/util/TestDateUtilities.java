@@ -769,29 +769,9 @@ class TestDateUtilities
                 Arguments.of("2024-01-19T15:30:45[Europe/London]", 1705678245000L),
                 Arguments.of("2024-01-19T10:15:30[Asia/Tokyo]", 1705626930000L),
                 Arguments.of("2024-01-19T20:45:00[America/New_York]", 1705715100000L),
-                Arguments.of("2024-01-19T12:00:00-08:00[America/Los_Angeles]", 1705694400000L),
-                Arguments.of("2024-01-19T22:30:00+01:00[Europe/Paris]", 1705699800000L),
-                Arguments.of("2024-01-19T18:15:45+10:00[Australia/Sydney]", 1705652145000L),
-                Arguments.of("2024-01-19T05:00:00-03:00[America/Sao_Paulo]", 1705651200000L),
-                Arguments.of("2024-01-19T23:59:59Z[UTC]", 1705708799000L),
-                Arguments.of("2024-01-19T14:30:00+05:30[Asia/Kolkata]", 1705654800000L),
-                Arguments.of("2024-01-19T21:45:00-05:00[America/Toronto]", 1705718700000L),
-
-                Arguments.of("2024-01-19T16:00:00+02:00[Africa/Cairo]",  1705672800000L),
-                Arguments.of("2024-01-19T07:30:00-07:00[America/Denver]", 1705674600000L),
                 Arguments.of("2024-01-19T15:30:45 Europe/London", 1705678245000L),
                 Arguments.of("2024-01-19T10:15:30 Asia/Tokyo", 1705626930000L),
                 Arguments.of("2024-01-19T20:45:00 America/New_York", 1705715100000L),
-                Arguments.of("2024-01-19T12:00:00-08:00 America/Los_Angeles", 1705694400000L),
-                Arguments.of("2024-01-19T22:30:00+01:00 Europe/Paris", 1705699800000L),
-                Arguments.of("2024-01-19T18:15:45+10:00 Australia/Sydney", 1705652145000L),
-                Arguments.of("2024-01-19T05:00:00-03:00 America/Sao_Paulo", 1705651200000L),
-                Arguments.of("2024-01-19T23:59:59Z UTC", 1705708799000L),
-
-                Arguments.of("2024-01-19T14:30:00+05:30 Asia/Kolkata",  1705654800000L),
-                Arguments.of("2024-01-19T21:45:00-05:00 America/Toronto", 1705718700000L),
-                Arguments.of("2024-01-19T16:00:00+02:00 Africa/Cairo", 1705672800000L),
-                Arguments.of("2024-01-19T07:30:00-07:00 America/Denver", 1705674600000L),
                 Arguments.of("2024-01-19T07:30GMT", 1705649400000L),
                 Arguments.of("2024-01-19T07:30[GMT]", 1705649400000L),
                 Arguments.of("2024-01-19T07:30 GMT", 1705649400000L),
@@ -810,6 +790,27 @@ class TestDateUtilities
                 Arguments.of("2024-01-19T07:30:01.1[GMT]", 1705649401100L),
                 Arguments.of("2024-01-19T07:30:01.12GMT", 1705649401120L),
 
+                Arguments.of("2024-01-19T07:30:01Z", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01.1Z", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12Z", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01UTC", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01.1UTC", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12UTC", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01[UTC]", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01.1[UTC]", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12[UTC]", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01 UTC", 1705649401000L),
+
+                Arguments.of("2024-01-19T07:30:01.1 UTC", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12 UTC", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01 [UTC]", 1705649401000L),
+                Arguments.of("2024-01-19T07:30:01.1 [UTC]", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12 [UTC]", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01.1 UTC", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12 UTC", 1705649401120L),
+                Arguments.of("2024-01-19T07:30:01.1 [UTC]", 1705649401100L),
+                Arguments.of("2024-01-19T07:30:01.12 [UTC]", 1705649401120L),
+
                 Arguments.of("2024-01-19T07:30:01.12[GMT]", 1705649401120L),
                 Arguments.of("2024-01-19T07:30:01.12 GMT", 1705649401120L),
                 Arguments.of("2024-01-19T07:30:01.12 [GMT]", 1705649401120L),
@@ -822,34 +823,7 @@ class TestDateUtilities
                 Arguments.of("2024-01-19T07:30:01.1234 GMT", 1705649401123L),
 
                 Arguments.of("2024-01-19T07:30:01.1234 [GMT]", 1705649401123L),
-                Arguments.of("2024-01-19T07:30:01.123+0100GMT", 1705645801123L),   // intentional redundancy on down because ISO 8601 allows it.
-                Arguments.of("2024-01-19T07:30:01.123+0100[GMT]", 1705645801123L),
-                Arguments.of("2024-01-19T07:30:01.123+0100 GMT", 1705645801123L),
-                Arguments.of("2024-01-19T07:30:01.123+0100 [GMT]", 1705645801123L),
-                Arguments.of("2024-01-19T07:30:01.123-1000GMT", 1705685401123L),
-                Arguments.of("2024-01-19T07:30:01.123-1000[GMT ]", 1705685401123L),
-                Arguments.of("2024-01-19T07:30:01.123-1000[ GMT ]", 1705685401123L),
-                Arguments.of("2024-01-19T07:30:01.123-1000 GMT", 1705685401123L),
-                Arguments.of("2024-01-19T07:30:01.123-1000 [GMT]", 1705685401123L),
 
-                Arguments.of("2024-01-19T07:30:01.123+2 GMT", 1705642201123L),      // 18 is max, anything larger of smaller is a java.time exception
-                Arguments.of("2024-01-19T07:30:01.123+2 [GMT]", 1705642201123L),
-                Arguments.of("2024-01-19T07:30:01.123-2 GMT", 1705656601123L),
-                Arguments.of("2024-01-19T07:30:01.123-2 [GMT]", 1705656601123L),
-                Arguments.of("2024-01-19T07:30:01.123+2GMT", 1705642201123L),
-                Arguments.of("2024-01-19T07:30:01.123+2[GMT]", 1705642201123L),
-                Arguments.of("2024-01-19T07:30:01.123-2GMT", 1705656601123L),
-                Arguments.of("2024-01-19T07:30:01.123-2[GMT]", 1705656601123L),
-                Arguments.of("2024-01-19T07:30:01.123+18 GMT", 1705584601123L),
-                Arguments.of("2024-01-19T07:30:01.123+18 [GMT]", 1705584601123L),
-
-                Arguments.of("2024-01-19T07:30:01.123-18 GMT", 1705714201123L),
-                Arguments.of("2024-01-19T07:30:01.123-18 [GMT]", 1705714201123L),
-                Arguments.of("2024-01-19T07:30:01.123+18:00 GMT", 1705584601123L),
-                Arguments.of("2024-01-19T07:30:01.123+18:00 [GMT]", 1705584601123L),
-                Arguments.of("2024-01-19T07:30:01.123-18:00 GMT", 1705714201123L),
-                Arguments.of("2024-01-19T07:30:01.123-18:00 [GMT]", 1705714201123L),
-                Arguments.of("2024-01-19T07:30:00+10 EST", 1705613400000L),
                 Arguments.of("07:30EST 2024-01-19", 1705667400000L),
                 Arguments.of("07:30[EST] 2024-01-19", 1705667400000L),
                 Arguments.of("07:30 EST 2024-01-19", 1705667400000L),
@@ -860,21 +834,7 @@ class TestDateUtilities
                 Arguments.of("07:30:01 EST 2024-01-19", 1705667401000L),
                 Arguments.of("07:30:01 [EST] 2024-01-19", 1705667401000L),
                 Arguments.of("07:30:01.123 EST 2024-01-19", 1705667401123L),
-                Arguments.of("07:30:01.123 [EST] 2024-01-19", 1705667401123L),
-                Arguments.of("07:30:01.123+1100 EST 2024-01-19", 1705609801123L),
-                Arguments.of("07:30:01.123-1100 [EST] 2024-01-19", 1705689001123L),
-                Arguments.of("07:30:01.123+11:00 [EST] 2024-01-19", 1705609801123L),
-
-                Arguments.of("07:30:01.123-11:00 [EST] 2024-01-19", 1705689001123L),
-                Arguments.of("Wed 07:30:01.123-11:00 [EST] 2024-01-19", 1705689001123L),
-                Arguments.of("07:30:01.123-11:00 [EST] 2024-01-19 Wed", 1705689001123L),
-                Arguments.of("07:30:01.123-11:00 [EST] Sunday, January 21, 2024", 1705861801123L),
-                Arguments.of("07:30:01.123-11:00 [EST] Sunday January 21, 2024", 1705861801123L),
-                Arguments.of("07:30:01.123-11:00 [EST] January 21, 2024 Sunday", 1705861801123L),
-                Arguments.of("07:30:01.123-11:00 [EST] January 21, 2024, Sunday", 1705861801123L),
-                Arguments.of("07:30:01.123-11:00 [America/New_York] January 21, 2024, Sunday", 1705861801123L),
-                Arguments.of("07:30:01.123-11:00 [Africa/Cairo] 21 Jan 2024 Sun", 1705861801123L),
-                Arguments.of("07:30:01.123-11:00 [Africa/Cairo] 2024 Jan 21st Sat", 1705861801123L)   // day of week should be ignored
+                Arguments.of("07:30:01.123 [EST] 2024-01-19", 1705667401123L)
                 );
     }
 
@@ -905,5 +865,81 @@ class TestDateUtilities
         assertEquals(123456789, zonedDateTime.getNano());
         assertEquals(ZoneId.of("GMT-0500"), zonedDateTime.getZone());
         assertEquals(-60*60*5, zonedDateTime.getOffset().getTotalSeconds());
+    }
+
+    private static Stream provideBadFormats() {
+        return Stream.of(
+                Arguments.of("2024-01-19T12:00:00-08:00[America/Los_Angeles]"),
+                Arguments.of("2024-01-19T22:30:00+01:00[Europe/Paris]"),
+                Arguments.of("2024-01-19T18:15:45+10:00[Australia/Sydney]"),
+                Arguments.of("2024-01-19T05:00:00-03:00[America/Sao_Paulo]"),
+                Arguments.of("2024-01-19T14:30:00+05:30[Asia/Kolkata]"),
+                Arguments.of("2024-01-19T21:45:00-05:00[America/Toronto]"),
+                Arguments.of("2024-01-19T16:00:00+02:00[Africa/Cairo]"),
+                Arguments.of("2024-01-19T07:30:00-07:00[America/Denver]"),
+                Arguments.of("2024-01-19T18:15:45+10:00 Australia/Sydney"),
+                Arguments.of("2024-01-19T05:00:00-03:00 America/Sao_Paulo"),
+                Arguments.of("2024-01-19T14:30:00+05:30 Asia/Kolkata"),
+                Arguments.of("2024-01-19T21:45:00-05:00 America/Toronto"),
+                Arguments.of("2024-01-19T16:00:00+02:00 Africa/Cairo"),
+                Arguments.of("2024-01-19T07:30:00-07:00 America/Denver"),
+                Arguments.of("2024-01-19T12:00:00-08:00 America/Los_Angeles"),
+                Arguments.of("2024-01-19T22:30:00+01:00 Europe/Paris"),
+                Arguments.of("2024-01-19T23:59:59Z UTC"),
+                Arguments.of("2024-01-19T23:59:59Z[UTC]"),
+                Arguments.of("2024-01-19T07:30:01[UTC] America/New_York"),
+                Arguments.of("2024-01-19T07:30:01.123+0100GMT"),
+                Arguments.of("2024-01-19T07:30:01.123+0100[GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123+0100 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123+0100 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123-1000GMT"),
+                Arguments.of("2024-01-19T07:30:01.123-1000[GMT ]"),
+                Arguments.of("2024-01-19T07:30:01.123-1000[ GMT ]"),
+                Arguments.of("2024-01-19T07:30:01.123-1000 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123-1000 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123+2 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123+2 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123-2 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123-2 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123+2GMT"),
+                Arguments.of("2024-01-19T07:30:01.123+2[GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123-2GMT"),
+                Arguments.of("2024-01-19T07:30:01.123-2[GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123+18 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123+18 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123-18 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123-18 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123+18:00 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123+18:00 [GMT]"),
+                Arguments.of("2024-01-19T07:30:01.123-18:00 GMT"),
+                Arguments.of("2024-01-19T07:30:01.123-18:00 [GMT]"),
+                Arguments.of("2024-01-19T07:30:00+10 EST"),
+                Arguments.of("07:30:01.123+1100 EST 2024-01-19"),
+                Arguments.of("07:30:01.123-1100 [EST] 2024-01-19"),
+                Arguments.of("07:30:01.123+11:00 [EST] 2024-01-19"),
+                Arguments.of("07:30:01.123-11:00 [EST] 2024-01-19"),
+                Arguments.of("Wed 07:30:01.123-11:00 [EST] 2024-01-19"),
+                Arguments.of("07:30:01.123-11:00 [EST] 2024-01-19 Wed"),
+                Arguments.of("07:30:01.123-11:00 [EST] Sunday, January 21, 2024"),
+                Arguments.of("07:30:01.123-11:00 [EST] Sunday January 21, 2024"),
+                Arguments.of("07:30:01.123-11:00 [EST] January 21, 2024 Sunday"),
+                Arguments.of("07:30:01.123-11:00 [EST] January 21, 2024, Sunday"),
+                Arguments.of("07:30:01.123-11:00 [America/New_York] January 21, 2024, Sunday"),
+                Arguments.of("07:30:01.123-11:00 [Africa/Cairo] 21 Jan 2024 Sun"),
+                Arguments.of("07:30:01.123-11:00 [Africa/Cairo] 2024 Jan 21st Sat"),
+                Arguments.of("12.17.1965 07:05:"),
+                Arguments.of("12.17.1965 07:05:.123"),
+                Arguments.of("12.17.1965 07:05.123"),
+                Arguments.of("12.17.1965 07:05.12-0500")
+                );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideBadFormats")
+    void testFormatsThatShouldNotWork(String badFormat)
+    {
+        assertThatThrownBy(() -> DateUtilities.parseDate(badFormat, ZoneId.systemDefault(), true))
+                .isInstanceOf(java.lang.IllegalArgumentException.class)
+                .hasMessageContaining("Issue parsing date-time, other characters present:");
     }
 }

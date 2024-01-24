@@ -12,7 +12,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class ZonedDateTimeConversion {
+public class ZonedDateTimeConversions {
 
     static ZonedDateTime toDifferentZone(Object fromInstance, ConverterOptions options) {
         return ((ZonedDateTime)fromInstance).withZoneSameInstant(options.getZoneId());
@@ -55,7 +55,7 @@ public class ZonedDateTimeConversion {
     }
 
     static Calendar toCalendar(Object fromInstance, Converter converter, ConverterOptions options) {
-        return CalendarConversion.create(toLong(fromInstance), options);
+        return CalendarConversions.create(toLong(fromInstance), options);
     }
 
     static java.sql.Date toSqlDate(Object fromInstance, Converter converter, ConverterOptions options) {

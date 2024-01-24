@@ -12,7 +12,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class CalendarConversion {
+public class CalendarConversions {
 
     static Date toDate(Object fromInstance) {
         return ((Calendar)fromInstance).getTime();
@@ -34,10 +34,14 @@ public class CalendarConversion {
         return toZonedDateTime(fromInstance, options);
     }
 
-
     static Long toLong(Object fromInstance, Converter converter, ConverterOptions options) {
         return toLong(fromInstance);
     }
+
+    static double toDouble(Object fromInstance, Converter converter, ConverterOptions options) {
+        return (double)toLong(fromInstance);
+    }
+
 
     static Date toDate(Object fromInstance, Converter converter, ConverterOptions options) {
         return toDate(fromInstance);

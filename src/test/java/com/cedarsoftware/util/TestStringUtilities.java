@@ -2,12 +2,24 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
+import com.cedarsoftware.util.convert.CommonValues;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.mockito.internal.util.StringUtil;
 
+import javax.swing.text.Segment;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class TestStringUtilities
 {
     @Test
-    public void testConstructorIsPrivate() throws Exception {
+    void testConstructorIsPrivate() throws Exception {
         Class<StringUtilities> c = StringUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
@@ -48,6 +60,111 @@ public class TestStringUtilities
         assertNotNull(con.newInstance());
     }
 
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testIsEmpty_whenStringHasWhitespace_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.isEmpty(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testIsEmpty_whenStringHasContent_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.isEmpty(s));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testIsEmpty_whenNullOrEmpty_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.isEmpty(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testIsNotEmpty_whenStringHasWhitespace_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.isNotEmpty(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testIsNotEmpty_whenStringHasContent_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.isNotEmpty(s));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testIsNotEmpty_whenNullOrEmpty_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.isNotEmpty(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testIsWhiteSpace_whenStringHasWhitespace_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.isWhitespace(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testIsWhiteSpace_whenStringHasContent_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.isWhitespace(s));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testIsWhiteSpace_whenNullOrEmpty_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.isWhitespace(s));
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testHasContent_whenStringHasWhitespace_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.hasContent(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testHasContent_whenStringHasContent_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.hasContent(s));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testHasContent_whenNullOrEmpty_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.hasContent(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testIsNotWhitespace_whenStringHasWhitespace_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.isNotWhitespace(s));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testIsNotWhitespace_whenStringHasContent_returnsTrue(String s)
+    {
+        assertTrue(StringUtilities.isNotWhitespace(s));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testIsNotWhitespace_whenNullOrEmpty_returnsFalse(String s)
+    {
+        assertFalse(StringUtilities.isNotWhitespace(s));
+    }
     @Test
     public void testIsEmpty()
     {
@@ -57,14 +174,14 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testHasContent() {
+    void testHasContent() {
         assertFalse(StringUtilities.hasContent(null));
         assertFalse(StringUtilities.hasContent(""));
         assertTrue(StringUtilities.hasContent("foo"));
     }
 
     @Test
-    public void testTrimLength() {
+    void testTrimLength() {
         assertEquals(0, StringUtilities.trimLength(null));
         assertEquals(0, StringUtilities.trimLength(""));
         assertEquals(3, StringUtilities.trimLength("  abc "));
@@ -75,7 +192,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testEqualsWithTrim() {
+    void testEqualsWithTrim() {
         assertTrue(StringUtilities.equalsWithTrim("abc", " abc "));
         assertTrue(StringUtilities.equalsWithTrim(" abc ", "abc"));
         assertFalse(StringUtilities.equalsWithTrim("abc", " AbC "));
@@ -86,7 +203,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testEqualsIgnoreCaseWithTrim() {
+    void testEqualsIgnoreCaseWithTrim() {
         assertTrue(StringUtilities.equalsIgnoreCaseWithTrim("abc", " abc "));
         assertTrue(StringUtilities.equalsIgnoreCaseWithTrim(" abc ", "abc"));
         assertTrue(StringUtilities.equalsIgnoreCaseWithTrim("abc", " AbC "));
@@ -97,7 +214,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testCount() {
+    void testCount() {
         assertEquals(2, StringUtilities.count("abcabc", 'a'));
         assertEquals(0, StringUtilities.count("foo", 'a'));
         assertEquals(0, StringUtilities.count(null, 'a'));
@@ -105,7 +222,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testString()
+    void testString()
     {
         assertTrue(StringUtilities.isEmpty(null));
         assertFalse(StringUtilities.hasContent(null));
@@ -118,12 +235,12 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testEncode() {
+    void testEncode() {
         assertEquals("1A", StringUtilities.encode(new byte[]{0x1A}));
         assertEquals("", StringUtilities.encode(new byte[]{}));
     }
 
-    public void testEncodeWithNull()
+    void testEncodeWithNull()
     {
         try
         {
@@ -136,13 +253,13 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testDecode() {
+    void testDecode() {
         assertArrayEquals(new byte[]{0x1A}, StringUtilities.decode("1A"));
         assertArrayEquals(new byte[]{}, StringUtilities.decode(""));
         assertNull(StringUtilities.decode("1AB"));
     }
 
-    public void testDecodeWithNull()
+    void testDecodeWithNull()
     {
         try
         {
@@ -154,31 +271,174 @@ public class TestStringUtilities
         }
     }
 
-    @Test
-    public void testEquals()
-    {
-        assertTrue(StringUtilities.equals(null, null));
-        assertFalse(StringUtilities.equals(null, ""));
-        assertFalse(StringUtilities.equals("", null));
-        assertFalse(StringUtilities.equals("foo", "bar"));
-        assertFalse(StringUtilities.equals("Foo", "foo"));
-        assertTrue(StringUtilities.equals("foo", "foo"));
-    }
 
-    @Test
-    public void testEqualsIgnoreCase()
-    {
-        assertTrue(StringUtilities.equalsIgnoreCase(null, null));
-        assertFalse(StringUtilities.equalsIgnoreCase(null, ""));
-        assertFalse(StringUtilities.equalsIgnoreCase("", null));
-        assertFalse(StringUtilities.equalsIgnoreCase("foo", "bar"));
-        assertTrue(StringUtilities.equalsIgnoreCase("Foo", "foo"));
-        assertTrue(StringUtilities.equalsIgnoreCase("foo", "foo"));
+    private static Stream<Arguments> charSequenceEquals_caseSensitive() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("", ""),
+                Arguments.of("foo", "foo"),
+                Arguments.of(new StringBuffer("foo"), "foo"),
+                Arguments.of(new StringBuilder("foo"), "foo"),
+                Arguments.of(new Segment("foobar".toCharArray(), 0, 3), "foo")
+        );
     }
 
 
+
+    @ParameterizedTest
+    @MethodSource("charSequenceEquals_caseSensitive")
+    void testEquals_whenStringsAreEqualCaseSensitive_returnsTrue(CharSequence one, CharSequence two)
+    {
+        assertThat(StringUtilities.equals(one, two)).isTrue();
+    }
+
+    private static Stream<Arguments> charSequenceNotEqual_caseSensitive() {
+        return Stream.of(
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("foo", "bar"),
+                Arguments.of(" foo", "bar"),
+                Arguments.of("foO", "foo"),
+                Arguments.of("foo", "food"),
+                Arguments.of(new StringBuffer("foo"), "bar"),
+                Arguments.of(new StringBuffer("foo"), " foo"),
+                Arguments.of(new StringBuffer("foO"), "foo"),
+                Arguments.of(new StringBuilder("foo"), "bar"),
+                Arguments.of(new StringBuilder("foo"), " foo "),
+                Arguments.of(new StringBuilder("foO"), "foo"),
+                Arguments.of(new Segment("foobar".toCharArray(), 0, 3), "bar"),
+                Arguments.of(new Segment(" foo ".toCharArray(), 0, 5), "bar"),
+                Arguments.of(new Segment("FOOBAR".toCharArray(), 0, 3), "foo")
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("charSequenceNotEqual_caseSensitive")
+    void testEquals_whenStringsAreNotEqualCaseSensitive_returnsFalse(CharSequence one, CharSequence two)
+    {
+        assertThat(StringUtilities.equals(one, two)).isFalse();
+    }
+
+    private static Stream<Arguments> charSequenceEquals_ignoringCase() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("", ""),
+                Arguments.of("foo", "foo"),
+                Arguments.of("FOO", "foo"),
+                Arguments.of(new StringBuffer("foo"), "foo"),
+                Arguments.of(new StringBuffer("FOO"), "foo"),
+                Arguments.of(new StringBuilder("foo"), "foo"),
+                Arguments.of(new StringBuilder("FOO"), "foo"),
+                Arguments.of(new Segment("foobar".toCharArray(), 0, 3), "foo"),
+                Arguments.of(new Segment("FOOBAR".toCharArray(), 0, 3), "foo")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequenceEquals_ignoringCase")
+    void testEqualsIgnoreCase_whenStringsAreEqualIgnoringCase_returnsTrue(CharSequence one, CharSequence two)
+    {
+        assertThat(StringUtilities.equalsIgnoreCase(one, two)).isTrue();
+    }
+
+    private static Stream<Arguments> charSequenceNotEqual_ignoringCase() {
+        return Stream.of(
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("foo", "bar"),
+                Arguments.of(" foo ", "foo"),
+                Arguments.of(" foo ", "food"),
+                Arguments.of(" foo ", "foo"),
+                Arguments.of(new StringBuffer("foo"), "bar"),
+                Arguments.of(new StringBuffer("foo "), "foo"),
+                Arguments.of(new StringBuilder("foo"), "bar"),
+                Arguments.of(new StringBuilder("foo "), "foo"),
+                Arguments.of(new Segment("foobar".toCharArray(), 0, 3), "bar"),
+                Arguments.of(new Segment("foo bar".toCharArray(), 0, 4), "foo")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequenceNotEqual_ignoringCase")
+    void testEqualsIgnoreCase_whenStringsAreNotEqualIgnoringCase_returnsFalse(CharSequence one, CharSequence two)
+    {
+        assertThat(StringUtilities.equalsIgnoreCase(one, two)).isFalse();
+    }
+
+    private static Stream<Arguments> charSequenceEquals_afterTrimCaseSensitive() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("", ""),
+                Arguments.of("foo", "foo"),
+                Arguments.of(" foo", "foo"),
+                Arguments.of("foo\r\n", "foo"),
+                Arguments.of("foo ", "\tfoo ")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequenceEquals_afterTrimCaseSensitive")
+    void testEqualsWithTrim_whenStringsAreEqual_afterTrimCaseSensitive_returnsTrue(String one, String two)
+    {
+        assertThat(StringUtilities.equalsWithTrim(one, two)).isTrue();
+    }
+
+    private static Stream<Arguments> charSequenceNotEqual_afterTrimCaseSensitive() {
+        return Stream.of(
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("foo", "bar"),
+                Arguments.of("F00", "foo"),
+                Arguments.of("food", "foo"),
+                Arguments.of("foo", "food")
+
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequenceNotEqual_afterTrimCaseSensitive")
+    void testEqualsWithTrim_whenStringsAreNotEqual_returnsFalse(String one, String two)
+    {
+        assertThat(StringUtilities.equalsWithTrim(one, two)).isFalse();
+    }
+
+    private static Stream<Arguments> charSequenceEquals_afterTrimAndIgnoringCase() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("", ""),
+                Arguments.of("foo", "foo"),
+                Arguments.of(" foo", "foo"),
+                Arguments.of("foo\r\n", "foo"),
+                Arguments.of("foo ", "\tfoo "),
+                Arguments.of("FOO", "foo")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequenceEquals_afterTrimAndIgnoringCase")
+    void testEqualsIgnoreCaseWithTrim_whenStringsAreEqual_caseSensitive_returnsTrue(String one, String two)
+    {
+        assertThat(StringUtilities.equalsIgnoreCaseWithTrim(one, two)).isTrue();
+    }
+
+    private static Stream<Arguments> charSequenceNotEqual_afterTrimIgnoringCase() {
+        return Stream.of(
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("foo", "bar"),
+                Arguments.of("foo", "food")
+
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequenceNotEqual_afterTrimIgnoringCase")
+    void testEqualsIgnoreCaseWithTrim_whenStringsAreNotEqualIgnoringCase_returnsFalse(String one, String two)
+    {
+        assertThat(StringUtilities.equalsIgnoreCaseWithTrim(one, two)).isFalse();
+    }
+
     @Test
-    public void testLastIndexOf()
+    void testLastIndexOf()
     {
         assertEquals(-1, StringUtilities.lastIndexOf(null, 'a'));
         assertEquals(-1, StringUtilities.lastIndexOf("foo", 'a'));
@@ -186,7 +446,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testLength()
+    void testLength()
     {
         assertEquals(0, StringUtilities.length(""));
         assertEquals(0, StringUtilities.length(null));
@@ -194,7 +454,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testLevenshtein()
+    void testLevenshtein()
     {
         assertEquals(3, StringUtilities.levenshteinDistance("example", "samples"));
         assertEquals(6, StringUtilities.levenshteinDistance("sturgeon", "urgently"));
@@ -214,7 +474,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testDamerauLevenshtein() throws Exception
+    void testDamerauLevenshtein() throws Exception
     {
         assertEquals(3, StringUtilities.damerauLevenshteinDistance("example", "samples"));
         assertEquals(6, StringUtilities.damerauLevenshteinDistance("sturgeon", "urgently"));
@@ -239,7 +499,7 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testRandomString()
+    void testRandomString()
     {
         Random random = new Random(42);
         Set<String> strings = new TreeSet<String>();
@@ -255,7 +515,7 @@ public class TestStringUtilities
         }
     }
 
-    public void testGetBytesWithInvalidEncoding() {
+    void testGetBytesWithInvalidEncoding() {
         try
         {
             StringUtilities.getBytes("foo", "foo");
@@ -267,31 +527,31 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testGetBytes()
+    void testGetBytes()
     {
         assertArrayEquals(new byte[]{102, 111, 111}, StringUtilities.getBytes("foo", "UTF-8"));
     }
 
     @Test
-    public void testGetUTF8Bytes()
+    void testGetUTF8Bytes()
     {
         assertArrayEquals(new byte[]{102, 111, 111}, StringUtilities.getUTF8Bytes("foo"));
     }
 
     @Test
-    public void testGetBytesWithNull()
+    void testGetBytesWithNull()
     {
         assert StringUtilities.getBytes(null, "UTF-8") == null;
     }
 
     @Test
-    public void testGetBytesWithEmptyString()
+    void testGetBytesWithEmptyString()
     {
         assert DeepEquals.deepEquals(new byte[]{}, StringUtilities.getBytes("", "UTF-8"));
     }
 
     @Test
-    public void testWildcard()
+    void testWildcard()
     {
         String name = "George Washington";
         assertTrue(name.matches(StringUtilities.wildcardToRegexString("*")));
@@ -309,37 +569,37 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testCreateString()
+    void testCreateString()
     {
         assertEquals("foo", StringUtilities.createString(new byte[]{102, 111, 111}, "UTF-8"));
     }
 
     @Test
-    public void testCreateUTF8String()
+    void testCreateUTF8String()
     {
         assertEquals("foo", StringUtilities.createUTF8String(new byte[]{102, 111, 111}));
     }
 
     @Test
-    public void testCreateStringWithNull()
+    void testCreateStringWithNull()
     {
         assertNull(null, StringUtilities.createString(null, "UTF-8"));
     }
 
     @Test
-    public void testCreateStringWithEmptyArray()
+    void testCreateStringWithEmptyArray()
     {
         assertEquals("", StringUtilities.createString(new byte[]{}, "UTF-8"));
     }
 
     @Test
-    public void testCreateUTF8StringWithEmptyArray()
+    void testCreateUTF8StringWithEmptyArray()
     {
         assertEquals("", StringUtilities.createUTF8String(new byte[]{}));
     }
 
     @Test
-    public void testCreateStringWithInvalidEncoding()
+    void testCreateStringWithInvalidEncoding()
     {
         try
         {
@@ -351,25 +611,25 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testCreateUtf8String()
+    void testCreateUtf8String()
     {
         assertEquals("foo", StringUtilities.createUtf8String(new byte[] {102, 111, 111}));
     }
 
     @Test
-    public void testCreateUtf8StringWithNull()
+    void testCreateUtf8StringWithNull()
     {
         assertNull(null, StringUtilities.createUtf8String(null));
     }
 
     @Test
-    public void testCreateUtf8StringWithEmptyArray()
+    void testCreateUtf8StringWithEmptyArray()
     {
         assertEquals("", StringUtilities.createUtf8String(new byte[]{}));
     }
 
     @Test
-    public void testHashCodeIgnoreCase()
+    void testHashCodeIgnoreCase()
     {
         String s = "Hello";
         String t = "HELLO";
@@ -383,7 +643,14 @@ public class TestStringUtilities
     }
 
     @Test
-    public void testCount2()
+    void testGetBytes_withInvalidEncoding_throwsException() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> StringUtilities.getBytes("Some text", "foo-bar"))
+                .withMessageContaining("Encoding (foo-bar) is not supported");
+    }
+
+    @Test
+    void testCount2()
     {
         assert 0 == StringUtilities.count("alphabet", null);
         assert 0 == StringUtilities.count(null, "al");
@@ -392,4 +659,138 @@ public class TestStringUtilities
         assert 1 == StringUtilities.count("alphabet", "al");
         assert 2 == StringUtilities.count("halal", "al");
     }
+
+    private static Stream<Arguments> stringsWithAllWhitespace() {
+        return Stream.of(
+                Arguments.of("       "),
+                Arguments.of(" \t "),
+                Arguments.of("\r\n ")
+        );
+    }
+
+    private static Stream<Arguments> stringsWithContentOtherThanWhitespace() {
+        return Stream.of(
+                Arguments.of("jfk"),
+                Arguments.of("  jfk\r\n"),
+                Arguments.of("\tjfk  "),
+                Arguments.of("    jfk  ")
+        );
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testTrimToEmpty_whenNullOrEmpty_returnsEmptyString(String value) {
+        assertThat(StringUtilities.trimToEmpty(value)).isSameAs(StringUtilities.EMPTY);
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testTrimToEmpty_whenStringIsAllWhitespace_returnsEmptyString(String value) {
+        assertThat(StringUtilities.trimToEmpty(value)).isSameAs(StringUtilities.EMPTY);
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testTrimToEmpty_whenStringHasContent_returnsTrimmedString(String value) {
+        assertThat(StringUtilities.trimToEmpty(value)).isEqualTo(value.trim());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testTrimToNull_whenNullOrEmpty_returnsNull(String value) {
+        assertThat(StringUtilities.trimToNull(value)).isNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testTrimToNull_whenStringIsAllWhitespace_returnsNull(String value) {
+        assertThat(StringUtilities.trimToNull(value)).isNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testTrimToNull_whenStringHasContent_returnsTrimmedString(String value) {
+        assertThat(StringUtilities.trimToNull(value)).isEqualTo(value.trim());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void testTrimToDefault_whenNullOrEmpty_returnsDefault(String value) {
+        assertThat(StringUtilities.trimEmptyToDefault(value, "foo")).isEqualTo("foo");
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithAllWhitespace")
+    void testTrimToDefault_whenStringIsAllWhitespace_returnsDefault(String value) {
+        assertThat(StringUtilities.trimEmptyToDefault(value, "foo")).isEqualTo("foo");
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringsWithContentOtherThanWhitespace")
+    void testTrimToDefault_whenStringHasContent_returnsTrimmedString(String value) {
+        assertThat(StringUtilities.trimEmptyToDefault(value, "foo")).isEqualTo(value.trim());
+    }
+
+
+    private static Stream<Arguments> regionMatches_returnsTrue() {
+        return Stream.of(
+                Arguments.of("a",   true,      0,     "abc", 0,     0),
+                Arguments.of("a",   true,      0,     "abc", 0,     1),
+                Arguments.of("Abc", true,      0,     "abc", 0,     3),
+                Arguments.of("Abc", true,      1,     "abc", 1,     2),
+                Arguments.of("Abc", false,     1,     "abc", 1,     2),
+                Arguments.of("Abcd", true,      1,     "abcD", 1,     2),
+                Arguments.of("Abcd", false,     1,     "abcD", 1,     2),
+                Arguments.of(new StringBuilder("a"),   true,      0,     new StringBuffer("abc"), 0,     0),
+                Arguments.of(new StringBuilder("a"),   true,      0,     new StringBuffer("abc"), 0,     1),
+                Arguments.of(new StringBuilder("Abc"), true,      0,     new StringBuffer("abc"), 0,     3),
+                Arguments.of(new StringBuilder("Abc"), true,      1,     new StringBuffer("abc"), 1,     2),
+                Arguments.of(new StringBuilder("Abc"), false,     1,     new StringBuffer("abc"), 1,     2),
+                Arguments.of(new StringBuilder("Abcd"), true,      1,     new StringBuffer("abcD"), 1,     2),
+                Arguments.of(new StringBuilder("Abcd"), false,     1,     new StringBuffer("abcD"), 1,     2)
+
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("regionMatches_returnsTrue")
+    void testRegionMatches_returnsTrue(CharSequence s, boolean ignoreCase, int start, CharSequence substring, int subStart, int length) {
+        boolean matches = StringUtilities.regionMatches(s, ignoreCase, start, substring, subStart, length);
+        assertThat(matches).isTrue();
+    }
+
+    private static Stream<Arguments> regionMatches_returnsFalse() {
+        return Stream.of(
+                Arguments.of("",    true,      -1,    "",    -1,    -1),
+                Arguments.of("",    true,      0,     "",    0,     1),
+                Arguments.of("Abc", false,     0,     "abc", 0,     3),
+                Arguments.of(new StringBuilder(""),   true,      -1,     new StringBuffer(""), -1,     -1),
+                Arguments.of(new StringBuilder(""),   true,      0,     new StringBuffer(""), 0,     1),
+                Arguments.of(new StringBuilder("Abc"), false,      0,     new StringBuffer("abc"), 0,     3)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("regionMatches_returnsFalse")
+    void testRegionMatches_returnsFalse(CharSequence s, boolean ignoreCase, int start, CharSequence substring, int subStart, int length) {
+        boolean matches = StringUtilities.regionMatches(s, ignoreCase, start, substring, subStart, length);
+        assertThat(matches).isFalse();
+    }
+
+
+    private static Stream<Arguments> regionMatches_throwsNullPointerException() {
+        return Stream.of(
+                Arguments.of("a",   true,      0,     null,  0,     0, "substring cannot be null"),
+                Arguments.of(null,  true,      0,     null,  0,     0, "cs to be processed cannot be null"),
+                Arguments.of(null,  true,      0,     "",    0,     0, "cs to be processed cannot be null")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("regionMatches_throwsNullPointerException")
+    void testRegionMatches_withStrings_throwsIllegalArgumentException(CharSequence s, boolean ignoreCase, int start, CharSequence substring, int subStart, int length, String exText) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> StringUtilities.regionMatches(s, ignoreCase, start, substring, subStart, length))
+                .withMessageContaining(exText);
+    }
+
 }

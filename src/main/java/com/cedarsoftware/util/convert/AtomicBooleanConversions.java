@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class AtomicBooleanConversion {
+public class AtomicBooleanConversions {
 
     static Byte toByte(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;
@@ -43,10 +43,16 @@ public class AtomicBooleanConversion {
         return b.get();
     }
 
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
+        AtomicBoolean b = (AtomicBoolean) from;
+        return new AtomicBoolean(b.get());
+    }
+
     static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? new AtomicInteger(1) : new AtomicInteger (0);
     }
+
 
     static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;

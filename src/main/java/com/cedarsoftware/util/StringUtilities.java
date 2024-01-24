@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Optional;
 import java.util.Random;
 
 /**
@@ -31,6 +32,8 @@ public final class StringUtilities
     };
     public static final String FOLDER_SEPARATOR = "/";
 
+    public static final String EMPTY = "";
+
     /**
      * <p>Constructor is declared private since all methods are static.</p>
      */
@@ -39,22 +42,124 @@ public final class StringUtilities
         super();
     }
 
-    public static boolean equals(final String str1, final String str2)
-    {
-        if (str1 == null || str2 == null)
-        {
-            return str1 == str2;
+    /**
+     * Compares two CharSequences, returning {@code true} if they represent
+     * equal sequences of characters.
+     *
+     * <p>{@code null}s are handled without exceptions. Two {@code null}
+     * references are considered to be equal. The comparison is <strong>case-sensitive</strong>.</p>
+     *
+     * @param cs1  the first CharSequence, may be {@code null}
+     * @param cs2  the second CharSequence, may be {@code null}
+     * @return {@code true} if the CharSequences are equal (case-sensitive), or both {@code null}
+     * @see #equalsIgnoreCase(CharSequence, CharSequence)
+     */
+    public static boolean equals(final CharSequence cs1, final CharSequence cs2) {
+        if (cs1 == cs2) {
+            return true;
         }
-        return str1.equals(str2);
+        if (cs1 == null || cs2 == null) {
+            return false;
+        }
+        if (cs1.length() != cs2.length()) {
+            return false;
+        }
+        if (cs1 instanceof String && cs2 instanceof String) {
+            return cs1.equals(cs2);
+        }
+        // Step-wise comparison
+        final int length = cs1.length();
+        for (int i = 0; i < length; i++) {
+            if (cs1.charAt(i) != cs2.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    public static boolean equalsIgnoreCase(final String s1, final String s2)
-    {
-        if (s1 == null || s2 == null)
-        {
-            return s1 == s2;
+    /**
+     * Compares two CharSequences, returning {@code true} if they represent
+     * equal sequences of characters, ignoring case.
+     *
+     * <p>{@code null}s are handled without exceptions. Two {@code null}
+     * references are considered equal. The comparison is <strong>case insensitive</strong>.</p>
+     *
+     * @param cs1  the first CharSequence, may be {@code null}
+     * @param cs2  the second CharSequence, may be {@code null}
+     * @return {@code true} if the CharSequences are equal (case-insensitive), or both {@code null}
+     * @see #equals(CharSequence, CharSequence)
+     */
+    public static boolean equalsIgnoreCase(final CharSequence cs1, final CharSequence cs2) {
+        if (cs1 == cs2) {
+            return true;
         }
-        return s1.equalsIgnoreCase(s2);
+        if (cs1 == null || cs2 == null) {
+            return false;
+        }
+        if (cs1.length() != cs2.length()) {
+            return false;
+        }
+        return regionMatches(cs1, true, 0, cs2, 0, cs1.length());
+    }
+
+    /**
+     * Green implementation of regionMatches.
+     *
+     * @param cs the {@link CharSequence} to be processed
+     * @param ignoreCase whether or not to be case-insensitive
+     * @param thisStart the index to start on the {@code cs} CharSequence
+     * @param substring the {@link CharSequence} to be looked for
+     * @param start the index to start on the {@code substring} CharSequence
+     * @param length character length of the region
+     * @return whether the region matched
+     */
+    static boolean regionMatches(final CharSequence cs, final boolean ignoreCase, final int thisStart,
+                                 final CharSequence substring, final int start, final int length)    {
+        Convention.throwIfNull(cs, "cs to be processed cannot be null");
+        Convention.throwIfNull(substring, "substring cannot be null");
+
+        if (cs instanceof String && substring instanceof String) {
+            return ((String) cs).regionMatches(ignoreCase, thisStart, (String) substring, start, length);
+        }
+        int index1 = thisStart;
+        int index2 = start;
+        int tmpLen = length;
+
+        // Extract these first so we detect NPEs the same as the java.lang.String version
+        final int srcLen = cs.length() - thisStart;
+        final int otherLen = substring.length() - start;
+
+        // Check for invalid parameters
+        if (thisStart < 0 || start < 0 || length < 0) {
+            return false;
+        }
+
+        // Check that the regions are long enough
+        if (srcLen < length || otherLen < length) {
+            return false;
+        }
+
+        while (tmpLen-- > 0) {
+            final char c1 = cs.charAt(index1++);
+            final char c2 = substring.charAt(index2++);
+
+            if (c1 == c2) {
+                continue;
+            }
+
+            if (!ignoreCase) {
+                return false;
+            }
+
+            // The real same check as in String.regionMatches():
+            final char u1 = Character.toUpperCase(c1);
+            final char u2 = Character.toUpperCase(c2);
+            if (u1 != u2 && Character.toLowerCase(u1) != Character.toLowerCase(u2)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static boolean equalsWithTrim(final String s1, final String s2)
@@ -75,41 +180,89 @@ public final class StringUtilities
         return s1.trim().equalsIgnoreCase(s2.trim());
     }
 
-    public static boolean isEmpty(final String s)
-    {
-        return trimLength(s) == 0;
-    }
-
-    public static boolean hasContent(final String s)
-    {
-        return !(trimLength(s) == 0);    // faster than returning !isEmpty()
-    }
-
     /**
-     * Use this method when you don't want a length check to
-     * throw a NullPointerException when
+     * Checks if a CharSequence is empty ("") or null.
      *
-     * @param s string to return length of
-     * @return 0 if string is null, otherwise the length of string.
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is empty or null
+     * @since 3.0 Changed signature from isEmpty(String) to isEmpty(CharSequence)
      */
-    public static int length(final String s)
-    {
-        return s == null ? 0 : s.length();
+    public static boolean isEmpty(final CharSequence cs) {
+        return cs == null || cs.length() == 0;
     }
 
     /**
-     * Returns the length of the trimmed string.  If the length is
-     * null then it returns 0.
+     * Checks if a CharSequence is not empty ("") and not null.
+     *
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is not empty and not null
      */
-    public static int trimLength(final String s)
-    {
-        return (s == null) ? 0 : s.trim().length();
+    public static boolean isNotEmpty(final CharSequence cs) {
+        return !isEmpty(cs);
     }
 
-    public static int lastIndexOf(String path, char ch)
-    {
-        if (path == null)
-        {
+    /**
+     * Checks if a CharSequence is empty (""), null or whitespace only.
+     *
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is null, empty or whitespace only
+     */
+    public static boolean isWhitespace(final CharSequence cs) {
+        final int strLen = length(cs);
+        if (strLen == 0) {
+            return true;
+        }
+        for (int i = 0; i < strLen; i++) {
+            if (!Character.isWhitespace(cs.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks if a CharSequence is not empty (""), not null and not whitespace only.
+     *
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is
+     *  not empty and not null and not whitespace only
+     */
+    public static boolean hasContent(final CharSequence cs) {
+        return !isWhitespace(cs);
+    }
+
+    /**
+     * Checks if a CharSequence is not empty (""), not null and not whitespace only.
+     *
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is
+     *  not empty and not null and not whitespace only
+     */
+    public static boolean isNotWhitespace(final CharSequence cs) {
+        return !isWhitespace(cs);
+    }
+
+    /**
+     * Gets a CharSequence length or {@code 0} if the CharSequence is {@code null}.
+     *
+     * @param cs a CharSequence or {@code null}
+     * @return CharSequence length or {@code 0} if the CharSequence is {@code null}.
+     */
+    public static int length(final CharSequence cs) {
+        return cs == null ? 0 : cs.length();
+    }
+
+    /**
+     * @param s a String or {@code null}
+     * @return the trimmed length of the String or 0 if the string is null.
+     */
+    public static int trimLength(final String s) {
+        return trimToEmpty(s).length();
+    }
+
+
+    public static int lastIndexOf(String path, char ch) {
+        if (path == null) {
             return -1;
         }
         return path.lastIndexOf(ch);
@@ -169,7 +322,7 @@ public final class StringUtilities
 
     public static int count(String s, char c)
     {
-        return count (s, "" + c);
+        return count (s, EMPTY + c);
     }
 
     /**
@@ -268,11 +421,11 @@ public final class StringUtilities
     public static int levenshteinDistance(CharSequence s, CharSequence t)
     {
         // degenerate cases          s
-        if (s == null || "".equals(s))
+        if (s == null || EMPTY.equals(s))
         {
-            return t == null || "".equals(t) ? 0 : t.length();
+            return t == null || EMPTY.equals(t) ? 0 : t.length();
         }
-        else if (t == null || "".equals(t))
+        else if (t == null || EMPTY.equals(t))
         {
             return s.length();
         }
@@ -329,11 +482,11 @@ public final class StringUtilities
      */
     public static int damerauLevenshteinDistance(CharSequence source, CharSequence target)
     {
-        if (source == null || "".equals(source))
+        if (source == null || EMPTY.equals(source))
         {
-            return target == null || "".equals(target) ? 0 : target.length();
+            return target == null || EMPTY.equals(target) ? 0 : target.length();
         }
-        else if (target == null || "".equals(target))
+        else if (target == null || EMPTY.equals(target))
         {
             return source.length();
         }
@@ -415,6 +568,7 @@ public final class StringUtilities
     {
         StringBuilder s = new StringBuilder();
         final int len = minLen + random.nextInt(maxLen - minLen + 1);
+
         for (int i=0; i < len; i++)
         {
             s.append(getRandomChar(random, i == 0));
@@ -425,7 +579,7 @@ public final class StringUtilities
     public static String getRandomChar(Random random, boolean upper)
     {
         int r = random.nextInt(26);
-        return upper ? "" + (char)((int)'A' + r) : "" + (char)((int)'a' + r);
+        return upper ? EMPTY + (char)((int)'A' + r) : EMPTY + (char)((int)'a' + r);
     }
 
     /**
@@ -522,5 +676,49 @@ public final class StringUtilities
             hash = 31 * hash + Character.toLowerCase((int)s.charAt(i));
         }
         return hash;
+    }
+
+    /**
+     * Removes control characters (char &lt;= 32) from both
+     * ends of this String, handling {@code null} by returning
+     * {@code null}.
+     *
+     * <p>The String is trimmed using {@link String#trim()}.
+     * Trim removes start and end characters &lt;= 32.
+     *
+     * @param str  the String to be trimmed, may be null
+     * @return the trimmed string, {@code null} if null String input
+     */
+    public static String trim(final String str) {
+        return str == null ? null : str.trim();
+    }
+
+    /**
+     * Trims a string, its null safe and null will return empty string here..
+     * @param value string input
+     * @return String trimmed string, if value was null this will be empty
+     */
+    public static String trimToEmpty(String value) {
+        return value == null ? EMPTY : value.trim();
+    }
+
+    /**
+     * Trims a string, If the string trims to empty then we return null.
+     * @param value string input
+     * @return String, trimmed from value.  If the value was empty we return null.
+     */
+    public static String trimToNull(String value) {
+        final String ts = trim(value);
+        return isEmpty(ts) ? null : ts;
+    }
+
+    /**
+     * Trims a string, If the string trims to empty then we return the default.
+     * @param value string input
+     * @param defaultValue value to return on empty or null
+     * @return trimmed string, or defaultValue when null or empty
+     */
+    public static String trimEmptyToDefault(String value, String defaultValue) {
+        return Optional.ofNullable(value).map(StringUtilities::trimToNull).orElse(defaultValue);
     }
 }

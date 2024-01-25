@@ -680,13 +680,13 @@ public class TestStringUtilities
     @ParameterizedTest
     @NullAndEmptySource
     void testTrimToEmpty_whenNullOrEmpty_returnsEmptyString(String value) {
-        assertThat(StringUtilities.trimToEmpty(value)).isSameAs(StringUtilities.EMPTY);
+        assertThat(StringUtilities.trimToEmpty(value)).isEqualTo(StringUtilities.EMPTY);
     }
 
     @ParameterizedTest
     @MethodSource("stringsWithAllWhitespace")
     void testTrimToEmpty_whenStringIsAllWhitespace_returnsEmptyString(String value) {
-        assertThat(StringUtilities.trimToEmpty(value)).isSameAs(StringUtilities.EMPTY);
+        assertThat(StringUtilities.trimToEmpty(value)).isEqualTo(StringUtilities.EMPTY);
     }
 
     @ParameterizedTest

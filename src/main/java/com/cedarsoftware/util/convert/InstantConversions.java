@@ -62,6 +62,10 @@ public class InstantConversions {
         return BigDecimal.valueOf(toLong(from));
     }
 
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options);
+    }
+
     static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
         return toZonedDateTime(from, options).toLocalDateTime();
     }

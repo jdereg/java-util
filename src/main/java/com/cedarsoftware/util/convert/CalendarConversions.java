@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -69,6 +70,10 @@ public class CalendarConversions {
 
     static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
         return toZonedDateTime(fromInstance, options).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalTime();
     }
 
     static BigDecimal toBigDecimal(Object fromInstance, Converter converter, ConverterOptions options) {

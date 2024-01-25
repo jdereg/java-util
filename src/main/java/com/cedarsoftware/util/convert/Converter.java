@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.StringUtilities;
 
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
@@ -229,7 +230,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Double.class, Double.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(Boolean.class, Double.class), BooleanConversions::toDouble);
         DEFAULT_FACTORY.put(pair(Character.class, Double.class), CharacterConversions::toDouble);
-        DEFAULT_FACTORY.put(pair(Instant.class, Double.class), InstantConversions::toLong);
+        DEFAULT_FACTORY.put(pair(Instant.class, Double.class), InstantConversions::toDouble);
         DEFAULT_FACTORY.put(pair(LocalDate.class, Double.class), LocalDateConversions::toLong);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversions::toLong);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversions::toLong);
@@ -607,6 +608,36 @@ public final class Converter {
             return date.toInstant().atZone(options.getZoneId()).toLocalDateTime();
         });
 
+        DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Long.class, LocalTime.class), NumberConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Double.class, LocalTime.class), NumberConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(BigInteger.class, LocalTime.class), NumberConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, LocalTime.class), NumberConversions::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(AtomicLong.class, LocalTime.class), NumberConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalTime.class), DateConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, LocalTime.class), DateConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Date.class, LocalTime.class), DateConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Instant.class, LocalTime.class), InstantConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalTime.class), LocalDateTimeConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, LocalTime.class), LocalDateConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(LocalTime.class, LocalTime.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalTime.class), ZonedDateTimeConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Calendar.class, LocalTime.class), CalendarConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Number.class, LocalTime.class), NumberConversions::toLocalTime);
+        DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), (fromInstance, converter, options) -> {
+            Map<?, ?> map = (Map<?, ?>) fromInstance;
+            return converter.fromValueMap(map, LocalTime.class, null, options);
+        });
+        DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), (fromInstance, converter, options) -> {
+            String str = StringUtilities.trimToEmpty((String)fromInstance);
+            Date date = DateUtilities.parseDate(str);
+            if (date == null) {
+                return null;
+            }
+            return converter.convert(date, LocalTime.class, options);
+        });
+
+
         // ZonedDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, ZonedDateTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
@@ -617,6 +648,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Timestamp.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Date.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
+        DEFAULT_FACTORY.put(pair(Instant.class, ZonedDateTime.class), InstantConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(LocalDate.class, ZonedDateTime.class), LocalDateConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, ZonedDateTime.class), LocalDateTimeConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, ZonedDateTime.class), Converter::identity);
@@ -632,7 +664,7 @@ public final class Converter {
             if (date == null) {
                 return null;
             }
-            return date.toInstant().atZone(options.getZoneId());
+            return converter.convert(date, ZonedDateTime.class, options);
         });
 
         // UUID conversions supported

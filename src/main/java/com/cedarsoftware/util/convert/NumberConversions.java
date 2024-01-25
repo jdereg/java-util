@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -187,8 +188,10 @@ public class NumberConversions {
         return new Date(toLong(from));
     }
 
+    static Instant toInstant(Object from) { return Instant.ofEpochMilli(toLong(from)); }
+
     static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from));
+        return toInstant(from);
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
@@ -204,14 +207,22 @@ public class NumberConversions {
     }
 
     static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId()).toLocalDate();
+        return toZonedDateTime(from, options).toLocalDate();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId()).toLocalDateTime();
+        return toZonedDateTime(from, options).toLocalDateTime();
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options).toLocalTime();
+    }
+
+    static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
+        return toInstant(from).atZone(options.getZoneId());
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId());
+        return toZonedDateTime(from, options);
     }
 }

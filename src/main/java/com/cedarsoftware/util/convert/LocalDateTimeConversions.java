@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -13,7 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LocalDateTimeConversions {
     private static ZonedDateTime toZonedDateTime(Object fromInstance, ConverterOptions options) {
-        return ((LocalDateTime)fromInstance).atZone(options.getSourceZoneIdForLocalDates());
+        return ((LocalDateTime)fromInstance).atZone(options.getSourceZoneIdForLocalDates()).withZoneSameInstant(options.getZoneId());
     }
 
     private static Instant toInstant(Object fromInstance, ConverterOptions options) {
@@ -25,7 +27,19 @@ public class LocalDateTimeConversions {
     }
 
     static ZonedDateTime toZonedDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(fromInstance, options).withZoneSameInstant(options.getZoneId());
+        return toZonedDateTime(fromInstance, options);
+    }
+
+    static LocalDateTime toLocalDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalDateTime();
+    }
+
+    static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalTime();
     }
 
     static Instant toInstant(Object fromInstance, Converter converter, ConverterOptions options) {

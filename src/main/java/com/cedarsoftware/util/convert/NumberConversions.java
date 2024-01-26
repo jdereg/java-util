@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -30,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class NumberConversion {
+public class NumberConversions {
 
     static byte toByte(Object from, Converter converter, ConverterOptions options) {
         return ((Number)from).byteValue();
@@ -100,7 +101,6 @@ public class NumberConversion {
     static BigDecimal integerTypeToBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(toLong(from));
     }
-
     static BigInteger integerTypeToBigInteger(Object from, Converter converter, ConverterOptions options) {
         return BigInteger.valueOf(toLong(from));
     }
@@ -121,12 +121,20 @@ public class NumberConversion {
         return ((BigDecimal)from).toBigInteger();
     }
 
+    static BigDecimal bigDecimalToBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        return new BigDecimal(from.toString());
+    }
+
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
         return new AtomicBoolean(toLong(from) != 0);
     }
 
     static BigDecimal floatingPointToBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(toDouble(from));
+    }
+
+    static BigInteger floatingPointToBigInteger(Object from, Converter converter, ConverterOptions options) {
+        return new BigInteger(String.format("%.0f", ((Number)from).doubleValue()));
     }
 
     static boolean isIntTypeNotZero(Object from, Converter converter, ConverterOptions options) {
@@ -144,6 +152,11 @@ public class NumberConversion {
     static boolean isBigDecimalNotZero(Object from, Converter converter, ConverterOptions options) {
         return ((BigDecimal)from).compareTo(BigDecimal.ZERO) != 0;
     }
+
+    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+        return new BigInteger(from.toString());
+    }
+
 
     /**
      * @param from Number instance to convert to char.
@@ -175,8 +188,10 @@ public class NumberConversion {
         return new Date(toLong(from));
     }
 
+    static Instant toInstant(Object from) { return Instant.ofEpochMilli(toLong(from)); }
+
     static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from));
+        return toInstant(from);
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
@@ -188,18 +203,26 @@ public class NumberConversion {
     }
 
     static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
-        return CalendarConversion.create(toLong(from), options);
+        return CalendarConversions.create(toLong(from), options);
     }
 
     static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId()).toLocalDate();
+        return toZonedDateTime(from, options).toLocalDate();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId()).toLocalDateTime();
+        return toZonedDateTime(from, options).toLocalDateTime();
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options).toLocalTime();
+    }
+
+    static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
+        return toInstant(from).atZone(options.getZoneId());
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
-        return Instant.ofEpochMilli(toLong(from)).atZone(options.getZoneId());
+        return toZonedDateTime(from, options);
     }
 }

@@ -3,16 +3,15 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CaseInsensitiveSet;
-import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.StringUtilities;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -31,7 +30,7 @@ import com.cedarsoftware.util.DateUtilities;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class StringConversion {
+public class StringConversions {
     private static final BigDecimal bigDecimalMinByte = BigDecimal.valueOf(Byte.MIN_VALUE);
     private static final BigDecimal bigDecimalMaxByte = BigDecimal.valueOf(Byte.MAX_VALUE);
     private static final BigDecimal bigDecimalMinShort = BigDecimal.valueOf(Short.MIN_VALUE);
@@ -188,7 +187,7 @@ public class StringConversion {
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return new AtomicLong(0L);
         }
@@ -200,7 +199,7 @@ public class StringConversion {
     }
 
     static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return false;
         }
@@ -210,11 +209,11 @@ public class StringConversion {
         } else if ("false".equals(str)) {
             return false;
         }
-        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equalsIgnoreCase(str);
+        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equalsIgnoreCase(str) || "y".equalsIgnoreCase(str);
     }
 
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from);
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return (char) 0;
         }
@@ -226,7 +225,7 @@ public class StringConversion {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return BigInteger.ZERO;
         }
@@ -239,7 +238,7 @@ public class StringConversion {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return BigDecimal.ZERO;
         }
@@ -251,11 +250,34 @@ public class StringConversion {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToNull((String)from);
         Date date = DateUtilities.parseDate(str);
-        if (date == null) {
+        return date == null ? null : new java.sql.Date(date.getTime());
+    }
+
+    static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
+        String str = StringUtilities.trimToNull((String)from);
+        Date date = DateUtilities.parseDate(str);
+        return date == null ? null : new Timestamp(date.getTime());
+    }
+
+    static Date toDate(Object from, Converter converter, ConverterOptions options) {
+        String str = StringUtilities.trimToNull((String)from);
+        Date date = DateUtilities.parseDate(str);
+        return date;
+    }
+
+    static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
+        String s = StringUtilities.trimToEmpty((String)from);
+        if (s.isEmpty()) {
             return null;
         }
-        return new java.sql.Date(date.getTime());
+
+        try {
+            return Instant.parse(s);
+        } catch (Exception e) {
+            Date date = DateUtilities.parseDate(s);
+            return date == null ? null : date.toInstant();
+        }
     }
 }

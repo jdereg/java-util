@@ -6,13 +6,14 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class CalendarConversion {
+public class CalendarConversions {
 
     static Date toDate(Object fromInstance) {
         return ((Calendar)fromInstance).getTime();
@@ -34,10 +35,14 @@ public class CalendarConversion {
         return toZonedDateTime(fromInstance, options);
     }
 
-
     static Long toLong(Object fromInstance, Converter converter, ConverterOptions options) {
         return toLong(fromInstance);
     }
+
+    static double toDouble(Object fromInstance, Converter converter, ConverterOptions options) {
+        return (double)toLong(fromInstance);
+    }
+
 
     static Date toDate(Object fromInstance, Converter converter, ConverterOptions options) {
         return toDate(fromInstance);
@@ -67,6 +72,10 @@ public class CalendarConversion {
         return toZonedDateTime(fromInstance, options).toLocalDate();
     }
 
+    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalTime();
+    }
+
     static BigDecimal toBigDecimal(Object fromInstance, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(toLong(fromInstance));
     }
@@ -86,9 +95,5 @@ public class CalendarConversion {
         cal.clear();
         cal.setTimeInMillis(epochMilli);
         return cal;
-    }
-
-    static Calendar create(ZonedDateTime time, ConverterOptions options) {
-        return GregorianCalendar.from(time);
     }
 }

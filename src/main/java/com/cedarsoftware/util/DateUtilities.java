@@ -157,7 +157,7 @@ public final class DateUtilities {
      * passed in, null will be returned.
      */
     public static Date parseDate(String dateStr) {
-        if (StringUtilities.isEmpty(dateStr)) {
+        if (StringUtilities.isWhitespace(dateStr)) {
             return null;
         }
         ZonedDateTime zonedDateTime = parseDate(dateStr, ZoneId.systemDefault(), true);

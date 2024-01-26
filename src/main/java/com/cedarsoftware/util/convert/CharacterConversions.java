@@ -1,24 +1,19 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.CollectionUtilities;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class CharacterConversion {
+public class CharacterConversions {
 
-    private CharacterConversion() {
+    private CharacterConversions() {
     }
 
     static boolean toBoolean(Object from) {
         char c = (char) from;
-        return (c == 1) || (c == 't') || (c == 'T') || (c == '1');
+        return (c == 1) || (c == 't') || (c == 'T') || (c == '1') || (c == 'y') || (c == 'Y');
     }
 
 

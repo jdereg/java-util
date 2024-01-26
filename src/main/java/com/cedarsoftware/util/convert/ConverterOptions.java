@@ -65,4 +65,16 @@ public interface ConverterOptions {
      * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone)
      */
     default TimeZone getTimeZone() { return TimeZone.getTimeZone(this.getZoneId()); }
+
+    /**
+     * Character to return for boolean to Character conversion when the boolean is true.
+     * @return the Character representing true
+     */
+    default Character trueChar() { return CommonValues.CHARACTER_ONE; }
+
+    /**
+     * Character to return for boolean to Character conversion when the boolean is false.
+     * @return the Character representing false
+     */
+    default Character falseChar() { return CommonValues.CHARACTER_ZERO; }
 }

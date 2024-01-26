@@ -6,23 +6,37 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class LocalDateTimeConversion {
+public class LocalDateConversions {
+
     private static ZonedDateTime toZonedDateTime(Object fromInstance, ConverterOptions options) {
-        return ((LocalDateTime)fromInstance).atZone(options.getSourceZoneIdForLocalDates());
+        return ((LocalDate)fromInstance).atStartOfDay(options.getSourceZoneIdForLocalDates()).withZoneSameInstant(options.getZoneId());
     }
 
-    private static Instant toInstant(Object fromInstance, ConverterOptions options) {
+    static Instant toInstant(Object fromInstance, ConverterOptions options) {
         return toZonedDateTime(fromInstance, options).toInstant();
     }
 
-    private static long toLong(Object fromInstance, ConverterOptions options) {
+    static long toLong(Object fromInstance, ConverterOptions options) {
         return toInstant(fromInstance, options).toEpochMilli();
+    }
+
+    static LocalDateTime toLocalDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalDateTime();
+    }
+
+    static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalTime();
     }
 
     static ZonedDateTime toZonedDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
@@ -30,15 +44,32 @@ public class LocalDateTimeConversion {
     }
 
     static Instant toInstant(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toInstant(fromInstance, options);
+        return toZonedDateTime(fromInstance, options).toInstant();
     }
 
+
     static long toLong(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toLong(fromInstance, options);
+        return toInstant(fromInstance, options).toEpochMilli();
+    }
+
+    /**
+     * Warning:  Can lose precision going from a full long down to a floating point number
+     * @param fromInstance instance to convert
+     * @param converter converter instance
+     * @param options converter options
+     * @return the floating point number cast from a lont.
+     */
+    static float toFloat(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toLong(fromInstance, converter, options);
+    }
+
+    static double toDouble(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toLong(fromInstance, converter, options);
     }
 
     static AtomicLong toAtomicLong(Object fromInstance, Converter converter, ConverterOptions options) {
-        return new AtomicLong(toLong(fromInstance, options));
+        LocalDate from = (LocalDate)fromInstance;
+        return new AtomicLong(toLong(from, options));
     }
 
     static Timestamp toTimestamp(Object fromInstance, Converter converter, ConverterOptions options) {

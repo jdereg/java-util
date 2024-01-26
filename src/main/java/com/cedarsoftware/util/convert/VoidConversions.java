@@ -17,7 +17,10 @@ package com.cedarsoftware.util.convert;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class VoidConversion {
+public final class VoidConversions {
+
+    private VoidConversions() {
+    }
 
     static Object toNull(Object from, Converter converter, ConverterOptions options) {
         return null;

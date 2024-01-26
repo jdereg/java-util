@@ -24,7 +24,11 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class BooleanConversion {
+public final class BooleanConversions {
+
+    private BooleanConversions() {
+    }
+
     static Byte toByte(Object from, Converter converter, ConverterOptions options) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
@@ -81,6 +85,6 @@ public class BooleanConversion {
 
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {
         Boolean b = (Boolean) from;
-        return b ? CommonValues.CHARACTER_ONE : CommonValues.CHARACTER_ZERO;
+        return b ? options.trueChar() : options.falseChar();
     }
 }

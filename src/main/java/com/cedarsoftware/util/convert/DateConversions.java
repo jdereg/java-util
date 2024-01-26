@@ -6,12 +6,13 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DateConversion {
+public class DateConversions {
 
     static long toLong(Object fromInstance) {
         return ((Date) fromInstance).getTime();
@@ -29,16 +30,43 @@ public class DateConversion {
         return toLong(fromInstance);
     }
 
-    static Date toSqlDate(Object fromInstance, Converter converter, ConverterOptions options) {
+    /**
+     * The input can be any of our Date type objects (java.sql.Date, Timestamp, Date, etc.) coming in so
+     * we need to force the conversion by creating a new instance.
+     * @param fromInstance - one of the date objects
+     * @param converter - converter instance
+     * @param options - converter options
+     * @return newly created java.sql.Date
+     */
+    static java.sql.Date toSqlDate(Object fromInstance, Converter converter, ConverterOptions options) {
         return new java.sql.Date(toLong(fromInstance));
     }
 
+    /**
+     * The input can be any of our Date type objects (java.sql.Date, Timestamp, Date, etc.) coming in so
+     * we need to force the conversion by creating a new instance.
+     * @param fromInstance - one of the date objects
+     * @param converter - converter instance
+     * @param options - converter options
+     * @return newly created Date
+     */    static Date toDate(Object fromInstance, Converter converter, ConverterOptions options) {
+        return new Date(toLong(fromInstance));
+    }
+
+    /**
+     * The input can be any of our Date type objects (java.sql.Date, Timestamp, Date, etc.) coming in so
+     * we need to force the conversion by creating a new instance.
+     * @param fromInstance - one of the date objects
+     * @param converter - converter instance
+     * @param options - converter options
+     * @return newly created Timestamp
+     */
     static Timestamp toTimestamp(Object fromInstance, Converter converter, ConverterOptions options) {
         return new Timestamp(toLong(fromInstance));
     }
 
     static Calendar toCalendar(Object fromInstance, Converter converter, ConverterOptions options) {
-        return CalendarConversion.create(toLong(fromInstance), options);
+        return CalendarConversions.create(toLong(fromInstance), options);
     }
 
     static BigDecimal toBigDecimal(Object fromInstance, Converter converter, ConverterOptions options) {
@@ -59,6 +87,10 @@ public class DateConversion {
 
     static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
         return toZonedDateTime(fromInstance, options).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalTime();
     }
 
     static BigInteger toBigInteger(Object fromInstance, Converter converter, ConverterOptions options) {

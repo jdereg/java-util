@@ -1199,23 +1199,7 @@ public final class Converter {
         target = toPrimitiveWrapperClass(target);
         return factory.put(pair(source, target), conversionFunction);
     }
-
-    public long localDateToMillis(LocalDate localDate, ZoneId zoneId) {
-        return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli();
-    }
-
-    public long localDateToMillis(LocalDate localDate) {
-        return localDateToMillis(localDate, options.getZoneId());
-    }
-
-    public long localDateTimeToMillis(LocalDateTime localDateTime, ZoneId zoneId) {
-        return localDateTime.atZone(zoneId).toInstant().toEpochMilli();
-    }
-
-    public long zonedDateTimeToMillis(ZonedDateTime zonedDateTime) {
-        return zonedDateTime.toInstant().toEpochMilli();
-    }
-
+    
     /**
      * Given a primitive class, return the Wrapper class equivalent.
      */

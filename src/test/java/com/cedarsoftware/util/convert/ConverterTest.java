@@ -950,7 +950,7 @@ class ConverterTest
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateBigIntegerAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testLocalDateToBigIntegerAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
         BigInteger intermediate = this.converter.convert(expected, BigInteger.class, createConvertOptions(zoneId, targetZone));
 
@@ -963,7 +963,7 @@ class ConverterTest
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateBigDecimalAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testLocalDateToBigDecimalAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
         BigDecimal intermediate = this.converter.convert(expected, BigDecimal.class, createConvertOptions(zoneId, targetZone));
 
@@ -973,6 +973,46 @@ class ConverterTest
 
         assertThat(actual).isEqualTo(expected);
     }
+
+    @Test
+    void testLocalDateToFloat() {
+
+        float intermediate = this.converter.convert(LD_MILLINNIUM_NY, float.class, createConvertOptions(NEW_YORK, TOKYO));
+
+        assertThat((long)intermediate).isNotEqualTo(946616400000L);
+    }
+
+    @Test
+    void testLocalDateToLocalTime_withZoneChange_willBeZoneOffset() {
+
+        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createConvertOptions(NEW_YORK, TOKYO));
+
+        assertThat(intermediate).hasHour(14)
+                .hasMinute(0)
+                .hasSecond(0)
+                .hasNano(0);
+    }
+
+    @Test
+    void testLocalDateToLocalTimeWithoutZoneChange_willBeMidnight() {
+
+        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createConvertOptions(NEW_YORK, NEW_YORK));
+
+        assertThat(intermediate).hasHour(0)
+                .hasMinute(0)
+                .hasSecond(0)
+                .hasNano(0);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateToLocalTime(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        float intermediate = this.converter.convert(expected, float.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat((long)intermediate).isNotEqualTo(epochMilli);
+    }
+
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")

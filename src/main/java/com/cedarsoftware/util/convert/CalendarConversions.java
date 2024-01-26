@@ -96,8 +96,4 @@ public class CalendarConversions {
         cal.setTimeInMillis(epochMilli);
         return cal;
     }
-
-    static Calendar create(ZonedDateTime time, ConverterOptions options) {
-        return GregorianCalendar.from(time);
-    }
 }

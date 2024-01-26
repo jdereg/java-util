@@ -52,6 +52,13 @@ public class LocalDateConversions {
         return toInstant(fromInstance, options).toEpochMilli();
     }
 
+    /**
+     * Warning:  Can lose precision going from a full long down to a floating point number
+     * @param fromInstance instance to convert
+     * @param converter converter instance
+     * @param options converter options
+     * @return the floating point number cast from a lont.
+     */
     static float toFloat(Object fromInstance, Converter converter, ConverterOptions options) {
         return toLong(fromInstance, converter, options);
     }

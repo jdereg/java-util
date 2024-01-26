@@ -62,9 +62,9 @@ public class TestStringUtilities
 
     @ParameterizedTest
     @MethodSource("stringsWithAllWhitespace")
-    void testIsEmpty_whenStringHasWhitespace_returnsFalse(String s)
+    void testIsEmpty_whenStringHasOnlyWhitespace_returnsTrue(String s)
     {
-        assertFalse(StringUtilities.isEmpty(s));
+        assertTrue(StringUtilities.isEmpty(s));
     }
 
     @ParameterizedTest
@@ -83,9 +83,9 @@ public class TestStringUtilities
 
     @ParameterizedTest
     @MethodSource("stringsWithAllWhitespace")
-    void testIsNotEmpty_whenStringHasWhitespace_returnsTrue(String s)
+    void testIsNotEmpty_whenStringHasOnlyWhitespace_returnsFalse(String s)
     {
-        assertTrue(StringUtilities.isNotEmpty(s));
+        assertFalse(StringUtilities.isNotEmpty(s));
     }
 
     @ParameterizedTest

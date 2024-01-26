@@ -795,15 +795,16 @@ class ConverterTest
     }
 
 
-    private static Stream<Arguments> roundTrip_localDates() {
+    private static Stream<Arguments> roundTrip_tokyoTime() {
         return Stream.of(
                 Arguments.of(946652400000L, TOKYO, LD_MILLINNIUM_TOKYO),
                 Arguments.of(946652400000L, NEW_YORK, LD_MILLINNIUM_NY),
                 Arguments.of(946652400000L, CHICAGO, LD_MILLENNIUM_CHICAGO)
         );
     }
+
     @ParameterizedTest
-    @MethodSource("roundTrip_localDates")
+    @MethodSource("roundTrip_tokyoTime")
     void testCalendar_roundTrip_withLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
@@ -823,6 +824,154 @@ class ConverterTest
         assertThat(actual.get(Calendar.DAY_OF_MONTH)).isEqualTo(expected.getDayOfMonth());
 
         assertThat(actual.getTimeInMillis()).isEqualTo(epochMilli);
+    }
+
+    private static Stream<Arguments> localDateToLong() {
+        return Stream.of(
+                Arguments.of(946616400000L, NEW_YORK, LD_MILLINNIUM_NY, TOKYO),
+                Arguments.of(946616400000L, NEW_YORK, LD_MILLINNIUM_NY, CHICAGO),
+                Arguments.of(946620000000L, CHICAGO, LD_MILLENNIUM_CHICAGO, TOKYO)
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testConvertLocalDateToLongAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        long intermediate = this.converter.convert(expected, long.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateToInstantAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        Instant intermediate = this.converter.convert(expected, Instant.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.toEpochMilli()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateToDoubleAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        double intermediate = this.converter.convert(expected, double.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat((long)intermediate).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateToAtomicLongAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        AtomicLong intermediate = this.converter.convert(expected, AtomicLong.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.get()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateToDateAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        Date intermediate = this.converter.convert(expected,Date.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.getTime()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateSqlDateAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        java.sql.Date intermediate = this.converter.convert(expected, java.sql.Date.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.getTime()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateTimestampAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        Timestamp intermediate = this.converter.convert(expected, Timestamp.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.getTime()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateZonedDateTimeAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        ZonedDateTime intermediate = this.converter.convert(expected, ZonedDateTime.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateToLocalDateTimeAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        LocalDateTime intermediate = this.converter.convert(expected, LocalDateTime.class, createConvertOptions(zoneId, targetZone));
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateBigIntegerAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        BigInteger intermediate = this.converter.convert(expected, BigInteger.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.longValue()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateToLong")
+    void testLocalDateBigDecimalAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+
+        BigDecimal intermediate = this.converter.convert(expected, BigDecimal.class, createConvertOptions(zoneId, targetZone));
+
+        assertThat(intermediate.longValue()).isEqualTo(epochMilli);
+
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+
+        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -913,6 +1062,15 @@ class ConverterTest
         Date date = new Date(epochMilli);
         ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createConvertOptions(null, zoneId));
         assertThat(zonedDateTime.toLocalDateTime()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testInstantToZonedDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        Instant date = Instant.ofEpochMilli(epochMilli);
+        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createConvertOptions(null, zoneId));
+        assertThat(zonedDateTime.toInstant()).isEqualTo(date);
     }
 
     @ParameterizedTest

@@ -209,7 +209,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Boolean.class, Float.class), BooleanConversions::toFloat);
         DEFAULT_FACTORY.put(pair(Character.class, Float.class), CharacterConversions::toFloat);
         DEFAULT_FACTORY.put(pair(Instant.class, Float.class), InstantConversions::toFloat);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Float.class), LocalDateConversions::toLong);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Float.class), LocalDateConversions::toFloat);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Float.class), AtomicBooleanConversions::toFloat);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Float.class), NumberConversions::toFloat);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Float.class), NumberConversions::toFloat);
@@ -231,7 +231,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Boolean.class, Double.class), BooleanConversions::toDouble);
         DEFAULT_FACTORY.put(pair(Character.class, Double.class), CharacterConversions::toDouble);
         DEFAULT_FACTORY.put(pair(Instant.class, Double.class), InstantConversions::toDouble);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Double.class), LocalDateConversions::toLong);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Double.class), LocalDateConversions::toDouble);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversions::toLong);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversions::toLong);
         DEFAULT_FACTORY.put(pair(Date.class, Double.class), DateConversions::toLong);
@@ -554,8 +554,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDate.class), DateConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Date.class, LocalDate.class), DateConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Instant.class, LocalDate.class), InstantConversions::toLocalDate);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, LocalDate.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalDate.class), (fromInstance, converter, options) -> ((LocalDateTime) fromInstance).toLocalDate());
+        DEFAULT_FACTORY.put(pair(LocalDate.class, LocalDate.class), LocalDateConversions::toLocalDate);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalDate.class), LocalDateTimeConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDate.class), ZonedDateTimeConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalDate.class), CalendarConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDate.class), NumberConversions::toLocalDate);
@@ -590,7 +590,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDateTime.class), DateConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Date.class, LocalDateTime.class), DateConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Instant.class, LocalDateTime.class), InstantConversions::toLocalDateTime);
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalDateTime.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, LocalDateTime.class), LocalDateTimeConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(LocalDate.class, LocalDateTime.class), LocalDateConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDateTime.class), ZonedDateTimeConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalDateTime.class), CalendarConversions::toLocalDateTime);

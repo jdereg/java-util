@@ -181,24 +181,25 @@ public final class StringUtilities
     }
 
     /**
-     * Checks if a CharSequence is empty ("") or null.
+     * Checks if a CharSequence is empty (""), null, or only whitespace.
      *
      * @param cs  the CharSequence to check, may be null
      * @return {@code true} if the CharSequence is empty or null
-     * @since 3.0 Changed signature from isEmpty(String) to isEmpty(CharSequence)
      */
-    public static boolean isEmpty(final CharSequence cs) {
-        return cs == null || cs.length() == 0;
+    public static boolean isEmpty(CharSequence cs)
+    {
+        return isWhitespace(cs);
     }
 
     /**
-     * Checks if a CharSequence is not empty ("") and not null.
+     * Checks if a CharSequence is not empty (""), not null and not whitespace only.
      *
      * @param cs  the CharSequence to check, may be null
-     * @return {@code true} if the CharSequence is not empty and not null
+     * @return {@code true} if the CharSequence is
+     *  not empty and not null and not whitespace only
      */
-    public static boolean isNotEmpty(final CharSequence cs) {
-        return !isEmpty(cs);
+    public static boolean isNotWhitespace(final CharSequence cs) {
+        return !isWhitespace(cs);
     }
 
     /**
@@ -221,13 +222,12 @@ public final class StringUtilities
     }
 
     /**
-     * Checks if a CharSequence is not empty (""), not null and not whitespace only.
+     * Checks if a CharSequence is not null, not empty (""), and not only whitespace.
      *
      * @param cs  the CharSequence to check, may be null
-     * @return {@code true} if the CharSequence is
-     *  not empty and not null and not whitespace only
+     * @return {@code true} if the CharSequence is not empty and not null
      */
-    public static boolean hasContent(final CharSequence cs) {
+    public static boolean isNotEmpty(final CharSequence cs) {
         return !isWhitespace(cs);
     }
 
@@ -238,7 +238,7 @@ public final class StringUtilities
      * @return {@code true} if the CharSequence is
      *  not empty and not null and not whitespace only
      */
-    public static boolean isNotWhitespace(final CharSequence cs) {
+    public static boolean hasContent(final CharSequence cs) {
         return !isWhitespace(cs);
     }
 

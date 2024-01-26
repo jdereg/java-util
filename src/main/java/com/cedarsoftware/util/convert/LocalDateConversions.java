@@ -31,6 +31,10 @@ public class LocalDateConversions {
         return toZonedDateTime(fromInstance, options).toLocalDateTime();
     }
 
+    static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(fromInstance, options).toLocalDate();
+    }
+
     static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
         return toZonedDateTime(fromInstance, options).toLocalTime();
     }

@@ -339,7 +339,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, BigDecimal.class), ZonedDateTimeConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(UUID.class, BigDecimal.class), UUIDConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(Calendar.class, BigDecimal.class), CalendarConversions::toBigDecimal);
-        DEFAULT_FACTORY.put(pair(Number.class, BigDecimal.class), NumberConversions::bigDecimalToBigDecimal);
+        DEFAULT_FACTORY.put(pair(Number.class, BigDecimal.class), NumberConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(Map.class, BigDecimal.class), MapConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
 

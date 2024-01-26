@@ -9,11 +9,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -95,69 +97,96 @@ class ConverterTest
         this.converter = new Converter(new DefaultConverterOptions());
     }
 
-    private static Stream<Arguments> toByte_minValueParams() {
-        return Stream.of(
-                Arguments.of("-128"),
-                Arguments.of(Byte.MIN_VALUE),
-                Arguments.of((short)Byte.MIN_VALUE),
-                Arguments.of((int)Byte.MIN_VALUE),
-                Arguments.of((long)Byte.MIN_VALUE),
-                Arguments.of(-128.0f),
-                Arguments.of(-128.0d),
-                Arguments.of( new BigDecimal("-128.0")),
-                Arguments.of( new BigDecimal("-128.9")),
-                Arguments.of( new BigInteger("-128")),
-                Arguments.of( new AtomicInteger(-128)),
-                Arguments.of( new AtomicLong(-128L)));
+    private static  <T extends Number> Stream<Arguments> paramsForIntegerTypes(T min, T max) {
+        List<Arguments> arguments = new ArrayList(20);
+        arguments.add(Arguments.of("3.159", 3));
+        arguments.add(Arguments.of("3.519", 3));
+        arguments.add(Arguments.of("-3.159", -3));
+        arguments.add(Arguments.of("-3.519", -3));
+        arguments.add(Arguments.of("" + min, min));
+        arguments.add(Arguments.of("" + max, max));
+        arguments.add(Arguments.of("" + min + ".25", min));
+        arguments.add(Arguments.of("" + max + ".75", max));
+        arguments.add(Arguments.of((byte)-3, -3));
+        arguments.add(Arguments.of((byte)3, 3));
+        arguments.add(Arguments.of((short)-9, -9));
+        arguments.add(Arguments.of((short)9, 9));
+        arguments.add(Arguments.of(-13,  -13));
+        arguments.add(Arguments.of(13, 13));
+        arguments.add(Arguments.of(-7L,  -7));
+        arguments.add(Arguments.of(7L, 7));
+        arguments.add(Arguments.of(-11.0d, -11));
+        arguments.add(Arguments.of(11.0d, 11));
+        arguments.add(Arguments.of(3.14f, 3));
+        arguments.add(Arguments.of(3.59f, 3));
+        arguments.add(Arguments.of(-3.14f, -3));
+        arguments.add(Arguments.of(-3.59f, -3));
+        arguments.add(Arguments.of(3.14d, 3));
+        arguments.add(Arguments.of(3.59d, 3));
+        arguments.add(Arguments.of(-3.14d, -3));
+        arguments.add(Arguments.of(-3.59d, -3));
+        arguments.add(Arguments.of( new AtomicInteger(0), 0));
+        arguments.add(Arguments.of( new AtomicLong(9), 9));
+        arguments.add(Arguments.of( BigInteger.valueOf(13), 13));
+        arguments.add(Arguments.of( BigDecimal.valueOf(23), 23));
+
+        return arguments.stream();
+    }
+
+    private static  <T extends Number> Stream<Arguments> paramsForFloatingPointTypes(T min, T max) {
+        List<Arguments> arguments = new ArrayList(20);
+        arguments.add(Arguments.of("3.159", 3.159d));
+        arguments.add(Arguments.of("3.519", 3.519d));
+        arguments.add(Arguments.of("-3.159", -3.159d));
+        arguments.add(Arguments.of("-3.519", -3.519d));
+        arguments.add(Arguments.of("" + min, min));
+        arguments.add(Arguments.of("" + max, max));
+        arguments.add(Arguments.of(min.doubleValue() + .25, min.doubleValue() + .25d));
+        arguments.add(Arguments.of(max.doubleValue() - .75, max.doubleValue() - .75d));
+        arguments.add(Arguments.of((byte)-3, -3));
+        arguments.add(Arguments.of((byte)3, 3));
+        arguments.add(Arguments.of((short)-9, -9));
+        arguments.add(Arguments.of((short)9, 9));
+        arguments.add(Arguments.of(-13,  -13));
+        arguments.add(Arguments.of(13, 13));
+        arguments.add(Arguments.of(-7L,  -7));
+        arguments.add(Arguments.of(7L, 7));
+        arguments.add(Arguments.of(-11.0d, -11.0d));
+        arguments.add(Arguments.of(11.0d, 11.0d));
+        arguments.add(Arguments.of(3.0f, 3.0d));
+        arguments.add(Arguments.of(-5.0f, -5.0d));
+        arguments.add(Arguments.of(-3.14d, -3.14d));
+        arguments.add(Arguments.of(-3.59d, -3.59d));
+        arguments.add(Arguments.of( new AtomicInteger(0), 0));
+        arguments.add(Arguments.of( new AtomicLong(9), 9));
+        arguments.add(Arguments.of( BigInteger.valueOf(13), 13));
+        arguments.add(Arguments.of( BigDecimal.valueOf(23), 23));
+
+        return arguments.stream();
+    }
+
+
+    private static Stream<Arguments> toByteParams() {
+        return paramsForIntegerTypes(Byte.MIN_VALUE, Byte.MAX_VALUE);
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("toByteParams")
+    void toByte(Object source, Number number)
+    {
+        byte expected = number.byteValue();
+        Byte converted = this.converter.convert(source, Byte.class);
+        assertThat(converted).isEqualTo((byte)expected);
     }
 
     @ParameterizedTest
-    @MethodSource("toByte_minValueParams")
-    void toByte_convertsToByteMinValue(Object value)
+    @MethodSource("toByteParams")
+    void toByteUsingPrimitive(Object source, Number number)
     {
-        Byte converted = this.converter.convert(value, Byte.class);
-        assertThat(converted).isEqualTo(Byte.MIN_VALUE);
-    }
-
-    @ParameterizedTest
-    @MethodSource("toByte_minValueParams")
-    void toByteAsPrimitive_convertsToByteMinValue(Object value)
-    {
-        byte converted = this.converter.convert(value, byte.class);
-        assertThat(converted).isEqualTo(Byte.MIN_VALUE);
-    }
-
-
-    private static Stream<Arguments> toByte_maxValueParams() {
-        return Stream.of(
-                Arguments.of("127.9"),
-                Arguments.of("127"),
-                Arguments.of(Byte.MAX_VALUE),
-                Arguments.of((short)Byte.MAX_VALUE),
-                Arguments.of((int)Byte.MAX_VALUE),
-                Arguments.of((long)Byte.MAX_VALUE),
-                Arguments.of(127.0f),
-                Arguments.of(127.0d),
-                Arguments.of( new BigDecimal("127.0")),
-                Arguments.of( new BigInteger("127")),
-                Arguments.of( new AtomicInteger(127)),
-                Arguments.of( new AtomicLong(127L)));
-    }
-
-    @ParameterizedTest
-    @MethodSource("toByte_maxValueParams")
-    void toByte_returnsByteMaxValue(Object value)
-    {
-        Byte converted = this.converter.convert(value, Byte.class);
-        assertThat(converted).isEqualTo(Byte.MAX_VALUE);
-    }
-
-    @ParameterizedTest
-    @MethodSource("toByte_maxValueParams")
-    void toByte_withPrimitiveType_returnsByteMaxVAlue(Object value)
-    {
-        byte converted = this.converter.convert(value, byte.class);
-        assertThat(converted).isEqualTo(Byte.MAX_VALUE);
+        byte expected = number.byteValue();
+        byte converted = this.converter.convert(source, byte.class);
+        assertThat(converted).isEqualTo(expected);
     }
 
     private static Stream<Arguments> toByte_booleanParams() {
@@ -227,44 +256,25 @@ class ConverterTest
     }
 
     private static Stream<Arguments> toShortParams() {
-        return Stream.of(
-                Arguments.of("-32768.9", (short)-32768),
-                Arguments.of("-32768", (short)-32768),
-                Arguments.of("32767", (short)32767),
-                Arguments.of("32767.9", (short)32767),
-                Arguments.of(Byte.MIN_VALUE, (short)-128),
-                Arguments.of(Byte.MAX_VALUE, (short)127),
-                Arguments.of(Short.MIN_VALUE, (short)-32768),
-                Arguments.of(Short.MAX_VALUE, (short)32767),
-                Arguments.of(-25, (short)-25),
-                Arguments.of(24, (short)24),
-                Arguments.of(-128L, (short)-128),
-                Arguments.of(127L, (short)127),
-                Arguments.of(-128.0f, (short)-128),
-                Arguments.of(127.0f, (short)127),
-                Arguments.of(-128.0d, (short)-128),
-                Arguments.of(127.0d, (short)127),
-                Arguments.of( new BigDecimal("100"),(short)100),
-                Arguments.of( new BigInteger("120"), (short)120),
-                Arguments.of( new AtomicInteger(25), (short)25),
-                Arguments.of( new AtomicLong(100L), (short)100)
-        );
+        return paramsForIntegerTypes(Short.MIN_VALUE, Short.MAX_VALUE);
     }
 
 
     @ParameterizedTest
     @MethodSource("toShortParams")
-    void toShort(Object value, Short expectedResult)
+    void toShort(Object value, Number number)
     {
+        short expected = number.shortValue();
         Short converted = this.converter.convert(value, Short.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        assertThat(converted).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("toShortParams")
-    void toShort_usingPrimitiveClass(Object value, short expectedResult) {
+    void toShort_usingPrimitiveClass(Object value, Number number) {
+        short expected = number.shortValue();
         short converted = this.converter.convert(value, short.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        assertThat(converted).isEqualTo(expected);
     }
 
     private static Stream<Arguments> toShort_withBooleanPrams() {
@@ -334,31 +344,7 @@ class ConverterTest
     }
 
     private static Stream<Arguments> toIntParams() {
-        return Stream.of(
-                Arguments.of("-32768", -32768),
-                Arguments.of("-45000", -45000),
-                Arguments.of("32767", 32767),
-                Arguments.of(new BigInteger("8675309"), 8675309),
-                Arguments.of(Byte.MIN_VALUE,-128),
-                Arguments.of(Byte.MAX_VALUE, 127),
-                Arguments.of(Short.MIN_VALUE, -32768),
-                Arguments.of(Short.MAX_VALUE, 32767),
-                Arguments.of(Integer.MIN_VALUE, Integer.MIN_VALUE),
-                Arguments.of(Integer.MAX_VALUE, Integer.MAX_VALUE),
-                Arguments.of(-128L, -128),
-                Arguments.of(127L, 127),
-                Arguments.of(3.14, 3),
-                Arguments.of(-128.0f, -128),
-                Arguments.of(127.0f, 127),
-                Arguments.of(-128.0d, -128),
-                Arguments.of(127.0d, 127),
-                Arguments.of( new BigDecimal("100"),100),
-                Arguments.of( new BigInteger("120"), 120),
-                Arguments.of( new AtomicInteger(75), 75),
-                Arguments.of( new AtomicInteger(1), 1),
-                Arguments.of( new AtomicInteger(0), 0),
-                Arguments.of( new AtomicLong(Integer.MAX_VALUE), Integer.MAX_VALUE)
-        );
+        return paramsForIntegerTypes(Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
     @ParameterizedTest
@@ -399,11 +385,13 @@ class ConverterTest
 
     private static Stream<Arguments> toInt_illegalArguments() {
         return Stream.of(
-                Arguments.of("45badNumber", "Value: 45badNumber not parseable as an int value or outside -2147483648 to 2147483647"),
-                Arguments.of( "12147483648", "Value: 12147483648 not parseable as an int value or outside -2147483648 to 2147483647"),
-                Arguments.of("2147483649", "Value: 2147483649 not parseable as an int value or outside -2147483648 to 2147483647"),
+                Arguments.of("45badNumber", "not parseable as an int value or outside -2147483648 to 2147483647"),
+                Arguments.of( "9999999999", "not parseable as an int value or outside -2147483648 to 2147483647"),
+                Arguments.of( "12147483648", "not parseable as an int value or outside -2147483648 to 2147483647"),
+                Arguments.of("2147483649", "not parseable as an int value or outside -2147483648 to 2147483647"),
                 Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
     }
+
 
     @ParameterizedTest
     @MethodSource("toInt_illegalArguments")
@@ -439,42 +427,25 @@ class ConverterTest
     }
 
     private static Stream<Arguments> toLongParams() {
-        return Stream.of(
-                Arguments.of("-32768", -32768L),
-                Arguments.of("32767", 32767L),
-                Arguments.of(Byte.MIN_VALUE,-128L),
-                Arguments.of(Byte.MAX_VALUE, 127L),
-                Arguments.of(Short.MIN_VALUE, -32768L),
-                Arguments.of(Short.MAX_VALUE, 32767L),
-                Arguments.of(Integer.MIN_VALUE, -2147483648L),
-                Arguments.of(Integer.MAX_VALUE, 2147483647L),
-                Arguments.of(Long.MIN_VALUE, -9223372036854775808L),
-                Arguments.of(Long.MAX_VALUE, 9223372036854775807L),
-                Arguments.of(-128.0f, -128L),
-                Arguments.of(127.0f, 127L),
-                Arguments.of(-128.0d, -128L),
-                Arguments.of(127.0d, 127L),
-                Arguments.of( new BigDecimal("100"), 100L),
-                Arguments.of( new BigInteger("120"), 120L),
-                Arguments.of( new AtomicInteger(25), 25L),
-                Arguments.of( new AtomicLong(100L), 100L)
-        );
+        return paramsForIntegerTypes(Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     @ParameterizedTest
     @MethodSource("toLongParams")
-    void toLong(Object value, Long expectedResult)
+    void toLong(Object value, Number number)
     {
+        Long expected = number.longValue();
         Long converted = this.converter.convert(value, Long.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        assertThat(converted).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("toLongParams")
-    void toLong_usingPrimitives(Object value, long expectedResult)
+    void toLong_usingPrimitives(Object value, Number number)
     {
+        long expected = number.longValue();
         long converted = this.converter.convert(value, long.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        assertThat(converted).isEqualTo(expected);
     }
 
     private static Stream<Arguments> toLong_booleanParams() {
@@ -538,16 +509,16 @@ class ConverterTest
 
 
 
-    private static Stream<Arguments> testLongParams_withIllegalArguments() {
+    private static Stream<Arguments> toLongWithIllegalParams() {
         return Stream.of(
-                Arguments.of("45badNumber", "not parseable as a long value"),
-                Arguments.of( "-9223372036854775809", "not parseable as a long value"),
-                Arguments.of("9223372036854775808", "not parseable as a long value"),
+                Arguments.of("45badNumber", "not parseable as a long value or outside -9223372036854775808 to 9223372036854775807"),
+                Arguments.of( "-9223372036854775809", "not parseable as a long value or outside -9223372036854775808 to 9223372036854775807"),
+                Arguments.of("9223372036854775808", "not parseable as a long value or outside -9223372036854775808 to 9223372036854775807"),
                 Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
     }
 
     @ParameterizedTest
-    @MethodSource("testLongParams_withIllegalArguments")
+    @MethodSource("toLongWithIllegalParams")
     void testLong_withIllegalArguments(Object value, String partialMessage) {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() ->  this.converter.convert(value, Long.class))
@@ -738,7 +709,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createConvertOptions(zoneId, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
 
         assertThat(localDateTime).isEqualTo(expected);
     }
@@ -750,7 +721,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createConvertOptions(zoneId, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
 
         assertThat(localDateTime).isEqualTo(expected);
     }
@@ -761,7 +732,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(NEW_YORK));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createConvertOptions(NEW_YORK, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(NEW_YORK, zoneId));
 
         assertThat(localDateTime).isEqualTo(expected);
     }
@@ -781,9 +752,9 @@ class ConverterTest
         assertThat(calendar.getTimeInMillis()).isEqualTo(epochMilli);
 
 
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createConvertOptions(zoneId, TOKYO));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, TOKYO));
 
-        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createConvertOptions(TOKYO, zoneId));
+        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createCustomZones(TOKYO, zoneId));
 
         assertThat(actual.get(Calendar.YEAR)).isEqualTo(expected.getYear());
         assertThat(actual.get(Calendar.MONTH)).isEqualTo(expected.getMonthValue()-1);
@@ -815,9 +786,9 @@ class ConverterTest
         assertThat(calendar.getTimeInMillis()).isEqualTo(epochMilli);
 
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createConvertOptions(zoneId, TOKYO));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(zoneId, TOKYO));
 
-        Calendar actual = this.converter.convert(localDate, Calendar.class, createConvertOptions(TOKYO, zoneId));
+        Calendar actual = this.converter.convert(localDate, Calendar.class, createCustomZones(TOKYO, zoneId));
 
         assertThat(actual.get(Calendar.YEAR)).isEqualTo(expected.getYear());
         assertThat(actual.get(Calendar.MONTH)).isEqualTo(expected.getMonthValue()-1);
@@ -837,11 +808,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testConvertLocalDateToLongAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        long intermediate = this.converter.convert(expected, long.class, createConvertOptions(zoneId, targetZone));
+        long intermediate = this.converter.convert(expected, long.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -850,11 +821,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToInstantAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        Instant intermediate = this.converter.convert(expected, Instant.class, createConvertOptions(zoneId, targetZone));
+        Instant intermediate = this.converter.convert(expected, Instant.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.toEpochMilli()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -863,11 +834,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToDoubleAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        double intermediate = this.converter.convert(expected, double.class, createConvertOptions(zoneId, targetZone));
+        double intermediate = this.converter.convert(expected, double.class, createCustomZones(zoneId, targetZone));
 
         assertThat((long)intermediate).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -876,11 +847,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToAtomicLongAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        AtomicLong intermediate = this.converter.convert(expected, AtomicLong.class, createConvertOptions(zoneId, targetZone));
+        AtomicLong intermediate = this.converter.convert(expected, AtomicLong.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.get()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -889,11 +860,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToDateAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        Date intermediate = this.converter.convert(expected,Date.class, createConvertOptions(zoneId, targetZone));
+        Date intermediate = this.converter.convert(expected,Date.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.getTime()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -902,11 +873,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateSqlDateAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        java.sql.Date intermediate = this.converter.convert(expected, java.sql.Date.class, createConvertOptions(zoneId, targetZone));
+        java.sql.Date intermediate = this.converter.convert(expected, java.sql.Date.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.getTime()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -915,11 +886,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateTimestampAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        Timestamp intermediate = this.converter.convert(expected, Timestamp.class, createConvertOptions(zoneId, targetZone));
+        Timestamp intermediate = this.converter.convert(expected, Timestamp.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.getTime()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -928,11 +899,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateZonedDateTimeAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        ZonedDateTime intermediate = this.converter.convert(expected, ZonedDateTime.class, createConvertOptions(zoneId, targetZone));
+        ZonedDateTime intermediate = this.converter.convert(expected, ZonedDateTime.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -941,9 +912,9 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToLocalDateTimeAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        LocalDateTime intermediate = this.converter.convert(expected, LocalDateTime.class, createConvertOptions(zoneId, targetZone));
+        LocalDateTime intermediate = this.converter.convert(expected, LocalDateTime.class, createCustomZones(zoneId, targetZone));
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -952,11 +923,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToBigIntegerAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        BigInteger intermediate = this.converter.convert(expected, BigInteger.class, createConvertOptions(zoneId, targetZone));
+        BigInteger intermediate = this.converter.convert(expected, BigInteger.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.longValue()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -965,11 +936,11 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToBigDecimalAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        BigDecimal intermediate = this.converter.convert(expected, BigDecimal.class, createConvertOptions(zoneId, targetZone));
+        BigDecimal intermediate = this.converter.convert(expected, BigDecimal.class, createCustomZones(zoneId, targetZone));
 
         assertThat(intermediate.longValue()).isEqualTo(epochMilli);
 
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createConvertOptions(targetZone, zoneId));
+        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -977,7 +948,7 @@ class ConverterTest
     @Test
     void testLocalDateToFloat() {
 
-        float intermediate = this.converter.convert(LD_MILLINNIUM_NY, float.class, createConvertOptions(NEW_YORK, TOKYO));
+        float intermediate = this.converter.convert(LD_MILLINNIUM_NY, float.class, createCustomZones(NEW_YORK, TOKYO));
 
         assertThat((long)intermediate).isNotEqualTo(946616400000L);
     }
@@ -985,7 +956,7 @@ class ConverterTest
     @Test
     void testLocalDateToLocalTime_withZoneChange_willBeZoneOffset() {
 
-        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createConvertOptions(NEW_YORK, TOKYO));
+        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, TOKYO));
 
         assertThat(intermediate).hasHour(14)
                 .hasMinute(0)
@@ -996,7 +967,7 @@ class ConverterTest
     @Test
     void testLocalDateToLocalTimeWithoutZoneChange_willBeMidnight() {
 
-        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createConvertOptions(NEW_YORK, NEW_YORK));
+        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, NEW_YORK));
 
         assertThat(intermediate).hasHour(0)
                 .hasMinute(0)
@@ -1008,7 +979,7 @@ class ConverterTest
     @MethodSource("localDateToLong")
     void testLocalDateToLocalTime(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
 
-        float intermediate = this.converter.convert(expected, float.class, createConvertOptions(zoneId, targetZone));
+        float intermediate = this.converter.convert(expected, float.class, createCustomZones(zoneId, targetZone));
 
         assertThat((long)intermediate).isNotEqualTo(epochMilli);
     }
@@ -1020,7 +991,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createConvertOptions(zoneId, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createCustomZones(zoneId, zoneId));
 
         assertThat(time.toInstant().toEpochMilli()).isEqualTo(epochMilli);
         assertThat(localDateTime).isEqualTo(expected);
@@ -1033,7 +1004,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        LocalTime actual = this.converter.convert(time, LocalTime.class, createConvertOptions(zoneId, zoneId));
+        LocalTime actual = this.converter.convert(time, LocalTime.class, createCustomZones(zoneId, zoneId));
 
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
@@ -1044,7 +1015,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        LocalDate actual = this.converter.convert(time, LocalDate.class, createConvertOptions(zoneId, zoneId));
+        LocalDate actual = this.converter.convert(time, LocalDate.class, createCustomZones(zoneId, zoneId));
 
         assertThat(actual).isEqualTo(expected.toLocalDate());
     }
@@ -1055,7 +1026,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        Instant actual = this.converter.convert(time, Instant.class, createConvertOptions(zoneId, zoneId));
+        Instant actual = this.converter.convert(time, Instant.class, createCustomZones(zoneId, zoneId));
 
         assertThat(actual).isEqualTo(time.toInstant());
     }
@@ -1066,7 +1037,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        Calendar actual = this.converter.convert(time, Calendar.class, createConvertOptions(zoneId, zoneId));
+        Calendar actual = this.converter.convert(time, Calendar.class, createCustomZones(zoneId, zoneId));
 
         assertThat(actual.getTime().getTime()).isEqualTo(time.toInstant().toEpochMilli());
         assertThat(actual.getTimeZone()).isEqualTo(TimeZone.getTimeZone(zoneId));
@@ -1079,7 +1050,7 @@ class ConverterTest
     {
         ZonedDateTime time = ZonedDateTime.of(localDateTime, zoneId);
 
-        long instant = this.converter.convert(time, long.class, createConvertOptions(zoneId, zoneId));
+        long instant = this.converter.convert(time, long.class, createCustomZones(zoneId, zoneId));
 
         assertThat(instant).isEqualTo(epochMilli);
     }
@@ -1089,7 +1060,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testLongToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
-        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1099,8 +1070,16 @@ class ConverterTest
     {
         AtomicLong time = new AtomicLong(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testLongToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        Instant actual = this.converter.convert(epochMilli, Instant.class, createCustomZones(null, zoneId));
+        assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli));
     }
 
     @ParameterizedTest
@@ -1109,7 +1088,7 @@ class ConverterTest
     {
         BigInteger bi = BigInteger.valueOf(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(bi, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(bi, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1119,7 +1098,7 @@ class ConverterTest
     {
         BigDecimal bd = BigDecimal.valueOf(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(bd, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(bd, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1128,7 +1107,7 @@ class ConverterTest
     void testInstantToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(instant, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(instant, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1137,7 +1116,7 @@ class ConverterTest
     void testDateToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Date date = new Date(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1146,7 +1125,7 @@ class ConverterTest
     void testDateToZonedDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Date date = new Date(epochMilli);
-        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createConvertOptions(null, zoneId));
+        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createCustomZones(null, zoneId));
         assertThat(zonedDateTime.toLocalDateTime()).isEqualTo(expected);
     }
 
@@ -1155,7 +1134,7 @@ class ConverterTest
     void testInstantToZonedDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant date = Instant.ofEpochMilli(epochMilli);
-        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createConvertOptions(null, zoneId));
+        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createCustomZones(null, zoneId));
         assertThat(zonedDateTime.toInstant()).isEqualTo(date);
     }
 
@@ -1164,7 +1143,7 @@ class ConverterTest
     void testDateToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Date date = new Date(epochMilli);
-        Instant actual = this.converter.convert(date, Instant.class, createConvertOptions(null, zoneId));
+        Instant actual = this.converter.convert(date, Instant.class, createCustomZones(null, zoneId));
         assertThat(actual.toEpochMilli()).isEqualTo(epochMilli);
     }
 
@@ -1174,7 +1153,7 @@ class ConverterTest
     void testSqlDateToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         java.sql.Date date = new java.sql.Date(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1183,7 +1162,7 @@ class ConverterTest
     void testInstantToLong(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        long actual = this.converter.convert(instant, long.class, createConvertOptions(null, zoneId));
+        long actual = this.converter.convert(instant, long.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo(epochMilli);
     }
 
@@ -1192,7 +1171,7 @@ class ConverterTest
     void testInstantToAtomicLong(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        AtomicLong actual = this.converter.convert(instant, AtomicLong.class, createConvertOptions(null, zoneId));
+        AtomicLong actual = this.converter.convert(instant, AtomicLong.class, createCustomZones(null, zoneId));
         assertThat(actual.get()).isEqualTo(epochMilli);
     }
 
@@ -1201,7 +1180,7 @@ class ConverterTest
     void testInstantToFloat(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        float actual = this.converter.convert(instant, float.class, createConvertOptions(null, zoneId));
+        float actual = this.converter.convert(instant, float.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo((float)epochMilli);
     }
 
@@ -1210,7 +1189,7 @@ class ConverterTest
     void testInstantToDouble(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        double actual = this.converter.convert(instant, double.class, createConvertOptions(null, zoneId));
+        double actual = this.converter.convert(instant, double.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo((double)epochMilli);
     }
 
@@ -1219,7 +1198,7 @@ class ConverterTest
     void testInstantToTimestamp(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        Timestamp actual = this.converter.convert(instant, Timestamp.class, createConvertOptions(null, zoneId));
+        Timestamp actual = this.converter.convert(instant, Timestamp.class, createCustomZones(null, zoneId));
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
@@ -1228,7 +1207,7 @@ class ConverterTest
     void testInstantToDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        Date actual = this.converter.convert(instant, Date.class, createConvertOptions(null, zoneId));
+        Date actual = this.converter.convert(instant, Date.class, createCustomZones(null, zoneId));
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
@@ -1237,7 +1216,7 @@ class ConverterTest
     void testInstantToSqlDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        java.sql.Date actual = this.converter.convert(instant, java.sql.Date.class, createConvertOptions(null, zoneId));
+        java.sql.Date actual = this.converter.convert(instant, java.sql.Date.class, createCustomZones(null, zoneId));
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
@@ -1246,7 +1225,7 @@ class ConverterTest
     void testInstantToCalendar(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        Calendar actual = this.converter.convert(instant, Calendar.class, createConvertOptions(null, zoneId));
+        Calendar actual = this.converter.convert(instant, Calendar.class, createCustomZones(null, zoneId));
         assertThat(actual.getTime().getTime()).isEqualTo(epochMilli);
         assertThat(actual.getTimeZone()).isEqualTo(TimeZone.getTimeZone(zoneId));
     }
@@ -1256,7 +1235,7 @@ class ConverterTest
     void testInstantToBigInteger(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        BigInteger actual = this.converter.convert(instant, BigInteger.class, createConvertOptions(null, zoneId));
+        BigInteger actual = this.converter.convert(instant, BigInteger.class, createCustomZones(null, zoneId));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1265,7 +1244,7 @@ class ConverterTest
     void testInstantToBigDecimal(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        BigDecimal actual = this.converter.convert(instant, BigDecimal.class, createConvertOptions(null, zoneId));
+        BigDecimal actual = this.converter.convert(instant, BigDecimal.class, createCustomZones(null, zoneId));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1274,7 +1253,7 @@ class ConverterTest
     void testInstantToLocalDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalDate actual = this.converter.convert(instant, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate actual = this.converter.convert(instant, LocalDate.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo(expected.toLocalDate());
     }
 
@@ -1283,7 +1262,7 @@ class ConverterTest
     void testInstantToLocalTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalTime actual = this.converter.convert(instant, LocalTime.class, createConvertOptions(null, zoneId));
+        LocalTime actual = this.converter.convert(instant, LocalTime.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
 
@@ -1294,7 +1273,7 @@ class ConverterTest
     void testTimestampToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Timestamp date = new Timestamp(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createConvertOptions(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(null, zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1324,7 +1303,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        double d = this.converter.convert(calendar, double.class, createConvertOptions(null, zoneId));
+        double d = this.converter.convert(calendar, double.class, createCustomZones(null, zoneId));
         assertThat(d).isEqualTo((double)epochMilli);
     }
 
@@ -1334,7 +1313,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(null, zoneId));
         assertThat(localDate).isEqualTo(expected);
     }
 
@@ -1344,7 +1323,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        LocalTime actual = this.converter.convert(calendar, LocalTime.class, createConvertOptions(null, zoneId));
+        LocalTime actual = this.converter.convert(calendar, LocalTime.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
 
@@ -1354,7 +1333,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        ZonedDateTime actual = this.converter.convert(calendar, ZonedDateTime.class, createConvertOptions(null, zoneId));
+        ZonedDateTime actual = this.converter.convert(calendar, ZonedDateTime.class, createCustomZones(null, zoneId));
         assertThat(actual.toLocalDateTime()).isEqualTo(expected);
     }
 
@@ -1364,7 +1343,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        Instant actual = this.converter.convert(calendar, Instant.class, createConvertOptions(null, zoneId));
+        Instant actual = this.converter.convert(calendar, Instant.class, createCustomZones(null, zoneId));
         assertThat(actual.toEpochMilli()).isEqualTo(epochMilli);
     }
 
@@ -1373,7 +1352,7 @@ class ConverterTest
     void testDateToLocalTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
         Date date = new Date(epochMilli);
 
-        LocalTime actual = this.converter.convert(date, LocalTime.class, createConvertOptions(null, zoneId));
+        LocalTime actual = this.converter.convert(date, LocalTime.class, createCustomZones(null, zoneId));
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
 
@@ -1383,7 +1362,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(null, zoneId));
         assertThat(localDate).isEqualTo(expected);
     }
 
@@ -1392,7 +1371,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(NEW_YORK));
         calendar.setTimeInMillis(1687622249729L);
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createConvertOptions(null, TOKYO));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(null, TOKYO));
 
         assertThat(localDate)
                 .hasYear(2023)
@@ -1415,7 +1394,7 @@ class ConverterTest
         assertThat(calendar.getTimeInMillis()).isEqualTo(1687622249729L);
 
         // Convert calendar calendar to TOKYO LocalDateTime
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createConvertOptions(CHICAGO, TOKYO));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(CHICAGO, TOKYO));
 
         assertThat(localDateTime)
                 .hasYear(2023)
@@ -1428,7 +1407,7 @@ class ConverterTest
 
         //  Convert Tokyo local date time to CHICAGO Calendar
         //  We don't know the source ZoneId we are trying to convert.
-        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createConvertOptions(TOKYO, CHICAGO));
+        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createCustomZones(TOKYO, CHICAGO));
 
         assertThat(actual.get(Calendar.MONTH)).isEqualTo(5);
         assertThat(actual.get(Calendar.DAY_OF_MONTH)).isEqualTo(24);
@@ -1455,7 +1434,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testLongToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
-        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createCustomZones(null, zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1464,7 +1443,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testZonedDateTimeToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
-        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createCustomZones(null, zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1475,7 +1454,7 @@ class ConverterTest
     void testInstantToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalDate localDate = this.converter.convert(instant, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(instant, LocalDate.class, createCustomZones(null, zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1485,7 +1464,7 @@ class ConverterTest
     void testDateToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         Date date = new Date(epochMilli);
-        LocalDate localDate = this.converter.convert(date, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(null, zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1495,7 +1474,7 @@ class ConverterTest
     void testSqlDateToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         java.sql.Date date = new java.sql.Date(epochMilli);
-        LocalDate localDate = this.converter.convert(date, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(null, zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1505,20 +1484,40 @@ class ConverterTest
     void testTimestampToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         Timestamp date = new Timestamp(epochMilli);
-        LocalDate localDate = this.converter.convert(date, LocalDate.class, createConvertOptions(null, zoneId));
+        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(null, zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
+
+    @ParameterizedTest
+    @MethodSource("toLongParams")
+    void testLongToBigInteger(Object source, Number number)
+    {
+        long expected = number.longValue();
+        BigInteger actual = this.converter.convert(source, BigInteger.class, createCustomZones(null, null));
+
+        assertThat(actual).isEqualTo(BigInteger.valueOf(expected));
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateInformation")
+    void testLongToLocalTime(long epochMilli, ZoneId zoneId, LocalDate expected)
+    {
+        LocalTime actual = this.converter.convert(epochMilli, LocalTime.class, createCustomZones(null, zoneId));
+
+        assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toLocalTime());
+    }
+
 
 
     @ParameterizedTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateToLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        long milli = this.converter.convert(initial, long.class, createConvertOptions(sourceZoneId, targetZoneId));
+        long milli = this.converter.convert(initial, long.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(milli).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1535,10 +1534,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        long milli = this.converter.convert(initial, long.class, createConvertOptions(sourceZoneId, targetZoneId));
+        long milli = this.converter.convert(initial, long.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(milli).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1546,10 +1545,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToInstant(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        Instant intermediate = this.converter.convert(initial, Instant.class, createConvertOptions(sourceZoneId, targetZoneId));
+        Instant intermediate = this.converter.convert(initial, Instant.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(intermediate.toEpochMilli()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createCustomZones(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1557,10 +1556,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToAtomicLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        AtomicLong milli = this.converter.convert(initial, AtomicLong.class, createConvertOptions(sourceZoneId, targetZoneId));
+        AtomicLong milli = this.converter.convert(initial, AtomicLong.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1568,10 +1567,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToZonedDateTime(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        ZonedDateTime intermediate = this.converter.convert(initial, ZonedDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        ZonedDateTime intermediate = this.converter.convert(initial, ZonedDateTime.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createCustomZones(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1579,7 +1578,7 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToLocalTime(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        LocalTime intermediate = this.converter.convert(initial, LocalTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        LocalTime intermediate = this.converter.convert(initial, LocalTime.class, createCustomZones(sourceZoneId, targetZoneId));
 
         assertThat(intermediate).isEqualTo(expected.toLocalTime());
     }
@@ -1588,10 +1587,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToBigInteger(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        BigInteger milli = this.converter.convert(initial, BigInteger.class, createConvertOptions(sourceZoneId, targetZoneId));
+        BigInteger milli = this.converter.convert(initial, BigInteger.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
 
     }
@@ -1600,10 +1599,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToBigDecimal(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        BigDecimal milli = this.converter.convert(initial, BigDecimal.class, createConvertOptions(sourceZoneId, targetZoneId));
+        BigDecimal milli = this.converter.convert(initial, BigDecimal.class, createCustomZones(sourceZoneId, targetZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1720,37 +1719,15 @@ class ConverterTest
 
 
     private static Stream<Arguments> testBigDecimalParams() {
-        return Stream.of(
-                Arguments.of("-45000", BigDecimal.valueOf(-45000L)),
-                Arguments.of("-32768", BigDecimal.valueOf(-32768L)),
-                Arguments.of("32767", BigDecimal.valueOf(32767L)),
-                Arguments.of(Byte.MIN_VALUE, BigDecimal.valueOf((-128L)),
-                Arguments.of(Byte.MAX_VALUE, BigDecimal.valueOf(127L)),
-                Arguments.of(Short.MIN_VALUE, BigDecimal.valueOf(-32768L)),
-                Arguments.of(Short.MAX_VALUE, BigDecimal.valueOf(32767L)),
-                Arguments.of(Integer.MIN_VALUE, BigDecimal.valueOf(-2147483648L)),
-                Arguments.of(Integer.MAX_VALUE, BigDecimal.valueOf(2147483647L)),
-                Arguments.of(Long.MIN_VALUE, BigDecimal.valueOf(-9223372036854775808L)),
-                Arguments.of(Long.MAX_VALUE, BigDecimal.valueOf(9223372036854775807L)),
-                        Arguments.of(3.14, BigDecimal.valueOf(3.14)),
-                        Arguments.of(-128.0f, BigDecimal.valueOf(-128.0f)),
-                Arguments.of(127.0f, BigDecimal.valueOf(127.0f)),
-                Arguments.of(-128.0d, BigDecimal.valueOf(-128.0d))),
-                Arguments.of(127.0d, BigDecimal.valueOf(127.0d)),
-                Arguments.of( new BigDecimal("100"), new BigDecimal("100")),
-                Arguments.of( new BigInteger("8675309"), new BigDecimal("8675309")),
-                Arguments.of( new BigInteger("120"), new BigDecimal("120")),
-                Arguments.of( new AtomicInteger(25), new BigDecimal(25)),
-                Arguments.of( new AtomicLong(100L), new BigDecimal(100))
-        );
+        return paramsForFloatingPointTypes(Double.MIN_VALUE, Double.MAX_VALUE);
     }
 
     @ParameterizedTest
     @MethodSource("testBigDecimalParams")
-    void testBigDecimal(Object value, BigDecimal expectedResult)
+    void testBigDecimal(Object value, Number number)
     {
         BigDecimal converted = this.converter.convert(value, BigDecimal.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        assertThat(converted).isEqualTo(new BigDecimal(number.toString()));
     }
 
 
@@ -1803,37 +1780,15 @@ class ConverterTest
     }
 
     private static Stream<Arguments> testBigIntegerParams() {
-        return Stream.of(
-                Arguments.of("-32768", BigInteger.valueOf(-32768L)),
-                Arguments.of("32767", BigInteger.valueOf(32767L)),
-                Arguments.of((short)75, BigInteger.valueOf(75)),
-                Arguments.of(Byte.MIN_VALUE, BigInteger.valueOf((-128L)),
-                Arguments.of(Byte.MAX_VALUE, BigInteger.valueOf(127L)),
-                Arguments.of(Short.MIN_VALUE, BigInteger.valueOf(-32768L)),
-                Arguments.of(Short.MAX_VALUE, BigInteger.valueOf(32767L)),
-                Arguments.of(Integer.MIN_VALUE, BigInteger.valueOf(-2147483648L)),
-                Arguments.of(Integer.MAX_VALUE, BigInteger.valueOf(2147483647L)),
-                Arguments.of(Long.MIN_VALUE, BigInteger.valueOf(-9223372036854775808L)),
-                Arguments.of(Long.MAX_VALUE, BigInteger.valueOf(9223372036854775807L)),
-                Arguments.of(-128.192f, BigInteger.valueOf(-128)),
-                Arguments.of(127.5698f, BigInteger.valueOf(127)),
-                Arguments.of(-128.0d, BigInteger.valueOf(-128))),
-                Arguments.of(3.14d, BigInteger.valueOf(3)),
-                Arguments.of("11.5", new BigInteger("11")),
-                Arguments.of(127.0d, BigInteger.valueOf(127)),
-                Arguments.of( new BigDecimal("100"), new BigInteger("100")),
-                Arguments.of( new BigInteger("120"), new BigInteger("120")),
-                Arguments.of( new AtomicInteger(25), BigInteger.valueOf(25)),
-                Arguments.of( new AtomicLong(100L), BigInteger.valueOf(100))
-        );
+        return paramsForIntegerTypes(Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     @ParameterizedTest
     @MethodSource("testBigIntegerParams")
-    void testBigInteger(Object value, BigInteger expectedResult)
+    void testBigInteger(Object value, Number number)
     {
         BigInteger converted = this.converter.convert(value, BigInteger.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        assertThat(converted).isEqualTo(new BigInteger(number.toString()));
     }
 
 
@@ -2462,32 +2417,32 @@ class ConverterTest
                 .withMessageContaining("Day must be between 1 and 31");
     }
 
-    @Test
-    void testDateErrorHandlingBadInput()
+    private static Stream<Arguments> unparseableDates() {
+        return Stream.of(
+                Arguments.of(" "),
+                Arguments.of("")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("unparseableDates")
+    void testUnparseableDates_Date(String date)
     {
-        assertNull(this.converter.convert(" ", java.util.Date.class));
-        assertNull(this.converter.convert("", java.util.Date.class));
-        assertNull(this.converter.convert(null, java.util.Date.class));
+        assertNull(this.converter.convert(date, Date.class));
+    }
 
-        assertNull(this.converter.convert(" ", Date.class));
-        assertNull(this.converter.convert("", Date.class));
-        assertNull(this.converter.convert(null, Date.class));
+    @ParameterizedTest
+    @MethodSource("unparseableDates")
+    void testUnparseableDates_SqlDate(String date)
+    {
+        assertNull(this.converter.convert(date, java.sql.Date.class));
+    }
 
-        assertNull(this.converter.convert(" ", java.sql.Date.class));
-        assertNull(this.converter.convert("", java.sql.Date.class));
-        assertNull(this.converter.convert(null, java.sql.Date.class));
-
-        assertNull(this.converter.convert(" ", java.sql.Date.class));
-        assertNull(this.converter.convert("", java.sql.Date.class));
-        assertNull(this.converter.convert(null, java.sql.Date.class));
-
-        assertNull(this.converter.convert(" ", java.sql.Timestamp.class));
-        assertNull(this.converter.convert("", java.sql.Timestamp.class));
-        assertNull(this.converter.convert(null, java.sql.Timestamp.class));
-
-        assertNull(this.converter.convert(" ", Timestamp.class));
-        assertNull(this.converter.convert("", Timestamp.class));
-        assertNull(this.converter.convert(null, Timestamp.class));
+    @ParameterizedTest
+    @MethodSource("unparseableDates")
+    void testUnparseableDates_Timestamp(String date)
+    {
+        assertNull(this.converter.convert(date, Timestamp.class));
     }
 
     @Test
@@ -2535,90 +2490,89 @@ class ConverterTest
         }
     }
 
-    @Test
-    void testFloat()
-    {
-        assert -3.14f == this.converter.convert(-3.14f, float.class);
-        assert -3.14f == this.converter.convert(-3.14f, Float.class);
-        assert -3.14f == this.converter.convert("-3.14", float.class);
-        assert -3.14f == this.converter.convert("-3.14", Float.class);
-        assert -3.14f == this.converter.convert(-3.14d, float.class);
-        assert -3.14f == this.converter.convert(-3.14d, Float.class);
-        assert 1.0f == this.converter.convert(true, float.class);
-        assert 1.0f == this.converter.convert(true, Float.class);
-        assert 0.0f == this.converter.convert(false, float.class);
-        assert 0.0f == this.converter.convert(false, Float.class);
-
-        assert 0.0f == this.converter.convert(new AtomicInteger(0), Float.class);
-        assert 0.0f == this.converter.convert(new AtomicLong(0), Float.class);
-        assert 0.0f == this.converter.convert(new AtomicBoolean(false), Float.class);
-        assert 1.0f == this.converter.convert(new AtomicBoolean(true), Float.class);
-
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), float.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        try
-        {
-            this.converter.convert("45.6badNumber", Float.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("45.6badnumber"));
-        }
+    private static Stream<Arguments> toFloatParams() {
+        return paramsForFloatingPointTypes(Float.MIN_VALUE, Float.MAX_VALUE);
     }
 
+    @ParameterizedTest()
+    @MethodSource("toFloatParams")
+    void toFloat(Object initial, Number number)
+    {
+        float expected = number.floatValue();
+        float f = this.converter.convert(initial, float.class);
+        assertThat(f).isEqualTo(expected);
+    }
 
-    private static Stream<Arguments> testDoubleParams() {
+    @ParameterizedTest()
+    @MethodSource("toFloatParams")
+    void toFloat_objectType(Object initial, Number number)
+    {
+        Float expected = number.floatValue();
+        float f = this.converter.convert(initial, Float.class);
+        assertThat(f).isEqualTo(expected);
+    }
+
+    private static Stream<Arguments> toFloat_illegalArguments() {
         return Stream.of(
-                Arguments.of("-32768", -32768),
-                Arguments.of("-45000", -45000),
-                Arguments.of("32767", 32767),
-                Arguments.of(new BigInteger("8675309"), 8675309),
-                Arguments.of(Byte.MIN_VALUE,-128),
-                Arguments.of(Byte.MAX_VALUE, 127),
-                Arguments.of(Short.MIN_VALUE, -32768),
-                Arguments.of(Short.MAX_VALUE, 32767),
-                Arguments.of(Integer.MIN_VALUE, Integer.MIN_VALUE),
-                Arguments.of(Integer.MAX_VALUE, Integer.MAX_VALUE),
-                Arguments.of(-128L, -128d),
-                Arguments.of(127L, 127d),
-                Arguments.of(3.14, 3.14d),
-                Arguments.of(3.14159d, 3.14159d),
-                Arguments.of(-128.0f, -128d),
-                Arguments.of(127.0f, 127d),
-                Arguments.of(-128.0d, -128d),
-                Arguments.of(127.0d, 127d),
-                Arguments.of( new BigDecimal("100"),100),
-                Arguments.of( new BigInteger("120"), 120),
-                Arguments.of( new AtomicInteger(75), 75),
-                Arguments.of( new AtomicInteger(1), 1),
-                Arguments.of( new AtomicInteger(0), 0),
-                Arguments.of( new AtomicLong(Integer.MAX_VALUE), Integer.MAX_VALUE)
+                Arguments.of(TimeZone.getDefault(), "Unsupported conversion"),
+                Arguments.of("45.6badNumber", "not parseable")
+        );
+    }
+
+    @ParameterizedTest()
+    @MethodSource("toFloat_illegalArguments")
+    void testConvertToFloat_withIllegalArguments(Object initial, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(initial, float.class))
+                .withMessageContaining(partialMessage);
+    }
+
+    private static Stream<Arguments> toFloat_booleanArguments() {
+        return Stream.of(
+                Arguments.of(true, CommonValues.FLOAT_ONE),
+                Arguments.of(false, CommonValues.FLOAT_ZERO),
+                Arguments.of(Boolean.TRUE, CommonValues.FLOAT_ONE),
+                Arguments.of(Boolean.FALSE, CommonValues.FLOAT_ZERO),
+                Arguments.of(new AtomicBoolean(true), CommonValues.FLOAT_ONE),
+                Arguments.of(new AtomicBoolean(false), CommonValues.FLOAT_ZERO)
         );
     }
 
     @ParameterizedTest
-    @MethodSource("testDoubleParams")
-    void testDouble(Object value, double expectedResult)
+    @MethodSource("toFloat_booleanArguments")
+    void toFloat_withBooleanArguments_returnsCommonValue(Object initial, Float expected)
     {
-        double converted = this.converter.convert(value, double.class);
-        assertThat(converted).isEqualTo(expectedResult);
+        Float f = this.converter.convert(initial, Float.class);
+        assertThat(f).isSameAs(expected);
     }
 
     @ParameterizedTest
-    @MethodSource("testDoubleParams")
-    void testDouble_ObjectType(Object value, double expectedResult)
+    @MethodSource("toFloat_booleanArguments")
+    void toFloat_withBooleanArguments_returnsCommonValueWhenPrimitive(Object initial, float expected)
+    {
+        float f = this.converter.convert(initial, float.class);
+        assertThat(f).isEqualTo(expected);
+    }
+
+
+    private static Stream<Arguments> toDoubleParams() {
+        return paramsForFloatingPointTypes(Double.MIN_VALUE, Double.MAX_VALUE);
+    }
+
+    @ParameterizedTest
+    @MethodSource("toDoubleParams")
+    void testDouble(Object value, Number number)
+    {
+        double converted = this.converter.convert(value, double.class);
+        assertThat(converted).isEqualTo(number.doubleValue());
+    }
+
+    @ParameterizedTest
+    @MethodSource("toDoubleParams")
+    void testDouble_ObjectType(Object value, Number number)
     {
         Double converted = this.converter.convert(value, Double.class);
-        assertThat(converted).isEqualTo(Double.valueOf(expectedResult));
+        assertThat(converted).isEqualTo(number.doubleValue());
     }
 
     @Test
@@ -3073,13 +3027,13 @@ class ConverterTest
 
     private static Stream<Arguments> classesThatReturnZero_whenConvertingFromNull() {
         return Stream.of(
-                Arguments.of(byte.class, (byte)0),
-                Arguments.of(int.class, 0),
-                Arguments.of(short.class, (short)0),
-                Arguments.of(char.class, (char)0),
-                Arguments.of(long.class, 0L),
-                Arguments.of(float.class, 0.0f),
-                Arguments.of(double.class, 0.0d)
+                Arguments.of(byte.class, CommonValues.BYTE_ZERO),
+                Arguments.of(int.class, CommonValues.INTEGER_ZERO),
+                Arguments.of(short.class, CommonValues.SHORT_ZERO),
+                Arguments.of(char.class, CommonValues.CHARACTER_ZERO),
+                Arguments.of(long.class, CommonValues.LONG_ZERO),
+                Arguments.of(float.class, CommonValues.FLOAT_ZERO),
+                Arguments.of(double.class, CommonValues.DOUBLE_ZERO)
         );
     }
 
@@ -3088,7 +3042,7 @@ class ConverterTest
     void testClassesThatReturnZero_whenConvertingFromNull(Class c, Object expected)
     {
         Object zero = this.converter.convert(null, c);
-        assertThat(zero).isEqualTo(expected);
+        assertThat(zero).isSameAs(expected);
     }
 
     private static Stream<Arguments> classesThatReturnFalse_whenConvertingFromNull() {
@@ -3100,8 +3054,7 @@ class ConverterTest
 
     @Test
     void testConvertFromNullToBoolean() {
-        boolean b = this.converter.convert(null, boolean.class);
-        assertThat(b).isFalse();
+        assertThat(this.converter.convert(null, boolean.class)).isFalse();
     }
 
     @Test
@@ -3139,46 +3092,155 @@ class ConverterTest
         assertEquals("bar", this.converter.convert(bar, String.class));
     }
 
-    @Test
-    void testCharacterSupport()
-    {
-        assert 65 == this.converter.convert('A', Byte.class);
-        assert 65 == this.converter.convert('A', byte.class);
-        assert 65 == this.converter.convert('A', Short.class);
-        assert 65 == this.converter.convert('A', short.class);
-        assert 65 == this.converter.convert('A', Integer.class);
-        assert 65 == this.converter.convert('A', int.class);
-        assert 65 == this.converter.convert('A', Long.class);
-        assert 65 == this.converter.convert('A', long.class);
-        assert 65 == this.converter.convert('A', BigInteger.class).longValue();
-        assert 65 == this.converter.convert('A', BigDecimal.class).longValue();
-
-        assert 1 == this.converter.convert(true, char.class);
-        assert 0 == this.converter.convert(false, char.class);
-        assert 1 == this.converter.convert(new AtomicBoolean(true), char.class);
-        assert 0 == this.converter.convert(new AtomicBoolean(false), char.class);
-        assert 'z' == this.converter.convert('z', char.class);
-        assert 0 == this.converter.convert("", char.class);
-        assert 0 == this.converter.convert("", Character.class);
-        assert 'A' == this.converter.convert("65", char.class);
-        assert 'A' == this.converter.convert("65", Character.class);
-        try
-        {
-            this.converter.convert("This is not a number", char.class);
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
-        try
-        {
-            this.converter.convert(new Date(), char.class);
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
-
-        assertThatThrownBy(() -> this.converter.convert(Long.MAX_VALUE, char.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Value: 9223372036854775807 out of range to be converted to character");
+    private static Stream<Arguments> toCharacterParams() {
+        return Stream.of(
+                Arguments.of((byte)65),
+                Arguments.of((short)65),
+                Arguments.of(65),
+                Arguments.of(65L),
+                Arguments.of(65.0),
+                Arguments.of(65.0d),
+                Arguments.of(Byte.valueOf("65")),
+                Arguments.of(Short.valueOf("65")),
+                Arguments.of(Integer.valueOf("65")),
+                Arguments.of(Long.valueOf("65")),
+                Arguments.of(Float.valueOf("65")),
+                Arguments.of(Double.valueOf("65")),
+                Arguments.of(BigInteger.valueOf(65)),
+                Arguments.of(BigDecimal.valueOf(65)),
+                Arguments.of('A'),
+                Arguments.of("A")
+        );
     }
+
+    @ParameterizedTest
+    @MethodSource("toCharacterParams")
+    void toCharacter_ObjectType(Object source) {
+        Character ch = this.converter.convert(source, Character.class);
+        assertThat(ch).isEqualTo('A');
+
+        Object roundTrip = this.converter.convert(ch, source.getClass());
+        assertThat(source).isEqualTo(roundTrip);
+    }
+
+    @ParameterizedTest
+    @MethodSource("toCharacterParams")
+    void toCharacter(Object source) {
+        char ch = this.converter.convert(source, char.class);
+        assertThat(ch).isEqualTo('A');
+
+        Object roundTrip = this.converter.convert(ch, source.getClass());
+        assertThat(source).isEqualTo(roundTrip);
+    }
+
+    @Test
+    void toCharacterMiscellaneous() {
+        assertThat(this.converter.convert('z', char.class)).isEqualTo('z');
+    }
+
+
+
+    @Test
+    void toCharacter_whenStringIsLongerThanOneCharacter_AndIsANumber() {
+        char ch = this.converter.convert("65", char.class);
+        assertThat(ch).isEqualTo('A');
+    }
+
+    private static Stream<Arguments> toChar_illegalArguments() {
+        return Stream.of(
+                Arguments.of(TimeZone.getDefault(), "Unsupported conversion"),
+                Arguments.of(Integer.MAX_VALUE, "out of range to be converted to character")
+        );
+    }
+
+    @ParameterizedTest()
+    @MethodSource("toChar_illegalArguments")
+    void testConvertTCharacter_withIllegalArguments(Object initial, String partialMessage) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() ->  this.converter.convert(initial, Character.class))
+                .withMessageContaining(partialMessage);
+    }
+
+    private static Stream<Arguments> toChar_numberFormatException() {
+        return Stream.of(
+                Arguments.of("45.number", "For input string: \"45.number\""),
+                Arguments.of("AB", "For input string: \"AB\"")
+        );
+    }
+
+    @ParameterizedTest()
+    @MethodSource("toChar_numberFormatException")
+    void testConvertTCharacter_withNumberFormatExceptions(Object initial, String partialMessage) {
+        assertThatExceptionOfType(NumberFormatException.class)
+                .isThrownBy(() ->  this.converter.convert(initial, Character.class))
+                .withMessageContaining(partialMessage);
+    }
+
+    private static Stream<Arguments> trueValues() {
+        return Stream.of(
+                Arguments.of(true),
+                Arguments.of(Boolean.TRUE),
+                Arguments.of(new AtomicBoolean(true))
+        );
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("trueValues")
+    void toCharacter_whenTrue_withDefaultOptions_returnsCommonValue(Object source)
+    {
+        assertThat(this.converter.convert(source, char.class)).isSameAs(CommonValues.CHARACTER_ONE);
+    }
+
+    @ParameterizedTest
+    @MethodSource("trueValues")
+    void toCharacter_whenTrue_withDefaultOptions_andObjectType_returnsCommonValue(Object source)
+    {
+        assertThat(this.converter.convert(source, Character.class)).isSameAs(CommonValues.CHARACTER_ONE);
+    }
+
+    @ParameterizedTest
+    @MethodSource("trueValues")
+    void toCharacter_whenTrue_withCustomOptions_returnsTrueCharacter(Object source)
+    {
+        assertThat(this.converter.convert(source, Character.class, TF_OPTIONS)).isEqualTo('T');
+        assertThat(this.converter.convert(source, Character.class, YN_OPTIONS)).isEqualTo('Y');
+    }
+
+
+    private static final ConverterOptions TF_OPTIONS = createCustomBooleanCharacter('T', 'F');
+    private static final ConverterOptions YN_OPTIONS = createCustomBooleanCharacter('Y', 'N');
+
+    private static Stream<Arguments> falseValues() {
+        return Stream.of(
+                Arguments.of(false),
+                Arguments.of(Boolean.FALSE),
+                Arguments.of(new AtomicBoolean(false))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("falseValues")
+    void toCharacter_whenFalse_withDefaultOptions_returnsCommonValue(Object source)
+    {
+        assertThat(this.converter.convert(source, char.class)).isSameAs(CommonValues.CHARACTER_ZERO);
+    }
+
+    @ParameterizedTest
+    @MethodSource("falseValues")
+    void toCharacter_whenFalse_withDefaultOptions_andObjectType_returnsCommonValue(Object source)
+    {
+        assertThat(this.converter.convert(source, Character.class)).isSameAs(CommonValues.CHARACTER_ZERO);
+    }
+
+    @ParameterizedTest
+    @MethodSource("falseValues")
+    void toCharacter_whenFalse_withCustomOptions_returnsTrueCharacter(Object source)
+    {
+        assertThat(this.converter.convert(source, Character.class, TF_OPTIONS)).isEqualTo('F');
+        assertThat(this.converter.convert(source, Character.class, YN_OPTIONS)).isEqualTo('N');
+    }
+
 
     @Test
     void testConvertUnknown()
@@ -4020,20 +4082,22 @@ class ConverterTest
 
     private static Stream<Arguments> emptyStringToType_params() {
         return Stream.of(
-                Arguments.of("", byte.class, (byte)0),
-                Arguments.of("", Byte.class, (byte)0),
-                Arguments.of("", short.class, (short)0),
-                Arguments.of("", Short.class, (short)0),
-                Arguments.of("", int.class, 0),
-                Arguments.of("", Integer.class, 0),
-                Arguments.of("", long.class, 0L),
-                Arguments.of("", Long.class, 0L),
-                Arguments.of("", float.class, 0.0f),
-                Arguments.of("", Float.class, 0.0f),
-                Arguments.of("", double.class, 0.0d),
-                Arguments.of("", Double.class, 0.0d),
-                Arguments.of("", Boolean.class, false),
-                Arguments.of("", boolean.class, false),
+                Arguments.of("", byte.class, CommonValues.BYTE_ZERO),
+                Arguments.of("", Byte.class, CommonValues.BYTE_ZERO),
+                Arguments.of("", short.class, CommonValues.SHORT_ZERO),
+                Arguments.of("", Short.class, CommonValues.SHORT_ZERO),
+                Arguments.of("", int.class, CommonValues.INTEGER_ZERO),
+                Arguments.of("", Integer.class, CommonValues.INTEGER_ZERO),
+                Arguments.of("", long.class, CommonValues.LONG_ZERO),
+                Arguments.of("", Long.class, CommonValues.LONG_ZERO),
+                Arguments.of("", float.class, CommonValues.FLOAT_ZERO),
+                Arguments.of("", Float.class, CommonValues.FLOAT_ZERO),
+                Arguments.of("", double.class, CommonValues.DOUBLE_ZERO),
+                Arguments.of("", Double.class, CommonValues.DOUBLE_ZERO),
+                Arguments.of("", boolean.class, Boolean.FALSE),
+                Arguments.of("", Boolean.class, Boolean.FALSE),
+                Arguments.of("", char.class, CommonValues.CHARACTER_ZERO),
+                Arguments.of("", Character.class, CommonValues.CHARACTER_ZERO),
                 Arguments.of("", BigDecimal.class, BigDecimal.ZERO),
                 Arguments.of("", BigInteger.class, BigInteger.ZERO)
         );
@@ -4044,7 +4108,7 @@ class ConverterTest
     void emptyStringToType(Object value, Class<?> type, Object expected)
     {
         Object converted = this.converter.convert(value, type);
-        assertThat(converted).isEqualTo(expected);
+        assertThat(converted).isSameAs(expected);
     }
 
     @Test
@@ -4068,7 +4132,7 @@ class ConverterTest
         assertThat(converted.get()).isEqualTo(0);
     }
 
-    private ConverterOptions createConvertOptions(ZoneId sourceZoneId, final ZoneId targetZoneId)
+    private ConverterOptions createCustomZones(final ZoneId sourceZoneId, final ZoneId targetZoneId)
     {
         return new ConverterOptions() {
             @Override
@@ -4088,5 +4152,26 @@ class ConverterTest
         };
     }
 
-    private ConverterOptions chicagoZone() { return createConvertOptions(CHICAGO, CHICAGO); }
+    private static ConverterOptions createCustomBooleanCharacter(final Character trueChar, final Character falseChar)
+    {
+        return new ConverterOptions() {
+            @Override
+            public <T> T getCustomOption(String name) {
+                return null;
+            }
+
+            @Override
+            public Character trueChar() {
+                return trueChar;
+            }
+
+            @Override
+            public Character falseChar() {
+                return falseChar;
+            }
+        };
+    }
+
+
+    private ConverterOptions chicagoZone() { return createCustomZones(CHICAGO, CHICAGO); }
 }

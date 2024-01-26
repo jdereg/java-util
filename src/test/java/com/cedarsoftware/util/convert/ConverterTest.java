@@ -1029,6 +1029,52 @@ class ConverterTest
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testZonedDateTimeToLocalTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
+
+        LocalTime actual = this.converter.convert(time, LocalTime.class, createConvertOptions(zoneId, zoneId));
+
+        assertThat(actual).isEqualTo(expected.toLocalTime());
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testZonedDateTimeToLocalDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
+
+        LocalDate actual = this.converter.convert(time, LocalDate.class, createConvertOptions(zoneId, zoneId));
+
+        assertThat(actual).isEqualTo(expected.toLocalDate());
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testZonedDateTimeToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
+
+        Instant actual = this.converter.convert(time, Instant.class, createConvertOptions(zoneId, zoneId));
+
+        assertThat(actual).isEqualTo(time.toInstant());
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testZonedDateTimeToCalendar(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
+
+        Calendar actual = this.converter.convert(time, Calendar.class, createConvertOptions(zoneId, zoneId));
+
+        assertThat(actual.getTime().getTime()).isEqualTo(time.toInstant().toEpochMilli());
+        assertThat(actual.getTimeZone()).isEqualTo(TimeZone.getTimeZone(zoneId));
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testZonedDateTimeToLong(long epochMilli, ZoneId zoneId, LocalDateTime localDateTime)
     {
         ZonedDateTime time = ZonedDateTime.of(localDateTime, zoneId);
@@ -1492,7 +1538,18 @@ class ConverterTest
         long milli = this.converter.convert(initial, long.class, createConvertOptions(sourceZoneId, targetZoneId));
         assertThat(milli).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateTimeConversion_params")
+    void testLocalDateTimeToInstant(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
+    {
+        Instant intermediate = this.converter.convert(initial, Instant.class, createConvertOptions(sourceZoneId, targetZoneId));
+        assertThat(intermediate.toEpochMilli()).isEqualTo(epochMilli);
+
+        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createConvertOptions(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1503,8 +1560,28 @@ class ConverterTest
         AtomicLong milli = this.converter.convert(initial, AtomicLong.class, createConvertOptions(sourceZoneId, targetZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateTimeConversion_params")
+    void testLocalDateTimeToZonedDateTime(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
+    {
+        ZonedDateTime intermediate = this.converter.convert(initial, ZonedDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
+
+        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createConvertOptions(null, targetZoneId));
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateTimeConversion_params")
+    void testLocalDateTimeToLocalTime(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
+    {
+        LocalTime intermediate = this.converter.convert(initial, LocalTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+
+        assertThat(intermediate).isEqualTo(expected.toLocalTime());
     }
 
     @ParameterizedTest
@@ -1514,7 +1591,7 @@ class ConverterTest
         BigInteger milli = this.converter.convert(initial, BigInteger.class, createConvertOptions(sourceZoneId, targetZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
 
     }
@@ -1526,7 +1603,7 @@ class ConverterTest
         BigDecimal milli = this.converter.convert(initial, BigDecimal.class, createConvertOptions(sourceZoneId, targetZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(sourceZoneId, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createConvertOptions(null, targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -2379,65 +2456,11 @@ class ConverterTest
     }
 
     @Test
-    void testLocalDateTimeToOthers()
-    {
-        // String to LocalDateTime
-//        String strDate = this.converter.convert(now, String.class);
-//        localDateTime = this.converter.convert(strDate, LocalDateTime.class);
-//        String strDate2 = this.converter.convert(localDateTime, String.class);
-//        assert strDate.startsWith(strDate2);
-//
-//        // Other direction --> LocalDateTime to other date types
-//
-//        // LocalDateTime to Date
-//        localDateTime = this.converter.convert(now, LocalDateTime.class);
-//        Date date = this.converter.convert(localDateTime, Date.class);
-//        assertEquals(localDateTimeToMillis(localDateTime), date.getTime());
-//
-//        // LocalDateTime to SqlDate
-//        sqlDate = this.converter.convert(localDateTime, java.sql.Date.class);
-//        assertEquals(localDateTimeToMillis(localDateTime), sqlDate.getTime());
-//
-//        // LocalDateTime to Timestamp
-//        timestamp = this.converter.convert(localDateTime, Timestamp.class);
-//        assertEquals(localDateTimeToMillis(localDateTime), timestamp.getTime());
-//
-//        // LocalDateTime to Long
-//        long tnow = this.converter.convert(localDateTime, long.class);
-//        assertEquals(localDateTimeToMillis(localDateTime), tnow);
-//
-//        // LocalDateTime to AtomicLong
-//        atomicLong = this.converter.convert(localDateTime, AtomicLong.class);
-//        assertEquals(localDateTimeToMillis(localDateTime), atomicLong.get());
-//
-//        // LocalDateTime to String
-//        strDate = this.converter.convert(localDateTime, String.class);
-//        strDate2 = this.converter.convert(now, String.class);
-//        assert strDate2.startsWith(strDate);
-//
-//        // LocalDateTime to BigInteger
-//        bigInt = this.converter.convert(localDateTime, BigInteger.class);
-//        assertEquals(now.getTime(), bigInt.longValue());
-//
-//        // LocalDateTime to BigDecimal
-//        bigDec = this.converter.convert(localDateTime, BigDecimal.class);
-//        assertEquals(now.getTime(), bigDec.longValue());
-//
-//        // Error handling
-//        try
-//        {
-//            this.converter.convert("2020-12-40", LocalDateTime.class);
-//            fail();
-//        }
-//        catch (IllegalArgumentException e)
-//        {
-//            TestUtil.assertContainsIgnoreCase(e.getMessage(), "day must be between 1 and 31");
-//        }
-//
-//        assert this.converter.convert(null, LocalDateTime.class) == null;
+    void testConvertStringToLocalDateTime_withParseError() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> this.converter.convert("2020-12-40", LocalDateTime.class))
+                .withMessageContaining("Day must be between 1 and 31");
     }
-
-
 
     @Test
     void testDateErrorHandlingBadInput()

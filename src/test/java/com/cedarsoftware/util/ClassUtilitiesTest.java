@@ -152,4 +152,75 @@ class ClassUtilitiesTest {
         assert 1 == ClassUtilities.computeInheritanceDistance(java.sql.Date.class, Date.class);
     }
 
+    @Test
+    public void testClassForName()
+    {
+        Class<?> testObjectClass = ClassUtilities.forName(SubClass.class.getName(), ClassUtilities.class.getClassLoader());
+        assert testObjectClass instanceof Class<?>;
+        assert SubClass.class.getName().equals(testObjectClass.getName());
+    }
+
+    @Test
+    public void testClassForNameWithClassloader()
+    {
+        Class<?> testObjectClass = ClassUtilities.forName("ReallyLong", new AlternateNameClassLoader("ReallyLong", Long.class));
+        assert testObjectClass instanceof Class<?>;
+        assert "java.lang.Long".equals(testObjectClass.getName());
+    }
+
+    @Test
+    public void testClassForNameNullClassErrorHandling()
+    {
+        assert null == ClassUtilities.forName(null, ClassUtilities.class.getClassLoader());
+        assert null == ClassUtilities.forName("Smith&Wesson", ClassUtilities.class.getClassLoader());
+    }
+
+    @Test
+    public void testClassForNameFailOnClassLoaderErrorTrue()
+    {
+        assert null == ClassUtilities.forName("foo.bar.baz.Qux", ClassUtilities.class.getClassLoader());
+    }
+
+    @Test
+    public void testClassForNameFailOnClassLoaderErrorFalse()
+    {
+        Class<?> testObjectClass = ClassUtilities.forName("foo.bar.baz.Qux", ClassUtilities.class.getClassLoader());
+        assert testObjectClass == null;
+    }
+
+    private static class AlternateNameClassLoader extends ClassLoader
+    {
+        AlternateNameClassLoader(String alternateName, Class<?> clazz)
+        {
+            super(AlternateNameClassLoader.class.getClassLoader());
+            this.alternateName = alternateName;
+            this.clazz = clazz;
+        }
+
+        public Class<?> loadClass(String className) throws ClassNotFoundException
+        {
+            return findClass(className);
+        }
+
+        protected Class<?> findClass(String className)
+        {
+            try
+            {
+                return findSystemClass(className);
+            }
+            catch (Exception ignored)
+            { }
+
+            if (alternateName.equals(className))
+            {
+                return Long.class;
+            }
+
+            return null;
+        }
+
+        private final String alternateName;
+        private final Class<?> clazz;
+    }
+
 }

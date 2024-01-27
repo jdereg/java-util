@@ -1,17 +1,31 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.ArrayUtilities;
-import com.cedarsoftware.util.Convention;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.ArrayUtilities;
+import com.cedarsoftware.util.CollectionUtilities;
+import com.cedarsoftware.util.Convention;
+
+import static com.cedarsoftware.util.convert.Converter.NOPE;
+import static com.cedarsoftware.util.convert.Converter.VALUE2;
 
 public class MapConversions {
 
@@ -79,6 +93,10 @@ public class MapConversions {
         return fromValue(fromInstance, converter, options, String.class);
     }
 
+    static Character toCharacter(Object fromInstance, Converter converter, ConverterOptions options) {
+        return fromValueMap(converter, (Map<?, ?>) fromInstance, char.class, null, options);
+    }
+
     static AtomicInteger toAtomicInteger(Object fromInstance, Converter converter, ConverterOptions options) {
         return fromValue(fromInstance, converter, options, AtomicInteger.class);
     }
@@ -113,6 +131,99 @@ public class MapConversions {
         return fromValueForMultiKey(map, converter, options, Timestamp.class, TIMESTAMP_PARAMS);
     }
 
+    static Calendar toCalendar(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) fromInstance;
+        if (map.containsKey("time")) {
+            Object zoneRaw = map.get("zone");
+            TimeZone tz;
+            if (zoneRaw instanceof String) {
+                String zone = (String) zoneRaw;
+                tz = TimeZone.getTimeZone(zone);
+            } else {
+                tz = TimeZone.getTimeZone(options.getZoneId());
+            }
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeZone(tz);
+            Date epochInMillis = converter.convert(map.get("time"), Date.class, options);
+            cal.setTimeInMillis(epochInMillis.getTime());
+            return cal;
+        } else {
+            return fromValueMap(converter, map, Calendar.class, CollectionUtilities.setOf("time", "zone"), options);
+        }
+    }
+
+    static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) fromInstance;
+        if (map.containsKey("month") && map.containsKey("day") && map.containsKey("year")) {
+            int month = converter.convert(map.get("month"), int.class, options);
+            int day = converter.convert(map.get("day"), int.class, options);
+            int year = converter.convert(map.get("year"), int.class, options);
+            return LocalDate.of(year, month, day);
+        } else {
+            return fromValueMap(converter, map, LocalDate.class, CollectionUtilities.setOf("year", "month", "day"), options);
+        }
+    }
+
+    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) fromInstance;
+        if (map.containsKey("hour") && map.containsKey("minute")) {
+            int hour = converter.convert(map.get("hour"), int.class, options);
+            int minute = converter.convert(map.get("minute"), int.class, options);
+            int second = converter.convert(map.get("second"), int.class, options);
+            int nano = converter.convert(map.get("nano"), int.class, options);
+            return LocalTime.of(hour, minute, second, nano);
+        } else {
+            return fromValueMap(converter, map, LocalTime.class, CollectionUtilities.setOf("hour", "minute", "second", "nano"), options);
+        }
+    }
+
+    static LocalDateTime toLocalDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) fromInstance;
+        return fromValueMap(converter, map, LocalDateTime.class, null, options);
+    }
+
+    static ZonedDateTime toZonedDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) fromInstance;
+        return fromValueMap(converter, map, ZonedDateTime.class, null, options);
+    }
+
+    static Class<?> toClass(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) fromInstance;
+        return fromValueMap(converter, map, Class.class, null, options);
+    }
+
+    static Duration toDuration(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) fromInstance;
+        if (map.containsKey("seconds")) {
+            long sec = converter.convert(map.get("seconds"), long.class, options);
+            long nanos = converter.convert(map.get("nanos"), long.class, options);
+            return Duration.ofSeconds(sec, nanos);
+        } else {
+            return fromValueMap(converter, map, Duration.class, CollectionUtilities.setOf("seconds", "nanos"), options);
+        }
+    }
+
+    static Instant toInstant(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) fromInstance;
+        if (map.containsKey("seconds")) {
+            long sec = converter.convert(map.get("seconds"), long.class, options);
+            long nanos = converter.convert(map.get("nanos"), long.class, options);
+            return Instant.ofEpochSecond(sec, nanos);
+        } else {
+            return fromValueMap(converter, map, Instant.class, CollectionUtilities.setOf("seconds", "nanos"), options);
+        }
+    }
+
+    static MonthDay toMonthDay(Object fromInstance, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) fromInstance;
+        if (map.containsKey("month")) {
+            int month = converter.convert(map.get("month"), int.class, options);
+            int day = converter.convert(map.get("day"), int.class, options);
+            return MonthDay.of(month, day);
+        } else {
+            return fromValueMap(converter, map, MonthDay.class, CollectionUtilities.setOf("month", "day"), options);
+        }
+    }
 
     /**
      * Allows you to check for a single named key and convert that to a type of it exists, otherwise falls back
@@ -171,5 +282,29 @@ public class MapConversions {
     private static Map<?, ?> asMap(Object o) {
         Convention.throwIfFalse(o instanceof Map, "fromInstance must be an instance of map");
         return (Map<?, ?>)o;
+    }
+
+    private static <T> T fromValueMap(Converter converter, Map<?, ?> map, Class<T> type, Set<String> set, ConverterOptions options) {
+        T ret = fromMap(converter, map, VALUE, type, options);
+        if (ret != NOPE) {
+            return ret;
+        }
+
+        ret = fromMap(converter, map, VALUE2, type, options);
+        if (ret == NOPE) {
+            if (set == null || set.isEmpty()) {
+                throw new IllegalArgumentException("To convert from Map to " + getShortName(type) + ", the map must include keys: '_v' or 'value' an associated value to convert from.");
+            } else {
+                throw new IllegalArgumentException("To convert from Map to " + getShortName(type) + ", the map must include keys: " + set + ", or '_v' or 'value' an associated value to convert from.");
+            }
+        }
+        return ret;
+    }
+
+    private static <T> T fromMap(Converter converter, Map<?, ?> map, String key, Class<T> type, ConverterOptions options) {
+        if (map.containsKey(key)) {
+            return converter.convert(map.get(key), type, options);
+        }
+        return (T) NOPE;
     }
 }

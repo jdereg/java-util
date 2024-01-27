@@ -1,6 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -13,7 +12,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.AbstractMap;
@@ -23,7 +21,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -34,7 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
 
@@ -74,9 +70,9 @@ import com.cedarsoftware.util.StringUtilities;
  */
 
 public final class Converter {
-    public static final String NOPE = "~nope!";
-    public static final String VALUE = "_v";
-    private static final String VALUE2 = "value";
+    static final String NOPE = "~nope!";
+    static final String VALUE = "_v";
+    static final String VALUE2 = "value";
 
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;
     private final ConverterOptions options;
@@ -284,7 +280,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(BigInteger.class, Character.class), NumberConversions::toCharacter);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Character.class), NumberConversions::toCharacter);
         DEFAULT_FACTORY.put(pair(Number.class, Character.class), NumberConversions::toCharacter);
-        DEFAULT_FACTORY.put(pair(Map.class, Character.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, char.class, null, options));
+        DEFAULT_FACTORY.put(pair(Map.class, Character.class), MapConversions::toCharacter);
         DEFAULT_FACTORY.put(pair(String.class, Character.class), StringConversions::toCharacter);
 
         // BigInteger versions supported
@@ -489,26 +485,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Calendar.class), ZonedDateTimeConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(Calendar.class, Calendar.class), CalendarConversions::clone);
         DEFAULT_FACTORY.put(pair(Number.class, Calendar.class), NumberConversions::toCalendar);
-        DEFAULT_FACTORY.put(pair(Map.class, Calendar.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            if (map.containsKey("time")) {
-                Object zoneRaw = map.get("zone");
-                TimeZone tz;
-                if (zoneRaw instanceof String) {
-                    String zone = (String) zoneRaw;
-                    tz = TimeZone.getTimeZone(zone);
-                } else {
-                    tz = TimeZone.getTimeZone(options.getZoneId());
-                }
-                Calendar cal = Calendar.getInstance();
-                cal.setTimeZone(tz);
-                Date epochInMillis = converter.convert(map.get("time"), Date.class, options);
-                cal.setTimeInMillis(epochInMillis.getTime());
-                return cal;
-            } else {
-                return converter.fromValueMap(map, Calendar.class, CollectionUtilities.setOf("time", "zone"), options);
-            }
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, Calendar.class), MapConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(String.class, Calendar.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             Date date = DateUtilities.parseDate(str);
@@ -516,31 +493,6 @@ public final class Converter {
                 return null;
             }
             return CalendarConversions.create(date.getTime(), options);
-        });
-
-
-        // LocalTime conversions supported
-        DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
-        DEFAULT_FACTORY.put(pair(LocalTime.class, LocalTime.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), (fromInstance, converter, options) -> {
-            String strTime = (String) fromInstance;
-            try {
-                return LocalTime.parse(strTime);
-            } catch (Exception e) {
-                return DateUtilities.parseDate(strTime).toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
-            }
-        });
-        DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            if (map.containsKey("hour") && map.containsKey("minute")) {
-                int hour = converter.convert(map.get("hour"), int.class, options);
-                int minute = converter.convert(map.get("minute"), int.class, options);
-                int second = converter.convert(map.get("second"), int.class, options);
-                int nano = converter.convert(map.get("nano"), int.class, options);
-                return LocalTime.of(hour, minute, second, nano);
-            } else {
-                return converter.fromValueMap(map, LocalTime.class, CollectionUtilities.setOf("hour", "minute", "second", "nano"), options);
-            }
         });
 
         // LocalDate conversions supported
@@ -559,17 +511,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDate.class), ZonedDateTimeConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalDate.class), CalendarConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDate.class), NumberConversions::toLocalDate);
-        DEFAULT_FACTORY.put(pair(Map.class, LocalDate.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            if (map.containsKey("month") && map.containsKey("day") && map.containsKey("year")) {
-                int month = converter.convert(map.get("month"), int.class, options);
-                int day = converter.convert(map.get("day"), int.class, options);
-                int year = converter.convert(map.get("year"), int.class, options);
-                return LocalDate.of(year, month, day);
-            } else {
-                return converter.fromValueMap(map, LocalDate.class, CollectionUtilities.setOf("year", "month", "day"), options);
-            }
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, LocalDate.class), MapConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(String.class, LocalDate.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             Date date = DateUtilities.parseDate(str);
@@ -595,10 +537,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalDateTime.class), ZonedDateTimeConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalDateTime.class), CalendarConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
-        DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            return converter.fromValueMap(map, LocalDateTime.class, null, options);
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), MapConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalDateTime.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             Date date = DateUtilities.parseDate(str);
@@ -608,6 +547,7 @@ public final class Converter {
             return date.toInstant().atZone(options.getZoneId()).toLocalDateTime();
         });
 
+        // LocalTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Double.class, LocalTime.class), NumberConversions::toLocalTime);
@@ -624,10 +564,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, LocalTime.class), ZonedDateTimeConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalTime.class), CalendarConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Number.class, LocalTime.class), NumberConversions::toLocalTime);
-        DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            return converter.fromValueMap(map, LocalTime.class, null, options);
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), (fromInstance, converter, options) -> {
             String str = StringUtilities.trimToEmpty((String)fromInstance);
             Date date = DateUtilities.parseDate(str);
@@ -636,8 +573,7 @@ public final class Converter {
             }
             return converter.convert(date, LocalTime.class, options);
         });
-
-
+        
         // ZonedDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, ZonedDateTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
@@ -654,10 +590,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, ZonedDateTime.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(Calendar.class, ZonedDateTime.class), CalendarConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Number.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
-        DEFAULT_FACTORY.put(pair(Map.class, ZonedDateTime.class), (fromInstance, converter, options) -> {
-            Map<?, ?> map = (Map<?, ?>) fromInstance;
-            return converter.fromValueMap(map, ZonedDateTime.class, null, options);
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, ZonedDateTime.class), MapConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(String.class, ZonedDateTime.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             Date date = DateUtilities.parseDate(str);
@@ -689,7 +622,7 @@ public final class Converter {
         // Class conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Class.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Class.class, Class.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(Map.class, Class.class), (fromInstance, converter, options) -> converter.fromValueMap((Map<?, ?>) fromInstance, AtomicLong.class, null, options));
+        DEFAULT_FACTORY.put(pair(Map.class, Class.class), MapConversions::toClass);
         DEFAULT_FACTORY.put(pair(String.class, Class.class), (fromInstance, converter, options) -> {
             String str = ((String) fromInstance).trim();
             Class<?> clazz = ClassUtilities.forName(str, options.getClassLoader());
@@ -758,16 +691,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Void.class, Duration.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Duration.class, Duration.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(String.class, Duration.class), (fromInstance, converter, options) -> Duration.parse((String) fromInstance));
-        DEFAULT_FACTORY.put(pair(Map.class, Duration.class), (fromInstance, converter, options) -> {
-            Map<String, Object> map = (Map<String, Object>) fromInstance;
-            if (map.containsKey("seconds")) {
-                long sec = converter.convert(map.get("seconds"), long.class, options);
-                long nanos = converter.convert(map.get("nanos"), long.class, options);
-                return Duration.ofSeconds(sec, nanos);
-            } else {
-                return converter.fromValueMap(map, Duration.class, CollectionUtilities.setOf("seconds", "nanos"), options);
-            }
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, Duration.class), MapConversions::toDuration);
 
         // Instant conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Instant.class), VoidConversions::toNull);
@@ -787,16 +711,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Instant.class), NumberConversions::toInstant);
 
         DEFAULT_FACTORY.put(pair(String.class, Instant.class), StringConversions::toInstant);
-        DEFAULT_FACTORY.put(pair(Map.class, Instant.class), (fromInstance, converter, options) -> {
-            Map<String, Object> map = (Map<String, Object>) fromInstance;
-            if (map.containsKey("seconds")) {
-                long sec = converter.convert(map.get("seconds"), long.class, options);
-                long nanos = converter.convert(map.get("nanos"), long.class, options);
-                return Instant.ofEpochSecond(sec, nanos);
-            } else {
-                return converter.fromValueMap(map, Instant.class, CollectionUtilities.setOf("seconds", "nanos"), options);
-            }
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, Instant.class), MapConversions::toInstant);
 
 //        java.time.OffsetDateTime = com.cedarsoftware.util.io.DEFAULT_FACTORY.OffsetDateTimeFactory
 //        java.time.OffsetTime = com.cedarsoftware.util.io.DEFAULT_FACTORY.OffsetTimeFactory
@@ -814,16 +729,7 @@ public final class Converter {
             String monthDay = (String) fromInstance;
             return MonthDay.parse(monthDay);
         });
-        DEFAULT_FACTORY.put(pair(Map.class, MonthDay.class), (fromInstance, converter, options) -> {
-            Map<String, Object> map = (Map<String, Object>) fromInstance;
-            if (map.containsKey("month")) {
-                int month = converter.convert(map.get("month"), int.class, options);
-                int day = converter.convert(map.get("day"), int.class, options);
-                return MonthDay.of(month, day);
-            } else {
-                return converter.fromValueMap(map, MonthDay.class, CollectionUtilities.setOf("month", "day"), options);
-            }
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, MonthDay.class), MapConversions::toMonthDay);
 
         // Map conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Map.class), VoidConversions::toNull);
@@ -1106,31 +1012,7 @@ public final class Converter {
         map.put(VALUE, from);
         return map;
     }
-
-    private Object fromValueMap(Map<?, ?> map, Class<?> type, Set<String> set, ConverterOptions options) {
-        Object ret = fromMap(map, VALUE, type, this.options);
-        if (ret != NOPE) {
-            return ret;
-        }
-
-        ret = fromMap(map, VALUE2, type, this.options);
-        if (ret == NOPE) {
-            if (set == null || set.isEmpty()) {
-                throw new IllegalArgumentException("To convert from Map to " + getShortName(type) + ", the map must include keys: '_v' or 'value' an associated value to convert from.");
-            } else {
-                throw new IllegalArgumentException("To convert from Map to " + getShortName(type) + ", the map must include keys: " + set + ", or '_v' or 'value' an associated value to convert from.");
-            }
-        }
-        return ret;
-    }
-
-    private Object fromMap(Map<?, ?> map, String key, Class<?> type, ConverterOptions options) {
-        if (map.containsKey(key)) {
-            return convert(map.get(key), type, options);
-        }
-        return NOPE;
-    }
-
+    
     /**
      * Check to see if a direct-conversion from type to another type is supported.
      *

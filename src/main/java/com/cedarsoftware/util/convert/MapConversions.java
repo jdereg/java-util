@@ -13,7 +13,6 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,17 +20,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ArrayUtilities;
-import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.Convention;
-
-import static com.cedarsoftware.util.convert.Converter.NOPE;
-import static com.cedarsoftware.util.convert.Converter.VALUE2;
 
 public class MapConversions {
 
     private static final String V = "_v";
     private static final String VALUE = "value";
     private static final String TIME = "time";
+    private static final String ZONE = "zone";
+    private static final String YEAR = "year";
+    private static final String MONTH = "month";
+    private static final String DAY = "day";
+    private static final String HOUR = "hour";
+    private static final String MINUTE = "minute";
+    private static final String SECOND = "second";
+    private static final String SECONDS = "seconds";
+    private static final String NANO = "nano";
     private static final String NANOS = "nanos";
 
     private static final String MOST_SIG_BITS = "mostSigBits";
@@ -94,7 +98,7 @@ public class MapConversions {
     }
 
     static Character toCharacter(Object fromInstance, Converter converter, ConverterOptions options) {
-        return fromValueMap(converter, (Map<?, ?>) fromInstance, char.class, null, options);
+        return fromValue(fromInstance, converter, options, char.class);
     }
 
     static AtomicInteger toAtomicInteger(Object fromInstance, Converter converter, ConverterOptions options) {
@@ -120,9 +124,9 @@ public class MapConversions {
     private static final String[] TIMESTAMP_PARAMS = new String[] { TIME, NANOS };
     static Timestamp toTimestamp(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<?, ?> map = (Map<?, ?>) fromInstance;
-        if (map.containsKey("time")) {
-            long time = converter.convert(map.get("time"), long.class, options);
-            int ns = converter.convert(map.get("nanos"), int.class, options);
+        if (map.containsKey(TIME)) {
+            long time = converter.convert(map.get(TIME), long.class, options);
+            int ns = converter.convert(map.get(NANOS), int.class, options);
             Timestamp timeStamp = new Timestamp(time);
             timeStamp.setNanos(ns);
             return timeStamp;
@@ -131,10 +135,11 @@ public class MapConversions {
         return fromValueForMultiKey(map, converter, options, Timestamp.class, TIMESTAMP_PARAMS);
     }
 
+    private static final String[] CALENDAR_PARAMS = new String[] { TIME, ZONE };
     static Calendar toCalendar(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<?, ?> map = (Map<?, ?>) fromInstance;
-        if (map.containsKey("time")) {
-            Object zoneRaw = map.get("zone");
+        if (map.containsKey(TIME)) {
+            Object zoneRaw = map.get(ZONE);
             TimeZone tz;
             if (zoneRaw instanceof String) {
                 String zone = (String) zoneRaw;
@@ -144,84 +149,86 @@ public class MapConversions {
             }
             Calendar cal = Calendar.getInstance();
             cal.setTimeZone(tz);
-            Date epochInMillis = converter.convert(map.get("time"), Date.class, options);
+            Date epochInMillis = converter.convert(map.get(TIME), Date.class, options);
             cal.setTimeInMillis(epochInMillis.getTime());
             return cal;
         } else {
-            return fromValueMap(converter, map, Calendar.class, CollectionUtilities.setOf("time", "zone"), options);
+            return fromValueForMultiKey(map, converter, options, Calendar.class, CALENDAR_PARAMS);
         }
     }
 
+    private static final String[] LOCAL_DATE_PARAMS = new String[] { YEAR, MONTH, DAY };
     static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<?, ?> map = (Map<?, ?>) fromInstance;
-        if (map.containsKey("month") && map.containsKey("day") && map.containsKey("year")) {
-            int month = converter.convert(map.get("month"), int.class, options);
-            int day = converter.convert(map.get("day"), int.class, options);
-            int year = converter.convert(map.get("year"), int.class, options);
+        if (map.containsKey(MONTH) && map.containsKey(DAY) && map.containsKey(YEAR)) {
+            int month = converter.convert(map.get(MONTH), int.class, options);
+            int day = converter.convert(map.get(DAY), int.class, options);
+            int year = converter.convert(map.get(YEAR), int.class, options);
             return LocalDate.of(year, month, day);
         } else {
-            return fromValueMap(converter, map, LocalDate.class, CollectionUtilities.setOf("year", "month", "day"), options);
+            return fromValueForMultiKey(map, converter, options, LocalDate.class, LOCAL_DATE_PARAMS);
         }
     }
 
+    private static final String[] LOCAL_TIME_PARAMS = new String[] { HOUR, MINUTE, SECOND, NANO };
     static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<?, ?> map = (Map<?, ?>) fromInstance;
-        if (map.containsKey("hour") && map.containsKey("minute")) {
-            int hour = converter.convert(map.get("hour"), int.class, options);
-            int minute = converter.convert(map.get("minute"), int.class, options);
-            int second = converter.convert(map.get("second"), int.class, options);
-            int nano = converter.convert(map.get("nano"), int.class, options);
+        if (map.containsKey(HOUR) && map.containsKey(MINUTE)) {
+            int hour = converter.convert(map.get(HOUR), int.class, options);
+            int minute = converter.convert(map.get(MINUTE), int.class, options);
+            int second = converter.convert(map.get(SECOND), int.class, options);
+            int nano = converter.convert(map.get(NANO), int.class, options);
             return LocalTime.of(hour, minute, second, nano);
         } else {
-            return fromValueMap(converter, map, LocalTime.class, CollectionUtilities.setOf("hour", "minute", "second", "nano"), options);
+            return fromValueForMultiKey(map, converter, options, LocalTime.class, LOCAL_TIME_PARAMS);
         }
     }
 
     static LocalDateTime toLocalDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
-        Map<?, ?> map = (Map<?, ?>) fromInstance;
-        return fromValueMap(converter, map, LocalDateTime.class, null, options);
+        return fromValue(fromInstance, converter, options, LocalDateTime.class);
     }
 
     static ZonedDateTime toZonedDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
-        Map<?, ?> map = (Map<?, ?>) fromInstance;
-        return fromValueMap(converter, map, ZonedDateTime.class, null, options);
+        return fromValue(fromInstance, converter, options, ZonedDateTime.class);
     }
 
     static Class<?> toClass(Object fromInstance, Converter converter, ConverterOptions options) {
-        Map<?, ?> map = (Map<?, ?>) fromInstance;
-        return fromValueMap(converter, map, Class.class, null, options);
+        return fromValue(fromInstance, converter, options, Class.class);
     }
 
+    private static final String[] DURATION_PARAMS = new String[] { SECONDS, NANOS };
     static Duration toDuration(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<String, Object> map = (Map<String, Object>) fromInstance;
-        if (map.containsKey("seconds")) {
-            long sec = converter.convert(map.get("seconds"), long.class, options);
-            long nanos = converter.convert(map.get("nanos"), long.class, options);
+        if (map.containsKey(SECONDS)) {
+            long sec = converter.convert(map.get(SECONDS), long.class, options);
+            long nanos = converter.convert(map.get(NANOS), long.class, options);
             return Duration.ofSeconds(sec, nanos);
         } else {
-            return fromValueMap(converter, map, Duration.class, CollectionUtilities.setOf("seconds", "nanos"), options);
+            return fromValueForMultiKey(fromInstance, converter, options, Duration.class, DURATION_PARAMS);
         }
     }
 
+    private static final String[] INSTANT_PARAMS = new String[] { SECONDS, NANOS };
     static Instant toInstant(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<String, Object> map = (Map<String, Object>) fromInstance;
-        if (map.containsKey("seconds")) {
-            long sec = converter.convert(map.get("seconds"), long.class, options);
-            long nanos = converter.convert(map.get("nanos"), long.class, options);
+        if (map.containsKey(SECONDS)) {
+            long sec = converter.convert(map.get(SECONDS), long.class, options);
+            long nanos = converter.convert(map.get(NANOS), long.class, options);
             return Instant.ofEpochSecond(sec, nanos);
         } else {
-            return fromValueMap(converter, map, Instant.class, CollectionUtilities.setOf("seconds", "nanos"), options);
+            return fromValueForMultiKey(fromInstance, converter, options, Instant.class, INSTANT_PARAMS);
         }
     }
 
+    private static final String[] MONTH_DAY_PARAMS = new String[] { MONTH, DAY };
     static MonthDay toMonthDay(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<String, Object> map = (Map<String, Object>) fromInstance;
-        if (map.containsKey("month")) {
-            int month = converter.convert(map.get("month"), int.class, options);
-            int day = converter.convert(map.get("day"), int.class, options);
+        if (map.containsKey(MONTH)) {
+            int month = converter.convert(map.get(MONTH), int.class, options);
+            int day = converter.convert(map.get(DAY), int.class, options);
             return MonthDay.of(month, day);
         } else {
-            return fromValueMap(converter, map, MonthDay.class, CollectionUtilities.setOf("month", "day"), options);
+            return fromValueForMultiKey(fromInstance, converter, options, MonthDay.class, MONTH_DAY_PARAMS);
         }
     }
 
@@ -232,7 +239,7 @@ public class MapConversions {
      * @param <T> type of object to convert the value.
      * @return type if it exists, else returns what is in V or VALUE
      */
-    static <T> T fromSingleKey(final Object fromInstance, final Converter converter, final ConverterOptions options, final String key, final Class<T> type) {
+    private static <T> T fromSingleKey(final Object fromInstance, final Converter converter, final ConverterOptions options, final String key, final Class<T> type) {
         validateParams(converter, options, type);
 
         Map<?, ?> map = asMap(fromInstance);
@@ -244,13 +251,13 @@ public class MapConversions {
         return extractValue(map, converter, options, type, key);
     }
 
-    static <T> T fromValueForMultiKey(Object from, Converter converter, ConverterOptions options, Class<T> type, String[] keys) {
+    private static <T> T fromValueForMultiKey(Object from, Converter converter, ConverterOptions options, Class<T> type, String[] keys) {
         validateParams(converter, options, type);
 
         return extractValue(asMap(from), converter, options, type, keys);
     }
 
-    static <T> T fromValue(Object from, Converter converter, ConverterOptions options, Class<T> type) {
+    private static <T> T fromValue(Object from, Converter converter, ConverterOptions options, Class<T> type) {
         validateParams(converter, options, type);
 
         return extractValue(asMap(from), converter, options, type);
@@ -282,29 +289,5 @@ public class MapConversions {
     private static Map<?, ?> asMap(Object o) {
         Convention.throwIfFalse(o instanceof Map, "fromInstance must be an instance of map");
         return (Map<?, ?>)o;
-    }
-
-    private static <T> T fromValueMap(Converter converter, Map<?, ?> map, Class<T> type, Set<String> set, ConverterOptions options) {
-        T ret = fromMap(converter, map, VALUE, type, options);
-        if (ret != NOPE) {
-            return ret;
-        }
-
-        ret = fromMap(converter, map, VALUE2, type, options);
-        if (ret == NOPE) {
-            if (set == null || set.isEmpty()) {
-                throw new IllegalArgumentException("To convert from Map to " + getShortName(type) + ", the map must include keys: '_v' or 'value' an associated value to convert from.");
-            } else {
-                throw new IllegalArgumentException("To convert from Map to " + getShortName(type) + ", the map must include keys: " + set + ", or '_v' or 'value' an associated value to convert from.");
-            }
-        }
-        return ret;
-    }
-
-    private static <T> T fromMap(Converter converter, Map<?, ?> map, String key, Class<T> type, ConverterOptions options) {
-        if (map.containsKey(key)) {
-            return converter.convert(map.get(key), type, options);
-        }
-        return (T) NOPE;
     }
 }

@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.convert;
 
+import com.cedarsoftware.util.StringUtilities;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -121,8 +123,8 @@ public class NumberConversions {
         return ((BigDecimal)from).toBigInteger();
     }
 
-    static BigDecimal bigDecimalToBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        return new BigDecimal(from.toString());
+    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        return new BigDecimal(StringUtilities.trimToEmpty(from.toString()));
     }
 
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
@@ -134,7 +136,9 @@ public class NumberConversions {
     }
 
     static BigInteger floatingPointToBigInteger(Object from, Converter converter, ConverterOptions options) {
-        return new BigInteger(String.format("%.0f", ((Number)from).doubleValue()));
+        double d = toDouble(from);
+        String s = String.format("%.0f", (d > 0.0) ? Math.floor(d) : Math.ceil(d));
+        return new BigInteger(s);
     }
 
     static boolean isIntTypeNotZero(Object from, Converter converter, ConverterOptions options) {
@@ -154,7 +158,7 @@ public class NumberConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        return new BigInteger(from.toString());
+        return new BigInteger(StringUtilities.trimToEmpty(from.toString()));
     }
 
 

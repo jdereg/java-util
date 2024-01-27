@@ -215,7 +215,7 @@ public class StringConversions {
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {
         String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
-            return (char) 0;
+            return CommonValues.CHARACTER_ZERO;
         }
         if (str.length() == 1) {
             return str.charAt(0);

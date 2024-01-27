@@ -61,7 +61,7 @@ public class AtomicBooleanConversions {
 
     static Character toCharacter(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;
-        return b.get() ? CommonValues.CHARACTER_ONE : CommonValues.CHARACTER_ZERO;
+        return b.get() ? options.trueChar() : options.falseChar();
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {

@@ -70,9 +70,7 @@ import com.cedarsoftware.util.StringUtilities;
  */
 
 public final class Converter {
-    static final String NOPE = "~nope!";
     static final String VALUE = "_v";
-    static final String VALUE2 = "value";
 
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;
     private final ConverterOptions options;
@@ -733,25 +731,25 @@ public final class Converter {
 
         // Map conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Map.class), VoidConversions::toNull);
-        DEFAULT_FACTORY.put(pair(Byte.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Short.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Integer.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Long.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Float.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Double.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Boolean.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Character.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(BigInteger.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(BigDecimal.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(AtomicInteger.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(AtomicLong.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Date.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Timestamp.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Map.class), Converter::initMap);
+        DEFAULT_FACTORY.put(pair(Byte.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Short.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Integer.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Long.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Float.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Double.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Boolean.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Character.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(BigInteger.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(AtomicLong.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Date.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Duration.class, Map.class), (fromInstance, converter, options) -> {
             long sec = ((Duration) fromInstance).getSeconds();
             long nanos = ((Duration) fromInstance).getNano();
@@ -790,16 +788,16 @@ public final class Converter {
             target.put("month", monthDay.getMonthValue());
             return target;
         });
-        DEFAULT_FACTORY.put(pair(Class.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(UUID.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Calendar.class, Map.class), Converter::initMap);
-        DEFAULT_FACTORY.put(pair(Number.class, Map.class), Converter::initMap);
+        DEFAULT_FACTORY.put(pair(Class.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(UUID.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Calendar.class, Map.class), MapConversions::initMap);
+        DEFAULT_FACTORY.put(pair(Number.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Map.class, Map.class), (fromInstance, converter, options) -> {
             Map<?, ?> source = (Map<?, ?>) fromInstance;
             Map<?, ?> copy = new LinkedHashMap<>(source);
             return copy;
         });
-        DEFAULT_FACTORY.put(pair(Enum.class, Map.class), Converter::initMap);
+        DEFAULT_FACTORY.put(pair(Enum.class, Map.class), MapConversions::initMap);
     }
 
     public Converter(ConverterOptions options) {
@@ -1005,12 +1003,6 @@ public final class Converter {
             return "null";
         }
         return getShortName(fromInstance.getClass()) + " (" + fromInstance + ")";
-    }
-
-    private static Map<String, ?> initMap(Object from, Converter converter, ConverterOptions options) {
-        Map<String, Object> map = new HashMap<>();
-        map.put(VALUE, from);
-        return map;
     }
     
     /**

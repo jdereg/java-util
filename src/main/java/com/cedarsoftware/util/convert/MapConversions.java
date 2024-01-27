@@ -12,6 +12,7 @@ import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -230,6 +231,12 @@ public class MapConversions {
         } else {
             return fromValueForMultiKey(fromInstance, converter, options, MonthDay.class, MONTH_DAY_PARAMS);
         }
+    }
+
+    static Map<String, ?> initMap(Object from, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = new HashMap<>();
+        map.put(V, from);
+        return map;
     }
 
     /**

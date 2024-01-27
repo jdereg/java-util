@@ -38,14 +38,12 @@ public class MapConversions {
     private static final String SECONDS = "seconds";
     private static final String NANO = "nano";
     private static final String NANOS = "nanos";
-
     private static final String MOST_SIG_BITS = "mostSigBits";
     private static final String LEAST_SIG_BITS = "leastSigBits";
-
-
+    
     public static final String KEY_VALUE_ERROR_MESSAGE = "To convert from Map to %s the map must include one of the following: %s[_v], or [value] with associated values.";
-    private static String[] UUID_PARAMS = new String[] { MOST_SIG_BITS, LEAST_SIG_BITS };
 
+    private static String[] UUID_PARAMS = new String[] { MOST_SIG_BITS, LEAST_SIG_BITS };
     static Object toUUID(Object fromInstance, Converter converter, ConverterOptions options) {
         Map<?, ?> map = (Map<?, ?>) fromInstance;
 

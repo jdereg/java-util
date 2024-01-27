@@ -511,12 +511,14 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDate.class), MapConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(String.class, LocalDate.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
+            String str = (String) fromInstance;
+            if (StringUtilities.isEmpty(str)) {
                 return null;
             }
-            return date.toInstant().atZone(options.getZoneId()).toLocalDate();
+            ZonedDateTime zdt = DateUtilities.parseDate(str, options.getZoneId(), true);
+            Instant instant = zdt.toInstant();
+            // Bring the zonedDateTime to a user-specifiable timezone
+            return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDate();
         });
 
         // LocalDateTime conversions supported
@@ -537,12 +539,14 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), MapConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalDateTime.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
+            String str = (String) fromInstance;
+            if (StringUtilities.isEmpty(str)) {
                 return null;
             }
-            return date.toInstant().atZone(options.getZoneId()).toLocalDateTime();
+            ZonedDateTime zdt = DateUtilities.parseDate(str, options.getZoneId(), true);
+            Instant instant = zdt.toInstant();
+            // Bring the zonedDateTime to a user-specifiable timezone
+            return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDateTime();
         });
 
         // LocalTime conversions supported
@@ -564,12 +568,11 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), (fromInstance, converter, options) -> {
-            String str = StringUtilities.trimToEmpty((String)fromInstance);
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
+            String str = (String) fromInstance;
+            if (StringUtilities.isEmpty(str)) {
                 return null;
             }
-            return converter.convert(date, LocalTime.class, options);
+            return LocalTime.parse(str);
         });
         
         // ZonedDateTime conversions supported
@@ -590,12 +593,11 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, ZonedDateTime.class), MapConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(String.class, ZonedDateTime.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
+            String str = (String) fromInstance;
+            if (StringUtilities.isEmpty(str)) {
                 return null;
             }
-            return converter.convert(date, ZonedDateTime.class, options);
+            return DateUtilities.parseDate(str, options.getZoneId(), true);
         });
 
         // UUID conversions supported

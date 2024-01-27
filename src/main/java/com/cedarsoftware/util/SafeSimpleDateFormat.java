@@ -114,4 +114,12 @@ public class SafeSimpleDateFormat extends DateFormat
     public String toString() {
         return _format.toString();
     }
+
+    public boolean equals(Object other) {
+        return getDateFormat(_format).equals(other);
+    }
+
+    public int hashCode() {
+        return getDateFormat(_format).hashCode();
+    }
 }

@@ -272,7 +272,7 @@ public class MapConversions {
             return converter.convert(map.get(VALUE), type, options);
         }
 
-        String keyText = ArrayUtilities.isEmpty(keys) ? "" : "[" + String.join(",", keys) + "], ";
+        String keyText = ArrayUtilities.isEmpty(keys) ? "" : "[" + String.join(", ", keys) + "], ";
         throw new IllegalArgumentException(String.format(KEY_VALUE_ERROR_MESSAGE, getShortName(type), keyText));
     }
 

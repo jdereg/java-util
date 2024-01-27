@@ -2828,7 +2828,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Calendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to Calendar the map must include one of the following: [time,zone], [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to Calendar the map must include one of the following: [time, zone], [_v], or [value] with associated values");
     }
 
     @Test
@@ -2886,7 +2886,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, GregorianCalendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to Calendar the map must include one of the following: [time,zone], [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to Calendar the map must include one of the following: [time, zone], [_v], or [value] with associated values");
     }
 
     @Test
@@ -2978,7 +2978,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDate.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to LocalDate the map must include one of the following: [year,month,day], [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to LocalDate the map must include one of the following: [year, month, day], [_v], or [value] with associated values");
     }
 
     @Test

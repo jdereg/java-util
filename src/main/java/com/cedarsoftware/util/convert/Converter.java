@@ -634,19 +634,19 @@ public final class Converter {
 
         // String conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, String.class), VoidConversions::toNull);
-        DEFAULT_FACTORY.put(pair(Byte.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(Short.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(Integer.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(Long.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(Byte.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(Short.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(Integer.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(Long.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Float.class, String.class), (fromInstance, converter, options) -> new DecimalFormat("#.####################").format((float) fromInstance));
         DEFAULT_FACTORY.put(pair(Double.class, String.class), (fromInstance, converter, options) -> new DecimalFormat("#.####################").format((double) fromInstance));
-        DEFAULT_FACTORY.put(pair(Boolean.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(Boolean.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Character.class, String.class), (fromInstance, converter, options) -> "" + fromInstance);
-        DEFAULT_FACTORY.put(pair(BigInteger.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(BigInteger.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, String.class), (fromInstance, converter, options) -> ((BigDecimal) fromInstance).stripTrailingZeros().toPlainString());
-        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(AtomicInteger.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(AtomicLong.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(AtomicBoolean.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(AtomicLong.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Class.class, String.class), (fromInstance, converter, options) -> ((Class<?>) fromInstance).getName());
         DEFAULT_FACTORY.put(pair(Date.class, String.class), (fromInstance, converter, options) -> {
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -673,19 +673,19 @@ public final class Converter {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
             return zonedDateTime.format(formatter);
         });
-        DEFAULT_FACTORY.put(pair(UUID.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(UUID.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Calendar.class, String.class), (fromInstance, converter, options) -> {
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
             return simpleDateFormat.format(((Calendar) fromInstance).getTime());
         });
-        DEFAULT_FACTORY.put(pair(Number.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(Number.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Map.class, String.class), MapConversions::toString);
         DEFAULT_FACTORY.put(pair(Enum.class, String.class), (fromInstance, converter, options) -> ((Enum<?>) fromInstance).name());
         DEFAULT_FACTORY.put(pair(String.class, String.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(Duration.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(Instant.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), Converter::toString);
-        DEFAULT_FACTORY.put(pair(MonthDay.class, String.class), Converter::toString);
+        DEFAULT_FACTORY.put(pair(Duration.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(Instant.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(MonthDay.class, String.class), StringConversions::toString);
 
         // Duration conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Duration.class), VoidConversions::toNull);
@@ -996,11 +996,11 @@ public final class Converter {
         }
     }
 
-    private static String getShortName(Class<?> type) {
+    static String getShortName(Class<?> type) {
         return java.sql.Date.class.equals(type) ? type.getName() : type.getSimpleName();
     }
 
-    private String name(Object fromInstance) {
+    static private String name(Object fromInstance) {
         if (fromInstance == null) {
             return "null";
         }
@@ -1095,9 +1095,5 @@ public final class Converter {
 
     private static <T> T identity(T one, Converter converter, ConverterOptions options) {
         return one;
-    }
-
-    private static String toString(Object one, Converter converter, ConverterOptions options) {
-        return one.toString();
     }
 }

@@ -280,4 +280,8 @@ public class StringConversions {
             return date == null ? null : date.toInstant();
         }
     }
+
+    static String toString(Object from, Converter converter, ConverterOptions options) {
+        return from.toString();
+    }
 }

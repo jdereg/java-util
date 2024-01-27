@@ -278,17 +278,13 @@ public class MapConversions {
         }
 
         String keyText = ArrayUtilities.isEmpty(keys) ? "" : "[" + String.join(", ", keys) + "], ";
-        throw new IllegalArgumentException(String.format(KEY_VALUE_ERROR_MESSAGE, getShortName(type), keyText));
+        throw new IllegalArgumentException(String.format(KEY_VALUE_ERROR_MESSAGE, Converter.getShortName(type), keyText));
     }
 
     private static <T> void validateParams(Converter converter, ConverterOptions options, Class<T> type) {
         Convention.throwIfNull(type, "type cannot be null");
         Convention.throwIfNull(converter, "converter cannot be null");
         Convention.throwIfNull(options, "options cannot be null");
-    }
-
-    private static String getShortName(Class<?> type) {
-        return java.sql.Date.class.equals(type) ? type.getName() : type.getSimpleName();
     }
 
     private static Map<?, ?> asMap(Object o) {

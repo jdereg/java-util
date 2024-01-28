@@ -344,8 +344,7 @@ public class StringConversions {
         try {
             return Instant.parse(s);
         } catch (Exception e) {
-            Date date = DateUtilities.parseDate(s);
-            return date == null ? null : date.toInstant();
+            return getInstant(s, options);
         }
     }
 

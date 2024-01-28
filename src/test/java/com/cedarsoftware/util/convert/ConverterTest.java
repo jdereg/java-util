@@ -1609,9 +1609,9 @@ class ConverterTest
 
     private static Stream<Arguments> testAtomicLongParams_withIllegalArguments() {
         return Stream.of(
-                Arguments.of("45badNumber", "not parseable as an AtomicLong"),
-                Arguments.of( "-9223372036854775809", "not parseable as an AtomicLong"),
-                Arguments.of("9223372036854775808", "not parseable as an AtomicLong"),
+                Arguments.of("45badNumber", "not parseable as a long value"),
+                Arguments.of( "-9223372036854775809", "not parseable as a long value"),
+                Arguments.of("9223372036854775808", "not parseable as a long value"),
                 Arguments.of( TimeZone.getDefault(), "Unsupported conversion"));
     }
 

@@ -1,6 +1,6 @@
 package com.cedarsoftware.util.convert;
 
-import java.time.Duration;
+import java.time.LocalTime;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -22,13 +22,21 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class DurationConversions {
+public class LocalTimeConversions {
+
     static Map toMap(Object from, Converter converter, ConverterOptions options) {
-        long sec = ((Duration) from).getSeconds();
-        long nanos = ((Duration) from).getNano();
+        LocalTime localTime = (LocalTime) from;
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put("seconds", sec);
-        target.put("nanos", nanos);
+        target.put("hour", localTime.getHour());
+        target.put("minute", localTime.getMinute());
+        if (localTime.getNano() != 0) {  // Only output 'nano' when not 0 (and then 'second' is required).
+            target.put("nano", localTime.getNano());
+            target.put("second", localTime.getSecond());
+        } else {    // 0 nano, 'second' is optional if 0
+            if (localTime.getSecond() != 0) {
+                target.put("second", localTime.getSecond());
+            }
+        }
         return target;
     }
 }

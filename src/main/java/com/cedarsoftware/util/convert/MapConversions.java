@@ -13,6 +13,7 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -290,5 +291,11 @@ public class MapConversions {
     private static Map<?, ?> asMap(Object o) {
         Convention.throwIfFalse(o instanceof Map, "from must be an instance of map");
         return (Map<?, ?>)o;
+    }
+
+    static Map<?, ?> toMap(Object from, Converter converter, ConverterOptions options) {
+        Map<?, ?> source = (Map<?, ?>) from;
+        Map<?, ?> copy = new LinkedHashMap<>(source);
+        return copy;
     }
 }

@@ -1,6 +1,6 @@
 package com.cedarsoftware.util.convert;
 
-import java.time.Duration;
+import java.time.MonthDay;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -22,13 +22,12 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class DurationConversions {
+public class MonthDayConversions {
     static Map toMap(Object from, Converter converter, ConverterOptions options) {
-        long sec = ((Duration) from).getSeconds();
-        long nanos = ((Duration) from).getNano();
+        MonthDay monthDay = (MonthDay) from;
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put("seconds", sec);
-        target.put("nanos", nanos);
+        target.put("day", monthDay.getDayOfMonth());
+        target.put("month", monthDay.getMonthValue());
         return target;
     }
 }

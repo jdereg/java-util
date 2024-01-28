@@ -15,7 +15,6 @@ import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -658,53 +657,15 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(LocalDate.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Map.class), MapConversions::initMap);
-        DEFAULT_FACTORY.put(pair(Duration.class, Map.class), (from, converter, options) -> {
-            long sec = ((Duration) from).getSeconds();
-            long nanos = ((Duration) from).getNano();
-            Map<String, Object> target = new LinkedHashMap<>();
-            target.put("seconds", sec);
-            target.put("nanos", nanos);
-            return target;
-        });
-        DEFAULT_FACTORY.put(pair(Instant.class, Map.class), (from, converter, options) -> {
-            long sec = ((Instant) from).getEpochSecond();
-            long nanos = ((Instant) from).getNano();
-            Map<String, Object> target = new LinkedHashMap<>();
-            target.put("seconds", sec);
-            target.put("nanos", nanos);
-            return target;
-        });
-        DEFAULT_FACTORY.put(pair(LocalTime.class, Map.class), (from, converter, options) -> {
-            LocalTime localTime = (LocalTime) from;
-            Map<String, Object> target = new LinkedHashMap<>();
-            target.put("hour", localTime.getHour());
-            target.put("minute", localTime.getMinute());
-            if (localTime.getNano() != 0) {  // Only output 'nano' when not 0 (and then 'second' is required).
-                target.put("nano", localTime.getNano());
-                target.put("second", localTime.getSecond());
-            } else {    // 0 nano, 'second' is optional if 0
-                if (localTime.getSecond() != 0) {
-                    target.put("second", localTime.getSecond());
-                }
-            }
-            return target;
-        });
-        DEFAULT_FACTORY.put(pair(MonthDay.class, Map.class), (from, converter, options) -> {
-            MonthDay monthDay = (MonthDay) from;
-            Map<String, Object> target = new LinkedHashMap<>();
-            target.put("day", monthDay.getDayOfMonth());
-            target.put("month", monthDay.getMonthValue());
-            return target;
-        });
+        DEFAULT_FACTORY.put(pair(Duration.class, Map.class), DurationConversions::toMap);
+        DEFAULT_FACTORY.put(pair(Instant.class, Map.class), InstantConversions::toMap);
+        DEFAULT_FACTORY.put(pair(LocalTime.class, Map.class), LocalTimeConversions::toMap);
+        DEFAULT_FACTORY.put(pair(MonthDay.class, Map.class), MonthDayConversions::toMap);
         DEFAULT_FACTORY.put(pair(Class.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(UUID.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Calendar.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Number.class, Map.class), MapConversions::initMap);
-        DEFAULT_FACTORY.put(pair(Map.class, Map.class), (from, converter, options) -> {
-            Map<?, ?> source = (Map<?, ?>) from;
-            Map<?, ?> copy = new LinkedHashMap<>(source);
-            return copy;
-        });
+        DEFAULT_FACTORY.put(pair(Map.class, Map.class), MapConversions::toMap);
         DEFAULT_FACTORY.put(pair(Enum.class, Map.class), MapConversions::initMap);
     }
 

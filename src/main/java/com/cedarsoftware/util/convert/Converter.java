@@ -590,7 +590,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, String.class), DateConversions::calendarToString);
         DEFAULT_FACTORY.put(pair(Number.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Map.class, String.class), MapConversions::toString);
-        DEFAULT_FACTORY.put(pair(Enum.class, String.class), (fromInstance, converter, options) -> ((Enum<?>) fromInstance).name());
+        DEFAULT_FACTORY.put(pair(Enum.class, String.class), StringConversions::enumToString);
         DEFAULT_FACTORY.put(pair(String.class, String.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(Duration.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Instant.class, String.class), StringConversions::toString);
@@ -600,7 +600,7 @@ public final class Converter {
         // Duration conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Duration.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Duration.class, Duration.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(String.class, Duration.class), (fromInstance, converter, options) -> Duration.parse((String) fromInstance));
+        DEFAULT_FACTORY.put(pair(String.class, Duration.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Map.class, Duration.class), MapConversions::toDuration);
 
         // Instant conversions supported
@@ -619,7 +619,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Instant.class), ZonedDateTimeConversions::toInstant);
         DEFAULT_FACTORY.put(pair(Calendar.class, Instant.class), CalendarConversions::toInstant);
         DEFAULT_FACTORY.put(pair(Number.class, Instant.class), NumberConversions::toInstant);
-
         DEFAULT_FACTORY.put(pair(String.class, Instant.class), StringConversions::toInstant);
         DEFAULT_FACTORY.put(pair(Map.class, Instant.class), MapConversions::toInstant);
 
@@ -635,10 +634,7 @@ public final class Converter {
         // MonthDay conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, MonthDay.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(MonthDay.class, MonthDay.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(String.class, MonthDay.class), (fromInstance, converter, options) -> {
-            String monthDay = (String) fromInstance;
-            return MonthDay.parse(monthDay);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, MonthDay.class), StringConversions::toMonthDay);
         DEFAULT_FACTORY.put(pair(Map.class, MonthDay.class), MapConversions::toMonthDay);
 
         // Map conversions supported
@@ -662,24 +658,24 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(LocalDate.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(LocalDateTime.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(ZonedDateTime.class, Map.class), MapConversions::initMap);
-        DEFAULT_FACTORY.put(pair(Duration.class, Map.class), (fromInstance, converter, options) -> {
-            long sec = ((Duration) fromInstance).getSeconds();
-            long nanos = ((Duration) fromInstance).getNano();
+        DEFAULT_FACTORY.put(pair(Duration.class, Map.class), (from, converter, options) -> {
+            long sec = ((Duration) from).getSeconds();
+            long nanos = ((Duration) from).getNano();
             Map<String, Object> target = new LinkedHashMap<>();
             target.put("seconds", sec);
             target.put("nanos", nanos);
             return target;
         });
-        DEFAULT_FACTORY.put(pair(Instant.class, Map.class), (fromInstance, converter, options) -> {
-            long sec = ((Instant) fromInstance).getEpochSecond();
-            long nanos = ((Instant) fromInstance).getNano();
+        DEFAULT_FACTORY.put(pair(Instant.class, Map.class), (from, converter, options) -> {
+            long sec = ((Instant) from).getEpochSecond();
+            long nanos = ((Instant) from).getNano();
             Map<String, Object> target = new LinkedHashMap<>();
             target.put("seconds", sec);
             target.put("nanos", nanos);
             return target;
         });
-        DEFAULT_FACTORY.put(pair(LocalTime.class, Map.class), (fromInstance, converter, options) -> {
-            LocalTime localTime = (LocalTime) fromInstance;
+        DEFAULT_FACTORY.put(pair(LocalTime.class, Map.class), (from, converter, options) -> {
+            LocalTime localTime = (LocalTime) from;
             Map<String, Object> target = new LinkedHashMap<>();
             target.put("hour", localTime.getHour());
             target.put("minute", localTime.getMinute());
@@ -693,8 +689,8 @@ public final class Converter {
             }
             return target;
         });
-        DEFAULT_FACTORY.put(pair(MonthDay.class, Map.class), (fromInstance, converter, options) -> {
-            MonthDay monthDay = (MonthDay) fromInstance;
+        DEFAULT_FACTORY.put(pair(MonthDay.class, Map.class), (from, converter, options) -> {
+            MonthDay monthDay = (MonthDay) from;
             Map<String, Object> target = new LinkedHashMap<>();
             target.put("day", monthDay.getDayOfMonth());
             target.put("month", monthDay.getMonthValue());
@@ -704,8 +700,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(UUID.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Calendar.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Number.class, Map.class), MapConversions::initMap);
-        DEFAULT_FACTORY.put(pair(Map.class, Map.class), (fromInstance, converter, options) -> {
-            Map<?, ?> source = (Map<?, ?>) fromInstance;
+        DEFAULT_FACTORY.put(pair(Map.class, Map.class), (from, converter, options) -> {
+            Map<?, ?> source = (Map<?, ?>) from;
             Map<?, ?> copy = new LinkedHashMap<>(source);
             return copy;
         });
@@ -733,7 +729,7 @@ public final class Converter {
      *     convert(map, double.class)   // Converter will extract the value associated to the "_v" (or "value") key and convert it.
      * </pre>
      *
-     * @param fromInstance A value used to create the targetType, even though it may
+     * @param from A value used to create the targetType, even though it may
      *                     not (most likely will not) be the same data type as the targetType
      * @param toType       Class which indicates the targeted (final) data type.
      *                     Please note that in addition to the 8 Java primitives, the targeted class
@@ -743,8 +739,8 @@ public final class Converter {
      *                     fields within the Map to perform the conversion.
      * @return An instanceof targetType class, based upon the value passed in.
      */
-    public <T> T convert(Object fromInstance, Class<T> toType) {
-        return this.convert(fromInstance, toType, options);
+    public <T> T convert(Object from, Class<T> toType) {
+        return this.convert(from, toType, options);
     }
 
     /**
@@ -763,7 +759,7 @@ public final class Converter {
      *     convert(map, double.class)   // Converter will extract the value associated to the "_v" (or "value") key and convert it.
      * </pre>
      *
-     * @param fromInstance A value used to create the targetType, even though it may
+     * @param from A value used to create the targetType, even though it may
      *                     not (most likely will not) be the same data type as the targetType
      * @param toType       Class which indicates the targeted (final) data type.
      *                     Please note that in addition to the 8 Java primitives, the targeted class
@@ -776,17 +772,17 @@ public final class Converter {
      * @return An instanceof targetType class, based upon the value passed in.
      */
     @SuppressWarnings("unchecked")
-    public <T> T convert(Object fromInstance, Class<T> toType, ConverterOptions options) {
+    public <T> T convert(Object from, Class<T> toType, ConverterOptions options) {
         if (toType == null) {
             throw new IllegalArgumentException("toType cannot be null");
         }
         Class<?> sourceType;
-        if (fromInstance == null) {
+        if (from == null) {
             // Do not promote primitive to primitive wrapper - allows for different 'from NULL' type for each.
             sourceType = Void.class;
         } else {
             // Promote primitive to primitive wrapper so we don't have to define so many duplicates in the factory map.
-            sourceType = fromInstance.getClass();
+            sourceType = from.getClass();
             if (toType.isPrimitive()) {
                 toType = (Class<T>) toPrimitiveWrapperClass(toType);
             }
@@ -795,7 +791,7 @@ public final class Converter {
         // Direct Mapping
         Convert<?> converter = factory.get(pair(sourceType, toType));
         if (converter != null) {
-            return (T) converter.convert(fromInstance, this, options);
+            return (T) converter.convert(from, this, options);
         }
 
         // Try inheritance
@@ -805,10 +801,10 @@ public final class Converter {
             if (!isDirectConversionSupportedFor(sourceType, toType)) {
                 addConversion(sourceType, toType, converter);
             }
-            return (T) converter.convert(fromInstance, this, options);
+            return (T) converter.convert(from, this, options);
         }
 
-        throw new IllegalArgumentException("Unsupported conversion, source type [" + name(fromInstance) + "] target type '" + getShortName(toType) + "'");
+        throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) + "] target type '" + getShortName(toType) + "'");
     }
 
     /**
@@ -910,11 +906,11 @@ public final class Converter {
         return java.sql.Date.class.equals(type) ? type.getName() : type.getSimpleName();
     }
 
-    static private String name(Object fromInstance) {
-        if (fromInstance == null) {
+    static private String name(Object from) {
+        if (from == null) {
             return "null";
         }
-        return getShortName(fromInstance.getClass()) + " (" + fromInstance + ")";
+        return getShortName(from.getClass()) + " (" + from + ")";
     }
     
     /**

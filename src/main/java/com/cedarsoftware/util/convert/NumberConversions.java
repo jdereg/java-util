@@ -128,7 +128,7 @@ public class NumberConversions {
         return ((BigDecimal)from).toBigInteger();
     }
 
-    static String bigDecimalToString(Object from, Converter converter, ConverterOptions converterOptions) {
+    static String bigDecimalToString(Object from, Converter converter, ConverterOptions options) {
         return ((BigDecimal) from).stripTrailingZeros().toPlainString();
     }
 

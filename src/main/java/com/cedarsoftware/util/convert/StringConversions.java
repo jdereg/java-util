@@ -4,10 +4,12 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.Calendar;
@@ -232,8 +234,16 @@ public class StringConversions {
         }
     }
 
+    static String enumToString(Object from, Converter converter, ConverterOptions options) {
+        return ((Enum<?>) from).name();
+    }
+
     static UUID toUUID(Object from, Converter converter, ConverterOptions options) {
         return UUID.fromString(((String) from).trim());
+    }
+
+    static Duration toDuration(Object from, Converter converter, ConverterOptions options) {
+        return Duration.parse((String) from);
     }
 
     static Class<?> toClass(Object from, Converter converter, ConverterOptions options) {
@@ -245,8 +255,13 @@ public class StringConversions {
         throw new IllegalArgumentException("Cannot convert String '" + str + "' to class.  Class not found.");
     }
 
-    static String classToString(Object from, Converter converter, ConverterOptions converterOptions) {
+    static String classToString(Object from, Converter converter, ConverterOptions options) {
         return ((Class<?>) from).getName();
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter, ConverterOptions options) {
+        String monthDay = (String) from;
+        return MonthDay.parse(monthDay);
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {

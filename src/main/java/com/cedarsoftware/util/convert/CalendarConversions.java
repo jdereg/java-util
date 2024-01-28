@@ -10,84 +10,83 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CalendarConversions {
 
-    static Date toDate(Object fromInstance) {
-        return ((Calendar)fromInstance).getTime();
+    static Date toDate(Object from) {
+        return ((Calendar)from).getTime();
     }
 
-    static long toLong(Object fromInstance) {
-        return toDate(fromInstance).getTime();
+    static long toLong(Object from) {
+        return toDate(from).getTime();
     }
 
-    static Instant toInstant(Object fromInstance) {
-        return ((Calendar)fromInstance).toInstant();
+    static Instant toInstant(Object from) {
+        return ((Calendar)from).toInstant();
     }
 
-    static ZonedDateTime toZonedDateTime(Object fromInstance, ConverterOptions options) {
-        return toInstant(fromInstance).atZone(options.getZoneId());
+    static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
+        return toInstant(from).atZone(options.getZoneId());
     }
 
-    static ZonedDateTime toZonedDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(fromInstance, options);
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options);
     }
 
-    static Long toLong(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toLong(fromInstance);
+    static Long toLong(Object from, Converter converter, ConverterOptions options) {
+        return toLong(from);
     }
 
-    static double toDouble(Object fromInstance, Converter converter, ConverterOptions options) {
-        return (double)toLong(fromInstance);
+    static double toDouble(Object from, Converter converter, ConverterOptions options) {
+        return (double)toLong(from);
     }
 
 
-    static Date toDate(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toDate(fromInstance);
+    static Date toDate(Object from, Converter converter, ConverterOptions options) {
+        return toDate(from);
     }
 
-    static java.sql.Date toSqlDate(Object fromInstance, Converter converter, ConverterOptions options) {
-        return new java.sql.Date(toLong(fromInstance));
+    static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
+        return new java.sql.Date(toLong(from));
     }
 
-    static Timestamp toTimestamp(Object fromInstance, Converter converter, ConverterOptions options) {
-        return new Timestamp(toLong(fromInstance));
+    static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
+        return new Timestamp(toLong(from));
     }
 
-    static AtomicLong toAtomicLong(Object fromInstance, Converter converter, ConverterOptions options) {
-        return new AtomicLong(toLong(fromInstance));
+    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
+        return new AtomicLong(toLong(from));
     }
 
-    static Instant toInstant(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toInstant(fromInstance);
+    static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
+        return toInstant(from);
     }
 
-    static LocalDateTime toLocalDateTime(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(fromInstance, options).toLocalDateTime();
+    static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options).toLocalDateTime();
     }
 
-    static LocalDate toLocalDate(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(fromInstance, options).toLocalDate();
+    static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options).toLocalDate();
     }
 
-    static LocalTime toLocalTime(Object fromInstance, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(fromInstance, options).toLocalTime();
+    static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
+        return toZonedDateTime(from, options).toLocalTime();
     }
 
-    static BigDecimal toBigDecimal(Object fromInstance, Converter converter, ConverterOptions options) {
-        return BigDecimal.valueOf(toLong(fromInstance));
+    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+        return BigDecimal.valueOf(toLong(from));
     }
 
-    static BigInteger toBigInteger(Object fromInstance, Converter converter, ConverterOptions options) {
-        return BigInteger.valueOf(toLong(fromInstance));
+    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+        return BigInteger.valueOf(toLong(from));
     }
 
-    static Calendar clone(Object fromInstance, Converter converter, ConverterOptions options) {
-        Calendar from = (Calendar)fromInstance;
+    static Calendar clone(Object from, Converter converter, ConverterOptions options) {
+        Calendar calendar = (Calendar)from;
         // mutable class, so clone it.
-        return (Calendar)from.clone();
+        return (Calendar)calendar.clone();
     }
 
     static Calendar create(long epochMilli, ConverterOptions options) {

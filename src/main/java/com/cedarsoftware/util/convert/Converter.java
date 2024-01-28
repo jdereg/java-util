@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
@@ -515,8 +516,15 @@ public final class Converter {
             if (StringUtilities.isEmpty(str)) {
                 return null;
             }
-            ZonedDateTime zdt = DateUtilities.parseDate(str, options.getZoneId(), true);
-            Instant instant = zdt.toInstant();
+            TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getZoneId(), true);
+
+            Instant instant;
+            if (dateTime instanceof LocalDateTime) {
+                LocalDateTime localDateTime = LocalDateTime.from(dateTime);
+                instant = localDateTime.atZone(options.getZoneId()).toInstant();
+            } else {
+                instant = Instant.from(dateTime);
+            }
             // Bring the zonedDateTime to a user-specifiable timezone
             return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDate();
         });
@@ -543,8 +551,14 @@ public final class Converter {
             if (StringUtilities.isEmpty(str)) {
                 return null;
             }
-            ZonedDateTime zdt = DateUtilities.parseDate(str, options.getZoneId(), true);
-            Instant instant = zdt.toInstant();
+            TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getZoneId(), true);
+            Instant instant;
+            if (dateTime instanceof LocalDateTime) {
+                LocalDateTime localDateTime = LocalDateTime.from(dateTime);
+                instant = localDateTime.atZone(options.getZoneId()).toInstant();
+            } else {
+                instant = Instant.from(dateTime);
+            }
             // Bring the zonedDateTime to a user-specifiable timezone
             return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDateTime();
         });

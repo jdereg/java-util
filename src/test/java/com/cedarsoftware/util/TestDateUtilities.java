@@ -5,6 +5,7 @@ import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalAccessor;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -348,7 +349,7 @@ class TestDateUtilities
             DateUtilities.parseDate(" Dec 25, 2014, thursday ");
         }
         try {
-            ZonedDateTime date = DateUtilities.parseDate("text Dec 25, 2014", ZoneId.systemDefault(), true);
+            TemporalAccessor dateTime = DateUtilities.parseDate("text Dec 25, 2014", ZoneId.systemDefault(), true);
             fail();
         } catch (Exception ignored) { }
 
@@ -846,15 +847,17 @@ class TestDateUtilities
             Date date = DateUtilities.parseDate(exampleZone);
             assertEquals(date.getTime(), epochMilli);
 
-            ZonedDateTime date2 = DateUtilities.parseDate(exampleZone, ZoneId.systemDefault(), true);
-            assertEquals(date2.toInstant().toEpochMilli(), epochMilli);
+            TemporalAccessor dateTime = DateUtilities.parseDate(exampleZone, ZoneId.systemDefault(), true);
+            ZonedDateTime zdt = (ZonedDateTime) dateTime;
+
+            assertEquals(zdt.toInstant().toEpochMilli(), epochMilli);
         }
     }
 
     @Test
     void testTimeBetterThanMilliResolution()
     {
-        ZonedDateTime zonedDateTime = DateUtilities.parseDate("Jan 22nd, 2024 21:52:05.123456789-05:00", ZoneId.systemDefault(), true);
+        ZonedDateTime zonedDateTime = (ZonedDateTime) DateUtilities.parseDate("Jan 22nd, 2024 21:52:05.123456789-05:00", ZoneId.systemDefault(), true);
         assertEquals(123456789, zonedDateTime.getNano());
         assertEquals(2024, zonedDateTime.getYear());
         assertEquals(1, zonedDateTime.getMonthValue());

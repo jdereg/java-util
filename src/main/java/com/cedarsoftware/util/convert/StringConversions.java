@@ -3,6 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,6 +24,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
+
+import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
+import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -50,8 +55,12 @@ public class StringConversions {
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
 
+    static String asString(Object from) {
+        return from == null ? null : from.toString();
+    }
+
     static Byte toByte(Object from, Converter converter, ConverterOptions options) {
-        return toByte((String)from);
+        return toByte(asString(from));
     }
 
     private static Byte toByte(String s) {
@@ -94,7 +103,7 @@ public class StringConversions {
     }
 
     private static Integer toInt(Object from) {
-        String str = StringUtilities.trimToEmpty((String)from);
+        String str = StringUtilities.trimToEmpty(asString(from));
         if (str.isEmpty()) {
             return CommonValues.INTEGER_ZERO;
         }
@@ -114,7 +123,7 @@ public class StringConversions {
     }
 
     private static Long toLong(Object from) {
-        String str = StringUtilities.trimToEmpty((String)from);
+        String str = StringUtilities.trimToEmpty(asString(from));
         if (str.isEmpty()) {
             return CommonValues.LONG_ZERO;
         }
@@ -144,7 +153,7 @@ public class StringConversions {
     }
 
     static Float toFloat(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
+        String str = StringUtilities.trimToEmpty(asString(from));
         if (str.isEmpty()) {
             return CommonValues.FLOAT_ZERO;
         }
@@ -156,7 +165,7 @@ public class StringConversions {
     }
 
     static Double toDouble(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
+        String str = StringUtilities.trimToEmpty(asString(from));
         if (str.isEmpty()) {
             return CommonValues.DOUBLE_ZERO;
         }
@@ -168,7 +177,7 @@ public class StringConversions {
     }
 
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicBoolean(toBoolean((String)from));
+        return new AtomicBoolean(toBoolean(asString(from)));
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
@@ -194,11 +203,11 @@ public class StringConversions {
     }
 
     static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
-        return toBoolean((String)from);
+        return toBoolean(asString(from));
     }
 
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToNull((String)from);
+        String str = StringUtilities.trimToNull(asString(from));
         if (str == null) {
             return CommonValues.CHARACTER_ZERO;
         }
@@ -210,7 +219,7 @@ public class StringConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToNull((String)from);
+        String str = StringUtilities.trimToNull(asString(from));
         if (str == null) {
             return BigInteger.ZERO;
         }
@@ -223,7 +232,7 @@ public class StringConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
+        String str = StringUtilities.trimToEmpty(asString(from));
         if (str.isEmpty()) {
             return BigDecimal.ZERO;
         }
@@ -336,7 +345,7 @@ public class StringConversions {
     }
 
     static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        String s = StringUtilities.trimToNull((String)from);
+        String s = StringUtilities.trimToNull(asString(from));
         if (s == null) {
             return null;
         }
@@ -365,7 +374,49 @@ public class StringConversions {
         return instant;
     }
 
-    static String toString(Object from, Converter converter, ConverterOptions options) {
-        return from.toString();
+    static char[] toCharArray(Object from, Converter converter, ConverterOptions options) {
+        String s = asString(from);
+
+        if (s == null || s.isEmpty()) {
+            return EMPTY_CHAR_ARRAY;
+        }
+
+        return s.toCharArray();
     }
+
+    static CharBuffer toCharBuffer(Object from, Converter converter, ConverterOptions options) {
+        return CharBuffer.wrap(asString(from));
+    }
+
+    static byte[] toByteArray(Object from, ConverterOptions options) {
+        String s = asString(from);
+
+        if (s == null || s.isEmpty()) {
+            return EMPTY_BYTE_ARRAY;
+        }
+
+        return s.getBytes(options.getCharset());
+    }
+
+
+    static byte[] toByteArray(Object from, Converter converter, ConverterOptions options) {
+        return toByteArray(from, options);
+    }
+
+    static ByteBuffer toByteBuffer(Object from, Converter converter, ConverterOptions options) {
+        return ByteBuffer.wrap(toByteArray(from, options));
+    }
+
+    static String toString(Object from, Converter converter, ConverterOptions options) {
+        return from == null ? null : from.toString();
+    }
+
+    static StringBuffer toStringBuffer(Object from, Converter converter, ConverterOptions options) {
+        return from == null ? null : new StringBuffer(from.toString());
+    }
+
+    static StringBuilder toStringBuilder(Object from, Converter converter, ConverterOptions options) {
+        return from == null ? null : new StringBuilder(from.toString());
+    }
+
 }

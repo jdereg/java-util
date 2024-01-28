@@ -41,82 +41,74 @@ public class StringConversions {
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
 
     static Byte toByte(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
-        if (str.isEmpty()) {
-            return CommonValues.BYTE_ZERO;
-        }
-        try {
-            return Byte.valueOf(str);
-        } catch (NumberFormatException e) {
-            Byte value = toByte(str);
-            if (value == null) {
-                throw new IllegalArgumentException("Value: " + from + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
-            }
-            return value;
-        }
+        return toByte((String)from);
     }
 
     private static Byte toByte(String s) {
-        Long value = toLong(s, bigDecimalMinByte, bigDecimalMaxByte);
-        if (value == null) {
-            return null;
+        if (s.isEmpty()) {
+            return CommonValues.BYTE_ZERO;
         }
-        return value.byteValue();
+        try {
+            return Byte.valueOf(s);
+        } catch (NumberFormatException e) {
+            Long value = toLong(s, bigDecimalMinByte, bigDecimalMaxByte);
+            if (value == null) {
+                throw new IllegalArgumentException("Value: " + s + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+            }
+            return value.byteValue();
+        }
     }
 
     static Short toShort(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        return toShort(from);
+    }
+
+    private static Short toShort(Object o) {
+        String str = StringUtilities.trimToEmpty((String)o);
         if (str.isEmpty()) {
             return CommonValues.SHORT_ZERO;
         }
         try {
             return Short.valueOf(str);
         } catch (NumberFormatException e) {
-            Short value = toShort(str);
+            Long value = toLong(str, bigDecimalMinShort, bigDecimalMaxShort);
             if (value == null) {
-                throw new IllegalArgumentException("Value: " + from + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+                throw new IllegalArgumentException("Value: " + o + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
             }
-            return value;
+            return value.shortValue();
         }
-    }
-
-    private static Short toShort(String s) {
-        Long value = toLong(s, bigDecimalMinShort, bigDecimalMaxShort);
-        if (value == null) {
-            return null;
-        }
-        return value.shortValue();
     }
 
     static Integer toInt(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        return toInt(from);
+    }
+
+    private static Integer toInt(Object from) {
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return CommonValues.INTEGER_ZERO;
         }
         try {
             return Integer.valueOf(str);
         } catch (NumberFormatException e) {
-            Integer value = toInt(str);
+            Long value = toLong(str, bigDecimalMinInteger, bigDecimalMaxInteger);
             if (value == null) {
                 throw new IllegalArgumentException("Value: " + from + " not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
             }
-            return value;
+            return value.intValue();
         }
-    }
-
-    private static Integer toInt(String s) {
-        Long value = toLong(s, bigDecimalMinInteger, bigDecimalMaxInteger);
-        if (value == null) {
-            return null;
-        }
-        return value.intValue();
     }
 
     static Long toLong(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        return toLong(from);
+    }
+
+    private static Long toLong(Object from) {
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return CommonValues.LONG_ZERO;
         }
+
         try {
             return Long.valueOf(str);
         } catch (NumberFormatException e) {
@@ -142,7 +134,7 @@ public class StringConversions {
     }
 
     static Float toFloat(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return CommonValues.FLOAT_ZERO;
         }
@@ -154,7 +146,7 @@ public class StringConversions {
     }
 
     static Double toDouble(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
+        String str = StringUtilities.trimToEmpty((String)from);
         if (str.isEmpty()) {
             return CommonValues.DOUBLE_ZERO;
         }
@@ -166,40 +158,19 @@ public class StringConversions {
     }
 
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
-        if (str.isEmpty()) {
-            return new AtomicBoolean(false);
-        }
-        return new AtomicBoolean("true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str));
+        return new AtomicBoolean(toBoolean((String)from));
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
-        String str = ((String) from).trim();
-        if (str.isEmpty()) {
-            return new AtomicInteger(0);
-        }
-
-        Integer integer = toInt(str);
-        if (integer == null) {
-            throw new IllegalArgumentException("Value: " + from + " not parseable as an AtomicInteger value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
-        }
-        return new AtomicInteger(integer);
+        return new AtomicInteger(toInt(from));
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
-        if (str.isEmpty()) {
-            return new AtomicLong(0L);
-        }
-        Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
-        if (value == null) {
-            throw new IllegalArgumentException("Value: " + from + " not parseable as an AtomicLong value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
-        }
-        return new AtomicLong(value);
+        return new AtomicLong(toLong(from));
     }
 
-    static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
+    private static Boolean toBoolean(String from) {
+        String str = StringUtilities.trimToEmpty(from);
         if (str.isEmpty()) {
             return false;
         }
@@ -212,9 +183,13 @@ public class StringConversions {
         return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equalsIgnoreCase(str) || "y".equalsIgnoreCase(str);
     }
 
+    static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+        return toBoolean((String)from);
+    }
+
     static char toCharacter(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
-        if (str.isEmpty()) {
+        String str = StringUtilities.trimToNull((String)from);
+        if (str == null) {
             return CommonValues.CHARACTER_ZERO;
         }
         if (str.length() == 1) {
@@ -225,8 +200,8 @@ public class StringConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        String str = StringUtilities.trimToEmpty((String)from);
-        if (str.isEmpty()) {
+        String str = StringUtilities.trimToNull((String)from);
+        if (str == null) {
             return BigInteger.ZERO;
         }
         try {
@@ -268,8 +243,8 @@ public class StringConversions {
     }
 
     static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        String s = StringUtilities.trimToEmpty((String)from);
-        if (s.isEmpty()) {
+        String s = StringUtilities.trimToNull((String)from);
+        if (s == null) {
             return null;
         }
 

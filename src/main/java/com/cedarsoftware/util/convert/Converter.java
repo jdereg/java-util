@@ -3,6 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -94,7 +96,7 @@ public final class Converter {
     }
 
     private static void buildFactoryConversions() {
-        // Byte/byte Conversions supported
+        // toByte
         DEFAULT_FACTORY.put(pair(Void.class, byte.class), NumberConversions::toByteZero);
         DEFAULT_FACTORY.put(pair(Void.class, Byte.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Byte.class), Converter::identity);
@@ -115,7 +117,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Byte.class), MapConversions::toByte);
         DEFAULT_FACTORY.put(pair(String.class, Byte.class), StringConversions::toByte);
 
-        // Short/short conversions supported
+        // toShort
         DEFAULT_FACTORY.put(pair(Void.class, short.class), NumberConversions::toShortZero);
         DEFAULT_FACTORY.put(pair(Void.class, Short.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Short.class), NumberConversions::toShort);
@@ -135,7 +137,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Short.class), MapConversions::toShort);
         DEFAULT_FACTORY.put(pair(String.class, Short.class), StringConversions::toShort);
 
-        // Integer/int conversions supported
+        // toInteger
         DEFAULT_FACTORY.put(pair(Void.class, int.class), NumberConversions::toIntZero);
         DEFAULT_FACTORY.put(pair(Void.class, Integer.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Integer.class), NumberConversions::toInt);
@@ -155,7 +157,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Integer.class), MapConversions::toInt);
         DEFAULT_FACTORY.put(pair(String.class, Integer.class), StringConversions::toInt);
 
-        // Long/long conversions supported
+        // toLong
         DEFAULT_FACTORY.put(pair(Void.class, long.class), NumberConversions::toLongZero);
         DEFAULT_FACTORY.put(pair(Void.class, Long.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Long.class), NumberConversions::toLong);
@@ -183,7 +185,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Long.class), MapConversions::toLong);
         DEFAULT_FACTORY.put(pair(String.class, Long.class), StringConversions::toLong);
 
-        // Float/float conversions supported
+        // toFloat
         DEFAULT_FACTORY.put(pair(Void.class, float.class), NumberConversions::toFloatZero);
         DEFAULT_FACTORY.put(pair(Void.class, Float.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Float.class), NumberConversions::toFloat);
@@ -577,6 +579,10 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(byte[].class, String.class), ByteArrayConversions::toString);
+        DEFAULT_FACTORY.put(pair(char[].class, String.class), CharArrayConversions::toString);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, String.class), ByteBufferConversions::toString);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, String.class), CharBufferConversions::toString);
         DEFAULT_FACTORY.put(pair(Class.class, String.class), StringConversions::classToString);
         DEFAULT_FACTORY.put(pair(Date.class, String.class), DateConversions::dateToString);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, String.class), DateConversions::sqlDateToString);
@@ -635,6 +641,66 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(MonthDay.class, MonthDay.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(String.class, MonthDay.class), StringConversions::toMonthDay);
         DEFAULT_FACTORY.put(pair(Map.class, MonthDay.class), MapConversions::toMonthDay);
+
+        // toStringBuffer
+        DEFAULT_FACTORY.put(pair(Void.class, StringBuffer.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(String.class, StringBuffer.class), StringConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(StringBuilder.class, StringBuffer.class), StringConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(StringBuffer.class, StringBuffer.class), StringConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, StringBuffer.class), ByteBufferConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, StringBuffer.class), CharBufferConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(char[].class, StringBuffer.class), CharArrayConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(byte[].class, StringBuffer.class), ByteArrayConversions::toStringBuffer);
+
+        // toStringBuilder
+        DEFAULT_FACTORY.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(String.class, StringBuilder.class), StringConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(StringBuilder.class, StringBuilder.class), StringConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(StringBuffer.class, StringBuilder.class), StringConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, StringBuilder.class), ByteBufferConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, StringBuilder.class), CharBufferConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(char[].class, StringBuilder.class), CharArrayConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(byte[].class, StringBuilder.class), ByteArrayConversions::toStringBuilder);
+
+        // toByteArray
+        DEFAULT_FACTORY.put(pair(Void.class, byte[].class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(String.class, byte[].class), StringConversions::toByteArray);
+        DEFAULT_FACTORY.put(pair(StringBuilder.class, byte[].class), StringConversions::toByteArray);
+        DEFAULT_FACTORY.put(pair(StringBuffer.class, byte[].class), StringConversions::toByteArray);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, byte[].class), ByteBufferConversions::toByteArray);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, byte[].class), CharBufferConversions::toByteArray);
+        DEFAULT_FACTORY.put(pair(char[].class, byte[].class), CharArrayConversions::toByteArray);
+        DEFAULT_FACTORY.put(pair(byte[].class, byte[].class), Converter::identity);
+
+        // toCharArray
+        DEFAULT_FACTORY.put(pair(Void.class, char[].class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(String.class, char[].class), StringConversions::toCharArray);
+        DEFAULT_FACTORY.put(pair(StringBuilder.class, char[].class), StringConversions::toCharArray);
+        DEFAULT_FACTORY.put(pair(StringBuffer.class, char[].class), StringConversions::toCharArray);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, char[].class), ByteBufferConversions::toCharArray);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, char[].class), CharBufferConversions::toCharArray);
+        DEFAULT_FACTORY.put(pair(char[].class, char[].class), CharArrayConversions::toCharArray);
+        DEFAULT_FACTORY.put(pair(byte[].class, char[].class), ByteArrayConversions::toCharArray);
+
+        //toCharBuffer
+        DEFAULT_FACTORY.put(pair(Void.class, CharBuffer.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(String.class, CharBuffer.class), StringConversions::toCharBuffer);
+        DEFAULT_FACTORY.put(pair(StringBuilder.class, CharBuffer.class), StringConversions::toCharBuffer);
+        DEFAULT_FACTORY.put(pair(StringBuffer.class, CharBuffer.class), StringConversions::toCharBuffer);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, CharBuffer.class), ByteBufferConversions::toCharBuffer);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, CharBuffer.class), CharBufferConversions::toCharBuffer);
+        DEFAULT_FACTORY.put(pair(char[].class, CharBuffer.class), CharArrayConversions::toCharBuffer);
+        DEFAULT_FACTORY.put(pair(byte[].class, CharBuffer.class), ByteArrayConversions::toCharBuffer);
+
+        // toByteBuffer
+        DEFAULT_FACTORY.put(pair(Void.class, ByteBuffer.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(String.class, ByteBuffer.class), StringConversions::toByteBuffer);
+        DEFAULT_FACTORY.put(pair(StringBuilder.class, ByteBuffer.class), StringConversions::toByteBuffer);
+        DEFAULT_FACTORY.put(pair(StringBuffer.class, ByteBuffer.class), StringConversions::toByteBuffer);
+        DEFAULT_FACTORY.put(pair(ByteBuffer.class, ByteBuffer.class), ByteBufferConversions::toByteBuffer);
+        DEFAULT_FACTORY.put(pair(CharBuffer.class, ByteBuffer.class), CharBufferConversions::toByteBuffer);
+        DEFAULT_FACTORY.put(pair(char[].class, ByteBuffer.class), CharArrayConversions::toByteBuffer);
+        DEFAULT_FACTORY.put(pair(byte[].class, ByteBuffer.class), ByteArrayConversions::toByteBuffer);
 
         // Map conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Map.class), VoidConversions::toNull);

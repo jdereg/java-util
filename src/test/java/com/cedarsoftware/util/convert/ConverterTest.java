@@ -2,6 +2,10 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,7 +38,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 
+import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
+import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
+import static com.cedarsoftware.util.StringUtilities.EMPTY;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.bar;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1345,6 +1352,28 @@ class ConverterTest
 
         Instant actual = this.converter.convert(calendar, Instant.class, createCustomZones(null, zoneId));
         assertThat(actual.toEpochMilli()).isEqualTo(epochMilli);
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testCalendarToBigDecimal(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(epochMilli);
+
+        BigDecimal actual = this.converter.convert(calendar, BigDecimal.class, createCustomZones(null, zoneId));
+        assertThat(actual.longValue()).isEqualTo(epochMilli);
+    }
+
+    @ParameterizedTest
+    @MethodSource("epochMillis_withLocalDateTimeInformation")
+    void testCalendarToBigInteger(long epochMilli, ZoneId zoneId, LocalDateTime expected)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(epochMilli);
+
+        BigInteger actual = this.converter.convert(calendar, BigInteger.class, createCustomZones(null, zoneId));
+        assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
     @ParameterizedTest
@@ -4080,7 +4109,7 @@ class ConverterTest
         assert this.converter.isConversionSupportedFor(Weirdo.class, Normie.class);
     }
 
-    private static Stream<Arguments> emptyStringToType_params() {
+    private static Stream<Arguments> emptyStringTypes_withSameAsReturns() {
         return Stream.of(
                 Arguments.of("", byte.class, CommonValues.BYTE_ZERO),
                 Arguments.of("", Byte.class, CommonValues.BYTE_ZERO),
@@ -4099,17 +4128,37 @@ class ConverterTest
                 Arguments.of("", char.class, CommonValues.CHARACTER_ZERO),
                 Arguments.of("", Character.class, CommonValues.CHARACTER_ZERO),
                 Arguments.of("", BigDecimal.class, BigDecimal.ZERO),
-                Arguments.of("", BigInteger.class, BigInteger.ZERO)
+                Arguments.of("", BigInteger.class, BigInteger.ZERO),
+                Arguments.of("", String.class, EMPTY),
+                Arguments.of("", byte[].class, EMPTY_BYTE_ARRAY),
+                Arguments.of("", char[].class, EMPTY_CHAR_ARRAY)
         );
     }
 
     @ParameterizedTest
-    @MethodSource("emptyStringToType_params")
-    void emptyStringToType(Object value, Class<?> type, Object expected)
+    @MethodSource("emptyStringTypes_withSameAsReturns")
+    void testEmptyStringToType_whereTypeReturnsSpecificObject(Object value, Class<?> type, Object expected)
     {
         Object converted = this.converter.convert(value, type);
         assertThat(converted).isSameAs(expected);
     }
+
+    private static Stream<Arguments> emptyStringTypes_notSameObject() {
+        return Stream.of(
+                Arguments.of("", ByteBuffer.class, ByteBuffer.wrap(EMPTY_BYTE_ARRAY)),
+                Arguments.of("", CharBuffer.class, CharBuffer.wrap(EMPTY_CHAR_ARRAY))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("emptyStringTypes_notSameObject")
+    void testEmptyStringToType_whereTypeIsEqualButNotSameAs(Object value, Class<?> type, Object expected)
+    {
+        Object converted = this.converter.convert(value, type);
+        assertThat(converted).isNotSameAs(expected);
+        assertThat(converted).isEqualTo(expected);
+    }
+
 
     @Test
     void emptyStringToAtomicBoolean()
@@ -4131,6 +4180,81 @@ class ConverterTest
         AtomicLong converted = this.converter.convert("", AtomicLong.class);
         assertThat(converted.get()).isEqualTo(0);
     }
+
+    private static Stream<Arguments> stringToByteArrayParams() {
+        return Stream.of(
+                Arguments.of("$1,000", StandardCharsets.US_ASCII, new byte[] { 36, 49, 44, 48, 48, 48 }),
+                Arguments.of("$1,000", StandardCharsets.ISO_8859_1, new byte[] { 36, 49, 44, 48, 48, 48 }),
+                Arguments.of("$1,000", StandardCharsets.UTF_8, new byte[] { 36, 49, 44, 48, 48, 48 }),
+                Arguments.of("£1,000", StandardCharsets.ISO_8859_1, new byte[] { -93, 49, 44, 48, 48, 48 }),
+                Arguments.of("£1,000", StandardCharsets.UTF_8, new byte[] { -62, -93, 49, 44, 48, 48, 48 }),
+                Arguments.of("€1,000", StandardCharsets.UTF_8, new byte[] { -30, -126, -84, 49, 44, 48, 48, 48 })
+        );
+    }
+
+    private static Stream<Arguments> stringToCharArrayParams() {
+        return Stream.of(
+                Arguments.of("$1,000", StandardCharsets.US_ASCII, new char[] { '$', '1', ',', '0', '0', '0' }),
+                Arguments.of("$1,000", StandardCharsets.ISO_8859_1, new char[] { '$', '1', ',', '0', '0', '0' }),
+                Arguments.of("$1,000", StandardCharsets.UTF_8, new char[] { '$', '1', ',', '0', '0', '0' }),
+                Arguments.of("£1,000", StandardCharsets.ISO_8859_1, new char[] { '£', '1', ',', '0', '0', '0' }),
+                Arguments.of("£1,000", StandardCharsets.UTF_8, new char[] { '£', '1', ',', '0', '0', '0' }),
+                Arguments.of("€1,000", StandardCharsets.UTF_8, new char[] { '€', '1', ',', '0', '0', '0' })
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringToByteArrayParams")
+    void testStringToByteArray(String source, Charset charSet, byte[] expected) {
+        byte[] actual = this.converter.convert(source, byte[].class, createCharsetOptions(charSet));
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringToByteArrayParams")
+    void testStringToByteBuffer(String source, Charset charSet, byte[] expected) {
+        ByteBuffer actual = this.converter.convert(source, ByteBuffer.class, createCharsetOptions(charSet));
+        assertThat(actual).isEqualTo(ByteBuffer.wrap(expected));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringToByteArrayParams")
+    void testByteArrayToString(String expected, Charset charSet, byte[] source) {
+        String actual = this.converter.convert(source, String.class, createCharsetOptions(charSet));
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringToCharArrayParams")
+    void testCharArrayToString(String expected, Charset charSet, char[] source) {
+        String actual = this.converter.convert(source, String.class, createCharsetOptions(charSet));
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringToCharArrayParams")
+    void testStringToCharArray(String source, Charset charSet, char[] expected) {
+        char[] actual = this.converter.convert(source, char[].class, createCharsetOptions(charSet));
+        assertThat(actual).isEqualTo(expected);
+    }
+
+
+
+    private ConverterOptions createCharsetOptions(final Charset charset)
+    {
+        return new ConverterOptions() {
+            @Override
+            public <T> T getCustomOption(String name) {
+                return null;
+            }
+
+            @Override
+            public Charset getCharset () {
+                return charset;
+            }
+        };
+    }
+
 
     private ConverterOptions createCustomZones(final ZoneId sourceZoneId, final ZoneId targetZoneId)
     {

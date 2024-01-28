@@ -4,8 +4,6 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -13,7 +11,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
@@ -29,8 +26,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.ClassUtilities;
 
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
@@ -557,34 +552,16 @@ public final class Converter {
         // UUID conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, UUID.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(UUID.class, UUID.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(String.class, UUID.class), (fromInstance, converter, options) -> UUID.fromString(((String) fromInstance).trim()));
-        DEFAULT_FACTORY.put(pair(BigInteger.class, UUID.class), (fromInstance, converter, options) -> {
-            BigInteger bigInteger = (BigInteger) fromInstance;
-            BigInteger mask = BigInteger.valueOf(Long.MAX_VALUE);
-            long mostSignificantBits = bigInteger.shiftRight(64).and(mask).longValue();
-            long leastSignificantBits = bigInteger.and(mask).longValue();
-            return new UUID(mostSignificantBits, leastSignificantBits);
-        });
-        DEFAULT_FACTORY.put(pair(BigDecimal.class, UUID.class), (fromInstance, converter, options) -> {
-            BigInteger bigInt = ((BigDecimal) fromInstance).toBigInteger();
-            long mostSigBits = bigInt.shiftRight(64).longValue();
-            long leastSigBits = bigInt.and(new BigInteger("FFFFFFFFFFFFFFFF", 16)).longValue();
-            return new UUID(mostSigBits, leastSigBits);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, UUID.class), StringConversions::toUUID);
+        DEFAULT_FACTORY.put(pair(BigInteger.class, UUID.class), NumberConversions::bigIntegerToUUID);
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, UUID.class), NumberConversions::bigDecimalToUUID);
         DEFAULT_FACTORY.put(pair(Map.class, UUID.class), MapConversions::toUUID);
 
         // Class conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Class.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Class.class, Class.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(Map.class, Class.class), MapConversions::toClass);
-        DEFAULT_FACTORY.put(pair(String.class, Class.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Class<?> clazz = ClassUtilities.forName(str, options.getClassLoader());
-            if (clazz != null) {
-                return clazz;
-            }
-            throw new IllegalArgumentException("Cannot convert String '" + str + "' to class.  Class not found.");
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Class.class), StringConversions::toClass);
 
         // String conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, String.class), VoidConversions::toNull);
@@ -592,46 +569,25 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Short.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Integer.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Long.class, String.class), StringConversions::toString);
-        DEFAULT_FACTORY.put(pair(Float.class, String.class), (fromInstance, converter, options) -> new DecimalFormat("#.####################").format((float) fromInstance));
-        DEFAULT_FACTORY.put(pair(Double.class, String.class), (fromInstance, converter, options) -> new DecimalFormat("#.####################").format((double) fromInstance));
+        DEFAULT_FACTORY.put(pair(Float.class, String.class), NumberConversions::floatToString);
+        DEFAULT_FACTORY.put(pair(Double.class, String.class), NumberConversions::doubleToString);
         DEFAULT_FACTORY.put(pair(Boolean.class, String.class), StringConversions::toString);
-        DEFAULT_FACTORY.put(pair(Character.class, String.class), (fromInstance, converter, options) -> "" + fromInstance);
+        DEFAULT_FACTORY.put(pair(Character.class, String.class), CharacterConversions::toString);
         DEFAULT_FACTORY.put(pair(BigInteger.class, String.class), StringConversions::toString);
-        DEFAULT_FACTORY.put(pair(BigDecimal.class, String.class), (fromInstance, converter, options) -> ((BigDecimal) fromInstance).stripTrailingZeros().toPlainString());
+        DEFAULT_FACTORY.put(pair(BigDecimal.class, String.class), NumberConversions::bigDecimalToString);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, String.class), StringConversions::toString);
-        DEFAULT_FACTORY.put(pair(Class.class, String.class), (fromInstance, converter, options) -> ((Class<?>) fromInstance).getName());
-        DEFAULT_FACTORY.put(pair(Date.class, String.class), (fromInstance, converter, options) -> {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            return simpleDateFormat.format(((Date) fromInstance));
-        });
-        DEFAULT_FACTORY.put(pair(java.sql.Date.class, String.class), (fromInstance, converter, options) -> {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            return simpleDateFormat.format(((Date) fromInstance));
-        });
-        DEFAULT_FACTORY.put(pair(Timestamp.class, String.class), (fromInstance, converter, options) -> {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            return simpleDateFormat.format(((Date) fromInstance));
-        });
-        DEFAULT_FACTORY.put(pair(LocalDate.class, String.class), (fromInstance, converter, options) -> {
-            LocalDate localDate = (LocalDate) fromInstance;
-            return String.format("%04d-%02d-%02d", localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
-        });
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, String.class), (fromInstance, converter, options) -> {
-            LocalDateTime localDateTime = (LocalDateTime) fromInstance;
-            return String.format("%04d-%02d-%02dT%02d:%02d:%02d", localDateTime.getYear(), localDateTime.getMonthValue(), localDateTime.getDayOfMonth(), localDateTime.getHour(), localDateTime.getMinute(), localDateTime.getSecond());
-        });
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, String.class), (fromInstance, converter, options) -> {
-            ZonedDateTime zonedDateTime = (ZonedDateTime) fromInstance;
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
-            return zonedDateTime.format(formatter);
-        });
+        DEFAULT_FACTORY.put(pair(Class.class, String.class), StringConversions::classToString);
+        DEFAULT_FACTORY.put(pair(Date.class, String.class), DateConversions::dateToString);
+        DEFAULT_FACTORY.put(pair(java.sql.Date.class, String.class), DateConversions::sqlDateToString);
+        DEFAULT_FACTORY.put(pair(Timestamp.class, String.class), DateConversions::timestampToString);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, String.class), DateConversions::localDateToString);
+        DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), DateConversions::localTimeToString);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, String.class), DateConversions::localDateTimeToString);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, String.class), DateConversions::zonedDateTimeToString);
         DEFAULT_FACTORY.put(pair(UUID.class, String.class), StringConversions::toString);
-        DEFAULT_FACTORY.put(pair(Calendar.class, String.class), (fromInstance, converter, options) -> {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            return simpleDateFormat.format(((Calendar) fromInstance).getTime());
-        });
+        DEFAULT_FACTORY.put(pair(Calendar.class, String.class), DateConversions::calendarToString);
         DEFAULT_FACTORY.put(pair(Number.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Map.class, String.class), MapConversions::toString);
         DEFAULT_FACTORY.put(pair(Enum.class, String.class), (fromInstance, converter, options) -> ((Enum<?>) fromInstance).name());

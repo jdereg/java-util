@@ -1,10 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.StringUtilities;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,9 +11,12 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.StringUtilities;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -43,7 +45,6 @@ public class NumberConversions {
         return CommonValues.BYTE_ZERO;
     }
 
-
     static short toShort(Object from, Converter converter, ConverterOptions options) {
         return ((Number)from).shortValue();
     }
@@ -59,7 +60,6 @@ public class NumberConversions {
     static Integer toIntZero(Object from, Converter converter, ConverterOptions options) {
         return CommonValues.INTEGER_ZERO;
     }
-
 
     static long toLong(Object from, Converter converter, ConverterOptions options) {
         return toLong(from);
@@ -77,7 +77,6 @@ public class NumberConversions {
         return CommonValues.LONG_ZERO;
     }
 
-
     static float toFloat(Object from, Converter converter, ConverterOptions options) {
         return ((Number) from).floatValue();
     }
@@ -86,6 +85,9 @@ public class NumberConversions {
         return CommonValues.FLOAT_ZERO;
     }
 
+    static String floatToString(Object from, Converter converter, ConverterOptions option) {
+        return new DecimalFormat("#.####################").format(from);
+    }
 
     static double toDouble(Object from, Converter converter, ConverterOptions options) {
         return toDouble(from);
@@ -95,9 +97,12 @@ public class NumberConversions {
         return ((Number) from).doubleValue();
     }
 
-
     static Double toDoubleZero(Object from, Converter converter, ConverterOptions options) {
         return CommonValues.DOUBLE_ZERO;
+    }
+
+    static String doubleToString(Object from, Converter converter, ConverterOptions option) {
+        return new DecimalFormat("#.####################").format(from);
     }
 
     static BigDecimal integerTypeToBigDecimal(Object from, Converter converter, ConverterOptions options) {
@@ -121,6 +126,10 @@ public class NumberConversions {
 
     static BigInteger bigDecimalToBigInteger(Object from, Converter converter, ConverterOptions options) {
         return ((BigDecimal)from).toBigInteger();
+    }
+
+    static String bigDecimalToString(Object from, Converter converter, ConverterOptions converterOptions) {
+        return ((BigDecimal) from).stripTrailingZeros().toPlainString();
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
@@ -161,6 +170,20 @@ public class NumberConversions {
         return new BigInteger(StringUtilities.trimToEmpty(from.toString()));
     }
 
+    static UUID bigIntegerToUUID(Object from, Converter converter, ConverterOptions options) {
+        BigInteger bigInteger = (BigInteger) from;
+        BigInteger mask = BigInteger.valueOf(Long.MAX_VALUE);
+        long mostSignificantBits = bigInteger.shiftRight(64).and(mask).longValue();
+        long leastSignificantBits = bigInteger.and(mask).longValue();
+        return new UUID(mostSignificantBits, leastSignificantBits);
+    }
+
+    static UUID bigDecimalToUUID(Object from, Converter converter, ConverterOptions options) {
+        BigInteger bigInt = ((BigDecimal) from).toBigInteger();
+        long mostSigBits = bigInt.shiftRight(64).longValue();
+        long leastSigBits = bigInt.and(new BigInteger("FFFFFFFFFFFFFFFF", 16)).longValue();
+        return new UUID(mostSigBits, leastSigBits);
+    }
 
     /**
      * @param from Number instance to convert to char.

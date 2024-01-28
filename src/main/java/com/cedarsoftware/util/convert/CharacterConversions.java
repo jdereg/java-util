@@ -16,6 +16,9 @@ public class CharacterConversions {
         return (c == 1) || (c == 't') || (c == 'T') || (c == '1') || (c == 'y') || (c == 'Y');
     }
 
+    static String toString(Object from, Converter converter, ConverterOptions options) {
+        return "" + from;
+    }
 
     static boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
         return toBoolean(from);

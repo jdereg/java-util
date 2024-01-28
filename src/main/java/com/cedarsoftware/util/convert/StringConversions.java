@@ -12,10 +12,12 @@ import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
 
@@ -228,6 +230,23 @@ public class StringConversions {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value: " + from + " not parseable as a BigDecimal value.");
         }
+    }
+
+    static UUID toUUID(Object from, Converter converter, ConverterOptions options) {
+        return UUID.fromString(((String) from).trim());
+    }
+
+    static Class<?> toClass(Object from, Converter converter, ConverterOptions options) {
+        String str = ((String) from).trim();
+        Class<?> clazz = ClassUtilities.forName(str, options.getClassLoader());
+        if (clazz != null) {
+            return clazz;
+        }
+        throw new IllegalArgumentException("Cannot convert String '" + str + "' to class.  Class not found.");
+    }
+
+    static String classToString(Object from, Converter converter, ConverterOptions converterOptions) {
+        return ((Class<?>) from).getName();
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {

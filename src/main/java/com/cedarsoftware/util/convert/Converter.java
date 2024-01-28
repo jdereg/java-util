@@ -14,7 +14,6 @@ import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
@@ -32,8 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.DateUtilities;
-import com.cedarsoftware.util.StringUtilities;
 
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
@@ -459,14 +456,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, Timestamp.class), CalendarConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(Number.class, Timestamp.class), NumberConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(Map.class, Timestamp.class), MapConversions::toTimestamp);
-        DEFAULT_FACTORY.put(pair(String.class, Timestamp.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
-                return null;
-            }
-            return new Timestamp(date.getTime());
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Timestamp.class), StringConversions::toTimestamp);
 
         // Calendar conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Calendar.class), VoidConversions::toNull);
@@ -485,14 +475,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, Calendar.class), CalendarConversions::clone);
         DEFAULT_FACTORY.put(pair(Number.class, Calendar.class), NumberConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(Map.class, Calendar.class), MapConversions::toCalendar);
-        DEFAULT_FACTORY.put(pair(String.class, Calendar.class), (fromInstance, converter, options) -> {
-            String str = ((String) fromInstance).trim();
-            Date date = DateUtilities.parseDate(str);
-            if (date == null) {
-                return null;
-            }
-            return CalendarConversions.create(date.getTime(), options);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, Calendar.class), StringConversions::toCalendar);
 
         // LocalDate conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDate.class), VoidConversions::toNull);
@@ -511,23 +494,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalDate.class), CalendarConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDate.class), MapConversions::toLocalDate);
-        DEFAULT_FACTORY.put(pair(String.class, LocalDate.class), (fromInstance, converter, options) -> {
-            String str = (String) fromInstance;
-            if (StringUtilities.isEmpty(str)) {
-                return null;
-            }
-            TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getZoneId(), true);
-
-            Instant instant;
-            if (dateTime instanceof LocalDateTime) {
-                LocalDateTime localDateTime = LocalDateTime.from(dateTime);
-                instant = localDateTime.atZone(options.getZoneId()).toInstant();
-            } else {
-                instant = Instant.from(dateTime);
-            }
-            // Bring the zonedDateTime to a user-specifiable timezone
-            return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDate();
-        });
+        DEFAULT_FACTORY.put(pair(String.class, LocalDate.class), StringConversions::toLocalDate);
 
         // LocalDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDateTime.class), VoidConversions::toNull);
@@ -546,22 +513,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalDateTime.class), CalendarConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Number.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), MapConversions::toLocalDateTime);
-        DEFAULT_FACTORY.put(pair(String.class, LocalDateTime.class), (fromInstance, converter, options) -> {
-            String str = (String) fromInstance;
-            if (StringUtilities.isEmpty(str)) {
-                return null;
-            }
-            TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getZoneId(), true);
-            Instant instant;
-            if (dateTime instanceof LocalDateTime) {
-                LocalDateTime localDateTime = LocalDateTime.from(dateTime);
-                instant = localDateTime.atZone(options.getZoneId()).toInstant();
-            } else {
-                instant = Instant.from(dateTime);
-            }
-            // Bring the zonedDateTime to a user-specifiable timezone
-            return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDateTime();
-        });
+        DEFAULT_FACTORY.put(pair(String.class, LocalDateTime.class), StringConversions::toLocalDateTime);
 
         // LocalTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
@@ -581,13 +533,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, LocalTime.class), CalendarConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Number.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
-        DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), (fromInstance, converter, options) -> {
-            String str = (String) fromInstance;
-            if (StringUtilities.isEmpty(str)) {
-                return null;
-            }
-            return LocalTime.parse(str);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), StringConversions::toLocalTime);
         
         // ZonedDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, ZonedDateTime.class), VoidConversions::toNull);
@@ -606,13 +552,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Calendar.class, ZonedDateTime.class), CalendarConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Number.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, ZonedDateTime.class), MapConversions::toZonedDateTime);
-        DEFAULT_FACTORY.put(pair(String.class, ZonedDateTime.class), (fromInstance, converter, options) -> {
-            String str = (String) fromInstance;
-            if (StringUtilities.isEmpty(str)) {
-                return null;
-            }
-            return DateUtilities.parseDate(str, options.getZoneId(), true);
-        });
+        DEFAULT_FACTORY.put(pair(String.class, ZonedDateTime.class), StringConversions::toZonedDateTime);
 
         // UUID conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, UUID.class), VoidConversions::toNull);

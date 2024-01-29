@@ -316,7 +316,7 @@ public class StringConversions {
             return null;
         }
         // Bring the LocalDate to a user-specifiable timezone
-        return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDate();
+        return instant.atZone(options.getZoneId()).toLocalDate();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
@@ -325,7 +325,7 @@ public class StringConversions {
             return null;
         }
         // Bring the LocalDateTime to a user-specifiable timezone
-        return instant.atZone(options.getSourceZoneIdForLocalDates()).toLocalDateTime();
+        return instant.atZone(options.getZoneId()).toLocalDateTime();
     }
 
     static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
@@ -362,7 +362,7 @@ public class StringConversions {
         if (str == null) {
             return null;
         }
-        TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getZoneId(), true);
+        TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
 
         Instant instant;
         if (dateTime instanceof LocalDateTime) {

@@ -692,6 +692,90 @@ class ConverterTest
     }
 
 
+    private static Stream<Arguments> dateStringInIsoOffsetDateTime() {
+        return Stream.of(
+                Arguments.of("2000-01-01T13:59:59+09:00"),
+                Arguments.of("2000-01-01T05:59:59+01:00"),
+                Arguments.of("2000-01-01T04:59:59Z"),
+                Arguments.of("1999-12-31T23:59:59-05:00"),
+                Arguments.of("1999-12-31T22:59:59-06:00"),
+                Arguments.of("1999-12-31T20:59:59-08:00")
+        );
+    }
+
+    private static Stream<Arguments> dateStringInIsoOffsetDateTimeWithMillis() {
+        return Stream.of(
+                Arguments.of("2000-01-01T13:59:59.959+09:00"),
+                Arguments.of("2000-01-01T05:59:59.959+01:00"),
+                Arguments.of("2000-01-01T04:59:59.959Z"),
+                Arguments.of("1999-12-31T23:59:59.959-05:00"),
+                Arguments.of("1999-12-31T22:59:59.959-06:00"),
+                Arguments.of("1999-12-31T20:59:59.959-08:00")
+        );
+    }
+
+    private static Stream<Arguments> dateStringInIsoZoneDateTime() {
+        return Stream.of(
+                Arguments.of("2000-01-01T13:59:59.959+09:00[Asia/Tokyo]"),
+                Arguments.of("2000-01-01T05:59:59.959+01:00[Europe/Paris]"),
+                Arguments.of("2000-01-01T04:59:59.959Z[GMT]"),
+                Arguments.of("1999-12-31T23:59:59.959-05:00[America/New_York]"),
+                Arguments.of("1999-12-31T22:59:59.959-06:00[America/Chicago]"),
+                Arguments.of("1999-12-31T20:59:59.959-08:00[America/Los_Angeles]")
+        );
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("dateStringInIsoOffsetDateTime")
+    void testStringDateWithTimeZoneToLocalDateTime(String date) {
+        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
+
+        assertThat(localDateTime)
+                .hasYear(1999)
+                .hasMonthValue(12)
+                .hasDayOfMonth(31)
+                .hasHour(23)
+                .hasMinute(59)
+                .hasSecond(59);
+    }
+
+    /*
+    @ParameterizedTest
+    @MethodSource("dateStringInIsoOffsetDateTimeWithMillis")
+    void testStringDateWithTimeZoneToLocalDateTimeIncludeMillis(String date) {
+        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
+
+        assertThat(localDateTime)
+                .hasYear(1999)
+                .hasMonthValue(12)
+                .hasDayOfMonth(31)
+                .hasHour(23)
+                .hasMinute(59)
+                .hasSecond(59)
+                .hasNano(959);
+    }
+
+        @ParameterizedTest
+    @MethodSource("dateStringInIsoZoneDateTime")
+    void testStringDateWithTimeZoneToLocalDateTimeWithZone(String date) {
+        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
+
+        assertThat(localDateTime)
+                .hasYear(1999)
+                .hasMonthValue(12)
+                .hasDayOfMonth(31)
+                .hasHour(23)
+                .hasMinute(59)
+                .hasSecond(59)
+                .hasNano(959);
+    }
+
+    */
+
     private static Stream<Arguments> epochMillis_withLocalDateTimeInformation() {
         return Stream.of(
                 Arguments.of(1687622249729L, TOKYO, LDT_2023_TOKYO),
@@ -715,6 +799,8 @@ class ConverterTest
     void testCalendarToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
+
+        System.out.println(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toString());
 
         LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
 

@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.ZonedDateTime;
-import java.time.temporal.TemporalAccessor;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
@@ -362,15 +361,8 @@ public class StringConversions {
         if (str == null) {
             return null;
         }
-        TemporalAccessor dateTime = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
-
-        Instant instant;
-        if (dateTime instanceof LocalDateTime) {
-            LocalDateTime localDateTime = LocalDateTime.from(dateTime);
-            instant = localDateTime.atZone(options.getSourceZoneIdForLocalDates()).toInstant();
-        } else {
-            instant = Instant.from(dateTime);
-        }
+        ZonedDateTime dateTime = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
+        Instant instant = Instant.from(dateTime);
         return instant;
     }
 

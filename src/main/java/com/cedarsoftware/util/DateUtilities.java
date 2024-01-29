@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -151,9 +150,10 @@ public final class DateUtilities {
     }
 
     /**
-     * Main API. Retrieve date-time from passed in String.  If the date-time given does not include a timezone or
-     * timezone offset, then ZoneId.systemDefault() will be used.
-     * @param dateStr String containing a date.  If there is excess content, it will throw an IlllegalArgumentException.
+     * Original API. If the date-time given does not include a timezone offset, then ZoneId.systemDefault() will be used.
+     * We recommend using the parseDate(3 args) version, so you can control the default timezone used when one is not
+     * specified.
+     * @param dateStr String containing a date.  If there is excess content, it will throw an IllegalArgumentException.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
      * passed in, null will be returned.
@@ -164,13 +164,7 @@ public final class DateUtilities {
         }
         Instant instant;
         TemporalAccessor dateTime = parseDate(dateStr, ZoneId.systemDefault(), true);
-        if (dateTime instanceof LocalDateTime) {
-            LocalDateTime localDateTime = LocalDateTime.from(dateTime);
-            instant = localDateTime.atZone(ZoneId.systemDefault()).toInstant();
-        } else {
-            instant = Instant.from(dateTime);
-        }
-
+        instant = Instant.from(dateTime);
         Date date = Date.from(instant);
         return date;
     }
@@ -182,12 +176,10 @@ public final class DateUtilities {
      *                be null or empty String.
      * @param defaultZoneId ZoneId to use if no timezone or timezone offset is given.  Cannot be null.
      * @param ensureDateTimeAlone If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
-     * @return TemporalAccessor instance converted from the passed in date String.  See comments at top of class for supported
-     * formats.  This API is intended to be super flexible in terms of what it can parse.  If there is a timezone offset
-     * or a named timezone, then a ZonedDateTime instance is returned.  If there is no timezone information in the input
-     * String, then a LocalDateTime will be returned.
+     * @return ZonedDateTime instance converted from the passed in date String.  See comments at top of class for supported
+     * formats.  This API is intended to be super flexible in terms of what it can parse. 
      */
-    public static TemporalAccessor parseDate(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
+    public static ZonedDateTime parseDate(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
         Convention.throwIfNullOrEmpty(dateStr, "'dateStr' must not be null or empty String.");
         Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
         dateStr = dateStr.trim();
@@ -275,11 +267,11 @@ public final class DateUtilities {
         }
 
         ZoneId zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
-        TemporalAccessor dateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
+        ZonedDateTime dateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
         return dateTime;
     }
 
-    private static TemporalAccessor getDate(String dateStr,
+    private static ZonedDateTime getDate(String dateStr,
                                 ZoneId zoneId,
                                 String year,
                                 int month,
@@ -300,11 +292,7 @@ public final class DateUtilities {
         }
 
         if (hour == null) { // no [valid] time portion
-            if (zoneId == null) {
-                return LocalDateTime.of(y, month, d, 0, 0, 0);
-            } else {
-                return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
-            }
+            return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
         } else {
             // Regex prevents these from ever failing to parse.
             int h = Integer.parseInt(hour);
@@ -322,11 +310,7 @@ public final class DateUtilities {
                 throw new IllegalArgumentException("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
-            if (zoneId == null) {
-                return LocalDateTime.of(y, month, d, h, mn, s, (int) nanoOfSec);
-            } else {
-                return ZonedDateTime.of(y, month, d, h, mn, s, (int) nanoOfSec, zoneId);
-            }
+            return ZonedDateTime.of(y, month, d, h, mn, s, (int) nanoOfSec, zoneId);
         }
     }
 

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -692,6 +693,18 @@ class ConverterTest
     }
 
 
+    private static Stream<Arguments> epochMilliWithZoneId() {
+        return Stream.of(
+                Arguments.of("946702799959", TOKYO),
+                Arguments.of("946702799959", PARIS),
+                Arguments.of("946702799959", GMT),
+                Arguments.of("946702799959", NEW_YORK),
+                Arguments.of("946702799959", CHICAGO),
+                Arguments.of("946702799959", LOS_ANGELES)
+        );
+    }
+
+
     private static Stream<Arguments> dateStringNoZoneOffset() {
         return Stream.of(
                 Arguments.of("2000-01-01T13:59:59", TOKYO),
@@ -736,6 +749,21 @@ class ConverterTest
                 Arguments.of("1999-12-31T20:59:59.959-08:00[America/Los_Angeles]")
         );
     }
+
+    @ParameterizedTest
+    @MethodSource("epochMilliWithZoneId")
+    void testEpochMilliWithZoneId(String epochMilli, ZoneId zoneId) {
+        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
+
+        assertThat(localDateTime)
+                .hasYear(1999)
+                .hasMonthValue(12)
+                .hasDayOfMonth(31)
+                .hasHour(23)
+                .hasMinute(59)
+                .hasSecond(59);
+    }
+
 
 
     @ParameterizedTest

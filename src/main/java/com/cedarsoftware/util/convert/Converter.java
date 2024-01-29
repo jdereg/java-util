@@ -605,7 +605,7 @@ public final class Converter {
         // Duration conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Duration.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Duration.class, Duration.class), Converter::identity);
-        DEFAULT_FACTORY.put(pair(String.class, Duration.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(String.class, Duration.class), StringConversions::toDuration);
         DEFAULT_FACTORY.put(pair(Map.class, Duration.class), MapConversions::toDuration);
 
         // Instant conversions supported
@@ -794,7 +794,7 @@ public final class Converter {
      *                     many other JDK classes, including Map.  For Map, often it will seek a 'value'
      *                     field, however, for some complex objects, like UUID, it will look for specific
      *                     fields within the Map to perform the conversion.
-     * @param options      ConverterOptions - allows you to specify locale, ZoneId, etc to support conversion
+     * @param options      ConverterOptions - allows you to specify locale, ZoneId, etc. to support conversion
      *                     operations.
      * @return An instanceof targetType class, based upon the value passed in.
      */
@@ -808,7 +808,7 @@ public final class Converter {
             // Do not promote primitive to primitive wrapper - allows for different 'from NULL' type for each.
             sourceType = Void.class;
         } else {
-            // Promote primitive to primitive wrapper so we don't have to define so many duplicates in the factory map.
+            // Promote primitive to primitive wrapper, so we don't have to define so many duplicates in the factory map.
             sourceType = from.getClass();
             if (toType.isPrimitive()) {
                 toType = (Class<T>) toPrimitiveWrapperClass(toType);

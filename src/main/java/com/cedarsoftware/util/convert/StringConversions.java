@@ -318,7 +318,13 @@ public class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return null;
         }
-        return LocalTime.parse(str);
+        try {
+            return LocalTime.parse(str);
+        }
+        catch (Exception e) {
+            ZonedDateTime zdt = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
+            return zdt.toLocalTime();
+        }
     }
 
     static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {

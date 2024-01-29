@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -797,7 +796,6 @@ class ConverterTest
     }
 
 
-    /*
     @ParameterizedTest
     @MethodSource("dateStringInIsoOffsetDateTimeWithMillis")
     void testStringDateWithTimeZoneToLocalDateTimeIncludeMillis(String date) {
@@ -811,7 +809,7 @@ class ConverterTest
                 .hasHour(23)
                 .hasMinute(59)
                 .hasSecond(59)
-                .hasNano(959);
+                .hasNano(959 * 1_000_000);
     }
 
     @ParameterizedTest
@@ -827,13 +825,9 @@ class ConverterTest
                 .hasHour(23)
                 .hasMinute(59)
                 .hasSecond(59)
-                .hasNano(959);
+                .hasNano(959 * 1_000_000);
     }
-    */
-
-
-
-
+    
     private static Stream<Arguments> epochMillis_withLocalDateTimeInformation() {
         return Stream.of(
                 Arguments.of(1687622249729L, TOKYO, LDT_2023_TOKYO),

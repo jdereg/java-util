@@ -151,8 +151,8 @@ public final class DateUtilities {
 
     /**
      * Original API. If the date-time given does not include a timezone offset or name, then ZoneId.systemDefault()
-     * will be used. We recommend using the parseDate(3 args) version, so you can control the default timezone used
-     * when one is not specified.
+     * will be used. We recommend using parseDate(String, ZoneId, boolean) version, so you can control the default
+     * timezone used when one is not specified.
      * @param dateStr String containing a date.  If there is excess content, it will throw an IllegalArgumentException.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
@@ -170,11 +170,11 @@ public final class DateUtilities {
     }
 
     /**
-     * Main API. Retrieve date-time from passed in String.  The boolean enSureSoloDate, if set true, ensures that
-     * no other non-date content existed in the String.  That requires additional time to verify.
+     * Main API. Retrieve date-time from passed in String.  The boolean ensureDateTimeAlone, if set true, ensures that
+     * no other non-date content existed in the String.
      * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.  Cannot
      *                be null or empty String.
-     * @param defaultZoneId ZoneId to use if no timezone or timezone offset is given.  Cannot be null.
+     * @param defaultZoneId ZoneId to use if no timezone offset or name is given.  Cannot be null.
      * @param ensureDateTimeAlone If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
      * @return ZonedDateTime instance converted from the passed in date String.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse. 
@@ -185,7 +185,7 @@ public final class DateUtilities {
         dateStr = dateStr.trim();
 
         if (allDigits.matcher(dateStr).matches()) {
-            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(ZoneId.of("UTC"));
+            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(defaultZoneId);
         }
 
         String year, day, remains, tz = null;

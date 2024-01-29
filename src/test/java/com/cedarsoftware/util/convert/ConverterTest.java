@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * @aFuthor John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
+ * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -512,10 +512,7 @@ class ConverterTest
         Long converted = this.converter.convert(date, Long.class);
         assertThat(converted).isEqualTo(date.getTime().getTime());
     }
-
-
-
-
+    
     private static Stream<Arguments> toLongWithIllegalParams() {
         return Stream.of(
                 Arguments.of("45badNumber", "not parseable as a long value or outside -9223372036854775808 to 9223372036854775807"),
@@ -1592,9 +1589,6 @@ class ConverterTest
         assertThat(converted).isEqualTo(localDate.atStartOfDay(options.getZoneId()).toInstant().toEpochMilli());
     }
 
-
-
-
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testLongToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
@@ -1672,9 +1666,7 @@ class ConverterTest
 
         assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toLocalTime());
     }
-
-
-
+    
     @ParameterizedTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateToLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
@@ -2204,10 +2196,6 @@ class ConverterTest
         assertThat(converted.get()).isEqualTo(expected.get());
     }
 
-
-
-
-    //    I think parsing a string double into date is gone now.            Arguments.of("11.5", new Date(11)),
     private static Stream<Arguments> extremeDateParams() {
         return Stream.of(
                 Arguments.of((short)75, new Date(75)),
@@ -2420,46 +2408,46 @@ class ConverterTest
         Calendar calendar = this.converter.convert(source, Calendar.class);
         assertEquals(calendar.getTime().getTime(), epochMilli);
 
-//        // BigInteger to Calendar
-//        // Other direction --> Calendar to other date types
-//
-//        // Calendar to Date
-//        calendar = this.converter.convert(now, Calendar.class);
-//        Date date = this.converter.convert(calendar, Date.class);
-//        assertEquals(calendar.getTime(), date);
-//
-//        // Calendar to SqlDate
-//        sqlDate = this.converter.convert(calendar, java.sql.Date.class);
-//        assertEquals(calendar.getTime().getTime(), sqlDate.getTime());
-//
-//        // Calendar to Timestamp
-//        timestamp = this.converter.convert(calendar, Timestamp.class);
-//        assertEquals(calendar.getTime().getTime(), timestamp.getTime());
-//
-//        // Calendar to Long
-//        long tnow = this.converter.convert(calendar, long.class);
-//        assertEquals(calendar.getTime().getTime(), tnow);
-//
-//        // Calendar to AtomicLong
-//        atomicLong = this.converter.convert(calendar, AtomicLong.class);
-//        assertEquals(calendar.getTime().getTime(), atomicLong.get());
-//
-//        // Calendar to String
-//        strDate = this.converter.convert(calendar, String.class);
-//        strDate2 = this.converter.convert(now, String.class);
-//        assertEquals(strDate, strDate2);
-//
-//        // Calendar to BigInteger
-//        bigInt = this.converter.convert(calendar, BigInteger.class);
-//        assertEquals(now.getTime(), bigInt.longValue());
-//
-//        // Calendar to BigDecimal
-//        bigDec = this.converter.convert(calendar, BigDecimal.class);
-//        assertEquals(now.getTime(), bigDec.longValue());
+        // BigInteger to Calendar
+        // Other direction --> Calendar to other date types
+
+        Calendar now = Calendar.getInstance();
+        
+        // Calendar to Date
+        calendar = this.converter.convert(now, Calendar.class);
+        Date date = this.converter.convert(calendar, Date.class);
+        assertEquals(calendar.getTime(), date);
+
+        // Calendar to SqlDate
+        java.sql.Date sqlDate = this.converter.convert(calendar, java.sql.Date.class);
+        assertEquals(calendar.getTime().getTime(), sqlDate.getTime());
+
+        // Calendar to Timestamp
+        Timestamp timestamp = this.converter.convert(calendar, Timestamp.class);
+        assertEquals(calendar.getTime().getTime(), timestamp.getTime());
+
+        // Calendar to Long
+        long tnow = this.converter.convert(calendar, long.class);
+        assertEquals(calendar.getTime().getTime(), tnow);
+
+        // Calendar to AtomicLong
+        AtomicLong atomicLong = this.converter.convert(calendar, AtomicLong.class);
+        assertEquals(calendar.getTime().getTime(), atomicLong.get());
+
+        // Calendar to String
+        String strDate = this.converter.convert(calendar, String.class);
+        String strDate2 = this.converter.convert(now, String.class);
+        assertEquals(strDate, strDate2);
+
+        // Calendar to BigInteger
+        BigInteger bigInt = this.converter.convert(calendar, BigInteger.class);
+        assertEquals(now.getTime().getTime(), bigInt.longValue());
+
+        // Calendar to BigDecimal
+        BigDecimal bigDec = this.converter.convert(calendar, BigDecimal.class);
+        assertEquals(now.getTime().getTime(), bigDec.longValue());
     }
-
-
-
+    
     @Test
     void testStringToLocalDate()
     {
@@ -2783,34 +2771,31 @@ class ConverterTest
     @Test
     void testBoolean()
     {
-        /**
-         *
-         *         assertEquals(converter.convert(new BigInteger("314159"), Boolean.class), true);
-         */
-        assertEquals(true, this.converter.convert(-3.14d, boolean.class));
-        assertEquals(false, this.converter.convert(0.0d, boolean.class));
-        assertEquals(true, this.converter.convert(-3.14f, Boolean.class));
-        assertEquals(false, this.converter.convert(0.0f, Boolean.class));
+        assertEquals(true, converter.convert(new BigInteger("314159"), Boolean.class));
+        assertEquals(true, converter.convert(-3.14d, boolean.class));
+        assertEquals(false, converter.convert(0.0d, boolean.class));
+        assertEquals(true, converter.convert(-3.14f, Boolean.class));
+        assertEquals(false, converter.convert(0.0f, Boolean.class));
 
-        assertEquals(false, this.converter.convert(new AtomicInteger(0), boolean.class));
-        assertEquals(false, this.converter.convert(new AtomicLong(0), boolean.class));
-        assertEquals(false, this.converter.convert(new AtomicBoolean(false), Boolean.class));
-        assertEquals(true, this.converter.convert(new AtomicBoolean(true), Boolean.class));
+        assertEquals(false, converter.convert(new AtomicInteger(0), boolean.class));
+        assertEquals(false, converter.convert(new AtomicLong(0), boolean.class));
+        assertEquals(false, converter.convert(new AtomicBoolean(false), Boolean.class));
+        assertEquals(true, converter.convert(new AtomicBoolean(true), Boolean.class));
 
-        assertEquals(true, this.converter.convert("TRue", Boolean.class));
-        assertEquals(true, this.converter.convert("true", Boolean.class));
-        assertEquals(false, this.converter.convert("fALse", Boolean.class));
-        assertEquals(false, this.converter.convert("false", Boolean.class));
-        assertEquals(false, this.converter.convert("john", Boolean.class));
+        assertEquals(true, converter.convert("TRue", Boolean.class));
+        assertEquals(true, converter.convert("true", Boolean.class));
+        assertEquals(false, converter.convert("fALse", Boolean.class));
+        assertEquals(false, converter.convert("false", Boolean.class));
+        assertEquals(false, converter.convert("john", Boolean.class));
 
-        assertEquals(true, this.converter.convert(true, Boolean.class));
-        assertEquals(true, this.converter.convert(Boolean.TRUE, Boolean.class));
-        assertEquals(false, this.converter.convert(false, Boolean.class));
-        assertEquals(false, this.converter.convert(Boolean.FALSE, Boolean.class));
+        assertEquals(true, converter.convert(true, Boolean.class));
+        assertEquals(true, converter.convert(Boolean.TRUE, Boolean.class));
+        assertEquals(false, converter.convert(false, Boolean.class));
+        assertEquals(false, converter.convert(Boolean.FALSE, Boolean.class));
 
         try
         {
-            this.converter.convert(new Date(), Boolean.class);
+            converter.convert(new Date(), Boolean.class);
             fail();
         }
         catch (Exception e)
@@ -2822,32 +2807,32 @@ class ConverterTest
     @Test
     void testAtomicBoolean()
     {
-        assert (this.converter.convert(-3.14d, AtomicBoolean.class)).get();
-        assert !(this.converter.convert(0.0d, AtomicBoolean.class)).get();
-        assert (this.converter.convert(-3.14f, AtomicBoolean.class)).get();
-        assert !(this.converter.convert(0.0f, AtomicBoolean.class)).get();
+        assert (converter.convert(-3.14d, AtomicBoolean.class)).get();
+        assert !(converter.convert(0.0d, AtomicBoolean.class)).get();
+        assert (converter.convert(-3.14f, AtomicBoolean.class)).get();
+        assert !(converter.convert(0.0f, AtomicBoolean.class)).get();
 
-        assert !(this.converter.convert(new AtomicInteger(0), AtomicBoolean.class)).get();
-        assert !(this.converter.convert(new AtomicLong(0), AtomicBoolean.class)).get();
-        assert !(this.converter.convert(new AtomicBoolean(false), AtomicBoolean.class)).get();
-        assert (this.converter.convert(new AtomicBoolean(true), AtomicBoolean.class)).get();
+        assert !(converter.convert(new AtomicInteger(0), AtomicBoolean.class)).get();
+        assert !(converter.convert(new AtomicLong(0), AtomicBoolean.class)).get();
+        assert !(converter.convert(new AtomicBoolean(false), AtomicBoolean.class)).get();
+        assert (converter.convert(new AtomicBoolean(true), AtomicBoolean.class)).get();
 
-        assert (this.converter.convert("TRue", AtomicBoolean.class)).get();
-        assert !(this.converter.convert("fALse", AtomicBoolean.class)).get();
-        assert !(this.converter.convert("john", AtomicBoolean.class)).get();
+        assert (converter.convert("TRue", AtomicBoolean.class)).get();
+        assert !(converter.convert("fALse", AtomicBoolean.class)).get();
+        assert !(converter.convert("john", AtomicBoolean.class)).get();
 
-        assert (this.converter.convert(true, AtomicBoolean.class)).get();
-        assert (this.converter.convert(Boolean.TRUE, AtomicBoolean.class)).get();
-        assert !(this.converter.convert(false, AtomicBoolean.class)).get();
-        assert !(this.converter.convert(Boolean.FALSE, AtomicBoolean.class)).get();
+        assert (converter.convert(true, AtomicBoolean.class)).get();
+        assert (converter.convert(Boolean.TRUE, AtomicBoolean.class)).get();
+        assert !(converter.convert(false, AtomicBoolean.class)).get();
+        assert !(converter.convert(Boolean.FALSE, AtomicBoolean.class)).get();
 
         AtomicBoolean b1 = new AtomicBoolean(true);
-        AtomicBoolean b2 = this.converter.convert(b1, AtomicBoolean.class);
+        AtomicBoolean b2 = converter.convert(b1, AtomicBoolean.class);
         assert b1 != b2; // ensure that it returns a different but equivalent instance
         assert b1.get() == b2.get();
 
         try {
-            this.converter.convert(new Date(), AtomicBoolean.class);
+            converter.convert(new Date(), AtomicBoolean.class);
             fail();
         } catch (Exception e) {
             assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [date"));
@@ -2904,14 +2889,14 @@ class ConverterTest
     void testMapToAtomicLong()
     {
         final Map map = new HashMap();
-//        map.put("value", 58);
-//        AtomicLong al = this.converter.convert(map, AtomicLong.class);
-//        assert 58 == al.get();
-//
-//        map.clear();
-//        map.put("value", "");
-//        al = this.converter.convert(map, AtomicLong.class);
-//        assert 0L == al.longValue();
+        map.put("value", 58);
+        AtomicLong al = this.converter.convert(map, AtomicLong.class);
+        assert 58 == al.get();
+
+        map.clear();
+        map.put("value", "");
+        al = this.converter.convert(map, AtomicLong.class);
+        assert 0L == al.longValue();
 
         map.clear();
         map.put("value", null);
@@ -2922,10 +2907,7 @@ class ConverterTest
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("To convert from Map to AtomicLong the map must include one of the following");
     }
-
-
-
-
+    
     @ParameterizedTest
     @MethodSource("toCalendarParams")
     void testMapToCalendar(Object value)
@@ -3248,8 +3230,6 @@ class ConverterTest
                 .withMessageContaining("toType cannot be null");
     }
 
-
-
     @Test
     void testEnumSupport()
     {
@@ -3302,8 +3282,6 @@ class ConverterTest
     void toCharacterMiscellaneous() {
         assertThat(this.converter.convert('z', char.class)).isEqualTo('z');
     }
-
-
 
     @Test
     void toCharacter_whenStringIsLongerThanOneCharacter_AndIsANumber() {
@@ -4374,8 +4352,6 @@ class ConverterTest
         assertThat(actual).isEqualTo(expected);
     }
 
-
-
     private ConverterOptions createCharsetOptions(final Charset charset)
     {
         return new ConverterOptions() {
@@ -4390,8 +4366,7 @@ class ConverterTest
             }
         };
     }
-
-
+    
     private ConverterOptions createCustomZones(final ZoneId sourceZoneId, final ZoneId targetZoneId)
     {
         return new ConverterOptions() {
@@ -4431,7 +4406,6 @@ class ConverterTest
             }
         };
     }
-
-
+    
     private ConverterOptions chicagoZone() { return createCustomZones(CHICAGO, CHICAGO); }
 }

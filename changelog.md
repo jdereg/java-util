@@ -1,7 +1,10 @@
 ### Revision History
-* 2.5.0
+* 2.4.1
+  * `Converter` has had significant expansion in the types that it can convert between, greater than 500 combinations.  In addition, you can add your own conversions to it as well. Call the `Converter.getSupportedConversions()` to see all the combinations supported.  Also, you can use `Converter` instance-based now, allowing it to have different conversion tables if needed.
+  * `DateUtilities` has had performance improvements (> 35%), and adds a new `.parseDate()` API that allows it to return a `ZonedDateTime.` See the updated Javadoc on the class for a complete description of all of the formats it supports.  Normally, you do not need to use this class directly, as you can use `Converter` to convert between `Dates`, `Calendars`, and the new Temporal classes like `ZonedDateTime,` `Duration,` `Instance,` as well as `long,` `BigInteger,` etc. 
   * `FastByteArrayOutputStream` updated to match `ByteArrayOutputStream` API. This means that `.getBuffer()` is `.toByteArray()` and `.clear()` is now `.reset().`
   * `FastByteArrayInputStream` added.  Matches `ByteArrayInputStream` API.
+  * Bug fix: SafeSimpleDateFormat .toString(), .hashCode(), and .equals() now delegate to the contain SimpleDataFormat instance.  We recommend using the newer DateTimeFormatter, however, this class works well for Java 1.8+ if needed.
 * 2.4.0
   * Added ClassUtilities.  This class has a method to get the distance between a source and destination class.  It includes support for Classes, multiple inheritance of interfaces, primitives, and class-to-interface, interface-interface, and class to class.
   * Added LRUCache.  This class provides a simple cache API that will evict the least recently used items, once a threshold is met.

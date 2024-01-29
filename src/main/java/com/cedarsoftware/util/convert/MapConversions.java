@@ -12,7 +12,6 @@ import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
@@ -22,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ArrayUtilities;
+import com.cedarsoftware.util.CompactLinkedMap;
 import com.cedarsoftware.util.Convention;
 
 /**
@@ -251,7 +251,7 @@ public class MapConversions {
     }
 
     static Map<String, ?> initMap(Object from, Converter converter, ConverterOptions options) {
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new CompactLinkedMap<>();
         map.put(V, from);
         return map;
     }

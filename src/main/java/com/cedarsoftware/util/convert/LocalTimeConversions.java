@@ -24,7 +24,7 @@ import com.cedarsoftware.util.CompactLinkedMap;
  */
 public class LocalTimeConversions {
 
-    static Map toMap(Object from, Converter converter, ConverterOptions options) {
+    static Map<String, Object> toMap(Object from, Converter converter, ConverterOptions options) {
         LocalTime localTime = (LocalTime) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("hour", localTime.getHour());

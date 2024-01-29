@@ -692,6 +692,18 @@ class ConverterTest
     }
 
 
+    private static Stream<Arguments> dateStringNoZoneOffset() {
+        return Stream.of(
+                Arguments.of("2000-01-01T13:59:59", TOKYO),
+                Arguments.of("2000-01-01T05:59:59", PARIS),
+                Arguments.of("2000-01-01T04:59:59", GMT),
+                Arguments.of("1999-12-31T23:59:59", NEW_YORK),
+                Arguments.of("1999-12-31T22:59:59", CHICAGO),
+                Arguments.of("1999-12-31T20:59:59", LOS_ANGELES)
+        );
+    }
+
+
     private static Stream<Arguments> dateStringInIsoOffsetDateTime() {
         return Stream.of(
                 Arguments.of("2000-01-01T13:59:59+09:00"),
@@ -723,6 +735,22 @@ class ConverterTest
                 Arguments.of("1999-12-31T22:59:59.959-06:00[America/Chicago]"),
                 Arguments.of("1999-12-31T20:59:59.959-08:00[America/Los_Angeles]")
         );
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("dateStringNoZoneOffset")
+    void testStringDateWithNoTimeZoneInformation(String date, ZoneId zoneId) {
+        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
+
+        assertThat(localDateTime)
+                .hasYear(1999)
+                .hasMonthValue(12)
+                .hasDayOfMonth(31)
+                .hasHour(23)
+                .hasMinute(59)
+                .hasSecond(59);
     }
 
 
@@ -799,8 +827,6 @@ class ConverterTest
     void testCalendarToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
-
-        System.out.println(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toString());
 
         LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
 

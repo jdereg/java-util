@@ -193,7 +193,7 @@ public final class DateUtilities {
         dateStr = dateStr.trim();
 
         if (allDigits.matcher(dateStr).matches()) {
-            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(ZoneId.of("UTC"));
+            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(defaultZoneId);
         }
 
         String year, day, remains, tz = null;
@@ -274,7 +274,7 @@ public final class DateUtilities {
             verifyNoGarbageLeft(remnant);
         }
 
-        ZoneId zoneId = StringUtilities.isEmpty(tz) ? null : getTimeZone(tz);
+        ZoneId zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
         TemporalAccessor dateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
         return dateTime;
     }
@@ -299,8 +299,12 @@ public final class DateUtilities {
             throw new IllegalArgumentException("Day must be between 1 and 31 inclusive, date: " + dateStr);
         }
 
-        if (hour == null) {   // no [valid] time portion
-            return LocalDateTime.of(y, month, d, 0, 0, 0);
+        if (hour == null) { // no [valid] time portion
+            if (zoneId == null) {
+                return LocalDateTime.of(y, month, d, 0, 0, 0);
+            } else {
+                return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
+            }
         } else {
             // Regex prevents these from ever failing to parse.
             int h = Integer.parseInt(hour);

@@ -367,7 +367,7 @@ public class StringConversions {
         Instant instant;
         if (dateTime instanceof LocalDateTime) {
             LocalDateTime localDateTime = LocalDateTime.from(dateTime);
-            instant = localDateTime.atZone(options.getZoneId()).toInstant();
+            instant = localDateTime.atZone(options.getSourceZoneIdForLocalDates()).toInstant();
         } else {
             instant = Instant.from(dateTime);
         }

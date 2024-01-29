@@ -741,7 +741,6 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("dateStringNoZoneOffset")
     void testStringDateWithNoTimeZoneInformation(String date, ZoneId zoneId) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
 
         assertThat(localDateTime)
@@ -757,7 +756,7 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("dateStringInIsoOffsetDateTime")
     void testStringDateWithTimeZoneToLocalDateTime(String date) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        //  source is TOKYO, should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
 
         assertThat(localDateTime)
@@ -769,11 +768,12 @@ class ConverterTest
                 .hasSecond(59);
     }
 
+
     /*
     @ParameterizedTest
     @MethodSource("dateStringInIsoOffsetDateTimeWithMillis")
     void testStringDateWithTimeZoneToLocalDateTimeIncludeMillis(String date) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        //  source is TOKYO, should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
 
         assertThat(localDateTime)
@@ -786,10 +786,10 @@ class ConverterTest
                 .hasNano(959);
     }
 
-        @ParameterizedTest
+    @ParameterizedTest
     @MethodSource("dateStringInIsoZoneDateTime")
     void testStringDateWithTimeZoneToLocalDateTimeWithZone(String date) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        //  source is TOKYO, should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
 
         assertThat(localDateTime)
@@ -801,8 +801,10 @@ class ConverterTest
                 .hasSecond(59)
                 .hasNano(959);
     }
-
     */
+
+
+
 
     private static Stream<Arguments> epochMillis_withLocalDateTimeInformation() {
         return Stream.of(

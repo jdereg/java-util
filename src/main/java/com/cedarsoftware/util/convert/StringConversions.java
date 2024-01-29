@@ -20,6 +20,8 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
@@ -54,6 +56,7 @@ public class StringConversions {
     private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
+    private static final Pattern MM_DD = Pattern.compile("^(\\d{1,2})+.(\\d{1,2})$");
 
     static String asString(Object from) {
         return from == null ? null : from.toString();
@@ -270,7 +273,20 @@ public class StringConversions {
 
     static MonthDay toMonthDay(Object from, Converter converter, ConverterOptions options) {
         String monthDay = (String) from;
-        return MonthDay.parse(monthDay);
+        try {
+            return MonthDay.parse(monthDay);
+        }
+        catch (Exception e) {
+            Matcher matcher = MM_DD.matcher(monthDay);
+            if (matcher.find()) {
+                String mm = matcher.group(1);
+                String dd = matcher.group(2);
+                return MonthDay.of(Integer.parseInt(mm), Integer.parseInt(dd));
+            }
+            else {
+                throw new IllegalArgumentException(e);
+            }
+        }
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {

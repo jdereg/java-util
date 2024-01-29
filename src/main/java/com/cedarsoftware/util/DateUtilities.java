@@ -112,7 +112,7 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern timePattern = Pattern.compile(
-            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")?",
+            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
@@ -150,9 +150,9 @@ public final class DateUtilities {
     }
 
     /**
-     * Original API. If the date-time given does not include a timezone offset, then ZoneId.systemDefault() will be used.
-     * We recommend using the parseDate(3 args) version, so you can control the default timezone used when one is not
-     * specified.
+     * Original API. If the date-time given does not include a timezone offset or name, then ZoneId.systemDefault()
+     * will be used. We recommend using the parseDate(3 args) version, so you can control the default timezone used
+     * when one is not specified.
      * @param dateStr String containing a date.  If there is excess content, it will throw an IllegalArgumentException.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
      * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
@@ -185,7 +185,7 @@ public final class DateUtilities {
         dateStr = dateStr.trim();
 
         if (allDigits.matcher(dateStr).matches()) {
-            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(defaultZoneId);
+            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(ZoneId.of("UTC"));
         }
 
         String year, day, remains, tz = null;
@@ -246,7 +246,6 @@ public final class DateUtilities {
         remains = remains.trim();
         matcher = timePattern.matcher(remains);
         remnant = matcher.replaceFirst("");
-        boolean noTime = false;
         
         if (remnant.length() < remains.length()) {
             hour = matcher.group(1);
@@ -258,7 +257,12 @@ public final class DateUtilities {
                 fracSec = "0" + matcher.group(4);
             }
             if (matcher.group(5) != null) {
-                tz = stripBrackets(matcher.group(5).trim());
+                tz = matcher.group(5).trim();
+            }
+            if (matcher.group(6) != null) {
+                if (StringUtilities.isEmpty(tz)) {    // Only use timezone name when offset is not used
+                    tz = stripBrackets(matcher.group(6).trim());
+                }
             }
         }
 

@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -72,7 +73,8 @@ public class ZonedDateTimeConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
-        return CalendarConversions.create(toLong(from), options);
+        return GregorianCalendar.from((ZonedDateTime) from);
+        //return CalendarConversions.create(toLong(from), options);
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {

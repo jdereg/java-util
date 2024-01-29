@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -692,6 +693,18 @@ class ConverterTest
     }
 
 
+    private static Stream<Arguments> epochMilliWithZoneId() {
+        return Stream.of(
+                Arguments.of("946702799959", TOKYO),
+                Arguments.of("946702799959", PARIS),
+                Arguments.of("946702799959", GMT),
+                Arguments.of("946702799959", NEW_YORK),
+                Arguments.of("946702799959", CHICAGO),
+                Arguments.of("946702799959", LOS_ANGELES)
+        );
+    }
+
+
     private static Stream<Arguments> dateStringNoZoneOffset() {
         return Stream.of(
                 Arguments.of("2000-01-01T13:59:59", TOKYO),
@@ -737,11 +750,25 @@ class ConverterTest
         );
     }
 
+    @ParameterizedTest
+    @MethodSource("epochMilliWithZoneId")
+    void testEpochMilliWithZoneId(String epochMilli, ZoneId zoneId) {
+        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
+
+        assertThat(localDateTime)
+                .hasYear(1999)
+                .hasMonthValue(12)
+                .hasDayOfMonth(31)
+                .hasHour(23)
+                .hasMinute(59)
+                .hasSecond(59);
+    }
+
+
 
     @ParameterizedTest
     @MethodSource("dateStringNoZoneOffset")
     void testStringDateWithNoTimeZoneInformation(String date, ZoneId zoneId) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
 
         assertThat(localDateTime)
@@ -757,7 +784,7 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("dateStringInIsoOffsetDateTime")
     void testStringDateWithTimeZoneToLocalDateTime(String date) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        //  source is TOKYO, should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
 
         assertThat(localDateTime)
@@ -769,11 +796,12 @@ class ConverterTest
                 .hasSecond(59);
     }
 
+
     /*
     @ParameterizedTest
     @MethodSource("dateStringInIsoOffsetDateTimeWithMillis")
     void testStringDateWithTimeZoneToLocalDateTimeIncludeMillis(String date) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        //  source is TOKYO, should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
 
         assertThat(localDateTime)
@@ -786,10 +814,10 @@ class ConverterTest
                 .hasNano(959);
     }
 
-        @ParameterizedTest
+    @ParameterizedTest
     @MethodSource("dateStringInIsoZoneDateTime")
     void testStringDateWithTimeZoneToLocalDateTimeWithZone(String date) {
-        //  source is TOKYO, bu should be ignored when zone is provided on string.
+        //  source is TOKYO, should be ignored when zone is provided on string.
         LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
 
         assertThat(localDateTime)
@@ -801,8 +829,10 @@ class ConverterTest
                 .hasSecond(59)
                 .hasNano(959);
     }
-
     */
+
+
+
 
     private static Stream<Arguments> epochMillis_withLocalDateTimeInformation() {
         return Stream.of(

@@ -1,9 +1,12 @@
 package com.cedarsoftware.util;
 
+import com.cedarsoftware.util.convert.StringConversions;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -289,5 +292,21 @@ public class ClassUtilities
             }
         }
         return currentClass;
+    }
+
+    public static boolean isClassFinal(Class<?> c) {
+        return (c.getModifiers() & Modifier.FINAL) != 0;
+    }
+
+    public static boolean areAllConstructorsPrivate(Class<?> c) {
+        Constructor<?>[] constructors = c.getDeclaredConstructors();
+
+        for (Constructor<?> constructor : constructors) {
+            if ((constructor.getModifiers() & Modifier.PRIVATE) == 0) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

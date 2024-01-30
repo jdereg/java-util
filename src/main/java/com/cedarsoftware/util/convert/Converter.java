@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Year;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
@@ -585,6 +586,17 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, ZonedDateTime.class), MapConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(String.class, ZonedDateTime.class), StringConversions::toZonedDateTime);
 
+        // toOffsetDateTime
+        DEFAULT_FACTORY.put(pair(Void.class, OffsetDateTime.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, OffsetDateTime.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(String.class, OffsetDateTime.class), StringConversions::toOffsetDateTime);
+
+        // toOffsetTime
+        DEFAULT_FACTORY.put(pair(Void.class, OffsetTime.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(OffsetTime.class, OffsetTime.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, OffsetTime.class), OffsetDateTimeConversions::toOffsetTime);
+        DEFAULT_FACTORY.put(pair(String.class, OffsetTime.class), StringConversions::toOffsetTime);
+
         // UUID conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, UUID.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(UUID.class, UUID.class), Converter::identity);
@@ -716,6 +728,7 @@ public final class Converter {
 
         // toCharArray
         DEFAULT_FACTORY.put(pair(Void.class, char[].class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Void.class, Character[].class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(String.class, char[].class), StringConversions::toCharArray);
         DEFAULT_FACTORY.put(pair(StringBuilder.class, char[].class), StringConversions::toCharArray);
         DEFAULT_FACTORY.put(pair(StringBuffer.class, char[].class), StringConversions::toCharArray);
@@ -743,6 +756,12 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(CharBuffer.class, ByteBuffer.class), CharBufferConversions::toByteBuffer);
         DEFAULT_FACTORY.put(pair(char[].class, ByteBuffer.class), CharArrayConversions::toByteBuffer);
         DEFAULT_FACTORY.put(pair(byte[].class, ByteBuffer.class), ByteArrayConversions::toByteBuffer);
+
+        // toYear
+        DEFAULT_FACTORY.put(pair(Void.class, Year.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Year.class, Year.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(String.class, Year.class), StringConversions::toYear);
+
 
         // Map conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Map.class), VoidConversions::toNull);

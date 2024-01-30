@@ -8,12 +8,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 public class OffsetDateTimeConversions {
     private OffsetDateTimeConversions() {}
@@ -79,6 +81,11 @@ public class OffsetDateTimeConversions {
 
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(toLong(from));
+    }
+
+    static OffsetTime toOffsetTime(Object from, Converter converter, ConverterOptions options) {
+        OffsetDateTime dateTime = (OffsetDateTime) from;
+        return dateTime.toOffsetTime();
     }
 
     static String toString(Object from, Converter converter, ConverterOptions options) {

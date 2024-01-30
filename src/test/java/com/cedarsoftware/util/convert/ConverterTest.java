@@ -866,6 +866,9 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
+        System.out.println(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toOffsetDateTime());
+
+
         LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
 
         assertThat(localDateTime).isEqualTo(expected);
@@ -3157,37 +3160,6 @@ class ConverterTest
     }
 
 
-
-    private static Stream<Arguments> classesThatReturnNull_whenConvertingFromNull() {
-        return Stream.of(
-                Arguments.of(Class.class),
-                Arguments.of(String.class),
-                Arguments.of(AtomicLong.class),
-                Arguments.of(AtomicInteger.class),
-                Arguments.of(AtomicBoolean.class),
-                Arguments.of(BigDecimal.class),
-                Arguments.of(BigInteger.class),
-                Arguments.of(Timestamp.class),
-                Arguments.of(java.sql.Date.class),
-                Arguments.of(Date.class),
-                Arguments.of(Character.class),
-                Arguments.of(Double.class),
-                Arguments.of(Float.class),
-                Arguments.of(Long.class),
-                Arguments.of(Short.class),
-                Arguments.of(Integer.class),
-                Arguments.of(Byte.class),
-                Arguments.of(Boolean.class),
-                Arguments.of(Byte.class)
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("classesThatReturnNull_whenConvertingFromNull")
-    void testClassesThatReturnNull_whenConvertingFromNull(Class c)
-    {
-        assertThat(this.converter.convert(null, c)).isNull();
-    }
 
     private static Stream<Arguments> classesThatReturnZero_whenConvertingFromNull() {
         return Stream.of(

@@ -581,9 +581,10 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(AtomicLong.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(byte[].class, String.class), ByteArrayConversions::toString);
         DEFAULT_FACTORY.put(pair(char[].class, String.class), CharArrayConversions::toString);
+        DEFAULT_FACTORY.put(pair(Character[].class, String.class), CharacterArrayConversions::toString);
         DEFAULT_FACTORY.put(pair(ByteBuffer.class, String.class), ByteBufferConversions::toString);
         DEFAULT_FACTORY.put(pair(CharBuffer.class, String.class), CharBufferConversions::toString);
-        DEFAULT_FACTORY.put(pair(Class.class, String.class), StringConversions::classToString);
+        DEFAULT_FACTORY.put(pair(Class.class, String.class), ClassConversions::toString);
         DEFAULT_FACTORY.put(pair(Date.class, String.class), DateConversions::dateToString);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, String.class), DateConversions::sqlDateToString);
         DEFAULT_FACTORY.put(pair(Timestamp.class, String.class), DateConversions::timestampToString);
@@ -649,6 +650,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(StringBuffer.class, StringBuffer.class), StringConversions::toStringBuffer);
         DEFAULT_FACTORY.put(pair(ByteBuffer.class, StringBuffer.class), ByteBufferConversions::toStringBuffer);
         DEFAULT_FACTORY.put(pair(CharBuffer.class, StringBuffer.class), CharBufferConversions::toStringBuffer);
+        DEFAULT_FACTORY.put(pair(Character[].class, StringBuffer.class), CharacterArrayConversions::toStringBuffer);
         DEFAULT_FACTORY.put(pair(char[].class, StringBuffer.class), CharArrayConversions::toStringBuffer);
         DEFAULT_FACTORY.put(pair(byte[].class, StringBuffer.class), ByteArrayConversions::toStringBuffer);
 
@@ -659,6 +661,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(StringBuffer.class, StringBuilder.class), StringConversions::toStringBuilder);
         DEFAULT_FACTORY.put(pair(ByteBuffer.class, StringBuilder.class), ByteBufferConversions::toStringBuilder);
         DEFAULT_FACTORY.put(pair(CharBuffer.class, StringBuilder.class), CharBufferConversions::toStringBuilder);
+        DEFAULT_FACTORY.put(pair(Character[].class, StringBuilder.class), CharacterArrayConversions::toStringBuilder);
         DEFAULT_FACTORY.put(pair(char[].class, StringBuilder.class), CharArrayConversions::toStringBuilder);
         DEFAULT_FACTORY.put(pair(byte[].class, StringBuilder.class), ByteArrayConversions::toStringBuilder);
 

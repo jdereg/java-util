@@ -22,7 +22,10 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class MonthDayConversions {
+public final class MonthDayConversions {
+
+    private MonthDayConversions() {}
+
     static Map toMap(Object from, Converter converter, ConverterOptions options) {
         MonthDay monthDay = (MonthDay) from;
         Map<String, Object> target = new CompactLinkedMap<>();

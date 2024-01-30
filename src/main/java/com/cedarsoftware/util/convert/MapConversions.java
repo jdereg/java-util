@@ -42,7 +42,7 @@ import com.cedarsoftware.util.Convention;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class MapConversions {
+public final class MapConversions {
 
     private static final String V = "_v";
     private static final String VALUE = "value";
@@ -59,6 +59,8 @@ public class MapConversions {
     private static final String NANOS = "nanos";
     private static final String MOST_SIG_BITS = "mostSigBits";
     private static final String LEAST_SIG_BITS = "leastSigBits";
+
+    private MapConversions() {}
     
     public static final String KEY_VALUE_ERROR_MESSAGE = "To convert from Map to %s the map must include one of the following: %s[_v], or [value] with associated values.";
 

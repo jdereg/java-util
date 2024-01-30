@@ -17,7 +17,9 @@ package com.cedarsoftware.util.convert;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CommonValues {
+public final class CommonValues {
+
+    private CommonValues() {}
     public static final Byte BYTE_ZERO = (byte) 0;
     public static final Byte BYTE_ONE = (byte) 1;
     public static final Short SHORT_ZERO = (short) 0;

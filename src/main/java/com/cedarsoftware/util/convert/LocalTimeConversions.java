@@ -22,7 +22,9 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class LocalTimeConversions {
+public final class LocalTimeConversions {
+
+    private LocalTimeConversions() {}
 
     static Map<String, Object> toMap(Object from, Converter converter, ConverterOptions options) {
         LocalTime localTime = (LocalTime) from;

@@ -35,7 +35,9 @@ import com.cedarsoftware.util.StringUtilities;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class NumberConversions {
+public final class NumberConversions {
+
+    private NumberConversions() {}
 
     static byte toByte(Object from, Converter converter, ConverterOptions options) {
         return ((Number)from).byteValue();

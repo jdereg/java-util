@@ -760,8 +760,6 @@ class ConverterTest
                 .hasSecond(59);
     }
 
-
-
     @ParameterizedTest
     @MethodSource("dateStringNoZoneOffset")
     void testStringDateWithNoTimeZoneInformation(String date, ZoneId zoneId) {
@@ -842,6 +840,25 @@ class ConverterTest
 
         );
     }
+
+    @Test
+    void testEpochMillis() {
+        Instant instant = Instant.ofEpochMilli(1687622249729L);
+
+        ZonedDateTime tokyo = instant.atZone(TOKYO);
+        assertThat(tokyo.toString()).contains("2023-06-25T00:57:29.729");
+        assertThat(tokyo.toInstant().toEpochMilli()).isEqualTo(1687622249729L);
+
+        ZonedDateTime ny = instant.atZone(NEW_YORK);
+        assertThat(ny.toString()).contains("2023-06-24T11:57:29.729");
+        assertThat(ny.toInstant().toEpochMilli()).isEqualTo(1687622249729L);
+
+        ZonedDateTime converted = tokyo.withZoneSameInstant(NEW_YORK);
+        assertThat(ny).isEqualTo(converted);
+        assertThat(converted.toInstant().toEpochMilli()).isEqualTo(1687622249729L);
+    }
+
+
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
@@ -2054,7 +2071,7 @@ class ConverterTest
     private static Stream<Arguments> epochMilli_exampleOneParams() {
         return Stream.of(
                 Arguments.of(1705601070270L),
-                Arguments.of( new Long(1705601070270L)),
+                Arguments.of( Long.valueOf(1705601070270L)),
                 Arguments.of( new AtomicLong(1705601070270L)),
                 Arguments.of( 1705601070270.798659898d),
                 Arguments.of( BigInteger.valueOf(1705601070270L)),

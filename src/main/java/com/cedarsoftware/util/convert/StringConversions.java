@@ -56,7 +56,7 @@ public final class StringConversions {
     private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
-    private static final Pattern MM_DD = Pattern.compile("^(\\d{1,2})+.(\\d{1,2})$");
+    private static final Pattern MM_DD = Pattern.compile("^(\\d{1,2}).(\\d{1,2})$");
 
     private StringConversions() {}
 

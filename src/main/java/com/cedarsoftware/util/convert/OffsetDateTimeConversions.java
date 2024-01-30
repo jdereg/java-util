@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -14,33 +15,16 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * @author Kenny Partlow (kpartlow@gmail.com)
- *         <br>
- *         Copyright (c) Cedar Software LLC
- *         <br><br>
- *         Licensed under the Apache License, Version 2.0 (the "License");
- *         you may not use this file except in compliance with the License.
- *         You may obtain a copy of the License at
- *         <br><br>
- *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- *         <br><br>
- *         Unless required by applicable law or agreed to in writing, software
- *         distributed under the License is distributed on an "AS IS" BASIS,
- *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *         See the License for the specific language governing permissions and
- *         limitations under the License.
- */
-public final class ZonedDateTimeConversions {
+public class OffsetDateTimeConversions {
+    private OffsetDateTimeConversions() {}
 
-    private ZonedDateTimeConversions() {}
-
-    static ZonedDateTime toDifferentZone(Object from, ConverterOptions options) {
-        return ((ZonedDateTime)from).withZoneSameInstant(options.getZoneId());
+    static OffsetDateTime toDifferentZone(Object from, ConverterOptions options) {
+        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
+        return offsetDateTime.toInstant().atZone(options.getZoneId()).toOffsetDateTime();
     }
 
     static Instant toInstant(Object from) {
-        return ((ZonedDateTime)from).toInstant();
+        return ((OffsetDateTime)from).toInstant();
     }
 
     static long toLong(Object from) {
@@ -68,7 +52,7 @@ public final class ZonedDateTimeConversions {
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-       return new AtomicLong(toLong(from));
+        return new AtomicLong(toLong(from));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
@@ -76,8 +60,9 @@ public final class ZonedDateTimeConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
-        return GregorianCalendar.from((ZonedDateTime) from);
-        //return CalendarConversions.create(toLong(from), options);
+        Calendar calendar = Calendar.getInstance(options.getTimeZone());
+        calendar.setTimeInMillis(toLong(from));
+        return calendar;
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
@@ -97,8 +82,7 @@ public final class ZonedDateTimeConversions {
     }
 
     static String toString(Object from, Converter converter, ConverterOptions options) {
-        ZonedDateTime zonedDateTime = (ZonedDateTime) from;
-        return zonedDateTime.format(DateTimeFormatter.ISO_DATE_TIME);
+        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
+        return offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     }
-
 }

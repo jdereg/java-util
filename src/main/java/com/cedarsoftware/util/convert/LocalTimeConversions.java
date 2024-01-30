@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -40,5 +41,10 @@ public final class LocalTimeConversions {
             }
         }
         return target;
+    }
+
+    static String toString(Object from, Converter converter, ConverterOptions options) {
+        LocalTime localTime = (LocalTime) from;
+        return localTime.format(DateTimeFormatter.ISO_LOCAL_TIME);
     }
 }

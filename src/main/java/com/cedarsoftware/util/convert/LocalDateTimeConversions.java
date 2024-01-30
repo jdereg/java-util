@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -99,5 +100,10 @@ public final class LocalDateTimeConversions {
 
     static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
         return BigDecimal.valueOf(toLong(from, options));
+    }
+
+    static String toString(Object from, Converter converter, ConverterOptions options) {
+        LocalDateTime localDateTime = (LocalDateTime) from;
+        return localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 }

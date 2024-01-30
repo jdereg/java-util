@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.Year;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
@@ -156,6 +158,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Integer.class), NumberConversions::toInt);
         DEFAULT_FACTORY.put(pair(Map.class, Integer.class), MapConversions::toInt);
         DEFAULT_FACTORY.put(pair(String.class, Integer.class), StringConversions::toInt);
+        DEFAULT_FACTORY.put(pair(Year.class, Integer.class), YearConversions::toInt);
+
 
         // toLong
         DEFAULT_FACTORY.put(pair(Void.class, long.class), NumberConversions::toLongZero);
@@ -184,6 +188,9 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Long.class), NumberConversions::toLong);
         DEFAULT_FACTORY.put(pair(Map.class, Long.class), MapConversions::toLong);
         DEFAULT_FACTORY.put(pair(String.class, Long.class), StringConversions::toLong);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Long.class), OffsetDateTimeConversions::toLong);
+        DEFAULT_FACTORY.put(pair(Year.class, Long.class), YearConversions::toLong);
+
 
         // toFloat
         DEFAULT_FACTORY.put(pair(Void.class, float.class), NumberConversions::toFloatZero);
@@ -234,6 +241,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Double.class), NumberConversions::toDouble);
         DEFAULT_FACTORY.put(pair(Map.class, Double.class), MapConversions::toDouble);
         DEFAULT_FACTORY.put(pair(String.class, Double.class), StringConversions::toDouble);
+        DEFAULT_FACTORY.put(pair(Year.class, Double.class), YearConversions::toDouble);
+
 
         // Boolean/boolean conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, boolean.class), VoidConversions::toBoolean);
@@ -254,6 +263,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Boolean.class), NumberConversions::isIntTypeNotZero);
         DEFAULT_FACTORY.put(pair(Map.class, Boolean.class), MapConversions::toBoolean);
         DEFAULT_FACTORY.put(pair(String.class, Boolean.class), StringConversions::toBoolean);
+        DEFAULT_FACTORY.put(pair(Year.class, Boolean.class), YearConversions::toBoolean);
+
 
         // Character/chat conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, char.class), VoidConversions::toChar);
@@ -302,6 +313,9 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, BigInteger.class), NumberConversions::toBigInteger);
         DEFAULT_FACTORY.put(pair(Map.class, BigInteger.class), MapConversions::toBigInteger);
         DEFAULT_FACTORY.put(pair(String.class, BigInteger.class), StringConversions::toBigInteger);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, BigInteger.class), OffsetDateTimeConversions::toBigInteger);
+        DEFAULT_FACTORY.put(pair(Year.class, BigInteger.class), YearConversions::toBigInteger);
+
 
         // BigDecimal conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, BigDecimal.class), VoidConversions::toNull);
@@ -330,6 +344,9 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, BigDecimal.class), NumberConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(Map.class, BigDecimal.class), MapConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, BigDecimal.class), OffsetDateTimeConversions::toBigDecimal);
+        DEFAULT_FACTORY.put(pair(Year.class, BigDecimal.class), YearConversions::toBigDecimal);
+
 
         // AtomicBoolean conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, AtomicBoolean.class), VoidConversions::toNull);
@@ -349,6 +366,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicBoolean.class), MapConversions::toAtomicBoolean);
         DEFAULT_FACTORY.put(pair(String.class, AtomicBoolean.class), StringConversions::toAtomicBoolean);
+        DEFAULT_FACTORY.put(pair(Year.class, AtomicBoolean.class), YearConversions::toAtomicBoolean);
 
         // AtomicInteger conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, AtomicInteger.class), VoidConversions::toNull);
@@ -369,6 +387,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, AtomicBoolean.class), NumberConversions::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);
         DEFAULT_FACTORY.put(pair(String.class, AtomicInteger.class), StringConversions::toAtomicInteger);
+        DEFAULT_FACTORY.put(pair(Year.class, AtomicInteger.class), YearConversions::toAtomicInteger);
 
         // AtomicLong conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, AtomicLong.class), VoidConversions::toNull);
@@ -396,6 +415,9 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, AtomicLong.class), NumberConversions::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Map.class, AtomicLong.class), MapConversions::toAtomicLong);
         DEFAULT_FACTORY.put(pair(String.class, AtomicLong.class), StringConversions::toAtomicLong);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, AtomicLong.class), OffsetDateTimeConversions::toAtomicLong);
+        DEFAULT_FACTORY.put(pair(Year.class, AtomicLong.class), YearConversions::toAtomicLong);
+
 
         // Date conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Date.class), VoidConversions::toNull);
@@ -415,6 +437,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Date.class), NumberConversions::toDate);
         DEFAULT_FACTORY.put(pair(Map.class, Date.class), MapConversions::toDate);
         DEFAULT_FACTORY.put(pair(String.class, Date.class), StringConversions::toDate);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Date.class), OffsetDateTimeConversions::toDate);
+
 
         // java.sql.Date conversion supported
         DEFAULT_FACTORY.put(pair(Void.class, java.sql.Date.class), VoidConversions::toNull);
@@ -434,6 +458,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, java.sql.Date.class), NumberConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(Map.class, java.sql.Date.class), MapConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(String.class, java.sql.Date.class), StringConversions::toSqlDate);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, java.sql.Date.class), OffsetDateTimeConversions::toSqlDate);
 
         // Timestamp conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Timestamp.class), VoidConversions::toNull);
@@ -453,6 +478,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Timestamp.class), NumberConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(Map.class, Timestamp.class), MapConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(String.class, Timestamp.class), StringConversions::toTimestamp);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Timestamp.class), OffsetDateTimeConversions::toTimestamp);
+
 
         // Calendar conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Calendar.class), VoidConversions::toNull);
@@ -472,6 +499,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Calendar.class), NumberConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(Map.class, Calendar.class), MapConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(String.class, Calendar.class), StringConversions::toCalendar);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Calendar.class), OffsetDateTimeConversions::toCalendar);
+
 
         // LocalDate conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDate.class), VoidConversions::toNull);
@@ -491,6 +520,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDate.class), MapConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(String.class, LocalDate.class), StringConversions::toLocalDate);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, LocalDate.class), OffsetDateTimeConversions::toLocalDate);
+
 
         // LocalDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDateTime.class), VoidConversions::toNull);
@@ -510,6 +541,8 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), MapConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalDateTime.class), StringConversions::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, LocalDateTime.class), OffsetDateTimeConversions::toLocalDateTime);
+
 
         // LocalTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
@@ -530,7 +563,9 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), StringConversions::toLocalTime);
-        
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, LocalTime.class), OffsetDateTimeConversions::toLocalTime);
+
+
         // ZonedDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, ZonedDateTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
@@ -588,12 +623,12 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Date.class, String.class), DateConversions::dateToString);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, String.class), DateConversions::sqlDateToString);
         DEFAULT_FACTORY.put(pair(Timestamp.class, String.class), DateConversions::timestampToString);
-        DEFAULT_FACTORY.put(pair(LocalDate.class, String.class), DateConversions::localDateToString);
-        DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), DateConversions::localTimeToString);
-        DEFAULT_FACTORY.put(pair(LocalDateTime.class, String.class), DateConversions::localDateTimeToString);
-        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, String.class), DateConversions::zonedDateTimeToString);
+        DEFAULT_FACTORY.put(pair(LocalDate.class, String.class), LocalDateConversions::toString);
+        DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), LocalTimeConversions::toString);
+        DEFAULT_FACTORY.put(pair(LocalDateTime.class, String.class), LocalDateTimeConversions::toString);
+        DEFAULT_FACTORY.put(pair(ZonedDateTime.class, String.class), ZonedDateTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(UUID.class, String.class), StringConversions::toString);
-        DEFAULT_FACTORY.put(pair(Calendar.class, String.class), DateConversions::calendarToString);
+        DEFAULT_FACTORY.put(pair(Calendar.class, String.class), CalendarConversions::toString);
         DEFAULT_FACTORY.put(pair(Number.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Map.class, String.class), MapConversions::toString);
         DEFAULT_FACTORY.put(pair(Enum.class, String.class), StringConversions::enumToString);
@@ -602,6 +637,9 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Instant.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(MonthDay.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
+        DEFAULT_FACTORY.put(pair(Year.class, String.class), YearConversions::toString);
+
 
         // Duration conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Duration.class), VoidConversions::toNull);
@@ -627,6 +665,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Instant.class), NumberConversions::toInstant);
         DEFAULT_FACTORY.put(pair(String.class, Instant.class), StringConversions::toInstant);
         DEFAULT_FACTORY.put(pair(Map.class, Instant.class), MapConversions::toInstant);
+        DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Instant.class), OffsetDateTimeConversions::toInstant);
 
 //        java.time.OffsetDateTime = com.cedarsoftware.util.io.DEFAULT_FACTORY.OffsetDateTimeFactory
 //        java.time.OffsetTime = com.cedarsoftware.util.io.DEFAULT_FACTORY.OffsetTimeFactory

@@ -4,7 +4,9 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.util.Arrays;
 
-public class CharArrayConversions {
+public final class CharArrayConversions {
+
+    private CharArrayConversions() {}
 
     static String toString(Object from) {
         char[] chars = (char[])from;
@@ -24,7 +26,6 @@ public class CharArrayConversions {
     static String toString(Object from, Converter converter, ConverterOptions options) {
         return toString(from);
     }
-
 
     static CharBuffer toCharBuffer(Object from, Converter converter, ConverterOptions options) {
         return toCharBuffer(from);

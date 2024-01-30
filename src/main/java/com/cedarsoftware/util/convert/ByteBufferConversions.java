@@ -7,7 +7,9 @@ import java.nio.CharBuffer;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 
-public class ByteBufferConversions {
+public final class ByteBufferConversions {
+
+    private ByteBufferConversions() {}
 
     static ByteBuffer asReadOnlyBuffer(Object from) {
         // Create a readonly buffer so we aren't changing

@@ -23,10 +23,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CharacterConversions {
+public final class CharacterConversions {
 
-    private CharacterConversions() {
-    }
+    private CharacterConversions() {}
 
     static boolean toBoolean(Object from) {
         char c = (char) from;

@@ -6,7 +6,10 @@ import java.nio.CharBuffer;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 
-public class CharBufferConversions {
+public final class CharBufferConversions {
+
+    private CharBufferConversions() {}
+
     static CharBuffer asReadOnlyBuffer(Object from) {
         // Create a readonly buffer so we aren't changing
         // the original buffers mark and position when

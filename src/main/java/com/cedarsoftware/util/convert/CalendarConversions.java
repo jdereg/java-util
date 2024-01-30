@@ -30,7 +30,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CalendarConversions {
+public final class CalendarConversions {
+
+    private CalendarConversions() {}
 
     static Date toDate(Object from) {
         return ((Calendar)from).getTime();

@@ -18,10 +18,8 @@ package com.cedarsoftware.util.convert;
  *         limitations under the License.
  */
 public final class VoidConversions {
-
     private VoidConversions() {
     }
-
     static Object toNull(Object from, Converter converter, ConverterOptions options) {
         return null;
     }

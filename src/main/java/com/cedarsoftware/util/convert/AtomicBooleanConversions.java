@@ -23,7 +23,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class AtomicBooleanConversions {
+public final class AtomicBooleanConversions {
+
+    private AtomicBooleanConversions() {}
 
     static Byte toByte(Object from, Converter converter, ConverterOptions options) {
         AtomicBoolean b = (AtomicBoolean) from;

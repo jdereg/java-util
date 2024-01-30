@@ -25,9 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *         limitations under the License.
  */
 public final class BooleanConversions {
-
-    private BooleanConversions() {
-    }
+    private BooleanConversions() {}
 
     static Byte toByte(Object from, Converter converter, ConverterOptions options) {
         Boolean b = (Boolean) from;

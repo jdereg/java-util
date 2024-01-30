@@ -32,7 +32,9 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class InstantConversions {
+public final class InstantConversions {
+
+    private InstantConversions() {}
     
     static long toLong(Object from) {
         return ((Instant)from).toEpochMilli();

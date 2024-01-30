@@ -6,7 +6,9 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ByteArrayConversions {
+public final class ByteArrayConversions {
+
+    private ByteArrayConversions() {}
 
     static String toString(Object from, ConverterOptions options) {
         byte[] bytes = (byte[])from;

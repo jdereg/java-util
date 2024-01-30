@@ -30,7 +30,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ZonedDateTimeConversions {
+public final class ZonedDateTimeConversions {
+
+    private ZonedDateTimeConversions() {}
 
     static ZonedDateTime toDifferentZone(Object from, ConverterOptions options) {
         return ((ZonedDateTime)from).withZoneSameInstant(options.getZoneId());

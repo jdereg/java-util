@@ -45,7 +45,7 @@ import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class StringConversions {
+public final class StringConversions {
     private static final BigDecimal bigDecimalMinByte = BigDecimal.valueOf(Byte.MIN_VALUE);
     private static final BigDecimal bigDecimalMaxByte = BigDecimal.valueOf(Byte.MAX_VALUE);
     private static final BigDecimal bigDecimalMinShort = BigDecimal.valueOf(Short.MIN_VALUE);
@@ -54,6 +54,8 @@ public class StringConversions {
     private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
+
+    private StringConversions() {}
 
     static String asString(Object from) {
         return from == null ? null : from.toString();
@@ -262,10 +264,6 @@ public class StringConversions {
             return clazz;
         }
         throw new IllegalArgumentException("Cannot convert String '" + str + "' to class.  Class not found.");
-    }
-
-    static String classToString(Object from, Converter converter, ConverterOptions options) {
-        return ((Class<?>) from).getName();
     }
 
     static MonthDay toMonthDay(Object from, Converter converter, ConverterOptions options) {

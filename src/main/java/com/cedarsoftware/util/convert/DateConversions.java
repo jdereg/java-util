@@ -31,7 +31,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class DateConversions {
+public final class DateConversions {
+
+    private DateConversions() {}
 
     static long toLong(Object from) {
         return ((Date) from).getTime();

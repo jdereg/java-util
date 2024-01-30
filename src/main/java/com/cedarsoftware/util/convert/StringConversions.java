@@ -457,7 +457,7 @@ public final class StringConversions {
             return null;
         }
 
-        return Year.parse(s);
+        return Year.of(Integer.parseInt(s));
     }
 
 

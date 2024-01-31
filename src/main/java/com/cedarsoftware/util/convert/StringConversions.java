@@ -12,7 +12,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Year;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -328,14 +332,14 @@ public final class StringConversions {
     }
 
     static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
-        String str = (String) from;
-        if (StringUtilities.isEmpty(str)) {
+        String str = StringUtilities.trimToNull(asString(from));
+        if (str == null) {
             return null;
         }
+
         try {
             return LocalTime.parse(str);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             ZonedDateTime zdt = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
             return zdt.toLocalTime();
         }
@@ -352,6 +356,32 @@ public final class StringConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
         return toZonedDateTime(from, options);
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter, ConverterOptions options) {
+        String s = StringUtilities.trimToNull(asString(from));
+        if (s == null) {
+            return null;
+        }
+
+        try {
+            return OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        } catch (Exception e) {
+            return toZonedDateTime(from, options).toOffsetDateTime();
+        }
+    }
+
+    static OffsetTime toOffsetTime(Object from, Converter converter, ConverterOptions options) {
+        String s = StringUtilities.trimToNull(asString(from));
+        if (s == null) {
+            return null;
+        }
+
+        try {
+            return OffsetTime.parse(s, DateTimeFormatter.ISO_OFFSET_TIME);
+        } catch (Exception e) {
+            return toZonedDateTime(from, options).toOffsetDateTime().toOffsetTime();
+        }
     }
 
     static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
@@ -420,5 +450,15 @@ public final class StringConversions {
     static StringBuilder toStringBuilder(Object from, Converter converter, ConverterOptions options) {
         return from == null ? null : new StringBuilder(from.toString());
     }
+
+    static Year toYear(Object from, Converter converter, ConverterOptions options) {
+        String s = StringUtilities.trimToNull(asString(from));
+        if (s == null) {
+            return null;
+        }
+
+        return Year.of(Integer.parseInt(s));
+    }
+
 
 }

@@ -114,28 +114,4 @@ public final class DateConversions {
         return simpleDateFormat.format(((Date) from));
     }
 
-    static String calendarToString(Object from, Converter converter, ConverterOptions options) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        return simpleDateFormat.format(((Calendar) from).getTime());
-    }
-
-    static String localDateToString(Object from, Converter converter, ConverterOptions options) {
-        LocalDate localDate = (LocalDate) from;
-        return localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
-    }
-
-    static String localTimeToString(Object from, Converter converter, ConverterOptions options) {
-        LocalTime localTime = (LocalTime) from;
-        return localTime.format(DateTimeFormatter.ISO_LOCAL_TIME);
-    }
-
-    static String localDateTimeToString(Object from, Converter converter, ConverterOptions options) {
-        LocalDateTime localDateTime = (LocalDateTime) from;
-        return localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    }
-
-    static String zonedDateTimeToString(Object from, Converter converter, ConverterOptions options) {
-        ZonedDateTime zonedDateTime = (ZonedDateTime) from;
-        return zonedDateTime.format(DateTimeFormatter.ISO_DATE_TIME);
-    }
 }

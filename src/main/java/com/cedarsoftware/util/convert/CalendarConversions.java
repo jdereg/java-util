@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -114,5 +115,10 @@ public final class CalendarConversions {
         cal.clear();
         cal.setTimeInMillis(epochMilli);
         return cal;
+    }
+
+    static String toString(Object from, Converter converter, ConverterOptions options) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        return simpleDateFormat.format(((Calendar) from).getTime());
     }
 }

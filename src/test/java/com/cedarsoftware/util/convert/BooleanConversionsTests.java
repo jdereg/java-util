@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
+import com.cedarsoftware.util.ClassUtilities;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -23,15 +24,10 @@ class BooleanConversionsTests {
 
 
     @Test
-    public void testClassCompliance() throws Exception {
+    void testClassCompliance() throws Exception {
         Class<?> c = BooleanConversions.class;
-        assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
-
-        Constructor con = c.getDeclaredConstructor();
-        assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
-
-        con.setAccessible(true);
-        assertNotNull(con.newInstance());
+        assertThat(ClassUtilities.isClassFinal(c)).isTrue();
+        assertThat(ClassUtilities.areAllConstructorsPrivate(c)).isTrue();
     }
 
     private static Stream<Arguments> toByteParams() {

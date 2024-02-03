@@ -139,6 +139,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Short.class), NumberConversions::toShort);
         DEFAULT_FACTORY.put(pair(Map.class, Short.class), MapConversions::toShort);
         DEFAULT_FACTORY.put(pair(String.class, Short.class), StringConversions::toShort);
+        DEFAULT_FACTORY.put(pair(Year.class, Short.class), YearConversions::toShort);
 
         // toInteger
         DEFAULT_FACTORY.put(pair(Void.class, int.class), NumberConversions::toIntZero);
@@ -212,6 +213,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Number.class, Float.class), NumberConversions::toFloat);
         DEFAULT_FACTORY.put(pair(Map.class, Float.class), MapConversions::toFloat);
         DEFAULT_FACTORY.put(pair(String.class, Float.class), StringConversions::toFloat);
+        DEFAULT_FACTORY.put(pair(Year.class, Float.class), YearConversions::toFloat);
 
         // Double/double conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, double.class), NumberConversions::toDoubleZero);
@@ -576,12 +578,14 @@ public final class Converter {
         // toOffsetDateTime
         DEFAULT_FACTORY.put(pair(Void.class, OffsetDateTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, OffsetDateTime.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(Map.class, OffsetDateTime.class), MapConversions::toOffsetDateTime);
         DEFAULT_FACTORY.put(pair(String.class, OffsetDateTime.class), StringConversions::toOffsetDateTime);
 
         // toOffsetTime
         DEFAULT_FACTORY.put(pair(Void.class, OffsetTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(OffsetTime.class, OffsetTime.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, OffsetTime.class), OffsetDateTimeConversions::toOffsetTime);
+        DEFAULT_FACTORY.put(pair(Map.class, OffsetTime.class), MapConversions::toOffsetTime);
         DEFAULT_FACTORY.put(pair(String.class, OffsetTime.class), StringConversions::toOffsetTime);
 
         // UUID conversions supported

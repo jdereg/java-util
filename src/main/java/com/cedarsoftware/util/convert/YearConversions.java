@@ -2,17 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.Year;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,6 +18,10 @@ public class YearConversions {
         return toInt(from);
     }
 
+    static short toShort(Object from, Converter converter, ConverterOptions options) {
+        return (short) toInt(from);
+    }
+
     static int toInt(Object from, Converter converter, ConverterOptions options) {
         return toInt(from);
     }
@@ -41,6 +35,10 @@ public class YearConversions {
     }
 
     static double toDouble(Object from, Converter converter, ConverterOptions options) {
+        return toInt(from);
+    }
+
+    static float toFloat(Object from, Converter converter, ConverterOptions options) {
         return toInt(from);
     }
 

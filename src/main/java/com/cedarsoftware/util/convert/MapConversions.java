@@ -9,7 +9,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Year;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -58,6 +61,8 @@ public final class MapConversions {
     private static final String SECONDS = "seconds";
     private static final String NANO = "nano";
     private static final String NANOS = "nanos";
+    private static final String OFFSET_HOUR = "offsetHour";
+    private static final String OFFSET_MINUTE = "offsetMinute";
     private static final String MOST_SIG_BITS = "mostSigBits";
     private static final String LEAST_SIG_BITS = "leastSigBits";
 
@@ -202,6 +207,43 @@ public final class MapConversions {
             return LocalTime.of(hour, minute, second, nano);
         } else {
             return fromValueForMultiKey(map, converter, options, LocalTime.class, LOCAL_TIME_PARAMS);
+        }
+    }
+
+    private static final String[] OFFSET_TIME_PARAMS = new String[] { HOUR, MINUTE, SECOND, NANO, OFFSET_HOUR, OFFSET_MINUTE };
+    static OffsetTime toOffsetTime(Object from, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) from;
+        if (map.containsKey(HOUR) && map.containsKey(MINUTE)) {
+            int hour = converter.convert(map.get(HOUR), int.class, options);
+            int minute = converter.convert(map.get(MINUTE), int.class, options);
+            int second = converter.convert(map.get(SECOND), int.class, options);
+            int nano = converter.convert(map.get(NANO), int.class, options);
+            int offsetHour = converter.convert(map.get(OFFSET_HOUR), int.class, options);
+            int offsetMinute = converter.convert(map.get(OFFSET_MINUTE), int.class, options);
+            ZoneOffset zoneOffset = ZoneOffset.ofHoursMinutes(offsetHour, offsetMinute);
+            return OffsetTime.of(hour, minute, second, nano, zoneOffset);
+        } else {
+            return fromValueForMultiKey(map, converter, options, OffsetTime.class, OFFSET_TIME_PARAMS);
+        }
+    }
+
+    private static final String[] OFFSET_DATE_TIME_PARAMS = new String[] { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, NANO, OFFSET_HOUR, OFFSET_MINUTE };
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter, ConverterOptions options) {
+        Map<?, ?> map = (Map<?, ?>) from;
+        if (map.containsKey(YEAR) && map.containsKey(OFFSET_HOUR)) {
+            int year = converter.convert(map.get(YEAR), int.class, options);
+            int month = converter.convert(map.get(MONTH), int.class, options);
+            int day = converter.convert(map.get(DAY), int.class, options);
+            int hour = converter.convert(map.get(HOUR), int.class, options);
+            int minute = converter.convert(map.get(MINUTE), int.class, options);
+            int second = converter.convert(map.get(SECOND), int.class, options);
+            int nano = converter.convert(map.get(NANO), int.class, options);
+            int offsetHour = converter.convert(map.get(OFFSET_HOUR), int.class, options);
+            int offsetMinute = converter.convert(map.get(OFFSET_MINUTE), int.class, options);
+            ZoneOffset zoneOffset = ZoneOffset.ofHoursMinutes(offsetHour, offsetMinute);
+            return OffsetDateTime.of(year, month, day, hour, minute, second, nano, zoneOffset);
+        } else {
+            return fromValueForMultiKey(map, converter, options, OffsetDateTime.class, OFFSET_DATE_TIME_PARAMS);
         }
     }
 

@@ -14,9 +14,12 @@ import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.Period;
 import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -278,7 +281,7 @@ public final class StringConversions {
         try {
             return MonthDay.parse(monthDay);
         }
-        catch (Exception e) {
+        catch (DateTimeParseException e) {
             Matcher matcher = MM_DD.matcher(monthDay);
             if (matcher.find()) {
                 String mm = matcher.group(1);
@@ -295,6 +298,27 @@ public final class StringConversions {
                 }
             }
         }
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter, ConverterOptions options) {
+        String yearMonth = (String) from;
+        try {
+            return YearMonth.parse(yearMonth);
+        }
+        catch (DateTimeParseException e) {
+            try {
+                ZonedDateTime zdt = DateUtilities.parseDate(yearMonth, options.getZoneId(), true);
+                return YearMonth.of(zdt.getYear(), zdt.getDayOfMonth());
+            }
+            catch (Exception ex) {
+                throw new IllegalArgumentException("Unable to extract Year-Month from string: " + yearMonth);
+            }
+        }
+    }
+
+    static Period toPeriod(Object from, Converter converter, ConverterOptions options) {
+        String period = (String) from;
+        return Period.parse(period);
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {

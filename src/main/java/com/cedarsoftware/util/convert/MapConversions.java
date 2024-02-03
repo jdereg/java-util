@@ -11,7 +11,9 @@ import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.Period;
 import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
@@ -53,8 +55,11 @@ public final class MapConversions {
     private static final String TIME = "time";
     private static final String ZONE = "zone";
     private static final String YEAR = "year";
+    private static final String YEARS = "years";
     private static final String MONTH = "month";
+    private static final String MONTHS = "months";
     private static final String DAY = "day";
+    private static final String DAYS = "days";
     private static final String HOUR = "hour";
     private static final String MINUTE = "minute";
     private static final String SECOND = "second";
@@ -286,12 +291,37 @@ public final class MapConversions {
     private static final String[] MONTH_DAY_PARAMS = new String[] { MONTH, DAY };
     static MonthDay toMonthDay(Object from, Converter converter, ConverterOptions options) {
         Map<String, Object> map = (Map<String, Object>) from;
-        if (map.containsKey(MONTH)) {
+        if (map.containsKey(MONTH) && map.containsKey(DAY)) {
             int month = converter.convert(map.get(MONTH), int.class, options);
             int day = converter.convert(map.get(DAY), int.class, options);
             return MonthDay.of(month, day);
         } else {
             return fromValueForMultiKey(from, converter, options, MonthDay.class, MONTH_DAY_PARAMS);
+        }
+    }
+
+    private static final String[] YEAR_MONTH_PARAMS = new String[] { YEAR, MONTH };
+    static YearMonth toYearMonth(Object from, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(YEAR) && map.containsKey(MONTH)) {
+            int year = converter.convert(map.get(YEAR), int.class, options);
+            int month = converter.convert(map.get(MONTH), int.class, options);
+            return YearMonth.of(year, month);
+        } else {
+            return fromValueForMultiKey(from, converter, options, YearMonth.class, YEAR_MONTH_PARAMS);
+        }
+    }
+
+    private static final String[] PERIOD_PARAMS = new String[] { YEARS, MONTHS, DAYS };
+    static Period toPeriod(Object from, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(YEARS) && map.containsKey(MONTHS) && map.containsKey(DAYS)) {
+            int years = converter.convert(map.get(YEARS), int.class, options);
+            int months = converter.convert(map.get(MONTHS), int.class, options);
+            int days = converter.convert(map.get(DAYS), int.class, options);
+            return Period.of(years, months, days);
+        } else {
+            return fromValueForMultiKey(from, converter, options, Period.class, PERIOD_PARAMS);
         }
     }
 

@@ -161,7 +161,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, Integer.class), StringConversions::toInt);
         DEFAULT_FACTORY.put(pair(Year.class, Integer.class), YearConversions::toInt);
 
-
         // toLong
         DEFAULT_FACTORY.put(pair(Void.class, long.class), NumberConversions::toLongZero);
         DEFAULT_FACTORY.put(pair(Void.class, Long.class), VoidConversions::toNull);
@@ -191,7 +190,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, Long.class), StringConversions::toLong);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Long.class), OffsetDateTimeConversions::toLong);
         DEFAULT_FACTORY.put(pair(Year.class, Long.class), YearConversions::toLong);
-
 
         // toFloat
         DEFAULT_FACTORY.put(pair(Void.class, float.class), NumberConversions::toFloatZero);
@@ -244,7 +242,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, Double.class), StringConversions::toDouble);
         DEFAULT_FACTORY.put(pair(Year.class, Double.class), YearConversions::toDouble);
 
-
         // Boolean/boolean conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, boolean.class), VoidConversions::toBoolean);
         DEFAULT_FACTORY.put(pair(Void.class, Boolean.class), VoidConversions::toNull);
@@ -265,7 +262,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Boolean.class), MapConversions::toBoolean);
         DEFAULT_FACTORY.put(pair(String.class, Boolean.class), StringConversions::toBoolean);
         DEFAULT_FACTORY.put(pair(Year.class, Boolean.class), YearConversions::toBoolean);
-
 
         // Character/chat conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, char.class), VoidConversions::toChar);
@@ -317,7 +313,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, BigInteger.class), OffsetDateTimeConversions::toBigInteger);
         DEFAULT_FACTORY.put(pair(Year.class, BigInteger.class), YearConversions::toBigInteger);
 
-
         // BigDecimal conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, BigDecimal.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, BigDecimal.class), NumberConversions::integerTypeToBigDecimal);
@@ -347,7 +342,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, BigDecimal.class), OffsetDateTimeConversions::toBigDecimal);
         DEFAULT_FACTORY.put(pair(Year.class, BigDecimal.class), YearConversions::toBigDecimal);
-
 
         // AtomicBoolean conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, AtomicBoolean.class), VoidConversions::toNull);
@@ -419,7 +413,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, AtomicLong.class), OffsetDateTimeConversions::toAtomicLong);
         DEFAULT_FACTORY.put(pair(Year.class, AtomicLong.class), YearConversions::toAtomicLong);
 
-
         // Date conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Date.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, Date.class), NumberConversions::toDate);
@@ -439,7 +432,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Date.class), MapConversions::toDate);
         DEFAULT_FACTORY.put(pair(String.class, Date.class), StringConversions::toDate);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Date.class), OffsetDateTimeConversions::toDate);
-
 
         // java.sql.Date conversion supported
         DEFAULT_FACTORY.put(pair(Void.class, java.sql.Date.class), VoidConversions::toNull);
@@ -481,7 +473,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, Timestamp.class), StringConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Timestamp.class), OffsetDateTimeConversions::toTimestamp);
 
-
         // Calendar conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Calendar.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, Calendar.class), NumberConversions::toCalendar);
@@ -501,7 +492,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Calendar.class), MapConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(String.class, Calendar.class), StringConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Calendar.class), OffsetDateTimeConversions::toCalendar);
-
 
         // LocalDate conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDate.class), VoidConversions::toNull);
@@ -523,7 +513,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, LocalDate.class), StringConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, LocalDate.class), OffsetDateTimeConversions::toLocalDate);
 
-
         // LocalDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDateTime.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Long.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
@@ -543,7 +532,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, LocalDateTime.class), MapConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalDateTime.class), StringConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, LocalDateTime.class), OffsetDateTimeConversions::toLocalDateTime);
-
 
         // LocalTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
@@ -565,7 +553,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(String.class, LocalTime.class), StringConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, LocalTime.class), OffsetDateTimeConversions::toLocalTime);
-
 
         // ZonedDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, ZonedDateTime.class), VoidConversions::toNull);
@@ -651,8 +638,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(MonthDay.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(Year.class, String.class), YearConversions::toString);
-
-
+        
         // Duration conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Duration.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Duration.class, Duration.class), Converter::identity);
@@ -679,10 +665,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Instant.class), MapConversions::toInstant);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Instant.class), OffsetDateTimeConversions::toInstant);
 
-//        java.time.OffsetDateTime = com.cedarsoftware.util.io.DEFAULT_FACTORY.OffsetDateTimeFactory
-//        java.time.OffsetTime = com.cedarsoftware.util.io.DEFAULT_FACTORY.OffsetTimeFactory
 //        java.time.Period = com.cedarsoftware.util.io.DEFAULT_FACTORY.PeriodFactory
-//        java.time.Year = com.cedarsoftware.util.io.DEFAULT_FACTORY.YearFactory
 //        java.time.YearMonth = com.cedarsoftware.util.io.DEFAULT_FACTORY.YearMonthFactory
 //        java.time.ZoneId = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneIdFactory
 //        java.time.ZoneOffset = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneOffsetFactory
@@ -737,7 +720,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(char[].class, char[].class), CharArrayConversions::toCharArray);
         DEFAULT_FACTORY.put(pair(byte[].class, char[].class), ByteArrayConversions::toCharArray);
 
-        //toCharBuffer
+        // toCharBuffer
         DEFAULT_FACTORY.put(pair(Void.class, CharBuffer.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(String.class, CharBuffer.class), StringConversions::toCharBuffer);
         DEFAULT_FACTORY.put(pair(StringBuilder.class, CharBuffer.class), StringConversions::toCharBuffer);
@@ -760,8 +743,9 @@ public final class Converter {
         // toYear
         DEFAULT_FACTORY.put(pair(Void.class, Year.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Year.class, Year.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(Number.class, Year.class), NumberConversions::toYear);
         DEFAULT_FACTORY.put(pair(String.class, Year.class), StringConversions::toYear);
-
+        DEFAULT_FACTORY.put(pair(Map.class, Year.class), MapConversions::toYear);
 
         // Map conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Map.class), VoidConversions::toNull);

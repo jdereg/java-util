@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.Year;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -250,6 +251,10 @@ public final class MapConversions {
         } else {
             return fromValueForMultiKey(from, converter, options, MonthDay.class, MONTH_DAY_PARAMS);
         }
+    }
+
+    static Year toYear(Object from, Converter converter, ConverterOptions options) {
+        return fromSingleKey(from, converter, options, YEAR, Year.class);
     }
 
     static Map<String, ?> initMap(Object from, Converter converter, ConverterOptions options) {

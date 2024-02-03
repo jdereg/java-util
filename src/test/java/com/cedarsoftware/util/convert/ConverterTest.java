@@ -72,7 +72,6 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class ConverterTest
 {
-
     private static final LocalDateTime LDT_2023_TOKYO = LocalDateTime.of(2023, 6, 25, 0, 57, 29, 729000000);
     private static final LocalDateTime LDT_2023_PARIS = LocalDateTime.of(2023, 6, 24, 17, 57, 29, 729000000);
     private static final LocalDateTime LDT_2023_GMT = LocalDateTime.of(2023, 6, 24, 15, 57, 29, 729000000);
@@ -88,8 +87,8 @@ class ConverterTest
     private Converter converter;
 
 
-    private static final LocalDate LD_MILLINNIUM_NY = LocalDate.of(1999, 12, 31);
-    private static final LocalDate LD_MILLINNIUM_TOKYO = LocalDate.of(2000, 1, 1);
+    private static final LocalDate LD_MILLENNIUM_NY = LocalDate.of(1999, 12, 31);
+    private static final LocalDate LD_MILLENNIUM_TOKYO = LocalDate.of(2000, 1, 1);
 
     private static final LocalDate LD_MILLENNIUM_CHICAGO = LocalDate.of(1999, 12, 31);
 
@@ -240,7 +239,7 @@ class ConverterTest
 
     @ParameterizedTest
     @NullAndEmptySource
-    void toByte_whenNullOrEmpty_andCovnertingToPrimitive_returnsZero(String s)
+    void toByte_whenNullOrEmpty_andConvertingToPrimitive_returnsZero(String s)
     {
         byte converted = this.converter.convert(s, byte.class);
         assertThat(converted).isZero();
@@ -857,20 +856,13 @@ class ConverterTest
         assertThat(ny).isEqualTo(converted);
         assertThat(converted.toInstant().toEpochMilli()).isEqualTo(1687622249729L);
     }
-
-
-
+    
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
-
-        System.out.println(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toOffsetDateTime());
-
-
         LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
-
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -928,8 +920,8 @@ class ConverterTest
 
     private static Stream<Arguments> roundTrip_tokyoTime() {
         return Stream.of(
-                Arguments.of(946652400000L, TOKYO, LD_MILLINNIUM_TOKYO),
-                Arguments.of(946652400000L, NEW_YORK, LD_MILLINNIUM_NY),
+                Arguments.of(946652400000L, TOKYO, LD_MILLENNIUM_TOKYO),
+                Arguments.of(946652400000L, NEW_YORK, LD_MILLENNIUM_NY),
                 Arguments.of(946652400000L, CHICAGO, LD_MILLENNIUM_CHICAGO)
         );
     }
@@ -959,8 +951,8 @@ class ConverterTest
 
     private static Stream<Arguments> localDateToLong() {
         return Stream.of(
-                Arguments.of(946616400000L, NEW_YORK, LD_MILLINNIUM_NY, TOKYO),
-                Arguments.of(946616400000L, NEW_YORK, LD_MILLINNIUM_NY, CHICAGO),
+                Arguments.of(946616400000L, NEW_YORK, LD_MILLENNIUM_NY, TOKYO),
+                Arguments.of(946616400000L, NEW_YORK, LD_MILLENNIUM_NY, CHICAGO),
                 Arguments.of(946620000000L, CHICAGO, LD_MILLENNIUM_CHICAGO, TOKYO)
         );
     }
@@ -1108,7 +1100,7 @@ class ConverterTest
     @Test
     void testLocalDateToFloat() {
 
-        float intermediate = this.converter.convert(LD_MILLINNIUM_NY, float.class, createCustomZones(NEW_YORK, TOKYO));
+        float intermediate = this.converter.convert(LD_MILLENNIUM_NY, float.class, createCustomZones(NEW_YORK, TOKYO));
 
         assertThat((long)intermediate).isNotEqualTo(946616400000L);
     }
@@ -1116,7 +1108,7 @@ class ConverterTest
     @Test
     void testLocalDateToLocalTime_withZoneChange_willBeZoneOffset() {
 
-        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, TOKYO));
+        LocalTime intermediate = this.converter.convert(LD_MILLENNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, TOKYO));
 
         assertThat(intermediate).hasHour(14)
                 .hasMinute(0)
@@ -1127,7 +1119,7 @@ class ConverterTest
     @Test
     void testLocalDateToLocalTimeWithoutZoneChange_willBeMidnight() {
 
-        LocalTime intermediate = this.converter.convert(LD_MILLINNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, NEW_YORK));
+        LocalTime intermediate = this.converter.convert(LD_MILLENNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, NEW_YORK));
 
         assertThat(intermediate).hasHour(0)
                 .hasMinute(0)

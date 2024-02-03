@@ -286,7 +286,13 @@ public final class StringConversions {
                 return MonthDay.of(Integer.parseInt(mm), Integer.parseInt(dd));
             }
             else {
-                throw new IllegalArgumentException(e);
+                try {
+                    ZonedDateTime zdt = DateUtilities.parseDate(monthDay, options.getZoneId(), true);
+                    return MonthDay.of(zdt.getMonthValue(), zdt.getDayOfMonth());
+                }
+                catch (Exception ex) {
+                    throw new IllegalArgumentException("Unable to extract Month-Day from string: " + monthDay);
+                }
             }
         }
     }
@@ -457,8 +463,17 @@ public final class StringConversions {
             return null;
         }
 
-        return Year.of(Integer.parseInt(s));
+        try {
+            return Year.of(Integer.parseInt(s));
+        }
+        catch (NumberFormatException e) {
+            try {
+                ZonedDateTime zdt = DateUtilities.parseDate(s, options.getZoneId(), true);
+                return Year.of(zdt.getYear());
+            }
+            catch (Exception ex) {
+                throw new IllegalArgumentException("Unable to extract 4-digit year from string: " + s);
+            }
+        }
     }
-
-
 }

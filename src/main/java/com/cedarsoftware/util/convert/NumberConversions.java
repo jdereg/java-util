@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Year;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -253,5 +254,13 @@ public final class NumberConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
         return toZonedDateTime(from, options);
+    }
+
+    static Year toYear(Object from, Converter converter, ConverterOptions options) {
+        if (from instanceof Byte) {
+            throw new IllegalArgumentException("Cannot convert Byte to Year, not enough precision.");
+        }
+        Number number = (Number) from;
+        return Year.of(number.shortValue());
     }
 }

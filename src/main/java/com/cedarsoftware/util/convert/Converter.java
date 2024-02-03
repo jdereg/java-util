@@ -1144,6 +1144,6 @@ public final class Converter {
     }
 
     private static <T> T unsupported(T from, Converter converter, ConverterOptions options) {
-        return (T) UNSUPPORTED;
+        return null;
     }
 }

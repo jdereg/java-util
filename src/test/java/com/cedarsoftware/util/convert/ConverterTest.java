@@ -2210,17 +2210,9 @@ class ConverterTest
 
     private static Stream<Arguments> extremeDateParams() {
         return Stream.of(
-                Arguments.of((short)75, new Date(75)),
-                Arguments.of(Byte.MIN_VALUE, new Date(Byte.MIN_VALUE)),
-                Arguments.of(Byte.MAX_VALUE, new Date(Byte.MAX_VALUE)),
-                Arguments.of(Short.MIN_VALUE, new Date(Short.MIN_VALUE)),
-                Arguments.of(Short.MAX_VALUE, new Date(Short.MAX_VALUE)),
-                Arguments.of(Integer.MIN_VALUE, new Date(Integer.MIN_VALUE)),
-                Arguments.of(Integer.MAX_VALUE, new Date(Integer.MAX_VALUE)),
                 Arguments.of(Long.MIN_VALUE,new Date(Long.MIN_VALUE)),
                 Arguments.of(Long.MAX_VALUE, new Date(Long.MAX_VALUE)),
-                Arguments.of(127.0d, new Date(127)),
-                Arguments.of( new AtomicInteger(25), new Date(25))
+                Arguments.of(127.0d, new Date(127))
         );
     }
 
@@ -3904,13 +3896,13 @@ class ConverterTest
     @Test
     void testIsConversionSupport()
     {
-        assert this.converter.isConversionSupportedFor(int.class, LocalDate.class);
-        assert this.converter.isConversionSupportedFor(Integer.class, LocalDate.class);
+        assert !this.converter.isConversionSupportedFor(int.class, LocalDate.class);
+        assert !this.converter.isConversionSupportedFor(Integer.class, LocalDate.class);
 
         assert !this.converter.isDirectConversionSupportedFor(byte.class, LocalDate.class);
-        assert this.converter.isConversionSupportedFor(byte.class, LocalDate.class);       // byte is upgraded to Byte, which is found as Number.
+        assert !this.converter.isConversionSupportedFor(byte.class, LocalDate.class);
 
-        assert this.converter.isConversionSupportedFor(Byte.class, LocalDate.class);       // Number is supported
+        assert !this.converter.isConversionSupportedFor(Byte.class, LocalDate.class);
         assert !this.converter.isDirectConversionSupportedFor(Byte.class, LocalDate.class);
         assert !this.converter.isConversionSupportedFor(LocalDate.class, byte.class);
         assert !this.converter.isConversionSupportedFor(LocalDate.class, Byte.class);
@@ -4331,6 +4323,23 @@ class ConverterTest
     void testStringToCharArray(String source, Charset charSet, char[] expected) {
         char[] actual = this.converter.convert(source, char[].class, createCharsetOptions(charSet));
         assertThat(actual).isEqualTo(expected);
+    }
+    
+    @Test
+    void testKnownUnsupportedConversions()
+    {
+        System.out.println(converter.getSupportedConversions());
+        assertThatThrownBy(() -> converter.convert((byte)50, Date.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported conversion");
+
+        assertThatThrownBy(() -> converter.convert((short)300, Date.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported conversion");
+
+        assertThatThrownBy(() -> converter.convert(100000, Date.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported conversion");
     }
 
     private ConverterOptions createCharsetOptions(final Charset charset)

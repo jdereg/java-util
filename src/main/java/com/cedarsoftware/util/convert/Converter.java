@@ -69,6 +69,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 
 public final class Converter {
+    static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
 
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;
@@ -112,7 +113,6 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Double.class, Byte.class), NumberConversions::toByte);
         DEFAULT_FACTORY.put(pair(Boolean.class, Byte.class), BooleanConversions::toByte);
         DEFAULT_FACTORY.put(pair(Character.class, Byte.class), CharacterConversions::toByte);
-        DEFAULT_FACTORY.put(pair(Calendar.class, Byte.class), NumberConversions::toByte);
         DEFAULT_FACTORY.put(pair(AtomicBoolean.class, Byte.class), AtomicBooleanConversions::toByte);
         DEFAULT_FACTORY.put(pair(AtomicInteger.class, Byte.class), NumberConversions::toByte);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Byte.class), NumberConversions::toByte);
@@ -267,7 +267,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, Boolean.class), StringConversions::toBoolean);
         DEFAULT_FACTORY.put(pair(Year.class, Boolean.class), YearConversions::toBoolean);
 
-        // Character/chat conversions supported
+        // Character/char conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, char.class), VoidConversions::toChar);
         DEFAULT_FACTORY.put(pair(Void.class, Character.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Byte.class, Character.class), NumberConversions::toCharacter);
@@ -419,10 +419,14 @@ public final class Converter {
 
         // Date conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Date.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, Date.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, Date.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, Date.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, Date.class), NumberConversions::toDate);
         DEFAULT_FACTORY.put(pair(Double.class, Date.class), NumberConversions::toDate);
         DEFAULT_FACTORY.put(pair(BigInteger.class, Date.class), NumberConversions::toDate);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Date.class), NumberConversions::toDate);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, Date.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Date.class), NumberConversions::toDate);
         DEFAULT_FACTORY.put(pair(Date.class, Date.class), DateConversions::toDate);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, Date.class), DateConversions::toDate);
@@ -439,10 +443,14 @@ public final class Converter {
 
         // java.sql.Date conversion supported
         DEFAULT_FACTORY.put(pair(Void.class, java.sql.Date.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, java.sql.Date.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, java.sql.Date.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, java.sql.Date.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, java.sql.Date.class), NumberConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(Double.class, java.sql.Date.class), NumberConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(BigInteger.class, java.sql.Date.class), NumberConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, java.sql.Date.class), NumberConversions::toSqlDate);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, java.sql.Date.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, java.sql.Date.class), NumberConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, java.sql.Date.class), DateConversions::toSqlDate);
         DEFAULT_FACTORY.put(pair(Date.class, java.sql.Date.class), DateConversions::toSqlDate);
@@ -459,10 +467,14 @@ public final class Converter {
 
         // Timestamp conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Timestamp.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, Timestamp.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, Timestamp.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, Timestamp.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, Timestamp.class), NumberConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(Double.class, Timestamp.class), NumberConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(BigInteger.class, Timestamp.class), NumberConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Timestamp.class), NumberConversions::toTimestamp);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, Timestamp.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Timestamp.class), NumberConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(Timestamp.class, Timestamp.class), DateConversions::toTimestamp);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, Timestamp.class), DateConversions::toTimestamp);
@@ -479,10 +491,14 @@ public final class Converter {
 
         // Calendar conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Calendar.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, Calendar.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, Calendar.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, Calendar.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, Calendar.class), NumberConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(Double.class, Calendar.class), NumberConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(BigInteger.class, Calendar.class), NumberConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Calendar.class), NumberConversions::toCalendar);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, Calendar.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Calendar.class), NumberConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(Date.class, Calendar.class), DateConversions::toCalendar);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, Calendar.class), DateConversions::toCalendar);
@@ -499,10 +515,14 @@ public final class Converter {
 
         // LocalDate conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDate.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, LocalDate.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, LocalDate.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, LocalDate.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Double.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(BigInteger.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, LocalDate.class), NumberConversions::toLocalDate);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, LocalDate.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, LocalDate.class), NumberConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalDate.class), DateConversions::toLocalDate);
         DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDate.class), DateConversions::toLocalDate);
@@ -519,10 +539,14 @@ public final class Converter {
 
         // LocalDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalDateTime.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, LocalDateTime.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, LocalDateTime.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, LocalDateTime.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Double.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(BigInteger.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, LocalDateTime.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalDateTime.class), DateConversions::toLocalDateTime);
         DEFAULT_FACTORY.put(pair(Timestamp.class, LocalDateTime.class), DateConversions::toLocalDateTime);
@@ -539,10 +563,14 @@ public final class Converter {
 
         // LocalTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, LocalTime.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, LocalTime.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, LocalTime.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Double.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(BigInteger.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, LocalTime.class), NumberConversions::toLocalDateTime);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, LocalTime.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, LocalTime.class), NumberConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, LocalTime.class), DateConversions::toLocalTime);
         DEFAULT_FACTORY.put(pair(Timestamp.class, LocalTime.class), DateConversions::toLocalTime);
@@ -560,10 +588,14 @@ public final class Converter {
 
         // ZonedDateTime conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, ZonedDateTime.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(Byte.class, ZonedDateTime.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, ZonedDateTime.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, ZonedDateTime.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Double.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(BigInteger.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, ZonedDateTime.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
         DEFAULT_FACTORY.put(pair(Timestamp.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
@@ -657,10 +689,14 @@ public final class Converter {
         // Instant conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, Instant.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Instant.class, Instant.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(Byte.class, Instant.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Short.class, Instant.class), UNSUPPORTED);
+        DEFAULT_FACTORY.put(pair(Integer.class, Instant.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Long.class, Instant.class), NumberConversions::toInstant);
         DEFAULT_FACTORY.put(pair(Double.class, Instant.class), NumberConversions::toInstant);
         DEFAULT_FACTORY.put(pair(BigInteger.class, Instant.class), NumberConversions::toInstant);
         DEFAULT_FACTORY.put(pair(BigDecimal.class, Instant.class), NumberConversions::toInstant);
+        DEFAULT_FACTORY.put(pair(AtomicInteger.class, Instant.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(AtomicLong.class, Instant.class), NumberConversions::toInstant);
         DEFAULT_FACTORY.put(pair(java.sql.Date.class, Instant.class), DateConversions::toInstant);
         DEFAULT_FACTORY.put(pair(Timestamp.class, Instant.class), DateConversions::toInstant);
@@ -762,6 +798,7 @@ public final class Converter {
         // toYear
         DEFAULT_FACTORY.put(pair(Void.class, Year.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(Year.class, Year.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(Byte.class, Year.class), UNSUPPORTED);
         DEFAULT_FACTORY.put(pair(Number.class, Year.class), NumberConversions::toYear);
         DEFAULT_FACTORY.put(pair(String.class, Year.class), StringConversions::toYear);
         DEFAULT_FACTORY.put(pair(Map.class, Year.class), MapConversions::toYear);
@@ -883,13 +920,13 @@ public final class Converter {
 
         // Direct Mapping
         Convert<?> converter = factory.get(pair(sourceType, toType));
-        if (converter != null) {
+        if (converter != null && converter != UNSUPPORTED) {
             return (T) converter.convert(from, this, options);
         }
 
         // Try inheritance
         converter = getInheritedConverter(sourceType, toType);
-        if (converter != null) {
+        if (converter != null && converter != UNSUPPORTED) {
             // Fast lookup next time.
             if (!isDirectConversionSupportedFor(sourceType, toType)) {
                 addConversion(sourceType, toType, converter);
@@ -1016,7 +1053,8 @@ public final class Converter {
     boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
         source = toPrimitiveWrapperClass(source);
         target = toPrimitiveWrapperClass(target);
-        return factory.containsKey(pair(source, target));
+        Convert<?> method = factory.get(pair(source, target));
+        return method != null && method != UNSUPPORTED;
     }
 
     /**
@@ -1029,10 +1067,13 @@ public final class Converter {
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
         source = toPrimitiveWrapperClass(source);
         target = toPrimitiveWrapperClass(target);
-        if (factory.containsKey(pair(source, target))) {
+        Convert<?> method = factory.get(pair(source, target));
+        if (method != null && method != UNSUPPORTED) {
             return true;
         }
-        return getInheritedConverter(source, target) != null;
+
+        method = getInheritedConverter(source, target);
+        return method != null && method != UNSUPPORTED;
     }
 
     /**
@@ -1042,8 +1083,11 @@ public final class Converter {
     public Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()));
 
-        for (Map.Entry<Class<?>, Class<?>> pairs : factory.keySet()) {
-            toFrom.computeIfAbsent(pairs.getKey(), k -> new TreeSet<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()))).add(pairs.getValue());
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : factory.entrySet()) {
+            if (entry.getValue() != UNSUPPORTED) {
+                Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
+                toFrom.computeIfAbsent(pair.getKey(), k -> new TreeSet<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()))).add(pair.getValue());
+            }
         }
         return toFrom;
     }
@@ -1055,8 +1099,11 @@ public final class Converter {
     public Map<String, Set<String>> getSupportedConversions() {
         Map<String, Set<String>> toFrom = new TreeMap<>(String::compareToIgnoreCase);
 
-        for (Map.Entry<Class<?>, Class<?>> pairs : factory.keySet()) {
-            toFrom.computeIfAbsent(getShortName(pairs.getKey()), k -> new TreeSet<>(String::compareToIgnoreCase)).add(getShortName(pairs.getValue()));
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : factory.entrySet()) {
+            if (entry.getValue() != UNSUPPORTED) {
+                Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
+                toFrom.computeIfAbsent(getShortName(pair.getKey()), k -> new TreeSet<>(String::compareToIgnoreCase)).add(getShortName(pair.getValue()));
+            }
         }
         return toFrom;
     }
@@ -1092,7 +1139,11 @@ public final class Converter {
         return c;
     }
 
-    private static <T> T identity(T one, Converter converter, ConverterOptions options) {
-        return one;
+    private static <T> T identity(T from, Converter converter, ConverterOptions options) {
+        return from;
+    }
+
+    private static <T> T unsupported(T from, Converter converter, ConverterOptions options) {
+        return (T) UNSUPPORTED;
     }
 }

@@ -454,27 +454,33 @@ public final class Converter
     }
     
     /**
+     * No longer needed - use convert(localDate, long.class)
      * @param localDate A Java LocalDate
      * @return a long representing the localDate as epoch milliseconds (since 1970 Jan 1 at midnight)
      */
+    @Deprecated
     public static long localDateToMillis(LocalDate localDate)
     {
         return instance.convert(localDate, long.class);
     }
 
     /**
+     * No longer needed - use convert(localDateTime, long.class)
      * @param localDateTime A Java LocalDateTime
      * @return a long representing the localDateTime as epoch milliseconds (since 1970 Jan 1 at midnight)
      */
+    @Deprecated
     public static long localDateTimeToMillis(LocalDateTime localDateTime)
     {
         return instance.convert(localDateTime, long.class);
     }
 
     /**
+     * No longer needed - use convert(ZonedDateTime, long.class)
      * @param zonedDateTime A Java ZonedDateTime
      * @return a long representing the ZonedDateTime as epoch milliseconds (since 1970 Jan 1 at midnight)
      */
+    @Deprecated
     public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime)
     {
         return instance.convert(zonedDateTime, long.class);

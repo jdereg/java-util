@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 
 public final class Converter {
-    static final Convert<?> UNSUPPORTED = Converter::unsupported;
+    public static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
 
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;

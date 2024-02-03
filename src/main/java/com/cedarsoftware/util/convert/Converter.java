@@ -640,6 +640,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Instant.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(LocalTime.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(MonthDay.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(OffsetTime.class, String.class), OffsetTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(Year.class, String.class), YearConversions::toString);
         

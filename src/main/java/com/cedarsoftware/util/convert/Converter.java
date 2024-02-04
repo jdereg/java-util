@@ -80,7 +80,7 @@ public final class Converter {
     private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> DEFAULT_FACTORY = new ConcurrentHashMap<>(500, .8f);
 
     // Create a Map.Entry (pair) of source class to target class.
-    private static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
+    static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
         return new AbstractMap.SimpleImmutableEntry<>(source, target);
     }
 

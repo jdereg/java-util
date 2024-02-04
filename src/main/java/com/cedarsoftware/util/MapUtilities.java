@@ -150,4 +150,36 @@ public class MapUtilities
 
         return immutable ? Collections.unmodifiableMap(result) : result;
     }
+
+    /**
+     * For JDK1.8 support.  Remove this and change to Map.of() for JDK11+
+     */
+    public static <K, V> Map<K, V> mapOf()
+    {
+        return Collections.unmodifiableMap(new LinkedHashMap<>());
+    }
+
+    public static <K, V> Map<K, V> mapOf(K k, V v)
+    {
+        Map<K, V> map = new LinkedHashMap<>();
+        map.put(k, v);
+        return Collections.unmodifiableMap(map);
+    }
+
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2)
+    {
+        Map<K, V> map = new LinkedHashMap<>();
+        map.put(k1, v1);
+        map.put(k2, v2);
+        return Collections.unmodifiableMap(map);
+    }
+
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3)
+    {
+        Map<K, V> map = new LinkedHashMap<>();
+        map.put(k1, v1);
+        map.put(k2, v2);
+        map.put(k3, v3);
+        return Collections.unmodifiableMap(map);
+    }
 }

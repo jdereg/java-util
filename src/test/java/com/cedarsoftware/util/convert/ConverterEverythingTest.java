@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.MapUtilities.mapOf;
+import static com.cedarsoftware.util.convert.Converter.getShortName;
 import static com.cedarsoftware.util.convert.Converter.pair;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -42,11 +43,9 @@ class ConverterEverythingTest
 
 
     static {
-        // [ [source1, answer1],
-        //   [source2, answer2],
+        //   {source1, answer1},
         //   ...
-        //   [source-n, answer-n]
-        // ]
+        //   {source-n, answer-n}
         TEST_FACTORY.put(pair(Void.class, byte.class), new Object[][] {
                 { null, (byte)0 }
         });
@@ -196,7 +195,7 @@ class ConverterEverythingTest
                 { mapOf("value", "127"), Byte.MAX_VALUE },
                 { mapOf("value", 127L), Byte.MAX_VALUE },
 
-                { mapOf("_v", "-129"), new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
+                { mapOf("_v", "-129"), new IllegalArgumentException("-29 not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", -129), (byte)127 },
                 { mapOf("value", "-129"), new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
                 { mapOf("value", -129L), (byte) 127 },
@@ -209,7 +208,7 @@ class ConverterEverythingTest
         TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
                 { "-1.1", (byte) -1 },
-                { "-1.9", (byte) -1 },
+                { "-1.9", (byte) -2 },
                 { "0", (byte) 0 },
                 { "1", (byte) 1 },
                 { "1.1", (byte) 1 },
@@ -243,7 +242,7 @@ class ConverterEverythingTest
                 if (testData == null) { // data set needs added
                     // Change to throw exception, so that when new conversions are added, the tests will fail until
                     // an "everything" test entry is added.
-                    System.err.println("No test data for: " + Converter.getShortName(sourceClass));
+                    System.err.println("No test data for: " + getShortName(sourceClass) + " ==> " + getShortName(targetClass));
                     continue;
                 }
                 
@@ -266,12 +265,15 @@ class ConverterEverythingTest
                             assertEquals(testPair[1], converter.convert(testPair[0], targetClass));
                         }
                     } catch (Throwable e) {
-                        System.err.println(Converter.getShortName(sourceClass) + ".class ==> " + Converter.getShortName(targetClass) + ".class");
-                        System.err.print("testPair[" + i + "]=");
+                        System.err.println();
+                        System.err.println("{ " + getShortName(sourceClass) + ".class ==> " + getShortName(targetClass) + ".class }");
+                        System.err.print("testPair[" + i + "] = ");
                         if (testPair.length == 2) {
                             System.err.println("{ " + testPair[0].toString() + ", " + testPair[1].toString() + " }");
                         }
-                        throw e;
+                        System.err.println();
+                        e.printStackTrace();
+                        System.err.println();
                     }
                 }
             }

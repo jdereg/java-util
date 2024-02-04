@@ -218,6 +218,7 @@ class ConverterEverythingTest
                 { "127", (byte)127 },
                 { "", (byte)0 },
                 { "crapola", new IllegalArgumentException("Value: crapola not parseable as a byte value or outside -128 to 127")},
+                { "54 crapola", new IllegalArgumentException("Value: 54 crapola not parseable as a byte value or outside -128 to 127")},
                 { "-129", new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
                 { "128", new IllegalArgumentException("128 not parseable as a byte value or outside -128 to 127") },
         });

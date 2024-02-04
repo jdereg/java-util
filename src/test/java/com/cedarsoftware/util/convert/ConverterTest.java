@@ -4328,7 +4328,6 @@ class ConverterTest
     @Test
     void testKnownUnsupportedConversions()
     {
-        System.out.println(converter.getSupportedConversions());
         assertThatThrownBy(() -> converter.convert((byte)50, Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unsupported conversion");

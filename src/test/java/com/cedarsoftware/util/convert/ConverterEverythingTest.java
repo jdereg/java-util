@@ -195,7 +195,7 @@ class ConverterEverythingTest
                 { mapOf("value", "127"), Byte.MAX_VALUE },
                 { mapOf("value", 127L), Byte.MAX_VALUE },
 
-                { mapOf("_v", "-129"), new IllegalArgumentException("-29 not parseable as a byte value or outside -128 to 127") },
+                { mapOf("_v", "-129"), new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", -129), (byte)127 },
                 { mapOf("value", "-129"), new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
                 { mapOf("value", -129L), (byte) 127 },
@@ -208,7 +208,7 @@ class ConverterEverythingTest
         TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
                 { "-1.1", (byte) -1 },
-                { "-1.9", (byte) -2 },
+                { "-1.9", (byte) -1 },
                 { "0", (byte) 0 },
                 { "1", (byte) 1 },
                 { "1.1", (byte) 1 },
@@ -230,6 +230,7 @@ class ConverterEverythingTest
 
     @Test
     void testEverything() {
+        boolean failed = false;
         Map<Class<?>, Set<Class<?>>> map = converter.allSupportedConversions();
         
         for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
@@ -274,9 +275,14 @@ class ConverterEverythingTest
                         System.err.println();
                         e.printStackTrace();
                         System.err.println();
+                        failed = true;
                     }
                 }
             }
+        }
+
+        if (failed) {
+            throw new RuntimeException("One or more tests failed.");
         }
     }
 }

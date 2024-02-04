@@ -48,6 +48,8 @@ class ConverterEverythingTest
         //   {source1, answer1},
         //   ...
         //   {source-n, answer-n}
+
+        // Byte/byte
         TEST_FACTORY.put(pair(Void.class, byte.class), new Object[][] {
                 { null, (byte)0 }
         });
@@ -194,6 +196,7 @@ class ConverterEverythingTest
 
                 { mapOf("_v", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", 128), (byte) -128 },
+                { mapOf("_v", mapOf("_v", 128L)), (byte) -128 },    // Prove use of recursive call to .convert()
         });
         TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
@@ -215,6 +218,7 @@ class ConverterEverythingTest
                 { "128", new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
         });
 
+        // MonthDay
         TEST_FACTORY.put(pair(Void.class, MonthDay.class), new Object[][] {
                 { null, null },
         });
@@ -251,8 +255,11 @@ class ConverterEverythingTest
                 { mapOf("_v","--6-30"), new IllegalArgumentException("Unable to extract Month-Day from string: --6-30") },
                 { mapOf("month","6", "day", 30), MonthDay.of(6, 30) },
                 { mapOf("month",6L, "day", "30"), MonthDay.of(6, 30)},
+                { mapOf("month", mapOf("_v", 6L), "day", "30"), MonthDay.of(6, 30)},    // recursive on "month"
+                { mapOf("month", 6L, "day", mapOf("_v", "30")), MonthDay.of(6, 30)},    // recursive on "day"
         });
 
+        // YearMonth
         TEST_FACTORY.put(pair(Void.class, YearMonth.class), new Object[][] {
                 { null, null },
         });
@@ -273,7 +280,9 @@ class ConverterEverythingTest
                 { mapOf("_v", "2024-01"), YearMonth.of(2024, 1) },
                 { mapOf("year", "2024", "month", 12), YearMonth.of(2024, 12) },
                 { mapOf("year", new BigInteger("2024"), "month", "12"), YearMonth.of(2024, 12) },
-                { mapOf("year", mapOf("_v", 2024), "month", "12"), YearMonth.of(2024, 12) },    // Proving we recursively call .convert()
+                { mapOf("year", mapOf("_v", 2024), "month", "12"), YearMonth.of(2024, 12) },    // prove recursion on year
+                { mapOf("year", 2024, "month", mapOf("_v", "12")), YearMonth.of(2024, 12) },    // prove recursion on month
+                { mapOf("year", 2024, "month", mapOf("_v", mapOf("_v", "12"))), YearMonth.of(2024, 12) },    // prove multiple recursive calls
         });
     }
     

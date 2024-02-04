@@ -232,7 +232,7 @@ class ConverterEverythingTest
                     Object[] testPair = testData[i];
                     try {
                         if (testPair.length != 2) {
-                            throw new IllegalArgumentException("Test cases must have two values : [ source instance, target instance]");
+                            throw new IllegalArgumentException("Test cases must have two values : { source instance, target instance }");
                         }
                         if (testPair[1] instanceof Throwable) {
                             Throwable t = (Throwable) testPair[1];
@@ -247,8 +247,6 @@ class ConverterEverythingTest
                             assertEquals(testPair[1], converter.convert(testPair[0], targetClass));
                         }
                     } catch (Throwable e) {
-                        // Useful for debugging.  Stop here, look at
-                        // source: testPair[0] and target: testPair[1] (and try conveter.convert(testPair[0], targetClass) to see what you are getting back
                         System.err.println(Converter.getShortName(sourceClass) + ".class ==> " + Converter.getShortName(targetClass) + ".class");
                         System.err.print("testPair[" + i + "]=");
                         if (testPair.length == 2) {

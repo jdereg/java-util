@@ -89,8 +89,12 @@ class ConverterEverythingTest
         });
         TEST_FACTORY.put(pair(Float.class, Byte.class), new Object[][] {
                 { -1f, (byte)-1 },
+                { -1.99f, (byte)-1 },
+                { -1.1f, (byte)-1 },
                 { 0f, (byte) 0 },
                 { 1f, (byte) 1 },
+                { 1.1f, (byte) 1 },
+                { 1.999f, (byte) 1 },
                 { -128f, Byte.MIN_VALUE },
                 { 127f, Byte.MAX_VALUE },
                 { -129f, (byte) 127 }, // verify wrap around
@@ -98,8 +102,12 @@ class ConverterEverythingTest
         });
         TEST_FACTORY.put(pair(Double.class, Byte.class), new Object[][] {
                 { -1d, (byte) -1 },
+                { -1.99d, (byte)-1 },
+                { -1.1d, (byte)-1 },
                 { 0d, (byte) 0 },
                 { 1d, (byte) 1 },
+                { 1.1d, (byte) 1 },
+                { 1.999d, (byte) 1 },
                 { -128d, Byte.MIN_VALUE },
                 { 127d, Byte.MAX_VALUE },
                 {-129d, (byte) 127 }, // verify wrap around
@@ -148,8 +156,12 @@ class ConverterEverythingTest
         });
         TEST_FACTORY.put(pair(BigDecimal.class, Byte.class), new Object[][] {
                 { new BigDecimal("-1"), (byte) -1 },
+                { new BigDecimal("-1.1"), (byte) -1 },
+                { new BigDecimal("-1.9"), (byte) -1 },
                 { new BigDecimal("0"), (byte) 0 },
                 { new BigDecimal("1"), (byte) 1 },
+                { new BigDecimal("1.1"), (byte) 1 },
+                { new BigDecimal("1.9"), (byte) 1 },
                 { new BigDecimal("-128"), Byte.MIN_VALUE },
                 { new BigDecimal("127"), Byte.MAX_VALUE },
                 { new BigDecimal("-129"), (byte)127 },
@@ -172,7 +184,7 @@ class ConverterEverythingTest
                 { mapOf("_v", "1"), (byte) 1 },
                 { mapOf("_v", 1), (byte) 1 },
                 { mapOf("value", "1"), (byte) 1 },
-                { mapOf("value", 1L), (byte) 1 },
+                { mapOf("value", 1d), (byte) 1 },
 
                 { mapOf("_v","-128"), Byte.MIN_VALUE },
                 { mapOf("_v",-128), Byte.MIN_VALUE },
@@ -195,11 +207,17 @@ class ConverterEverythingTest
                 { mapOf("value", 128L), (byte) -128 },
         });
         TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
-                { "-1", (byte)-1 },
-                { "0", (byte)0 },
-                { "1", (byte)1 },
+                { "-1", (byte) -1 },
+                { "-1.1", (byte) -1 },
+                { "-1.9", (byte) -1 },
+                { "0", (byte) 0 },
+                { "1", (byte) 1 },
+                { "1.1", (byte) 1 },
+                { "1.9", (byte) 1 },
                 { "-128", (byte)-128 },
                 { "127", (byte)127 },
+                { "", (byte)0 },
+                { "crapola", new IllegalArgumentException("Value: crapola not parseable as a byte value or outside -128 to 127")},
                 { "-129", new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
                 { "128", new IllegalArgumentException("128 not parseable as a byte value or outside -128 to 127") },
         });

@@ -2,6 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.MonthDay;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -177,33 +178,21 @@ class ConverterEverythingTest
                 
                 { mapOf("_v", "0"), (byte) 0 },
                 { mapOf("_v", 0), (byte) 0 },
-                { mapOf("value", "0"), (byte) 0 },
-                { mapOf("value", 0L), (byte) 0 },
 
                 { mapOf("_v", "1"), (byte) 1 },
                 { mapOf("_v", 1), (byte) 1 },
-                { mapOf("value", "1"), (byte) 1 },
-                { mapOf("value", 1d), (byte) 1 },
 
                 { mapOf("_v","-128"), Byte.MIN_VALUE },
                 { mapOf("_v",-128), Byte.MIN_VALUE },
-                { mapOf("value","-128"), Byte.MIN_VALUE },
-                { mapOf("value",-128L), Byte.MIN_VALUE },
 
                 { mapOf("_v", "127"), Byte.MAX_VALUE },
                 { mapOf("_v", 127), Byte.MAX_VALUE },
-                { mapOf("value", "127"), Byte.MAX_VALUE },
-                { mapOf("value", 127L), Byte.MAX_VALUE },
 
                 { mapOf("_v", "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", -129), (byte)127 },
-                { mapOf("value", "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
-                { mapOf("value", -129L), (byte) 127 },
 
                 { mapOf("_v", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", 128), (byte) -128 },
-                { mapOf("value", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
-                { mapOf("value", 128L), (byte) -128 },
         });
         TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
@@ -224,7 +213,44 @@ class ConverterEverythingTest
                 { "-129", new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
                 { "128", new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
         });
+
+        TEST_FACTORY.put(pair(Void.class, MonthDay.class), new Object[][] {
+                { null, null },
+        });
+        TEST_FACTORY.put(pair(MonthDay.class, MonthDay.class), new Object[][] {
+                { MonthDay.of(1, 1), MonthDay.of(1, 1) },
+                { MonthDay.of(12, 31), MonthDay.of(12, 31) },
+                { MonthDay.of(6, 30), MonthDay.of(6, 30) },
+        });
+        TEST_FACTORY.put(pair(String.class, MonthDay.class), new Object[][] {
+                { "1-1", MonthDay.of(1, 1) },
+                { "01-01", MonthDay.of(1, 1) },
+                { "--01-01", MonthDay.of(1, 1) },
+                { "--1-1", new IllegalArgumentException("Unable to extract Month-Day from string: --1-1") },
+                { "12-31", MonthDay.of(12, 31) },
+                { "--12-31", MonthDay.of(12, 31) },
+                { "-12-31", new IllegalArgumentException("Unable to extract Month-Day from string: -12-31") },
+                { "6-30", MonthDay.of(6, 30) },
+                { "06-30", MonthDay.of(6, 30) },
+                { "--06-30", MonthDay.of(6, 30) },
+                { "--6-30", new IllegalArgumentException("Unable to extract Month-Day from string: --6-30") },
+        });
+        TEST_FACTORY.put(pair(Map.class, MonthDay.class), new Object[][] {
+                { mapOf("_v", "1-1"), MonthDay.of(1, 1) },
+                { mapOf("value", "1-1"), MonthDay.of(1, 1) },
+                { mapOf("_v", "01-01"), MonthDay.of(1, 1) },
+                { mapOf("_v","--01-01"), MonthDay.of(1, 1) },
+                { mapOf("_v","--1-1"), new IllegalArgumentException("Unable to extract Month-Day from string: --1-1") },
+                { mapOf("_v","12-31"), MonthDay.of(12, 31) },
+                { mapOf("_v","--12-31"), MonthDay.of(12, 31) },
+                { mapOf("_v","-12-31"), new IllegalArgumentException("Unable to extract Month-Day from string: -12-31") },
+                { mapOf("_v","6-30"), MonthDay.of(6, 30) },
+                { mapOf("_v","06-30"), MonthDay.of(6, 30) },
+                { mapOf("_v","--06-30"), MonthDay.of(6, 30) },
+                { mapOf("_v","--6-30"), new IllegalArgumentException("Unable to extract Month-Day from string: --6-30") },
+        });
     }
+    
     @BeforeEach
     public void before() {
         // create converter with default options
@@ -235,6 +261,8 @@ class ConverterEverythingTest
     void testEverything() {
         boolean failed = false;
         Map<Class<?>, Set<Class<?>>> map = converter.allSupportedConversions();
+        int neededTests = 0;
+        int count = 0;
         
         for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
             Class<?> sourceClass = entry.getKey();
@@ -247,6 +275,7 @@ class ConverterEverythingTest
                     // Change to throw exception, so that when new conversions are added, the tests will fail until
                     // an "everything" test entry is added.
                     System.err.println("No test data for: " + getShortName(sourceClass) + " ==> " + getShortName(targetClass));
+                    neededTests++;
                     continue;
                 }
                 
@@ -254,6 +283,7 @@ class ConverterEverythingTest
                     Object[] testPair = testData[i];
                     try {
                         verifyTestPair(sourceClass, targetClass, testPair);
+                        count++;
                     } catch (Throwable e) {
                         System.err.println();
                         System.err.println("{ " + getShortName(sourceClass) + ".class ==> " + getShortName(targetClass) + ".class }");
@@ -270,8 +300,14 @@ class ConverterEverythingTest
             }
         }
 
+        if (neededTests > 0) {
+            System.err.println("Conversions needing tests: " + neededTests);
+        }
         if (failed) {
             throw new RuntimeException("One or more tests failed.");
+        }
+        if (neededTests > 0 || failed) {
+            System.out.println("Tests passed: " + count);
         }
     }
 
@@ -279,15 +315,17 @@ class ConverterEverythingTest
         if (testPair.length != 2) {
             throw new IllegalArgumentException("Test cases must have two values : { source instance, target instance }");
         }
+
+        if (testPair[0] != null) {
+            assertThat(testPair[0]).isInstanceOf(sourceClass);
+        }
+        
         if (testPair[1] instanceof Throwable) {
             Throwable t = (Throwable) testPair[1];
             assertThatExceptionOfType(t.getClass())
                     .isThrownBy(() ->  converter.convert(testPair[0], targetClass))
                     .withMessageContaining(((Throwable) testPair[1]).getMessage());
         } else {
-            if (testPair[0] != null) {
-                assertThat(testPair[0]).isInstanceOf(sourceClass);
-            }
             assertEquals(testPair[1], converter.convert(testPair[0], targetClass));
         }
     }

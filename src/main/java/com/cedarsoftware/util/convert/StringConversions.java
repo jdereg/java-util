@@ -308,7 +308,7 @@ public final class StringConversions {
         catch (DateTimeParseException e) {
             try {
                 ZonedDateTime zdt = DateUtilities.parseDate(yearMonth, options.getZoneId(), true);
-                return YearMonth.of(zdt.getYear(), zdt.getDayOfMonth());
+                return YearMonth.of(zdt.getYear(), zdt.getMonthValue());
             }
             catch (Exception ex) {
                 throw new IllegalArgumentException("Unable to extract Year-Month from string: " + yearMonth);

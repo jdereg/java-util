@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.MonthDay;
+import java.time.YearMonth;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -251,6 +252,29 @@ class ConverterEverythingTest
                 { mapOf("month","6", "day", 30), MonthDay.of(6, 30) },
                 { mapOf("month",6L, "day", "30"), MonthDay.of(6, 30)},
         });
+
+        TEST_FACTORY.put(pair(Void.class, YearMonth.class), new Object[][] {
+                { null, null },
+        });
+        TEST_FACTORY.put(pair(YearMonth.class, YearMonth.class), new Object[][] {
+                { YearMonth.of(2023, 12), YearMonth.of(2023, 12) },
+                { YearMonth.of(1970, 1), YearMonth.of(1970, 1) },
+                { YearMonth.of(1999, 6), YearMonth.of(1999, 6) },
+        });
+        TEST_FACTORY.put(pair(String.class, YearMonth.class), new Object[][] {
+                { "2024-01", YearMonth.of(2024, 1) },
+                { "2024-1", new IllegalArgumentException("Unable to extract Year-Month from string: 2024-1") },
+                { "2024-1-1", YearMonth.of(2024, 1) },
+                { "2024-06-01", YearMonth.of(2024, 6) },
+                { "2024-12-31", YearMonth.of(2024, 12) },
+                { "05:45 2024-12-31", YearMonth.of(2024, 12) },
+        });
+        TEST_FACTORY.put(pair(Map.class, YearMonth.class), new Object[][] {
+                { mapOf("_v", "2024-01"), YearMonth.of(2024, 1) },
+                { mapOf("year", "2024", "month", 12), YearMonth.of(2024, 12) },
+                { mapOf("year", new BigInteger("2024"), "month", "12"), YearMonth.of(2024, 12) },
+                { mapOf("year", mapOf("_v", 2024), "month", "12"), YearMonth.of(2024, 12) },    // Proving we recursively call .convert()
+        });
     }
     
     @BeforeEach
@@ -296,6 +320,7 @@ class ConverterEverythingTest
                         System.err.println();
                         e.printStackTrace();
                         System.err.println();
+                        System.err.flush();
                         failed = true;
                     }
                 }
@@ -304,6 +329,7 @@ class ConverterEverythingTest
 
         if (neededTests > 0) {
             System.err.println("Conversions needing tests: " + neededTests);
+            System.err.flush();
         }
         if (failed) {
             throw new RuntimeException("One or more tests failed.");

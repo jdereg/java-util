@@ -308,6 +308,7 @@ class ConverterEverythingTest
         }
         if (neededTests > 0 || failed) {
             System.out.println("Tests passed: " + count);
+            System.out.flush();
         }
     }
 

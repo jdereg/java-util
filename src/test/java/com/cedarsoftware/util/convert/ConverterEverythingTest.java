@@ -195,14 +195,14 @@ class ConverterEverythingTest
                 { mapOf("value", "127"), Byte.MAX_VALUE },
                 { mapOf("value", 127L), Byte.MAX_VALUE },
 
-                { mapOf("_v", "-129"), new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
+                { mapOf("_v", "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", -129), (byte)127 },
-                { mapOf("value", "-129"), new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
+                { mapOf("value", "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("value", -129L), (byte) 127 },
 
-                { mapOf("_v", "128"), new IllegalArgumentException("128 not parseable as a byte value or outside -128 to 127") },
+                { mapOf("_v", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("_v", 128), (byte) -128 },
-                { mapOf("value", "128"), new IllegalArgumentException("128 not parseable as a byte value or outside -128 to 127") },
+                { mapOf("value", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
                 { mapOf("value", 128L), (byte) -128 },
         });
         TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
@@ -216,13 +216,13 @@ class ConverterEverythingTest
                 { "-128", (byte)-128 },
                 { "127", (byte)127 },
                 { "", (byte)0 },
-                { "crapola", new IllegalArgumentException("Value: crapola not parseable as a byte value or outside -128 to 127")},
-                { "54 crapola", new IllegalArgumentException("Value: 54 crapola not parseable as a byte value or outside -128 to 127")},
-                { "54crapola", new IllegalArgumentException("Value: 54crapola not parseable as a byte value or outside -128 to 127")},
-                { "crapola 54", new IllegalArgumentException("Value: crapola 54 not parseable as a byte value or outside -128 to 127")},
-                { "crapola54", new IllegalArgumentException("Value: crapola54 not parseable as a byte value or outside -128 to 127")},
-                { "-129", new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
-                { "128", new IllegalArgumentException("128 not parseable as a byte value or outside -128 to 127") },
+                { "crapola", new IllegalArgumentException("Value 'crapola' not parseable as a byte value or outside -128 to 127")},
+                { "54 crapola", new IllegalArgumentException("Value '54 crapola' not parseable as a byte value or outside -128 to 127")},
+                { "54crapola", new IllegalArgumentException("Value '54crapola' not parseable as a byte value or outside -128 to 127")},
+                { "crapola 54", new IllegalArgumentException("Value 'crapola 54' not parseable as a byte value or outside -128 to 127")},
+                { "crapola54", new IllegalArgumentException("Value 'crapola54' not parseable as a byte value or outside -128 to 127")},
+                { "-129", new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
+                { "128", new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
         });
     }
     @BeforeEach

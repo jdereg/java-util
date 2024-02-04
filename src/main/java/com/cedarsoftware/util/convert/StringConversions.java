@@ -84,7 +84,7 @@ public final class StringConversions {
         } catch (NumberFormatException e) {
             Long value = toLong(s, bigDecimalMinByte, bigDecimalMaxByte);
             if (value == null) {
-                throw new IllegalArgumentException("Value: " + s + " not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + s + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
             }
             return value.byteValue();
         }
@@ -104,7 +104,7 @@ public final class StringConversions {
         } catch (NumberFormatException e) {
             Long value = toLong(str, bigDecimalMinShort, bigDecimalMaxShort);
             if (value == null) {
-                throw new IllegalArgumentException("Value: " + o + " not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + o + "' not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
             }
             return value.shortValue();
         }
@@ -124,7 +124,7 @@ public final class StringConversions {
         } catch (NumberFormatException e) {
             Long value = toLong(str, bigDecimalMinInteger, bigDecimalMaxInteger);
             if (value == null) {
-                throw new IllegalArgumentException("Value: " + from + " not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
             }
             return value.intValue();
         }
@@ -145,7 +145,7 @@ public final class StringConversions {
         } catch (NumberFormatException e) {
             Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
             if (value == null) {
-                throw new IllegalArgumentException("Value: " + from + " not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
             }
             return value;
         }
@@ -172,7 +172,7 @@ public final class StringConversions {
         try {
             return Float.valueOf(str);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value: " + from + " not parseable as a float value");
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value");
         }
     }
 
@@ -184,7 +184,7 @@ public final class StringConversions {
         try {
             return Double.valueOf(str);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value: " + from + " not parseable as a double value");
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value");
         }
     }
 
@@ -239,7 +239,7 @@ public final class StringConversions {
             BigDecimal bigDec = new BigDecimal(str);
             return bigDec.toBigInteger();
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value: " + from + " not parseable as a BigInteger value.");
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.");
         }
     }
 
@@ -251,7 +251,7 @@ public final class StringConversions {
         try {
             return new BigDecimal(str);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value: " + from + " not parseable as a BigDecimal value.");
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigDecimal value.");
         }
     }
 

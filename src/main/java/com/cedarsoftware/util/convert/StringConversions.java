@@ -318,7 +318,12 @@ public final class StringConversions {
 
     static Period toPeriod(Object from, Converter converter, ConverterOptions options) {
         String period = (String) from;
-        return Period.parse(period);
+        try {
+            return Period.parse(period);
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException("Unable to parse '" + period + "' as a Period.");
+        }
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {

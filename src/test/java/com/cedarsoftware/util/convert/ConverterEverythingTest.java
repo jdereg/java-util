@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.MonthDay;
+import java.time.Period;
 import java.time.YearMonth;
 import java.util.Map;
 import java.util.Set;
@@ -278,11 +279,38 @@ class ConverterEverythingTest
         });
         TEST_FACTORY.put(pair(Map.class, YearMonth.class), new Object[][] {
                 { mapOf("_v", "2024-01"), YearMonth.of(2024, 1) },
+                { mapOf("value", "2024-01"), YearMonth.of(2024, 1) },
                 { mapOf("year", "2024", "month", 12), YearMonth.of(2024, 12) },
                 { mapOf("year", new BigInteger("2024"), "month", "12"), YearMonth.of(2024, 12) },
                 { mapOf("year", mapOf("_v", 2024), "month", "12"), YearMonth.of(2024, 12) },    // prove recursion on year
                 { mapOf("year", 2024, "month", mapOf("_v", "12")), YearMonth.of(2024, 12) },    // prove recursion on month
                 { mapOf("year", 2024, "month", mapOf("_v", mapOf("_v", "12"))), YearMonth.of(2024, 12) },    // prove multiple recursive calls
+        });
+
+        // Period
+        TEST_FACTORY.put(pair(Void.class, Period.class), new Object[][] {
+                { null, null },
+        });
+        TEST_FACTORY.put(pair(Period.class, Period.class), new Object[][] {
+                { Period.of(0, 0, 0), Period.of(0,0, 0) },
+                { Period.of(1, 1, 1), Period.of(1,1, 1) },
+        });
+        TEST_FACTORY.put(pair(String.class, Period.class), new Object[][] {
+                { "P0D", Period.of(0, 0, 0) },
+                { "P1D", Period.of(0, 0, 1) },
+                { "P1M", Period.of(0, 1, 0) },
+                { "P1Y", Period.of(1, 0, 0) },
+                { "P1Y1M", Period.of(1, 1, 0) },
+                { "P1Y1D", Period.of(1, 0, 1) },
+                { "P1Y1M1D", Period.of(1, 1, 1) },
+                { "P10Y10M10D", Period.of(10, 10, 10) },
+                { "PONY", new IllegalArgumentException("Unable to parse 'PONY' as a Period.") },
+        });
+        TEST_FACTORY.put(pair(Map.class, Period.class), new Object[][] {
+                { mapOf("_v", "P0D"), Period.of(0, 0, 0) },
+                { mapOf("_v", "P1Y1M1D"), Period.of(1, 1, 1) },
+                { mapOf("years", "2", "months", 2, "days", 2.0d), Period.of(2, 2, 2) },
+                { mapOf("years", mapOf("_v", (byte)2), "months", mapOf("_v", 2.0f), "days", mapOf("_v", new AtomicInteger(2))), Period.of(2, 2, 2) },   // recursion
         });
     }
     

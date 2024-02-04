@@ -248,6 +248,8 @@ class ConverterEverythingTest
                 { mapOf("_v","06-30"), MonthDay.of(6, 30) },
                 { mapOf("_v","--06-30"), MonthDay.of(6, 30) },
                 { mapOf("_v","--6-30"), new IllegalArgumentException("Unable to extract Month-Day from string: --6-30") },
+                { mapOf("month","6", "day", 30), MonthDay.of(6, 30) },
+                { mapOf("month",6L, "day", "30"), MonthDay.of(6, 30)},
         });
     }
     

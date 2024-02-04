@@ -501,7 +501,7 @@ public final class StringConversions {
                 return Year.of(zdt.getYear());
             }
             catch (Exception ex) {
-                throw new IllegalArgumentException("Unable to extract 4-digit year from string: " + s);
+                throw new IllegalArgumentException("Unable to parse 4-digit year from '" + s + "'");
             }
         }
     }

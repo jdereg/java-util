@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.MonthDay;
 import java.time.Period;
+import java.time.Year;
 import java.time.YearMonth;
 import java.util.Map;
 import java.util.Set;
@@ -308,10 +309,38 @@ class ConverterEverythingTest
         });
         TEST_FACTORY.put(pair(Map.class, Period.class), new Object[][] {
                 { mapOf("_v", "P0D"), Period.of(0, 0, 0) },
-                { mapOf("_v", "P1Y1M1D"), Period.of(1, 1, 1) },
+                { mapOf("value", "P1Y1M1D"), Period.of(1, 1, 1) },
                 { mapOf("years", "2", "months", 2, "days", 2.0d), Period.of(2, 2, 2) },
                 { mapOf("years", mapOf("_v", (byte)2), "months", mapOf("_v", 2.0f), "days", mapOf("_v", new AtomicInteger(2))), Period.of(2, 2, 2) },   // recursion
         });
+        
+        // Year
+        TEST_FACTORY.put(pair(Void.class, Year.class), new Object[][] {
+                { null, null },
+        });
+        TEST_FACTORY.put(pair(Year.class, Year.class), new Object[][] {
+                { Year.of(1970), Year.of(1970) },
+        });
+        TEST_FACTORY.put(pair(String.class, Year.class), new Object[][] {
+                { "1970", Year.of(1970) },
+                { "1999", Year.of(1999) },
+                { "2000", Year.of(2000) },
+                { "2024", Year.of(2024) },
+                { "1670", Year.of(1670) },
+                { "PONY", new IllegalArgumentException("Unable to parse 4-digit year from 'PONY'") },
+        });
+        TEST_FACTORY.put(pair(Map.class, Year.class), new Object[][] {
+                { mapOf("_v", "1984"), Year.of(1984) },
+                { mapOf("value", 1984L), Year.of(1984) },
+//                { mapOf("year", 1992), Year.of(1992) },
+//                { mapOf("year", mapOf("_v", (short)2024)), Year.of(2024) }, // recursion
+        });
+//        DEFAULT_FACTORY.put(pair(Void.class, Year.class), VoidConversions::toNull);
+//        DEFAULT_FACTORY.put(pair(Year.class, Year.class), Converter::identity);
+//        DEFAULT_FACTORY.put(pair(Byte.class, Year.class), UNSUPPORTED);
+//        DEFAULT_FACTORY.put(pair(Number.class, Year.class), NumberConversions::toYear);
+//        DEFAULT_FACTORY.put(pair(String.class, Year.class), StringConversions::toYear);
+//        DEFAULT_FACTORY.put(pair(Map.class, Year.class), MapConversions::toYear);
     }
     
     @BeforeEach

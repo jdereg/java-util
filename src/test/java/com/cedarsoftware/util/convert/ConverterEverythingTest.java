@@ -224,7 +224,7 @@ class ConverterEverythingTest
                 if (testData == null) { // data set needs added
                     // Change to throw exception, so that when new conversions are added, the tests will fail until
                     // an "everything" test entry is added.
-                    System.out.println("No test data for: " + Converter.getShortName(sourceClass));
+                    System.err.println("No test data for: " + Converter.getShortName(sourceClass));
                     continue;
                 }
                 

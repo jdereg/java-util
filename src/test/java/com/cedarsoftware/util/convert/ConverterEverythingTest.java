@@ -218,6 +218,9 @@ class ConverterEverythingTest
                 { "", (byte)0 },
                 { "crapola", new IllegalArgumentException("Value: crapola not parseable as a byte value or outside -128 to 127")},
                 { "54 crapola", new IllegalArgumentException("Value: 54 crapola not parseable as a byte value or outside -128 to 127")},
+                { "54crapola", new IllegalArgumentException("Value: 54crapola not parseable as a byte value or outside -128 to 127")},
+                { "crapola 54", new IllegalArgumentException("Value: crapola 54 not parseable as a byte value or outside -128 to 127")},
+                { "crapola54", new IllegalArgumentException("Value: crapola54 not parseable as a byte value or outside -128 to 127")},
                 { "-129", new IllegalArgumentException("-129 not parseable as a byte value or outside -128 to 127") },
                 { "128", new IllegalArgumentException("128 not parseable as a byte value or outside -128 to 127") },
         });
@@ -250,21 +253,7 @@ class ConverterEverythingTest
                 for (int i=0; i < testData.length; i++) {
                     Object[] testPair = testData[i];
                     try {
-                        if (testPair.length != 2) {
-                            throw new IllegalArgumentException("Test cases must have two values : { source instance, target instance }");
-                        }
-                        if (testPair[1] instanceof Throwable) {
-                            Throwable t = (Throwable) testPair[1];
-                            assertThatExceptionOfType(t.getClass())
-                                    .isThrownBy(() ->  converter.convert(testPair[0], targetClass))
-                                    .withMessageContaining(((Throwable) testPair[1]).getMessage());
-
-                        } else {
-                            if (testPair[0] != null) {
-                                assertThat(testPair[0]).isInstanceOf(sourceClass);
-                            }
-                            assertEquals(testPair[1], converter.convert(testPair[0], targetClass));
-                        }
+                        verifyTestPair(sourceClass, targetClass, testPair);
                     } catch (Throwable e) {
                         System.err.println();
                         System.err.println("{ " + getShortName(sourceClass) + ".class ==> " + getShortName(targetClass) + ".class }");
@@ -283,6 +272,23 @@ class ConverterEverythingTest
 
         if (failed) {
             throw new RuntimeException("One or more tests failed.");
+        }
+    }
+
+    private void verifyTestPair(Class<?> sourceClass, Class<?> targetClass, Object[] testPair) {
+        if (testPair.length != 2) {
+            throw new IllegalArgumentException("Test cases must have two values : { source instance, target instance }");
+        }
+        if (testPair[1] instanceof Throwable) {
+            Throwable t = (Throwable) testPair[1];
+            assertThatExceptionOfType(t.getClass())
+                    .isThrownBy(() ->  converter.convert(testPair[0], targetClass))
+                    .withMessageContaining(((Throwable) testPair[1]).getMessage());
+        } else {
+            if (testPair[0] != null) {
+                assertThat(testPair[0]).isInstanceOf(sourceClass);
+            }
+            assertEquals(testPair[1], converter.convert(testPair[0], targetClass));
         }
     }
 }

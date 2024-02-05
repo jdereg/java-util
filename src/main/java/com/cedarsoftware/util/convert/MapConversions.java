@@ -348,7 +348,7 @@ public final class MapConversions {
         Map<?, ?> map = asMap(from);
 
         if (map.containsKey(key)) {
-            return converter.convert(key, type, options);
+            return converter.convert(map.get(key), type, options);
         }
 
         return extractValue(map, converter, options, type, key);

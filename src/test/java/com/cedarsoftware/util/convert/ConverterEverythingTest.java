@@ -332,15 +332,12 @@ class ConverterEverythingTest
         TEST_FACTORY.put(pair(Map.class, Year.class), new Object[][] {
                 { mapOf("_v", "1984"), Year.of(1984) },
                 { mapOf("value", 1984L), Year.of(1984) },
-//                { mapOf("year", 1992), Year.of(1992) },
-//                { mapOf("year", mapOf("_v", (short)2024)), Year.of(2024) }, // recursion
+                { mapOf("year", 1492), Year.of(1492) },
+                { mapOf("year", mapOf("_v", (short)2024)), Year.of(2024) }, // recursion
         });
-//        DEFAULT_FACTORY.put(pair(Void.class, Year.class), VoidConversions::toNull);
-//        DEFAULT_FACTORY.put(pair(Year.class, Year.class), Converter::identity);
-//        DEFAULT_FACTORY.put(pair(Byte.class, Year.class), UNSUPPORTED);
-//        DEFAULT_FACTORY.put(pair(Number.class, Year.class), NumberConversions::toYear);
-//        DEFAULT_FACTORY.put(pair(String.class, Year.class), StringConversions::toYear);
-//        DEFAULT_FACTORY.put(pair(Map.class, Year.class), MapConversions::toYear);
+        TEST_FACTORY.put(pair(Number.class, Year.class), new Object[][] {
+                { (byte)101, new IllegalArgumentException("Unsupported conversion, source type [Byte (101)] target type 'Year'") },
+        });
     }
     
     @BeforeEach
@@ -355,6 +352,10 @@ class ConverterEverythingTest
         Map<Class<?>, Set<Class<?>>> map = converter.allSupportedConversions();
         int neededTests = 0;
         int count = 0;
+        boolean runOnlyOneTest = false;
+        Class<?> singleSource = Number.class;
+        Class<?> singleTarget = Year.class;
+        int singleIndex = 0;
         
         for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
             Class<?> sourceClass = entry.getKey();
@@ -372,6 +373,12 @@ class ConverterEverythingTest
                 }
                 
                 for (int i=0; i < testData.length; i++) {
+                    if (runOnlyOneTest) {
+                        if (!sourceClass.equals(singleSource) || !targetClass.equals(singleTarget) || singleIndex != i) {
+                            continue;
+                        }
+                    }
+
                     Object[] testPair = testData[i];
                     try {
                         verifyTestPair(sourceClass, targetClass, testPair);

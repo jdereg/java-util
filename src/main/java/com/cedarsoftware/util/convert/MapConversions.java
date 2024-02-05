@@ -62,7 +62,9 @@ public final class MapConversions {
     private static final String DAY = "day";
     private static final String DAYS = "days";
     private static final String HOUR = "hour";
+    private static final String HOURS = "hours";
     private static final String MINUTE = "minute";
+    private static final String MINUTES = "minutes";
     private static final String SECOND = "second";
     private static final String SECONDS = "seconds";
     private static final String NANO = "nano";
@@ -333,6 +335,19 @@ public final class MapConversions {
             return zoneId;
         } else {
             return fromSingleKey(from, converter, options, ZONE, ZoneId.class);
+        }
+    }
+
+    private static final String[] ZONE_OFFSET_PARAMS = new String[] { HOURS, MINUTES, SECONDS };
+    static ZoneOffset toZoneOffset(Object from, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(HOURS)) {
+            int hours = converter.convert(map.get(HOURS), int.class, options);
+            int minutes = converter.convert(map.get(MINUTES), int.class, options);  // optional
+            int seconds = converter.convert(map.get(SECONDS), int.class, options);  // optional
+            return ZoneOffset.ofHoursMinutesSeconds(hours, minutes, seconds);
+        } else {
+            return fromValueForMultiKey(from, converter, options, ZoneOffset.class, ZONE_OFFSET_PARAMS);
         }
     }
 

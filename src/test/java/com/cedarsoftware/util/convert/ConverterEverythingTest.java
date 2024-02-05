@@ -7,6 +7,7 @@ import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -363,6 +364,32 @@ class ConverterEverythingTest
                 { mapOf("_v", "Asia/Tokyo"), TOKYO_Z },
                 { mapOf("_v", TOKYO_Z), TOKYO_Z },
                 { mapOf("zone", mapOf("_v", TOKYO_Z)), TOKYO_Z },
+        });
+
+        // ZoneOffset
+        TEST_FACTORY.put(pair(Void.class, ZoneOffset.class), new Object[][] {
+                { null, null },
+        });
+        TEST_FACTORY.put(pair(ZoneOffset.class, ZoneOffset.class), new Object[][] {
+                { ZoneOffset.of("-05:00"), ZoneOffset.of("-05:00") },
+                { ZoneOffset.of("+5"), ZoneOffset.of("+05:00") },
+        });
+        TEST_FACTORY.put(pair(String.class, ZoneOffset.class), new Object[][] {
+                { "-00:00", ZoneOffset.of("+00:00") },
+                { "-05:00", ZoneOffset.of("-05:00") },
+                { "+5", ZoneOffset.of("+05:00") },
+                { "+05:00:01", ZoneOffset.of("+05:00:01") },
+                { "America/New_York", new IllegalArgumentException("Unknown time-zone offset: 'America/New_York'") },
+        });
+        TEST_FACTORY.put(pair(Map.class, ZoneOffset.class), new Object[][] {
+                { mapOf("_v", "-10"), ZoneOffset.of("-10:00") },
+                { mapOf("hours", -10L), ZoneOffset.of("-10:00") },
+                { mapOf("hours", -10L, "minutes", "0"), ZoneOffset.of("-10:00") },
+                { mapOf("hrs", -10L, "mins", "0"), new IllegalArgumentException("Map to ZoneOffset the map must include one of the following: [hours, minutes, seconds], [_v], or [value]") },
+                { mapOf("hours", -10L, "minutes", "0", "seconds", 0), ZoneOffset.of("-10:00") },
+                { mapOf("hours", "-10", "minutes", (byte)-15, "seconds", "-1"), ZoneOffset.of("-10:15:01") },
+                { mapOf("hours", "10", "minutes", (byte)15, "seconds", true), ZoneOffset.of("+10:15:01") },
+                { mapOf("hours", mapOf("_v","10"), "minutes", mapOf("_v", (byte)15), "seconds", mapOf("_v", true)), ZoneOffset.of("+10:15:01") }, // full recursion
         });
     }
     

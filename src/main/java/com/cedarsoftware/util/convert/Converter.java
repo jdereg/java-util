@@ -18,6 +18,7 @@ import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
@@ -678,6 +679,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(YearMonth.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Period.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(ZoneId.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(ZoneOffset.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(OffsetTime.class, String.class), OffsetTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(Year.class, String.class), YearConversions::toString);
@@ -718,7 +720,12 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(String.class, ZoneId.class), StringConversions::toZoneId);
         DEFAULT_FACTORY.put(pair(Map.class, ZoneId.class), MapConversions::toZoneId);
         
-//        java.time.ZoneOffset = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneOffsetFactory
+        // ZoneOffset conversions supported
+        DEFAULT_FACTORY.put(pair(Void.class, ZoneOffset.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(ZoneOffset.class, ZoneOffset.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(String.class, ZoneOffset.class), StringConversions::toZoneOffset);
+        DEFAULT_FACTORY.put(pair(Map.class, ZoneOffset.class), MapConversions::toZoneOffset);
+
 //        java.time.ZoneRegion = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneIdFactory
 
         // MonthDay conversions supported
@@ -838,6 +845,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(YearMonth.class, Map.class), YearMonthConversions::toMap);
         DEFAULT_FACTORY.put(pair(Period.class, Map.class), PeriodConversions::toMap);
         DEFAULT_FACTORY.put(pair(ZoneId.class, Map.class), ZoneIdConversions::toMap);
+        DEFAULT_FACTORY.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
         DEFAULT_FACTORY.put(pair(Class.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(UUID.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Calendar.class, Map.class), MapConversions::initMap);
@@ -875,6 +883,7 @@ public final class Converter {
      *                     many other JDK classes, including Map.  For Map, often it will seek a 'value'
      *                     field, however, for some complex objects, like UUID, it will look for specific
      *                     fields within the Map to perform the conversion.
+     * @see #getSupportedConversions()
      * @return An instanceof targetType class, based upon the value passed in.
      */
     public <T> T convert(Object from, Class<T> toType) {
@@ -907,6 +916,7 @@ public final class Converter {
      *                     fields within the Map to perform the conversion.
      * @param options      ConverterOptions - allows you to specify locale, ZoneId, etc. to support conversion
      *                     operations.
+     * @see #getSupportedConversions()
      * @return An instanceof targetType class, based upon the value passed in.
      */
     @SuppressWarnings("unchecked")

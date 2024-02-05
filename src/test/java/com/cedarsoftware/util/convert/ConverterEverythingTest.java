@@ -6,6 +6,7 @@ import java.time.MonthDay;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -173,7 +174,7 @@ class ConverterEverythingTest
                 { new BigDecimal("128"), (byte)-128 },
         });
         TEST_FACTORY.put(pair(Number.class, Byte.class), new Object[][] {
-
+                { -2L, (byte) -2 },
         });
         TEST_FACTORY.put(pair(Map.class, Byte.class), new Object[][] {
                 { mapOf("_v", "-1"), (byte) -1 },
@@ -337,6 +338,31 @@ class ConverterEverythingTest
         });
         TEST_FACTORY.put(pair(Number.class, Year.class), new Object[][] {
                 { (byte)101, new IllegalArgumentException("Unsupported conversion, source type [Byte (101)] target type 'Year'") },
+                { (short)2024, Year.of(2024) },
+        });
+
+        // ZoneId
+        ZoneId NY_Z = ZoneId.of("America/New_York");
+        ZoneId TOKYO_Z = ZoneId.of("Asia/Tokyo");
+        TEST_FACTORY.put(pair(Void.class, ZoneId.class), new Object[][] {
+                { null, null },
+        });
+        TEST_FACTORY.put(pair(ZoneId.class, ZoneId.class), new Object[][] {
+                { NY_Z, NY_Z },
+                { TOKYO_Z, TOKYO_Z },
+        });
+        TEST_FACTORY.put(pair(String.class, ZoneId.class), new Object[][] {
+                { "America/New_York", NY_Z },
+                { "Asia/Tokyo", TOKYO_Z },
+                { "America/Cincinnati", new IllegalArgumentException("Unknown time-zone ID: 'America/Cincinnati'") },
+        });
+        TEST_FACTORY.put(pair(Map.class, ZoneId.class), new Object[][] {
+                { mapOf("_v", "America/New_York"), NY_Z },
+                { mapOf("_v", NY_Z), NY_Z },
+                { mapOf("zone", NY_Z), NY_Z },
+                { mapOf("_v", "Asia/Tokyo"), TOKYO_Z },
+                { mapOf("_v", TOKYO_Z), TOKYO_Z },
+                { mapOf("zone", mapOf("_v", TOKYO_Z)), TOKYO_Z },
         });
     }
     
@@ -388,7 +414,9 @@ class ConverterEverythingTest
                         System.err.println("{ " + getShortName(sourceClass) + ".class ==> " + getShortName(targetClass) + ".class }");
                         System.err.print("testPair[" + i + "] = ");
                         if (testPair.length == 2) {
-                            System.err.println("{ " + testPair[0].toString() + ", " + testPair[1].toString() + " }");
+                            String pair0 = testPair[0] == null ? "null" : testPair[0].toString();
+                            String pair1 = testPair[1] == null ? "null" : testPair[1].toString();
+                            System.err.println("{ " + pair0 + ", " + pair1 + " }");
                         }
                         System.err.println();
                         e.printStackTrace();
@@ -401,7 +429,7 @@ class ConverterEverythingTest
         }
 
         if (neededTests > 0) {
-            System.err.println("Conversions needing tests: " + neededTests);
+            System.err.println(neededTests + " tests need to be added.");
             System.err.flush();
         }
         if (failed) {

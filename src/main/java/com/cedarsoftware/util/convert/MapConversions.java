@@ -14,6 +14,7 @@ import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
@@ -322,6 +323,16 @@ public final class MapConversions {
             return Period.of(years, months, days);
         } else {
             return fromValueForMultiKey(from, converter, options, Period.class, PERIOD_PARAMS);
+        }
+    }
+
+    static ZoneId toZoneId(Object from, Converter converter, ConverterOptions options) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(ZONE)) {
+            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class, options);
+            return zoneId;
+        } else {
+            return fromSingleKey(from, converter, options, ZONE, ZoneId.class);
         }
     }
 

@@ -17,6 +17,7 @@ import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -393,6 +394,19 @@ public final class StringConversions {
         return toZonedDateTime(from, options);
     }
 
+    static ZoneId toZoneId(Object from, Converter converter, ConverterOptions options) {
+        String s = StringUtilities.trimToNull(asString(from));
+        if (s == null) {
+            return null;
+        }
+        try {
+            return ZoneId.of(s);
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException("Unknown time-zone ID: '" + s + "'");
+        }
+    }
+
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter, ConverterOptions options) {
         String s = StringUtilities.trimToNull(asString(from));
         if (s == null) {
@@ -464,7 +478,6 @@ public final class StringConversions {
 
         return s.getBytes(options.getCharset());
     }
-
 
     static byte[] toByteArray(Object from, Converter converter, ConverterOptions options) {
         return toByteArray(from, options);

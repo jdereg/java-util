@@ -17,6 +17,7 @@ import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
@@ -676,6 +677,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(MonthDay.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(YearMonth.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(Period.class, String.class), StringConversions::toString);
+        DEFAULT_FACTORY.put(pair(ZoneId.class, String.class), StringConversions::toString);
         DEFAULT_FACTORY.put(pair(OffsetTime.class, String.class), OffsetTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         DEFAULT_FACTORY.put(pair(Year.class, String.class), YearConversions::toString);
@@ -710,7 +712,12 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(Map.class, Instant.class), MapConversions::toInstant);
         DEFAULT_FACTORY.put(pair(OffsetDateTime.class, Instant.class), OffsetDateTimeConversions::toInstant);
 
-//        java.time.ZoneId = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneIdFactory
+        // ZoneId conversions supported
+        DEFAULT_FACTORY.put(pair(Void.class, ZoneId.class), VoidConversions::toNull);
+        DEFAULT_FACTORY.put(pair(ZoneId.class, ZoneId.class), Converter::identity);
+        DEFAULT_FACTORY.put(pair(String.class, ZoneId.class), StringConversions::toZoneId);
+        DEFAULT_FACTORY.put(pair(Map.class, ZoneId.class), MapConversions::toZoneId);
+        
 //        java.time.ZoneOffset = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneOffsetFactory
 //        java.time.ZoneRegion = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneIdFactory
 
@@ -830,6 +837,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(MonthDay.class, Map.class), MonthDayConversions::toMap);
         DEFAULT_FACTORY.put(pair(YearMonth.class, Map.class), YearMonthConversions::toMap);
         DEFAULT_FACTORY.put(pair(Period.class, Map.class), PeriodConversions::toMap);
+        DEFAULT_FACTORY.put(pair(ZoneId.class, Map.class), ZoneIdConversions::toMap);
         DEFAULT_FACTORY.put(pair(Class.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(UUID.class, Map.class), MapConversions::initMap);
         DEFAULT_FACTORY.put(pair(Calendar.class, Map.class), MapConversions::initMap);

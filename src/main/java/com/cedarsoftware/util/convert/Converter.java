@@ -725,9 +725,7 @@ public final class Converter {
         DEFAULT_FACTORY.put(pair(ZoneOffset.class, ZoneOffset.class), Converter::identity);
         DEFAULT_FACTORY.put(pair(String.class, ZoneOffset.class), StringConversions::toZoneOffset);
         DEFAULT_FACTORY.put(pair(Map.class, ZoneOffset.class), MapConversions::toZoneOffset);
-
-//        java.time.ZoneRegion = com.cedarsoftware.util.io.DEFAULT_FACTORY.ZoneIdFactory
-
+        
         // MonthDay conversions supported
         DEFAULT_FACTORY.put(pair(Void.class, MonthDay.class), VoidConversions::toNull);
         DEFAULT_FACTORY.put(pair(MonthDay.class, MonthDay.class), Converter::identity);

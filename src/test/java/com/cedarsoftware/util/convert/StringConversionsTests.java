@@ -7,15 +7,21 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Year;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class StringConversionsTests {
 
@@ -99,5 +105,164 @@ class StringConversionsTests {
         assertThat(actual.toString()).isEqualTo(s);
     }
 
+
+    private static Stream<Arguments> offsetDateTime_isoFormat_sameEpochMilli() {
+        return Stream.of(
+                Arguments.of("2023-06-25T00:57:29.729+09:00"),
+                Arguments.of("2023-06-24T17:57:29.729+02:00"),
+                Arguments.of("2023-06-24T15:57:29.729Z"),
+                Arguments.of("2023-06-24T11:57:29.729-04:00"),
+                Arguments.of("2023-06-24T10:57:29.729-05:00"),
+                Arguments.of("2023-06-24T08:57:29.729-07:00")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("offsetDateTime_isoFormat_sameEpochMilli")
+    void toOffsetDateTime_parsingIsoFormat_returnsCorrectInstant(String input) {
+        OffsetDateTime expected = OffsetDateTime.parse(input);
+        OffsetDateTime actual = converter.convert(input, OffsetDateTime.class);
+        assertThat(actual).isEqualTo(expected);
+        assertThat(actual.toInstant().toEpochMilli()).isEqualTo(1687622249729L);
+    }
+
+
+    private static Stream<Arguments> dateUtilitiesParseFallback() {
+        return Stream.of(
+            Arguments.of("2024-01-19T15:30:45[Europe/London]", 1705678245000L),
+            Arguments.of("2024-01-19T10:15:30[Asia/Tokyo]", 1705626930000L),
+            Arguments.of("2024-01-19T20:45:00[America/New_York]", 1705715100000L),
+            Arguments.of("2024-01-19T15:30:45 Europe/London", 1705678245000L),
+            Arguments.of("2024-01-19T10:15:30 Asia/Tokyo", 1705626930000L),
+            Arguments.of("2024-01-19T20:45:00 America/New_York", 1705715100000L),
+            Arguments.of("2024-01-19T07:30GMT", 1705649400000L),
+            Arguments.of("2024-01-19T07:30[GMT]", 1705649400000L),
+            Arguments.of("2024-01-19T07:30 GMT", 1705649400000L),
+            Arguments.of("2024-01-19T07:30 [GMT]", 1705649400000L),
+            Arguments.of("2024-01-19T07:30  GMT", 1705649400000L),
+            Arguments.of("2024-01-19T07:30  [GMT] ", 1705649400000L),
+
+            Arguments.of("2024-01-19T07:30  GMT ", 1705649400000L),
+            Arguments.of("2024-01-19T07:30:01 GMT", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01 [GMT]", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01GMT", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01[GMT]", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01.1 GMT", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.1 [GMT]", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.1GMT", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.1[GMT]", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12GMT", 1705649401120L),
+
+            Arguments.of("2024-01-19T07:30:01Z", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01.1Z", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12Z", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01UTC", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01.1UTC", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12UTC", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01[UTC]", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01.1[UTC]", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12[UTC]", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01 UTC", 1705649401000L),
+
+            Arguments.of("2024-01-19T07:30:01.1 UTC", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12 UTC", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01 [UTC]", 1705649401000L),
+            Arguments.of("2024-01-19T07:30:01.1 [UTC]", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12 [UTC]", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01.1 UTC", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12 UTC", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01.1 [UTC]", 1705649401100L),
+            Arguments.of("2024-01-19T07:30:01.12 [UTC]", 1705649401120L),
+
+            Arguments.of("2024-01-19T07:30:01.12[GMT]", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01.12 GMT", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01.12 [GMT]", 1705649401120L),
+            Arguments.of("2024-01-19T07:30:01.123GMT", 1705649401123L),
+            Arguments.of("2024-01-19T07:30:01.123[GMT]", 1705649401123L),
+            Arguments.of("2024-01-19T07:30:01.123 GMT", 1705649401123L),
+            Arguments.of("2024-01-19T07:30:01.123 [GMT]", 1705649401123L),
+            Arguments.of("2024-01-19T07:30:01.1234GMT", 1705649401123L),
+            Arguments.of("2024-01-19T07:30:01.1234[GMT]", 1705649401123L),
+            Arguments.of("2024-01-19T07:30:01.1234 GMT", 1705649401123L),
+
+            Arguments.of("2024-01-19T07:30:01.1234 [GMT]", 1705649401123L),
+
+            Arguments.of("07:30EST 2024-01-19", 1705667400000L),
+            Arguments.of("07:30[EST] 2024-01-19", 1705667400000L),
+            Arguments.of("07:30 EST 2024-01-19", 1705667400000L),
+
+            Arguments.of("07:30 [EST] 2024-01-19", 1705667400000L),
+            Arguments.of("07:30:01EST 2024-01-19", 1705667401000L),
+            Arguments.of("07:30:01[EST] 2024-01-19", 1705667401000L),
+            Arguments.of("07:30:01 EST 2024-01-19", 1705667401000L),
+            Arguments.of("07:30:01 [EST] 2024-01-19", 1705667401000L),
+            Arguments.of("07:30:01.123 EST 2024-01-19", 1705667401123L),
+            Arguments.of("07:30:01.123 [EST] 2024-01-19", 1705667401123L)
+        );
+    }
+
+    private static final ZoneId SOUTH_POLE = ZoneId.of("Antarctica/South_Pole");
+
+
+    @ParameterizedTest
+    @MethodSource("dateUtilitiesParseFallback")
+    void toOffsetDateTime_dateUtilitiesParseFallback(String input, long epochMilli) {
+        // ZoneId options not used since all string format has zone in it somewhere.
+        // This is how json-io would use the convert.
+        ConverterOptions options = createCustomZones(SOUTH_POLE);
+        OffsetDateTime actual = converter.convert(input, OffsetDateTime.class, options);
+        assertThat(actual.toInstant().toEpochMilli()).isEqualTo(epochMilli);
+
+        assertThat(actual.getOffset()).isNotEqualTo(ZoneOffset.of("+13:00"));
+    }
+
+    private static Stream<Arguments> classesThatReturnNull_whenTrimmedToEmpty() {
+        return Stream.of(
+                Arguments.of(Year.class),
+                Arguments.of(Timestamp.class),
+                Arguments.of(java.sql.Date.class),
+                Arguments.of(Date.class),
+                Arguments.of(Instant.class),
+                Arguments.of(Date.class),
+                Arguments.of(java.sql.Date.class),
+                Arguments.of(Timestamp.class),
+                Arguments.of(ZonedDateTime.class),
+                Arguments.of(OffsetDateTime.class),
+                Arguments.of(OffsetTime.class),
+                Arguments.of(LocalDateTime.class),
+                Arguments.of(LocalDate.class),
+                Arguments.of(LocalTime.class)
+        );
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("classesThatReturnNull_whenTrimmedToEmpty")
+    void testClassesThatReturnNull_whenReceivingEmptyString(Class<?> c)
+    {
+        assertThat(this.converter.convert("", c)).isNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("classesThatReturnNull_whenTrimmedToEmpty")
+    void testClassesThatReturnNull_whenReceivingStringThatTrimsToEmptyString(Class<?> c)
+    {
+        assertThat(this.converter.convert("\t \r\n", c)).isNull();
+    }
+
+    private ConverterOptions createCustomZones(final ZoneId targetZoneId)
+    {
+        return new ConverterOptions() {
+            @Override
+            public <T> T getCustomOption(String name) {
+                return null;
+            }
+
+            @Override
+            public ZoneId getZoneId() {
+                return targetZoneId;
+            }
+        };
+    }
 
 }

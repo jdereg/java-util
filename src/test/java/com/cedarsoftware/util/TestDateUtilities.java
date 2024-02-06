@@ -1,5 +1,11 @@
 package com.cedarsoftware.util;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
@@ -10,12 +16,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.stream.Stream;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -843,15 +843,14 @@ class TestDateUtilities
     @MethodSource("provideTimeZones")
     void testTimeZoneParsing(String exampleZone, Long epochMilli)
     {
-        for (int i=0; i < 1; i++) {
-            Date date = DateUtilities.parseDate(exampleZone);
-            assertEquals(date.getTime(), epochMilli);
+        Date date = DateUtilities.parseDate(exampleZone);
+        assertEquals(date.getTime(), epochMilli);
 
-            TemporalAccessor dateTime = DateUtilities.parseDate(exampleZone, ZoneId.systemDefault(), true);
-            ZonedDateTime zdt = (ZonedDateTime) dateTime;
 
-            assertEquals(zdt.toInstant().toEpochMilli(), epochMilli);
-        }
+        TemporalAccessor dateTime = DateUtilities.parseDate(exampleZone, ZoneId.systemDefault(), true);
+        ZonedDateTime zdt = (ZonedDateTime) dateTime;
+
+        assertEquals(zdt.toInstant().toEpochMilli(), epochMilli);
     }
 
     @Test

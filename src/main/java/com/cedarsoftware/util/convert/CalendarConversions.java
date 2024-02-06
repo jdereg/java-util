@@ -43,11 +43,13 @@ public final class CalendarConversions {
     }
 
     static Instant toInstant(Object from) {
-        return ((Calendar)from).toInstant();
+        Calendar calendar = (Calendar)from;
+        return calendar.toInstant();
     }
 
     static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
-        return toInstant(from).atZone(options.getZoneId());
+        Calendar calendar = (Calendar)from;
+        return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId());
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {

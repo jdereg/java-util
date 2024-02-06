@@ -1,5 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.StringUtilities;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -25,16 +29,13 @@ import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.DateUtilities;
-import com.cedarsoftware.util.StringUtilities;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
@@ -329,43 +330,30 @@ public final class StringConversions {
     }
 
     static Date toDate(Object from, Converter converter, ConverterOptions options) {
-        Instant instant = getInstant((String) from, options);
-        if (instant == null) {
-            return null;
-        }
-        // Bring the zonedDateTime to a user-specifiable timezone
-        return Date.from(instant);
+        Instant instant = toInstant(from, options);
+        return instant == null ? null : Date.from(instant);
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
-        Instant instant = getInstant((String) from, options);
-        if (instant == null) {
-            return null;
-        }
-        return new java.sql.Date(instant.toEpochMilli());
+        Instant instant = toInstant(from, options);
+        return instant == null ? null :  new java.sql.Date(instant.toEpochMilli());
     }
 
     static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
-        Instant instant = getInstant((String) from, options);
-        if (instant == null) {
-            return null;
-        }
-        return Timestamp.from(instant);
+        Instant instant = toInstant(from, options);
+        return instant == null ? null : new Timestamp(instant.toEpochMilli());
     }
 
     static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
-        ZonedDateTime time = toZonedDateTime(from, options);
-        return time == null ? null : GregorianCalendar.from(time);
+        return parseDate(from, options).map(GregorianCalendar::from).orElse(null);
     }
 
     static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
-        ZonedDateTime time = toZonedDateTime(from, options);
-        return time == null ? null : time.toLocalDate();
+        return parseDate(from, options).map(ZonedDateTime::toLocalDate).orElse(null);
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
-        ZonedDateTime time = toZonedDateTime(from, options);
-        return time == null ? null : time.toLocalDateTime();
+        return parseDate(from, options).map(ZonedDateTime::toLocalDateTime).orElse(null);
     }
 
     static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
@@ -377,22 +365,29 @@ public final class StringConversions {
         try {
             return LocalTime.parse(str);
         } catch (Exception e) {
-            ZonedDateTime zdt = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
-            return zdt.toLocalTime();
+            return parseDate(str, options).map(ZonedDateTime::toLocalTime).orElse(null);
         }
     }
 
-    static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
-        Instant instant = getInstant((String) from, options);
-        if (instant == null) {
-            return null;
+    private static Optional<ZonedDateTime> parseDate(Object from, ConverterOptions options) {
+        String str = StringUtilities.trimToNull(asString(from));
+
+        if (str == null) {
+            return Optional.empty();
         }
-        return instant.atZone(options.getZoneId());
+
+        ZonedDateTime zonedDateTime = DateUtilities.parseDate(str, options.getZoneId(), true);
+
+        if (zonedDateTime == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(zonedDateTime);
     }
 
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(from, options);
+        return parseDate(from, options).orElse(null);
     }
 
     static ZoneId toZoneId(Object from, Converter converter, ConverterOptions options) {
@@ -422,16 +417,7 @@ public final class StringConversions {
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter, ConverterOptions options) {
-        String s = StringUtilities.trimToNull(asString(from));
-        if (s == null) {
-            return null;
-        }
-
-        try {
-            return OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        } catch (Exception e) {
-            return toZonedDateTime(from, options).toOffsetDateTime();
-        }
+        return parseDate(from, options).map(ZonedDateTime::toOffsetDateTime).orElse(null);
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter, ConverterOptions options) {
@@ -443,30 +429,20 @@ public final class StringConversions {
         try {
             return OffsetTime.parse(s, DateTimeFormatter.ISO_OFFSET_TIME);
         } catch (Exception e) {
-            return toZonedDateTime(from, options).toOffsetDateTime().toOffsetTime();
+            OffsetDateTime dateTime = toOffsetDateTime(from, converter, options);
+            if (dateTime == null) {
+                return null;
+            }
+            return dateTime.toOffsetTime();
         }
+    }
+
+    private static Instant toInstant(Object from, ConverterOptions options) {
+        return parseDate(from, options).map(ZonedDateTime::toInstant).orElse(null);
     }
 
     static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        String s = StringUtilities.trimToNull(asString(from));
-        if (s == null) {
-            return null;
-        }
-
-        try {
-            return Instant.parse(s);
-        } catch (Exception e) {
-            return getInstant(s, options);
-        }
-    }
-
-    private static Instant getInstant(String from, ConverterOptions options) {
-        String str = StringUtilities.trimToNull(from);
-        if (str == null) {
-            return null;
-        }
-        ZonedDateTime dateTime = DateUtilities.parseDate(str, options.getSourceZoneIdForLocalDates(), true);
-        return dateTime.toInstant();
+        return toInstant(from, options);
     }
 
     static char[] toCharArray(Object from, Converter converter, ConverterOptions options) {

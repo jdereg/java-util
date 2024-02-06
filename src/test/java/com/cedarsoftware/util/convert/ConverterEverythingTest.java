@@ -2,18 +2,35 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +41,7 @@ import static com.cedarsoftware.util.convert.Converter.pair;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
@@ -44,9 +62,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class ConverterEverythingTest
 {
+    private static final TimeZone TZ_TOKYO = TimeZone.getTimeZone("Asia/Tokyo");
     private Converter converter;
+    private ConverterOptions options = new ConverterOptions() {
+        public TimeZone getTimeZone() {
+            return TZ_TOKYO;
+        }
+    };
     private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_FACTORY = new ConcurrentHashMap<>(500, .8f);
-
 
     static {
         //   {source1, answer1},
@@ -391,12 +414,217 @@ class ConverterEverythingTest
                 { mapOf("hours", "10", "minutes", (byte)15, "seconds", true), ZoneOffset.of("+10:15:01") },
                 { mapOf("hours", mapOf("_v","10"), "minutes", mapOf("_v", (byte)15), "seconds", mapOf("_v", true)), ZoneOffset.of("+10:15:01") }, // full recursion
         });
+        
+        // String
+        TEST_FACTORY.put(pair(Void.class, String.class), new Object[][] {
+                { null, null }
+        });
+        TEST_FACTORY.put(pair(Byte.class, String.class), new Object[][] {
+                { (byte)0, "0" },
+                { Byte.MIN_VALUE, "-128" },
+                { Byte.MAX_VALUE, "127" },
+        });
+        TEST_FACTORY.put(pair(Short.class, String.class), new Object[][] {
+                { (short)0, "0" },
+                { Short.MIN_VALUE, "-32768" },
+                { Short.MAX_VALUE, "32767" },
+        });
+        TEST_FACTORY.put(pair(Integer.class, String.class), new Object[][] {
+                { 0, "0" },
+                { Integer.MIN_VALUE, "-2147483648" },
+                { Integer.MAX_VALUE, "2147483647" },
+        });
+        TEST_FACTORY.put(pair(Long.class, String.class), new Object[][] {
+                { 0L, "0" },
+                { Long.MIN_VALUE, "-9223372036854775808" },
+                { Long.MAX_VALUE, "9223372036854775807" },
+        });
+        TEST_FACTORY.put(pair(Float.class, String.class), new Object[][] {
+                { 0f, "0" },
+                { 0.0f, "0" },
+                { Float.MIN_VALUE, "1.4E-45" },
+                { -Float.MAX_VALUE, "-3.4028235E38" },
+                { Float.MAX_VALUE, "3.4028235E38" },
+                { 123456789f, "1.23456792E8" },
+                { 0.000000123456789f, "1.2345679E-7" },
+                { 12345f, "12345.0" },
+                { 0.00012345f, "1.2345E-4" },
+        });
+        TEST_FACTORY.put(pair(Double.class, String.class), new Object[][] {
+                { 0d, "0" },
+                { 0.0d, "0" },
+                { Double.MIN_VALUE, "4.9E-324" },
+                { -Double.MAX_VALUE, "-1.7976931348623157E308" },
+                { Double.MAX_VALUE, "1.7976931348623157E308" },
+                { 123456789d, "1.23456789E8" },
+                { 0.000000123456789d, "1.23456789E-7" },
+                { 12345d, "12345.0" },
+                { 0.00012345d, "1.2345E-4" },
+        });
+        TEST_FACTORY.put(pair(Boolean.class, String.class), new Object[][] {
+                { false, "false" },
+                { true, "true"}
+        });
+        TEST_FACTORY.put(pair(Character.class, String.class), new Object[][] {
+                { '1', "1"},
+                { (char) 32, " "},
+        });
+        TEST_FACTORY.put(pair(BigInteger.class, String.class), new Object[][] {
+                { new BigInteger("-1"), "-1"},
+                { new BigInteger("0"), "0"},
+                { new BigInteger("1"), "1"},
+        });
+        TEST_FACTORY.put(pair(BigDecimal.class, String.class), new Object[][] {
+                { new BigDecimal("-1"), "-1"},
+                { new BigDecimal("-1.0"), "-1"},
+                { new BigDecimal("0"), "0"},
+                { new BigDecimal("0.0"), "0"},
+                { new BigDecimal("1.0"), "1"},
+                { new BigDecimal("3.141519265358979323846264338"), "3.141519265358979323846264338"},
+        });
+        TEST_FACTORY.put(pair(AtomicBoolean.class, String.class), new Object[][] {
+                { new AtomicBoolean(false), "false" },
+                { new AtomicBoolean(true), "true" },
+        });
+        TEST_FACTORY.put(pair(AtomicInteger.class, String.class), new Object[][] {
+                { new AtomicInteger(-1), "-1" },
+                { new AtomicInteger(0), "0" },
+                { new AtomicInteger(1), "1" },
+                { new AtomicInteger(Integer.MIN_VALUE), "-2147483648" },
+                { new AtomicInteger(Integer.MAX_VALUE), "2147483647" },
+        });
+        TEST_FACTORY.put(pair(AtomicLong.class, String.class), new Object[][] {
+                { new AtomicLong(-1), "-1" },
+                { new AtomicLong(0), "0" },
+                { new AtomicLong(1), "1" },
+                { new AtomicLong(Long.MIN_VALUE), "-9223372036854775808" },
+                { new AtomicLong(Long.MAX_VALUE), "9223372036854775807" },
+        });
+        TEST_FACTORY.put(pair(byte[].class, String.class), new Object[][] {
+                { new byte[] {(byte)0xf0, (byte)0x9f, (byte)0x8d, (byte)0xba}, "\uD83C\uDF7A" }, // beer mug, byte[] treated as UTF-8.
+                { new byte[] {(byte)65, (byte)66, (byte)67, (byte)68}, "ABCD" }
+        });
+        TEST_FACTORY.put(pair(char[].class, String.class), new Object[][] {
+                { new char[] { 'A', 'B', 'C', 'D'}, "ABCD" }
+        });
+        TEST_FACTORY.put(pair(Character[].class, String.class), new Object[][] {
+                { new Character[] { 'A', 'B', 'C', 'D'}, "ABCD" }
+        });
+        TEST_FACTORY.put(pair(ByteBuffer.class, String.class), new Object[][] {
+                { ByteBuffer.wrap(new byte[] { (byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33}), "0123"}
+        });
+        TEST_FACTORY.put(pair(CharBuffer.class, String.class), new Object[][] {
+                { CharBuffer.wrap(new char[] { 'A', 'B', 'C', 'D'}), "ABCD" },
+        });
+        TEST_FACTORY.put(pair(Class.class, String.class), new Object[][] {
+                { Date.class, "java.util.Date" }
+        });
+        TEST_FACTORY.put(pair(Date.class, String.class), new Object[][] {
+                { new Date(1), toGmtString(new Date(1)) },
+                { new Date(Integer.MAX_VALUE), toGmtString(new Date(Integer.MAX_VALUE)) },
+                { new Date(Long.MAX_VALUE), toGmtString(new Date(Long.MAX_VALUE)) }
+        });
+        TEST_FACTORY.put(pair(java.sql.Date.class, String.class), new Object[][] {
+                { new java.sql.Date(1), toGmtString(new java.sql.Date(1)) },
+                { new java.sql.Date(Integer.MAX_VALUE), toGmtString(new java.sql.Date(Integer.MAX_VALUE)) },
+                { new java.sql.Date(Long.MAX_VALUE), toGmtString(new java.sql.Date(Long.MAX_VALUE)) }
+        });
+        TEST_FACTORY.put(pair(Timestamp.class, String.class), new Object[][] {
+                { new Timestamp(1), toGmtString(new Timestamp(1)) },
+                { new Timestamp(Integer.MAX_VALUE), toGmtString(new Timestamp(Integer.MAX_VALUE)) },
+                { new Timestamp(Long.MAX_VALUE), toGmtString(new Timestamp(Long.MAX_VALUE)) },
+        });
+        TEST_FACTORY.put(pair(LocalDate.class, String.class), new Object[][] {
+                { LocalDate.parse("1965-12-31"), "1965-12-31" },
+        });
+        TEST_FACTORY.put(pair(LocalTime.class, String.class), new Object[][] {
+                { LocalTime.parse("16:20:00"), "16:20:00" },
+        });
+        TEST_FACTORY.put(pair(LocalDateTime.class, String.class), new Object[][] {
+                { LocalDateTime.parse("1965-12-31T16:20:00"), "1965-12-31T16:20:00" },
+        });
+        TEST_FACTORY.put(pair(ZonedDateTime.class, String.class), new Object[][] {
+                { ZonedDateTime.parse("1965-12-31T16:20:00+00:00"), "1965-12-31T16:20:00Z" },
+                { ZonedDateTime.parse("2024-02-14T19:20:00-05:00"), "2024-02-14T19:20:00-05:00" },
+                { ZonedDateTime.parse("2024-02-14T19:20:00+05:00"), "2024-02-14T19:20:00+05:00" }
+        });
+        TEST_FACTORY.put(pair(UUID.class, String.class), new Object[][] {
+                { new UUID(0L, 0L) , "00000000-0000-0000-0000-000000000000" },
+                { new UUID(1L, 1L) , "00000000-0000-0001-0000-000000000001" },
+                { new UUID(Long.MAX_VALUE, Long.MAX_VALUE) , "7fffffff-ffff-ffff-7fff-ffffffffffff" },
+                { new UUID(Long.MIN_VALUE, Long.MIN_VALUE) , "80000000-0000-0000-8000-000000000000" },
+        });
+        TEST_FACTORY.put(pair(Calendar.class, String.class), new Object[][] {
+                { (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TZ_TOKYO);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 0);
+                    return cal;
+                }, "2024-02-05T22:31:00" }
+        });
+        TEST_FACTORY.put(pair(Number.class, String.class), new Object[][] {
+                { (byte)1 , "1" },
+                { (short)2 , "2" },
+                { 3 , "3" },
+                { 4L , "4" },
+                { 5f , "5.0" },
+                { 6d , "6.0" },
+        });
+        TEST_FACTORY.put(pair(Map.class, String.class), new Object[][] {
+                
+        });
+        TEST_FACTORY.put(pair(Enum.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(String.class, String.class), new Object[][] {
+                { "same", "same" },
+        });
+        TEST_FACTORY.put(pair(Duration.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(Instant.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(LocalTime.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(MonthDay.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(YearMonth.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(Period.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(ZoneId.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(ZoneOffset.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(OffsetTime.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(OffsetDateTime.class, String.class), new Object[][] {
+
+        });
+        TEST_FACTORY.put(pair(Year.class, String.class), new Object[][] {
+                
+        });
     }
-    
+
+    private static String toGmtString(Date date) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        simpleDateFormat.setTimeZone(TZ_TOKYO);
+        return simpleDateFormat.format(date);
+    }
+
     @BeforeEach
     public void before() {
         // create converter with default options
-        converter = new Converter(new DefaultConverterOptions());
+        converter = new Converter(options);
     }
 
     @Test
@@ -405,11 +633,11 @@ class ConverterEverythingTest
         Map<Class<?>, Set<Class<?>>> map = converter.allSupportedConversions();
         int neededTests = 0;
         int count = 0;
-        boolean runOnlyOneTest = false;
-        Class<?> singleSource = Number.class;
-        Class<?> singleTarget = Year.class;
-        int singleIndex = 0;
-        
+        boolean filterTests = false;
+        int singleIndex = -1;   // Set to -1 to run all tests for a given pairing, or to 0-index to only run a specific test.
+        Class<?> singleSource = Calendar.class;
+        Class<?> singleTarget = String.class;
+
         for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
             Class<?> sourceClass = entry.getKey();
             Set<Class<?>> targetClasses = entry.getValue();
@@ -426,9 +654,12 @@ class ConverterEverythingTest
                 }
                 
                 for (int i=0; i < testData.length; i++) {
-                    if (runOnlyOneTest) {
-                        if (!sourceClass.equals(singleSource) || !targetClass.equals(singleTarget) || singleIndex != i) {
-                            continue;
+                    if (filterTests) {
+                        if (!sourceClass.equals(singleSource) || !targetClass.equals(singleTarget)) {
+                            // Allow skipping all but one (1) test, or all but one category of tests.
+                            if (singleIndex < 0 || singleIndex != i) {
+                                continue;
+                            }
                         }
                     }
 
@@ -448,7 +679,6 @@ class ConverterEverythingTest
                         System.err.println();
                         e.printStackTrace();
                         System.err.println();
-                        System.err.flush();
                         failed = true;
                     }
                 }
@@ -473,17 +703,36 @@ class ConverterEverythingTest
             throw new IllegalArgumentException("Test cases must have two values : { source instance, target instance }");
         }
 
+        // If lambda Supplier function given, execute it and substitute the value into the source location
+        if (testPair[0] instanceof Supplier) {
+            testPair[0] = ((Supplier<?>) testPair[0]).get();
+        }
+
+        // If lambda Supplier function given, execute it and substitute the value into the source location
+        if (testPair[1] instanceof Supplier) {
+            testPair[1] = ((Supplier<?>) testPair[1]).get();
+        }
+
+        // Ensure test data author matched the source instance to the source class
         if (testPair[0] != null) {
             assertThat(testPair[0]).isInstanceOf(sourceClass);
         }
-        
+
+        // If an exception is expected to be returned, then assert that it is thrown, the type of exception, and a portion of the message.
         if (testPair[1] instanceof Throwable) {
             Throwable t = (Throwable) testPair[1];
             assertThatExceptionOfType(t.getClass())
-                    .isThrownBy(() ->  converter.convert(testPair[0], targetClass))
+                    .isThrownBy(() ->  converter.convert(testPair[0], targetClass, options))
                     .withMessageContaining(((Throwable) testPair[1]).getMessage());
         } else {
-            assertEquals(testPair[1], converter.convert(testPair[0], targetClass));
+            // Assert values are equals
+            Object target = converter.convert(testPair[0], targetClass, options);
+            assertEquals(testPair[1], target);
+
+            // Verify same instance when source and target are the same class
+            if (sourceClass.equals(targetClass)) {
+                assertSame(testPair[0], target);
+            }
         }
     }
 }

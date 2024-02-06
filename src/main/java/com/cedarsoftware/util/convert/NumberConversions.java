@@ -3,7 +3,6 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -87,9 +86,13 @@ public final class NumberConversions {
     static Float toFloatZero(Object from, Converter converter, ConverterOptions options) {
         return CommonValues.FLOAT_ZERO;
     }
-
+    
     static String floatToString(Object from, Converter converter, ConverterOptions option) {
-        return new DecimalFormat("#.####################").format(from);
+        float x = (float) from;
+        if (x == 0f) {
+            return "0";
+        }
+        return from.toString();
     }
 
     static double toDouble(Object from, Converter converter, ConverterOptions options) {
@@ -105,7 +108,11 @@ public final class NumberConversions {
     }
 
     static String doubleToString(Object from, Converter converter, ConverterOptions option) {
-        return new DecimalFormat("#.####################").format(from);
+        double x = (double) from;
+        if (x == 0d) {
+            return "0";
+        }
+        return from.toString();
     }
 
     static BigDecimal integerTypeToBigDecimal(Object from, Converter converter, ConverterOptions options) {

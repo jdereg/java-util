@@ -11,7 +11,6 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -119,6 +118,7 @@ public final class CalendarConversions {
 
     static String toString(Object from, Converter converter, ConverterOptions options) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        simpleDateFormat.setTimeZone(options.getTimeZone());
         return simpleDateFormat.format(((Calendar) from).getTime());
     }
 }

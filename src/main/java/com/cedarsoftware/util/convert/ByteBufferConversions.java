@@ -1,7 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.StringUtilities;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
@@ -35,8 +33,7 @@ public final class ByteBufferConversions {
         ByteBuffer buffer = asReadOnlyBuffer(from);
         return options.getCharset().decode(buffer);
     }
-
-
+    
     static CharBuffer toCharBuffer(Object from, Converter converter, ConverterOptions options) {
         return toCharBuffer(from, options);
     }

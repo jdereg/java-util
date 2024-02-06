@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
@@ -101,16 +100,19 @@ public final class DateConversions {
 
     static String dateToString(Object from, Converter converter, ConverterOptions options) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        simpleDateFormat.setTimeZone(options.getTimeZone());
         return simpleDateFormat.format(((Date) from));
     }
 
     static String sqlDateToString(Object from, Converter converter, ConverterOptions options) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        simpleDateFormat.setTimeZone(options.getTimeZone());
         return simpleDateFormat.format(((Date) from));
     }
 
     static String timestampToString(Object from, Converter converter, ConverterOptions options) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        simpleDateFormat.setTimeZone(options.getTimeZone());
         return simpleDateFormat.format(((Date) from));
     }
 

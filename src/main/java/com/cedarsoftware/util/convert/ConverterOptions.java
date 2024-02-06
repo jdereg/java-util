@@ -2,10 +2,11 @@ package com.cedarsoftware.util.convert;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -28,12 +29,8 @@ public interface ConverterOptions {
 
 
     /**
-     * @return zoneId to use for source conversion when on is not provided on the source (Date, Instant, etc.)
-     */
-    default ZoneId getSourceZoneIdForLocalDates() { return ZoneId.systemDefault(); }
-
-    /**
-     * @return zoneId expected on the target when finished (only for types that support ZoneId or TimeZone)
+     * @return {@link ZoneId} to use for source conversion when one is not provided and is required on the target
+     * type. ie. {@link LocalDateTime}, {@link LocalDate}, or {@link String} when no zone is provided.
      */
     default ZoneId getZoneId() { return ZoneId.systemDefault(); }
 

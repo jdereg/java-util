@@ -36,7 +36,7 @@ public final class LocalDateTimeConversions {
     private LocalDateTimeConversions() {}
 
     private static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
-        return ((LocalDateTime)from).atZone(options.getSourceZoneIdForLocalDates()).withZoneSameInstant(options.getZoneId());
+        return ((LocalDateTime)from).atZone(options.getZoneId());
     }
 
     private static Instant toInstant(Object from, ConverterOptions options) {

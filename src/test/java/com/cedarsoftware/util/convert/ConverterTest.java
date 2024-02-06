@@ -1,5 +1,15 @@
 package com.cedarsoftware.util.convert;
 
+import com.cedarsoftware.util.DeepEquals;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -27,16 +37,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
-
-import com.cedarsoftware.util.DeepEquals;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.EmptySource;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.NullSource;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
@@ -91,6 +91,8 @@ class ConverterTest
     private static final LocalDate LD_MILLENNIUM_TOKYO = LocalDate.of(2000, 1, 1);
 
     private static final LocalDate LD_MILLENNIUM_CHICAGO = LocalDate.of(1999, 12, 31);
+
+    private static final LocalDate LD_2023_NY = LocalDate.of(2023, 6, 24);
 
     enum fubar
     {
@@ -609,6 +611,7 @@ class ConverterTest
         assertThat(converted.get()).isEqualTo(date.getTime().getTime());
     }
 
+    private static final ZoneId IGNORED = ZoneId.of("Antarctica/South_Pole");
     private static final ZoneId TOKYO = ZoneId.of("Asia/Tokyo");
     private static final ZoneId PARIS = ZoneId.of("Europe/Paris");
     private static final ZoneId CHICAGO = ZoneId.of("America/Chicago");
@@ -748,7 +751,7 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("epochMilliWithZoneId")
     void testEpochMilliWithZoneId(String epochMilli, ZoneId zoneId) {
-        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
+        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(NEW_YORK));
 
         assertThat(localDateTime)
                 .hasYear(1999)
@@ -762,9 +765,13 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("dateStringNoZoneOffset")
     void testStringDateWithNoTimeZoneInformation(String date, ZoneId zoneId) {
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId, NEW_YORK));
+        // times with zoneid passed in to convert to ZonedDateTime
+        ZonedDateTime zdt = this.converter.convert(date, ZonedDateTime.class, createCustomZones(zoneId));
 
-        assertThat(localDateTime)
+        // convert to local time NY
+        ZonedDateTime nyTime = zdt.withZoneSameInstant(NEW_YORK);
+
+        assertThat(nyTime.toLocalDateTime())
                 .hasYear(1999)
                 .hasMonthValue(12)
                 .hasDayOfMonth(31)
@@ -778,9 +785,11 @@ class ConverterTest
     @MethodSource("dateStringInIsoOffsetDateTime")
     void testStringDateWithTimeZoneToLocalDateTime(String date) {
         //  source is TOKYO, should be ignored when zone is provided on string.
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
+        ZonedDateTime zdt = this.converter.convert(date, ZonedDateTime.class, createCustomZones(IGNORED));
 
-        assertThat(localDateTime)
+        ZonedDateTime nyTime = zdt.withZoneSameInstant(NEW_YORK);
+
+        assertThat(nyTime.toLocalDateTime())
                 .hasYear(1999)
                 .hasMonthValue(12)
                 .hasDayOfMonth(31)
@@ -793,8 +802,11 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("dateStringInIsoOffsetDateTimeWithMillis")
     void testStringDateWithTimeZoneToLocalDateTimeIncludeMillis(String date) {
-        //  source is TOKYO, should be ignored when zone is provided on string.
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
+        // will come in with the zone from the string.
+        ZonedDateTime zdt = this.converter.convert(date, ZonedDateTime.class, createCustomZones(IGNORED));
+
+        // create zoned date time from the localDateTime from string, providing NEW_YORK as time zone.
+        LocalDateTime localDateTime = zdt.withZoneSameInstant(NEW_YORK).toLocalDateTime();
 
         assertThat(localDateTime)
                 .hasYear(1999)
@@ -809,8 +821,11 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("dateStringInIsoZoneDateTime")
     void testStringDateWithTimeZoneToLocalDateTimeWithZone(String date) {
-        //  source is TOKYO, should be ignored when zone is provided on string.
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(TOKYO, NEW_YORK));
+        // will come in with the zone from the string.
+        ZonedDateTime zdt = this.converter.convert(date, ZonedDateTime.class, createCustomZones(IGNORED));
+
+        // create localDateTime in NEW_YORK time.
+        LocalDateTime localDateTime = zdt.withZoneSameInstant(NEW_YORK).toLocalDateTime();
 
         assertThat(localDateTime)
                 .hasYear(1999)
@@ -856,13 +871,15 @@ class ConverterTest
         assertThat(ny).isEqualTo(converted);
         assertThat(converted.toInstant().toEpochMilli()).isEqualTo(1687622249729L);
     }
-    
+
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
+
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(IGNORED));
+
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -873,7 +890,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId));
 
         assertThat(localDateTime).isEqualTo(expected);
     }
@@ -881,10 +898,10 @@ class ConverterTest
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToLocalDateTime_whenCalendarTimeZoneDoesNotMatch(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(NEW_YORK));
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(NEW_YORK, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(IGNORED));
 
         assertThat(localDateTime).isEqualTo(expected);
     }
@@ -902,19 +919,6 @@ class ConverterTest
         assertThat(calendar.get(Calendar.MINUTE)).isEqualTo(expected.getMinute());
         assertThat(calendar.get(Calendar.SECOND)).isEqualTo(expected.getSecond());
         assertThat(calendar.getTimeInMillis()).isEqualTo(epochMilli);
-
-
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(zoneId, TOKYO));
-
-        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createCustomZones(TOKYO, zoneId));
-
-        assertThat(actual.get(Calendar.YEAR)).isEqualTo(expected.getYear());
-        assertThat(actual.get(Calendar.MONTH)).isEqualTo(expected.getMonthValue()-1);
-        assertThat(actual.get(Calendar.DAY_OF_MONTH)).isEqualTo(expected.getDayOfMonth());
-        assertThat(actual.get(Calendar.HOUR_OF_DAY)).isEqualTo(expected.getHour());
-        assertThat(actual.get(Calendar.MINUTE)).isEqualTo(expected.getMinute());
-        assertThat(actual.get(Calendar.SECOND)).isEqualTo(expected.getSecond());
-        assertThat(actual.getTimeInMillis()).isEqualTo(epochMilli);
     }
 
 
@@ -928,7 +932,7 @@ class ConverterTest
 
     @ParameterizedTest
     @MethodSource("roundTrip_tokyoTime")
-    void testCalendar_roundTrip_withLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
+    void testCalendar_toLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
@@ -937,205 +941,101 @@ class ConverterTest
         assertThat(calendar.get(Calendar.DAY_OF_MONTH)).isEqualTo(expected.getDayOfMonth());
         assertThat(calendar.getTimeInMillis()).isEqualTo(epochMilli);
 
-
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(zoneId, TOKYO));
-
-        Calendar actual = this.converter.convert(localDate, Calendar.class, createCustomZones(TOKYO, zoneId));
-
-        assertThat(actual.get(Calendar.YEAR)).isEqualTo(expected.getYear());
-        assertThat(actual.get(Calendar.MONTH)).isEqualTo(expected.getMonthValue()-1);
-        assertThat(actual.get(Calendar.DAY_OF_MONTH)).isEqualTo(expected.getDayOfMonth());
-
-        assertThat(actual.getTimeInMillis()).isEqualTo(epochMilli);
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(IGNORED));
+        assertThat(localDate).isEqualTo(expected);
     }
 
     private static Stream<Arguments> localDateToLong() {
         return Stream.of(
-                Arguments.of(946616400000L, NEW_YORK, LD_MILLENNIUM_NY, TOKYO),
-                Arguments.of(946616400000L, NEW_YORK, LD_MILLENNIUM_NY, CHICAGO),
-                Arguments.of(946620000000L, CHICAGO, LD_MILLENNIUM_CHICAGO, TOKYO)
+                Arguments.of(946616400000L, NEW_YORK, LD_MILLENNIUM_NY),
+                Arguments.of(1687532400000L, TOKYO, LD_2023_NY)
         );
     }
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testConvertLocalDateToLongAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testConvertLocalDateToLong(long epochMilli, ZoneId zoneId, LocalDate expected) {
 
-        long intermediate = this.converter.convert(expected, long.class, createCustomZones(zoneId, targetZone));
+        long intermediate = this.converter.convert(expected, long.class, createCustomZones(zoneId));
 
         assertThat(intermediate).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateToInstantAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testLocalDateToInstant(long epochMilli, ZoneId zoneId, LocalDate expected) {
 
-        Instant intermediate = this.converter.convert(expected, Instant.class, createCustomZones(zoneId, targetZone));
+        Instant intermediate = this.converter.convert(expected, Instant.class, createCustomZones(zoneId));
 
         assertThat(intermediate.toEpochMilli()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateToDoubleAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testLocalDateToDouble(long epochMilli, ZoneId zoneId, LocalDate expected) {
 
-        double intermediate = this.converter.convert(expected, double.class, createCustomZones(zoneId, targetZone));
+        double intermediate = this.converter.convert(expected, double.class, createCustomZones(zoneId));
 
         assertThat((long)intermediate).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateToAtomicLongAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testLocalDateToAtomicLong(long epochMilli, ZoneId zoneId, LocalDate expected) {
 
-        AtomicLong intermediate = this.converter.convert(expected, AtomicLong.class, createCustomZones(zoneId, targetZone));
+        AtomicLong intermediate = this.converter.convert(expected, AtomicLong.class, createCustomZones(zoneId));
 
         assertThat(intermediate.get()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateToDateAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
+    void testLocalDateToDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
 
-        Date intermediate = this.converter.convert(expected,Date.class, createCustomZones(zoneId, targetZone));
+        Date intermediate = this.converter.convert(expected,Date.class, createCustomZones(zoneId));
 
         assertThat(intermediate.getTime()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateSqlDateAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        java.sql.Date intermediate = this.converter.convert(expected, java.sql.Date.class, createCustomZones(zoneId, targetZone));
-
+    void testLocalDateSqlDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
+        java.sql.Date intermediate = this.converter.convert(expected, java.sql.Date.class, createCustomZones(zoneId));
         assertThat(intermediate.getTime()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateTimestampAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        Timestamp intermediate = this.converter.convert(expected, Timestamp.class, createCustomZones(zoneId, targetZone));
-
+    void testLocalDateTimestamp(long epochMilli, ZoneId zoneId, LocalDate expected) {
+        Timestamp intermediate = this.converter.convert(expected, Timestamp.class, createCustomZones(zoneId));
         assertThat(intermediate.getTime()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateZonedDateTimeAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        ZonedDateTime intermediate = this.converter.convert(expected, ZonedDateTime.class, createCustomZones(zoneId, targetZone));
-
+    void testLocalDateZonedDateTime(long epochMilli, ZoneId zoneId, LocalDate expected) {
+        ZonedDateTime intermediate = this.converter.convert(expected, ZonedDateTime.class, createCustomZones(zoneId));
         assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateToLocalDateTimeAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        LocalDateTime intermediate = this.converter.convert(expected, LocalDateTime.class, createCustomZones(zoneId, targetZone));
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
-    }
-
-    @ParameterizedTest
-    @MethodSource("localDateToLong")
-    void testLocalDateToBigIntegerAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        BigInteger intermediate = this.converter.convert(expected, BigInteger.class, createCustomZones(zoneId, targetZone));
-
+    void testLocalDateToBigInteger(long epochMilli, ZoneId zoneId, LocalDate expected) {
+        BigInteger intermediate = this.converter.convert(expected, BigInteger.class, createCustomZones(zoneId));
         assertThat(intermediate.longValue()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("localDateToLong")
-    void testLocalDateToBigDecimalAndBack(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        BigDecimal intermediate = this.converter.convert(expected, BigDecimal.class, createCustomZones(zoneId, targetZone));
-
+    void testLocalDateToBigDecimal(long epochMilli, ZoneId zoneId, LocalDate expected) {
+        BigDecimal intermediate = this.converter.convert(expected, BigDecimal.class, createCustomZones(zoneId));
         assertThat(intermediate.longValue()).isEqualTo(epochMilli);
-
-        LocalDate actual = this.converter.convert(intermediate, LocalDate.class, createCustomZones(targetZone, zoneId));
-
-        assertThat(actual).isEqualTo(expected);
     }
 
     @Test
     void testLocalDateToFloat() {
-
-        float intermediate = this.converter.convert(LD_MILLENNIUM_NY, float.class, createCustomZones(NEW_YORK, TOKYO));
-
+        float intermediate = this.converter.convert(LD_MILLENNIUM_NY, float.class, createCustomZones(TOKYO));
         assertThat((long)intermediate).isNotEqualTo(946616400000L);
     }
-
-    @Test
-    void testLocalDateToLocalTime_withZoneChange_willBeZoneOffset() {
-
-        LocalTime intermediate = this.converter.convert(LD_MILLENNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, TOKYO));
-
-        assertThat(intermediate).hasHour(14)
-                .hasMinute(0)
-                .hasSecond(0)
-                .hasNano(0);
-    }
-
-    @Test
-    void testLocalDateToLocalTimeWithoutZoneChange_willBeMidnight() {
-
-        LocalTime intermediate = this.converter.convert(LD_MILLENNIUM_NY, LocalTime.class, createCustomZones(NEW_YORK, NEW_YORK));
-
-        assertThat(intermediate).hasHour(0)
-                .hasMinute(0)
-                .hasSecond(0)
-                .hasNano(0);
-    }
-
-    @ParameterizedTest
-    @MethodSource("localDateToLong")
-    void testLocalDateToLocalTime(long epochMilli, ZoneId zoneId, LocalDate expected, ZoneId targetZone) {
-
-        float intermediate = this.converter.convert(expected, float.class, createCustomZones(zoneId, targetZone));
-
-        assertThat((long)intermediate).isNotEqualTo(epochMilli);
-    }
-
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
@@ -1143,7 +1043,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createCustomZones(zoneId, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createCustomZones(zoneId));
 
         assertThat(time.toInstant().toEpochMilli()).isEqualTo(epochMilli);
         assertThat(localDateTime).isEqualTo(expected);
@@ -1156,7 +1056,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        LocalTime actual = this.converter.convert(time, LocalTime.class, createCustomZones(zoneId, zoneId));
+        LocalTime actual = this.converter.convert(time, LocalTime.class, createCustomZones(zoneId));
 
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
@@ -1167,7 +1067,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        LocalDate actual = this.converter.convert(time, LocalDate.class, createCustomZones(zoneId, zoneId));
+        LocalDate actual = this.converter.convert(time, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(actual).isEqualTo(expected.toLocalDate());
     }
@@ -1178,7 +1078,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        Instant actual = this.converter.convert(time, Instant.class, createCustomZones(zoneId, zoneId));
+        Instant actual = this.converter.convert(time, Instant.class, createCustomZones(zoneId));
 
         assertThat(actual).isEqualTo(time.toInstant());
     }
@@ -1189,7 +1089,7 @@ class ConverterTest
     {
         ZonedDateTime time = Instant.ofEpochMilli(epochMilli).atZone(zoneId);
 
-        Calendar actual = this.converter.convert(time, Calendar.class, createCustomZones(zoneId, zoneId));
+        Calendar actual = this.converter.convert(time, Calendar.class, createCustomZones(zoneId));
 
         assertThat(actual.getTime().getTime()).isEqualTo(time.toInstant().toEpochMilli());
         assertThat(actual.getTimeZone()).isEqualTo(TimeZone.getTimeZone(zoneId));
@@ -1202,7 +1102,7 @@ class ConverterTest
     {
         ZonedDateTime time = ZonedDateTime.of(localDateTime, zoneId);
 
-        long instant = this.converter.convert(time, long.class, createCustomZones(zoneId, zoneId));
+        long instant = this.converter.convert(time, long.class, createCustomZones(zoneId));
 
         assertThat(instant).isEqualTo(epochMilli);
     }
@@ -1212,7 +1112,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testLongToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
-        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(epochMilli, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1222,7 +1122,7 @@ class ConverterTest
     {
         AtomicLong time = new AtomicLong(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(time, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1230,7 +1130,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testLongToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
-        Instant actual = this.converter.convert(epochMilli, Instant.class, createCustomZones(null, zoneId));
+        Instant actual = this.converter.convert(epochMilli, Instant.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli));
     }
 
@@ -1240,7 +1140,7 @@ class ConverterTest
     {
         BigInteger bi = BigInteger.valueOf(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(bi, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(bi, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1250,7 +1150,7 @@ class ConverterTest
     {
         BigDecimal bd = BigDecimal.valueOf(epochMilli);
 
-        LocalDateTime localDateTime = this.converter.convert(bd, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(bd, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1259,7 +1159,7 @@ class ConverterTest
     void testInstantToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(instant, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(instant, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1268,7 +1168,7 @@ class ConverterTest
     void testDateToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Date date = new Date(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1277,7 +1177,7 @@ class ConverterTest
     void testDateToZonedDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Date date = new Date(epochMilli);
-        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createCustomZones(null, zoneId));
+        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createCustomZones(zoneId));
         assertThat(zonedDateTime.toLocalDateTime()).isEqualTo(expected);
     }
 
@@ -1286,7 +1186,7 @@ class ConverterTest
     void testInstantToZonedDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant date = Instant.ofEpochMilli(epochMilli);
-        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createCustomZones(null, zoneId));
+        ZonedDateTime zonedDateTime = this.converter.convert(date, ZonedDateTime.class, createCustomZones(zoneId));
         assertThat(zonedDateTime.toInstant()).isEqualTo(date);
     }
 
@@ -1295,7 +1195,7 @@ class ConverterTest
     void testDateToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Date date = new Date(epochMilli);
-        Instant actual = this.converter.convert(date, Instant.class, createCustomZones(null, zoneId));
+        Instant actual = this.converter.convert(date, Instant.class, createCustomZones(zoneId));
         assertThat(actual.toEpochMilli()).isEqualTo(epochMilli);
     }
 
@@ -1305,7 +1205,7 @@ class ConverterTest
     void testSqlDateToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         java.sql.Date date = new java.sql.Date(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1314,7 +1214,7 @@ class ConverterTest
     void testInstantToLong(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        long actual = this.converter.convert(instant, long.class, createCustomZones(null, zoneId));
+        long actual = this.converter.convert(instant, long.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo(epochMilli);
     }
 
@@ -1323,7 +1223,7 @@ class ConverterTest
     void testInstantToAtomicLong(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        AtomicLong actual = this.converter.convert(instant, AtomicLong.class, createCustomZones(null, zoneId));
+        AtomicLong actual = this.converter.convert(instant, AtomicLong.class, createCustomZones(zoneId));
         assertThat(actual.get()).isEqualTo(epochMilli);
     }
 
@@ -1332,7 +1232,7 @@ class ConverterTest
     void testInstantToFloat(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        float actual = this.converter.convert(instant, float.class, createCustomZones(null, zoneId));
+        float actual = this.converter.convert(instant, float.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo((float)epochMilli);
     }
 
@@ -1341,7 +1241,7 @@ class ConverterTest
     void testInstantToDouble(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        double actual = this.converter.convert(instant, double.class, createCustomZones(null, zoneId));
+        double actual = this.converter.convert(instant, double.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo((double)epochMilli);
     }
 
@@ -1350,7 +1250,7 @@ class ConverterTest
     void testInstantToTimestamp(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        Timestamp actual = this.converter.convert(instant, Timestamp.class, createCustomZones(null, zoneId));
+        Timestamp actual = this.converter.convert(instant, Timestamp.class, createCustomZones(zoneId));
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
@@ -1359,7 +1259,7 @@ class ConverterTest
     void testInstantToDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        Date actual = this.converter.convert(instant, Date.class, createCustomZones(null, zoneId));
+        Date actual = this.converter.convert(instant, Date.class, createCustomZones(zoneId));
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
@@ -1368,7 +1268,7 @@ class ConverterTest
     void testInstantToSqlDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        java.sql.Date actual = this.converter.convert(instant, java.sql.Date.class, createCustomZones(null, zoneId));
+        java.sql.Date actual = this.converter.convert(instant, java.sql.Date.class, createCustomZones(zoneId));
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
@@ -1377,7 +1277,7 @@ class ConverterTest
     void testInstantToCalendar(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        Calendar actual = this.converter.convert(instant, Calendar.class, createCustomZones(null, zoneId));
+        Calendar actual = this.converter.convert(instant, Calendar.class, createCustomZones(zoneId));
         assertThat(actual.getTime().getTime()).isEqualTo(epochMilli);
         assertThat(actual.getTimeZone()).isEqualTo(TimeZone.getTimeZone(zoneId));
     }
@@ -1387,7 +1287,7 @@ class ConverterTest
     void testInstantToBigInteger(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        BigInteger actual = this.converter.convert(instant, BigInteger.class, createCustomZones(null, zoneId));
+        BigInteger actual = this.converter.convert(instant, BigInteger.class, createCustomZones(zoneId));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1396,7 +1296,7 @@ class ConverterTest
     void testInstantToBigDecimal(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        BigDecimal actual = this.converter.convert(instant, BigDecimal.class, createCustomZones(null, zoneId));
+        BigDecimal actual = this.converter.convert(instant, BigDecimal.class, createCustomZones(zoneId));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1405,7 +1305,7 @@ class ConverterTest
     void testInstantToLocalDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalDate actual = this.converter.convert(instant, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate actual = this.converter.convert(instant, LocalDate.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo(expected.toLocalDate());
     }
 
@@ -1414,7 +1314,7 @@ class ConverterTest
     void testInstantToLocalTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalTime actual = this.converter.convert(instant, LocalTime.class, createCustomZones(null, zoneId));
+        LocalTime actual = this.converter.convert(instant, LocalTime.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
 
@@ -1425,7 +1325,7 @@ class ConverterTest
     void testTimestampToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Timestamp date = new Timestamp(epochMilli);
-        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(null, zoneId));
+        LocalDateTime localDateTime = this.converter.convert(date, LocalDateTime.class, createCustomZones(zoneId));
         assertThat(localDateTime).isEqualTo(expected);
     }
 
@@ -1455,47 +1355,47 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(epochMilli);
 
-        double d = this.converter.convert(calendar, double.class, createCustomZones(null, zoneId));
+        double d = this.converter.convert(calendar, double.class, createCustomZones(zoneId));
         assertThat(d).isEqualTo((double)epochMilli);
     }
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testCalendarToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(zoneId));
         assertThat(localDate).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToLocalTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalTime actual = this.converter.convert(calendar, LocalTime.class, createCustomZones(null, zoneId));
+        LocalTime actual = this.converter.convert(calendar, LocalTime.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToZonedDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        ZonedDateTime actual = this.converter.convert(calendar, ZonedDateTime.class, createCustomZones(null, zoneId));
+        ZonedDateTime actual = this.converter.convert(calendar, ZonedDateTime.class, createCustomZones(IGNORED));
         assertThat(actual.toLocalDateTime()).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        Instant actual = this.converter.convert(calendar, Instant.class, createCustomZones(null, zoneId));
+        Instant actual = this.converter.convert(calendar, Instant.class, createCustomZones(zoneId));
         assertThat(actual.toEpochMilli()).isEqualTo(epochMilli);
     }
 
@@ -1503,10 +1403,10 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToBigDecimal(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        BigDecimal actual = this.converter.convert(calendar, BigDecimal.class, createCustomZones(null, zoneId));
+        BigDecimal actual = this.converter.convert(calendar, BigDecimal.class, createCustomZones(zoneId));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1514,10 +1414,10 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testCalendarToBigInteger(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        BigInteger actual = this.converter.convert(calendar, BigInteger.class, createCustomZones(null, zoneId));
+        BigInteger actual = this.converter.convert(calendar, BigInteger.class, createCustomZones(zoneId));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1526,7 +1426,7 @@ class ConverterTest
     void testDateToLocalTime(long epochMilli, ZoneId zoneId, LocalDateTime expected) {
         Date date = new Date(epochMilli);
 
-        LocalTime actual = this.converter.convert(date, LocalTime.class, createCustomZones(null, zoneId));
+        LocalTime actual = this.converter.convert(date, LocalTime.class, createCustomZones(zoneId));
         assertThat(actual).isEqualTo(expected.toLocalTime());
     }
 
@@ -1536,7 +1436,7 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
         calendar.setTimeInMillis(epochMilli);
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(zoneId));
         assertThat(localDate).isEqualTo(expected);
     }
 
@@ -1545,12 +1445,12 @@ class ConverterTest
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(NEW_YORK));
         calendar.setTimeInMillis(1687622249729L);
 
-        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(null, TOKYO));
+        LocalDate localDate = this.converter.convert(calendar, LocalDate.class, createCustomZones(IGNORED));
 
         assertThat(localDate)
                 .hasYear(2023)
                 .hasMonthValue(6)
-                .hasDayOfMonth(25);
+                .hasDayOfMonth(24);
     }
 
     @Test
@@ -1565,23 +1465,24 @@ class ConverterTest
         assertThat(calendar.get(Calendar.YEAR)).isEqualTo(2023);
         assertThat(calendar.get(Calendar.HOUR_OF_DAY)).isEqualTo(10);
         assertThat(calendar.get(Calendar.MINUTE)).isEqualTo(57);
+        assertThat(calendar.get(Calendar.SECOND)).isEqualTo(29);
         assertThat(calendar.getTimeInMillis()).isEqualTo(1687622249729L);
 
         // Convert calendar calendar to TOKYO LocalDateTime
-        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(CHICAGO, TOKYO));
+        LocalDateTime localDateTime = this.converter.convert(calendar, LocalDateTime.class, createCustomZones(IGNORED));
 
         assertThat(localDateTime)
                 .hasYear(2023)
                 .hasMonthValue(6)
-                .hasDayOfMonth(25)
-                .hasHour(0)
+                .hasDayOfMonth(24)
+                .hasHour(10)
                 .hasMinute(57)
                 .hasSecond(29)
                 .hasNano(729000000);
 
         //  Convert Tokyo local date time to CHICAGO Calendar
         //  We don't know the source ZoneId we are trying to convert.
-        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createCustomZones(TOKYO, CHICAGO));
+        Calendar actual = this.converter.convert(localDateTime, Calendar.class, createCustomZones(CHICAGO));
 
         assertThat(actual.get(Calendar.MONTH)).isEqualTo(5);
         assertThat(actual.get(Calendar.DAY_OF_MONTH)).isEqualTo(24);
@@ -1605,7 +1506,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testLongToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
-        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1614,7 +1515,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testZonedDateTimeToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
-        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(epochMilli, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1625,7 +1526,7 @@ class ConverterTest
     void testInstantToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         Instant instant = Instant.ofEpochMilli(epochMilli);
-        LocalDate localDate = this.converter.convert(instant, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(instant, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1635,7 +1536,7 @@ class ConverterTest
     void testDateToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         Date date = new Date(epochMilli);
-        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1645,7 +1546,7 @@ class ConverterTest
     void testSqlDateToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         java.sql.Date date = new java.sql.Date(epochMilli);
-        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1655,7 +1556,7 @@ class ConverterTest
     void testTimestampToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
         Timestamp date = new Timestamp(epochMilli);
-        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(null, zoneId));
+        LocalDate localDate = this.converter.convert(date, LocalDate.class, createCustomZones(zoneId));
 
         assertThat(localDate).isEqualTo(expected);
     }
@@ -1665,7 +1566,7 @@ class ConverterTest
     void testLongToBigInteger(Object source, Number number)
     {
         long expected = number.longValue();
-        BigInteger actual = this.converter.convert(source, BigInteger.class, createCustomZones(null, null));
+        BigInteger actual = this.converter.convert(source, BigInteger.class, createCustomZones(null));
 
         assertThat(actual).isEqualTo(BigInteger.valueOf(expected));
     }
@@ -1674,7 +1575,7 @@ class ConverterTest
     @MethodSource("epochMillis_withLocalDateInformation")
     void testLongToLocalTime(long epochMilli, ZoneId zoneId, LocalDate expected)
     {
-        LocalTime actual = this.converter.convert(epochMilli, LocalTime.class, createCustomZones(null, zoneId));
+        LocalTime actual = this.converter.convert(epochMilli, LocalTime.class, createCustomZones(zoneId));
 
         assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toLocalTime());
     }
@@ -1683,11 +1584,8 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateToLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        long milli = this.converter.convert(initial, long.class, createCustomZones(sourceZoneId, targetZoneId));
+        long milli = this.converter.convert(initial, long.class, createCustomZones(sourceZoneId));
         assertThat(milli).isEqualTo(epochMilli);
-
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(sourceZoneId, targetZoneId));
-        assertThat(actual).isEqualTo(expected);
     }
 
 
@@ -1703,10 +1601,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        long milli = this.converter.convert(initial, long.class, createCustomZones(sourceZoneId, targetZoneId));
+        long milli = this.converter.convert(initial, long.class, createCustomZones(sourceZoneId));
         assertThat(milli).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1714,10 +1612,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToInstant(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        Instant intermediate = this.converter.convert(initial, Instant.class, createCustomZones(sourceZoneId, targetZoneId));
+        Instant intermediate = this.converter.convert(initial, Instant.class, createCustomZones(sourceZoneId));
         assertThat(intermediate.toEpochMilli()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createCustomZones(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createCustomZones(targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1725,10 +1623,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToAtomicLong(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        AtomicLong milli = this.converter.convert(initial, AtomicLong.class, createCustomZones(sourceZoneId, targetZoneId));
+        AtomicLong milli = this.converter.convert(initial, AtomicLong.class, createCustomZones(sourceZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -1736,30 +1634,21 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToZonedDateTime(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        ZonedDateTime intermediate = this.converter.convert(initial, ZonedDateTime.class, createCustomZones(sourceZoneId, targetZoneId));
+        ZonedDateTime intermediate = this.converter.convert(initial, ZonedDateTime.class, createCustomZones(sourceZoneId));
         assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createCustomZones(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(intermediate, LocalDateTime.class, createCustomZones(targetZoneId));
         assertThat(actual).isEqualTo(expected);
-    }
-
-    @ParameterizedTest
-    @MethodSource("localDateTimeConversion_params")
-    void testLocalDateTimeToLocalTime(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
-    {
-        LocalTime intermediate = this.converter.convert(initial, LocalTime.class, createCustomZones(sourceZoneId, targetZoneId));
-
-        assertThat(intermediate).isEqualTo(expected.toLocalTime());
     }
 
     @ParameterizedTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToBigInteger(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        BigInteger milli = this.converter.convert(initial, BigInteger.class, createCustomZones(sourceZoneId, targetZoneId));
+        BigInteger milli = this.converter.convert(initial, BigInteger.class, createCustomZones(sourceZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(targetZoneId));
         assertThat(actual).isEqualTo(expected);
 
     }
@@ -1768,10 +1657,10 @@ class ConverterTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToBigDecimal(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
     {
-        BigDecimal milli = this.converter.convert(initial, BigDecimal.class, createCustomZones(sourceZoneId, targetZoneId));
+        BigDecimal milli = this.converter.convert(initial, BigDecimal.class, createCustomZones(sourceZoneId));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
-        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(null, targetZoneId));
+        LocalDateTime actual = this.converter.convert(milli, LocalDateTime.class, createCustomZones(targetZoneId));
         assertThat(actual).isEqualTo(expected);
     }
 
@@ -4324,7 +4213,7 @@ class ConverterTest
         char[] actual = this.converter.convert(source, char[].class, createCharsetOptions(charSet));
         assertThat(actual).isEqualTo(expected);
     }
-    
+
     @Test
     void testKnownUnsupportedConversions()
     {
@@ -4356,7 +4245,7 @@ class ConverterTest
         };
     }
     
-    private ConverterOptions createCustomZones(final ZoneId sourceZoneId, final ZoneId targetZoneId)
+    private ConverterOptions createCustomZones(final ZoneId targetZoneId)
     {
         return new ConverterOptions() {
             @Override
@@ -4367,11 +4256,6 @@ class ConverterTest
             @Override
             public ZoneId getZoneId() {
                 return targetZoneId;
-            }
-
-            @Override
-            public ZoneId getSourceZoneIdForLocalDates() {
-                return sourceZoneId;
             }
         };
     }
@@ -4396,5 +4280,5 @@ class ConverterTest
         };
     }
     
-    private ConverterOptions chicagoZone() { return createCustomZones(CHICAGO, CHICAGO); }
+    private ConverterOptions chicagoZone() { return createCustomZones(CHICAGO); }
 }

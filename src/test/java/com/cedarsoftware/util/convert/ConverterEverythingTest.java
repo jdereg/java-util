@@ -708,7 +708,7 @@ class ConverterEverythingTest
             testPair[0] = ((Supplier<?>) testPair[0]).get();
         }
 
-        // If lambda Supplier function given, execute it and substitute the value into the source location
+        // If lambda Supplier function given, execute it and substitute the value into the target location
         if (testPair[1] instanceof Supplier) {
             testPair[1] = ((Supplier<?>) testPair[1]).get();
         }

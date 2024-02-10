@@ -1112,7 +1112,7 @@ public final class Converter {
     /**
      * Given a primitive class, return the Wrapper class equivalent.
      */
-    private static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass) {
+    static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass) {
         if (!primitiveClass.isPrimitive()) {
             return primitiveClass;
         }

@@ -85,17 +85,17 @@ class ConverterEverythingTest {
 
         // Byte/byte
         TEST_DB.put(pair(Void.class, byte.class), new Object[][] {
-                { null, (byte) 0 }
+                { null, (byte) 0 },
         });
         TEST_DB.put(pair(Void.class, Byte.class), new Object[][] {
-                { null, null }
+                { null, null },
         });
         TEST_DB.put(pair(Byte.class, Byte.class), new Object[][] {
                 { (byte) -1, (byte) -1 },
                 { (byte) 0, (byte) 0 },
                 { (byte) 1, (byte) 1 },
                 { Byte.MIN_VALUE, Byte.MIN_VALUE },
-                { Byte.MAX_VALUE, Byte.MAX_VALUE }
+                { Byte.MAX_VALUE, Byte.MAX_VALUE },
         });
         TEST_DB.put(pair(Short.class, Byte.class), new Object[][] {
                 { (short) -1, (byte) -1 },
@@ -103,8 +103,8 @@ class ConverterEverythingTest {
                 { (short) 1, (byte) 1 },
                 { (short) -128, Byte.MIN_VALUE },
                 { (short) 127, Byte.MAX_VALUE },
-                { (short) -129, (byte) 127 },  // verify wrap around
-                { (short) 128, (byte) -128 }    // verify wrap around
+                { (short) -129, Byte.MAX_VALUE },    // verify wrap around
+                { (short) 128, Byte.MIN_VALUE },    // verify wrap around
         });
         TEST_DB.put(pair(Integer.class, Byte.class), new Object[][] {
                 { -1, (byte) -1 },
@@ -112,8 +112,8 @@ class ConverterEverythingTest {
                 { 1, (byte) 1 },
                 { -128, Byte.MIN_VALUE },
                 { 127, Byte.MAX_VALUE },
-                { -129, (byte) 127 }, // verify wrap around
-                { 128, (byte) -128 }   // verify wrap around
+                { -129, Byte.MAX_VALUE },   // verify wrap around
+                { 128, Byte.MIN_VALUE },   // verify wrap around
         });
         TEST_DB.put(pair(Long.class, Byte.class), new Object[][] {
                 { -1L, (byte) -1 },
@@ -121,8 +121,8 @@ class ConverterEverythingTest {
                 { 1L, (byte) 1 },
                 { -128L, Byte.MIN_VALUE },
                 { 127L, Byte.MAX_VALUE },
-                { -129L, (byte) 127 }, // verify wrap around
-                { 128L, (byte) -128 }   // verify wrap around
+                { -129L, Byte.MAX_VALUE }, // verify wrap around
+                { 128L, Byte.MIN_VALUE }   // verify wrap around
         });
         TEST_DB.put(pair(Float.class, Byte.class), new Object[][] {
                 { -1f, (byte) -1 },
@@ -134,8 +134,8 @@ class ConverterEverythingTest {
                 { 1.999f, (byte) 1 },
                 { -128f, Byte.MIN_VALUE },
                 { 127f, Byte.MAX_VALUE },
-                { -129f, (byte) 127 }, // verify wrap around
-                { 128f, (byte) -128 }   // verify wrap around
+                { -129f, Byte.MAX_VALUE }, // verify wrap around
+                { 128f, Byte.MIN_VALUE }   // verify wrap around
         });
         TEST_DB.put(pair(Double.class, Byte.class), new Object[][] {
                 { -1d, (byte) -1 },
@@ -147,8 +147,8 @@ class ConverterEverythingTest {
                 { 1.999d, (byte) 1 },
                 { -128d, Byte.MIN_VALUE },
                 { 127d, Byte.MAX_VALUE },
-                { -129d, (byte) 127 }, // verify wrap around
-                { 128d, (byte) -128 }   // verify wrap around
+                { -129d, Byte.MAX_VALUE }, // verify wrap around
+                { 128d, Byte.MIN_VALUE }   // verify wrap around
         });
         TEST_DB.put(pair(Boolean.class, Byte.class), new Object[][] {
                 { true, (byte) 1 },
@@ -170,8 +170,8 @@ class ConverterEverythingTest {
                 { new AtomicInteger(1), (byte) 1 },
                 { new AtomicInteger(-128), Byte.MIN_VALUE },
                 { new AtomicInteger(127), Byte.MAX_VALUE },
-                { new AtomicInteger(-129), (byte) 127 },
-                { new AtomicInteger(128), (byte) -128 },
+                { new AtomicInteger(-129), Byte.MAX_VALUE },
+                { new AtomicInteger(128), Byte.MIN_VALUE },
         });
         TEST_DB.put(pair(AtomicLong.class, Byte.class), new Object[][] {
                 { new AtomicLong(-1), (byte) -1 },
@@ -179,8 +179,8 @@ class ConverterEverythingTest {
                 { new AtomicLong(1), (byte) 1 },
                 { new AtomicLong(-128), Byte.MIN_VALUE },
                 { new AtomicLong(127), Byte.MAX_VALUE },
-                { new AtomicLong(-129), (byte) 127 },
-                { new AtomicLong(128), (byte) -128 },
+                { new AtomicLong(-129), Byte.MAX_VALUE },
+                { new AtomicLong(128), Byte.MIN_VALUE },
         });
         TEST_DB.put(pair(BigInteger.class, Byte.class), new Object[][] {
                 { new BigInteger("-1"), (byte) -1 },
@@ -188,8 +188,8 @@ class ConverterEverythingTest {
                 { new BigInteger("1"), (byte) 1 },
                 { new BigInteger("-128"), Byte.MIN_VALUE },
                 { new BigInteger("127"), Byte.MAX_VALUE },
-                { new BigInteger("-129"), (byte) 127 },
-                { new BigInteger("128"), (byte) -128 },
+                { new BigInteger("-129"), Byte.MAX_VALUE },
+                { new BigInteger("128"), Byte.MIN_VALUE },
         });
         TEST_DB.put(pair(BigDecimal.class, Byte.class), new Object[][] {
                 { new BigDecimal("-1"), (byte) -1 },
@@ -201,8 +201,8 @@ class ConverterEverythingTest {
                 { new BigDecimal("1.9"), (byte) 1 },
                 { new BigDecimal("-128"), Byte.MIN_VALUE },
                 { new BigDecimal("127"), Byte.MAX_VALUE },
-                { new BigDecimal("-129"), (byte) 127 },
-                { new BigDecimal("128"), (byte) -128 },
+                { new BigDecimal("-129"), Byte.MAX_VALUE },
+                { new BigDecimal("128"), Byte.MIN_VALUE },
         });
         TEST_DB.put(pair(Number.class, Byte.class), new Object[][] {
                 { -2L, (byte) -2 },
@@ -226,11 +226,11 @@ class ConverterEverythingTest {
                 { mapOf("_v", 127), Byte.MAX_VALUE },
 
                 { mapOf("_v", "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
-                { mapOf("_v", -129), (byte) 127 },
+                { mapOf("_v", -129), Byte.MAX_VALUE },
 
                 { mapOf("_v", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
-                { mapOf("_v", 128), (byte) -128 },
-                { mapOf("_v", mapOf("_v", 128L)), (byte) -128 },    // Prove use of recursive call to .convert()
+                { mapOf("_v", 128), Byte.MIN_VALUE },
+                { mapOf("_v", mapOf("_v", 128L)), Byte.MIN_VALUE },    // Prove use of recursive call to .convert()
         });
         TEST_DB.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
@@ -250,6 +250,179 @@ class ConverterEverythingTest {
                 { "crapola54", new IllegalArgumentException("Value 'crapola54' not parseable as a byte value or outside -128 to 127") },
                 { "-129", new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127") },
                 { "128", new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127") },
+        });
+
+        // Short/short
+        TEST_DB.put(pair(Void.class, short.class), new Object[][] {
+                { null, (short) 0 },
+        });
+        TEST_DB.put(pair(Void.class, Short.class), new Object[][] {
+                { null, null },
+        });
+        TEST_DB.put(pair(Byte.class, Short.class), new Object[][] {
+                { (byte) -1, (short) -1 },
+                { (byte) 0, (short) 0 },
+                { (byte) 1, (short) 1 },
+                { Byte.MIN_VALUE, (short)Byte.MIN_VALUE },
+                { Byte.MAX_VALUE, (short)Byte.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Short.class, Short.class), new Object[][] {
+                { (short) -1, (short) -1 },
+                { (short) 0, (short) 0 },
+                { (short) 1, (short) 1 },
+                { Short.MIN_VALUE, Short.MIN_VALUE },
+                { Short.MAX_VALUE, Short.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Integer.class, Short.class), new Object[][] {
+                { -1, (short) -1 },
+                { 0, (short) 0 },
+                { 1, (short) 1 },
+                { -32769, Short.MAX_VALUE },   // wrap around check
+                { 32768, Short.MIN_VALUE },   // wrap around check
+        });
+        TEST_DB.put(pair(Long.class, Short.class), new Object[][] {
+                { -1L, (short) -1 },
+                { 0L, (short) 0 },
+                { 1L, (short) 1 },
+                { -32769L, Short.MAX_VALUE },   // wrap around check
+                { 32768L, Short.MIN_VALUE },   // wrap around check
+        });
+        TEST_DB.put(pair(Float.class, Short.class), new Object[][] {
+                { -1f, (short) -1 },
+                { -1.99f, (short) -1 },
+                { -1.1f, (short) -1 },
+                { 0f, (short) 0 },
+                { 1f, (short) 1 },
+                { 1.1f, (short) 1 },
+                { 1.999f, (short) 1 },
+                { -32768f, Short.MIN_VALUE },
+                { 32767f, Short.MAX_VALUE },
+                { -32769f, Short.MAX_VALUE  }, // verify wrap around
+                { 32768f, Short.MIN_VALUE }   // verify wrap around
+        });
+        TEST_DB.put(pair(Double.class, Short.class), new Object[][] {
+                { -1d, (short) -1 },
+                { -1.99d, (short) -1 },
+                { -1.1d, (short) -1 },
+                { 0d, (short) 0 },
+                { 1d, (short) 1 },
+                { 1.1d, (short) 1 },
+                { 1.999d, (short) 1 },
+                { -32768d, Short.MIN_VALUE },
+                { 32767d, Short.MAX_VALUE },
+                { -32769d, Short.MAX_VALUE }, // verify wrap around
+                { 32768d, Short.MIN_VALUE }   // verify wrap around
+        });
+        TEST_DB.put(pair(Boolean.class, Short.class), new Object[][] {
+                { true, (short) 1 },
+                { false, (short) 0 },
+        });
+        TEST_DB.put(pair(Character.class, Short.class), new Object[][] {
+                { '1', (short) 49 },
+                { '0', (short) 48 },
+                { (char) 1, (short) 1 },
+                { (char) 0, (short) 0 },
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, Short.class), new Object[][] {
+                { new AtomicBoolean(true), (short) 1 },
+                { new AtomicBoolean(false), (short) 0 },
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Short.class), new Object[][] {
+                { new AtomicInteger(-1), (short) -1 },
+                { new AtomicInteger(0), (short) 0 },
+                { new AtomicInteger(1), (short) 1 },
+                { new AtomicInteger(-32768), Short.MIN_VALUE },
+                { new AtomicInteger(32767), Short.MAX_VALUE },
+                { new AtomicInteger(-32769), Short.MAX_VALUE },
+                { new AtomicInteger(32768), Short.MIN_VALUE },
+        });
+        TEST_DB.put(pair(AtomicLong.class, Short.class), new Object[][] {
+                { new AtomicLong(-1), (short) -1 },
+                { new AtomicLong(0), (short) 0 },
+                { new AtomicLong(1), (short) 1 },
+                { new AtomicLong(-32768), Short.MIN_VALUE },
+                { new AtomicLong(32767), Short.MAX_VALUE },
+                { new AtomicLong(-32769), Short.MAX_VALUE },
+                { new AtomicLong(32768), Short.MIN_VALUE },
+        });
+        TEST_DB.put(pair(BigInteger.class, Short.class), new Object[][] {
+                { new BigInteger("-1"), (short) -1 },
+                { new BigInteger("0"), (short) 0 },
+                { new BigInteger("1"), (short) 1 },
+                { new BigInteger("-32768"), Short.MIN_VALUE },
+                { new BigInteger("32767"), Short.MAX_VALUE },
+                { new BigInteger("-32769"), Short.MAX_VALUE },
+                { new BigInteger("32768"), Short.MIN_VALUE },
+        });
+        TEST_DB.put(pair(BigDecimal.class, Short.class), new Object[][] {
+                { new BigDecimal("-1"), (short) -1 },
+                { new BigDecimal("-1.1"), (short) -1 },
+                { new BigDecimal("-1.9"), (short) -1 },
+                { new BigDecimal("0"), (short) 0 },
+                { new BigDecimal("1"), (short) 1 },
+                { new BigDecimal("1.1"), (short) 1 },
+                { new BigDecimal("1.9"), (short) 1 },
+                { new BigDecimal("-32768"), Short.MIN_VALUE },
+                { new BigDecimal("32767"), Short.MAX_VALUE },
+                { new BigDecimal("-32769"), Short.MAX_VALUE },
+                { new BigDecimal("32768"), Short.MIN_VALUE },
+        });
+        TEST_DB.put(pair(Number.class, Short.class), new Object[][] {
+                { -2L, (short) -2 },
+        });
+        TEST_DB.put(pair(Map.class, Short.class), new Object[][] {
+                { mapOf("_v", "-1"), (short) -1 },
+                { mapOf("_v", -1), (short) -1 },
+                { mapOf("value", "-1"), (short) -1 },
+                { mapOf("value", -1L), (short) -1 },
+
+                { mapOf("_v", "0"), (short) 0 },
+                { mapOf("_v", 0), (short) 0 },
+
+                { mapOf("_v", "1"), (short) 1 },
+                { mapOf("_v", 1), (short) 1 },
+
+                { mapOf("_v", "-32768"), Short.MIN_VALUE },
+                { mapOf("_v", -32768), Short.MIN_VALUE },
+
+                { mapOf("_v", "32767"), Short.MAX_VALUE },
+                { mapOf("_v", 32767), Short.MAX_VALUE },
+
+                { mapOf("_v", "-32769"), new IllegalArgumentException("'-32769' not parseable as a short value or outside -32768 to 32767") },
+                { mapOf("_v", -32769), Short.MAX_VALUE },
+
+                { mapOf("_v", "32768"), new IllegalArgumentException("'32768' not parseable as a short value or outside -32768 to 32767") },
+                { mapOf("_v", 32768), Short.MIN_VALUE },
+                { mapOf("_v", mapOf("_v", 32768L)), Short.MIN_VALUE },    // Prove use of recursive call to .convert()
+        });
+        TEST_DB.put(pair(String.class, Short.class), new Object[][] {
+                { "-1", (short) -1 },
+                { "-1.1", (short) -1 },
+                { "-1.9", (short) -1 },
+                { "0", (short) 0 },
+                { "1", (short) 1 },
+                { "1.1", (short) 1 },
+                { "1.9", (short) 1 },
+                { "-32768", (short) -32768 },
+                { "32767", (short) 32767 },
+                { "", (short) 0 },
+                { "crapola", new IllegalArgumentException("Value 'crapola' not parseable as a short value or outside -32768 to 32767") },
+                { "54 crapola", new IllegalArgumentException("Value '54 crapola' not parseable as a short value or outside -32768 to 32767") },
+                { "54crapola", new IllegalArgumentException("Value '54crapola' not parseable as a short value or outside -32768 to 32767") },
+                { "crapola 54", new IllegalArgumentException("Value 'crapola 54' not parseable as a short value or outside -32768 to 32767") },
+                { "crapola54", new IllegalArgumentException("Value 'crapola54' not parseable as a short value or outside -32768 to 32767") },
+                { "-32769", new IllegalArgumentException("'-32769' not parseable as a short value or outside -32768 to 32767") },
+                { "32768", new IllegalArgumentException("'32768' not parseable as a short value or outside -32768 to 32767") },
+        });
+        TEST_DB.put(pair(Year.class, Short.class), new Object[][] {
+                { Year.of(-1), (short)-1 },
+                { Year.of(0), (short) 0 },
+                { Year.of(1), (short) 1 },
+                { Year.of(1582), (short) 1582 },
+                { Year.of(1970), (short) 1970 },
+                { Year.of(2000), (short) 2000 },
+                { Year.of(2024), (short) 2024 },
+                { Year.of(9999), (short) 9999 },
         });
 
         // MonthDay
@@ -726,11 +899,12 @@ class ConverterEverythingTest {
         return Stream.of(list.toArray(new Arguments[] {}));
     }
     
-    @ParameterizedTest(name = "<{0}, {1}> ==> {2}")
+    @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass) {
-        // Make sure data is authored correctly
-        assertTrue(source == null || sourceClass.isAssignableFrom(sourceClass));
+        // Make sure source instance is of the sourceClass
+        assertTrue(source == null || Converter.toPrimitiveWrapperClass(sourceClass).isInstance(source), "source type mismatch");
+        assertTrue(target == null || target instanceof Throwable || Converter.toPrimitiveWrapperClass(targetClass).isInstance(target), "target type mismatch");
 
         // if the source/target are the same Class, then ensure identity lambda is used.
         if (sourceClass.equals(targetClass)) {

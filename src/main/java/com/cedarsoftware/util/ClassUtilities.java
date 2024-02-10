@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.convert.StringConversions;
-
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
